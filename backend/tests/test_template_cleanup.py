@@ -1,5 +1,6 @@
-from alembic import command
-from alembic.config import Config
+import subprocess
+import sys
+
 from sqlalchemy import inspect
 from sqlmodel import Session
 
@@ -10,11 +11,12 @@ from app.main import app
 def test_template_cleanup_migration(db: Session) -> None:
     # Release earlier tests' read locks before running schema changes.
     db.rollback()
-    config = Config("alembic.ini")
     assert "item" not in inspect(engine).get_table_names()
     assert not any("/items" in path for path in app.openapi()["paths"])
 
-    command.downgrade(config, "fe56fa70289e")
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "downgrade", "fe56fa70289e"], check=True
+    )
     try:
         inspector = inspect(engine)
         columns = {column["name"]: column for column in inspector.get_columns("item")}
@@ -28,6 +30,6 @@ def test_template_cleanup_migration(db: Session) -> None:
         assert foreign_key["referred_table"] == "user"
         assert foreign_key["options"]["ondelete"] == "CASCADE"
     finally:
-        command.upgrade(config, "head")
+        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
 
     assert "item" not in inspect(engine).get_table_names()
