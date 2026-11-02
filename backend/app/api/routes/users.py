@@ -12,6 +12,7 @@ from app.api.deps import (
 )
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
+from app.domains.org.models import OrgMembership, RoleGrant
 from app.models import (
     Message,
     UpdatePassword,
@@ -26,6 +27,25 @@ from app.models import (
 from app.utils import generate_new_account_email, send_email
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+class UserBelongsToOrganization(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(
+            status_code=409, detail="User still belongs to an organization"
+        )
+
+
+def check_user_organization_references(session: SessionDep, user_id: uuid.UUID) -> None:
+    if (
+        session.exec(
+            select(OrgMembership.id).where(OrgMembership.user_id == user_id)
+        ).first()
+        or session.exec(
+            select(RoleGrant.id).where(RoleGrant.granted_by_user_id == user_id)
+        ).first()
+    ):
+        raise UserBelongsToOrganization()
 
 
 @router.get(
@@ -133,6 +153,7 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
     """
     Delete own user.
     """
+    check_user_organization_references(session, current_user.id)
     if current_user.is_superuser:
         raise HTTPException(
             status_code=403, detail="Super users are not allowed to delete themselves"
@@ -220,6 +241,7 @@ def delete_user(
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    check_user_organization_references(session, user.id)
     if user == current_user:
         raise HTTPException(
             status_code=403, detail="Super users are not allowed to delete themselves"
