@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
+import axios, { AxiosError } from "axios"
 import { UsersService } from "@/client"
 
 import AppSidebar from "@/components/Sidebar/AppSidebar"
@@ -17,9 +18,24 @@ export const Route = createFileRoute("/_layout")({
         to: "/login",
       })
     }
-    const { data: user } = await UsersService.readUserMe()
-    if (user.must_change_password) {
-      throw redirect({ to: "/change-password" })
+    try {
+      // The route guard handles auth errors without the global reload interceptor.
+      const { data: user } = await UsersService.readUserMe({ axios })
+      if (user.must_change_password) {
+        throw redirect({ to: "/change-password" })
+      }
+    } catch (error) {
+      if (
+        error instanceof AxiosError &&
+        [401, 403].includes(error.response?.status ?? 0)
+      ) {
+        if (error.response?.data?.detail?.code === "password_change_required") {
+          throw redirect({ to: "/change-password" })
+        }
+        localStorage.removeItem("access_token")
+        throw redirect({ to: "/login" })
+      }
+      throw error
     }
   },
 })
