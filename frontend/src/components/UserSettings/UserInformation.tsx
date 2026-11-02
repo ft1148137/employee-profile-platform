@@ -40,7 +40,7 @@ const UserInformation = () => {
     criteriaMode: "all",
     defaultValues: {
       full_name: currentUser?.full_name ?? undefined,
-      email: currentUser?.email,
+      email: currentUser?.email ?? "",
     },
   })
 

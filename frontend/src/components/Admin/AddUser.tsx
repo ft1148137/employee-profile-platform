@@ -85,7 +85,7 @@ const AddUser = () => {
   })
 
   const onSubmit = (data: FormData) => {
-    mutation.mutate(data)
+    mutation.mutate({ ...data, username: data.email.split("@")[0] })
   }
 
   return (

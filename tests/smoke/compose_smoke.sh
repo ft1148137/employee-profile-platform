@@ -66,7 +66,7 @@ get() {
 }
 
 step="employee login and demo membership"
-employee_token="$(login employee.platform@demo.example.com)"
+employee_token="$(login E02)"
 membership="$(get "$employee_token" /me/memberships | python3 -c '
 import json, sys
 membership, = [m for m in json.load(sys.stdin) if m["org"]["slug"] == "demo"]

@@ -33,7 +33,9 @@ def demo(db: Session, seed_path: Path) -> Generator[tuple]:
         for e in db.exec(select(Employee).where(Employee.org_id == org.id)).all()
     }
     foreign = Organization(slug=str(uuid4()), name="Synthetic foreign tenant")
-    user = User(email=f"{uuid4()}@example.com", hashed_password="unused")
+    user = User(
+        username=str(uuid4()), email=f"{uuid4()}@example.com", hashed_password="unused"
+    )
     db.add_all([foreign, user])
     db.flush()
     db.add(OrgMembership(org_id=foreign.id, user_id=user.id))
@@ -152,7 +154,7 @@ def test_profiles_versions_and_query_bound(
         assert [v["revision"] for v in history.json()["data"]] == [2, 1]
         assert history.json()["count"] == 2
         assert all(
-            v["published_by"] == {"actor_type": "user", "display_name": None}
+            v["published_by"] == {"actor_type": "user", "display_name": "企业管理员"}
             for v in history.json()["data"]
         )
         for revision, status in ((1, "tentative"), (2, "confirmed")):

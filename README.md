@@ -30,15 +30,15 @@ Phase 1 回答四个问题：**这个人做过什么、能承担哪些工作、�
 
 前四个账号密码均为 **`demo-password-2026`**，来自 `.env.example` 的 `DEMO_USER_PASSWORD`。账号和样例以 [示例数据说明](examples/demo-org/README.md) 为准，所有公司、员工和证据均为虚构。
 
-| 账号 | 身份 | 登录后可见内容 |
+| 登录名 | 身份 | 登录后可见内容 |
 | --- | --- | --- |
-| `admin@demo.example.com` | 企业管理员 | 全部 12 名员工及画像；自述和经理评价显示为受限，不能读正文 |
-| `manager.platform@demo.example.com` | 平台研发部经理，E01 林澈 | 平台研发部 3 名员工及其自述、经理评价 |
-| `employee.platform@demo.example.com` | 员工 E02 张伟 | 仅本人画像；有两个已发布版本，可对比历史 |
-| `employee.algorithm@demo.example.com` | 员工 E05 张伟 | 仅本人画像；与 E02 同名，但身份独立 |
-| `admin@example.com` | 平台超管，同时获授演示组织企业管理员 | 平台账号管理和演示组织全部画像；受限证据仍不能读正文 |
+| `admin` | 企业管理员 | 全部 12 名员工及画像；自述和经理评价显示为受限，不能读正文 |
+| `E01` | 平台研发部经理，E01 林澈 | 平台研发部 3 名员工及其自述、经理评价 |
+| `E02` | 员工 E02 张伟 | 仅本人画像；有两个已发布版本，可对比历史 |
+| `E05` | 员工 E05 张伟 | 仅本人画像；与 E02 同名，但身份独立 |
+| `superadmin` | 平台超管，同时获授演示组织企业管理员 | 平台账号管理和演示组织全部画像；受限证据仍不能读正文 |
 
-最后一个账号使用 `FIRST_SUPERUSER` / `FIRST_SUPERUSER_PASSWORD`，默认密码 **`changethis`**。平台超管本身不绕过组织权限，演示初始化显式授予了企业管理员角色。更改 `.env` 不会修改已导入账号的密码。
+也可以用账号邮箱登录，工号与邮箱均忽略大小写。最后一个账号的登录名由 `FIRST_SUPERUSER_USERNAME` 配置（默认 `superadmin`），邮箱和密码使用 `FIRST_SUPERUSER` / `FIRST_SUPERUSER_PASSWORD`，默认密码 **`changethis`**。平台超管本身不绕过组织权限，演示初始化显式授予了企业管理员角色。更改 `.env` 不会修改已导入账号的密码。
 
 ## 你会看到什么
 

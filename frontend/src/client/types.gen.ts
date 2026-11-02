@@ -466,20 +466,6 @@ export type Message = {
 };
 
 /**
- * NewPassword
- */
-export type NewPassword = {
-    /**
-     * Token
-     */
-    token: string;
-    /**
-     * New Password
-     */
-    new_password: string;
-};
-
-/**
  * OrganizationPublic
  */
 export type OrganizationPublic = {
@@ -495,28 +481,6 @@ export type OrganizationPublic = {
      * Slug
      */
     slug: string;
-};
-
-/**
- * PrivateUserCreate
- */
-export type PrivateUserCreate = {
-    /**
-     * Email
-     */
-    email: string;
-    /**
-     * Password
-     */
-    password: string;
-    /**
-     * Full Name
-     */
-    full_name: string;
-    /**
-     * Is Verified
-     */
-    is_verified?: boolean;
 };
 
 /**
@@ -732,9 +696,13 @@ export type UpdatePassword = {
  */
 export type UserCreate = {
     /**
+     * Username
+     */
+    username: string;
+    /**
      * Email
      */
-    email: string;
+    email?: string | null;
     /**
      * Is Active
      */
@@ -758,9 +726,13 @@ export type UserCreate = {
  */
 export type UserPublic = {
     /**
+     * Username
+     */
+    username: string;
+    /**
      * Email
      */
-    email: string;
+    email?: string | null;
     /**
      * Is Active
      */
@@ -774,6 +746,14 @@ export type UserPublic = {
      */
     full_name?: string | null;
     /**
+     * Must Change Password
+     */
+    must_change_password?: boolean;
+    /**
+     * Last Login At
+     */
+    last_login_at?: string | null;
+    /**
      * Id
      */
     id: string;
@@ -781,24 +761,6 @@ export type UserPublic = {
      * Created At
      */
     created_at?: string | null;
-};
-
-/**
- * UserRegister
- */
-export type UserRegister = {
-    /**
-     * Email
-     */
-    email: string;
-    /**
-     * Password
-     */
-    password: string;
-    /**
-     * Full Name
-     */
-    full_name?: string | null;
 };
 
 /**
@@ -943,91 +905,6 @@ export type loginTestTokenResponses = {
 
 export type loginTestTokenResponse = loginTestTokenResponses[keyof loginTestTokenResponses];
 
-export type loginRecoverPasswordData = {
-    body?: never;
-    path: {
-        /**
-         * Email
-         */
-        email: string;
-    };
-    query?: never;
-    url: '/api/v1/password-recovery/{email}';
-};
-
-export type loginRecoverPasswordErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type loginRecoverPasswordError = loginRecoverPasswordErrors[keyof loginRecoverPasswordErrors];
-
-export type loginRecoverPasswordResponses = {
-    /**
-     * Successful Response
-     */
-    200: Message;
-};
-
-export type loginRecoverPasswordResponse = loginRecoverPasswordResponses[keyof loginRecoverPasswordResponses];
-
-export type loginResetPasswordData = {
-    body: NewPassword;
-    path?: never;
-    query?: never;
-    url: '/api/v1/reset-password/';
-};
-
-export type loginResetPasswordErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type loginResetPasswordError = loginResetPasswordErrors[keyof loginResetPasswordErrors];
-
-export type loginResetPasswordResponses = {
-    /**
-     * Successful Response
-     */
-    200: Message;
-};
-
-export type loginResetPasswordResponse = loginResetPasswordResponses[keyof loginResetPasswordResponses];
-
-export type loginRecoverPasswordHtmlContentData = {
-    body?: never;
-    path: {
-        /**
-         * Email
-         */
-        email: string;
-    };
-    query?: never;
-    url: '/api/v1/password-recovery-html-content/{email}';
-};
-
-export type loginRecoverPasswordHtmlContentErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type loginRecoverPasswordHtmlContentError = loginRecoverPasswordHtmlContentErrors[keyof loginRecoverPasswordHtmlContentErrors];
-
-export type loginRecoverPasswordHtmlContentResponses = {
-    /**
-     * Successful Response
-     */
-    200: string;
-};
-
-export type loginRecoverPasswordHtmlContentResponse = loginRecoverPasswordHtmlContentResponses[keyof loginRecoverPasswordHtmlContentResponses];
-
 export type usersReadUsersData = {
     body?: never;
     path?: never;
@@ -1168,31 +1045,6 @@ export type usersUpdatePasswordMeResponses = {
 };
 
 export type usersUpdatePasswordMeResponse = usersUpdatePasswordMeResponses[keyof usersUpdatePasswordMeResponses];
-
-export type usersRegisterUserData = {
-    body: UserRegister;
-    path?: never;
-    query?: never;
-    url: '/api/v1/users/signup';
-};
-
-export type usersRegisterUserErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersRegisterUserError = usersRegisterUserErrors[keyof usersRegisterUserErrors];
-
-export type usersRegisterUserResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserPublic;
-};
-
-export type usersRegisterUserResponse = usersRegisterUserResponses[keyof usersRegisterUserResponses];
 
 export type usersDeleteUserData = {
     body?: never;
@@ -1683,7 +1535,7 @@ export type evidenceReadEvidenceResponses = {
 export type evidenceReadEvidenceResponse = evidenceReadEvidenceResponses[keyof evidenceReadEvidenceResponses];
 
 export type privateCreateUserData = {
-    body: PrivateUserCreate;
+    body: UserCreate;
     path?: never;
     query?: never;
     url: '/api/v1/private/users/';
