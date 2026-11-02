@@ -5,6 +5,46 @@ export type ClientOptions = {
 };
 
 /**
+ * AccountPublic
+ */
+export type AccountPublic = {
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Email
+     */
+    email: string | null;
+    /**
+     * Status
+     */
+    status: 'none' | 'pending_first_login' | 'active' | 'disabled';
+    /**
+     * Last Login At
+     */
+    last_login_at: string | null;
+};
+
+/**
+ * AccountsPublic
+ */
+export type AccountsPublic = {
+    /**
+     * Data
+     */
+    data: Array<EmployeeAccount>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * ActivateCapabilitySchema
  */
 export type ActivateCapabilitySchema = {
@@ -301,6 +341,31 @@ export type DepartmentsPublic = {
 };
 
 /**
+ * EmployeeAccount
+ */
+export type EmployeeAccount = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Employee Code
+     */
+    employee_code: string | null;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    employment_status: EmploymentStatus;
+    department: DepartmentSummary | null;
+    account: AccountPublic | null;
+    /**
+     * Roles
+     */
+    roles: Array<RolePublic>;
+};
+
+/**
  * EmployeeSummary
  */
 export type EmployeeSummary = {
@@ -502,6 +567,21 @@ export type GeneratedBy = {
 };
 
 /**
+ * GrantRole
+ */
+export type GrantRole = {
+    /**
+     * User Id
+     */
+    user_id: string;
+    role: Role;
+    /**
+     * Department Id
+     */
+    department_id?: string | null;
+};
+
+/**
  * HTTPValidationError
  */
 export type HTTPValidationError = {
@@ -515,6 +595,24 @@ export type HTTPValidationError = {
  * InferenceStatus
  */
 export type InferenceStatus = 'pending' | 'running' | 'generated' | 'failed';
+
+/**
+ * InitialPassword
+ */
+export type InitialPassword = {
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Display Name
+     */
+    display_name: string | null;
+    /**
+     * Initial Password
+     */
+    initial_password: string;
+};
 
 /**
  * InitializeInput
@@ -558,6 +656,20 @@ export type InitializeResult = {
      * Org Id
      */
     org_id: string;
+};
+
+/**
+ * IssueAccounts
+ */
+export type IssueAccounts = {
+    /**
+     * Employee Ids
+     */
+    employee_ids?: Array<string> | null;
+    /**
+     * Regenerate Pending
+     */
+    regenerate_pending?: boolean;
 };
 
 export type JsonValue = unknown;
@@ -786,6 +898,34 @@ export type PublisherPublic = {
  * Role
  */
 export type Role = 'org_admin' | 'dept_manager';
+
+/**
+ * RolePublic
+ */
+export type RolePublic = {
+    /**
+     * User Id
+     */
+    user_id: string;
+    role: Role;
+    /**
+     * Department Id
+     */
+    department_id?: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Display Name
+     */
+    display_name: string | null;
+    department: DepartmentSummary | null;
+};
 
 /**
  * RubricLevel
@@ -1573,6 +1713,285 @@ export type evidenceReadEvidenceResponses = {
 };
 
 export type evidenceReadEvidenceResponse = evidenceReadEvidenceResponses[keyof evidenceReadEvidenceResponses];
+
+export type accountsReadAccountsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Department Id
+         */
+        department_id?: string | null;
+        /**
+         * Status
+         */
+        status?: 'none' | 'pending_first_login' | 'active' | 'disabled' | null;
+        /**
+         * Q
+         */
+        q?: string | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/orgs/{org_id}/accounts';
+};
+
+export type accountsReadAccountsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type accountsReadAccountsError = accountsReadAccountsErrors[keyof accountsReadAccountsErrors];
+
+export type accountsReadAccountsResponses = {
+    /**
+     * Successful Response
+     */
+    200: AccountsPublic;
+};
+
+export type accountsReadAccountsResponse = accountsReadAccountsResponses[keyof accountsReadAccountsResponses];
+
+export type accountsIssueAccountsData = {
+    body: IssueAccounts;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/accounts/issue';
+};
+
+export type accountsIssueAccountsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type accountsIssueAccountsError = accountsIssueAccountsErrors[keyof accountsIssueAccountsErrors];
+
+export type accountsIssueAccountsResponses = {
+    /**
+     * Successful Response
+     */
+    200: Blob | File;
+};
+
+export type accountsIssueAccountsResponse = accountsIssueAccountsResponses[keyof accountsIssueAccountsResponses];
+
+export type accountsResetPasswordData = {
+    body?: never;
+    path: {
+        /**
+         * User Id
+         */
+        user_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/accounts/{user_id}/reset-password';
+};
+
+export type accountsResetPasswordErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type accountsResetPasswordError = accountsResetPasswordErrors[keyof accountsResetPasswordErrors];
+
+export type accountsResetPasswordResponses = {
+    /**
+     * Successful Response
+     */
+    200: InitialPassword;
+};
+
+export type accountsResetPasswordResponse = accountsResetPasswordResponses[keyof accountsResetPasswordResponses];
+
+export type accountsDisableAccountData = {
+    body?: never;
+    path: {
+        /**
+         * User Id
+         */
+        user_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/accounts/{user_id}/disable';
+};
+
+export type accountsDisableAccountErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type accountsDisableAccountError = accountsDisableAccountErrors[keyof accountsDisableAccountErrors];
+
+export type accountsDisableAccountResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type accountsDisableAccountResponse = accountsDisableAccountResponses[keyof accountsDisableAccountResponses];
+
+export type accountsEnableAccountData = {
+    body?: never;
+    path: {
+        /**
+         * User Id
+         */
+        user_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/accounts/{user_id}/enable';
+};
+
+export type accountsEnableAccountErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type accountsEnableAccountError = accountsEnableAccountErrors[keyof accountsEnableAccountErrors];
+
+export type accountsEnableAccountResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type accountsEnableAccountResponse = accountsEnableAccountResponses[keyof accountsEnableAccountResponses];
+
+export type rolesReadRolesData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/role-grants';
+};
+
+export type rolesReadRolesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type rolesReadRolesError = rolesReadRolesErrors[keyof rolesReadRolesErrors];
+
+export type rolesReadRolesResponses = {
+    /**
+     * Response Roles-Read Roles
+     *
+     * Successful Response
+     */
+    200: Array<RolePublic>;
+};
+
+export type rolesReadRolesResponse = rolesReadRolesResponses[keyof rolesReadRolesResponses];
+
+export type rolesGrantRoleData = {
+    body: GrantRole;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/role-grants';
+};
+
+export type rolesGrantRoleErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type rolesGrantRoleError = rolesGrantRoleErrors[keyof rolesGrantRoleErrors];
+
+export type rolesGrantRoleResponses = {
+    /**
+     * Successful Response
+     */
+    200: RolePublic;
+};
+
+export type rolesGrantRoleResponse = rolesGrantRoleResponses[keyof rolesGrantRoleResponses];
+
+export type rolesRevokeRoleData = {
+    body?: never;
+    path: {
+        /**
+         * Grant Id
+         */
+        grant_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/role-grants/{grant_id}';
+};
+
+export type rolesRevokeRoleErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type rolesRevokeRoleError = rolesRevokeRoleErrors[keyof rolesRevokeRoleErrors];
+
+export type rolesRevokeRoleResponses = {
+    /**
+     * Successful Response
+     */
+    200: Message;
+};
+
+export type rolesRevokeRoleResponse = rolesRevokeRoleResponses[keyof rolesRevokeRoleResponses];
 
 export type setupReadStatusData = {
     body?: never;
