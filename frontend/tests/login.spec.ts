@@ -117,12 +117,50 @@ test("Logged-out user cannot access protected routes", async ({ page }) => {
   await page.waitForURL("/login")
 })
 
-test("Redirects to /login when token is wrong", async ({ page }) => {
-  await page.goto("/settings")
-  await page.evaluate(() => {
-    localStorage.setItem("access_token", "invalid_token")
+for (const path of ["/", "/settings", "/employees"]) {
+  test(`Redirects ${path} to /login when token is wrong`, async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("access_token", "invalid_token")
+    })
+    const documents: string[] = []
+    page.on("request", (request) => {
+      if (request.resourceType() === "document") {
+        documents.push(new URL(request.url()).pathname)
+      }
+    })
+    await page.goto(path)
+    await page.waitForURL("/login")
+    expect(documents).toEqual([path])
+    expect(
+      await page.evaluate(() => localStorage.getItem("access_token")),
+    ).toBeNull()
+
+    await fillForm(page, firstSuperuser, firstSuperuserPassword)
+    await page.getByRole("button", { name: "登录" }).click()
+    await page.waitForURL("/employees")
+    await expect(page.getByTestId("user-menu")).toBeVisible()
   })
+}
+
+test("Layout routes forbidden tokens to login without reloading", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("access_token", "forbidden_token")
+  })
+  const documents: string[] = []
+  page.on("request", (request) => {
+    if (request.resourceType() === "document") {
+      documents.push(new URL(request.url()).pathname)
+    }
+  })
+  await page.route("**/api/v1/users/me", (route) =>
+    route.fulfill({ status: 403, json: { detail: "无权访问" } }),
+  )
   await page.goto("/settings")
   await page.waitForURL("/login")
-  await expect(page).toHaveURL("/login")
+  expect(documents).toEqual(["/settings"])
+  expect(
+    await page.evaluate(() => localStorage.getItem("access_token")),
+  ).toBeNull()
 })
