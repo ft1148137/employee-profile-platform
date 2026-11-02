@@ -51,9 +51,6 @@ export function EmployeeSummaryContent({
           <dd>{employee.employment_status === "active" ? "在职" : "已离职"}</dd>
         </div>
       </dl>
-      <p className="text-sm text-muted-foreground">
-        能力画像、证据与版本历史即将开放。
-      </p>
     </div>
   )
 }

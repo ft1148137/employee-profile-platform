@@ -55,6 +55,12 @@ export const labels = {
     medium: { label: "中", className: pending },
     high: { label: "高", className: active },
   } satisfies Record<string, Label>,
+  review_answer: {
+    needs_support: { label: "需要协助", className: pending },
+    routine: { label: "能完成常规任务", className: active },
+    independent_complex: { label: "能独立完成复杂任务", className: positive },
+    not_sure: { label: "不确定", className: neutral },
+  } satisfies Record<string, Label>,
   evidence_kind: {
     work_record: { label: "Jira 记录", className: active },
     self_report: { label: "员工自述", className: neutral },
