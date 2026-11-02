@@ -88,3 +88,42 @@ test("任意接口要求改密时保留令牌并跳转", async ({ page }) => {
   ).toBeTruthy()
   await page.unrouteAll({ behavior: "wait" })
 })
+
+test("布局收到改密错误时通过路由跳转并保留令牌", async ({ page }) => {
+  const email = randomEmail()
+  const password = randomPassword()
+  await createUser({ email, password })
+  await logInUser(page, email, password)
+  const token = await page.evaluate(() => localStorage.getItem("access_token"))
+  let requirePasswordChange = true
+  await page.route("**/api/v1/users/me", async (route) => {
+    if (requirePasswordChange) {
+      requirePasswordChange = false
+      await route.fulfill({
+        status: 403,
+        json: { detail: { code: "password_change_required" } },
+      })
+      return
+    }
+    const response = await route.fetch()
+    await route.fulfill({
+      json: { ...(await response.json()), must_change_password: true },
+    })
+  })
+  const documents: string[] = []
+  page.on("request", (request) => {
+    if (request.resourceType() === "document") {
+      documents.push(new URL(request.url()).pathname)
+    }
+  })
+  await page.goto("/settings")
+  await page.waitForURL("/change-password")
+  await expect(
+    page.getByRole("heading", { name: "请设置新密码" }),
+  ).toBeVisible()
+  expect(documents).toEqual(["/settings"])
+  expect(await page.evaluate(() => localStorage.getItem("access_token"))).toBe(
+    token,
+  )
+  await page.unrouteAll({ behavior: "wait" })
+})
