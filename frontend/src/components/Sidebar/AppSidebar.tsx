@@ -72,6 +72,11 @@ export function AppSidebar() {
         {roles.includes("org_admin") && (
           <SidebarGroup>
             <SidebarGroupLabel>管理</SidebarGroupLabel>
+            <Main
+              items={[
+                { icon: Users, title: "员工与账号", path: "/admin/accounts" },
+              ]}
+            />
           </SidebarGroup>
         )}
       </SidebarContent>

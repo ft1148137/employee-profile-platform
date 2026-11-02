@@ -2203,6 +2203,10 @@ export type accountsReadAccountsData = {
          */
         q?: string | null;
         /**
+         * Employment Status
+         */
+        employment_status?: EmploymentStatus | null;
+        /**
          * Skip
          */
         skip?: number;

@@ -383,6 +383,7 @@ def list_accounts(
     q: str | None,
     skip: int,
     limit: int,
+    employment_status: EmploymentStatus | None = None,
 ) -> AccountsPublic:
     require_admin(p)
     account_status = case(
@@ -405,6 +406,8 @@ def list_accounts(
         )
         .where(Employee.org_id == p.org_id)
     )
+    if employment_status:
+        query = query.where(Employee.employment_status == employment_status)
     if department_id:
         query = query.where(Employee.department_id == department_id)
     if status:

@@ -14,6 +14,7 @@ from app.domains.account.schemas import (
     IssueAccounts,
 )
 from app.domains.base import utc_now
+from app.domains.org.models import EmploymentStatus
 from app.models import Message
 
 router = APIRouter(prefix="/orgs/{org_id}/accounts", tags=["accounts"])
@@ -26,11 +27,12 @@ def read_accounts(
     department_id: UUID | None = None,
     status: AccountStatus | None = None,
     q: str | None = None,
+    employment_status: EmploymentStatus | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
 ) -> AccountsPublic:
     return service.list_accounts(
-        session, principal, department_id, status, q, skip, limit
+        session, principal, department_id, status, q, skip, limit, employment_status
     )
 
 
