@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.routes import (
     accounts,
+    audit,
     capabilities,
     capability_templates,
     employees,
@@ -33,6 +34,7 @@ api_router.include_router(capability_templates.router)
 api_router.include_router(profiles.router)
 api_router.include_router(evidence.router)
 api_router.include_router(accounts.router)
+api_router.include_router(audit.router)
 api_router.include_router(roles.router)
 api_router.include_router(roster.router)
 api_router.include_router(setup.router)

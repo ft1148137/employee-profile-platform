@@ -45,6 +45,7 @@ interface DataTableProps<TData extends RowData> {
   data: TData[]
   pagination?: PaginationState
   onPaginationChange?: OnChangeFn<PaginationState>
+  pageSizeOptions?: number[]
   rowCount?: number
   onRowClick?: (row: TData) => void
 }
@@ -55,6 +56,7 @@ export function DataTable<TData extends RowData>({
   pagination,
   onPaginationChange,
   rowCount,
+  pageSizeOptions = [5, 10, 25, 50],
   onRowClick,
 }: DataTableProps<TData>) {
   const table = useTable({
@@ -180,7 +182,7 @@ export function DataTable<TData extends RowData>({
                   <SelectValue placeholder={table.state.pagination.pageSize} />
                 </SelectTrigger>
                 <SelectContent side="top">
-                  {[5, 10, 25, 50].map((pageSize) => (
+                  {pageSizeOptions.map((pageSize) => (
                     <SelectItem key={pageSize} value={`${pageSize}`}>
                       {pageSize}
                     </SelectItem>

@@ -2,6 +2,7 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import HTTPException
+from pydantic import JsonValue
 from sqlalchemy import case, func, or_
 from sqlmodel import Session, col, select
 
@@ -66,7 +67,26 @@ def lock_org(session: Session, principal: Principal) -> Organization:
     return org
 
 
-def audit(session: Session, p: Principal, action: str, target_id: UUID) -> None:
+def audit(
+    session: Session,
+    p: Principal,
+    action: str,
+    target_id: UUID,
+    grant: RoleGrant | None = None,
+) -> None:
+    details: dict[str, JsonValue] = {"id": str(target_id)}
+    if grant is not None:
+        membership = session.exec(
+            select(OrgMembership).where(
+                OrgMembership.org_id == p.org_id,
+                OrgMembership.id == grant.membership_id,
+            )
+        ).one()
+        details.update(
+            user_id=str(membership.user_id),
+            role=grant.role.value,
+            department_id=str(grant.department_id) if grant.department_id else None,
+        )
     record_audit(
         session,
         org_id=p.org_id,
@@ -75,7 +95,7 @@ def audit(session: Session, p: Principal, action: str, target_id: UUID) -> None:
         action=action,
         target_type="role_grant" if action.startswith("role.") else "user",
         target_id=str(target_id),
-        details={"id": str(target_id)},
+        details=details,
     )
 
 
@@ -359,7 +379,7 @@ def grant_role(session: Session, p: Principal, body: GrantRole) -> RolePublic:
             granted_by_user_id=p.user_id,
         )
         session.add(grant)
-    audit(session, p, "role.granted", grant.id)
+    audit(session, p, "role.granted", grant.id, grant)
     result = next(g for g in list_roles(session, p) if g.id == grant.id)
     session.commit()
     return result
@@ -374,8 +394,8 @@ def revoke_role(session: Session, p: Principal, grant_id: UUID) -> None:
         raise AccountError(404, "本企业角色授予不存在")
     if grant.role == Role.ORG_ADMIN:
         protect_admin(session, p.org_id, grant.membership_id)
+    audit(session, p, "role.revoked", grant.id, grant)
     session.delete(grant)
-    audit(session, p, "role.revoked", grant.id)
     session.commit()
 
 
