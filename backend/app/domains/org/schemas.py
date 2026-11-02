@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
+from pydantic import StringConstraints
 from sqlmodel import SQLModel
 
 from app.domains.org.models import EmploymentStatus, Role
@@ -17,6 +18,12 @@ class OrganizationPublic(SQLModel):
     id: UUID
     name: str
     slug: str
+
+
+class OrganizationUpdate(SQLModel):
+    name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+    ]
 
 
 class MembershipPublic(SQLModel):

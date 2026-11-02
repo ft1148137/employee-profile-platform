@@ -12,6 +12,7 @@ from app.api.routes import (
     private,
     profiles,
     roles,
+    setup_steps,
     users,
     utils,
 )
@@ -23,6 +24,7 @@ api_router.include_router(users.router)
 api_router.include_router(utils.router)
 api_router.include_router(me.router)
 api_router.include_router(orgs.router)
+api_router.include_router(setup_steps.router)
 api_router.include_router(employees.router)
 api_router.include_router(capabilities.router)
 api_router.include_router(capability_templates.router)
