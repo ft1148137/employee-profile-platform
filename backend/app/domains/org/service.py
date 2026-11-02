@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy import func
 from sqlmodel import Session, col, select
 
@@ -14,6 +15,24 @@ from app.domains.org.schemas import (
     PublishedSummary,
 )
 from app.domains.profile.models import ProfileProgress, ProfileVersion
+
+
+class EmployeeNotFound(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(404, "Employee not found")
+
+
+def visible_employee(
+    session: Session, principal: Principal, employee_id: UUID
+) -> Employee:
+    employee = session.exec(
+        select(Employee).where(
+            employee_scope_clause(principal), Employee.id == employee_id
+        )
+    ).first()
+    if employee is None:
+        raise EmployeeNotFound()
+    return employee
 
 
 def employee_summary(session: Session, employee: Employee) -> EmployeeSummary:

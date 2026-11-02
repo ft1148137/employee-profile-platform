@@ -1,10 +1,13 @@
+import shutil
 import subprocess
 import sys
 from collections.abc import Generator
+from pathlib import Path
 from uuid import uuid4
 
 import psycopg
 import pytest
+import yaml
 from fastapi.testclient import TestClient
 from psycopg import sql
 from sqlalchemy import Engine, create_engine
@@ -12,9 +15,10 @@ from sqlmodel import Session, select
 
 from app.core.config import settings
 from app.core.db import engine, init_db
+from app.domains.org.models import Organization
 from app.main import app
 from app.models import User
-from tests.utils.org import cleanup_new_users
+from tests.utils.org import cleanup_new_users, delete_test_organization
 from tests.utils.user import authentication_token_from_email
 from tests.utils.utils import get_superuser_token_headers
 
@@ -68,3 +72,22 @@ def normal_user_token_headers(client: TestClient, db: Session) -> dict[str, str]
     return authentication_token_from_email(
         client=client, email=settings.EMAIL_TEST_USER, db=db
     )
+
+
+@pytest.fixture
+def seed_path(tmp_path: Path) -> Generator[Path]:
+    path = tmp_path / "examples/demo-org"
+    shutil.copytree(settings.DEMO_DATA_DIR, path)
+    shutil.copytree(
+        settings.DEMO_DATA_DIR.parent.parent / "templates", tmp_path / "templates"
+    )
+    org = yaml.safe_load((path / "org.yaml").read_text())
+    org["slug"] = f"seed-test-{uuid4()}"
+    (path / "org.yaml").write_text(yaml.safe_dump(org, allow_unicode=True))
+    yield path
+    with Session(engine) as session:
+        existing = session.exec(
+            select(Organization).where(Organization.slug == org["slug"])
+        ).one_or_none()
+        if existing:
+            delete_test_organization(session, existing.id)
