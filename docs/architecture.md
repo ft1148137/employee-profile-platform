@@ -26,7 +26,7 @@ flowchart LR
 
 ## 核心对象与实际表
 
-下图对应 `backend/app/domains/*/models.py`、模板 `app/models.py` 和 Alembic：16 张业务表，加登录账号 `user`。各框只列身份、关键引用和主要业务字段，不穷举所有列。`TenantRecord` 表共同具有 `id`、`created_at`、`org_id`；Organization 自身就是租户，AuditEvent 的 `org_id` 可空以表示平台事件。
+下图对应 `backend/app/domains/*/models.py`、模板 `app/models.py` 和 Alembic：18 张业务表，加登录账号 `user`；平台登录限流表 `login_attempt` 不列入业务 ER 图。各框只列身份、关键引用和主要业务字段，不穷举所有列。`TenantRecord` 表共同具有 `id`、`created_at`、`org_id`；Organization 自身就是租户，AuditEvent 的 `org_id` 可空以表示平台事件。
 
 ```mermaid
 erDiagram
@@ -34,6 +34,7 @@ erDiagram
         uuid id PK
         string slug UK
         string name
+        int roster_revision
     }
     user {
         uuid id PK
@@ -52,6 +53,31 @@ erDiagram
         uuid department_id FK
         string employee_code
         string display_name
+    }
+    roster_import {
+        uuid id PK
+        uuid org_id FK
+        string status
+        string filename
+        string file_sha256
+        jsonb rows
+        jsonb column_mapping
+        jsonb issues
+        jsonb summary
+        int base_revision
+        uuid uploaded_by_user_id FK
+        uuid applied_by_user_id FK
+        datetime applied_at
+    }
+    reporting_line {
+        uuid id PK
+        uuid org_id FK
+        uuid employee_id FK
+        uuid manager_employee_id FK
+        datetime valid_from
+        datetime valid_to
+        string source
+        uuid roster_import_id FK
     }
     external_identity {
         uuid id PK
@@ -163,6 +189,13 @@ erDiagram
     }
     organization ||--o{ department : owns
     organization ||--o{ employee : owns
+    organization ||--o{ roster_import : owns
+    organization ||--o{ reporting_line : owns
+    user ||--o{ roster_import : uploads
+    user |o--o{ roster_import : applies
+    employee ||--o{ reporting_line : reports
+    employee ||--o{ reporting_line : manages
+    roster_import |o--o{ reporting_line : sources
     organization ||--o{ external_identity : owns
     organization ||--o{ org_membership : owns
     organization ||--o{ role_grant : owns
@@ -202,6 +235,8 @@ erDiagram
 ```
 
 业务引用使用 `(org_id, x_id) → (org_id, id)` 复合外键，避免跨租户串联；登录账号引用为普通 `user.id` 外键。`audit_event.actor_id/target_id` 和 `profile_version.published_by` 是归因信息，不是外键。`org_membership.employee_id` 可空，非空时在组织内唯一；同名员工靠显式 external_identity 关联，不能按姓名合并。
+
+部门按 `(org_id, parent_department_id, name)` 唯一，使用 `NULLS NOT DISTINCT`，同名顶层部门仍冲突，不同上级下可同名。`reporting_line` 禁止自我汇报，每名员工最多一条 `valid_to IS NULL` 的当前记录。`roster_import` 保存解析后的行、列映射和预览版本，不保存原文件；`organization.roster_revision` 初始为 0。只读的 `compute_roster_diff` 用固定 5 次查询生成变化、部门树、提醒和阻断原因，缺少可选列时保留现值。上传、确认导入和版本号递增由后续 S6b 实现。
 
 能力词典每个组织最多一个 active 版本；定义的 `key` 在词典版本内唯一，`position` 是 S5 加入的展示顺序。Claim 指向具体版本的能力定义，判断状态与审核状态分开，信心标签不能视为概率。画像按词典补齐无 Claim 的未知项。
 
