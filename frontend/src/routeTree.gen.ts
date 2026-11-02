@@ -16,6 +16,7 @@ import { Route as SetupRouteImport } from './routes/setup'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutSetupWizardRouteImport } from './routes/_layout/setup-wizard'
+import { Route as LayoutAdminAccountsRouteImport } from './routes/_layout/admin.accounts'
 import { Route as LayoutEmployeesIndexRouteImport } from './routes/_layout/employees.index'
 import { Route as LayoutEmployeesEmployeeIdRouteImport } from './routes/_layout/employees.$employeeId'
 
@@ -53,6 +54,11 @@ const LayoutSetupWizardRoute = LayoutSetupWizardRouteImport.update({
   path: '/setup-wizard',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutAdminAccountsRoute = LayoutAdminAccountsRouteImport.update({
+  id: '/admin/accounts',
+  path: '/admin/accounts',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutEmployeesIndexRoute = LayoutEmployeesIndexRouteImport.update({
   id: '/employees/',
   path: '/employees/',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/setup': typeof SetupRoute
   '/settings': typeof LayoutSettingsRoute
   '/setup-wizard': typeof LayoutSetupWizardRoute
+  '/admin/accounts': typeof LayoutAdminAccountsRoute
   '/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
   '/employees/': typeof LayoutEmployeesIndexRoute
 }
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/settings': typeof LayoutSettingsRoute
   '/setup-wizard': typeof LayoutSetupWizardRoute
   '/': typeof LayoutIndexRoute
+  '/admin/accounts': typeof LayoutAdminAccountsRoute
   '/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
   '/employees': typeof LayoutEmployeesIndexRoute
 }
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/setup-wizard': typeof LayoutSetupWizardRoute
   '/_layout/': typeof LayoutIndexRoute
+  '/_layout/admin/accounts': typeof LayoutAdminAccountsRoute
   '/_layout/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
   '/_layout/employees/': typeof LayoutEmployeesIndexRoute
 }
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/settings'
     | '/setup-wizard'
+    | '/admin/accounts'
     | '/employees/$employeeId'
     | '/employees/'
   fileRoutesByTo: FileRoutesByTo
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup-wizard'
     | '/'
+    | '/admin/accounts'
     | '/employees/$employeeId'
     | '/employees'
   id:
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/_layout/settings'
     | '/_layout/setup-wizard'
     | '/_layout/'
+    | '/_layout/admin/accounts'
     | '/_layout/employees/$employeeId'
     | '/_layout/employees/'
   fileRoutesById: FileRoutesById
@@ -189,6 +201,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSetupWizardRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/admin/accounts': {
+      id: '/_layout/admin/accounts'
+      path: '/admin/accounts'
+      fullPath: '/admin/accounts'
+      preLoaderRoute: typeof LayoutAdminAccountsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/employees/': {
       id: '/_layout/employees/'
       path: '/employees'
@@ -210,6 +229,7 @@ interface LayoutRouteChildren {
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutSetupWizardRoute: typeof LayoutSetupWizardRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
+  LayoutAdminAccountsRoute: typeof LayoutAdminAccountsRoute
   LayoutEmployeesEmployeeIdRoute: typeof LayoutEmployeesEmployeeIdRoute
   LayoutEmployeesIndexRoute: typeof LayoutEmployeesIndexRoute
 }
@@ -218,6 +238,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutSetupWizardRoute: LayoutSetupWizardRoute,
   LayoutIndexRoute: LayoutIndexRoute,
+  LayoutAdminAccountsRoute: LayoutAdminAccountsRoute,
   LayoutEmployeesEmployeeIdRoute: LayoutEmployeesEmployeeIdRoute,
   LayoutEmployeesIndexRoute: LayoutEmployeesIndexRoute,
 }
