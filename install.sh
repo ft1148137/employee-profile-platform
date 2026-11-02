@@ -136,5 +136,14 @@ echo "配置：$PWD/.env；备份：$PWD/backups"
 echo '常用命令：./backup.sh；./restore.sh <备份文件>；./upgrade.sh [git ref]；docker compose down'
 if [[ "$(config_value SEED_DEMO_DATA)" == true ]]; then
     echo "演示账号：employee.platform@demo.example.com；密码：$(config_value DEMO_USER_PASSWORD)"
+elif setup_link=$(docker compose exec -T backend python -m app.cli setup-link --base-url "$(config_value FRONTEND_HOST)"); then
+    echo "首次设置链接：$setup_link"
+    echo '72 小时内有效，只能使用一次；过期后重新运行 ./install.sh 获取新链接'
+else
+    setup_exit=$?
+    if [[ "$setup_exit" == 2 ]]; then
+        echo '企业已初始化，请用管理员账号登录'
+    else
+        exit "$setup_exit"
+    fi
 fi
-# S7: print the one-time initialization link here after the service is healthy.
