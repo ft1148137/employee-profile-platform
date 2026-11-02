@@ -14,6 +14,7 @@ from app.core.security import create_access_token
 from app.domains.evidence.models import Evidence, EvidenceKind, EvidenceStatus
 from app.domains.evidence.service import append_evidence
 from app.domains.org.models import Employee, Organization, OrgMembership
+from app.domains.profile.models import ProfileClaim
 from app.models import User
 from app.seed.loader import load_demo
 from app.seed.schema import read_bundle
@@ -234,3 +235,49 @@ def test_inactive_and_pagination(demo: tuple, client: TestClient, db: Session) -
     assert len(filtered["data"]) == 1
     for query in ("skip=-1", "limit=101", "kind=invalid"):
         assert client.get(f"{base}?{query}", headers=auth["admin"]).status_code == 422
+
+
+@pytest.mark.parametrize("role", ["admin", "manager", "employee"])
+def test_evidence_only_references_current_claims(
+    demo: tuple, client: TestClient, db: Session, role: str
+) -> None:
+    url, employees, auth = demo
+    employee = employees["E02"]
+    evidence = db.exec(
+        select(Evidence).where(
+            Evidence.org_id == employee.org_id,
+            Evidence.subject_employee_id == employee.id,
+            Evidence.source == "self_report",
+            Evidence.source_ref == "SR02",
+        )
+    ).one()
+    claims = {
+        claim.generated_by["seed_ref"]: str(claim.id)
+        for claim in db.exec(
+            select(ProfileClaim).where(
+                ProfileClaim.org_id == employee.org_id,
+                ProfileClaim.subject_employee_id == employee.id,
+            )
+        ).all()
+    }
+    response = client.get(f"{url}/evidence/{evidence.id}", headers=auth[role])
+    assert response.status_code == 200
+    assert response.json()["claims"] == [
+        {
+            "claim_id": claims["C02v2"],
+            "capability_name": "后端 API 开发",
+            "relation": "supports",
+        }
+    ]
+    for revision, reference in ((1, "C02"), (2, "C02v2")):
+        history = client.get(
+            f"{url}/employees/{employee.id}/profile-versions/{revision}",
+            headers=auth[role],
+        )
+        assert history.status_code == 200
+        item = next(
+            item
+            for item in history.json()["items"]
+            if item["capability"]["key"] == "backend_api"
+        )
+        assert item["claim"]["id"] == claims[reference]

@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from pydantic import JsonValue
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import aliased
 from sqlmodel import Session, col, func, select
 
 from app.authz.policies import can_view_evidence_content, employee_scope_clause
@@ -143,6 +144,7 @@ def read_evidence(
         if event and event.task_id
         else None
     )
+    successor = aliased(ProfileClaim)
     claims = session.exec(
         select(ProfileClaim.id, CapabilityDefinition.name, ClaimEvidence.relation)
         .join(
@@ -164,6 +166,12 @@ def read_evidence(
             ProfileClaim.org_id == principal.org_id,
             ClaimEvidence.evidence_id == evidence_id,
             employee_scope_clause(principal),
+            ~select(successor.id)
+            .where(
+                successor.org_id == principal.org_id,
+                successor.supersedes_claim_id == ProfileClaim.id,
+            )
+            .exists(),
         )
         .order_by(col(ProfileClaim.id))
     ).all()

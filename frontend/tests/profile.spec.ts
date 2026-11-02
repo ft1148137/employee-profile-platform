@@ -79,6 +79,8 @@ for (const [role, email, restricted] of [
     await page.getByRole("tabpanel").getByRole("button").click()
     const sheet = page.getByRole("dialog")
     await expect(sheet).toContainText("SR02")
+    await expect(sheet.getByRole("listitem")).toHaveCount(1)
+    await expect(sheet.getByRole("listitem")).toHaveText("后端 API 开发 · 支持")
     if (restricted) {
       await expect(sheet).toContainText("受限内容：仅本人和所在部门经理可见")
       await expect(page.getByText(selfReport)).toHaveCount(0)
