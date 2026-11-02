@@ -63,7 +63,10 @@ def load_demo(
         org = ensure(Organization, lookup={"slug": data.org.slug}, name=data.org.name)
         tenant = {"org_id": org.id}
         departments = {
-            name: ensure(Department, lookup={**tenant, "name": name})
+            name: ensure(
+                Department,
+                lookup={**tenant, "name": name, "parent_department_id": None},
+            )
             for name in data.org.departments
         }
         employees = {}
