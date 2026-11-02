@@ -46,6 +46,11 @@ updates:
     labels: [dependencies, internal]
     ignore:
       - dependency-name: "@hey-api/openapi-ts"
+      # openapi-ts 0.97.3 uses the TypeScript JS API, which breaks on TS 7 (PR #6).
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # Upgrade manually with frontend/Dockerfile.playwright; Docker updates are disabled.
+      - dependency-name: "@playwright/test"
     groups:
       npm-packages:
         patterns:

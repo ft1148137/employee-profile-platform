@@ -27,6 +27,7 @@ repos:
       - id: local-biome-check
         name: biome check
         entry: npm run lint
+        pass_filenames: false
         language: system
         types: [text]
         files: ^frontend/
