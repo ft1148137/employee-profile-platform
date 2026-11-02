@@ -97,10 +97,12 @@ if [[ ! -e .env ]]; then
     umask 077
     env_temp=$(mktemp .env.XXXXXX)
     trap 'rm -f "$env_temp"' EXIT
+    secret_key=$(random_secret)
+    database_password=$(random_secret)
     cat > "$env_temp" <<ENV
 PROJECT_NAME="Employee Profile Platform"
-SECRET_KEY=$(random_secret)
-POSTGRES_PASSWORD=$(random_secret)
+SECRET_KEY=$secret_key
+POSTGRES_PASSWORD=$database_password
 FRONTEND_HOST=$host
 DOMAIN=$address
 ACME_EMAIL=$email
@@ -114,7 +116,8 @@ BACKUP_TIME=02:00
 BACKUP_KEEP=14
 ENV
     if "$demo"; then
-        echo "DEMO_USER_PASSWORD=$(random_secret)" >> "$env_temp"
+        demo_password=$(random_secret)
+        echo "DEMO_USER_PASSWORD=$demo_password" >> "$env_temp"
     fi
     # A concurrent installer must not replace an existing configuration.
     ln "$env_temp" .env || fail '.env 已存在，请重新运行安装'
