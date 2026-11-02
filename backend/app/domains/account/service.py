@@ -108,6 +108,20 @@ def check_employed(session: Session, membership: OrgMembership) -> None:
         raise AccountError(409, "该员工已离职，请先在名单里恢复")
 
 
+def require_org_only_account(session: Session, org_id: UUID, user: User) -> None:
+    if (
+        user.is_superuser
+        or session.exec(
+            select(OrgMembership.id).where(
+                OrgMembership.user_id == user.id, OrgMembership.org_id != org_id
+            )
+        ).first()
+    ):
+        raise AccountError(
+            409, "这个账号同时属于其他企业，只能由部署人员在服务器上处理"
+        )
+
+
 def protect_admin(session: Session, org_id: UUID, membership_id: UUID) -> None:
     admins = session.exec(
         select(OrgMembership.id)
@@ -262,6 +276,7 @@ def change_account(
 ) -> InitialPassword | None:
     lock_org(session, p)
     membership, user = member(session, p.org_id, user_id)
+    require_org_only_account(session, p.org_id, user)
     if user_id == p.user_id and action != "enabled":
         raise AccountError(409, "不能重置自己的密码或停用自己，请到设置页修改密码")
     result = None
@@ -310,6 +325,7 @@ def list_roles(session: Session, p: Principal) -> list[RolePublic]:
 def grant_role(session: Session, p: Principal, body: GrantRole) -> RolePublic:
     lock_org(session, p)
     membership, user = member(session, p.org_id, body.user_id)
+    require_org_only_account(session, p.org_id, user)
     if not user.is_active:
         raise AccountError(409, "目标账号已停用")
     check_employed(session, membership)

@@ -15,7 +15,7 @@ from app.core.db import engine
 from app.domains.account.passwords import ALPHABET, generate_password
 from app.domains.account.service import list_accounts
 from app.domains.audit.models import ActorKind, AuditEvent
-from app.domains.org.models import Employee, EmploymentStatus, OrgMembership
+from app.domains.org.models import Employee, EmploymentStatus, OrgMembership, RoleGrant
 from app.models import User
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
 
@@ -336,3 +336,43 @@ def test_employment_filter(accounts: tuple, client: TestClient, db: Session) -> 
         "Content-Disposition",
         "X-Issued-Count",
     }
+
+
+@pytest.mark.parametrize("protected", ["superuser", "other_org"])
+@pytest.mark.parametrize("action", ["reset-password", "disable", "enable", "grant"])
+def test_protect_deployment_accounts(
+    accounts: tuple, client: TestClient, db: Session, protected: str, action: str
+) -> None:
+    url, auth, orgs, _, _, users = accounts
+    user = users[2]
+    if protected == "superuser":
+        user.is_superuser = True
+        db.add(user)
+    else:
+        db.add(OrgMembership(org_id=orgs[1].id, user_id=user.id))
+    if action == "enable":
+        user.is_active = False
+        db.add(user)
+    db.commit()
+    db.refresh(user)
+    before = user.model_dump()
+    grants = [g.model_dump() for g in db.exec(select(RoleGrant)).all()]
+    if action == "grant":
+        response = client.post(
+            f"{url}/role-grants",
+            headers=auth,
+            json={"user_id": str(user.id), "role": "org_admin"},
+        )
+    else:
+        response = client.post(f"{url}/accounts/{user.id}/{action}", headers=auth)
+    assert response.status_code == 409
+    assert (
+        response.json()["detail"]
+        == "这个账号同时属于其他企业，只能由部署人员在服务器上处理"
+    )
+    db.refresh(user)
+    assert user.model_dump() == before
+    assert [g.model_dump() for g in db.exec(select(RoleGrant)).all()] == grants
+    assert not db.exec(
+        select(AuditEvent).where(AuditEvent.target_id == str(user.id))
+    ).all()
