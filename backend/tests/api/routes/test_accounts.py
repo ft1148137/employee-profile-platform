@@ -298,3 +298,41 @@ def test_list_filters_and_query_bound(
         finally:
             event.remove(engine, "before_cursor_execute", count_query)
     assert len(statements) == 3 and page.count == 101 and (len(page.data) == 100)
+
+
+def test_employment_filter(accounts: tuple, client: TestClient, db: Session) -> None:
+    url, auth, _, depts, employees, _ = accounts
+    employee = employees[0]
+    employee.employment_status = EmploymentStatus.INACTIVE
+    db.add(employee)
+    db.commit()
+    for query, expected in (
+        ("employment_status=inactive", 1),
+        ("employment_status=active", 4),
+        ("employment_status=active&status=none", 2),
+        ("employment_status=inactive&status=active", 0),
+        (
+            f"employment_status=inactive&status=none&department_id={depts[0].id}&q={employee.employee_code}",
+            1,
+        ),
+        (
+            f"employment_status=active&status=none&department_id={depts[0].id}&q={employee.employee_code}",
+            0,
+        ),
+    ):
+        response = client.get(f"{url}/accounts?{query}", headers=auth)
+        assert response.status_code == 200
+        assert response.json()["count"] == expected
+    assert (
+        client.get(
+            f"{url}/accounts?employment_status=invalid", headers=auth
+        ).status_code
+        == 422
+    )
+    cors = client.get(
+        f"{url}/accounts", headers=auth | {"Origin": settings.FRONTEND_HOST}
+    )
+    assert set(cors.headers["access-control-expose-headers"].split(", ")) == {
+        "Content-Disposition",
+        "X-Issued-Count",
+    }
