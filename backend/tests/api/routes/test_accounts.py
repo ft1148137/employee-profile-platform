@@ -376,3 +376,42 @@ def test_protect_deployment_accounts(
     assert not db.exec(
         select(AuditEvent).where(AuditEvent.target_id == str(user.id))
     ).all()
+
+
+@pytest.mark.parametrize("protected", ["superuser", "other_org"])
+def test_regenerate_protected_account_rejects_entire_batch(
+    accounts: tuple, client: TestClient, db: Session, protected: str
+) -> None:
+    url, auth, orgs, _, employees, users = accounts
+    user = users[2]
+    user.must_change_password = True
+    if protected == "superuser":
+        user.is_superuser = True
+    else:
+        db.add(OrgMembership(org_id=orgs[1].id, user_id=user.id))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    before = user.model_dump()
+    response = client.post(
+        f"{url}/accounts/issue",
+        headers=auth,
+        json={
+            "employee_ids": [str(employees[0].id), str(employees[2].id)],
+            "regenerate_pending": True,
+        },
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == [
+        {
+            "employee_code": employees[2].employee_code,
+            "display_name": employees[2].display_name,
+            "reason": "这个账号同时属于其他企业，只能由部署人员在服务器上处理",
+        }
+    ]
+    db.refresh(user)
+    assert user.model_dump() == before
+    assert not db.exec(
+        select(OrgMembership).where(OrgMembership.employee_id == employees[0].id)
+    ).all()
+    assert not db.exec(select(AuditEvent).where(AuditEvent.org_id == orgs[0].id)).all()

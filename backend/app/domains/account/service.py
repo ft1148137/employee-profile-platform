@@ -201,7 +201,11 @@ def issue_accounts(
         elif employee.employment_status != EmploymentStatus.ACTIVE:
             reason = "员工已离职"
         elif linked:
-            if not (
+            try:
+                require_org_only_account(session, p.org_id, linked)
+            except AccountError as exc:
+                reason = exc.detail
+            if reason is None and not (
                 body.regenerate_pending
                 and linked.is_active
                 and linked.must_change_password

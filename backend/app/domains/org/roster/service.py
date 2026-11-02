@@ -165,6 +165,15 @@ def apply_import(
             .with_for_update(of=User)
         ).all()
     )
+    owners = dict(
+        session.exec(
+            select(func.lower(User.email), User.id).where(
+                func.lower(User.email).in_(
+                    [row.email.lower() for row in roster.rows if row.email]
+                )
+            )
+        ).all()
+    )
     columns = set(roster.column_mapping.values())
     now = utc_now()
     for row in roster.rows:
@@ -189,17 +198,8 @@ def apply_import(
         if account:
             account.full_name = row.display_name
             if "邮箱" in columns:
-                owner = (
-                    session.exec(
-                        select(User.id).where(
-                            func.lower(User.email) == row.email.lower(),
-                            User.id != account.id,
-                        )
-                    ).first()
-                    if row.email
-                    else None
-                )
-                if owner is None:
+                owner = owners.get(row.email.lower()) if row.email else None
+                if owner is None or owner == account.id:
                     account.email = row.email
             session.add(account)
     deactivated: set[UUID] = set()
