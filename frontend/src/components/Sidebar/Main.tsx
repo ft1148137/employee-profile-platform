@@ -14,6 +14,7 @@ export type Item = {
   icon: LucideIcon
   title: string
   path: string
+  badge?: string
 }
 
 interface MainProps {
@@ -48,6 +49,11 @@ export function Main({ items }: MainProps) {
                   <RouterLink to={item.path} onClick={handleMenuClick}>
                     <item.icon />
                     <span>{item.title}</span>
+                    {item.badge && (
+                      <span className="ml-auto rounded bg-primary/10 px-1 text-xs text-primary">
+                        {item.badge}
+                      </span>
+                    )}
                   </RouterLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
