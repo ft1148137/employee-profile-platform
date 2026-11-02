@@ -200,13 +200,17 @@ def test_profiles_versions_and_query_bound(
     )
 
 
-def test_inactive_and_pagination(demo: tuple, client: TestClient, db: Session) -> None:
+@pytest.mark.parametrize("kind", list(EvidenceKind))
+def test_inactive_and_pagination(
+    demo: tuple, client: TestClient, db: Session, kind: EvidenceKind
+) -> None:
     url, employees, auth = demo
     employee = employees["E02"]
     original = db.exec(
         select(Evidence).where(
             Evidence.org_id == employee.org_id,
             Evidence.subject_employee_id == employee.id,
+            Evidence.kind == kind,
         )
     ).first()
     evidence, _ = append_evidence(
@@ -233,8 +237,9 @@ def test_inactive_and_pagination(demo: tuple, client: TestClient, db: Session) -
     filtered = client.get(
         f"{base}?kind={original.kind}&skip=1&limit=1", headers=auth["admin"]
     ).json()
-    assert filtered["count"] == sum(e["kind"] == original.kind for e in active["data"])
-    assert len(filtered["data"]) == 1
+    expected = [row for row in active["data"] if row["kind"] == kind]
+    assert filtered["count"] == len(expected)
+    assert filtered["data"] == expected[1:2]
     for query in ("skip=-1", "limit=101", "kind=invalid"):
         assert client.get(f"{base}?{query}", headers=auth["admin"]).status_code == 422
 
