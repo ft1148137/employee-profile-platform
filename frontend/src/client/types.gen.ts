@@ -77,6 +77,20 @@ export type ActiveSchemaPublic = {
 };
 
 /**
+ * ApplyImport
+ */
+export type ApplyImport = {
+    /**
+     * Base Revision
+     */
+    base_revision: number;
+    /**
+     * Confirm Mass Deactivation
+     */
+    confirm_mass_deactivation?: boolean;
+};
+
+/**
  * AssessmentStatus
  */
 export type AssessmentStatus = 'confirmed' | 'tentative' | 'unknown' | 'disputed';
@@ -109,6 +123,16 @@ export type Body_login_login_access_token = {
      * Client Secret
      */
     client_secret?: string | null;
+};
+
+/**
+ * Body_roster-upload_import
+ */
+export type Body_roster_upload_import = {
+    /**
+     * File
+     */
+    file: Blob | File;
 };
 
 /**
@@ -295,6 +319,36 @@ export type ClaimReviewStatus = 'candidate' | 'pending_employee' | 'pending_mana
 export type Confidence = 'low' | 'medium' | 'high';
 
 /**
+ * DepartmentNode
+ */
+export type DepartmentNode = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Path
+     */
+    path: Array<string>;
+    /**
+     * Department Id
+     */
+    department_id: string | null;
+    /**
+     * Is New
+     */
+    is_new: boolean;
+    /**
+     * Employee Count
+     */
+    employee_count?: number;
+    /**
+     * Children
+     */
+    children?: Array<DepartmentNode>;
+};
+
+/**
  * DepartmentPublic
  */
 export type DepartmentPublic = {
@@ -363,6 +417,36 @@ export type EmployeeAccount = {
      * Roles
      */
     roles: Array<RolePublic>;
+};
+
+/**
+ * EmployeeChange
+ */
+export type EmployeeChange = {
+    /**
+     * Kind
+     */
+    kind: 'added' | 'updated' | 'transferred' | 'manager_changed' | 'deactivated' | 'reactivated';
+    /**
+     * Employee Id
+     */
+    employee_id: string | null;
+    /**
+     * Employee Code
+     */
+    employee_code: string;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Row Number
+     */
+    row_number: number | null;
+    /**
+     * Fields
+     */
+    fields?: Array<FieldChange>;
 };
 
 /**
@@ -541,6 +625,24 @@ export type EvidenceSummary = {
      * Redacted
      */
     redacted: boolean;
+};
+
+/**
+ * FieldChange
+ */
+export type FieldChange = {
+    /**
+     * Field
+     */
+    field: 'display_name' | 'title' | 'email' | 'department' | 'manager';
+    /**
+     * Before
+     */
+    before: string | null;
+    /**
+     * After
+     */
+    after: string | null;
 };
 
 /**
@@ -945,6 +1047,172 @@ export type RolePublic = {
      */
     display_name: string | null;
     department: DepartmentSummary | null;
+};
+
+/**
+ * RosterImportHistory
+ */
+export type RosterImportHistory = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Uploaded By Username
+     */
+    uploaded_by_username: string;
+    /**
+     * Uploaded By Full Name
+     */
+    uploaded_by_full_name: string | null;
+    /**
+     * Filename
+     */
+    filename: string;
+    /**
+     * Status
+     */
+    status: 'previewed' | 'applied' | 'stale';
+    /**
+     * Summary
+     */
+    summary: {
+        [key: string]: number;
+    };
+    /**
+     * Applied At
+     */
+    applied_at: string | null;
+};
+
+/**
+ * RosterImportPreview
+ */
+export type RosterImportPreview = {
+    /**
+     * Summary
+     */
+    summary: {
+        [key: string]: number;
+    };
+    /**
+     * Changes
+     */
+    changes: Array<EmployeeChange>;
+    /**
+     * Departments
+     */
+    departments: Array<DepartmentNode>;
+    /**
+     * Created Departments
+     */
+    created_departments: Array<Array<string>>;
+    /**
+     * Unused Departments
+     */
+    unused_departments: Array<Array<string>>;
+    /**
+     * Warnings
+     */
+    warnings: Array<RosterIssue>;
+    /**
+     * Blockers
+     */
+    blockers: Array<string>;
+    /**
+     * Active Count
+     */
+    active_count: number;
+    /**
+     * Requires Mass Deactivation Confirm
+     */
+    requires_mass_deactivation_confirm: boolean;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Base Revision
+     */
+    base_revision: number;
+    /**
+     * Column Mapping
+     */
+    column_mapping: {
+        [key: string]: string;
+    };
+    /**
+     * Issues
+     */
+    issues: Array<RosterIssue>;
+    /**
+     * Can Apply
+     */
+    can_apply: boolean;
+};
+
+/**
+ * RosterImportResult
+ */
+export type RosterImportResult = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Status
+     */
+    status: 'previewed' | 'applied' | 'stale';
+    /**
+     * Summary
+     */
+    summary: {
+        [key: string]: number;
+    };
+    /**
+     * Issues
+     */
+    issues: Array<RosterIssue>;
+};
+
+/**
+ * RosterImportsPublic
+ */
+export type RosterImportsPublic = {
+    /**
+     * Data
+     */
+    data: Array<RosterImportHistory>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * RosterIssue
+ */
+export type RosterIssue = {
+    /**
+     * Severity
+     */
+    severity: 'error' | 'warning';
+    /**
+     * Row Number
+     */
+    row_number: number | null;
+    /**
+     * Column
+     */
+    column: string | null;
+    /**
+     * Message
+     */
+    message: string;
 };
 
 /**
@@ -2191,6 +2459,142 @@ export type rolesRevokeRoleResponses = {
 };
 
 export type rolesRevokeRoleResponse = rolesRevokeRoleResponses[keyof rolesRevokeRoleResponses];
+
+export type rosterDownloadTemplateData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Format
+         */
+        format?: 'xlsx' | 'csv';
+    };
+    url: '/api/v1/orgs/{org_id}/roster/template';
+};
+
+export type rosterDownloadTemplateErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type rosterDownloadTemplateError = rosterDownloadTemplateErrors[keyof rosterDownloadTemplateErrors];
+
+export type rosterDownloadTemplateResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type rosterReadImportsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/orgs/{org_id}/roster/imports';
+};
+
+export type rosterReadImportsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type rosterReadImportsError = rosterReadImportsErrors[keyof rosterReadImportsErrors];
+
+export type rosterReadImportsResponses = {
+    /**
+     * Successful Response
+     */
+    200: RosterImportsPublic;
+};
+
+export type rosterReadImportsResponse = rosterReadImportsResponses[keyof rosterReadImportsResponses];
+
+export type rosterUploadImportData = {
+    body: Body_roster_upload_import;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/roster/imports';
+};
+
+export type rosterUploadImportErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type rosterUploadImportError = rosterUploadImportErrors[keyof rosterUploadImportErrors];
+
+export type rosterUploadImportResponses = {
+    /**
+     * Successful Response
+     */
+    200: RosterImportPreview;
+};
+
+export type rosterUploadImportResponse = rosterUploadImportResponses[keyof rosterUploadImportResponses];
+
+export type rosterApplyImportData = {
+    body: ApplyImport;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/roster/imports/{id}/apply';
+};
+
+export type rosterApplyImportErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type rosterApplyImportError = rosterApplyImportErrors[keyof rosterApplyImportErrors];
+
+export type rosterApplyImportResponses = {
+    /**
+     * Successful Response
+     */
+    200: RosterImportResult;
+};
+
+export type rosterApplyImportResponse = rosterApplyImportResponses[keyof rosterApplyImportResponses];
 
 export type setupReadStatusData = {
     body?: never;

@@ -12,6 +12,7 @@ from app.api.routes import (
     private,
     profiles,
     roles,
+    roster,
     setup,
     setup_steps,
     users,
@@ -33,6 +34,7 @@ api_router.include_router(profiles.router)
 api_router.include_router(evidence.router)
 api_router.include_router(accounts.router)
 api_router.include_router(roles.router)
+api_router.include_router(roster.router)
 api_router.include_router(setup.router)
 
 
