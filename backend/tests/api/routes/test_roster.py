@@ -9,8 +9,10 @@ from uuid import UUID, uuid4
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 from sqlmodel import Session, select
 
+from app.core.db import engine
 from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
 from app.domains.capability.models import CapabilitySchemaVersion
@@ -465,3 +467,70 @@ def test_atomic_rollback(
         linked.is_active
         and db.get(RosterImport, UUID(preview["id"])).status == "previewed"
     )
+
+
+def test_apply_email_queries_are_bounded(
+    tenant: SetupTenant, client: TestClient, db: Session
+) -> None:
+    query_counts = []
+    statements = []
+
+    def count_query(*args: object) -> None:
+        statements.append(args[2])
+
+    for size in (1, 100):
+        prefix = uuid4().hex[:8]
+        rows = [
+            {
+                "工号": f"{prefix}-{i}",
+                "姓名": f"合成员工 {i}",
+                "部门": "测试部门",
+                "邮箱": f"{prefix}-{i}@example.com",
+            }
+            for i in range(size)
+        ]
+        assert (
+            apply(
+                client,
+                tenant,
+                upload(client, tenant, csv_bytes(rows)),
+                confirm_mass_deactivation=True,
+            ).status_code
+            == 200
+        )
+        people = employees(db, tenant)
+        accounts = [
+            User(
+                username=row["工号"],
+                email=row["邮箱"].upper(),
+                hashed_password="unused",
+                full_name=row["姓名"],
+            )
+            for row in rows
+        ]
+        db.add_all(accounts)
+        db.flush()
+        db.add_all(
+            OrgMembership(
+                org_id=tenant.org_id,
+                user_id=account.id,
+                employee_id=people[row["工号"]].id,
+            )
+            for row, account in zip(rows, accounts, strict=True)
+        )
+        db.commit()
+        for row in rows:
+            row["姓名"] += "更新"
+        preview = upload(client, tenant, csv_bytes(rows))
+        statements.clear()
+        event.listen(engine, "before_cursor_execute", count_query)
+        try:
+            result = apply(client, tenant, preview)
+        finally:
+            event.remove(engine, "before_cursor_execute", count_query)
+        assert result.status_code == 200, result.text
+        query_counts.append(len(statements))
+        for row, account in zip(rows, accounts, strict=True):
+            db.refresh(account)
+            assert account.full_name == row["姓名"] and account.email == row["邮箱"]
+    assert query_counts[0] == query_counts[1]
