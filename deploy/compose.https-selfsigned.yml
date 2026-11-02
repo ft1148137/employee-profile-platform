@@ -39,4 +39,3 @@ services:
       - traefik.http.routers.backend-https.rule=PathPrefix(`/`)
       - traefik.http.routers.backend-https.entrypoints=https
       - traefik.http.routers.backend-https.tls=true
-
