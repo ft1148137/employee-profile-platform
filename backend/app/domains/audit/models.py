@@ -14,6 +14,7 @@ class ActorKind(StrEnum):
     SYSTEM_WORKER = "system_worker"
     AGENT = "agent"
     SEED = "seed"
+    CLI = "cli"
 
 
 class AuditEvent(Record, table=True):
