@@ -1,7 +1,7 @@
 """Add roster import preparation models
 
 Revision ID: c20cd19c259b
-Revises: b62c194f83d5
+Revises: b63e92d7f140
 Create Date: 2026-11-02 23:14:06.135506
 
 """
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'c20cd19c259b'
-down_revision = 'b62c194f83d5'
+down_revision = 'b63e92d7f140'
 branch_labels = None
 depends_on = None
 
