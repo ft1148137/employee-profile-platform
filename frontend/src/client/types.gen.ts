@@ -5,6 +5,16 @@ export type ClientOptions = {
 };
 
 /**
+ * ActivateCapabilitySchema
+ */
+export type ActivateCapabilitySchema = {
+    /**
+     * Template Id
+     */
+    template_id: string;
+};
+
+/**
  * ActiveSchemaPublic
  */
 export type ActiveSchemaPublic = {
@@ -102,6 +112,78 @@ export type CapabilityPublic = {
     level_rubric: {
         [key: string]: JsonValue;
     } | null;
+};
+
+/**
+ * CapabilityTemplatePreview
+ */
+export type CapabilityTemplatePreview = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Industry
+     */
+    industry: string;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Capability Count
+     */
+    capability_count: number;
+    /**
+     * Categories
+     */
+    categories: Array<string>;
+    /**
+     * Recommended
+     */
+    recommended: boolean;
+    /**
+     * Capabilities
+     */
+    capabilities: Array<TemplateCapabilityPublic>;
+};
+
+/**
+ * CapabilityTemplatePublic
+ */
+export type CapabilityTemplatePublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Industry
+     */
+    industry: string;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Capability Count
+     */
+    capability_count: number;
+    /**
+     * Categories
+     */
+    categories: Array<string>;
+    /**
+     * Recommended
+     */
+    recommended: boolean;
 };
 
 /**
@@ -628,6 +710,24 @@ export type PublisherPublic = {
 export type Role = 'org_admin' | 'dept_manager';
 
 /**
+ * RubricLevel
+ */
+export type RubricLevel = {
+    /**
+     * Key
+     */
+    key: 'needs_support' | 'routine' | 'independent_complex';
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Description
+     */
+    description: string;
+};
+
+/**
  * SchemaVersionPublic
  */
 export type SchemaVersionPublic = {
@@ -661,6 +761,32 @@ export type TaskPublic = {
      * Url
      */
     url: string | null;
+};
+
+/**
+ * TemplateCapabilityPublic
+ */
+export type TemplateCapabilityPublic = {
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Category
+     */
+    category: string;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Levels
+     */
+    levels: Array<RubricLevel>;
 };
 
 /**
@@ -1098,6 +1224,84 @@ export type capabilitiesReadCapabilitiesResponses = {
 };
 
 export type capabilitiesReadCapabilitiesResponse = capabilitiesReadCapabilitiesResponses[keyof capabilitiesReadCapabilitiesResponses];
+
+export type capabilityTemplatesReadTemplatesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/capability-templates';
+};
+
+export type capabilityTemplatesReadTemplatesResponses = {
+    /**
+     * Response Capability-Templates-Read Templates
+     *
+     * Successful Response
+     */
+    200: Array<CapabilityTemplatePublic>;
+};
+
+export type capabilityTemplatesReadTemplatesResponse = capabilityTemplatesReadTemplatesResponses[keyof capabilityTemplatesReadTemplatesResponses];
+
+export type capabilityTemplatesPreviewTemplateData = {
+    body?: never;
+    path: {
+        /**
+         * Template Id
+         */
+        template_id: string;
+    };
+    query?: never;
+    url: '/api/v1/capability-templates/{template_id}';
+};
+
+export type capabilityTemplatesPreviewTemplateErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilityTemplatesPreviewTemplateError = capabilityTemplatesPreviewTemplateErrors[keyof capabilityTemplatesPreviewTemplateErrors];
+
+export type capabilityTemplatesPreviewTemplateResponses = {
+    /**
+     * Successful Response
+     */
+    200: CapabilityTemplatePreview;
+};
+
+export type capabilityTemplatesPreviewTemplateResponse = capabilityTemplatesPreviewTemplateResponses[keyof capabilityTemplatesPreviewTemplateResponses];
+
+export type capabilityTemplatesActivateCapabilitySchemaData = {
+    body: ActivateCapabilitySchema;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/capability-schema';
+};
+
+export type capabilityTemplatesActivateCapabilitySchemaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilityTemplatesActivateCapabilitySchemaError = capabilityTemplatesActivateCapabilitySchemaErrors[keyof capabilityTemplatesActivateCapabilitySchemaErrors];
+
+export type capabilityTemplatesActivateCapabilitySchemaResponses = {
+    /**
+     * Successful Response
+     */
+    200: ActiveSchemaPublic;
+};
+
+export type capabilityTemplatesActivateCapabilitySchemaResponse = capabilityTemplatesActivateCapabilitySchemaResponses[keyof capabilityTemplatesActivateCapabilitySchemaResponses];
 
 export type profilesReadProfileData = {
     body?: never;
