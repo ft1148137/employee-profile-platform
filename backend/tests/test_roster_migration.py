@@ -11,7 +11,7 @@ from app.domains.org.models import Department, Organization
 from app.seed.loader import load_demo
 from tests.test_account_migration import migrate
 
-PREVIOUS = "b63e92d7f140"
+PREVIOUS = "d73e295a94f6"
 
 
 def test_roster_migration_roundtrip(migration_engine: Engine) -> None:

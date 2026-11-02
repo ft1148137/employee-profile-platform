@@ -26,7 +26,7 @@ flowchart LR
 
 ## 核心对象与实际表
 
-下图对应 `backend/app/domains/*/models.py`、模板 `app/models.py` 和 Alembic：18 张核心业务表，加登录账号 `user`；登录限流表 `login_attempt` 和向导状态表 `setup_step_state` 不列入此图。各框只列身份、关键引用和主要业务字段，不穷举所有列。`TenantRecord` 表共同具有 `id`、`created_at`、`org_id`；Organization 自身就是租户，AuditEvent 的 `org_id` 可空以表示平台事件。
+下图对应 `backend/app/domains/*/models.py`、模板 `app/models.py` 和 Alembic：18 张核心业务表，加登录账号 `user`；登录限流表 `login_attempt`、初始化令牌表 `setup_token` 和向导状态表 `setup_step_state` 不列入此图。各框只列身份、关键引用和主要业务字段，不穷举所有列。`TenantRecord` 表共同具有 `id`、`created_at`、`org_id`；Organization 自身就是租户，AuditEvent 的 `org_id` 可空以表示平台事件。
 
 ```mermaid
 erDiagram
