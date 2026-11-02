@@ -79,6 +79,7 @@ export function AppSidebar() {
             <Main
               items={[
                 { icon: Users, title: "员工与账号", path: "/admin/accounts" },
+                { icon: Users, title: "角色", path: "/admin/roles" },
                 {
                   icon: ListChecks,
                   title: "首次设置",
