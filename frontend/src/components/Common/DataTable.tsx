@@ -2,6 +2,8 @@ import {
   type ColumnDef,
   createPaginatedRowModel,
   flexRender,
+  type OnChangeFn,
+  type PaginationState,
   type RowData,
   rowPaginationFeature,
   tableFeatures,
@@ -41,16 +43,32 @@ export type DataTableFeatures = typeof dataTableFeatures
 interface DataTableProps<TData extends RowData> {
   columns: ColumnDef<DataTableFeatures, TData>[]
   data: TData[]
+  pagination?: PaginationState
+  onPaginationChange?: OnChangeFn<PaginationState>
+  rowCount?: number
+  onRowClick?: (row: TData) => void
 }
 
 export function DataTable<TData extends RowData>({
   columns,
   data,
+  pagination,
+  onPaginationChange,
+  rowCount,
+  onRowClick,
 }: DataTableProps<TData>) {
   const table = useTable({
     features: dataTableFeatures,
     data,
     columns,
+    ...(pagination
+      ? {
+          state: { pagination },
+          onPaginationChange,
+          manualPagination: true,
+          rowCount,
+        }
+      : {}),
   })
 
   return (
@@ -77,7 +95,39 @@ export function DataTable<TData extends RowData>({
         <TableBody>
           {table.getRowModel().rows.length ? (
             table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow
+                key={row.id}
+                className={
+                  onRowClick
+                    ? "cursor-pointer focus-visible:outline focus-visible:outline-ring"
+                    : undefined
+                }
+                tabIndex={onRowClick ? 0 : undefined}
+                onClick={
+                  onRowClick
+                    ? (event) => {
+                        if (
+                          !(
+                            event.target instanceof Element &&
+                            event.target.closest("a,button")
+                          )
+                        )
+                          onRowClick(row.original)
+                      }
+                    : undefined
+                }
+                onKeyDown={
+                  onRowClick
+                    ? (event) => {
+                        if (
+                          event.target === event.currentTarget &&
+                          event.key === "Enter"
+                        )
+                          onRowClick(row.original)
+                      }
+                    : undefined
+                }
+              >
                 {row.getAllCells().map((cell) => (
                   <TableCell key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -91,14 +141,14 @@ export function DataTable<TData extends RowData>({
                 colSpan={columns.length}
                 className="h-32 text-center text-muted-foreground"
               >
-                No results found.
+                暂无数据。
               </TableCell>
             </TableRow>
           )}
         </TableBody>
       </Table>
 
-      {table.getPageCount() > 1 && (
+      {(table.getPageCount() > 1 || (pagination && (rowCount ?? 0) > 0)) && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border-t bg-muted/20">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="text-sm text-muted-foreground">
@@ -110,10 +160,12 @@ export function DataTable<TData extends RowData>({
               {Math.min(
                 (table.state.pagination.pageIndex + 1) *
                   table.state.pagination.pageSize,
-                data.length,
+                rowCount ?? data.length,
               )}{" "}
               of{" "}
-              <span className="font-medium text-foreground">{data.length}</span>{" "}
+              <span className="font-medium text-foreground">
+                {rowCount ?? data.length}
+              </span>{" "}
               entries
             </div>
             <div className="flex items-center gap-x-2">

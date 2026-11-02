@@ -1,31 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Navigate } from "@tanstack/react-router"
+import { OrgState } from "@/components/Profile/OrgState"
+import { useOrg } from "@/hooks/useOrg"
 
-import useAuth from "@/hooks/useAuth"
+export const Route = createFileRoute("/_layout/")({ component: Home })
 
-export const Route = createFileRoute("/_layout/")({
-  component: Dashboard,
-  head: () => ({
-    meta: [
-      {
-        title: "Dashboard - FastAPI Template",
-      },
-    ],
-  }),
-})
-
-function Dashboard() {
-  const { user: currentUser } = useAuth()
-
-  return (
-    <div>
-      <div>
-        <h1 className="text-2xl truncate max-w-sm">
-          Hi, {currentUser?.full_name || currentUser?.email} 👋
-        </h1>
-        <p className="text-muted-foreground">
-          Welcome back, nice to see you again!!!
-        </p>
-      </div>
-    </div>
-  )
+function Home() {
+  const { org, roles, employeeId } = useOrg()
+  if (!org) return <OrgState />
+  if (roles.includes("org_admin") || roles.includes("dept_manager"))
+    return <Navigate to="/employees" replace />
+  if (employeeId)
+    return (
+      <Navigate to="/employees/$employeeId" params={{ employeeId }} replace />
+    )
+  return <p>当前组织尚未为你分配员工身份或管理角色，请联系管理员。</p>
 }

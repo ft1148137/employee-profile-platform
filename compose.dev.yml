@@ -66,6 +66,7 @@ services:
     environment:
       - FIRST_SUPERUSER=${FIRST_SUPERUSER:?Variable not set}
       - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD:?Variable not set}
+      - DEMO_USER_PASSWORD=${DEMO_USER_PASSWORD:?Variable not set}
       - PLAYWRIGHT_BASE_URL=http://backend:8000
       - VITE_API_URL=http://backend:8000
       - MAILPIT_HOST=http://mailpit:8025
