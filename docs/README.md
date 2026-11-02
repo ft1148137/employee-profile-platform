@@ -1,9 +1,13 @@
-# docs
+# 文档索引
 
-文档索引。
-
-- [开发指南](development.md)
-- [Docker Compose 部署](deployment-docker-compose.md)
+- [三步启动、演示账号与路线图](../README.md)
+- [架构、核心对象、权限与扩展位置](architecture.md)
 - [架构决策记录](adr/README.md)
+- [开发指南与本地检查](development.md)
+- [域名与 HTTPS 部署](../deploy/README.md)
+- [Docker Compose 部署说明](deployment-docker-compose.md)
+- [合成企业与演示数据](../examples/demo-org/README.md)
+- [能力词典模板](../templates/README.md)
+- [跨服务冒烟脚本](../tests/smoke/compose_smoke.sh)
 
-M0-S9 补充架构文档和新用户验收指南。
+README 图片保存在 `docs/img/`；既有各阶段验收截图在 `docs/screenshots/`。
