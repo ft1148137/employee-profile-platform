@@ -1,0 +1,59 @@
+import type { EmployeeSummary } from "@/client"
+import { StatusBadge } from "./StatusBadge"
+
+export function publishedLabel(value: EmployeeSummary["latest_published"]) {
+  return value
+    ? `r${value.revision} · ${new Date(value.published_at).toLocaleDateString("zh-CN")}`
+    : "未发布"
+}
+
+export function EmployeeSummaryContent({
+  employee,
+}: {
+  employee: EmployeeSummary
+}) {
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <p className="mb-2 text-sm text-muted-foreground">员工画像</p>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {employee.display_name}
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          {employee.title ?? "未填写职位"} ·{" "}
+          {employee.department?.name ?? "未分配部门"}
+        </p>
+      </div>
+      <dl className="grid gap-6 rounded-xl border bg-muted/10 p-6 sm:grid-cols-2 lg:grid-cols-4">
+        {(
+          [
+            "fill_status",
+            "inference_status",
+            "review_status",
+            "evidence_quality",
+          ] as const
+        ).map((kind, i) => (
+          <div key={kind}>
+            <dt className="mb-2 text-sm text-muted-foreground">
+              {["填写进度", "推断进度", "审核状态", "证据质量"][i]}
+            </dt>
+            <dd>
+              <StatusBadge kind={kind} value={employee.progress?.[kind]} />
+            </dd>
+          </div>
+        ))}
+        <div>
+          <dt className="mb-2 text-sm text-muted-foreground">最近发布版本</dt>
+          <dd>{publishedLabel(employee.latest_published)}</dd>
+        </div>
+        <div>
+          <dt className="mb-2 text-sm text-muted-foreground">任职状态</dt>
+          <dd>{employee.employment_status === "active" ? "在职" : "已离职"}</dd>
+        </div>
+      </dl>
+      <p className="text-sm text-muted-foreground">
+        能力画像、证据与版本历史即将开放。
+      </p>
+    </div>
+  )
+}

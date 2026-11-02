@@ -17,6 +17,8 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutEmployeesIndexRouteImport } from './routes/_layout/employees.index'
+import { Route as LayoutEmployeesEmployeeIdRouteImport } from './routes/_layout/employees.$employeeId'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -57,6 +59,17 @@ const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutEmployeesIndexRoute = LayoutEmployeesIndexRouteImport.update({
+  id: '/employees/',
+  path: '/employees/',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutEmployeesEmployeeIdRoute =
+  LayoutEmployeesEmployeeIdRouteImport.update({
+    id: '/employees/$employeeId',
+    path: '/employees/$employeeId',
+    getParentRoute: () => LayoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -66,6 +79,8 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/admin': typeof LayoutAdminRoute
   '/settings': typeof LayoutSettingsRoute
+  '/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
+  '/employees/': typeof LayoutEmployeesIndexRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -75,6 +90,8 @@ export interface FileRoutesByTo {
   '/admin': typeof LayoutAdminRoute
   '/settings': typeof LayoutSettingsRoute
   '/': typeof LayoutIndexRoute
+  '/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
+  '/employees': typeof LayoutEmployeesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,6 +103,8 @@ export interface FileRoutesById {
   '/_layout/admin': typeof LayoutAdminRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/': typeof LayoutIndexRoute
+  '/_layout/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
+  '/_layout/employees/': typeof LayoutEmployeesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,6 +116,8 @@ export interface FileRouteTypes {
     | '/signup'
     | '/admin'
     | '/settings'
+    | '/employees/$employeeId'
+    | '/employees/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -106,6 +127,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/settings'
     | '/'
+    | '/employees/$employeeId'
+    | '/employees'
   id:
     | '__root__'
     | '/_layout'
@@ -116,6 +139,8 @@ export interface FileRouteTypes {
     | '/_layout/admin'
     | '/_layout/settings'
     | '/_layout/'
+    | '/_layout/employees/$employeeId'
+    | '/_layout/employees/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -184,6 +209,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/employees/': {
+      id: '/_layout/employees/'
+      path: '/employees'
+      fullPath: '/employees/'
+      preLoaderRoute: typeof LayoutEmployeesIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/employees/$employeeId': {
+      id: '/_layout/employees/$employeeId'
+      path: '/employees/$employeeId'
+      fullPath: '/employees/$employeeId'
+      preLoaderRoute: typeof LayoutEmployeesEmployeeIdRouteImport
+      parentRoute: typeof LayoutRoute
+    }
   }
 }
 
@@ -191,12 +230,16 @@ interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
+  LayoutEmployeesEmployeeIdRoute: typeof LayoutEmployeesEmployeeIdRoute
+  LayoutEmployeesIndexRoute: typeof LayoutEmployeesIndexRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutIndexRoute: LayoutIndexRoute,
+  LayoutEmployeesEmployeeIdRoute: LayoutEmployeesEmployeeIdRoute,
+  LayoutEmployeesIndexRoute: LayoutEmployeesIndexRoute,
 }
 
 const LayoutRouteWithChildren =

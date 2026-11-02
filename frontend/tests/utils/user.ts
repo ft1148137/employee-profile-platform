@@ -22,10 +22,8 @@ export async function logInUser(page: Page, email: string, password: string) {
   await page.getByTestId("email-input").fill(email)
   await page.getByTestId("password-input").fill(password)
   await page.getByRole("button", { name: "Log In" }).click()
-  await page.waitForURL("/")
-  await expect(
-    page.getByText("Welcome back, nice to see you again!"),
-  ).toBeVisible()
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"))
+  await expect(page.getByTestId("user-menu")).toBeVisible()
 }
 
 export async function logOutUser(page: Page) {
