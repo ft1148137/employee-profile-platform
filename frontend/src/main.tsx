@@ -13,6 +13,7 @@ import { ThemeProvider } from "./components/theme-provider"
 import { Toaster } from "./components/ui/sonner"
 import "./index.css"
 import { routeTree } from "./routeTree.gen"
+import { redirectToPasswordChange } from "./utils"
 
 client.setConfig({
   baseURL: import.meta.env.VITE_API_URL ?? "",
@@ -20,6 +21,7 @@ client.setConfig({
 })
 
 const handleApiError = (error: Error) => {
+  if (redirectToPasswordChange(error)) return
   if (
     error instanceof AxiosError &&
     [401, 403].includes(error.response?.status ?? 0)
@@ -28,6 +30,10 @@ const handleApiError = (error: Error) => {
     window.location.href = "/login"
   }
 }
+client.instance.interceptors.response.use(undefined, (error: unknown) => {
+  if (error instanceof Error) handleApiError(error)
+  return Promise.reject(error)
+})
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: handleApiError,

@@ -10,6 +10,7 @@ from sqlalchemy import event
 from sqlmodel import Session, select
 
 from app.authz.principal import Principal
+from app.core.config import settings
 from app.core.db import engine
 from app.domains.account.passwords import ALPHABET, generate_password
 from app.domains.account.service import list_accounts
@@ -71,6 +72,12 @@ def test_issue_and_reset(accounts: tuple, client: TestClient, db: Session) -> No
         headers={"Authorization": f"Bearer {logged_in.json()['access_token']}"},
     )
     assert me.json()["must_change_password"] is True
+    restricted = client.get(
+        "/api/v1/me/memberships",
+        headers={"Authorization": f"Bearer {logged_in.json()['access_token']}"},
+    )
+    assert restricted.status_code == 403
+    assert restricted.json()["detail"]["code"] == "password_change_required"
     user = db.exec(select(User).where(User.username == first[0])).one()
     assert (
         user.must_change_password and user.password_changed_at and (user.email is None)
@@ -82,8 +89,21 @@ def test_issue_and_reset(accounts: tuple, client: TestClient, db: Session) -> No
         regenerated.status_code == 200 and regenerated.headers["x-issued-count"] == "1"
     )
     assert login(first[4]).status_code == 400
+    regenerated_sheet = load_workbook(BytesIO(regenerated.content)).active
+    assert regenerated_sheet is not None
+    initial_password = list(regenerated_sheet.values)[1][4]
+    previous_session = login(initial_password)
+    assert previous_session.status_code == 200
+    previous_auth = {
+        "Authorization": f"Bearer {previous_session.json()['access_token']}"
+    }
+    assert client.get("/api/v1/users/me", headers=previous_auth).status_code == 200
+    for _ in range(settings.LOGIN_MAX_FAILURES):
+        assert login("wrong-password").status_code == 400
+    assert login(initial_password).status_code == 429
     reset = post(f"{url}/accounts/{user.id}/reset-password")
     assert reset.status_code == 200 and reset.headers["cache-control"] == "no-store"
+    assert client.get("/api/v1/users/me", headers=previous_auth).status_code == 401
     password = reset.json()["initial_password"]
     assert login(password).status_code == 200
     assert post(f"{url}/accounts/{user.id}/disable").status_code == 200

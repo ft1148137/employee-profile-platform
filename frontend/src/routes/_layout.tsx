@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
+import { UsersService } from "@/client"
 
 import AppSidebar from "@/components/Sidebar/AppSidebar"
 import {
@@ -15,6 +16,10 @@ export const Route = createFileRoute("/_layout")({
       throw redirect({
         to: "/login",
       })
+    }
+    const { data: user } = await UsersService.readUserMe()
+    if (user.must_change_password) {
+      throw redirect({ to: "/change-password" })
     }
   },
 })

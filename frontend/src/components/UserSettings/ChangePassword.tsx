@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
@@ -22,11 +22,13 @@ const formSchema = z
     current_password: z
       .string()
       .min(1, { message: "请输入密码" })
-      .min(8, { message: "密码至少需要 8 个字符" }),
+      .min(8, { message: "密码至少需要 8 个字符" })
+      .max(128, { message: "密码最多 128 个字符" }),
     new_password: z
       .string()
       .min(1, { message: "请输入密码" })
-      .min(8, { message: "密码至少需要 8 个字符" }),
+      .min(8, { message: "密码至少需要 8 个字符" })
+      .max(128, { message: "密码最多 128 个字符" }),
     confirm_password: z.string().min(1, { message: "请再次输入新密码" }),
   })
   .refine((data) => data.new_password === data.confirm_password, {
@@ -36,7 +38,8 @@ const formSchema = z
 
 type FormData = z.infer<typeof formSchema>
 
-const ChangePassword = () => {
+const ChangePassword = ({ onSuccess }: { onSuccess?: () => void }) => {
+  const queryClient = useQueryClient()
   const { showSuccessToast, showErrorToast } = useCustomToast()
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -52,9 +55,12 @@ const ChangePassword = () => {
   const mutation = useMutation({
     mutationFn: (data: UpdatePassword) =>
       UsersService.updatePasswordMe({ body: data }),
-    onSuccess: () => {
+    onSuccess: async ({ data }) => {
+      localStorage.setItem("access_token", data.access_token)
+      await queryClient.invalidateQueries({ queryKey: ["currentUser"] })
       showSuccessToast("密码修改成功")
       form.reset()
+      onSuccess?.()
     },
     onError: handleError.bind(showErrorToast),
   })
@@ -65,7 +71,7 @@ const ChangePassword = () => {
 
   return (
     <div className="max-w-md">
-      <h3 className="text-lg font-semibold py-4">修改密码</h3>
+      {!onSuccess && <h3 className="text-lg font-semibold py-4">修改密码</h3>}
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
