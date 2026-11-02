@@ -1,0 +1,1188 @@
+{
+  "issues": [
+    {
+      "key": "PLAT-101",
+      "fields": {
+        "summary": "梳理服务租户边界",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-01",
+          "displayName": "林澈"
+        },
+        "reporter": {
+          "accountId": "demo-jira-01",
+          "displayName": "林澈"
+        },
+        "created": "2026-03-02T10:00:00.000+0800",
+        "resolutiondate": "2026-04-02T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "模拟任务：梳理服务租户边界。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "PLAT-102",
+      "fields": {
+        "summary": "补齐接口错误文档",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-01",
+          "displayName": "林澈"
+        },
+        "reporter": {
+          "accountId": "demo-jira-01",
+          "displayName": "林澈"
+        },
+        "created": "2026-03-02T10:00:00.000+0800",
+        "resolutiondate": "2026-04-02T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "模拟任务：补齐接口错误文档。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "PLAT-103",
+      "fields": {
+        "summary": "验证迁移回滚",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "demo-jira-01",
+          "displayName": "林澈"
+        },
+        "reporter": {
+          "accountId": "demo-jira-01",
+          "displayName": "林澈"
+        },
+        "created": "2026-03-02T10:00:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "模拟任务：验证迁移回滚。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "PLAT-104",
+      "fields": {
+        "summary": "实现分页查询接口",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-02",
+          "displayName": "张伟"
+        },
+        "reporter": {
+          "accountId": "demo-jira-01",
+          "displayName": "林澈"
+        },
+        "created": "2026-03-03T10:00:00.000+0800",
+        "resolutiondate": "2026-04-03T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "模拟任务：实现分页查询接口。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "PLAT-105",
+      "fields": {
+        "summary": "修复幂等键冲突",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-02",
+          "displayName": "张伟"
+        },
+        "reporter": {
+          "accountId": "demo-jira-01",
+          "displayName": "林澈"
+        },
+        "created": "2026-03-03T10:00:00.000+0800",
+        "resolutiondate": "2026-04-03T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "模拟任务：修复幂等键冲突。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "PLAT-106",
+      "fields": {
+        "summary": "补充接口集成测试",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "demo-jira-02",
+          "displayName": "张伟"
+        },
+        "reporter": {
+          "accountId": "demo-jira-01",
+          "displayName": "林澈"
+        },
+        "created": "2026-03-03T10:00:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "模拟任务：补充接口集成测试。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "PLAT-107",
+      "fields": {
+        "summary": "实现部门筛选组件",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-03",
+          "displayName": "许知夏"
+        },
+        "reporter": {
+          "accountId": "demo-jira-01",
+          "displayName": "林澈"
+        },
+        "created": "2026-03-04T10:00:00.000+0800",
+        "resolutiondate": "2026-04-04T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "模拟任务：实现部门筛选组件。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "PLAT-108",
+      "fields": {
+        "summary": "改善键盘导航",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-03",
+          "displayName": "许知夏"
+        },
+        "reporter": {
+          "accountId": "demo-jira-01",
+          "displayName": "林澈"
+        },
+        "created": "2026-03-04T10:00:00.000+0800",
+        "resolutiondate": "2026-04-04T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "模拟任务：改善键盘导航。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "PLAT-109",
+      "fields": {
+        "summary": "修复空列表提示",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "demo-jira-03",
+          "displayName": "许知夏"
+        },
+        "reporter": {
+          "accountId": "demo-jira-01",
+          "displayName": "林澈"
+        },
+        "created": "2026-03-04T10:00:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "模拟任务：修复空列表提示。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "AI-101",
+      "fields": {
+        "summary": "设计离线评估集",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-04",
+          "displayName": "顾岚"
+        },
+        "reporter": {
+          "accountId": "demo-jira-04",
+          "displayName": "顾岚"
+        },
+        "created": "2026-03-05T10:00:00.000+0800",
+        "resolutiondate": "2026-04-05T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "算法与模型部"
+          }
+        ],
+        "description": "模拟任务：设计离线评估集。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "AI-102",
+      "fields": {
+        "summary": "验证训练数据版本",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-04",
+          "displayName": "顾岚"
+        },
+        "reporter": {
+          "accountId": "demo-jira-04",
+          "displayName": "顾岚"
+        },
+        "created": "2026-03-05T10:00:00.000+0800",
+        "resolutiondate": "2026-04-05T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "算法与模型部"
+          }
+        ],
+        "description": "模拟任务：验证训练数据版本。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "AI-103",
+      "fields": {
+        "summary": "分析模型误差",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "demo-jira-04",
+          "displayName": "顾岚"
+        },
+        "reporter": {
+          "accountId": "demo-jira-04",
+          "displayName": "顾岚"
+        },
+        "created": "2026-03-05T10:00:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "算法与模型部"
+          }
+        ],
+        "description": "模拟任务：分析模型误差。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "AI-104",
+      "fields": {
+        "summary": "实现推理批处理",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-05",
+          "displayName": "张伟"
+        },
+        "reporter": {
+          "accountId": "demo-jira-04",
+          "displayName": "顾岚"
+        },
+        "created": "2026-03-06T10:00:00.000+0800",
+        "resolutiondate": "2026-04-06T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "算法与模型部"
+          }
+        ],
+        "description": "模拟任务：实现推理批处理。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "AI-105",
+      "fields": {
+        "summary": "记录实验配置",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-05",
+          "displayName": "张伟"
+        },
+        "reporter": {
+          "accountId": "demo-jira-04",
+          "displayName": "顾岚"
+        },
+        "created": "2026-03-06T10:00:00.000+0800",
+        "resolutiondate": "2026-04-06T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "算法与模型部"
+          }
+        ],
+        "description": "模拟任务：记录实验配置。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "AI-106",
+      "fields": {
+        "summary": "修复模型加载失败",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "demo-jira-05",
+          "displayName": "张伟"
+        },
+        "reporter": {
+          "accountId": "demo-jira-04",
+          "displayName": "顾岚"
+        },
+        "created": "2026-03-06T10:00:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "算法与模型部"
+          }
+        ],
+        "description": "模拟任务：修复模型加载失败。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "AI-107",
+      "fields": {
+        "summary": "校验样本字段",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-06",
+          "displayName": "陆星遥"
+        },
+        "reporter": {
+          "accountId": "demo-jira-04",
+          "displayName": "顾岚"
+        },
+        "created": "2026-03-07T10:00:00.000+0800",
+        "resolutiondate": "2026-04-07T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "算法与模型部"
+          }
+        ],
+        "description": "模拟任务：校验样本字段。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "AI-108",
+      "fields": {
+        "summary": "补充数据质量报告",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-06",
+          "displayName": "陆星遥"
+        },
+        "reporter": {
+          "accountId": "demo-jira-04",
+          "displayName": "顾岚"
+        },
+        "created": "2026-03-07T10:00:00.000+0800",
+        "resolutiondate": "2026-04-07T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "算法与模型部"
+          }
+        ],
+        "description": "模拟任务：补充数据质量报告。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "AI-109",
+      "fields": {
+        "summary": "修复增量处理重复",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "demo-jira-06",
+          "displayName": "陆星遥"
+        },
+        "reporter": {
+          "accountId": "demo-jira-04",
+          "displayName": "顾岚"
+        },
+        "created": "2026-03-07T10:00:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "算法与模型部"
+          }
+        ],
+        "description": "模拟任务：修复增量处理重复。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "EDGE-101",
+      "fields": {
+        "summary": "验证 RKNN 转换流程",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-07",
+          "displayName": "陈予安"
+        },
+        "reporter": {
+          "accountId": "demo-jira-07",
+          "displayName": "陈予安"
+        },
+        "created": "2026-03-08T10:00:00.000+0800",
+        "resolutiondate": "2026-04-08T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "边缘计算部"
+          }
+        ],
+        "description": "模拟任务：验证 RKNN 转换流程。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "EDGE-102",
+      "fields": {
+        "summary": "记录边缘设备限制",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-07",
+          "displayName": "陈予安"
+        },
+        "reporter": {
+          "accountId": "demo-jira-07",
+          "displayName": "陈予安"
+        },
+        "created": "2026-03-08T10:00:00.000+0800",
+        "resolutiondate": "2026-04-08T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "边缘计算部"
+          }
+        ],
+        "description": "模拟任务：记录边缘设备限制。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "EDGE-103",
+      "fields": {
+        "summary": "排查设备内存问题",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "demo-jira-07",
+          "displayName": "陈予安"
+        },
+        "reporter": {
+          "accountId": "demo-jira-07",
+          "displayName": "陈予安"
+        },
+        "created": "2026-03-08T10:00:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "边缘计算部"
+          }
+        ],
+        "description": "模拟任务：排查设备内存问题。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "EDGE-104",
+      "fields": {
+        "summary": "部署常规模型版本",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-08",
+          "displayName": "苏禾"
+        },
+        "reporter": {
+          "accountId": "demo-jira-07",
+          "displayName": "陈予安"
+        },
+        "created": "2026-03-09T10:00:00.000+0800",
+        "resolutiondate": "2026-04-09T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "边缘计算部"
+          }
+        ],
+        "description": "模拟任务：部署常规模型版本。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "EDGE-105",
+      "fields": {
+        "summary": "适配输入张量尺寸",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-08",
+          "displayName": "苏禾"
+        },
+        "reporter": {
+          "accountId": "demo-jira-07",
+          "displayName": "陈予安"
+        },
+        "created": "2026-03-09T10:00:00.000+0800",
+        "resolutiondate": "2026-04-09T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "边缘计算部"
+          }
+        ],
+        "description": "模拟任务：适配输入张量尺寸。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "EDGE-106",
+      "fields": {
+        "summary": "在指导下排查量化精度",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "demo-jira-08",
+          "displayName": "苏禾"
+        },
+        "reporter": {
+          "accountId": "demo-jira-07",
+          "displayName": "陈予安"
+        },
+        "created": "2026-03-09T10:00:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "边缘计算部"
+          }
+        ],
+        "description": "模拟任务：在指导下排查量化精度。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "EDGE-107",
+      "fields": {
+        "summary": "补充设备回归用例",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-09",
+          "displayName": "周明川"
+        },
+        "reporter": {
+          "accountId": "demo-jira-07",
+          "displayName": "陈予安"
+        },
+        "created": "2026-03-10T10:00:00.000+0800",
+        "resolutiondate": "2026-04-10T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "边缘计算部"
+          }
+        ],
+        "description": "模拟任务：补充设备回归用例。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "EDGE-108",
+      "fields": {
+        "summary": "验证断网重连",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-09",
+          "displayName": "周明川"
+        },
+        "reporter": {
+          "accountId": "demo-jira-07",
+          "displayName": "陈予安"
+        },
+        "created": "2026-03-10T10:00:00.000+0800",
+        "resolutiondate": "2026-04-10T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "边缘计算部"
+          }
+        ],
+        "description": "模拟任务：验证断网重连。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "EDGE-109",
+      "fields": {
+        "summary": "记录温度测试结果",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "demo-jira-09",
+          "displayName": "周明川"
+        },
+        "reporter": {
+          "accountId": "demo-jira-07",
+          "displayName": "陈予安"
+        },
+        "created": "2026-03-10T10:00:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "边缘计算部"
+          }
+        ],
+        "description": "模拟任务：记录温度测试结果。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "DELIV-101",
+      "fields": {
+        "summary": "澄清交付验收范围",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-10",
+          "displayName": "沈言"
+        },
+        "reporter": {
+          "accountId": "demo-jira-10",
+          "displayName": "沈言"
+        },
+        "created": "2026-03-11T10:00:00.000+0800",
+        "resolutiondate": "2026-04-11T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "交付与技术支持部"
+          }
+        ],
+        "description": "模拟任务：澄清交付验收范围。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "DELIV-102",
+      "fields": {
+        "summary": "完善上线检查清单",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-10",
+          "displayName": "沈言"
+        },
+        "reporter": {
+          "accountId": "demo-jira-10",
+          "displayName": "沈言"
+        },
+        "created": "2026-03-11T10:00:00.000+0800",
+        "resolutiondate": "2026-04-11T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "交付与技术支持部"
+          }
+        ],
+        "description": "模拟任务：完善上线检查清单。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "DELIV-103",
+      "fields": {
+        "summary": "组织接口联调",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "demo-jira-10",
+          "displayName": "沈言"
+        },
+        "reporter": {
+          "accountId": "demo-jira-10",
+          "displayName": "沈言"
+        },
+        "created": "2026-03-11T10:00:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "交付与技术支持部"
+          }
+        ],
+        "description": "模拟任务：组织接口联调。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "DELIV-104",
+      "fields": {
+        "summary": "复现客户模拟问题",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-11",
+          "displayName": "唐清"
+        },
+        "reporter": {
+          "accountId": "demo-jira-10",
+          "displayName": "沈言"
+        },
+        "created": "2026-03-12T10:00:00.000+0800",
+        "resolutiondate": "2026-04-12T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "交付与技术支持部"
+          }
+        ],
+        "description": "模拟任务：复现客户模拟问题。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "DELIV-105",
+      "fields": {
+        "summary": "完善故障定位手册",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-11",
+          "displayName": "唐清"
+        },
+        "reporter": {
+          "accountId": "demo-jira-10",
+          "displayName": "沈言"
+        },
+        "created": "2026-03-12T10:00:00.000+0800",
+        "resolutiondate": "2026-04-12T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "交付与技术支持部"
+          }
+        ],
+        "description": "模拟任务：完善故障定位手册。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "DELIV-106",
+      "fields": {
+        "summary": "补充服务日志说明",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "demo-jira-11",
+          "displayName": "唐清"
+        },
+        "reporter": {
+          "accountId": "demo-jira-10",
+          "displayName": "沈言"
+        },
+        "created": "2026-03-12T10:00:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "交付与技术支持部"
+          }
+        ],
+        "description": "模拟任务：补充服务日志说明。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "DELIV-107",
+      "fields": {
+        "summary": "准备演示设备",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-12",
+          "displayName": "江亦宁"
+        },
+        "reporter": {
+          "accountId": "demo-jira-10",
+          "displayName": "沈言"
+        },
+        "created": "2026-03-13T10:00:00.000+0800",
+        "resolutiondate": "2026-04-13T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "交付与技术支持部"
+          }
+        ],
+        "description": "模拟任务：准备演示设备。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "DELIV-108",
+      "fields": {
+        "summary": "执行部署验证",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-jira-12",
+          "displayName": "江亦宁"
+        },
+        "reporter": {
+          "accountId": "demo-jira-10",
+          "displayName": "沈言"
+        },
+        "created": "2026-03-13T10:00:00.000+0800",
+        "resolutiondate": "2026-04-13T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "交付与技术支持部"
+          }
+        ],
+        "description": "模拟任务：执行部署验证。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "DELIV-109",
+      "fields": {
+        "summary": "整理安装记录",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "demo-jira-12",
+          "displayName": "江亦宁"
+        },
+        "reporter": {
+          "accountId": "demo-jira-10",
+          "displayName": "沈言"
+        },
+        "created": "2026-03-13T10:00:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "交付与技术支持部"
+          }
+        ],
+        "description": "模拟任务：整理安装记录。验收以可复现记录为准。"
+      }
+    },
+    {
+      "key": "PLAT-999",
+      "fields": {
+        "summary": "未关联身份的模拟任务",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "demo-unmapped",
+          "displayName": "未关联演示身份"
+        },
+        "reporter": {
+          "accountId": "demo-jira-01",
+          "displayName": "林澈"
+        },
+        "created": "2026-03-02T10:00:00.000+0800",
+        "resolutiondate": "2026-04-02T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "demo"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "模拟任务：梳理服务租户边界。验收以可复现记录为准。"
+      }
+    }
+  ]
+}

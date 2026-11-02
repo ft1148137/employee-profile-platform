@@ -2,7 +2,7 @@ import asyncio
 import subprocess
 import sys
 
-from sqlalchemy import inspect, text
+from sqlalchemy import Engine, inspect, text
 from sqlmodel import Session
 
 from app.core.db import engine
@@ -28,7 +28,8 @@ def test_ping_job_succeeds(db: Session) -> None:
         assert status == "succeeded"
 
 
-def test_worker_migration_roundtrip(db: Session) -> None:
+def test_worker_migration_roundtrip(db: Session, migration_engine: Engine) -> None:
+    engine = migration_engine
     db.rollback()
     subprocess.run(
         [sys.executable, "-m", "alembic", "downgrade", "84c2e7d91a60"], check=True

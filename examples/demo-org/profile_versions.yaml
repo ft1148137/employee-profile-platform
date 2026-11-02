@@ -1,0 +1,36 @@
+- employee_code: E01
+  revision: 1
+  published_at: '2026-05-04T10:00:00+08:00'
+  published_by: admin@demo.example.com
+  claims:
+  - C01
+- employee_code: E02
+  revision: 1
+  published_at: '2026-05-04T10:00:00+08:00'
+  published_by: admin@demo.example.com
+  claims:
+  - C02
+- employee_code: E03
+  revision: 1
+  published_at: '2026-05-04T10:00:00+08:00'
+  published_by: admin@demo.example.com
+  claims:
+  - C03
+- employee_code: E04
+  revision: 1
+  published_at: '2026-05-04T10:00:00+08:00'
+  published_by: admin@demo.example.com
+  claims:
+  - C04
+- employee_code: E05
+  revision: 1
+  published_at: '2026-05-04T10:00:00+08:00'
+  published_by: admin@demo.example.com
+  claims:
+  - C05
+- employee_code: E02
+  revision: 2
+  published_at: '2026-05-06T10:00:00+08:00'
+  published_by: admin@demo.example.com
+  claims:
+  - C02v2

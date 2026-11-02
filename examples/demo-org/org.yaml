@@ -1,0 +1,90 @@
+slug: demo
+name: 星衍科技（模拟）
+departments:
+- 平台研发部
+- 算法与模型部
+- 边缘计算部
+- 交付与技术支持部
+employees:
+- employee_code: E01
+  department: 平台研发部
+  display_name: 林澈
+  title: 平台研发经理
+  work_email: employee01@demo.example.com
+  account_id: demo-jira-01
+- employee_code: E02
+  department: 平台研发部
+  display_name: 张伟
+  title: 后端工程师
+  work_email: employee02@demo.example.com
+  account_id: demo-jira-02
+- employee_code: E03
+  department: 平台研发部
+  display_name: 许知夏
+  title: 前端工程师
+  work_email: employee03@demo.example.com
+  account_id: demo-jira-03
+- employee_code: E04
+  department: 算法与模型部
+  display_name: 顾岚
+  title: 算法负责人
+  work_email: employee04@demo.example.com
+  account_id: demo-jira-04
+- employee_code: E05
+  department: 算法与模型部
+  display_name: 张伟
+  title: 模型工程师
+  work_email: employee05@demo.example.com
+  account_id: demo-jira-05
+- employee_code: E06
+  department: 算法与模型部
+  display_name: 陆星遥
+  title: 数据工程师
+  work_email: employee06@demo.example.com
+  account_id: demo-jira-06
+- employee_code: E07
+  department: 边缘计算部
+  display_name: 陈予安
+  title: 边缘研发负责人
+  work_email: employee07@demo.example.com
+  account_id: demo-jira-07
+- employee_code: E08
+  department: 边缘计算部
+  display_name: 苏禾
+  title: 嵌入式工程师
+  work_email: employee08@demo.example.com
+  account_id: demo-jira-08
+- employee_code: E09
+  department: 边缘计算部
+  display_name: 周明川
+  title: 设备测试工程师
+  work_email: employee09@demo.example.com
+  account_id: demo-jira-09
+- employee_code: E10
+  department: 交付与技术支持部
+  display_name: 沈言
+  title: 交付负责人
+  work_email: employee10@demo.example.com
+  account_id: demo-jira-10
+- employee_code: E11
+  department: 交付与技术支持部
+  display_name: 唐清
+  title: 技术支持工程师
+  work_email: employee11@demo.example.com
+  account_id: demo-jira-11
+- employee_code: E12
+  department: 交付与技术支持部
+  display_name: 江亦宁
+  title: 实施工程师
+  work_email: employee12@demo.example.com
+  account_id: demo-jira-12
+accounts:
+- email: admin@demo.example.com
+  role: org_admin
+- email: manager.platform@demo.example.com
+  employee_code: E01
+  role: dept_manager
+- email: employee.platform@demo.example.com
+  employee_code: E02
+- email: employee.algorithm@demo.example.com
+  employee_code: E05
