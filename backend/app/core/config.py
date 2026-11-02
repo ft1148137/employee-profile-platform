@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     SEED_DEMO_DATA: bool = False
     DEMO_USER_PASSWORD: str | None = Field(default=None, min_length=8, max_length=128)
     DEMO_DATA_DIR: Path = Path(__file__).resolve().parents[3] / "examples/demo-org"
+    CAPABILITY_TEMPLATES_DIR: Path = (
+        Path(__file__).resolve().parents[3] / "templates/capabilities"
+    )
 
     PROJECT_NAME: str
     SENTRY_DSN: HttpUrl | None = None

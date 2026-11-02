@@ -45,6 +45,16 @@ export type AccountsPublic = {
 };
 
 /**
+ * ActivateCapabilitySchema
+ */
+export type ActivateCapabilitySchema = {
+    /**
+     * Template Id
+     */
+    template_id: string;
+};
+
+/**
  * ActiveSchemaPublic
  */
 export type ActiveSchemaPublic = {
@@ -142,6 +152,78 @@ export type CapabilityPublic = {
     level_rubric: {
         [key: string]: JsonValue;
     } | null;
+};
+
+/**
+ * CapabilityTemplatePreview
+ */
+export type CapabilityTemplatePreview = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Industry
+     */
+    industry: string;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Capability Count
+     */
+    capability_count: number;
+    /**
+     * Categories
+     */
+    categories: Array<string>;
+    /**
+     * Recommended
+     */
+    recommended: boolean;
+    /**
+     * Capabilities
+     */
+    capabilities: Array<TemplateCapabilityPublic>;
+};
+
+/**
+ * CapabilityTemplatePublic
+ */
+export type CapabilityTemplatePublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Industry
+     */
+    industry: string;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Capability Count
+     */
+    capability_count: number;
+    /**
+     * Categories
+     */
+    categories: Array<string>;
+    /**
+     * Recommended
+     */
+    recommended: boolean;
 };
 
 /**
@@ -682,7 +764,7 @@ export type ProfileVersionsPublic = {
  */
 export type ProfileView = {
     employee: EmployeeSummary;
-    schema_version: SchemaVersionPublic;
+    schema_version: SchemaVersionPublic | null;
     latest_published: PublishedSummary | null;
     counts: ProfileCounts;
     /**
@@ -768,6 +850,24 @@ export type RolePublic = {
 };
 
 /**
+ * RubricLevel
+ */
+export type RubricLevel = {
+    /**
+     * Key
+     */
+    key: 'needs_support' | 'routine' | 'independent_complex';
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Description
+     */
+    description: string;
+};
+
+/**
  * SchemaVersionPublic
  */
 export type SchemaVersionPublic = {
@@ -801,6 +901,32 @@ export type TaskPublic = {
      * Url
      */
     url: string | null;
+};
+
+/**
+ * TemplateCapabilityPublic
+ */
+export type TemplateCapabilityPublic = {
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Category
+     */
+    category: string;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Levels
+     */
+    levels: Array<RubricLevel>;
 };
 
 /**
@@ -904,60 +1030,6 @@ export type UserPublic = {
 };
 
 /**
- * UserUpdate
- */
-export type UserUpdate = {
-    /**
-     * Email
-     */
-    email?: string | null;
-    /**
-     * Is Active
-     */
-    is_active?: boolean | null;
-    /**
-     * Is Superuser
-     */
-    is_superuser?: boolean | null;
-    /**
-     * Full Name
-     */
-    full_name?: string | null;
-    /**
-     * Password
-     */
-    password?: string | null;
-};
-
-/**
- * UserUpdateMe
- */
-export type UserUpdateMe = {
-    /**
-     * Full Name
-     */
-    full_name?: string | null;
-    /**
-     * Email
-     */
-    email?: string | null;
-};
-
-/**
- * UsersPublic
- */
-export type UsersPublic = {
-    /**
-     * Data
-     */
-    data: Array<UserPublic>;
-    /**
-     * Count
-     */
-    count: number;
-};
-
-/**
  * ValidationError
  */
 export type ValidationError = {
@@ -1045,122 +1117,6 @@ export type loginTestTokenResponses = {
 
 export type loginTestTokenResponse = loginTestTokenResponses[keyof loginTestTokenResponses];
 
-export type usersReadUsersData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Skip
-         */
-        skip?: number;
-        /**
-         * Limit
-         */
-        limit?: number;
-    };
-    url: '/api/v1/users/';
-};
-
-export type usersReadUsersErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersReadUsersError = usersReadUsersErrors[keyof usersReadUsersErrors];
-
-export type usersReadUsersResponses = {
-    /**
-     * Successful Response
-     */
-    200: UsersPublic;
-};
-
-export type usersReadUsersResponse = usersReadUsersResponses[keyof usersReadUsersResponses];
-
-export type usersCreateUserData = {
-    body: UserCreate;
-    path?: never;
-    query?: never;
-    url: '/api/v1/users/';
-};
-
-export type usersCreateUserErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersCreateUserError = usersCreateUserErrors[keyof usersCreateUserErrors];
-
-export type usersCreateUserResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserPublic;
-};
-
-export type usersCreateUserResponse = usersCreateUserResponses[keyof usersCreateUserResponses];
-
-export type usersDeleteUserMeData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/users/me';
-};
-
-export type usersDeleteUserMeResponses = {
-    /**
-     * Successful Response
-     */
-    200: Message;
-};
-
-export type usersDeleteUserMeResponse = usersDeleteUserMeResponses[keyof usersDeleteUserMeResponses];
-
-export type usersReadUserMeData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/users/me';
-};
-
-export type usersReadUserMeResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserPublic;
-};
-
-export type usersReadUserMeResponse = usersReadUserMeResponses[keyof usersReadUserMeResponses];
-
-export type usersUpdateUserMeData = {
-    body: UserUpdateMe;
-    path?: never;
-    query?: never;
-    url: '/api/v1/users/me';
-};
-
-export type usersUpdateUserMeErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersUpdateUserMeError = usersUpdateUserMeErrors[keyof usersUpdateUserMeErrors];
-
-export type usersUpdateUserMeResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserPublic;
-};
-
-export type usersUpdateUserMeResponse = usersUpdateUserMeResponses[keyof usersUpdateUserMeResponses];
-
 export type usersUpdatePasswordMeData = {
     body: UpdatePassword;
     path?: never;
@@ -1186,95 +1142,21 @@ export type usersUpdatePasswordMeResponses = {
 
 export type usersUpdatePasswordMeResponse = usersUpdatePasswordMeResponses[keyof usersUpdatePasswordMeResponses];
 
-export type usersDeleteUserData = {
+export type usersReadUserMeData = {
     body?: never;
-    path: {
-        /**
-         * User Id
-         */
-        user_id: string;
-    };
+    path?: never;
     query?: never;
-    url: '/api/v1/users/{user_id}';
+    url: '/api/v1/users/me';
 };
 
-export type usersDeleteUserErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersDeleteUserError = usersDeleteUserErrors[keyof usersDeleteUserErrors];
-
-export type usersDeleteUserResponses = {
-    /**
-     * Successful Response
-     */
-    200: Message;
-};
-
-export type usersDeleteUserResponse = usersDeleteUserResponses[keyof usersDeleteUserResponses];
-
-export type usersReadUserByIdData = {
-    body?: never;
-    path: {
-        /**
-         * User Id
-         */
-        user_id: string;
-    };
-    query?: never;
-    url: '/api/v1/users/{user_id}';
-};
-
-export type usersReadUserByIdErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersReadUserByIdError = usersReadUserByIdErrors[keyof usersReadUserByIdErrors];
-
-export type usersReadUserByIdResponses = {
+export type usersReadUserMeResponses = {
     /**
      * Successful Response
      */
     200: UserPublic;
 };
 
-export type usersReadUserByIdResponse = usersReadUserByIdResponses[keyof usersReadUserByIdResponses];
-
-export type usersUpdateUserData = {
-    body: UserUpdate;
-    path: {
-        /**
-         * User Id
-         */
-        user_id: string;
-    };
-    query?: never;
-    url: '/api/v1/users/{user_id}';
-};
-
-export type usersUpdateUserErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersUpdateUserError = usersUpdateUserErrors[keyof usersUpdateUserErrors];
-
-export type usersUpdateUserResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserPublic;
-};
-
-export type usersUpdateUserResponse = usersUpdateUserResponses[keyof usersUpdateUserResponses];
+export type usersReadUserMeResponse = usersReadUserMeResponses[keyof usersReadUserMeResponses];
 
 export type utilsTestEmailData = {
     body?: never;
@@ -1482,6 +1364,84 @@ export type capabilitiesReadCapabilitiesResponses = {
 };
 
 export type capabilitiesReadCapabilitiesResponse = capabilitiesReadCapabilitiesResponses[keyof capabilitiesReadCapabilitiesResponses];
+
+export type capabilityTemplatesReadTemplatesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/capability-templates';
+};
+
+export type capabilityTemplatesReadTemplatesResponses = {
+    /**
+     * Response Capability-Templates-Read Templates
+     *
+     * Successful Response
+     */
+    200: Array<CapabilityTemplatePublic>;
+};
+
+export type capabilityTemplatesReadTemplatesResponse = capabilityTemplatesReadTemplatesResponses[keyof capabilityTemplatesReadTemplatesResponses];
+
+export type capabilityTemplatesPreviewTemplateData = {
+    body?: never;
+    path: {
+        /**
+         * Template Id
+         */
+        template_id: string;
+    };
+    query?: never;
+    url: '/api/v1/capability-templates/{template_id}';
+};
+
+export type capabilityTemplatesPreviewTemplateErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilityTemplatesPreviewTemplateError = capabilityTemplatesPreviewTemplateErrors[keyof capabilityTemplatesPreviewTemplateErrors];
+
+export type capabilityTemplatesPreviewTemplateResponses = {
+    /**
+     * Successful Response
+     */
+    200: CapabilityTemplatePreview;
+};
+
+export type capabilityTemplatesPreviewTemplateResponse = capabilityTemplatesPreviewTemplateResponses[keyof capabilityTemplatesPreviewTemplateResponses];
+
+export type capabilityTemplatesActivateCapabilitySchemaData = {
+    body: ActivateCapabilitySchema;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/capability-schema';
+};
+
+export type capabilityTemplatesActivateCapabilitySchemaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilityTemplatesActivateCapabilitySchemaError = capabilityTemplatesActivateCapabilitySchemaErrors[keyof capabilityTemplatesActivateCapabilitySchemaErrors];
+
+export type capabilityTemplatesActivateCapabilitySchemaResponses = {
+    /**
+     * Successful Response
+     */
+    200: ActiveSchemaPublic;
+};
+
+export type capabilityTemplatesActivateCapabilitySchemaResponse = capabilityTemplatesActivateCapabilitySchemaResponses[keyof capabilityTemplatesActivateCapabilitySchemaResponses];
 
 export type profilesReadProfileData = {
     body?: never;
@@ -1956,7 +1916,12 @@ export type rolesRevokeRoleResponse = rolesRevokeRoleResponses[keyof rolesRevoke
 export type privateCreateUserData = {
     body: UserCreate;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * With Empty Profile
+         */
+        with_empty_profile?: boolean;
+    };
     url: '/api/v1/private/users/';
 };
 

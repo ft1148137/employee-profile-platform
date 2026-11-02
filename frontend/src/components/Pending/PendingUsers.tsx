@@ -12,12 +12,12 @@ const PendingUsers = () => (
   <Table>
     <TableHeader>
       <TableRow>
-        <TableHead>Full Name</TableHead>
-        <TableHead>Email</TableHead>
-        <TableHead>Role</TableHead>
-        <TableHead>Status</TableHead>
+        <TableHead>姓名</TableHead>
+        <TableHead>邮箱</TableHead>
+        <TableHead>角色</TableHead>
+        <TableHead>状态</TableHead>
         <TableHead>
-          <span className="sr-only">Actions</span>
+          <span className="sr-only">操作</span>
         </TableHead>
       </TableRow>
     </TableHeader>
