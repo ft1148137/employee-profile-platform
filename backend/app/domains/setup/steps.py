@@ -12,7 +12,12 @@ from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.domains.capability.models import CapabilitySchemaVersion, SchemaStatus
-from app.domains.org.models import Employee, EmploymentStatus, OrgMembership
+from app.domains.org.models import (
+    Employee,
+    EmploymentStatus,
+    OrgMembership,
+    RosterImport,
+)
 
 
 @dataclass(frozen=True)
@@ -32,14 +37,20 @@ def check_org_profile(_session: Session, _org_id: UUID) -> list[str]:
 
 
 def check_roster(session: Session, org_id: UUID) -> list[str]:
-    # shortcut: check active employees until NERE-27's roster_import table lands.
     employee = session.exec(
         select(Employee.id).where(
             Employee.org_id == org_id,
             Employee.employment_status == EmploymentStatus.ACTIVE,
         )
     ).first()
-    return [] if employee else ["还没有在职员工"]
+    imported = session.exec(
+        select(RosterImport.id).where(
+            RosterImport.org_id == org_id, RosterImport.status == "applied"
+        )
+    ).first()
+    return ([] if employee else ["还没有在职员工"]) + (
+        [] if imported else ["还没有成功导入员工名单"]
+    )
 
 
 def check_capabilities(session: Session, org_id: UUID) -> list[str]:

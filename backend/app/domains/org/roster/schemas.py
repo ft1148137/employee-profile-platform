@@ -1,4 +1,6 @@
+from datetime import datetime
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field, computed_field
 
@@ -31,3 +33,88 @@ class ParsedRoster(BaseModel):
     @property
     def has_errors(self) -> bool:
         return any(issue.severity == "error" for issue in self.issues)
+
+
+ChangeKind = Literal[
+    "added", "updated", "transferred", "manager_changed", "deactivated", "reactivated"
+]
+CHANGE_KINDS: tuple[ChangeKind, ...] = (
+    "added",
+    "updated",
+    "transferred",
+    "manager_changed",
+    "deactivated",
+    "reactivated",
+)
+
+
+class FieldChange(BaseModel):
+    field: Literal["display_name", "title", "email", "department", "manager"]
+    before: str | None
+    after: str | None
+
+
+class EmployeeChange(BaseModel):
+    kind: ChangeKind
+    employee_id: UUID | None
+    employee_code: str
+    display_name: str
+    row_number: int | None
+    fields: list[FieldChange] = Field(default_factory=list)
+
+
+class DepartmentNode(BaseModel):
+    name: str
+    path: tuple[str, ...]
+    department_id: UUID | None
+    is_new: bool
+    employee_count: int = 0
+    children: list[DepartmentNode] = Field(default_factory=list)
+
+
+class RosterDiff(BaseModel):
+    summary: dict[str, int]
+    changes: list[EmployeeChange]
+    departments: list[DepartmentNode]
+    created_departments: list[tuple[str, ...]]
+    unused_departments: list[tuple[str, ...]]
+    warnings: list[RosterIssue]
+    blockers: list[str]
+    active_count: int
+    requires_mass_deactivation_confirm: bool
+
+
+class RosterImportPreview(RosterDiff):
+    id: UUID
+    base_revision: int
+    column_mapping: dict[str, str]
+    issues: list[RosterIssue]
+    can_apply: bool
+
+
+class ApplyImport(BaseModel):
+    base_revision: int = Field(ge=0)
+    confirm_mass_deactivation: bool = False
+
+
+class RosterImportResult(BaseModel):
+    id: UUID
+    status: Literal["previewed", "applied", "stale"]
+    summary: dict[str, int]
+    issues: list[RosterIssue]
+
+
+class RosterImportHistory(BaseModel):
+    id: UUID
+    created_at: datetime
+    uploaded_by_username: str
+    uploaded_by_full_name: str | None
+    filename: str
+    status: Literal["previewed", "applied", "stale"]
+    summary: dict[str, int]
+    applied_at: datetime | None
+
+
+class RosterImportsPublic(BaseModel):
+    data: list[RosterImportHistory]
+    count: int
