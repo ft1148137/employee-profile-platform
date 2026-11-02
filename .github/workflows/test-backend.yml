@@ -30,15 +30,16 @@ jobs:
         uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "latest-known"
-      - run: docker compose down -v --remove-orphans
-      - run: docker compose up -d --wait db mailpit
+      - run: docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
+      - run: docker compose -f compose.yml -f compose.dev.yml up -d --wait db mailpit
       - name: Migrate DB
         run: uv run bash scripts/prestart.sh
         working-directory: backend
       - name: Run tests
         run: uv run bash scripts/tests-start.sh "Coverage for ${{ github.sha }}"
         working-directory: backend
-      - run: docker compose down -v --remove-orphans
+      - if: always()
+        run: docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
       - name: Store coverage files
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

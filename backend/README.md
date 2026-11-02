@@ -14,7 +14,7 @@ Run the backend locally and connect it to PostgreSQL in Docker Compose.
 From the project root, start PostgreSQL and Mailpit:
 
 ```console
-$ docker compose up -d db mailpit
+$ docker compose -f compose.yml -f compose.dev.yml up -d db mailpit
 ```
 
 Then, from `./backend/`, install the dependencies, prepare the database, and start the development server:
@@ -44,20 +44,19 @@ The setup is also already configured so you can run the tests through the VS Cod
 To run the backend and built frontend in Docker Compose:
 
 ```console
-$ docker compose run --rm backend bash scripts/prestart.sh
-$ docker compose watch
+$ docker compose -f compose.yml -f compose.dev.yml watch
 ```
 
 The application is available at `http://localhost:8000`.
 
-### Docker Compose Override
+### Docker Compose Development Settings
 
-The `compose.override.yml` file contains local settings for published ports, source synchronization, automatic image rebuilds, and backend reloads. Docker Compose applies it automatically when you run `docker compose` without an explicit file list.
+The `compose.dev.yml` file contains local settings for published ports, source synchronization, automatic image rebuilds, and backend reloads. Select it explicitly with `-f compose.yml -f compose.dev.yml`; it is not loaded automatically.
 
 To open a shell in the backend container:
 
 ```console
-$ docker compose exec backend bash
+$ docker compose -f compose.yml -f compose.dev.yml exec backend bash
 ```
 
 ## Backend Tests
@@ -77,7 +76,7 @@ If you use GitHub Actions, the tests will run automatically.
 If your stack is already up and you just want to run the tests, you can use:
 
 ```bash
-docker compose exec backend bash scripts/tests-start.sh
+docker compose -f compose.yml -f compose.dev.yml exec backend bash scripts/tests-start.sh
 ```
 
 The `/app/backend/scripts/tests-start.sh` script calls `pytest`. If you need to pass extra arguments to `pytest`, you can pass them to that command and they will be forwarded.
@@ -85,7 +84,7 @@ The `/app/backend/scripts/tests-start.sh` script calls `pytest`. If you need to 
 For example, to stop on first error:
 
 ```bash
-docker compose exec backend bash scripts/tests-start.sh -x
+docker compose -f compose.yml -f compose.dev.yml exec backend bash scripts/tests-start.sh -x
 ```
 
 ### Test Coverage
