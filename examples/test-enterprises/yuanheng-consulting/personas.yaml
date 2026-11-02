@@ -1,0 +1,1026 @@
+# 测试用，不导入系统
+# 真实能力（ground truth）用于核对系统推断的画像，对应计划书 §10.1「关键能力核实准确率」。
+slug: yuanheng-consulting
+personas:
+- employee_code: YH001
+  display_name: 司徒明昭
+  work_history:
+  - period: 2006-09 至 2011-06
+    org: 某大型国企战略部（虚构）
+    role: 战略规划专员
+    summary: 参与集团五年规划编制与投资项目评估
+  - period: 2011-07 至 2014-02
+    org: 某管理咨询公司（虚构）
+    role: 项目经理
+    summary: 负责制造业集团管控与组织设计项目
+  - period: 2014-03 至今
+    org: 远衡管理咨询（模拟）
+    role: 顾问至合伙人
+    summary: 创立战略与组织咨询部，长期负责集团型客户
+  ground_truth:
+    capabilities:
+    - key: org_design
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:DL-0001, record:DL-0002, record:RV-0002]
+      note: 集团管控与授权边界方案由他定调，交付物与复盘记录都在，系统应能确认
+    - key: quality_review
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:DL-0002, record:DL-0016, record:DL-0026]
+      note: 交付物库里他作为审核人的记录充分
+    - key: client_communication
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:DL-0026]
+      note: 他绝大多数客户高层沟通是口头进行的，只有一份汇报材料留痕，记录不足以支撑等级
+    certifications: [注册管理咨询师（CMC）, 高级经济师]
+    notes: 复姓；既是部门负责人又亲自担任 ENG-ZQ 项目经理，系统要能同时表达这两种角色
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, tablet]
+    expression_style: 简短、偏结论，常用「先看事实」「口径对不对」这类说法，不写长段文字
+    attitude: skeptical
+    test_focus:
+    - 检查系统是否把他的部门负责人身份和项目经理身份混成一个
+    - 检查画像有没有把下属交付物的结论算成他的能力
+    - 试着质疑系统给出的置信标签，看能不能看到证据清单
+- employee_code: YH002
+  display_name: 陆维桢
+  work_history:
+  - period: 2013-07 至 2017-07
+    org: 某行业研究机构（虚构）
+    role: 研究员
+    summary: 负责零售与金融行业年度研究报告
+  - period: 2017-08 至今
+    org: 远衡管理咨询（模拟）
+    role: 顾问至高级经理
+    summary: 组织设计与网点运营效率项目，2026 年起任 ENG-PX 项目经理
+  ground_truth:
+    capabilities:
+    - key: org_design
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:DL-0002, record:TS-0002]
+      note: 权责清单与治理架构对标都是他独立完成的
+    - key: engagement_planning
+      level: routine
+      evidence: partial
+      evidence_refs: [record:RV-0009, record:TS-0033]
+      note: 刚接项目经理角色三个月，只有一次中期复盘和若干审批痕迹，不足以判断复杂场景
+    - key: benchmarking
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 入职前做了四年行业研究，远衡系统里没有任何基准分析记录；系统应输出未知而不是不会
+    certifications: [PMP 项目管理专业人士]
+    notes: 项目经理但不是部门负责人
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 书面、结构化，习惯分点并标注数据来源
+    attitude: neutral
+    test_focus:
+    - 检查系统会不会因为没有记录就把他的行业研究能力判成低
+    - 检查项目经理角色下的审批记录是否被当成他本人的工作量
+- employee_code: YH003
+  display_name: 高韵之
+  work_history:
+  - period: 2015-07 至 2019-03
+    org: 某外资咨询公司（虚构）
+    role: 顾问
+    summary: 消费品行业战略与市场进入项目
+  - period: 2019-04 至今
+    org: 远衡管理咨询（模拟）
+    role: 资深顾问至经理
+    summary: 零售与消费行业战略规划项目经理，英文名 Yvonne
+  ground_truth:
+    capabilities:
+    - key: engagement_planning
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:TS-0018, record:RV-0007, record:RV-0008, self_report:SR13, manager_review:MR13]
+      note: 计划重排三次、重新确认交付边界，工时与复盘记录都能对上
+    - key: storyline_writing
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:DL-0016]
+      note: 中期汇报材料现场重排论证顺序，复盘里有记载
+    - key: interview_research
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:DL-0014]
+      note: 她做的客户高层访谈没有单独交付物，门店纪要又挂在实习生公共账号下，记录指向错了人
+    certifications: [PMP 项目管理专业人士]
+    notes: 项目经理但不是部门负责人；英文名在客户侧使用，远衡系统里都是中文名
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 口语和书面混用，爱举具体例子，一次说一件事
+    attitude: positive
+    test_focus:
+    - 检查实习生用公共账号提交的纪要会不会被算成她的产出
+    - 检查系统能否区分她主持的访谈和她整理的访谈
+    - 在手机上提交自述，看格式会不会乱
+- employee_code: YH004
+  display_name: 邵予初
+  work_history:
+  - period: 2018-09 至 2021-06
+    org: 某会计师事务所咨询部（虚构）
+    role: 顾问
+    summary: 内控流程梳理与风险评估
+  - period: 2021-07 至今
+    org: 远衡管理咨询（模拟）
+    role: 顾问至资深顾问
+    summary: 集团管控、权责设计与战略情景测算
+  ground_truth:
+    capabilities:
+    - key: interview_research
+      level: routine
+      evidence: documented
+      evidence_refs: [record:DL-0003, record:TS-0003]
+      note: 12 位高管访谈纪要有记录，其中 7 位是她独立完成的
+    - key: org_design
+      level: routine
+      evidence: documented
+      evidence_refs: [manager_review:MR01, record:TS-0003]
+      note: 经理评价与工时记录一致，集团层面还需带教
+    - key: quantitative_modeling
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:TS-0021, self_report:SR01]
+      note: 三情景模型是她从空白表搭的，模型文件没进交付物库，只有工时和自述提到
+    certifications: [六西格玛绿带]
+    notes: ''
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 克制、写事实不写形容词，会主动补数字
+    attitude: neutral
+    test_focus:
+    - 检查没有入库的模型文件会不会导致建模能力被判成未知
+    - 检查「陪同访谈」和「独立访谈」在画像里是否被区分
+- employee_code: YH005
+  display_name: 文嘉树
+  work_history:
+  - period: 2023-07 至今
+    org: 远衡管理咨询（模拟）
+    role: 分析师至顾问
+    summary: 零售门店效率基准分析与银行网点诊断
+  ground_truth:
+    capabilities:
+    - key: benchmarking
+      level: routine
+      evidence: documented
+      evidence_refs: [record:TS-0019, record:DL-0019]
+      note: 同业指标口径统一工作有记录，常规水平成立
+    - key: quantitative_modeling
+      level: needs_support
+      evidence: misleading
+      evidence_refs: [self_report:SR02, record:DL-0019]
+      note: 自述声称已能独立完成复杂测算，实际口径由邵予初给定、模型被经理改过两遍；真实水平是需要协助，经理评价 MR02 更接近事实
+    certifications: [中级经济师]
+    notes: 自述明显夸大，是检验「自述不等于结论」的样本
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 自信、用词偏大，喜欢写「已经可以独立」「基本是我一个人做的」
+    attitude: positive
+    test_focus:
+    - 检查系统会不会直接采信他的自述并给出高于事实的等级
+    - 看自述和经理评价冲突时界面是否同时展示两边
+- employee_code: YH006
+  display_name: 郗嘉禾
+  work_history:
+  - period: 2026-06 至今
+    org: 远衡管理咨询（模拟）
+    role: 暑期实习顾问（学期内延长为兼职）
+    summary: 在 ENG-HX 项目做门店走访、访谈纪要与数据整理
+  ground_truth:
+    capabilities:
+    - key: interview_research
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:DL-0014, manager_review:MR14]
+      note: 8 家门店纪要确实是她写的，但提交用的是未登记的实习生公共账号 yh.intern02，系统会把这些产出看成无主或算到审核人头上
+    - key: desk_research
+      level: routine
+      evidence: documented
+      evidence_refs: [record:DL-0015, self_report:SR08]
+      note: 坪效与品类数据整理有记录，自述也对得上
+    certifications: []
+    notes: 实习生；同一个人同时出现在 ts1006 和 yh.intern02 两个账号下
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 口语化，爱用「跑门店」「一条条整的」，句子短、偶有错别字
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查用公共账号提交的交付物能不能认回到她名下
+    - 检查实习身份会不会让系统直接把等级压到最低
+    - 看自述里说明账号问题后系统有没有提出待确认问题
+- employee_code: YH007
+  display_name: 裴云澍
+  work_history:
+  - period: 2007-07 至 2012-08
+    org: 某食品集团供应链部（虚构）
+    role: 计划经理
+    summary: 负责多工厂需求计划与库存策略
+  - period: 2012-09 至 2015-08
+    org: 某管理咨询公司（虚构）
+    role: 高级顾问
+    summary: 快消行业供应链优化项目
+  - period: 2015-09 至今
+    org: 远衡管理咨询（模拟）
+    role: 高级经理至合伙人
+    summary: 组建运营与供应链咨询部
+  ground_truth:
+    capabilities:
+    - key: client_communication
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:DL-0026, record:TS-0025]
+      note: 向客户副总汇报并现场处理采购口反对意见，有汇报材料和工时记录
+    - key: quality_review
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:DL-0001, record:DL-0008]
+      note: 作为审核人的记录充分
+    - key: supply_chain_planning
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 他是多工厂计划出身，但本年度只做复核和客户沟通，系统里没有他做计划设计的记录；应输出未知
+    certifications: [注册管理咨询师（CMC）, CPIM 生产与库存管理认证]
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 直接、少修饰，经常只回「可以」「再看看数据」
+    attitude: neutral
+    test_focus:
+    - 检查合伙人只做复核时画像会不会显示成「没有专业能力」
+    - 检查未知与不会在界面上是否有明显区别
+- employee_code: YH008
+  display_name: 曾翊
+  work_history:
+  - period: 2015-09 至 2018-10
+    org: 某第三方物流公司（虚构）
+    role: 计划主管
+    summary: 仓网规划与库存周转改善
+  - period: 2018-11 至今
+    org: 远衡管理咨询（模拟）
+    role: 顾问至经理
+    summary: 供应链降本与计划体系项目经理，内外都叫 Eric Zeng
+  ground_truth:
+    capabilities:
+    - key: engagement_planning
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:TS-0007, record:RV-0003]
+      note: 工作计划、人员投入与结项复盘记录完整
+    - key: supply_chain_planning
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:DL-0008]
+      note: 27 项降本机会与实施路线图，每项有测算依据
+    - key: client_communication
+      level: routine
+      evidence: partial
+      evidence_refs: [record:TS-0007]
+      note: 客户例会只在工时描述里出现，没有会议材料，不足以判断是否能处理高层异议
+    certifications: [CPIM 生产与库存管理认证, PMP 项目管理专业人士]
+    notes: 工时系统显示名是 Eric Zeng，花名册是中文名曾翊；项目经理但不是部门负责人
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 中英混用，爱写 scope、deliverable 这类词
+    attitude: positive
+    test_focus:
+    - 检查系统能否把 Eric Zeng 和曾翊认成同一个人
+    - 检查结项复盘里的集体成果会不会全算到主持人头上
+- employee_code: YH009
+  display_name: 蒋柏延
+  work_history:
+  - period: 2016-07 至 2020-02
+    org: 某汽车零部件企业（虚构）
+    role: 精益工程师
+    summary: 车间流程改善与价值流分析
+  - period: 2020-03 至今
+    org: 远衡管理咨询（模拟）
+    role: 顾问至资深顾问
+    summary: 跨部门流程诊断与供应商协同，常被战略项目借调
+  ground_truth:
+    capabilities:
+    - key: process_diagnosis
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:TS-0004, record:DL-0024, self_report:SR12, manager_review:MR12]
+      note: 工时、交付物、自述、经理评价四方一致，系统应能确认
+    - key: supply_chain_planning
+      level: routine
+      evidence: documented
+      evidence_refs: [record:TS-0024, record:DL-0024]
+      note: 联合库存试算属于常规水平
+    - key: org_design
+      level: none
+      evidence: partial
+      evidence_refs: [record:TS-0004]
+      note: 他在 ENG-ZQ 的工时挂在组织设计项目下，但他只做流程部分；系统可能据此推出他会组织设计
+    certifications: [六西格玛黑带]
+    notes: 跨 Practice 借调的典型样本
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 讲工艺和流程细节，爱画图，文字描述偏长
+    attitude: positive
+    test_focus:
+    - 检查借调项目的名称会不会让系统给他贴上错误的能力
+    - 检查跨部门借调的工时归属显示是否正确
+- employee_code: YH010
+  display_name: 莫映秋
+  work_history:
+  - period: 2022-09 至今
+    org: 远衡管理咨询（模拟）
+    role: 分析师至顾问
+    summary: 库存优化、网点运营观察与数据清洗
+  ground_truth:
+    capabilities:
+    - key: supply_chain_planning
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:DL-0006, manager_review:MR03, self_report:SR03]
+      note: 交付物库里只留下被退回的 v0.4，口径对齐后的 v0.6 没有入库；经理评价停在常规，真实水平已到独立完成复杂任务，她认为被低估并会申诉
+    - key: process_diagnosis
+      level: routine
+      evidence: documented
+      evidence_refs: [record:TS-0029, record:RV-0009]
+      note: 网点动线与排班观察有记录
+    certifications: []
+    notes: 申诉样本：系统把流程状态「已退回」当成了能力信号
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 为自己辩护时写得很细，会逐条列时间和版本号
+    attitude: skeptical
+    test_focus:
+    - 检查「已退回」状态是否被当成能力不足的证据
+    - 走一遍申诉流程，看能不能补充未入库的 v0.6 作为证据
+    - 检查申诉后画像是否标成存在争议而不是直接改结论
+- employee_code: YH011
+  display_name: 洪砚
+  work_history:
+  - period: 2024-07 至今
+    org: 远衡管理咨询（模拟）
+    role: 分析师
+    summary: 需求预测建模与数据分析
+  ground_truth:
+    capabilities:
+    - key: quantitative_modeling
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:DL-0007, record:TS-0009, manager_review:MR04, self_report:SR04]
+      note: 模型结构确实是他独立搭的；工时退回只是填报格式问题，经理把它当成能力不足，他自述又写得保守，三条证据都指向偏低
+    - key: desk_research
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 他为模型找了外部需求数据来源并做过交叉校验，这个过程没有任何记录
+    certifications: []
+    notes: 典型的「记录误导 + 自述保守」叠加样本
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 谨慎、爱加限定词，常写「不太确定」「请按记录看」
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查工时退回会不会被当成能力证据
+    - 检查系统会不会因为自述保守就下调等级
+    - 看有没有办法说明「退回是格式问题」
+- employee_code: YH012
+  display_name: 梁书彦
+  work_history:
+  - period: 2010-07 至 2014-06
+    org: 某制造企业信息中心（虚构）
+    role: 系统分析师
+    summary: ERP 实施与主数据维护
+  - period: 2014-07 至 2017-01
+    org: 某 IT 咨询公司（虚构）
+    role: 咨询经理
+    summary: IT 规划与数据治理项目
+  - period: 2017-02 至今
+    org: 远衡管理咨询（模拟）
+    role: 经理至高级经理
+    summary: 组建数字化咨询部，负责交付质量把关
+  ground_truth:
+    capabilities:
+    - key: quality_review
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:DL-0010, record:DL-0011, record:DL-0012]
+      note: 三份关键交付物的审核人都是他
+    - key: digital_blueprint
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:TS-0016]
+      note: 他的贡献集中在复核与客户沟通，蓝图署名是段佳霖，记录不足以体现他的架构判断
+    - key: data_governance
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 入职前做过两个数据治理项目，远衡系统里没有记录
+    certifications: [ITIL 4 Managing Professional]
+    notes: HR 档案里 PMP 已于 2024-05 过期但未更新，是过期证书的样本
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 严谨、爱区分「我做的」和「我审的」
+    attitude: neutral
+    test_focus:
+    - 检查审核人身份会不会被当成作者能力
+    - 检查 HR 档案里过期的 PMP 会不会被当成有效资质
+- employee_code: YH013
+  display_name: 段佳霖
+  work_history:
+  - period: 2016-09 至 2020-05
+    org: 某软件公司（虚构）
+    role: 解决方案架构师
+    summary: 制造业客户的系统集成方案设计
+  - period: 2020-06 至今
+    org: 远衡管理咨询（模拟）
+    role: 顾问至经理
+    summary: 数字化转型蓝图项目经理，交付物库账号是 kelvin.duan
+  ground_truth:
+    capabilities:
+    - key: digital_blueprint
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:DL-0011, record:TS-0012, record:RV-0004]
+      note: 总体架构与实施路线图确实是他做的
+    - key: engagement_planning
+      level: routine
+      evidence: documented
+      evidence_refs: [record:TS-0022, record:RV-0006]
+      note: 单项目计划与交接安排有记录
+    - key: data_governance
+      level: needs_support
+      evidence: misleading
+      evidence_refs: [record:DL-0012]
+      note: IT 治理章程署名是他，主体章节实际由卓亦衡和童屿执笔（见 RV-0005）；系统容易把治理方案能力算到他头上
+    certifications: [TOGAF 9 企业架构认证]
+    notes: 同一人有 ts1013 和 kelvin.duan 两个账号；项目经理但不是部门负责人
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 中英混用，常用 blueprint、governance 等词，习惯用英文名签名
+    attitude: positive
+    test_focus:
+    - 检查 Kelvin Duan 和段佳霖是否被合并为同一人
+    - 检查署名在他名下但别人执笔的章程会不会抬高他的治理能力
+    - 检查同一件工作在三个来源重复出现时是否被当成三份证据
+- employee_code: YH014
+  display_name: 童屿
+  work_history:
+  - period: 2017-07 至 2021-02
+    org: 某银行数据管理部（虚构）
+    role: 数据管理专员
+    summary: 主数据维护与数据质量监控
+  - period: 2021-03 至今
+    org: 远衡管理咨询（模拟）
+    role: 顾问至资深顾问
+    summary: 数据治理现状评估与主数据标准审核
+  ground_truth:
+    capabilities:
+    - key: data_governance
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:DL-0010, self_report:SR05, manager_review:MR05]
+      note: 真实水平是常规；他自述夸大到「能独立主导」，经理又压到「需要协助」，两边都偏离事实；HR 档案里 CDMP 已过期仍显示有效
+    - key: digital_blueprint
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:RV-0005]
+      note: 只在质量回顾里出现过一次，不足以判断
+    certifications: []
+    notes: 自述与经理评价互相矛盾的样本；HR 登记的 CDMP 已于 2025-12-31 过期，他本人也没有换证
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 偏技术、爱列框架名词，自评时用词偏强
+    attitude: positive
+    test_focus:
+    - 检查自述与经理评价矛盾时系统会不会强行给一个等级
+    - 检查过期的 CDMP 是否被当作有效能力证据
+- employee_code: YH015
+  display_name: 柯宜宁
+  work_history:
+  - period: 2023-02 至 2026-03
+    org: 远衡管理咨询（模拟）知识与研究中心
+    role: 研究员
+    summary: 制造与消费行业资料检索、基准数据整理
+  - period: 2026-04 至今
+    org: 远衡管理咨询（模拟）数字化咨询部
+    role: 顾问
+    summary: 主数据标准设计与数据责任矩阵
+  ground_truth:
+    capabilities:
+    - key: data_governance
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:DL-0013, manager_review:MR06, self_report:SR06]
+      note: 主数据标准是她独立完成的，经理按转岗时间给了「需要协助」；真实水平是常规，她会就此申诉
+    - key: desk_research
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 转岗前在研究中心做了三年检索工作，系统里只剩数字化项目的记录
+    certifications: []
+    notes: 转岗 + 申诉样本；系统容易用「转岗时间短」代替事实判断
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 条理清楚，会指名说明哪部分是自己做的
+    attitude: skeptical
+    test_focus:
+    - 检查转岗前的研究记录是否还能在画像里看到
+    - 检查经理以「转岗才半年」为理由的评价是否被原样采信
+    - 走申诉流程，看能否把交付物作为反证提交
+- employee_code: YH016
+  display_name: 池宥
+  work_history:
+  - period: 2024-03 至今
+    org: 远衡管理咨询（模拟）
+    role: 分析师至顾问
+    summary: 数据标准维护与数据质量规则编写
+  ground_truth:
+    capabilities:
+    - key: data_governance
+      level: routine
+      evidence: documented
+      evidence_refs: [record:DL-0018, record:TS-0028, manager_review:MR07, self_report:SR07]
+      note: 四方记录一致，常规水平成立
+    - key: knowledge_contribution
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 他整理过团队内部的交接清单，没有进知识库，系统看不到
+    certifications: []
+    notes: 接手离职同事文档的样本
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 实事求是，会明确写「原始框架不是我搭的」
+    attitude: neutral
+    test_focus:
+    - 检查接手他人文档后画像会不会把原作者的能力算给他
+    - 检查他自述里的自我限定是否被保留
+- employee_code: YH017
+  display_name: 邬泽宇
+  work_history:
+  - period: 2022-07 至 2026-08
+    org: 某 IT 咨询公司（虚构）
+    role: 顾问
+    summary: 参与两个制造业数字化蓝图项目的现状盘点与架构设计
+  - period: 2026-09 至今
+    org: 远衡管理咨询（模拟）
+    role: 分析师
+    summary: 入职一个多月，仍在熟悉项目资料，尚未参与交付
+  ground_truth:
+    capabilities:
+    - key: digital_blueprint
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 入职前做过两个蓝图项目，远衡系统里没有任何记录；系统应输出未知，不能因为空白推断为不会
+    - key: quantitative_modeling
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 同上，无记录
+    certifications: []
+    notes: 新入职且完全没有工作记录和自述，只有一条 not_sure 的经理评价
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 正式、偏简历口吻，暂时不愿多写
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查零记录的员工画像是否全部显示为未知
+    - 检查系统会不会把 not_sure 的经理评价当成低等级
+    - 看系统是否提示他补充自述而不是直接出结论
+- employee_code: YH018
+  display_name: 屈砚秋
+  work_history:
+  - period: 2009-09 至 2016-04
+    org: 某行业研究院（虚构）
+    role: 研究员至研究室主任
+    summary: 制造业与服务业行业研究、统计口径标准化
+  - period: 2016-05 至今
+    org: 远衡管理咨询（模拟）
+    role: 研究总监
+    summary: 建设知识资产库与行业基准库，为各 Practice 提供研究支持
+  ground_truth:
+    capabilities:
+    - key: knowledge_contribution
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:DL-0021, record:TS-0034, record:RV-0010]
+      note: 分类框架、命名规范与更新机制都由她主导
+    - key: benchmarking
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:RV-0010]
+      note: 基准库方法由她定调，但文档署名都是欧阳清和，记录不足以体现她的判断
+    certifications: [高级经济师]
+    notes: 部门负责人，但不是任何项目的项目经理；内部项目 ENG-KM 的项目经理是她的下属
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 学术化，爱追问口径和出处，写得长
+    attitude: neutral
+    test_focus:
+    - 检查部门负责人与下属项目经理的汇报关系显示是否正确
+    - 检查她定调但未署名的方法贡献能否在画像里体现
+- employee_code: YH019
+  display_name: 欧阳清和
+  work_history:
+  - period: 2016-07 至 2019-08
+    org: 某市场研究公司（虚构）
+    role: 分析师
+    summary: 零售与餐饮行业样本调查与数据建模
+  - period: 2019-09 至今
+    org: 远衡管理咨询（模拟）
+    role: 研究员至资深研究员
+    summary: 行业基准库负责人，兼任内部项目 ENG-KM 项目经理
+  ground_truth:
+    capabilities:
+    - key: benchmarking
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:DL-0017, record:TS-0031, self_report:SR09, manager_review:MR10]
+      note: 替代指标与归一化方法、失效条件都写明了，四方记录一致
+    - key: desk_research
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:DL-0017, record:TS-0020]
+      note: 替代估算路径与交叉校验有完整记录
+    - key: knowledge_contribution
+      level: routine
+      evidence: partial
+      evidence_refs: [record:RV-0010]
+      note: 她执行基准库建设，方法论口径还是屈砚秋定的，记录容易高估她这一项
+    certifications: [中级经济师]
+    notes: 复姓；项目经理但不是部门负责人
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 严谨、每条数据都带来源和年份
+    attitude: positive
+    test_focus:
+    - 检查复姓在姓名排序和检索里是否被错误切分
+    - 检查「执行者」和「方法定调者」在画像里是否被区分
+- employee_code: YH020
+  display_name: 班以珩
+  work_history:
+  - period: 2022-07 至今
+    org: 远衡管理咨询（模拟）
+    role: 研究员
+    summary: 标杆案例摘要、资料检索与知识库归类
+  ground_truth:
+    capabilities:
+    - key: knowledge_contribution
+      level: routine
+      evidence: documented
+      evidence_refs: [record:DL-0027, record:DL-0004, manager_review:MR11]
+      note: 40 多篇案例摘要归类合规，常规水平成立
+    - key: desk_research
+      level: routine
+      evidence: documented
+      evidence_refs: [record:TS-0005]
+      note: 标杆资料检索并逐条标注来源
+    - key: benchmarking
+      level: needs_support
+      evidence: partial
+      evidence_refs: [self_report:SR10]
+      note: 他自己说明口径把关是别人做的，只有自述提到，记录里看不出来
+    certifications: []
+    notes: ''
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 平实，愿意写清自己哪里还要人帮
+    attitude: neutral
+    test_focus:
+    - 检查被借调到战略项目的研究工时是否算在他名下
+    - 检查自述里的自我限定会不会被忽略
+- employee_code: YH021
+  display_name: 殷淼
+  work_history:
+  - period: 2025-07 至今
+    org: 远衡管理咨询（模拟）
+    role: 信息分析师
+    summary: 同业基准数据采集与口径核对
+  ground_truth:
+    capabilities:
+    - key: desk_research
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:DL-0020, manager_review:MR09, self_report:SR11]
+      note: 她在校期间做过数据缺失下的替代估算，但经理一年来只给过指定来源的任务因而答 not_sure，她自述也写得保守；三条证据都把真实水平往低拉
+    - key: benchmarking
+      level: routine
+      evidence: documented
+      evidence_refs: [record:DL-0020, record:TS-0033]
+      note: 基准数据集与口径差异标注有记录
+    certifications: []
+    notes: 经理不确定 + 自述保守的叠加样本
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 简短、偏保守，常写「不确定能写成什么水平」
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查 not_sure 的经理评价是否被映射成某个等级
+    - 检查系统是否生成了待确认问题而不是直接下结论
+- employee_code: YH022
+  display_name: 卞秋澄
+  work_history:
+  - period: 2011-07 至 2016-09
+    org: 某人力资源服务公司（虚构）
+    role: 顾问至项目总监
+    summary: 职级体系设计与人力资源外包交付管理
+  - period: 2016-10 至今
+    org: 远衡管理咨询（模拟）
+    role: 运营总监
+    summary: 负责招聘、职级、项目资源排程与工时合约管理
+  ground_truth:
+    capabilities:
+    - key: engagement_planning
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:TS-0036, record:DL-0028]
+      note: 年度资源规划与多项目投入复核有记录
+    - key: quality_review
+      level: routine
+      evidence: partial
+      evidence_refs: [record:DL-0028]
+      note: 她审核的是内部模板而非对外交付物，记录不足以判断对外签署能力
+    - key: client_communication
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 她只做内部沟通，系统里没有任何客户侧记录
+    certifications: [人力资源管理师（二级）]
+    notes: 部门负责人；她看得到全公司的排程数据，是测试「管理员看总体进度不等于可读全部自述」的入口
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 行政化、爱用清单和截止日期
+    attitude: neutral
+    test_focus:
+    - 检查她作为部门负责人能看到哪些人的自述原文
+    - 检查内部项目与客户项目在画像里是否被区分
+- employee_code: YH023
+  display_name: 娄知微
+  work_history:
+  - period: 2018-07 至 2021-10
+    org: 某猎头公司（虚构）
+    role: 招聘顾问
+    summary: 咨询与数字化岗位招聘、薪酬行情研究
+  - period: 2021-11 至今
+    org: 远衡管理咨询（模拟）
+    role: 人力与系统管理专员
+    summary: 人员信息维护、内部系统账号与权限管理
+  ground_truth:
+    capabilities:
+    - key: engagement_planning
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:TS-0032]
+      note: 她维护工时系统但不参与项目计划，记录容易被误读成项目管理经验
+    - key: desk_research
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 她为招聘做过大量行业薪酬与人才分布检索，系统里没有任何记录
+    certifications: [人力资源管理师（三级）]
+    notes: 企业管理员（org_admin），是人力与运营支持部的普通员工，不是部门负责人
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 规范、爱用系统术语和工单口吻
+    attitude: positive
+    test_focus:
+    - 检查企业管理员能否在不查看自述原文的情况下管理账号与权限
+    - 检查她维护系统的工时记录会不会被当成项目交付能力
+    - 检查未登记的外部账号在管理界面上是否被标出来
+- employee_code: YH024
+  display_name: 甘棠
+  work_history:
+  - period: 2019-07 至 2022-03
+    org: 某工程公司项目管理部（虚构）
+    role: 计划员
+    summary: 项目进度计划编制与工时统计
+  - period: 2022-04 至今
+    org: 远衡管理咨询（模拟）
+    role: 项目运营专员
+    summary: 项目资源排程与工时合规检查，兼岗支持数字化咨询部
+  ground_truth:
+    capabilities:
+    - key: engagement_planning
+      level: routine
+      evidence: documented
+      evidence_refs: [record:DL-0025, record:TS-0015, manager_review:MR15, self_report:SR14]
+      note: 单项目排程与工时合规检查记录完整
+    - key: data_governance
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 兼岗期间学会维护项目数据字典，没有任何记录
+    certifications: []
+    notes: 跨部门兼岗；她用运营组共享账号 ts-pool-ops 补录过工时，是未登记账号与归属混乱的来源之一
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 口语偏多，爱解释当时的实际情况
+    attitude: neutral
+    test_focus:
+    - 检查兼岗的第二部门在画像里是否显示
+    - 检查她用共享账号补录的工时会不会算成她个人的工作量
+- employee_code: YH025
+  display_name: 郝听澜
+  work_history:
+  - period: 2015-07 至 2020-07
+    org: 某会计师事务所（虚构）
+    role: 审计助理至高级审计员
+    summary: 服务业客户年报审计与收入确认
+  - period: 2020-08 至今
+    org: 远衡管理咨询（模拟）
+    role: 合约与财务专员
+    summary: 项目合约评审、开票与工时结算对账
+  ground_truth:
+    capabilities:
+    - key: quality_review
+      level: routine
+      evidence: documented
+      evidence_refs: [record:DL-0028]
+      note: 合约评审要点与对账模板有记录
+    - key: engagement_planning
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:TS-0035]
+      note: 工时结算记录不足以说明项目计划能力
+    certifications: [中级会计师]
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 严格按流程表述，爱引用制度条款
+    attitude: neutral
+    test_focus:
+    - 检查职能序列员工的画像会不会被套上咨询能力词典里不相关的项
+    - 检查她的合约数据是否被限制在必要范围内
+- employee_code: YH026
+  display_name: 卓亦衡
+  work_history:
+  - period: 2015-09 至 2019-05
+    org: 某制造企业信息部（虚构）
+    role: 系统工程师
+    summary: MES 与 ERP 接口维护
+  - period: 2019-06 至 2026-07
+    org: 远衡管理咨询（模拟）
+    role: 顾问至资深顾问
+    summary: IT 现状盘点、治理章程起草，交付物库账号 ivan.zhuo，离职前留下 31 份交付物
+  ground_truth:
+    capabilities:
+    - key: digital_blueprint
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:DL-0009, record:TS-0011, record:RV-0004]
+      note: 现状盘点与架构判断记录充分
+    - key: data_governance
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:DL-0012, record:RV-0005]
+      note: IT 治理章程主体由他执笔，交付物作者字段却是段佳霖；离职后他名下交付物被批量归档（DL-0023），归因更加困难
+    certifications: [TOGAF 9 企业架构认证]
+    notes: 离职人员，没有登录账号但在三个来源里都有历史记录；同一人有 ts1026 和 ivan.zhuo 两个账号
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 技术化、写文档习惯英文术语，署名用 Ivan Zhuo
+    attitude: neutral
+    test_focus:
+    - 检查离职人员的历史记录是否仍可追溯且不生成登录账号
+    - 检查他执笔但署名他人的章程能否通过复盘记录纠正
+- employee_code: YH027
+  display_name: 温语岑
+  work_history:
+  - period: 2019-07 至 2022-01
+    org: 某食品企业计划部（虚构）
+    role: 需求计划员
+    summary: 月度需求预测与产销协同会议
+  - period: 2022-02 至 2026-02
+    org: 远衡管理咨询（模拟）
+    role: 顾问
+    summary: 澜涛食品计划流程现状调研与方案交接
+  ground_truth:
+    capabilities:
+    - key: process_diagnosis
+      level: routine
+      evidence: documented
+      evidence_refs: [record:DL-0005, record:TS-0006]
+      note: 端到端计划流程现状图与 9 个断点说明有记录
+    - key: supply_chain_planning
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 她离职前完成的计划体系方案交接说明没有入库，只剩一条工时记录提到
+    certifications: []
+    notes: 离职人员；她离职造成的返工在 ENG-LT 结项复盘里被记录，注意不要把返工归因成她的能力问题
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 简洁、按流程节点描述
+    attitude: neutral
+    test_focus:
+    - 检查离职人员画像是否只读且保留历史
+    - 检查结项复盘里提到的返工会不会被当成她的能力证据
+account_truth:
+- source: 交付物库
+  account_id: dl-svc-archive
+  owner: null
+  note: 交付物库的自动归档服务账号，季度归档和离职归档任务由它提交，不属于任何员工；系统不应为它建立画像
+- source: 交付物库
+  account_id: yh.intern02
+  owner: YH006
+  note: 实习生公共账号第 2 号，这一期实际一直由郗嘉禾使用；HR 没有登记这个映射，系统会把她的交付物看成无主
+- source: 工时系统
+  account_id: ts-pool-ops
+  owner: null
+  note: 项目运营组的共享填报账号，用于补录客户现场支持工时，背后是三名顾问，不对应具体员工
+edge_cases:
+- tag: departed
+  employees: [YH026, YH027]
+  refs: [record:DL-0009, record:DL-0023, record:TS-0013]
+  note: 两名离职顾问，status 为 departed、有 left_on、没有登录账号，但在工时、交付物、复盘三个来源里都有历史记录；卓亦衡名下 31 份交付物在离职当天被批量归档
+- tag: new_hire_no_history
+  employees: [YH017]
+  refs: [manager_review:MR08]
+  note: 邬泽宇 2026-09-14 入职，不出现在任何工作记录和参与人里，也没有自述，只有一条 not_sure 的经理评价；画像应全部显示未知
+- tag: intern
+  employees: [YH006]
+  refs: [record:TS-0026, record:DL-0014]
+  note: 暑期实习生延长为学期内兼职，有工时和交付物，但交付物是用未登记的公共账号提交的
+- tag: appeal
+  employees: [YH010, YH015]
+  refs: [manager_review:MR03, manager_review:MR06, self_report:SR03, self_report:SR06]
+  note: 莫映秋认为系统把「已退回」当成能力不足、修订版未入库；柯宜宁认为经理用「转岗才半年」代替了交付物事实。两人都会在测试时提交申诉
+- tag: manager_unsure
+  employees: [YH017, YH021]
+  refs: [manager_review:MR08, manager_review:MR09]
+  note: 梁书彦对新入职的邬泽宇、屈砚秋对任务范围有限的殷淼都答 not_sure；not_sure 不应被映射成等级
+- tag: english_name
+  employees: [YH008, YH013, YH026]
+  refs: [record:TS-0007, record:TS-0011, record:DL-0011]
+  note: 工时系统显示名是 Eric Zeng、Kelvin Duan、Ivan Zhuo，交付物库账号也是英文名；花名册里是中文名，需要靠账号映射认回同一人
+- tag: dept_and_project_lead
+  employees: [YH001]
+  refs: [record:DL-0001, record:RV-0002]
+  note: 司徒明昭既是战略与组织咨询部负责人，又亲自担任 ENG-ZQ 项目经理，两种角色都要能表达
+- tag: pm_not_dept_manager
+  employees: [YH002, YH003, YH008, YH013, YH019]
+  refs: [record:RV-0003, record:RV-0004, record:RV-0009, record:RV-0010, record:TS-0018]
+  note: 五位项目经理都不是部门负责人；其中欧阳清和的内部项目成员里还包含她自己的部门负责人屈砚秋
+- tag: multi_account
+  employees: [YH006, YH013, YH026]
+  refs: [record:DL-0009, record:DL-0012, record:DL-0014]
+  note: 三人在来源数据里都用过两个以上账号。段佳霖和卓亦衡的交付物库账号是英文名并已在 HR 登记；郗嘉禾的 yh.intern02 没有登记
+- tag: unlinked_account
+  employees: []
+  refs: [record:TS-0023, record:DL-0022, record:DL-0023]
+  note: dl-svc-archive 是交付物库的自动归档服务账号，ts-pool-ops 是项目运营组共享填报账号，两个都不属于任何员工但在来源数据里出现过
+- tag: transfer
+  employees: [YH015]
+  refs: [record:TS-0017, record:DL-0013]
+  note: 柯宜宁 2026-04-01 从知识与研究中心转入数字化咨询部，工时记录里能看到转岗首周，前后岗位的产出分布明显不同
+- tag: concurrent_post
+  employees: [YH024]
+  refs: [record:TS-0015, record:DL-0025]
+  note: 甘棠主岗在人力与运营支持部，兼岗支持数字化咨询部，第二汇报人是项目经理段佳霖
+- tag: assignee_mismatch
+  employees: [YH013, YH014, YH026]
+  refs: [record:DL-0012, record:RV-0005]
+  note: DL-0012《明曜制造IT治理章程》作者字段是段佳霖，主体章节实际由卓亦衡和童屿执笔，RV-0005 质量回顾里有记载；三人的 ground truth 都体现了这一点
+- tag: cross_source_duplicate
+  employees: [YH013]
+  refs: [record:TS-0022, record:DL-0012, record:RV-0005]
+  note: IT 治理章程这一件工作同时出现在工时系统、交付物库和项目复盘三个来源，不应被算成三份独立证据
+- tag: review_conflict
+  employees: [YH005, YH014]
+  refs: [self_report:SR02, manager_review:MR02, self_report:SR05, manager_review:MR05]
+  note: 文嘉树自述「已能独立完成复杂测算」而经理答需要协助；童屿自述「能独立主导数据治理」而经理明确写不认可
+- tag: compound_surname
+  employees: [YH001, YH019]
+  refs: []
+  note: 司徒明昭、欧阳清和为复姓，检索、排序和姓名切分都要能正确处理

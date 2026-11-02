@@ -1,0 +1,515 @@
+- employee_code: LC001
+  grade: 资深经理
+  hired_on: '2012-03-05'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 企业人力资源管理师（二级）
+    issued_on: '2015-11-20'
+    valid_until: null
+    note: ''
+- employee_code: LC002
+  grade: 高级经理
+  hired_on: '2017-04-10'
+  reports_to: LC001
+  secondary_reports_to: []
+  system_role: org_admin
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: LC003
+  grade: 经理
+  hired_on: '2019-08-19'
+  reports_to: LC001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.sys.haojun
+  certifications: []
+- employee_code: LC004
+  grade: 经理
+  hired_on: '2021-02-22'
+  reports_to: LC001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 培训平台
+    account_id: tr.admin.wen
+  certifications: []
+- employee_code: LC005
+  grade: 资深经理
+  hired_on: '2011-07-01'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.fuchy
+  certifications:
+  - name: 银行业专业人员职业资格（中级 公司信贷）
+    issued_on: '2016-11-26'
+    valid_until: null
+    note: ''
+- employee_code: LC006
+  grade: 高级经理
+  hired_on: '2014-09-01'
+  reports_to: LC005
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.cuilh
+  certifications:
+  - name: 银行业专业人员职业资格（中级 公司信贷）
+    issued_on: '2018-05-19'
+    valid_until: null
+    note: ''
+- employee_code: LC007
+  grade: 经理
+  hired_on: '2020-06-15'
+  reports_to: LC005
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.mengf
+  certifications:
+  - name: 银行业专业人员职业资格（初级 法律法规与综合能力）
+    issued_on: '2021-06-05'
+    valid_until: null
+    note: ''
+- employee_code: LC008
+  grade: 经理
+  hired_on: '2018-11-05'
+  reports_to: LC005
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.yinch
+  certifications: []
+- employee_code: LC009
+  grade: 经理
+  hired_on: '2026-09-14'
+  reports_to: LC005
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.jihn
+  certifications:
+  - name: 银行业专业人员职业资格（中级 风险管理）
+    issued_on: '2024-11-24'
+    valid_until: null
+    note: 入职材料已登记，信贷系统账号已开立但尚未产生业务记录
+- employee_code: LC010
+  grade: 资深经理
+  hired_on: '2013-05-20'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.weic
+  certifications:
+  - name: 银行业专业人员职业资格（中级 个人理财）
+    issued_on: '2015-05-24'
+    valid_until: null
+    note: ''
+- employee_code: LC011
+  grade: 高级经理
+  hired_on: '2016-10-10'
+  reports_to: LC010
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.ruanzw
+  certifications: []
+- employee_code: LC012
+  grade: 经理
+  hired_on: '2019-03-11'
+  reports_to: LC010
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.baiyz
+  certifications:
+  - name: 银行业专业人员职业资格（初级 个人贷款）
+    issued_on: '2020-06-07'
+    valid_until: null
+    note: ''
+- employee_code: LC013
+  grade: 经理
+  hired_on: '2021-07-01'
+  reports_to: LC010
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 基金从业资格证书
+    issued_on: '2021-09-18'
+    valid_until: null
+    note: 持证是开展代销业务的前提，不代表适当性管理实操水平
+  - name: 银行业专业人员职业资格（初级 个人理财）
+    issued_on: '2022-06-12'
+    valid_until: null
+    note: ''
+- employee_code: LC014
+  grade: 经理
+  hired_on: '2017-08-01'
+  reports_to: LC010
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: departed
+  left_on: '2026-06-30'
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.heqc
+  certifications:
+  - name: 银行业专业人员职业资格（初级 个人贷款）
+    issued_on: '2018-06-10'
+    valid_until: null
+    note: ''
+- employee_code: LC015
+  grade: 资深经理
+  hired_on: '2010-04-12'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.shaoyq
+  certifications:
+  - name: 银行业专业人员职业资格（中级 风险管理）
+    issued_on: '2013-11-24'
+    valid_until: null
+    note: ''
+- employee_code: LC016
+  grade: 高级经理
+  hired_on: '2015-09-01'
+  reports_to: LC015
+  secondary_reports_to: [LC024]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: [云溪支行]
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.ouyl
+  - source: 柜面运营
+    account_id: ops.ouyl
+  certifications:
+  - name: 银行业专业人员职业资格（中级 法律法规与综合能力）
+    issued_on: '2017-11-25'
+    valid_until: null
+    note: ''
+- employee_code: LC017
+  grade: 经理
+  hired_on: '2018-03-19'
+  reports_to: LC015
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.miaozy
+  certifications:
+  - name: 银行业专业人员职业资格（中级 公司信贷）
+    issued_on: '2020-11-21'
+    valid_until: null
+    note: ''
+- employee_code: LC018
+  grade: 经理
+  hired_on: '2020-09-07'
+  reports_to: LC015
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.peily
+  certifications: []
+- employee_code: LC019
+  grade: 经理
+  hired_on: '2022-04-06'
+  reports_to: LC015
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.tanzhi
+  certifications:
+  - name: 反洗钱岗位培训合格证明
+    issued_on: '2025-11-18'
+    valid_until: '2026-11-17'
+    note: 年度必修培训合格记录，需每年复训
+- employee_code: LC020
+  grade: 资深经理
+  hired_on: '2012-11-01'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 柜面运营
+    account_id: ops.yuh
+  certifications: []
+- employee_code: LC021
+  grade: 经理
+  hired_on: '2017-06-05'
+  reports_to: LC020
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 柜面运营
+    account_id: ops.xiz
+  certifications: []
+- employee_code: LC022
+  grade: 高级经理
+  hired_on: '2014-02-17'
+  reports_to: LC020
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 柜面运营
+    account_id: auth.suim
+  certifications:
+  - name: 银行业专业人员职业资格（中级 法律法规与综合能力）
+    issued_on: '2019-11-23'
+    valid_until: null
+    note: ''
+- employee_code: LC023
+  grade: 经理
+  hired_on: '2019-10-21'
+  reports_to: LC020
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 柜面运营
+    account_id: ops.fangn
+  certifications: []
+- employee_code: LC024
+  grade: 资深经理
+  hired_on: '2011-09-01'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 柜面运营
+    account_id: auth.niexy
+  - source: 信贷系统
+    account_id: cr.niexy
+  certifications:
+  - name: 银行业专业人员职业资格（中级 公司信贷）
+    issued_on: '2014-11-22'
+    valid_until: null
+    note: ''
+- employee_code: LC025
+  grade: 经理
+  hired_on: '2018-07-02'
+  reports_to: LC024
+  secondary_reports_to: [LC005]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.qiaot
+  certifications: []
+- employee_code: LC026
+  grade: 经理
+  hired_on: '2016-04-11'
+  reports_to: LC024
+  secondary_reports_to: [LC010]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers:
+  - effective_on: '2026-01-05'
+    from_department: 运营管理部
+    from_title: 主办柜员
+    to_department: 云溪支行
+  external_accounts:
+  - source: 信贷系统
+    account_id: cr.liuy
+  - source: 柜面运营
+    account_id: T0207
+  certifications:
+  - name: 银行业专业人员职业资格（初级 个人贷款）
+    issued_on: '2026-06-13'
+    valid_until: null
+    note: 转岗后考取
+- employee_code: LC027
+  grade: 柜员A级
+  hired_on: '2015-12-01'
+  reports_to: LC024
+  secondary_reports_to: [LC020]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 柜面运营
+    account_id: T0231
+  certifications:
+  - name: 银行业专业人员职业资格（初级 法律法规与综合能力）
+    issued_on: '2017-06-11'
+    valid_until: null
+    note: ''
+- employee_code: LC028
+  grade: 柜员B级
+  hired_on: '2022-08-15'
+  reports_to: LC024
+  secondary_reports_to: [LC020]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 柜面运营
+    account_id: T0245
+  certifications: []
+- employee_code: LC029
+  grade: 柜员C级
+  hired_on: '2021-03-01'
+  reports_to: LC024
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: departed
+  left_on: '2026-04-15'
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 柜面运营
+    account_id: T0188
+  certifications:
+  - name: 银行业专业人员职业资格（初级 个人理财）
+    issued_on: '2022-06-12'
+    valid_until: '2025-12-31'
+    note: 已过有效期，未完成继续教育换证

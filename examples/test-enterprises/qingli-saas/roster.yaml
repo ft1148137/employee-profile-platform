@@ -1,0 +1,434 @@
+- employee_code: QL001
+  grade: P8
+  hired_on: '2019-03-04'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: Git
+    account_id: jiang.boran
+  certifications:
+  - name: 信息系统项目管理师（软考高级）
+    issued_on: '2020-12-18'
+    valid_until: null
+    note: ''
+- employee_code: QL002
+  grade: P6
+  hired_on: '2023-05-08'
+  reports_to: QL001
+  secondary_reports_to:
+  - QL011
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: Git
+    account_id: wang.hao
+  certifications: []
+- employee_code: QL003
+  grade: P7
+  hired_on: '2021-02-22'
+  reports_to: QL001
+  secondary_reports_to:
+  - QL010
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: Git
+    account_id: shen.yan
+  certifications:
+  - name: PostgreSQL 认证专家（厂商认证，虚构机构）
+    issued_on: '2023-04-20'
+    valid_until: '2027-04-19'
+    note: ''
+- employee_code: QL004
+  grade: P6
+  hired_on: '2022-08-15'
+  reports_to: QL001
+  secondary_reports_to:
+  - QL010
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: Git
+    account_id: chloe.z
+  certifications: []
+- employee_code: QL005
+  grade: P7
+  hired_on: '2020-11-02'
+  reports_to: QL001
+  secondary_reports_to:
+  - QL011
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: Git
+    account_id: wen.yiran
+  certifications:
+  - name: Kubernetes 管理员认证（CKA）
+    issued_on: '2022-09-01'
+    valid_until: '2025-08-31'
+    note: 已过有效期，未复认证；HR 档案未更新
+- employee_code: QL006
+  grade: P5
+  hired_on: '2024-07-01'
+  reports_to: QL001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers:
+  - effective_on: '2026-03-01'
+    from_department: 质量与运维部
+    from_title: 测试工程师
+    to_department: 平台研发部
+  external_accounts:
+  - source: Git
+    account_id: fu.jing
+  certifications: []
+- employee_code: QL007
+  grade: P5
+  hired_on: '2026-09-14'
+  reports_to: QL001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: QL008
+  grade: P7
+  hired_on: '2020-04-13'
+  reports_to: QL001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: departed
+  left_on: '2026-06-30'
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: Git
+    account_id: tao.yanqiu
+  certifications: []
+- employee_code: QL009
+  grade: P8
+  hired_on: '2019-09-02'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: QL010
+  grade: P7
+  hired_on: '2021-06-07'
+  reports_to: QL009
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: NPDP 产品经理国际资格认证
+    issued_on: '2022-11-26'
+    valid_until: '2028-11-25'
+    note: ''
+- employee_code: QL011
+  grade: P6
+  hired_on: '2022-03-14'
+  reports_to: QL009
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: QL012
+  grade: P6
+  hired_on: '2023-09-04'
+  reports_to: QL009
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: Git
+    account_id: zhuo.yifan
+  certifications: []
+- employee_code: QL013
+  grade: P8
+  hired_on: '2020-02-10'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: ISTQB 高级测试经理
+    issued_on: '2021-07-10'
+    valid_until: null
+    note: ''
+- employee_code: QL014
+  grade: P6
+  hired_on: '2023-11-06'
+  reports_to: QL013
+  secondary_reports_to:
+  - QL010
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: Git
+    account_id: wang.hao.qa
+  certifications:
+  - name: ISTQB 基础级认证
+    issued_on: '2024-03-16'
+    valid_until: null
+    note: ''
+- employee_code: QL015
+  grade: P7
+  hired_on: '2021-08-16'
+  reports_to: QL013
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: Git
+    account_id: fan.qingrang
+  certifications: []
+- employee_code: QL016
+  grade: 外包 T3
+  hired_on: '2025-09-01'
+  reports_to: QL013
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: contractor
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: QL017
+  grade: P6
+  hired_on: '2022-05-09'
+  reports_to: QL013
+  secondary_reports_to:
+  - QL011
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: Git
+    account_id: jian.ning
+  certifications: []
+- employee_code: QL018
+  grade: P8
+  hired_on: '2020-06-15'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: QL019
+  grade: P6
+  hired_on: '2022-09-19'
+  reports_to: QL018
+  secondary_reports_to:
+  - QL010
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: Git
+    account_id: min.zhitong
+  certifications: []
+- employee_code: QL020
+  grade: P5
+  hired_on: '2024-03-11'
+  reports_to: QL018
+  secondary_reports_to:
+  - QL011
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: QL021
+  grade: P6
+  hired_on: '2021-11-08'
+  reports_to: QL018
+  secondary_reports_to:
+  - QL009
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments:
+  - 产品与设计部
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: QL022
+  grade: P5
+  hired_on: '2024-10-21'
+  reports_to: QL018
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: QL023
+  grade: P6
+  hired_on: '2021-03-15'
+  reports_to: QL018
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: departed
+  left_on: '2026-04-30'
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: QL024
+  grade: P8
+  hired_on: '2019-05-20'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: QL025
+  grade: P6
+  hired_on: '2021-10-11'
+  reports_to: QL024
+  secondary_reports_to: []
+  system_role: org_admin
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: Git
+    account_id: jiang.you
+  certifications:
+  - name: 信息安全管理体系（ISO/IEC 27001）内审员
+    issued_on: '2023-05-22'
+    valid_until: '2026-05-21'
+    note: 已过有效期，复审课程排在 2026-12
+- employee_code: QL026
+  grade: P6
+  hired_on: '2022-07-04'
+  reports_to: QL024
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: QL027
+  grade: P5
+  hired_on: '2024-12-02'
+  reports_to: QL024
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: QL028
+  grade: 实习生
+  hired_on: '2026-07-06'
+  reports_to: QL017
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: intern
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: Git
+    account_id: nie.xiaoman
+  certifications: []

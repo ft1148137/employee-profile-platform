@@ -1,0 +1,241 @@
+# 行业参考模板（NERE-19）：普通高等学校（学院 + 职能处室）。合成示例，不代表任何真实学校。
+- key: course_teaching
+  name: 课程讲授与课堂组织
+  category: 教学与教务
+  description: 承担整门课程的讲授、课堂组织与过程性考核
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在带教教师指导下承担部分章节或实验班讲授，教案与课堂进度需他人审核
+    - key: routine
+      label: 能完成常规任务
+      description: 独立主讲 1 至 2 门成熟课程，按大纲完成进度、作业与过程性考核，课堂突发情况需请示
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立承担多班次或新开核心课程，能自行调整教学设计、组织大班研讨并指导新教师试讲
+- key: curriculum_development
+  name: 课程与教学大纲建设
+  category: 教学与教务
+  description: 编写和修订教学大纲、考核方式与课程材料
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 按模板填写大纲条目，学时分配与考核权重由课程负责人确定
+    - key: routine
+      label: 能完成常规任务
+      description: 独立修订既有课程的大纲与考核方式，说明修订依据并通过学院审核
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 主笔新开课程或课程群建设方案，统筹先修关系、实践环节与多人分工并完成校级论证
+- key: teaching_schedule_adjustment
+  name: 调停课与排课协调
+  category: 教学与教务
+  description: 办理开课申报、调课停课补课与教室资源协调
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能填写调停课申请单，流程与补课时间由教学秘书代为协调
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成本人课程的开课申报与调停课手续，自行与班级和教室管理方确认补课安排
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 处理跨学院、跨校区的成批排课冲突，能在教室与师资紧张时给出可执行的替代方案
+- key: grade_data_handling
+  name: 成绩录入与教务数据核对
+  category: 教学与教务
+  description: 录入、核对与更正成绩及教务数据，保证留痕
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 按口头说明录入分项成绩，提交前需他人逐项复核
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成本人课程的成绩录入、分项核对与更正申请，能说明每次更正的原因
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 处理批量导入、跨学期补换考与历史数据不一致，能自行定位异常数据并提出核对口径
+- key: thesis_supervision
+  name: 本科毕业设计指导
+  category: 教学与教务
+  description: 指导选题、过程检查与答辩环节
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 以副导师身份协助过程检查，选题与评阅意见由主导师把关
+    - key: routine
+      label: 能完成常规任务
+      description: 独立指导常规选题的全过程，按节点完成中期检查与答辩材料
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 把在研课题拆解为可完成的本科题目，处理中途更换方向或进度严重落后的情况
+- key: teaching_norms_qualification
+  name: 教学规范与资格要求执行
+  category: 教学与教务
+  description: 按教学管理规范与任课资格要求组织教学活动
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 了解考试组织、试卷归档与听课制度的基本要求，执行时需提醒
+    - key: routine
+      label: 能完成常规任务
+      description: 独立按规范完成试卷命题归档、考场组织与教学文件留存
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在学院层面组织教学检查与规范培训，处理教学环节争议并给出依据清晰的处理建议。高等学校教师资格是上岗前提，持证不等于具备本项能力
+- key: vertical_project_management
+  name: 纵向项目申报与过程管理
+  category: 科研与成果
+  description: 组织或承担纵向科研项目的申报、过程检查与结题
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 协助收集申报材料与填写表格，预算与任务书由他人编写
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成一般项目的申报材料、任务书录入与中期检查报告，能按时响应主管部门要求
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 作为负责人统筹选题论证、预算编制与多单位分工，能处理预算调整、延期与结题异议
+- key: horizontal_contract_ip
+  name: 横向合同与知识产权事务
+  category: 科研与成果
+  description: 办理技术开发与技术服务合同、成果转化与专利事务
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按模板起草合同草案，条款风险由法务或科研处判断
+    - key: routine
+      label: 能完成常规任务
+      description: 独立审核常规技术服务合同的付款、验收与权属条款，完成专利申请的形式审查与代理对接
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 处理权属争议、分段验收与成果转化收益分配，能在企业与学校诉求之间给出可签署的条款方案
+- key: research_paper_writing
+  name: 学术论文撰写与投稿
+  category: 科研与成果
+  description: 组织研究结论的写作、投稿与修回
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 承担实验部分与图表绘制，行文结构与讨论由合作者补全
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成一篇完整论文的写作与投稿，能按审稿意见逐条修回
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 作为通讯作者确定选题与作者分工，能处理方法质疑、数据补充与跨单位署名协调
+- key: research_fund_compliance
+  name: 科研经费使用与合规
+  category: 科研与成果
+  description: 按预算科目使用经费并完成审核与台账
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能准备报销单据，科目归属与合规判断依赖经费管理岗
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成常规报销与劳务发放的材料核对，能说明退回原因并一次整改到位
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 处理设备费、外协费与国际合作费的复杂情形，能核查执行率异常并提出预算调整方案
+- key: student_counseling
+  name: 谈心谈话与学业帮扶
+  category: 学生工作与育人
+  description: 开展日常谈话、学业预警跟踪与帮扶安排
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在带教辅导员陪同下完成谈话，记录与后续安排由他人确定
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成学业预警后的分批谈话与帮扶跟踪，按口径留存不含个人隐私的记录
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 处理家庭、学业与就业交织的复杂情况，能设计帮扶方案并协调学院与任课教师配合
+- key: scholarship_review_organization
+  name: 奖助评审组织与公示
+  category: 学生工作与育人
+  description: 组织困难认定、奖助评审、公示与台账
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 承担材料收集与汇总表填写，评审口径与公示稿由他人把关
+    - key: routine
+      label: 能完成常规任务
+      description: 独立组织班级或年级评审会，完成材料复核、公示发布与异议答复
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 制定本单位评审细则与评议流程，处理口径变更、跨年级名额分配与申诉复核
+- key: student_crisis_response
+  name: 学生突发事件处置
+  category: 学生工作与育人
+  description: 处置夜间与节假日突发情况并完成报告与跟进
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按值班流程上报并到场协助，处置决策由值班领导作出
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成常见突发情况的到场处置、陪护协调与时间线记录
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 处理涉及多方沟通与长期跟进的复杂事件，能同步做好信息边界控制与资源转介
+- key: lab_safety_management
+  name: 实验室安全与设备管理
+  category: 实验与平台支撑
+  description: 负责实验室安全检查、危化品与设备台账管理
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按清单执行日常巡查与设备借还登记，隐患判断需他人确认
+    - key: routine
+      label: 能完成常规任务
+      description: 独立承担实验室开放值守、安全检查与设备维护登记，能完成常见故障的排除
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 组织实验室安全准入与应急演练，能评估新增设备与危化品带来的风险并落实整改
+- key: experiment_course_instruction
+  name: 实验教学指导
+  category: 实验与平台支撑
+  description: 指导实验课与课程设计环节的操作与数据分析
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在实验师带教下完成分组指导，设备准备与异常处理由带教人负责
+    - key: routine
+      label: 能完成常规任务
+      description: 独立指导成熟实验项目的全过程，能处理常见接线、仿真参数与数据偏差问题
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 新建或改造实验项目，编写实验指导书并在设备不足时给出可行的替代实验方案
+- key: education_system_ops
+  name: 教务与业务系统运维
+  category: 实验与平台支撑
+  description: 保障教务、科研、学工等业务系统的运行与权限管理
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按手册处理账号开通与常见报错，变更操作需他人复核
+    - key: routine
+      label: 能完成常规任务
+      description: 独立处理选课与成绩高峰期的常见故障、批量账号与角色权限核对
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 定位跨系统的数据同步与性能问题，能设计最小权限方案并评估变更影响范围

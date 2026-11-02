@@ -1,0 +1,1276 @@
+{
+  "issues": [
+    {
+      "key": "PUR-201",
+      "fields": {
+        "summary": "调研中小制造企业询价与比价现状",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-10",
+          "displayName": "欧阳岑"
+        },
+        "reporter": {
+          "accountId": "ql-jira-09",
+          "displayName": "宁致远"
+        },
+        "created": "2025-11-04T09:30:00.000+0800",
+        "resolutiondate": "2025-12-02T17:10:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "requirement",
+          "discovery"
+        ],
+        "components": [
+          {
+            "name": "产品与设计部"
+          }
+        ],
+        "description": "走访 6 家虚构试点客户的采购员、仓管与供应商对接人，输出现状流程图、问题清单与本期不做的范围。"
+      }
+    },
+    {
+      "key": "PUR-202",
+      "fields": {
+        "summary": "采购协同 2.0 产品方案与验收标准",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-10",
+          "displayName": "欧阳岑"
+        },
+        "reporter": {
+          "accountId": "ql-jira-09",
+          "displayName": "宁致远"
+        },
+        "created": "2025-11-18T10:00:00.000+0800",
+        "resolutiondate": "2025-12-16T18:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "spec"
+        ],
+        "components": [
+          {
+            "name": "产品与设计部"
+          }
+        ],
+        "description": "拆分询价、比价、审批三个里程碑，写出含异常流与历史数据迁移策略的验收标准。"
+      }
+    },
+    {
+      "key": "PUR-203",
+      "fields": {
+        "summary": "询价单与行项目数据模型设计",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-03",
+          "displayName": "沈砚"
+        },
+        "reporter": {
+          "accountId": "ql-jira-10",
+          "displayName": "欧阳岑"
+        },
+        "created": "2025-11-06T11:20:00.000+0800",
+        "resolutiondate": "2025-11-21T16:40:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "backend",
+          "schema"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "设计询价单主表与行项目表结构、唯一约束与索引，附迁移脚本与回滚脚本。"
+      }
+    },
+    {
+      "key": "PUR-204",
+      "fields": {
+        "summary": "询价单创建与改版接口",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-03",
+          "displayName": "沈砚"
+        },
+        "reporter": {
+          "accountId": "ql-jira-10",
+          "displayName": "欧阳岑"
+        },
+        "created": "2025-11-24T09:50:00.000+0800",
+        "resolutiondate": "2025-12-05T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "backend",
+          "api"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "实现询价单创建、改版与乐观锁冲突处理；同一需求的代码提交见 Git 记录。"
+      }
+    },
+    {
+      "key": "PUR-205",
+      "fields": {
+        "summary": "询价单列表虚拟滚动重构",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-04",
+          "displayName": "Chloe Zhao"
+        },
+        "reporter": {
+          "accountId": "ql-jira-10",
+          "displayName": "欧阳岑"
+        },
+        "created": "2025-11-27T14:00:00.000+0800",
+        "resolutiondate": "2025-12-15T11:25:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "frontend"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "十万行量级列表改为虚拟滚动，筛选条件持久化，补充渲染耗时对比。"
+      }
+    },
+    {
+      "key": "PUR-206",
+      "fields": {
+        "summary": "比价看板交互设计",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-12",
+          "displayName": "卓一凡"
+        },
+        "reporter": {
+          "accountId": "ql-jira-10",
+          "displayName": "欧阳岑"
+        },
+        "created": "2025-12-01T10:10:00.000+0800",
+        "resolutiondate": "2025-12-22T16:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "design"
+        ],
+        "components": [
+          {
+            "name": "产品与设计部"
+          }
+        ],
+        "description": "设计多供应商比价的多状态流程与空数据态，组织两轮可用性走查并记录修改点。"
+      }
+    },
+    {
+      "key": "PUR-207",
+      "fields": {
+        "summary": "多租户数据隔离中间件",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-03",
+          "displayName": "沈砚"
+        },
+        "reporter": {
+          "accountId": "ql-jira-01",
+          "displayName": "姜柏然"
+        },
+        "created": "2026-01-05T09:40:00.000+0800",
+        "resolutiondate": "2026-01-30T18:20:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "backend",
+          "tenant"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "统一租户上下文传递，覆盖异步任务与导出路径，补充越权场景测试。"
+      }
+    },
+    {
+      "key": "PUR-208",
+      "fields": {
+        "summary": "租户级字段权限配置",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-02",
+          "displayName": "王浩"
+        },
+        "reporter": {
+          "accountId": "ql-jira-01",
+          "displayName": "姜柏然"
+        },
+        "created": "2026-01-19T11:00:00.000+0800",
+        "resolutiondate": "2026-02-06T17:45:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "backend",
+          "tenant"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "按角色配置询价单字段的可见与可编辑范围，接口层与导出层同时生效。"
+      }
+    },
+    {
+      "key": "PUR-209",
+      "fields": {
+        "summary": "询价单 Excel 导入模板校验",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-06",
+          "displayName": "傅京"
+        },
+        "reporter": {
+          "accountId": "ql-jira-10",
+          "displayName": "欧阳岑"
+        },
+        "created": "2026-02-02T13:30:00.000+0800",
+        "resolutiondate": "2026-02-13T17:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "backend",
+          "import"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "导入模板增加表头、单位与税率校验，失败行返回可下载的错误清单。"
+      }
+    },
+    {
+      "key": "PUR-210",
+      "fields": {
+        "summary": "询价结果回传 ERP 适配层",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-08",
+          "displayName": "陶砚秋"
+        },
+        "reporter": {
+          "accountId": "ql-jira-10",
+          "displayName": "欧阳岑"
+        },
+        "created": "2025-12-08T10:20:00.000+0800",
+        "resolutiondate": "2025-12-19T18:10:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "integration"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "适配两个 ERP 版本的字段口径差异，回传失败进入补偿队列。"
+      }
+    },
+    {
+      "key": "PUR-211",
+      "fields": {
+        "summary": "ERP 回传幂等键与对账任务",
+        "issuetype": {
+          "name": "Bug"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-08",
+          "displayName": "陶砚秋"
+        },
+        "reporter": {
+          "accountId": "ql-jira-15",
+          "displayName": "范清让"
+        },
+        "created": "2025-12-29T15:10:00.000+0800",
+        "resolutiondate": "2026-01-09T17:50:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "integration",
+          "bug"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "重试导致 ERP 侧重复单据；引入幂等键并补一个按日对账的任务。"
+      }
+    },
+    {
+      "key": "PUR-212",
+      "fields": {
+        "summary": "采购单批量审批接口",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-03",
+          "displayName": "沈砚"
+        },
+        "reporter": {
+          "accountId": "ql-jira-10",
+          "displayName": "欧阳岑"
+        },
+        "created": "2026-02-23T09:30:00.000+0800",
+        "resolutiondate": "2026-03-06T17:20:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "backend",
+          "api"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "支持最多 500 单批量审批与部分失败回执。指派人为沈砚；实际代码由傅京提交并自测。"
+      }
+    },
+    {
+      "key": "PUR-213",
+      "fields": {
+        "summary": "比价看板查询下推与物化视图",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-05",
+          "displayName": "温亦然"
+        },
+        "reporter": {
+          "accountId": "ql-jira-01",
+          "displayName": "姜柏然"
+        },
+        "created": "2026-01-07T14:40:00.000+0800",
+        "resolutiondate": "2026-01-16T18:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "database",
+          "performance"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "聚合下推到数据库并引入物化视图，提交改造前后的执行计划与耗时。"
+      }
+    },
+    {
+      "key": "PUR-214",
+      "fields": {
+        "summary": "询价单状态机回归用例",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-14",
+          "displayName": "王浩"
+        },
+        "reporter": {
+          "accountId": "ql-jira-13",
+          "displayName": "郑亦舒"
+        },
+        "created": "2026-08-31T10:00:00.000+0800",
+        "resolutiondate": "2026-09-18T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "qa"
+        ],
+        "components": [
+          {
+            "name": "质量与运维部"
+          }
+        ],
+        "description": "按状态机列出 24 条合法迁移与 11 条非法迁移用例，标注回归范围取舍理由。"
+      }
+    },
+    {
+      "key": "PUR-215",
+      "fields": {
+        "summary": "询价流程端到端自动化脚本",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-17",
+          "displayName": "简宁"
+        },
+        "reporter": {
+          "accountId": "ql-jira-13",
+          "displayName": "郑亦舒"
+        },
+        "created": "2026-03-09T09:20:00.000+0800",
+        "resolutiondate": "2026-03-20T17:40:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "qa",
+          "automation"
+        ],
+        "components": [
+          {
+            "name": "质量与运维部"
+          }
+        ],
+        "description": "覆盖询价发布到比价定标的主流程。指派人为简宁；脚本主体由实习生提交。"
+      }
+    },
+    {
+      "key": "PUR-216",
+      "fields": {
+        "summary": "导入失败率告警规则",
+        "issuetype": {
+          "name": "Bug"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-15",
+          "displayName": "范清让"
+        },
+        "reporter": {
+          "accountId": "ql-jira-20",
+          "displayName": "乔羽"
+        },
+        "created": "2026-03-23T11:40:00.000+0800",
+        "resolutiondate": "2026-04-03T16:20:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "ops",
+          "alert"
+        ],
+        "components": [
+          {
+            "name": "质量与运维部"
+          }
+        ],
+        "description": "客户反馈导入失败无人知晓；按租户维度设置失败率阈值与通知对象。"
+      }
+    },
+    {
+      "key": "PUR-217",
+      "fields": {
+        "summary": "询价单附件迁移到对象存储",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-05",
+          "displayName": "温亦然"
+        },
+        "reporter": {
+          "accountId": "ql-jira-01",
+          "displayName": "姜柏然"
+        },
+        "created": "2026-02-16T10:30:00.000+0800",
+        "resolutiondate": "2026-02-27T18:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "infra"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "附件从本地盘迁移到 S3 兼容存储，保留回退开关与一致性校验脚本。"
+      }
+    },
+    {
+      "key": "PUR-218",
+      "fields": {
+        "summary": "审批流配置页面",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-04",
+          "displayName": "Chloe Zhao"
+        },
+        "reporter": {
+          "accountId": "ql-jira-11",
+          "displayName": "苏晚"
+        },
+        "created": "2026-03-02T09:50:00.000+0800",
+        "resolutiondate": "2026-03-13T17:10:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "frontend"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "按金额与品类配置审批节点，前端处理节点联动与权限差异展示。"
+      }
+    },
+    {
+      "key": "PUR-219",
+      "fields": {
+        "summary": "试点客户采购协同上线实施",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-19",
+          "displayName": "闵之桐"
+        },
+        "reporter": {
+          "accountId": "ql-jira-18",
+          "displayName": "骆程"
+        },
+        "created": "2026-04-06T09:00:00.000+0800",
+        "resolutiondate": "2026-05-15T18:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "onboarding"
+        ],
+        "components": [
+          {
+            "name": "客户成功部"
+          }
+        ],
+        "description": "沅丰紧固件（虚构客户）三个厂区上线，含参数配置、并行运行与切换回退方案。"
+      }
+    },
+    {
+      "key": "PUR-220",
+      "fields": {
+        "summary": "试点客户历史询价数据迁移",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-19",
+          "displayName": "闵之桐"
+        },
+        "reporter": {
+          "accountId": "ql-jira-18",
+          "displayName": "骆程"
+        },
+        "created": "2026-04-20T10:40:00.000+0800",
+        "resolutiondate": "2026-05-29T17:20:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "onboarding",
+          "migration"
+        ],
+        "components": [
+          {
+            "name": "客户成功部"
+          }
+        ],
+        "description": "清洗两年历史询价数据，处理供应商重名与计量单位冲突，输出迁移对账表。"
+      }
+    },
+    {
+      "key": "PUR-221",
+      "fields": {
+        "summary": "试点客户采购员与供应商培训",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-21",
+          "displayName": "樊知微"
+        },
+        "reporter": {
+          "accountId": "ql-jira-18",
+          "displayName": "骆程"
+        },
+        "created": "2026-05-18T14:00:00.000+0800",
+        "resolutiondate": "2026-06-12T16:40:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "training"
+        ],
+        "components": [
+          {
+            "name": "客户成功部"
+          }
+        ],
+        "description": "分采购员、仓管、供应商三类角色做培训，培训后抽查操作正确率并补讲两次。"
+      }
+    },
+    {
+      "key": "PUR-222",
+      "fields": {
+        "summary": "询价单偶发重复提交",
+        "issuetype": {
+          "name": "Bug"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-02",
+          "displayName": "王浩"
+        },
+        "reporter": {
+          "accountId": "ql-jira-22",
+          "displayName": "殷岚"
+        },
+        "created": "2026-04-13T15:30:00.000+0800",
+        "resolutiondate": "2026-04-24T17:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "bug",
+          "backend"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "弱网下按钮重复触发产生两张单；前端加防抖并在接口层加请求去重键。"
+      }
+    },
+    {
+      "key": "PUR-223",
+      "fields": {
+        "summary": "采购单导出超时",
+        "issuetype": {
+          "name": "Bug"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "ql-jira-06",
+          "displayName": "傅京"
+        },
+        "reporter": {
+          "accountId": "ql-jira-20",
+          "displayName": "乔羽"
+        },
+        "created": "2026-08-17T10:10:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "bug",
+          "performance"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "大租户导出两万行超时；正在改为分页流式导出，联调未完成。"
+      }
+    },
+    {
+      "key": "PUR-224",
+      "fields": {
+        "summary": "询价单字段权限回归测试",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-16",
+          "displayName": "莫晨"
+        },
+        "reporter": {
+          "accountId": "ql-jira-13",
+          "displayName": "郑亦舒"
+        },
+        "created": "2026-04-07T13:20:00.000+0800",
+        "resolutiondate": "2026-04-20T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "qa"
+        ],
+        "components": [
+          {
+            "name": "质量与运维部"
+          }
+        ],
+        "description": "按角色矩阵回归字段可见性，配套测试数据生成器便于重复执行。"
+      }
+    },
+    {
+      "key": "SUP-301",
+      "fields": {
+        "summary": "供应商门户需求边界梳理",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-11",
+          "displayName": "苏晚"
+        },
+        "reporter": {
+          "accountId": "ql-jira-09",
+          "displayName": "宁致远"
+        },
+        "created": "2026-03-02T09:30:00.000+0800",
+        "resolutiondate": "2026-03-24T17:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "requirement"
+        ],
+        "components": [
+          {
+            "name": "产品与设计部"
+          }
+        ],
+        "description": "明确供应商自助注册、资质维护与报价提交的范围，排除在线对账等本期不做项。"
+      }
+    },
+    {
+      "key": "SUP-302",
+      "fields": {
+        "summary": "供应商注册与资质上传",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-02",
+          "displayName": "王浩"
+        },
+        "reporter": {
+          "accountId": "ql-jira-11",
+          "displayName": "苏晚"
+        },
+        "created": "2026-04-27T10:00:00.000+0800",
+        "resolutiondate": "2026-05-08T17:40:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "backend"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "供应商提交营业执照等资质文件，审核通过后同步到采购侧主数据。"
+      }
+    },
+    {
+      "key": "SUP-303",
+      "fields": {
+        "summary": "供应商资质到期提醒",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-02",
+          "displayName": "王浩"
+        },
+        "reporter": {
+          "accountId": "ql-jira-11",
+          "displayName": "苏晚"
+        },
+        "created": "2026-05-04T11:10:00.000+0800",
+        "resolutiondate": "2026-05-15T17:50:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "backend"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "按租户配置提前天数，定时任务生成到期提醒并记录发送结果。"
+      }
+    },
+    {
+      "key": "SUP-304",
+      "fields": {
+        "summary": "门户单点登录对接",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-05",
+          "displayName": "温亦然"
+        },
+        "reporter": {
+          "accountId": "ql-jira-11",
+          "displayName": "苏晚"
+        },
+        "created": "2026-05-11T09:40:00.000+0800",
+        "resolutiondate": "2026-05-22T18:10:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "infra",
+          "auth"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "对接 OIDC 身份源，处理供应商账号与采购侧租户的映射关系。"
+      }
+    },
+    {
+      "key": "SUP-305",
+      "fields": {
+        "summary": "供应商报价提交页面",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-04",
+          "displayName": "Chloe Zhao"
+        },
+        "reporter": {
+          "accountId": "ql-jira-11",
+          "displayName": "苏晚"
+        },
+        "created": "2026-05-18T10:20:00.000+0800",
+        "resolutiondate": "2026-05-29T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "frontend"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "报价录入支持阶梯价与附件说明，提交前做本地校验并提示缺项。"
+      }
+    },
+    {
+      "key": "SUP-306",
+      "fields": {
+        "summary": "门户移动端适配",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-04",
+          "displayName": "Chloe Zhao"
+        },
+        "reporter": {
+          "accountId": "ql-jira-12",
+          "displayName": "卓一凡"
+        },
+        "created": "2026-06-01T14:30:00.000+0800",
+        "resolutiondate": "2026-06-12T17:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "frontend",
+          "mobile"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "供应商常在车间用手机操作，报价与资质页面适配小屏并加大点击区域。"
+      }
+    },
+    {
+      "key": "SUP-307",
+      "fields": {
+        "summary": "报价提交并发冲突",
+        "issuetype": {
+          "name": "Bug"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-03",
+          "displayName": "沈砚"
+        },
+        "reporter": {
+          "accountId": "ql-jira-17",
+          "displayName": "简宁"
+        },
+        "created": "2026-06-08T15:00:00.000+0800",
+        "resolutiondate": "2026-06-19T17:40:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "bug",
+          "backend"
+        ],
+        "components": [
+          {
+            "name": "平台研发部"
+          }
+        ],
+        "description": "同一供应商多人同时改报价导致覆盖；改为行级版本号加冲突提示。"
+      }
+    },
+    {
+      "key": "SUP-308",
+      "fields": {
+        "summary": "门户灰度发布与回滚预案",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-15",
+          "displayName": "范清让"
+        },
+        "reporter": {
+          "accountId": "ql-jira-13",
+          "displayName": "郑亦舒"
+        },
+        "created": "2026-06-22T11:20:00.000+0800",
+        "resolutiondate": "2026-07-03T10:40:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "release"
+        ],
+        "components": [
+          {
+            "name": "质量与运维部"
+          }
+        ],
+        "description": "按租户分三批灰度，写明回滚触发条件、回滚步骤与受影响租户核对方式。"
+      }
+    },
+    {
+      "key": "SUP-309",
+      "fields": {
+        "summary": "门户接口自动化测试补充",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-17",
+          "displayName": "简宁"
+        },
+        "reporter": {
+          "accountId": "ql-jira-13",
+          "displayName": "郑亦舒"
+        },
+        "created": "2026-06-29T09:50:00.000+0800",
+        "resolutiondate": "2026-07-10T17:20:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "qa",
+          "automation"
+        ],
+        "components": [
+          {
+            "name": "质量与运维部"
+          }
+        ],
+        "description": "补充注册、资质、报价三组接口用例，接入流水线门禁并解决并行执行的数据冲突。"
+      }
+    },
+    {
+      "key": "SUP-310",
+      "fields": {
+        "summary": "门户可观测性埋点",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-15",
+          "displayName": "范清让"
+        },
+        "reporter": {
+          "accountId": "ql-jira-01",
+          "displayName": "姜柏然"
+        },
+        "created": "2026-07-06T13:40:00.000+0800",
+        "resolutiondate": "2026-07-17T17:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "ops"
+        ],
+        "components": [
+          {
+            "name": "质量与运维部"
+          }
+        ],
+        "description": "补齐关键路径日志与指标，定义报价提交成功率的服务级目标与告警规则。"
+      }
+    },
+    {
+      "key": "SUP-311",
+      "fields": {
+        "summary": "门户导出字段脱敏与合规核对",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-25",
+          "displayName": "蒋柚"
+        },
+        "reporter": {
+          "accountId": "ql-jira-24",
+          "displayName": "冯屹"
+        },
+        "created": "2026-09-28T10:30:00.000+0800",
+        "resolutiondate": "2026-10-16T17:10:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "compliance"
+        ],
+        "components": [
+          {
+            "name": "人力与信息部"
+          }
+        ],
+        "description": "逐项核对导出字段的留存必要性，配置脱敏规则与审计日志并留下评审记录。"
+      }
+    },
+    {
+      "key": "SUP-312",
+      "fields": {
+        "summary": "门户上线客户支持预案",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-20",
+          "displayName": "乔羽"
+        },
+        "reporter": {
+          "accountId": "ql-jira-18",
+          "displayName": "骆程"
+        },
+        "created": "2026-07-13T09:30:00.000+0800",
+        "resolutiondate": "2026-07-24T16:50:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "support"
+        ],
+        "components": [
+          {
+            "name": "客户成功部"
+          }
+        ],
+        "description": "整理供应商常见问题与分级响应时限，明确哪些问题直接转研发。"
+      }
+    },
+    {
+      "key": "SUP-313",
+      "fields": {
+        "summary": "门户供应商侧操作手册",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-22",
+          "displayName": "殷岚"
+        },
+        "reporter": {
+          "accountId": "ql-jira-18",
+          "displayName": "骆程"
+        },
+        "created": "2026-08-03T14:10:00.000+0800",
+        "resolutiondate": "2026-08-21T16:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "training"
+        ],
+        "components": [
+          {
+            "name": "客户成功部"
+          }
+        ],
+        "description": "编写供应商自助注册与报价的图文手册，按客户反馈改写两版。"
+      }
+    },
+    {
+      "key": "SUP-314",
+      "fields": {
+        "summary": "门户账号批量导入工具",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "ql-jira-23",
+          "displayName": "施屿"
+        },
+        "reporter": {
+          "accountId": "ql-jira-18",
+          "displayName": "骆程"
+        },
+        "created": "2026-03-16T10:00:00.000+0800",
+        "resolutiondate": "2026-04-10T17:00:00.000+0800",
+        "labels": [
+          "synthetic",
+          "qingli-saas",
+          "onboarding"
+        ],
+        "components": [
+          {
+            "name": "客户成功部"
+          }
+        ],
+        "description": "为试点客户批量导入供应商联系人账号，含重复联系人合并规则。"
+      }
+    }
+  ]
+}

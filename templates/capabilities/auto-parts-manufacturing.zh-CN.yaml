@@ -1,0 +1,241 @@
+# 行业参考模板（NERE-19）：汽车零部件机加工二级供应商（IATF 16949 体系）。合成示例，不代表任何真实企业。
+- key: cnc_machining_operation
+  name: 数控机床操作与程序调用
+  category: 机加工操作与生产
+  description: 按作业指导书在数控车床、加工中心上装夹、调用程序并完成批量加工
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在带教人在场的情况下完成上下料和单一程序的启动、暂停，异响或报警时须停机找人
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成熟悉机型的装夹、对刀和批量加工，按作业指导书自检尺寸并按节拍在 MES 报工
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在薄壁件、深孔等难加工工况下自行判断切削参数和刀具磨损，处理尺寸漂移并把调整结果写回工艺附页
+- key: machine_changeover
+  name: 产品换型与首件准备
+  category: 机加工操作与生产
+  description: 完成夹具更换、程序切换、零点设定并把机床交到可做首件的状态
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按换型清单拆装夹具和领刀具，零点设定和程序版本确认需要班长或调机技师复核
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成同族产品的换型，核对程序版本与夹具编号，在规定换型时间内交出合格首件
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在跨产品族、新夹具或多工序联动的换型中自行排查定位偏差，缩短换型时间并修订换型清单
+- key: precision_measurement
+  name: 精密测量与量具使用
+  category: 机加工操作与生产
+  description: 使用卡尺、千分尺、气动量仪、三坐标等量具按图纸完成尺寸和形位公差测量
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能用卡尺、千分尺读取常规外径和长度，形位公差项目和量具校准状态确认需要他人指导
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立按检验规范完成外径、孔径、跳动等常规项目测量，识别量具超期并正确记录实测值
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立编制三坐标检测程序、设计基准找正方案，并在测量结果与功能件装配矛盾时定位测量方法本身的问题
+- key: first_article_inspection
+  name: 首件检验与判定
+  category: 质量与客户要求
+  description: 按控制计划对换型后首件执行全尺寸检验并作出放行或退回判定
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按首检表逐项测量并填写实测值，合格与否的判定需要检验组长签认
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成常规件首检，核对图纸版本与控制计划，判定不合格时按规定退回并锁定机床
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在图纸公差与量具能力冲突、特殊特性无明确判据时提出补充检测方案，并对放行决定承担技术说明责任
+- key: nonconformance_handling
+  name: 不合格品控制
+  category: 质量与客户要求
+  description: 对不合格品完成标识、隔离、评审、处置和追溯，防止流出和混装
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按要求贴红牌、搬入隔离区并上报，处置方式和追溯范围由他人确定
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立开出不合格品报告、界定同批次追溯范围，按评审结论跟踪返工或报废闭环
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在疑似已发货、多批次混装或客户产线停线的情况下主导围堵、分选和通报，并评估召回与库存风险
+- key: problem_solving_8d
+  name: 8D 问题解决
+  category: 质量与客户要求
+  description: 用 8D 方法组织跨部门小组定位根本原因并验证永久措施
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按模板补齐 D1 至 D3 的描述和临时措施，根本原因分析依赖他人带着做
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成常见失效模式的 5Why 与鱼骨图分析，提出可验证的永久措施并跟踪关闭
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在根本原因跨供应商来料、设备精度与人员作业习惯多因叠加时设计验证试验，向客户现场评审答辩并横向推广
+- key: ppap_submission
+  name: PPAP 提交与客户批准
+  category: 质量与客户要求
+  description: 组织生产件批准程序所需的 18 项资料并取得客户批准
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能收集并整理单项资料（如材质报告、尺寸报告），清单完整性由他人核对
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立按客户要求的提交等级组织全套资料、安排节拍验证，处理一般性退回意见
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在客户图纸变更、分供方同步切换和多工厂并行的情况下规划提交策略，协调偏差申请与临时批准
+- key: iatf_internal_audit
+  name: IATF 16949 内部审核
+  category: 质量与客户要求
+  description: 按体系要求策划并实施过程审核、产品审核，输出发现并跟踪整改
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能作为审核组成员按检查表取证和记录，不合格项的判定与条款对应需要组长确认
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立审核分配到的过程，把观察到的事实对应到体系条款和控制计划要求，跟踪整改验证
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能策划全年审核方案、带组审核多个相互关联的过程，识别体系性失效并在客户或第三方审核中陈述证据；内审员资格是前提，不等于具备这一能力
+- key: msa_spc_analysis
+  name: MSA 与过程能力分析
+  category: 质量与客户要求
+  description: 开展测量系统分析和 SPC 过程能力评价并据此改进过程
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按指定方案采集重复性与再现性数据、录入控制图，结果解读依赖他人
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成常规量具的 GRR 研究和 Cpk 计算，判断过程是否受控并提出初步改进点
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能针对计数型、破坏性或小样本场景选择合适的分析方法，识别数据本身不可信的情形并重新设计取样方案
+- key: process_planning
+  name: 加工工艺编制与控制计划
+  category: 工艺与工装
+  description: 编制工序流程、作业指导书和控制计划，确定特殊特性的控制方式
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按既有模板套用同族产品的工艺文件，工序顺序和控制点设置需要资深工程师定稿
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立为结构相近的新件编制工艺路线、作业指导书和控制计划，并与检验规范保持一致
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能为新结构件从毛坯基准开始规划工艺方案，权衡节拍、良率与设备能力，并在客户变更时评估连锁影响
+- key: cam_programming
+  name: CAM 编程与刀路优化
+  category: 工艺与工装
+  description: 用 CAM 软件生成并验证数控程序，优化刀路与切削参数
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能修改既有程序的坐标和进给参数，新程序由他人生成后自己上机试切
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立为常规车铣工序编程、做仿真校验，按刀具寿命和表面质量调整切削参数
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能处理多轴联动、异形轮廓和干涉风险高的工况，通过宏程序和参数化手段压缩节拍并保证可重复性
+- key: fixture_tooling_design
+  name: 夹具与刀具方案
+  category: 工艺与工装
+  description: 设计或选型夹具与刀具，解决定位、夹紧和刀具寿命问题
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按图纸领用和装配标准夹具、按清单选购刀具，方案确定由他人负责
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立为常规件选择定位方案和标准刀具，核算夹紧力与刀具寿命并跟踪现场验证
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能为薄壁、易变形件设计专用夹具和复合刀具，通过试切数据迭代方案并评估投入与良率收益
+- key: equipment_maintenance
+  name: 设备故障诊断与维修
+  category: 设备与安全
+  description: 诊断机床机械、液压、电气故障并完成修复与精度恢复
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能完成换油、换滤芯、紧固等保养项目，故障判断和拆装由师傅带着做
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立处理常见报警、液压泄漏和传感器失效，更换备件后验证动作与基本精度
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在间歇性故障、多因素叠加或精度持续劣化时系统排查，制定几何精度恢复方案并评估对产品公差的影响
+- key: tpm_autonomous_maintenance
+  name: TPM 自主点检与保养
+  category: 设备与安全
+  description: 执行日常点检、润滑与清洁，记录异常并推动源头改善
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按点检表完成打勾式检查，对异常现象是否需要上报把握不准
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成本机点检与润滑，发现异响、漏油、精度波动时准确描述现象并开出报修
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能依据点检与故障数据调整点检项目和周期，组织困难部位的源头改善并培训操作工自主保养
+- key: forklift_logistics_safety
+  name: 厂内物流与特种设备作业安全
+  category: 设备与安全
+  description: 按安全规程完成叉车搬运、物料配送和在制品周转
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在指定路线和有人引导的情况下完成空旷区域搬运，狭窄通道和高位货架作业须他人陪同
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成车间内常规配送与高位取放，执行班前检查并按先进先出和防混料要求周转料箱
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在超长件、多车交叉和场地受限的工况下规划搬运方案和交通组织，识别作业风险并落实管控；特种设备作业人员证是上岗前提，不等于具备这一能力
+- key: shopfloor_reporting
+  name: 现场记录与系统填报
+  category: 设备与安全
+  description: 在 MES、QMS 等系统中如实、及时记录生产与质量事实
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能口头说清做了什么，系统录入需要班长或同事代填，纸质记录字段常有遗漏
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立在终端完成报工、点检和检验记录录入，字段完整、数量与实物一致
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在系统异常、跨班交接或追溯倒查时还原完整事实链，发现记录与实物矛盾并主动更正留痕

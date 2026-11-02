@@ -1,0 +1,1055 @@
+# 测试用，不导入系统
+# 真实能力（ground truth）用于核对系统推断的画像，对应计划书 §10.1「关键能力核实准确率」。
+# 本文件刻意让「系统能看到的证据」与「真实水平」存在差距，每条 note 写明差距来自哪里。
+slug: lancheng-bank
+personas:
+- employee_code: LC001
+  display_name: 蒋允平
+  work_history:
+  - period: 2007-08 至 2012-02
+    org: 某城商行省内分行（虚构）
+    role: 人力资源专员
+    summary: 负责招聘与薪酬核算
+  - period: 2012-03 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 综合管理部负责人
+    summary: 分管人力、培训、科技运维与行政
+  ground_truth:
+    capabilities:
+    - key: cross_line_collaboration
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:TR-0019]
+      note: 条线与支行之间的协调基本在会上完成，系统里只有一条年度培训通报，不足以确认复杂协同水平。
+    - key: internal_control_review
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 他不承担内控检查，系统里也没有记录；应输出未知而不是判定能力低。
+    certifications: [企业人力资源管理师（二级）]
+    notes: 对「用数据给人下结论」比较谨慎，会反复问系统的结论从哪来。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 公文式表达，喜欢分条，习惯先问口径再填内容
+    attitude: skeptical
+    test_focus:
+    - 查看系统是否把「组织培训」误判成「具备被培训能力」
+    - 检查管理员能看到的范围是否超出制度授权
+- employee_code: LC002
+  display_name: 林漪
+  work_history:
+  - period: 2013-07 至 2017-03
+    org: 某人力资源服务公司（虚构）
+    role: 人事主管
+    summary: 负责员工关系与档案管理
+  - period: 2017-04 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 人力资源主管
+    summary: 负责花名册、职级与证书档案维护，兼任系统企业管理员
+  ground_truth:
+    capabilities:
+    - key: cross_line_collaboration
+      level: routine
+      evidence: partial
+      evidence_refs: [record:TR-0013]
+      note: 她对接各部门收学时与资料，记录里只以审核人身份出现一次。
+    - key: compliance_inspection
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 她配合合规部做员工行为排查，这部分工作完全没有进系统。
+    certifications: []
+    notes: 全行的账号与证书档案由她维护，最清楚哪些外部账号没登记。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 条目清楚，爱用「待确认」标注没核实的信息
+    attitude: positive
+    test_focus:
+    - 核对系统里的证书有效期与 HR 档案是否一致
+    - 试着给未登记的外部账号补关联，看是否留审计痕迹
+    - 检查离职人员是否仍能登录
+- employee_code: LC003
+  display_name: 郝骏
+  work_history:
+  - period: 2015-09 至 2019-07
+    org: 某系统集成商（虚构）
+    role: 实施工程师
+    summary: 负责银行核心系统外围接口实施
+  - period: 2019-08 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 信息科技岗
+    summary: 负责信贷与柜面系统的参数维护、权限与版本培训
+  ground_truth:
+    capabilities:
+    - key: cross_line_collaboration
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:CR-0019, record:TR-0017]
+      note: 他把业务口径翻译成系统规则，但记录只显示「参数变更」和「培训」两类动作。
+    - key: error_handling
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 系统原因导致的差错排查都是他做的，差错记录只登记柜员和差错管理岗，不登记科技支持。
+    certifications: []
+    notes: 对账号共用问题最敏感，提过多次公用终端账号应取消。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 直接说现象和日志，不做修饰
+    attitude: neutral
+    test_focus:
+    - 检查系统能否区分「账号的动作」和「人的能力」
+    - 看公用终端账号的记录会被算到谁名下
+- employee_code: LC004
+  display_name: 温亦舒
+  work_history:
+  - period: 2018-03 至 2021-01
+    org: 某企业大学（虚构）
+    role: 培训运营
+    summary: 负责课程排期与学时统计
+  - period: 2021-02 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 人力发展岗（培训管理）
+    summary: 负责必修课程发布、学时统计与外部讲师对接
+  ground_truth:
+    capabilities:
+    - key: cross_line_collaboration
+      level: routine
+      evidence: documented
+      evidence_refs: [record:TR-0013, record:TR-0019]
+      note: 她的协同工作就是培训组织本身，记录充分且准确。
+    - key: aml_customer_due_diligence
+      level: none
+      evidence: undocumented
+      evidence_refs: []
+      note: 她只组织反洗钱培训，不做尽职调查；系统应输出不适用或未知，绝不能因为她在反洗钱专项里就推断她会做尽调。
+    certifications: []
+    notes: 培训平台的外部讲师账号是她开的，她知道那个账号不属于员工。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 口语和书面混用，喜欢加时间和人数
+    attitude: positive
+    test_focus:
+    - 试探系统是否把「参加培训」当成「具备能力」
+    - 检查外部讲师账号是否被当成员工
+- employee_code: LC005
+  display_name: 傅承砚
+  work_history:
+  - period: 2005-07 至 2011-06
+    org: 某股份制银行分行（虚构）
+    role: 对公客户经理
+    summary: 负责制造业客群授信
+  - period: 2011-07 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 公司金融部负责人
+    summary: 分管对公客群经营与授信申报口径
+  ground_truth:
+    capabilities:
+    - key: credit_report_writing
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:CR-0003, record:TR-0014]
+      note: 复杂结构的方案实际是他改出来的，但记录里他只是审核人和带教人。
+    - key: customer_acquisition
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 他的核心能力是大客户经营，走访和谈判都没有系统记录。
+    certifications: [银行业专业人员职业资格（中级 公司信贷）]
+    notes: 习惯按「报告署名」理解分工，这正是他给崔立恒和孟繁评价偏差的原因。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 简短命令式，常用「按制度来」
+    attitude: neutral
+    test_focus:
+    - 看系统会不会把审核人也算成方案撰写人
+    - 检查经理评价与系统结论不一致时怎么展示
+- employee_code: LC006
+  display_name: 崔立恒
+  work_history:
+  - period: 2010-07 至 2014-08
+    org: 某农商行（虚构）
+    role: 客户经理
+    summary: 负责小微客群贷款营销
+  - period: 2014-09 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 高级客户经理（公司条线）
+    summary: 维护制造业与商贸类核心客群
+  ground_truth:
+    capabilities:
+    - key: corporate_credit_investigation
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:CR-0014, record:CR-0001, manager_review:MR16]
+      note: 两笔复杂项目的现场走访与交易背景核实实际由孟繁完成，报告按高级客户经理署名，经理评价又按署名给了「能独立完成复杂任务」，证据会把能力抬高一档。
+    - key: customer_acquisition
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:CR-0001]
+      note: 他真正强的是拉客户和维护关系，系统里只能从调查记录间接看到。
+    certifications: [银行业专业人员职业资格（中级 公司信贷）]
+    notes: 不认为署名有问题，觉得「团队成果归客户经理」是行里惯例。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 擅长讲客户故事，细节不精确
+    attitude: positive
+    test_focus:
+    - 看画像是否把协办人的工作算成自己的
+    - 试着把客户走访补进自述，看系统要不要证据
+- employee_code: LC007
+  display_name: 孟繁
+  work_history:
+  - period: 2016-07 至 2020-05
+    org: 某会计师事务所（虚构）
+    role: 审计助理
+    summary: 负责制造业客户年报审计
+  - period: 2020-06 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 客户经理（公司条线）
+    summary: 负责贷前调查与授信方案撰写
+  ground_truth:
+    capabilities:
+    - key: corporate_credit_investigation
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:CR-0014, record:CR-0017, manager_review:MR01, self_report:SR01]
+      note: 并购项目的现场走访与交易背景核实是他做的，记录署名却是崔立恒，经理也按署名答了「常规」，系统如果只看署名会低估一档；他的自述说明了真相，这是唯一的纠正线索。
+    - key: credit_report_writing
+      level: routine
+      evidence: documented
+      evidence_refs: [record:CR-0016, record:TR-0012]
+      note: 方案修订记录与考试记录都在他名下，结论应接近真实。
+    certifications: [银行业专业人员职业资格（初级 法律法规与综合能力）]
+    notes: 审计出身，数据敏感；对署名问题有情绪但没正式提过。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 写得长、逻辑清楚，会主动说明谁做了哪一段
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查系统是否采纳自述里「实际是我做的」的说明
+    - 看署名人和实际贡献者冲突时系统标不标未确认
+    - 试着对偏低的经理评价提出补充证据
+- employee_code: LC008
+  display_name: 殷楚
+  work_history:
+  - period: 2016-09 至 2018-10
+    org: 某融资租赁公司（虚构）
+    role: 项目评审助理
+    summary: 负责设备租赁项目资料审核
+  - period: 2018-11 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 授信方案岗
+    summary: 负责授信方案撰写与押品复估
+  ground_truth:
+    capabilities:
+    - key: credit_report_writing
+      level: routine
+      evidence: documented
+      evidence_refs: [record:CR-0003, record:CR-0016, self_report:SR12, manager_review:MR15]
+      note: 自述、经理评价与两条方案记录一致，系统应能确认为常规水平。
+    - key: collateral_review
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:CR-0010]
+      note: 他处理过多重抵押与在建工程押品，系统里只有一条年度复估记录。
+    certifications: []
+    notes: 自我评价克制，不会把带教下完成的事说成独立完成。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 用词准确，爱标注「在指导下」
+    attitude: neutral
+    test_focus:
+    - 看系统能否区分「写过方案」和「能独立应对审查会质询」
+    - 检查押品类能力在只有一条记录时是否标未知
+- employee_code: LC009
+  display_name: 季怀宁
+  work_history:
+  - period: 2020-04 至 2026-08
+    org: 某城商行邻市分行（虚构）
+    role: 对公客户经理
+    summary: 负责园区制造业客群授信与贷后管理
+  ground_truth:
+    capabilities:
+    - key: corporate_credit_investigation
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 入职前有六年对公调查经验，本行系统里一条记录都没有；系统必须输出未知，不能因为无记录推断能力低。
+    - key: credit_review
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 在原单位做过两年审查辅助，同样没有任何本行证据。
+    certifications: [银行业专业人员职业资格（中级 风险管理）]
+    notes: 2026-09-14 入职，信贷系统账号已开但还没派项目；经理也只能答不确定。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 会主动写原单位经历，措辞客气
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查新人页面是「未知」还是被判成能力低
+    - 试着提交入职前经历，看系统要什么证据
+    - 看经理的 not_sure 会不会被当成负面结论
+- employee_code: LC010
+  display_name: 韦岑
+  work_history:
+  - period: 2008-07 至 2013-04
+    org: 某国有大行支行（虚构）
+    role: 个人金融部主管
+    summary: 负责个贷与财富业务管理
+  - period: 2013-05 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 零售金融部负责人
+    summary: 分管个贷、财富与零售条线指导
+  ground_truth:
+    capabilities:
+    - key: retail_loan_processing
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:CR-0024, record:CR-0011]
+      note: 抽查和条线指导记录能看出她的判断力，但记录形式是「检查人」「指导人」，容易被当成管理动作而不是业务能力。
+    - key: customer_acquisition
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 零售客群渠道是她搭的，系统里没有任何客户拓展记录。
+    - key: wealth_product_suitability
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [manager_review:MR02]
+      note: 她替下属兜住争议情形的能力只出现在给童昱的评价里。
+    certifications: [银行业专业人员职业资格（中级 个人理财）]
+    notes: 对「持证等于会做」反对得最明确，评价里会写具体场景。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 直接给场景和判断依据，不说套话
+    attitude: positive
+    test_focus:
+    - 检查系统会不会把证书直接推成能力
+    - 看管理者自己的业务能力是否因为只有管理记录而被低估
+- employee_code: LC011
+  display_name: 阮知晚
+  work_history:
+  - period: 2012-09 至 2016-09
+    org: 某消费金融公司（虚构）
+    role: 产品运营
+    summary: 负责线上信贷产品流程设计
+  - period: 2016-10 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 零售产品经理
+    summary: 负责普惠小微产品设计与线上化项目，任项目经理但不是部门负责人
+  ground_truth:
+    capabilities:
+    - key: retail_loan_processing
+      level: routine
+      evidence: partial
+      evidence_refs: [record:TR-0004, record:CR-0022]
+      note: 她懂流程和口径，但不直接受理业务，记录都是培训和复核。
+    - key: cross_line_collaboration
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:TR-0004, record:CR-0022, manager_review:MR10]
+      note: 作为项目经理牵头零售、风险、科技与支行，记录和评价都在，结论应接近真实。
+    certifications: []
+    notes: 项目经理身份容易被系统误判成部门负责人，她会专门去看组织图。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 结构化，习惯写「口径—责任岗—时限」
+    attitude: positive
+    test_focus:
+    - 检查系统是否把项目经理显示成部门经理
+    - 看她作为项目经理给下属评价的权限是否正确
+    - 确认跨部门项目成员在画像里的归属
+- employee_code: LC012
+  display_name: 柏云舟
+  work_history:
+  - period: 2019-03 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 个贷客户经理
+    summary: 负责个人经营贷与住房贷款受理
+  ground_truth:
+    capabilities:
+    - key: retail_loan_processing
+      level: routine
+      evidence: documented
+      evidence_refs: [record:CR-0008, record:CR-0022, self_report:SR10, manager_review:MR10]
+      note: 记录、自述与项目经理评价三方一致，系统应能确认为常规水平且不应抬到复杂。
+    - key: customer_acquisition
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 他靠社区网格维护客户，系统里没有拓展类记录。
+    certifications: [银行业专业人员职业资格（初级 个人贷款）]
+    notes: 自述里主动说了自己拿不准的地方，是「自述可信」的正面样本。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 老实叙述，会写「这笔我退回让审查看了」
+    attitude: positive
+    test_focus:
+    - 检查系统会不会因为他承认不足就整体下调
+    - 看同一笔业务在培训和信贷系统里是否重复计数
+- employee_code: LC013
+  display_name: 童昱
+  work_history:
+  - period: 2018-07 至 2021-06
+    org: 某保险代理公司（虚构）
+    role: 理财顾问
+    summary: 负责保险与基金代销
+  - period: 2021-07 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 财富顾问
+    summary: 负责代销产品销售与存量客户维护
+  ground_truth:
+    capabilities:
+    - key: wealth_product_suitability
+      level: needs_support
+      evidence: misleading
+      evidence_refs: [record:TR-0005, record:TR-0006, self_report:SR02, manager_review:MR02]
+      note: 持有基金从业资格、学时和考试都「通过」，自述还说能独立完成，三项证据都指向高水平；真实情况是测评与意愿不一致时要部门负责人在旁边把关，而且两次考试都是补考通过。证书与学时不能当能力证据。
+    - key: customer_acquisition
+      level: routine
+      evidence: partial
+      evidence_refs: [record:CR-0021]
+      note: 她的客户维护能力真实存在，但系统里唯一相关记录是一次违规账号查询，容易被整条误读。
+    certifications: [基金从业资格证书, 银行业专业人员职业资格（初级 个人理财）]
+    notes: 认为经理评价不公，打算在系统里申诉；也不认为借用账号是问题。
+  usage_profile:
+    digital_literacy: medium
+    devices: [mobile, pc]
+    expression_style: 自信、爱用绝对化说法，如「完全没问题」
+    attitude: skeptical
+    test_focus:
+    - 提交申诉，看系统是否保留原评价并记录申诉
+    - 检查系统是否把基金从业资格直接当成适当性管理能力
+    - 看补考通过和一次通过在画像上有没有区别
+- employee_code: LC014
+  display_name: 贺秋池
+  work_history:
+  - period: 2014-07 至 2017-07
+    org: 某农商行支行（虚构）
+    role: 个贷专员
+    summary: 负责住房贷款受理
+  - period: 2017-08 至 2026-06
+    org: 岚城银行汀州分行（模拟）
+    role: 个贷客户经理
+    summary: 负责住房与经营贷款受理，2026-06-30 离职
+  ground_truth:
+    capabilities:
+    - key: retail_loan_processing
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:CR-0009]
+      note: 她离职前经手的业务大多在旧流程里由协办人署名，系统只剩一条受理记录和一条培训记录，看上去像个只办过一笔业务的人；离职后没有人能补证据，系统不应据此判低。
+    - key: customer_acquisition
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 她的客户资源在离职时移交给了柏云舟，交接过程没有进系统。
+    certifications: [银行业专业人员职业资格（初级 个人贷款）]
+    notes: 已离职，没有登录账号，不会参与测试；留作「离职人员历史记录」样本。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 离职前的记录用词简单，没有自述
+    attitude: neutral
+    test_focus:
+    - 确认离职人员无法登录但历史记录仍可追溯
+    - 检查离职人员画像是否标注证据已冻结
+- employee_code: LC015
+  display_name: 邵砚秋
+  work_history:
+  - period: 2004-07 至 2010-03
+    org: 某城商行总行（虚构）
+    role: 信贷审查员
+    summary: 负责对公授信审查
+  - period: 2010-04 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 风险合规部负责人
+    summary: 分管审查、贷后、反洗钱与合规检查
+  ground_truth:
+    capabilities:
+    - key: credit_review
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:CR-0023, record:CR-0002]
+      note: 他独立审查复杂结构没问题，但记录里多是「复核」身份，容易被当成走流程。
+    - key: compliance_inspection
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 他只看方案不下现场，检查方案设计一直由欧阳澜做；这项能力既无记录也不该被从「部门负责人」身份推断出来。
+    certifications: [银行业专业人员职业资格（中级 风险管理）]
+    notes: 给下属评价时愿意写 not_sure，是「经理不确定」的主要来源。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 严谨、爱引制度条款，不愿给没依据的结论
+    attitude: skeptical
+    test_focus:
+    - 检查 not_sure 是否被当成负面评价
+    - 看部门负责人的身份会不会被推断出检查能力
+- employee_code: LC016
+  display_name: 欧阳澜
+  work_history:
+  - period: 2011-09 至 2015-08
+    org: 某会计师事务所（虚构）
+    role: 内控咨询顾问
+    summary: 负责金融机构内控流程梳理
+  - period: 2015-09 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 合规管理岗，兼云溪支行合规员
+    summary: 负责合规检查方案设计与整改跟踪，兼岗覆盖云溪支行
+  ground_truth:
+    capabilities:
+    - key: compliance_inspection
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:CR-0025, record:OP-0013, self_report:SR06, manager_review:MR07]
+      note: 同一次检查在信贷系统和柜面运营两个来源都有记录，加上自述和评价，系统应能确认复杂水平；要注意不要把两条记录算成两次独立检查。
+    - key: internal_control_review
+      level: routine
+      evidence: partial
+      evidence_refs: [record:OP-0013]
+      note: 她做整改跟踪不做事后监督抽查，容易和席舟的工作混淆。
+    - key: counter_operations
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 她在柜面运营系统里有账号，但只用于检查，本人不办柜面业务；不能因为有柜面系统账号就推断会办业务。
+    certifications: [银行业专业人员职业资格（中级 法律法规与综合能力）]
+    notes: 复姓，系统里出现过把姓氏截成「欧」的问题；兼岗在支行没有岗位记录。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, tablet]
+    expression_style: 先写结论再列依据，引用检查条款编号
+    attitude: positive
+    test_focus:
+    - 检查复姓在姓名拆分、排序与搜索里是否正确
+    - 看兼岗的第二部门是否在画像里体现
+    - 确认同一次检查在两个来源不被重复计数
+- employee_code: LC017
+  display_name: 苗泽宇
+  work_history:
+  - period: 2015-07 至 2018-02
+    org: 某担保公司（虚构）
+    role: 项目评审员
+    summary: 负责小微担保项目评审
+  - period: 2018-03 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 信贷审查岗
+    summary: 负责对公与个贷授信审查并出具意见
+  ground_truth:
+    capabilities:
+    - key: credit_review
+      level: routine
+      evidence: documented
+      evidence_refs: [record:CR-0002, record:CR-0015, record:CR-0023, self_report:SR14, manager_review:MR12]
+      note: 记录、自述与评价一致地指向常规水平，系统应能确认；他自己也没有夸大。
+    - key: corporate_credit_investigation
+      level: routine
+      evidence: partial
+      evidence_refs: [record:TR-0011]
+      note: 他能看懂调查该怎么做并讲成课，但本人不下现场，只有一条培训记录。
+    certifications: [银行业专业人员职业资格（中级 公司信贷）]
+    notes: 是「证据与真实水平基本一致」的对照样本。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 书面化，分「事实—意见—条件」三段
+    attitude: neutral
+    test_focus:
+    - 检查退回类记录是否被当成负面结果
+    - 看讲课记录会不会被推成现场调查能力
+- employee_code: LC018
+  display_name: 裴令仪
+  work_history:
+  - period: 2017-07 至 2020-08
+    org: 某资产管理公司（虚构）
+    role: 资产保全专员
+    summary: 负责不良资产台账与处置跟踪
+  - period: 2020-09 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 贷后管理岗
+    summary: 负责贷后检查、风险预警核查与处置跟踪
+  ground_truth:
+    capabilities:
+    - key: post_loan_monitoring
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:CR-0004, record:CR-0007, record:CR-0018, self_report:SR05, manager_review:MR03]
+      note: 记录很充分，但经理答了 not_sure，系统应给出高于评价的结论并把分歧标出来，而不是跟着评价往下压。
+    - key: collateral_review
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 她看押品台账但不做价值判断，这部分既无记录也不应被推断。
+    certifications: []
+    notes: 对经理说「分不清是谁主导」有些在意，但不打算申诉。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 数据驱动，爱写比对了哪几个数据源
+    attitude: neutral
+    test_focus:
+    - 检查经理 not_sure 与充分记录冲突时系统怎么呈现
+    - 看多源数据分析的主导者能否被识别
+- employee_code: LC019
+  display_name: 谈芷
+  work_history:
+  - period: 2019-07 至 2022-03
+    org: 某支付机构（虚构）
+    role: 反洗钱分析师
+    summary: 负责可疑交易监测与报送
+  - period: 2022-04 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 反洗钱岗，反洗钱专项负责人
+    summary: 负责客户尽职调查、可疑交易分析与年度必修培训组织
+  ground_truth:
+    capabilities:
+    - key: aml_customer_due_diligence
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:CR-0020, record:TR-0001, record:TR-0016, self_report:SR09, manager_review:MR13]
+      note: 尽调记录、培训记录、自述与评价互相印证，系统应能确认。
+    - key: cross_line_collaboration
+      level: routine
+      evidence: partial
+      evidence_refs: [record:TR-0008]
+      note: 她作为专项负责人协调四个部门，记录里只体现为一次「组织人」。
+    certifications: [反洗钱岗位培训合格证明]
+    notes: 她的合格证明 2026-11-17 到期，是检验「证书临期提醒」的样本。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 分析式，先写线索再写结论和保留意见
+    attitude: positive
+    test_focus:
+    - 检查主讲人与学员在画像上是否被区别对待
+    - 看临期证书有没有提醒且不被当成能力下降
+- employee_code: LC020
+  display_name: 郁泓
+  work_history:
+  - period: 2006-08 至 2012-10
+    org: 某城商行运营中心（虚构）
+    role: 事后监督主管
+    summary: 负责凭证监督与差错管理
+  - period: 2012-11 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 运营管理部负责人
+    summary: 分管柜面运营、集中授权、事后监督与差错管理
+  ground_truth:
+    capabilities:
+    - key: internal_control_review
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:OP-0018]
+      note: 他做了二十年内控，系统里今年只有一条运营检查记录。
+    - key: error_handling
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 差错登记与复盘制度是他定的，制度制定类工作没有任何记录载体。
+    certifications: []
+    notes: 条线评价柜员时很具体，会写「不构成能力不足的依据」。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 简短、爱用数字和笔数
+    attitude: neutral
+    test_focus:
+    - 检查差错笔数会不会被直接换算成能力低
+    - 看条线负责人对支行柜员的评价权限是否正确
+- employee_code: LC021
+  display_name: 席舟
+  work_history:
+  - period: 2014-07 至 2017-05
+    org: 某城商行支行（虚构）
+    role: 柜员
+    summary: 负责对私业务办理
+  - period: 2017-06 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 事后监督岗
+    summary: 负责月度事后监督抽查与问题通报
+  ground_truth:
+    capabilities:
+    - key: internal_control_review
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:OP-0003, record:OP-0009, record:OP-0014, self_report:SR08, manager_review:MR11]
+      note: 三条监督记录加自述和评价，系统应能确认复杂水平。
+    - key: error_handling
+      level: routine
+      evidence: partial
+      evidence_refs: [record:OP-0016]
+      note: 他参加复盘但不是主办，容易和方念的工作混淆。
+    certifications: []
+    notes: 公用终端账号共用的问题是他最早在通报里写出来的。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 列笔数与问题类型，不评价人
+    attitude: positive
+    test_focus:
+    - 检查系统能否识别公用终端记录无法归属到个人
+    - 看「监督人」与「被监督人」的能力不会被弄反
+- employee_code: LC022
+  display_name: 隋明
+  work_history:
+  - period: 2006-09 至 2014-01
+    org: 某城商行支行（虚构）
+    role: 主办柜员
+    summary: 负责柜面综合业务与尾箱管理
+  - period: 2014-02 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 授权中心授权岗
+    summary: 负责超权限与特殊业务的事中授权
+  ground_truth:
+    capabilities:
+    - key: transaction_authorization
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:OP-0001, record:OP-0012, self_report:SR13, manager_review:MR14]
+      note: 授权记录、自述与评价一致；九月检查提的「记录不完整」是留痕问题，不是判断能力问题。
+    - key: counter_operations
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 他做过八年柜面主办，转岗后系统里只有授权记录，柜面能力完全没有当前证据。
+    certifications: [银行业专业人员职业资格（中级 法律法规与综合能力）]
+    notes: 转岗早于本数据集时间范围，roster 里没有 transfers 记录，是「历史能力无痕」的样本。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, shared_terminal]
+    expression_style: 简短、偏口语，用「卡掉」「退回去」这类说法
+    attitude: neutral
+    test_focus:
+    - 检查转岗前的历史能力是否被标为未知而不是没有
+    - 看检查提出的留痕问题会不会被当成能力缺陷
+- employee_code: LC023
+  display_name: 方念
+  work_history:
+  - period: 2016-07 至 2019-09
+    org: 某城商行运营中心（虚构）
+    role: 差错管理专员
+    summary: 负责差错登记与统计分析
+  - period: 2019-10 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 运营管理岗（差错与现金管理）
+    summary: 负责差错登记、复盘组织与现金凭证核对
+  ground_truth:
+    capabilities:
+    - key: error_handling
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:OP-0016, record:OP-0002, record:OP-0011]
+      note: 他是复盘主办且在多条差错记录里是登记人，系统应能确认；要注意登记人不等于差错责任人。
+    - key: cash_management
+      level: routine
+      evidence: partial
+      evidence_refs: [record:OP-0010]
+      note: 他只做核对不做主办盘库，记录里的角色是「核对」。
+    certifications: []
+    notes: 最担心系统把「差错登记人」算成「出差错的人」。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 表格化思维，爱写成因分类
+    attitude: skeptical
+    test_focus:
+    - 检查差错记录的登记人与责任人是否分得清
+    - 看参与者角色（登记、核对、监督）是否被区分
+- employee_code: LC024
+  display_name: 聂行远
+  work_history:
+  - period: 2004-07 至 2011-08
+    org: 某城商行支行（虚构）
+    role: 对公客户经理
+    summary: 负责园区客群授信
+  - period: 2011-09 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 云溪支行行长，网点转型项目负责人
+    summary: 负责支行经营、现场授权与网点转型项目
+  ground_truth:
+    capabilities:
+    - key: cross_line_collaboration
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:OP-0008, record:TR-0022, record:OP-0013]
+      note: 他同时协调公司、零售、运营三个条线，但记录里只是授权人、考生和被查单位负责人。
+    - key: transaction_authorization
+      level: routine
+      evidence: partial
+      evidence_refs: [record:OP-0008, record:OP-0006]
+      note: 他只在授权中心不在岗时做现场授权，两条记录不足以确认复杂水平。
+    - key: customer_acquisition
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 支行的园区客群是他早年带出来的，系统里没有拓展记录。
+    certifications: [银行业专业人员职业资格（中级 公司信贷）]
+    notes: 既是部门负责人又是项目负责人，两个身份在系统里容易只显示一个。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 直接、爱说「这个我签的」
+    attitude: positive
+    test_focus:
+    - 检查部门负责人与项目负责人两个身份是否都显示
+    - 看他给下属的评价与分行条线负责人的评价冲突时怎么处理
+    - 确认支行员工的双线汇报在组织图里正确
+- employee_code: LC025
+  display_name: 乔棠
+  work_history:
+  - period: 2015-07 至 2018-06
+    org: 某农商行（虚构）
+    role: 客户经理助理
+    summary: 负责小微客户资料整理
+  - period: 2018-07 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 支行客户经理（公司条线）
+    summary: 负责园区小微客群的调查、贷后与预警上报
+  ground_truth:
+    capabilities:
+    - key: corporate_credit_investigation
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:CR-0005, record:CR-0006, self_report:SR07, manager_review:MR08]
+      note: 调查、贷后与预警上报都是他独立做的，但复核签字在支行行长名下，条线经理因为见面少答了 not_sure，证据不足以支撑真实水平。
+    - key: post_loan_monitoring
+      level: routine
+      evidence: partial
+      evidence_refs: [record:CR-0006]
+      note: 他能发现流水下滑并提降额建议，但处置是贷后管理岗接手的。
+    certifications: []
+    notes: 担心自述被当成考核材料，写的时候刻意保守并反问用途。
+  usage_profile:
+    digital_literacy: medium
+    devices: [mobile, pc]
+    expression_style: 谨慎，常加「不确定算不算」「如果用来打分我就不写了」
+    attitude: worried_about_evaluation
+    test_focus:
+    - 确认系统有没有写清自述的用途和可见范围
+    - 检查双线汇报下两位经理的评价差异怎么展示
+    - 看复核人签字会不会把功劳算到复核人头上
+- employee_code: LC026
+  display_name: 柳沅
+  work_history:
+  - period: 2013-07 至 2016-03
+    org: 某城商行支行（虚构）
+    role: 柜员
+    summary: 负责对私业务办理
+  - period: 2016-04 至 2025-12
+    org: 岚城银行汀州分行（模拟）
+    role: 主办柜员（运营管理部）
+    summary: 负责柜面综合业务与挂失换卡等业务
+  - period: 2026-01 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 支行客户经理（零售条线）
+    summary: 转岗后负责个人经营贷调查与受理
+  ground_truth:
+    capabilities:
+    - key: retail_loan_processing
+      level: needs_support
+      evidence: misleading
+      evidence_refs: [record:CR-0011, record:CR-0012, self_report:SR03, manager_review:MR05]
+      note: 支行行长看她退件少就答了「常规」，自述却说测算要条线把一遍；真实水平是常规业务仍需带教，两份证据一高一低都不准，系统应标为存在争议。
+    - key: counter_operations
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:OP-0006]
+      note: 她十年柜面经验只剩转岗前一条记录，而且挂在旧柜员号 T0207 下，系统如果不合并账号就看不到这段能力。
+    certifications: [银行业专业人员职业资格（初级 个人贷款）]
+    notes: 多账号与转岗叠在同一个人身上，是账号合并的主要测试样本。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 口语化，爱说「把一遍」「跑现场」，写得比实际水平保守
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查旧柜员号的记录能否合并到本人名下
+    - 看转岗前后的能力是否被分开呈现
+    - 确认自述偏保守时系统不会直接采信为真实水平
+- employee_code: LC027
+  display_name: 秦望
+  work_history:
+  - period: 2015-12 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 支行主办柜员
+    summary: 负责柜面综合业务、尾箱与重要空白凭证管理
+  ground_truth:
+    capabilities:
+    - key: cash_management
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:OP-0010, record:OP-0017, record:OP-0004, self_report:SR04, manager_review:MR06]
+      note: 盘库主办记录、自述与条线评价一致，系统应能确认。
+    - key: counter_operations
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:OP-0005, record:OP-0019]
+      note: 单位结算账户疑难变更那笔挂在旧柜员号 T0177 下，系统未登记这个映射；只看新账号会少掉他最复杂的一段业务，还剩一条归档差错。
+    - key: aml_customer_due_diligence
+      level: routine
+      evidence: partial
+      evidence_refs: [record:TR-0002]
+      note: 他只有一条考试记录，考试通过不等于会做尽调。
+    certifications: [银行业专业人员职业资格（初级 法律法规与综合能力）]
+    notes: 一人三个账号（统一工号、现柜员号、旧柜员号），其中旧柜员号未登记。
+  usage_profile:
+    digital_literacy: low
+    devices: [shared_terminal, mobile]
+    expression_style: 只会口语化描述，常用语音转文字，会出现「帐」「盘帐」这类别字
+    attitude: neutral
+    test_focus:
+    - 检查旧柜员号 T0177 的记录是否算到他名下
+    - 看语音转文字的自述能不能正常提交和保存
+    - 确认一笔归档差错不会把柜面能力整体判低
+- employee_code: LC028
+  display_name: 宁夕
+  work_history:
+  - period: 2022-08 至今
+    org: 岚城银行汀州分行（模拟）
+    role: 支行柜员
+    summary: 负责对私开户、现金与挂失类业务办理
+  ground_truth:
+    capabilities:
+    - key: counter_operations
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:OP-0002, record:OP-0007, self_report:SR11, manager_review:MR09]
+      note: 两笔差错里有一笔记在公用终端账号 TELLER-PUB-YX01 上，实际经办人是她；如果系统把公用终端的差错算给她，常规办理能力会被判低一档，而经理评价恰好说明了不该这么判。
+    - key: cash_management
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 她还没独立管过尾箱，系统里没有记录；此处「无记录」与「真实需要协助」恰好吻合，是对照样本。
+    certifications: []
+    notes: 入行三年，怕差错条数被当成能力评价。
+  usage_profile:
+    digital_literacy: low
+    devices: [mobile, shared_terminal]
+    expression_style: 口语化、句子短，爱说「当天就冲正了」
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查公用终端账号的差错会不会算到她名下
+    - 看差错次数在画像上是证据还是结论
+    - 试着用手机提交自述
+- employee_code: LC029
+  display_name: 商澄
+  work_history:
+  - period: 2021-03 至 2026-04
+    org: 岚城银行汀州分行（模拟）
+    role: 支行柜员
+    summary: 负责对私业务与代发工资批量处理，2026-04-15 离职
+  ground_truth:
+    capabilities:
+    - key: counter_operations
+      level: routine
+      evidence: partial
+      evidence_refs: [record:OP-0011, record:OP-0004, record:TR-0023]
+      note: 三条记录里两条是复核和考试，一条是差错，容易把常规水平看成需要协助。
+    - key: error_handling
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 他自己处理冲正的过程没有留痕，差错记录里只有差错管理岗是登记人。
+    certifications: [银行业专业人员职业资格（初级 个人理财）]
+    notes: 已离职，无登录账号；HR 档案里那张职业资格已于 2025-12-31 过期未换证，是「过期证书」样本。
+  usage_profile:
+    digital_literacy: low
+    devices: [shared_terminal]
+    expression_style: 离职前没有提交过自述
+    attitude: neutral
+    test_focus:
+    - 确认过期证书不被当成有效资质
+    - 检查离职柜员的差错记录仍可追溯但不生成新结论
+account_truth:
+- source: 柜面运营
+  account_id: TELLER-PUB-YX01
+  owner: null
+  note: 云溪支行公用临柜终端账号，多名柜员共用，系统未关联到任何员工；OP-0007 的差错和 OP-0009 的 12 笔经办都在这个账号下。
+- source: 柜面运营
+  account_id: T0177
+  owner: LC027
+  note: 秦望在核心系统升级前使用的旧柜员号，HR 没有登记映射；OP-0005 这笔疑难变更业务挂在这里。
+- source: 信贷系统
+  account_id: cr.tongyu
+  owner: LC013
+  note: 童昱为查询代销到期客户借用的信贷系统账号，HR 档案未登记；账号使用已被运营管理部认定不合规。
+- source: 培训平台
+  account_id: tr.ext.lecturer01
+  owner: null
+  note: 外部合规讲师的临时账号，不属于本行员工，不应生成员工画像。
+edge_cases:
+- tag: multi_account
+  employees: [LC013, LC026, LC027]
+  refs: [record:CR-0021, record:OP-0006, record:OP-0005]
+  note: 童昱有统一工号和一个未登记的信贷系统账号；柳沅有统一工号、信贷账号和转岗前的柜员号 T0207；秦望有统一工号、现柜员号 T0231 和未登记的旧柜员号 T0177。合并账号才能看到完整轨迹。
+- tag: transfer
+  employees: [LC026]
+  refs: [record:OP-0006, record:TR-0007, record:CR-0011]
+  note: 柳沅 2026-01-05 从运营管理部主办柜员转为云溪支行零售客户经理。转岗前的柜面记录在 T0207 下，转岗培训和转岗后的调查记录在新账号下。
+- tag: concurrent_post
+  employees: [LC016]
+  refs: [record:CR-0025, record:OP-0013, record:TR-0009]
+  note: 欧阳澜在风险合规部任合规管理岗，同时兼任云溪支行合规员，向支行行长报告兼岗事项；兼岗在支行没有岗位记录，只能从检查与培训记录看出来。
+- tag: new_hire_no_history
+  employees: [LC009]
+  refs: [manager_review:MR04]
+  note: 季怀宁 2026-09-14 入职，信贷系统账号已开但没有任何工作记录，也没有自述；真实水平是能独立做复杂对公调查，系统必须显示未知。
+- tag: review_conflict
+  employees: [LC013, LC026]
+  refs: [self_report:SR02, manager_review:MR02, self_report:SR03, manager_review:MR05]
+  note: 童昱自述「完全能独立做适当性管理」，经理答 needs_support；柳沅自述「测算还要条线把一遍」，支行行长却答 routine。两例方向相反，系统都应标为存在争议。
+- tag: manager_unsure
+  employees: [LC018, LC009, LC025]
+  refs: [manager_review:MR03, manager_review:MR04, manager_review:MR08]
+  note: 裴令仪记录充分但经理分不清谁主导；季怀宁是新人无记录；乔棠双线汇报、条线经理见面少。三种不确定的成因不同，不能都显示成同一句话。
+- tag: compound_surname
+  employees: [LC016]
+  refs: []
+  note: 欧阳澜为复姓，姓氏两字；需检查姓名拆分、排序、搜索和「他/她能……吗」问句里的称呼是否正确。
+- tag: unlinked_account
+  employees: []
+  refs: [record:OP-0007, record:OP-0009, record:TR-0008]
+  note: 公用临柜终端账号 TELLER-PUB-YX01 和外部讲师账号 tr.ext.lecturer01 都不属于任何员工，却在来源数据里出现；系统不应为它们生成画像，也不应把记录摊给同网点员工。
+- tag: departed
+  employees: [LC014, LC029]
+  refs: [record:CR-0009, record:TR-0018, record:OP-0011, record:TR-0023]
+  note: 贺秋池 2026-06-30 离职、商澄 2026-04-15 离职，都没有登录账号但留有历史记录；商澄的职业资格已过期未换证。
+- tag: assignee_mismatch
+  employees: [LC006, LC007]
+  refs: [record:CR-0014, manager_review:MR16, manager_review:MR01, self_report:SR01]
+  note: CR-0014 的调查报告署名崔立恒，现场走访与交易背景核实实际由孟繁完成。两人的 ground truth 都写明了真实分工，经理评价则按署名给反了。
+- tag: assignee_mismatch
+  employees: [LC028]
+  refs: [record:OP-0007]
+  note: OP-0007 的经办账号是公用终端，实际经办人是当班柜员宁夕；差错责任需要靠排班才能还原，系统不应直接按账号归属。
+- tag: cross_source_duplicate
+  employees: [LC016, LC024]
+  refs: [record:CR-0025, record:OP-0013]
+  note: 同一次云溪支行合规检查在信贷系统（档案检查）和柜面运营（整改跟踪）两个来源各有一条记录；统计检查次数时应合并为一次。
+- tag: appeal
+  employees: [LC013]
+  refs: [manager_review:MR02, self_report:SR02]
+  note: 童昱认为经理评价不公，持证、学时与考试都通过，打算在系统里对 MR02 提出申诉并要求重新认定。
+- tag: pm_not_dept_manager
+  employees: [LC011]
+  refs: [record:TR-0004, record:CR-0022]
+  note: 阮知晚是普惠小微线上化项目（XWD）的项目经理，但不是任何部门的负责人；她有权对项目成员作出评价。
+- tag: dept_and_project_lead
+  employees: [LC024]
+  refs: [record:OP-0008, record:OP-0020]
+  note: 聂行远既是云溪支行负责人，又是网点转型项目（YXZQ）的项目负责人；两个身份在组织图和项目视图里都应出现。

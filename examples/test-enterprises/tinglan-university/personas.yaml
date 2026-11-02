@@ -1,0 +1,1086 @@
+# 测试用，不导入系统
+# 真实能力（ground truth）用于核对系统推断的画像，对应计划书 §10.1「关键能力核实准确率」。
+slug: tinglan-university
+personas:
+- employee_code: TL001
+  display_name: 欧阳昀
+  work_history:
+  - period: 2001-09 至 2006-08
+    org: 某省属工科院校（虚构）
+    role: 讲师、副教授
+    summary: 承担编译与程序语言方向课程，参与两项省级项目
+  - period: 2006-09 至今
+    org: 汀兰大学（模拟）计算机科学与技术学院
+    role: 教授、院长
+    summary: 主讲编译原理，组织学院教学检查与成果奖申报
+  ground_truth:
+    capabilities:
+    - key: course_teaching
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:JW-0001, record:JW-0023, record:JW-0007]
+      note: 连续多年主讲核心课并组织随堂听课，记录充分，系统应能确认
+    - key: vertical_project_management
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:KY-0012, record:KY-0018]
+      note: 系统里他多以申报联系人或被检查方出现，真实的选题论证与多单位协调看不到，容易被低估为常规
+    - key: teaching_norms_qualification
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 新教师试讲指导、教学争议处理都在线下进行，系统里没有任何记录，应输出未知而不是不会
+    certifications: [高等学校教师资格证]
+    notes: 行政事务多，使用系统时习惯让教学秘书代为操作，个人账号的活跃度不反映工作量。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 书面、公文化，爱用「按学校安排」这类表述
+    attitude: neutral
+    test_focus:
+    - 检查学院所有教师的画像能否按部门一次看完
+    - 检查自己的科研组织工作是否因为只挂名联系人而被判为低水平
+    - 检查系统会不会把院长的行政身份当成能力结论
+- employee_code: TL002
+  display_name: 蒋砚舟
+  work_history:
+  - period: 2005-07 至 2008-07
+    org: 某研究所（虚构）
+    role: 助理研究员
+    summary: 从事机器视觉算法研究
+  - period: 2008-08 至今
+    org: 汀兰大学（模拟）计算机科学与技术学院
+    role: 讲师至教授，2024 年起兼科研处副处长
+    summary: 主讲机器学习导论，主持国家级与省级纵向项目
+  ground_truth:
+    capabilities:
+    - key: vertical_project_management
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:KY-0001, record:KY-0002, record:KY-0003, self_report:SR01]
+      note: 申报、立项、中期检查全链路记录齐全，系统应能确认
+    - key: research_paper_writing
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:KY-0004, record:KY-0019, self_report:SR01]
+      note: 通讯作者身份与学术活动记录一致
+    - key: teaching_schedule_adjustment
+      level: routine
+      evidence: partial
+      evidence_refs: [record:JW-0003, record:JW-0027]
+      note: 系统只看到两次调停课申请，看不出他是否能处理成批排课冲突
+    - key: research_fund_compliance
+      level: needs_support
+      evidence: misleading
+      evidence_refs: [record:KY-0016, record:KY-0003]
+      note: 经费审核记录里他是项目负责人，实际预算科目核对由科研处经费岗代做，系统容易把审核通过算成他的合规能力；他自己在自述里也说不敢独立判断
+    certifications: [高等学校教师资格证]
+    notes: 兼任行政职务后在科研系统用的是另一个账号，教务与科研两套记录需要靠姓名之外的线索归并。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 简洁、分条列举，会主动区分「我做的」和「别人帮我做的」
+    attitude: positive
+    test_focus:
+    - 检查教务账号与科研账号的记录是否合并到同一个人
+    - 检查经费审核记录会不会被当成自己的合规能力
+    - 检查兼任副处长的身份会不会让画像出现在错误的部门下
+- employee_code: TL003
+  display_name: 阮知雪
+  work_history:
+  - period: 2011-09 至 2014-06
+    org: 某高校（虚构）
+    role: 博士研究生
+    summary: 数据结构与算法方向
+  - period: 2014-09 至今
+    org: 汀兰大学（模拟）计算机科学与技术学院
+    role: 讲师、副教授
+    summary: 主讲数据结构，参与纵向项目并指导毕业设计
+  ground_truth:
+    capabilities:
+    - key: course_teaching
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:JW-0002, record:JW-0019, manager_review:MR01, self_report:SR02]
+      note: 课程、大纲、听课与经理评价互相印证
+    - key: research_paper_writing
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [manager_review:MR12, record:KY-0019]
+      note: 项目负责人的评价具体，可确认
+    - key: thesis_supervision
+      level: routine
+      evidence: documented
+      evidence_refs: [record:JW-0009, record:JW-0033, self_report:SR02]
+      note: 选题与归档记录完整
+    - key: grade_data_handling
+      level: needs_support
+      evidence: misleading
+      evidence_refs: [record:JW-0004, record:JW-0025]
+      note: 两学期成绩录入都挂在她名下，实际录入与核对由研究生助管完成，她自己连分项权重都要问人；系统会把她判为能独立处理教务数据
+    certifications: [高等学校教师资格证]
+    notes: 教学与科研记录充分，教务数据处理是刻意设计的高估点。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 条理清楚、会引用大纲条款
+    attitude: positive
+    test_focus:
+    - 检查成绩录入记录会不会把助管的工作算成自己的
+    - 检查画像能否区分教学能力与教务系统操作能力
+- employee_code: TL004
+  display_name: 戴伟（David Whitlock）
+  work_history:
+  - period: 2015-09 至 2021-06
+    org: 某境外大学（虚构）
+    role: 语言与专业英语讲师
+    summary: 承担工程类专业英语课程
+  - period: 2021-09 至今
+    org: 汀兰大学（模拟）计算机科学与技术学院
+    role: 外籍讲师
+    summary: 主讲专业英语，指导本科生创新训练项目
+  ground_truth:
+    capabilities:
+    - key: curriculum_development
+      level: routine
+      evidence: documented
+      evidence_refs: [record:JW-0008, manager_review:MR02, self_report:SR03]
+      note: 英文大纲主笔有记录，中文材料依赖补译也有记录，等级可确认
+    - key: course_teaching
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:JW-0016]
+      note: 英文授课水平高但系统里只有一次停课补课记录，证据不足以支持复杂等级
+    - key: thesis_supervision
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 他以副导师身份带过三届毕业设计，教务系统的主导师字段里从来没有他，系统应输出未知
+    certifications: [来华工作许可（外国人来华工作，B 类）]
+    notes: 系统里的显示名在教务是中文名加括号英文名，在记录里是纯英文名 David Whitlock，是姓名归并的测试点。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 中文书面表达简单、句子短，偶尔夹英文词，专业术语用英文
+    attitude: neutral
+    test_focus:
+    - 检查英文显示名与中文姓名是否被当成两个人
+    - 检查中文界面的提示语是否能看懂、能否切换语言
+    - 检查副导师这类没有记录的工作会不会被判为不会
+- employee_code: TL005
+  display_name: 郝𤭢
+  work_history:
+  - period: 2008-07 至 2011-06
+    org: 某仪器公司（虚构）
+    role: 售后技术员
+    summary: 负责实验仪器安装与维修
+  - period: 2011-07 至今
+    org: 汀兰大学（模拟）计算机科学与技术学院
+    role: 实验师
+    summary: 负责专业实验室开放值守、设备维护与实验教学指导
+  ground_truth:
+    capabilities:
+    - key: lab_safety_management
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:JW-0018, record:JW-0034, manager_review:MR03, self_report:SR04]
+      note: 开放值守与故障处理记录连续，真实水平高于经理给的常规等级
+    - key: experiment_course_instruction
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:JW-0006, record:JW-0034]
+      note: 指导记录与指导书修订可印证
+    - key: research_paper_writing
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:KY-0004, record:KY-0014, manager_review:MR18]
+      note: 论文与开放基金项目都用未登记的 KY-OUT-0391 账号、显示名「郝工」，系统会把这些成果判为无主或算给别人，经理也因此回答不确定
+    certifications: []
+    notes: HR 档案里那张危化品安全培训合格证 2024 年底已过期未复训，是「持证不等于能力、过期证书不等于不会」的测试点；他的实际安全管理水平靠值守记录而不是证书。
+  usage_profile:
+    digital_literacy: low
+    devices: [pc, mobile]
+    expression_style: 口语化、短句，常用「那个」「弄好了」，爱用语音转文字，错别字多
+    attitude: skeptical
+    test_focus:
+    - 检查未登记账号「郝工」的记录能否认到自己名下
+    - 检查过期的安全培训证书会不会直接把安全管理能力判低
+    - 检查自述能不能用语音输入、字数要求是不是太长
+- employee_code: TL006
+  display_name: 练子辰
+  work_history:
+  - period: 2019-09 至 2024-06
+    org: 某高校（虚构）
+    role: 硕博研究生
+    summary: 参与两项国家级项目的算法实验部分
+  - period: 2024-09 至今
+    org: 汀兰大学（模拟）计算机科学与技术学院
+    role: 助教
+    summary: 协助编译原理课程，参与纵向项目与学术会议会务
+  ground_truth:
+    capabilities:
+    - key: course_teaching
+      level: routine
+      evidence: partial
+      evidence_refs: [record:JW-0007, record:JW-0023, record:JW-0014]
+      note: 系统里他只以被查教师或协同教师出现，看不到独立主讲的证据
+    - key: research_paper_writing
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 读博期间以第二作者完成两篇论文的写作，成果登记在原单位，本校系统没有任何记录，经理也回答不确定；系统应输出未知
+    - key: curriculum_development
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只按模板填过大纲条目，系统里没有记录，真实水平确实偏低但不应由「无记录」推出
+    certifications: [高等学校教师资格证]
+    notes: 典型的「记录稀薄的新教师」，用来验证系统会不会把无记录当成能力低。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 谨慎、爱加限定词，不敢写肯定句
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查没有记录的能力是否显示为未知而不是不会
+    - 检查入职前的成果能不能自己补充进去
+    - 检查经理的「不确定」会不会被当成负面结论
+- employee_code: TL007
+  display_name: 苗惜
+  work_history:
+  - period: 2025-09 至今
+    org: 汀兰大学（模拟）计算机科学与技术学院
+    role: 研究生助管（校内助管岗）
+    summary: 协助教务数据核对、成绩录入与实验课助教
+  ground_truth:
+    capabilities:
+    - key: grade_data_handling
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:JW-0004, record:JW-0025, manager_review:MR05, self_report:SR05]
+      note: 两个学期的录入、分项核对与更正申请实际都由她完成，但主记录挂在课程负责人名下，经理按制度把她算成协助角色、评价偏低；真实水平高于评价
+    - key: experiment_course_instruction
+      level: routine
+      evidence: partial
+      evidence_refs: [record:JW-0006]
+      note: 只作为助教出现在参与者里，证据不足以确认等级
+    certifications: []
+    notes: 助管岗与指派不一致是刻意设计的一组矛盾证据，用来验证实际贡献者能否被识别。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 直接、会列出具体做了哪几件事
+    attitude: skeptical
+    test_focus:
+    - 检查以「协助录入」身份出现的记录能否体现在自己的画像里
+    - 检查实习与助管身份会不会导致画像被隐藏
+    - 检查经理评价偏低时自己能否补充证据
+- employee_code: TL008
+  display_name: 诸葛彦
+  work_history:
+  - period: 1998-09 至 2002-07
+    org: 某机械研究院（虚构）
+    role: 工程师
+    summary: 从事传动系统设计
+  - period: 2002-08 至今
+    org: 汀兰大学（模拟）机械工程学院
+    role: 讲师至教授、院长
+    summary: 主讲机械原理，牵头省级虚拟仿真实验教学中心建设
+  ground_truth:
+    capabilities:
+    - key: course_teaching
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:JW-0011, record:JW-0017, record:JW-0026]
+      note: 授课、听课与教学检查记录齐全
+    - key: vertical_project_management
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:KY-0011]
+      note: 平台建设项目只有一条任务分解记录，看不出他统筹预算与多单位分工的真实水平
+    - key: lab_safety_management
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 他每学期带队查工程训练中心，检查表走的是纸质流程，系统里没有记录
+    certifications: [高等学校教师资格证]
+    notes: 既是部门负责人又是项目负责人，用于验证两种身份不会被混为一个结论。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 简短、偏口头指令式
+    attitude: neutral
+    test_focus:
+    - 检查部门负责人身份与项目负责人身份是否分别呈现
+    - 检查纸质检查表这类线下工作如何补充为证据
+- employee_code: TL009
+  display_name: 温书珩
+  work_history:
+  - period: 2010-09 至 2013-06
+    org: 某高校（虚构）
+    role: 博士研究生
+    summary: 振动与噪声控制方向
+  - period: 2013-09 至今
+    org: 汀兰大学（模拟）机械工程学院
+    role: 讲师、副教授
+    summary: 主讲机械振动基础，主持企业横向技术服务项目
+  ground_truth:
+    capabilities:
+    - key: horizontal_contract_ip
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:KY-0005, record:KY-0007, manager_review:MR17, self_report:SR06]
+      note: 合同签订、阶段验收与专利发明人记录一致
+    - key: research_fund_compliance
+      level: routine
+      evidence: documented
+      evidence_refs: [record:KY-0006]
+      note: 报销退回一次后补齐材料，等级可确认
+    - key: vertical_project_management
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:KY-0021, self_report:SR06]
+      note: 省级纵向申报被退回补充材料，证据只说明一次经历，不足以定级
+    - key: course_teaching
+      level: routine
+      evidence: documented
+      evidence_refs: [record:JW-0029, record:JW-0030]
+      note: 成绩录入与毕设选题记录可印证常规水平
+    certifications: [高等学校教师资格证]
+    notes: 横向项目的 PI，不是任何部门负责人；教务与科研两个系统各有一套账号。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 工程化、爱写数字和节点
+    attitude: positive
+    test_focus:
+    - 检查项目负责人能否看到项目组成员的可承担工作
+    - 检查两个系统的账号是否归并到同一个人
+    - 检查横向项目的企业信息是否被当成敏感内容处理
+- employee_code: TL010
+  display_name: 雷沅
+  work_history:
+  - period: 2018-09 至今
+    org: 汀兰大学（模拟）机械工程学院
+    role: 讲师
+    summary: 分班主讲机械原理，兼一个班的学业导师
+  ground_truth:
+    capabilities:
+    - key: course_teaching
+      level: routine
+      evidence: documented
+      evidence_refs: [record:JW-0011, record:JW-0013, manager_review:MR06, self_report:SR07]
+      note: 授课与成绩记录充分，等级与评价一致
+    - key: grade_data_handling
+      level: routine
+      evidence: documented
+      evidence_refs: [record:JW-0013]
+      note: 分项录入与两处更正留痕
+    - key: student_counseling
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 他兼任班级学业导师并长期跟进几名学业困难学生，但学工系统里没有教师账号，完全没有记录
+    certifications: [高等学校教师资格证]
+    notes: 跨系统的岗位盲区：教师在学工系统里没有身份，育人工作天然无记录。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 平实、按时间顺序讲事
+    attitude: neutral
+    test_focus:
+    - 检查学业导师这类跨条线的工作能否补充进画像
+    - 检查成绩更正记录会不会被解读成出错
+- employee_code: TL011
+  display_name: 邱铖
+  work_history:
+  - period: 2005-07 至 2009-06
+    org: 某装备制造企业（虚构）
+    role: 试验室技师
+    summary: 负责振动与疲劳试验台操作
+  - period: 2009-07 至今
+    org: 汀兰大学（模拟）机械工程学院
+    role: 实验师、高级实验师
+    summary: 承担工程训练与虚拟仿真实验指导，参与平台建设
+  ground_truth:
+    capabilities:
+    - key: experiment_course_instruction
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:JW-0012, record:JW-0024, manager_review:MR13, self_report:SR08]
+      note: 全部课次独立带教、现场异常自行处理，真实水平高于经理给的常规等级
+    - key: lab_safety_management
+      level: routine
+      evidence: partial
+      evidence_refs: [record:JW-0024, record:KY-0011]
+      note: 带教与平台建设记录只间接体现安全管理，证据不足
+    - key: education_system_ops
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 他能处理仿真平台的本地配置问题，系统里没有运维类记录，不应据此判断为不会
+    certifications: [实验室安全管理人员培训合格证, 特种作业操作证（低压电工作业）]
+    notes: 姓名含生僻字「铖」（BMP 内），与郝𤭢的 BMP 外生僻字构成两级测试。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 具体、爱讲设备型号和现场细节，担心说少了被当成没干事
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查姓名生僻字在搜索与导出里是否正常显示
+    - 检查临时设备维护没有记录会不会拉低画像
+    - 检查经理评价低于自己判断时的申诉入口
+- employee_code: TL012
+  display_name: 宓韶
+  work_history:
+  - period: 2019-03 至 2026-02
+    org: 汀兰大学（模拟）科研处
+    role: 纵向项目管理岗
+    summary: 组织年度集中申报、维护在研项目台账
+  - period: 2026-03 至今
+    org: 汀兰大学（模拟）机械工程学院
+    role: 讲师
+    summary: 转任专任教师，主讲机械设计基础
+  ground_truth:
+    capabilities:
+    - key: vertical_project_management
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:KY-0009, record:KY-0010, manager_review:MR07, self_report:SR09]
+      note: 他在科研处用旧账号 A20191 独立组织过 31 份申报与 12 个项目台账移交，转岗后记录断在学院侧，新任院长回答不确定；系统若只看学院记录会把他判成需要协助
+    - key: course_teaching
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:JW-0010, record:JW-0017, self_report:SR09]
+      note: 调课与听课意见一致，真实水平确实是需要协助
+    - key: research_fund_compliance
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 在科研处做过三年预算科目审核，这部分记录随账号停用后没有归并
+    certifications: [高等学校教师资格证]
+    notes: 转岗造成的记录断层是本企业最重要的刻意设计：同一个人前后两个系统、两个账号、两个岗位。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 行政文风、流程术语多
+    attitude: skeptical
+    test_focus:
+    - 检查转岗前的科研处记录是否出现在自己的画像里
+    - 检查旧账号 A20191 与新工号是否被归并
+    - 检查画像会不会只按当前岗位呈现能力
+- employee_code: TL013
+  display_name: 卓亦寒
+  work_history:
+  - period: 2024-09 至今
+    org: 汀兰大学（模拟）机械工程学院
+    role: 助教
+    summary: 协助工程训练实验，参与虚拟仿真平台课程上线
+  ground_truth:
+    capabilities:
+    - key: experiment_course_instruction
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:JW-0024, manager_review:MR16]
+      note: 带教记录与评价一致，等级可确认
+    - key: course_teaching
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:JW-0026]
+      note: 只有一次教学检查记录
+    certifications: []
+    notes: 新教师的等级低是真实情况，不是证据缺失造成的，用作对照组。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 简短、礼貌，爱问流程
+    attitude: neutral
+    test_focus:
+    - 检查新教师的画像是否清楚标出哪些是未知
+    - 检查带教关系能否体现为第二汇报人
+- employee_code: TL014
+  display_name: 柏松
+  work_history:
+  - period: 2004-07 至 2008-06
+    org: 某高校（虚构）学生处
+    role: 辅导员
+    summary: 带两个年级，负责奖助与就业
+  - period: 2008-07 至今
+    org: 汀兰大学（模拟）学生工作部
+    role: 辅导员至部长
+    summary: 管理辅导员队伍，统筹奖助评审与突发事件处置
+  ground_truth:
+    capabilities:
+    - key: scholarship_review_organization
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:XG-0002, record:XG-0010, manager_review:MR20]
+      note: 两年评审会都以评审组长身份出现，记录充分
+    - key: student_crisis_response
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:XG-0005]
+      note: 只有一次值班领导记录，看不到他处理长期跟进事件的真实水平
+    - key: student_counseling
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 他承接辅导员转上来的疑难个案，谈话由辅导员记录，部长本人在系统里没有谈话记录
+    certifications: [高校辅导员骨干培训合格证]
+    notes: 作为评审人出现 5 次，用于验证「评价别人」不会变成自己的能力证据。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 口头化但有条理，爱用部门口径
+    attitude: neutral
+    test_focus:
+    - 检查以评审人身份产生的记录会不会算成自己的能力
+    - 检查下属画像里的学生信息是否都已脱敏
+    - 检查经理评价提交后能否修改
+- employee_code: TL015
+  display_name: 阿依古丽·肉孜
+  work_history:
+  - period: 2017-08 至今
+    org: 汀兰大学（模拟）学生工作部
+    role: 专职辅导员
+    summary: 带两个年级，负责宿舍走访、主题班会与夜间值班
+  ground_truth:
+    capabilities:
+    - key: student_crisis_response
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:XG-0005, manager_review:MR15, self_report:SR10]
+      note: 夜间处置的时间线记录清楚，真实水平高于经理给的常规等级
+    - key: student_counseling
+      level: routine
+      evidence: documented
+      evidence_refs: [record:XG-0004, record:XG-0011]
+      note: 走访与班会记录可印证
+    - key: scholarship_review_organization
+      level: routine
+      evidence: partial
+      evidence_refs: [record:XG-0010]
+      note: 只以评审成员身份出现一次
+    certifications: [高校辅导员岗前培训合格证, 心理健康教育初级培训合格证]
+    notes: 姓名带间隔号，是姓名解析与搜索的测试点。
+  usage_profile:
+    digital_literacy: medium
+    devices: [mobile, pc]
+    expression_style: 口语化、热情，夜间处置后常用手机补记录
+    attitude: positive
+    test_focus:
+    - 检查带间隔号的姓名在搜索和排序里是否正常
+    - 检查手机上能否补填值班记录
+    - 检查谈话记录里是否出现学生个人信息
+- employee_code: TL016
+  display_name: 石岩
+  work_history:
+  - period: 2015-08 至今
+    org: 汀兰大学（模拟）学生工作部
+    role: 专职辅导员，2022 年起驻计算机科学与技术学院
+    summary: 负责学业预警帮扶、学风检查与学院学生工作对接
+  ground_truth:
+    capabilities:
+    - key: student_counseling
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:XG-0001, record:XG-0014, manager_review:MR09, self_report:SR11]
+      note: 三轮帮扶跟踪记录与评价一致
+    - key: student_crisis_response
+      level: routine
+      evidence: documented
+      evidence_refs: [record:XG-0012]
+      note: 资源转介流程记录完整
+    - key: scholarship_review_organization
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 他在学院侧做过两年班级初评，这部分由学院线下组织，学工系统里没有记录
+    certifications: [高校辅导员岗前培训合格证]
+    notes: 跨部门兼岗（学生工作部 + 计算机科学与技术学院），两条汇报线。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 具体、讲案例，不爱写结论
+    attitude: positive
+    test_focus:
+    - 检查兼岗后画像在哪个部门下、两个经理是否都能看到
+    - 检查学院线下初评能否作为证据补充
+- employee_code: TL017
+  display_name: 郗舒
+  work_history:
+  - period: 2019-08 至今
+    org: 汀兰大学（模拟）学生工作部
+    role: 专职辅导员
+    summary: 负责助学金评审会组织、毕业班就业摸排
+  ground_truth:
+    capabilities:
+    - key: scholarship_review_organization
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:XG-0002, manager_review:MR08, self_report:SR12]
+      note: 她自述能独立完成全流程，部长评价需要协助，实际是常规水平——评审会与公示她能自己走完，细则制定和申诉复核确实还靠部长；两份证据分别高估和低估
+    - key: student_counseling
+      level: routine
+      evidence: documented
+      evidence_refs: [record:XG-0009, record:XG-0003]
+      note: 谈话与材料复核记录可印证
+    certifications: [高校辅导员岗前培训合格证]
+    notes: 自述与经理评价相互矛盾，她本人准备申诉，是申诉流程的主测试人。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 主动、强调自己的贡献，用词肯定
+    attitude: skeptical
+    test_focus:
+    - 检查自述与经理评价矛盾时画像展示了哪一边、是否标注争议
+    - 检查申诉入口在哪、提交后状态如何变化
+    - 检查申诉记录是否进入审计轨迹
+- employee_code: TL018
+  display_name: 冉清和
+  work_history:
+  - period: 2020-07 至今
+    org: 汀兰大学（模拟）学生工作部
+    role: 学生资助管理岗
+    summary: 负责困难认定复核、奖助台账与临时补助审核
+  ground_truth:
+    capabilities:
+    - key: scholarship_review_organization
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:XG-0003, record:XG-0010, record:XG-0013, manager_review:MR20]
+      note: 复核、组织、台账三类记录齐全
+    - key: student_counseling
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 岗位不接触谈话工作，系统里没有记录，真实水平确实低但应显示为未知
+    certifications: []
+    notes: 用于验证「岗位不涉及」与「能力不足」是两件事。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 严谨、按条款和台账说话
+    attitude: neutral
+    test_focus:
+    - 检查岗位不涉及的能力是否显示为未知
+    - 检查资助台账相关记录是否不含学生个人信息
+- employee_code: TL019
+  display_name: 上官宁
+  work_history:
+  - period: 2000-09 至 2005-08
+    org: 某研究院（虚构）
+    role: 助理研究员
+    summary: 从事工程伦理与科技政策研究
+  - period: 2005-09 至今
+    org: 汀兰大学（模拟）科研处
+    role: 教授，2018 年起任科研处处长
+    summary: 统筹纵向项目组织、横向合同与经费合规，兼授工程伦理
+  ground_truth:
+    capabilities:
+    - key: vertical_project_management
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:KY-0009, manager_review:MR10]
+      note: 作为审核人出现在集中申报记录中，结合对下属的评价可确认
+    - key: course_teaching
+      level: routine
+      evidence: partial
+      evidence_refs: [record:JW-0028]
+      note: 只有一条成绩录入记录，课堂情况看不到
+    - key: horizontal_contract_ip
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 权属争议谈判都由他出面，系统里的合同记录署名是经办人，处长不出现
+    certifications: [高等学校教师资格证]
+    notes: 职能处室负责人，证据多为审核与签批痕迹，容易被判为「只做流程」。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 公文化、强调依据和口径
+    attitude: neutral
+    test_focus:
+    - 检查审核与签批痕迹会不会被当成全部能力
+    - 检查处室负责人能看到哪些范围的员工画像
+- employee_code: TL020
+  display_name: 房雨桐
+  work_history:
+  - period: 2013-07 至 2016-06
+    org: 某科技管理服务机构（虚构）
+    role: 项目助理
+    summary: 协助整理项目申报材料
+  - period: 2016-07 至今
+    org: 汀兰大学（模拟）科研处
+    role: 纵向项目管理岗
+    summary: 组织年度申报、中期检查与结题汇总，维护项目台账
+  ground_truth:
+    capabilities:
+    - key: vertical_project_management
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:KY-0002, record:KY-0018, record:KY-0020, manager_review:MR10, self_report:SR13]
+      note: 立项、中期检查、结题汇总连续两年有记录，真实水平高于处长给的常规等级
+    - key: research_fund_compliance
+      level: routine
+      evidence: partial
+      evidence_refs: [record:KY-0018]
+      note: 只在中期检查里核对过执行率，不足以单独定级
+    certifications: []
+    notes: 经理按「口径问题会来问我」判为常规，但她组织 46 个项目检查的记录支持更高等级，是评价偏低的测试点。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 流程清楚、爱列数量和时间节点
+    attitude: positive
+    test_focus:
+    - 检查组织类工作的数量能否支撑更高等级
+    - 检查同一能力下自述、记录与经理评价的权重
+- employee_code: TL021
+  display_name: 滕越
+  work_history:
+  - period: 2011-07 至 2014-06
+    org: 某专利代理机构（虚构）
+    role: 专利代理人助理
+    summary: 承担机械领域专利撰写与答复
+  - period: 2014-07 至今
+    org: 汀兰大学（模拟）科研处
+    role: 横向合同与知识产权岗
+    summary: 审核技术服务合同、办理专利申请与成果登记
+  ground_truth:
+    capabilities:
+    - key: horizontal_contract_ip
+      level: routine
+      evidence: documented
+      evidence_refs: [record:KY-0008, record:KY-0017, record:KY-0022, manager_review:MR11, self_report:SR14]
+      note: 合同审核与专利事务记录充分，权属谈判仍需处长出面，等级可确认为常规
+    - key: research_fund_compliance
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 他同时核对横向项目的分成与到账，台账在处室本地表格里，系统无记录
+    certifications: [专利代理师资格证书]
+    notes: 持有专利代理师资格但权属争议仍需协助，用于验证「资格不等于能力」。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 法律与合同术语多、措辞谨慎
+    attitude: neutral
+    test_focus:
+    - 检查资格证书是否被直接当成高等级能力
+    - 检查项目负责人给的评价与直属处长的评价如何并列
+- employee_code: TL022
+  display_name: 蓝沁
+  work_history:
+  - period: 2018-07 至今
+    org: 汀兰大学（模拟）科研处
+    role: 科研经费管理岗
+    summary: 审核报销与劳务发放、核查执行率
+  ground_truth:
+    capabilities:
+    - key: research_fund_compliance
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:KY-0006, record:KY-0016, manager_review:MR19]
+      note: 退回与通过两类记录都有，评价具体，可确认
+    - key: horizontal_contract_ip
+      level: routine
+      evidence: partial
+      evidence_refs: [record:KY-0005]
+      note: 只以经费审核人身份参与合同签订
+    certifications: [初级会计专业技术资格]
+    notes: 证据与真实能力基本一致，作为对照组。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 精确、爱引用科目和制度条款
+    attitude: positive
+    test_focus:
+    - 检查退回类记录会不会被解读成工作失误
+    - 检查经费数据在画像里是否做了范围控制
+- employee_code: TL023
+  display_name: 谭叙
+  work_history:
+  - period: 2023-07 至 2026-08
+    org: 某高校（虚构）科研管理部门
+    role: 科研秘书
+    summary: 负责项目台账、会议组织与成果统计
+  - period: 2026-09 至今
+    org: 汀兰大学（模拟）科研处
+    role: 科研秘书
+    summary: 刚入职，正在熟悉本校系统与流程
+  ground_truth:
+    capabilities:
+    - key: vertical_project_management
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 在上一所学校独立做过三年台账与申报组织，本校系统里完全没有记录，也还没有自述，系统必须输出未知
+    - key: research_fund_compliance
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 没有经费审核经验，同样没有任何记录
+    certifications: []
+    notes: 2026-09-07 入职，没有任何工作记录、没有自述、没有经理评价，是「新人冷启动」的测试人。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 客气、提问多，不确定该填什么
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查零记录的新人画像长什么样、会不会显示为能力低
+    - 检查入职引导是否说明哪些内容需要自己补充
+    - 检查前一所学校的经历能否作为自述证据
+- employee_code: TL024
+  display_name: 郎津
+  work_history:
+  - period: 2004-07 至 2010-07
+    org: 某软件公司（虚构）
+    role: 项目经理
+    summary: 负责高校管理信息系统实施
+  - period: 2010-08 至今
+    org: 汀兰大学（模拟）信息化办公室
+    role: 工程师至主任
+    summary: 统筹业务系统建设、账号权限与数据核对
+  ground_truth:
+    capabilities:
+    - key: education_system_ops
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:JW-0032, manager_review:MR14]
+      note: 只以审批人身份出现，真实的方案评估与影响范围判断看不到
+    - key: grade_data_handling
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 他主持过两次历史成绩数据清理，记录在当年的项目文档里，没有进业务系统
+    certifications: []
+    notes: 审批人痕迹多、动手记录少，是部门负责人类画像的共同难点。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 技术术语与管理口径混用
+    attitude: neutral
+    test_focus:
+    - 检查审批痕迹与实际动手工作是否被区分
+    - 检查企业管理员与部门负责人的权限边界
+- employee_code: TL025
+  display_name: 应念
+  work_history:
+  - period: 2014-07 至 2017-06
+    org: 某系统集成商（虚构）
+    role: 运维工程师
+    summary: 负责数据库与应用服务器运维
+  - period: 2017-07 至今
+    org: 汀兰大学（模拟）信息化办公室
+    role: 系统运维工程师
+    summary: 负责账号权限、同步任务与业务系统日常运维
+  ground_truth:
+    capabilities:
+    - key: education_system_ops
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:JW-0032, record:JW-0031]
+      note: 批量账号开通与性能问题协同处理都有记录
+    - key: grade_data_handling
+      level: routine
+      evidence: partial
+      evidence_refs: [record:JW-0005]
+      note: 批量归档的同步任务是他配置的，但记录的执行人是服务账号 jw-sync，他本人不出现
+    certifications: []
+    notes: 本企业的 org_admin，是信息化办公室的普通员工、不是部门负责人。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 简洁、技术化
+    attitude: positive
+    test_focus:
+    - 检查服务账号 jw-sync 的记录是否被错误归到某个人
+    - 检查企业管理员能看到的范围是否超出必要
+    - 检查账号与员工的映射关系能否在界面上修正
+- employee_code: TL026
+  display_name: 商黎
+  work_history:
+  - period: 2018-08 至今
+    org: 汀兰大学（模拟）信息化办公室
+    role: 教务与数据系统管理员
+    summary: 负责教务系统运行保障、数据核对与平台对接
+  ground_truth:
+    capabilities:
+    - key: education_system_ops
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:JW-0031, manager_review:MR14, self_report:SR15]
+      note: 性能问题定位记录具体，真实水平高于主任给的常规等级
+    - key: grade_data_handling
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:JW-0005]
+      note: 批量导入异常都由他排查，但记录的执行人是服务账号，证据不足
+    certifications: []
+    notes: 平台建设项目成员，项目记录出现在科研管理系统而不是教务系统。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 技术化、爱贴日志与参数
+    attitude: positive
+    test_focus:
+    - 检查跨系统（教务 + 科研）的记录能否合并
+    - 检查服务账号产生的工作量能否认领
+- employee_code: TL027
+  display_name: 骆鸣
+  work_history:
+  - period: 2021-04 至 2025-02
+    org: 某网络服务外包公司（虚构）
+    role: 网络工程师
+    summary: 驻校园网项目，负责交换机与出口链路维护
+  - period: 2025-03 至今
+    org: 汀兰大学（模拟）信息化办公室（劳务派遣）
+    role: 网络与信息安全工程师
+    summary: 负责校园网排查与安全加固配合
+  ground_truth:
+    capabilities:
+    - key: education_system_ops
+      level: routine
+      evidence: partial
+      evidence_refs: [record:JW-0032]
+      note: 只以网络排查参与者身份出现一次
+    - key: lab_safety_management
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 岗位与实验室安全无关，没有记录，应显示未知
+    certifications: []
+    notes: 劳务派遣身份，用于验证外部人员的画像范围与可见性控制。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 简短、以工单口径回答
+    attitude: neutral
+    test_focus:
+    - 检查派遣人员能看到的内容是否受限
+    - 检查派遣身份会不会影响画像可见性
+- employee_code: TL028
+  display_name: 甘棠
+  work_history:
+  - period: 2020-09 至 2026-06
+    org: 汀兰大学（模拟）计算机科学与技术学院
+    role: 讲师
+    summary: 主讲离散数学，2026 年 6 月离职
+  ground_truth:
+    capabilities:
+    - key: course_teaching
+      level: routine
+      evidence: documented
+      evidence_refs: [record:JW-0021, record:JW-0022]
+      note: 离职前的授课与成绩记录完整
+    - key: research_paper_writing
+      level: routine
+      evidence: partial
+      evidence_refs: [record:KY-0013]
+      note: 只有一条会议论文登记
+    certifications: [高等学校教师资格证]
+    notes: 已离职，没有登录账号，但历史记录仍在两个系统里，用于验证离职人员的记录归属与可见性。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 已离职，不参与测试
+    attitude: neutral
+    test_focus:
+    - 检查离职人员是否仍占用登录账号
+    - 检查离职人员的历史记录是否仍能按姓名检索到
+account_truth:
+- source: 教务系统
+  account_id: jw-sync
+  owner: null
+  note: 教务系统与数据中台之间的同步服务账号，成绩批量归档以它的名义写入，不属于任何员工；任务由 TL025 配置
+- source: 科研管理系统
+  account_id: KY-OUT-0391
+  owner: TL005
+  note: 旧版科研系统为校外合作单位开的协作账号，显示名「郝工」，实际一直由实验师郝𤭢使用，人事与科研处都没有登记这层映射
+- source: 学生工作系统
+  account_id: xg-assist-07
+  owner: null
+  note: 学工办学生助理公用账号，用于录入评审会记录与发布公示，每年换人使用，不对应固定员工，记录中不含学生个人信息
+edge_cases:
+- tag: multi_account
+  employees: [TL002, TL005, TL009, TL012]
+  refs: [record:KY-0001, record:KY-0004, record:KY-0005, record:KY-0009, record:JW-0010]
+  note: 教师在教务系统用工号、在科研管理系统用另一套账号。TL002、TL009 的科研账号已登记在 roster.external_accounts；TL012 的 A20191 是转岗前的科研处账号；TL005 用的 KY-OUT-0391 完全没有登记，只能从 account_truth 还原
+- tag: transfer
+  employees: [TL012]
+  refs: [record:KY-0009, record:KY-0010, record:JW-0010, record:JW-0017]
+  note: 2026-03-01 从科研处纵向项目管理岗转任机械工程学院讲师。转岗前的记录全在科研管理系统且用旧账号，转岗后只有教务系统记录，两段之间没有任何系统线索相连
+- tag: concurrent_post
+  employees: [TL002, TL016]
+  refs: [record:KY-0001, record:XG-0008]
+  note: TL002 是计算机学院教授兼科研处副处长，两条汇报线；TL016 是学生工作部辅导员驻计算机科学与技术学院，学院和学工部都认为他是自己人
+- tag: cross_source_duplicate
+  employees: [TL004, TL016]
+  refs: [record:KY-0015, record:XG-0008]
+  note: 同一个本科生创新训练项目 DC2026-15 在科研管理系统有立项记录、在学生工作系统有配套与场地协调记录，两条记录的执行人不同，容易被算成两件事
+- tag: manager_unsure
+  employees: [TL005, TL006, TL012]
+  refs: [manager_review:MR04, manager_review:MR07, manager_review:MR18]
+  note: 三种不确定的原因不同：TL006 是记录太少，TL012 是转岗后经理没接触过他以前的工作，TL005 是成果用了未登记账号、经理认不出是谁做的
+- tag: compound_surname
+  employees: [TL001, TL008, TL019]
+  refs: []
+  note: 欧阳、诸葛、上官三个复姓，分别是两个学院院长和科研处处长，用于验证姓名拆分、排序与拼音邮箱生成
+- tag: rare_character
+  employees: [TL005, TL011]
+  refs: [record:JW-0006, record:JW-0018, record:JW-0012]
+  note: 郝𤭢的「𤭢」是 U+24B62，属 CJK 统一汉字扩展 B，在 BMP 之外、UTF-8 占 4 字节，常见问题是数据库按 utf8 而非 utf8mb4 存储时被截断或变成问号；邱铖的「铖」在 BMP 内，作为对照
+- tag: english_name
+  employees: [TL004]
+  refs: [record:JW-0008, record:JW-0016, record:KY-0015]
+  note: 花名册显示名是「戴伟（David Whitlock）」，教务与科研记录里的显示名是纯英文 David Whitlock，邮箱也用英文名，姓名归并与拼音规则都是例外
+- tag: pm_not_dept_manager
+  employees: [TL002, TL004, TL009]
+  refs: [record:KY-0001, record:KY-0005, record:KY-0015]
+  note: 纵向项目 PI、横向项目负责人和大创指导教师都不是任何部门负责人；PI 身份不随行政职务变动，不能用部门负责人来推断项目负责人
+- tag: dept_and_project_lead
+  employees: [TL008]
+  refs: [record:KY-0011]
+  note: 机械工程学院院长同时是省级虚拟仿真实验教学中心建设项目（PT2026-03）负责人，部门负责人与项目负责人重合
+- tag: unlinked_account
+  employees: []
+  refs: [record:JW-0005, record:XG-0006]
+  note: jw-sync 与 xg-assist-07 两个账号在记录里都是执行人，但不属于任何员工。系统不应为它们生成画像，也不应把它们的工作量分给某个人
+- tag: assignee_mismatch
+  employees: [TL003, TL007]
+  refs: [record:JW-0004, record:JW-0025]
+  note: 《数据结构》成绩录入记录的执行人是课程负责人阮知雪（制度要求由她提交），实际逐项录入与更正申请由研究生助管苗惜完成；TL003 的 grade_data_handling 真实等级是需要协助，TL007 是能独立完成复杂任务
+- tag: review_conflict
+  employees: [TL017]
+  refs: [self_report:SR12, manager_review:MR08]
+  note: 郗舒自述能独立完成奖助评审全流程，部长评价为需要协助，真实水平在两者之间
+- tag: appeal
+  employees: [TL017]
+  refs: [manager_review:MR08]
+  note: 她认为部长只看了去年那次评审会、没算上今年的毕业班摸排和公示工作，准备在系统里提出申诉并附上 XG-0002、XG-0009 两条记录
+- tag: departed
+  employees: [TL028]
+  refs: [record:JW-0021, record:JW-0022, record:KY-0013]
+  note: 甘棠 2026-06-30 离职，没有登录账号，但教务与科研系统都留有记录
+- tag: intern
+  employees: [TL007]
+  refs: [record:JW-0025]
+  note: 研究生助管属于校内助管岗，按实习生身份登记，实际承担的教务数据工作比岗位描述多
+- tag: contractor
+  employees: [TL027]
+  refs: [record:JW-0032]
+  note: 网络与信息安全工程师是劳务派遣，只在一条运维记录里以参与者出现
+- tag: new_hire_no_history
+  employees: [TL023]
+  refs: []
+  note: 谭叙 2026-09-07 入职，在三个来源里都没有任何记录，也没有自述和经理评价
+- tag: ethnic_minority_name
+  employees: [TL015]
+  refs: [record:XG-0004, record:XG-0005]
+  note: 维吾尔族姓名，带间隔号「·」，验证姓名解析、搜索与邮箱拼音生成
+- tag: colloquial
+  employees: [TL005, TL015]
+  refs: [self_report:SR04, self_report:SR10]
+  note: 实验师和辅导员的自述都是口语化短句，郝𤭢习惯语音转文字、错别字多，辅导员夜间处置后用手机补记录

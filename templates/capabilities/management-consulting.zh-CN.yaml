@@ -1,0 +1,241 @@
+# 行业参考模板（NERE-19）：管理咨询公司（项目制）。合成示例，不代表任何真实企业。
+- key: issue_structuring
+  name: 问题结构化拆解
+  category: 问题定义与结构化
+  description: 把客户提出的模糊诉求转成可分工、可取证的子问题
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在他人给出的框架下补充子问题；拆解结果需要上级调整后才能用于分工。
+    - key: routine
+      label: 能完成常规任务
+      description: 能把边界清晰的客户问题拆成互斥且穷尽的子问题，并据此列出所需数据和访谈对象。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 面对目标模糊、涉及多部门利益的议题，能自己界定问题边界、给出可验证的拆解树，并与客户确认范围后形成工作计划。
+- key: hypothesis_driven_analysis
+  name: 假设驱动分析
+  category: 问题定义与结构化
+  description: 先提出可检验的假设，再用事实验证或推翻
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 按别人给的假设清单取数验证，不自行提出新假设。
+    - key: routine
+      label: 能完成常规任务
+      description: 能基于初步事实提出可检验的假设，设计验证口径，并根据验证结果修正假设。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 在数据不全、口径冲突时能排出假设的验证优先级，设计替代验证路径，并写明结论的适用边界。
+- key: storyline_writing
+  name: 商业写作与故事线
+  category: 问题定义与结构化
+  description: 用结论先行的结构组织材料，使图表与结论一致
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按模板完成单页材料；故事线和页面标题需要他人重写。
+    - key: routine
+      label: 能完成常规任务
+      description: 能为自己负责的模块写出结论先行的故事线，图表与结论一致，交付前不需要大幅返工。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能为整份报告搭建面向决策层的故事线，按听众调整详略，并在客户当场质询后重组论证顺序。
+- key: desk_research
+  name: 桌面研究与信息溯源
+  category: 研究与分析
+  description: 检索公开与内部资料，并把每条数据追到来源和口径
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指定的来源范围内检索，需要他人确认资料是否可用。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立检索公开资料和内部知识库，逐条标注来源与统计口径，区分一手与二手数据。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 在公开数据缺失时能设计替代估算路径，交叉校验多个来源，并在交付物里写明推算假设和不确定性。
+- key: interview_research
+  name: 访谈设计与执行
+  category: 研究与分析
+  description: 设计提纲、完成访谈并输出结构化纪要
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能承担记录和纪要整理，访谈提纲由他人拟定。
+    - key: routine
+      label: 能完成常规任务
+      description: 能围绕既定议题拟定提纲，独立完成客户中层访谈，并输出按议题归类的纪要。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立访谈客户高层和有抵触情绪的受访者，现场调整追问路径，识别不同受访者口径之间的矛盾并追溯原因。
+- key: quantitative_modeling
+  name: 量化建模与测算
+  category: 研究与分析
+  description: 搭建假设可追溯的测算模型并做敏感性分析
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在已有模板里填数、更新图表，公式结构由他人搭建。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立搭建结构清晰、假设可追溯的测算模型，并完成单变量敏感性分析。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能为多情景、多约束的问题设计模型结构，处理口径不一致的数据，并向客户财务口逐条解释假设来源。
+- key: benchmarking
+  name: 行业基准与标杆分析
+  category: 研究与分析
+  description: 选可比对象、统一口径并做差距分析
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 按指定对象收集指标，指标是否可比需要他人判断。
+    - key: routine
+      label: 能完成常规任务
+      description: 能选取可比对象、统一指标口径并完成差距分析，指出差距的主要来源。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 在缺少同口径数据时能设计替代指标和归一化方法，并说明标杆结论在客户情境下的适用范围与失效条件。
+- key: org_design
+  name: 组织与岗位设计
+  category: 专业领域方法
+  description: 梳理职能权责、设计组织结构与岗位编制
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按既定方案绘制组织图、整理岗位说明书。
+    - key: routine
+      label: 能完成常规任务
+      description: 能完成部门职能梳理、权责清单和岗位编制测算，方案在单一事业部范围内可落地。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能为集团多层级、多业务单元设计管控模式与授权边界，处理权责交叉和人员安置约束，并支撑客户决策会讨论。
+- key: process_diagnosis
+  name: 流程诊断与优化
+  category: 专业领域方法
+  description: 梳理端到端流程、识别断点并给出改进方案
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按模板绘制现状流程图，瓶颈判断需要他人复核。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成一条端到端流程的现状梳理，识别断点并给出带量化收益的改进方案。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在跨部门利益冲突和系统约束下重构流程，设计过渡方案与运行指标，并带客户团队跑完试点。
+- key: supply_chain_planning
+  name: 供应链计划与库存优化
+  category: 专业领域方法
+  description: 设计需求计划与库存策略并落到参数
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能整理需求与库存数据，参数设置需要他人指导。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成 ABC 分类、安全库存与补货参数测算，并提出计划流程的改进建议。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能为多工厂、多渠道场景设计需求计划与库存策略，权衡服务水平和资金占用，并把参数落到客户系统里验证。
+- key: digital_blueprint
+  name: 数字化蓝图与 IT 治理
+  category: 专业领域方法
+  description: 盘点应用现状、设计目标架构与治理机制
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能收集系统清单和接口现状，架构判断依赖他人。
+    - key: routine
+      label: 能完成常规任务
+      description: 能完成应用架构现状盘点，并给出中期蓝图和分期实施路线图草案。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在遗留系统、预算和组织能力约束下设计目标架构与治理机制，明确决策权、投资评审流程和分期取舍。
+- key: data_governance
+  name: 数据治理方案设计
+  category: 专业领域方法
+  description: 设计主数据标准、数据质量规则与责任矩阵
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按模板维护数据字典和标准条目。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成主数据标准、数据质量规则和数据责任矩阵的设计。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能设计覆盖多系统的数据治理组织、流程和质量闭环，处理部门之间的口径争议并推动客户内部达成一致。
+- key: engagement_planning
+  name: 项目计划与工时管理
+  category: 项目交付与客户管理
+  description: 编制项目计划、安排投入并跟踪偏差
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按计划按周填报工时、更新任务状态。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立编制单个项目的工作计划、安排人员投入，并按周跟踪进度与工时偏差。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在范围变化和人员被临时抽调的情况下重排计划、协调多项目资源冲突，并与客户重新确认交付边界。
+- key: client_communication
+  name: 客户沟通与汇报
+  category: 项目交付与客户管理
+  description: 主持客户会议、讲解结论并处理反对意见
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在他人带领下参加客户会议并完成会议纪要。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立主持客户中层例会，讲解自己负责的模块并回应常规提问。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立向客户高层汇报有争议的结论，处理现场反对意见，并在不牺牲事实的前提下推动决策。
+- key: quality_review
+  name: 交付质量复核与独立签署
+  category: 执业规范与知识管理
+  description: 复核交付物的数据、逻辑与风险，并承担签署责任
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按检查清单核对格式、数据引用和版本号。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立复核他人交付物的数据来源、逻辑一致性和结论口径，并给出可执行的修改意见。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能对整份对外交付成果承担复核与签署，识别结论风险和合规问题并要求返工。签署通常还要求相应职级或执业资质（如注册管理咨询师），持有资质是签署的前提条件，不等于已具备本项复核能力。
+- key: knowledge_contribution
+  name: 知识资产沉淀与复用
+  category: 执业规范与知识管理
+  description: 把项目成果转成可复用的方法与案例
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按要求上传交付物、填写标签和项目信息。
+    - key: routine
+      label: 能完成常规任务
+      description: 能把项目成果整理成可复用的方法模板或案例摘要，并在知识库中正确归类。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能主导某一领域的方法论沉淀，建立复用口径和更新机制，并在新项目中带教他人使用这些资产。

@@ -1,0 +1,91 @@
+slug: qiguang-aiot
+name: 栖光智联（模拟）
+industry: 智能硬件 / AIoT（端侧视觉模组与方案）
+gbt4754:
+  section: M
+  section_name: 科学研究和技术服务业
+  code: '7320'
+  class_name: 工程和技术研究和试验发展
+org_structure: functional
+org_structure_note: 标准职能制。按专业划分六个职能部门，项目不设独立项目部，由相关职能部门负责人兼任项目负责人，跨部门成员仍只向本部门负责人汇报。
+capability_template: templates/capabilities/aiot-hardware.zh-CN.yaml
+uses_jira: true
+sources:
+- name: Jira
+  kind: jira
+  description: Jira Cloud，项目 EDGE（端侧算法包）、FW（固件）
+- name: PLM
+  kind: work_records
+  description: 自建 PLM 系统，记录设计评审、ECN、BOM 变更、EMC 与可靠性测试、DFM 评审、认证送检与试产
+hr_it_departments:
+- 综合管理部
+departments:
+- name: 硬件研发部
+  pcf_categories:
+  - 2.0 Develop and Manage Products and Services
+  responsibilities: 主板原理图与 PCB 设计、电源与防护设计、结构与散热设计、硬件问题定位
+- name: 嵌入式软件部
+  pcf_categories:
+  - 2.0 Develop and Manage Products and Services
+  responsibilities: 内核与 BSP 维护、外设驱动、相机与 ISP 调试、固件集成与 OTA 升级
+- name: 端侧算法部
+  pcf_categories:
+  - 2.0 Develop and Manage Products and Services
+  - 13.0 Develop and Manage Business Capabilities
+  responsibilities: 视觉模型训练与评估、RKNN 模型转换与量化、NPU 性能调优、算法包交付
+- name: 测试与认证部
+  pcf_categories:
+  - 2.0 Develop and Manage Products and Services
+  - 11.0 Manage Enterprise Risk, Compliance, Remediation, and Resiliency
+  responsibilities: 系统与固件测试、EMC 整改、环境与可靠性试验、第三方认证送检与工厂检查
+- name: 供应链与制造工程部
+  pcf_categories:
+  - 4.0 Deliver Physical Products
+  - 10.0 Acquire, Construct, and Manage Assets
+  responsibilities: 元器件选型与二供导入、BOM 与 ECN 管理、DFM 评审、EMS 代工厂对接与试产
+- name: 综合管理部
+  pcf_categories:
+  - 7.0 Develop and Manage Human Capital
+  - 8.0 Manage Information Technology (IT)
+  responsibilities: 人力与培训档案、行政与办公采购、内部 IT 与 Jira/PLM 系统管理
+projects:
+- code: MODX
+  name: 模组 V3 硬件平台
+  manager: QG001
+  members:
+  - QG002
+  - QG003
+  - QG004
+  - QG005
+  - QG017
+  - QG021
+  note: 硬件研发部负责人兼任项目负责人，职能制下项目不改变汇报关系
+- code: FW
+  name: 固件统一平台 2.0
+  manager: QG006
+  members:
+  - QG007
+  - QG008
+  - QG009
+  - QG019
+  note: 嵌入式软件部负责人兼任项目负责人
+- code: EDGE
+  name: 端侧视觉算法包 V3
+  manager: QG011
+  members:
+  - QG012
+  - QG013
+  - QG014
+  - QG015
+  - QG007
+  - QG019
+  note: 端侧算法部负责人兼任项目负责人，固件与测试人员以项目成员身份参与
+- code: CERT
+  name: 模组 V3 认证与可靠性专项
+  manager: QG016
+  members:
+  - QG017
+  - QG018
+  - QG003
+  - QG022
+  note: 测试与认证部负责人兼任专项负责人，硬件与制造工程各派一人参与

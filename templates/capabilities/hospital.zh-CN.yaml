@@ -1,0 +1,242 @@
+# 行业参考模板（NERE-19）：三级甲等综合医院。合成示例，不代表任何真实企业或医疗机构。
+# 等级描述只写可观察的工作行为，不含绩效、态度与品德评价；执业资质是开展相应工作的前提，不等于能力等级。
+- key: outpatient_consult
+  name: 门诊接诊与转诊决策
+  category: 临床诊疗
+  description: 在门诊完成接诊、初步诊断、处置与转诊收治决策
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在上级医师在旁或可随时呼叫的条件下接诊常见病，处置意见和处方需上级签认。
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成本专业常见病的门诊接诊、检查开单与用药，诊断不明确时按流程申请会诊或收住院。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理诊断不明确、合并多系统疾病或院外带入复杂用药的门诊病例，并能承担专家门诊、解答下级医师的门诊咨询。
+- key: inpatient_management
+  name: 住院患者病程管理
+  category: 临床诊疗
+  description: 从入院到出院的病程记录、医嘱调整与会诊统筹
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在上级医师指导下完成入院记录、日常病程与医嘱开立，变更治疗方案前须经上级确认。
+    - key: routine
+      label: 能完成常规任务
+      description: 独立管理病情稳定的住院患者，按时完成查房记录、调整常规用药，并能识别需要上报上级的病情变化。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立管理合并多种基础疾病或病情反复的患者，主持疑难病例讨论并统筹跨科会诊意见形成一致方案。
+- key: critical_care
+  name: 急危重症识别与初步处置
+  category: 临床诊疗
+  description: 识别急危重症并按预案完成气道、循环等初步处置
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按预案执行基础生命支持和上级下达的抢救医嘱，复苏与抢救过程由上级主持。
+    - key: routine
+      label: 能完成常规任务
+      description: 独立识别常见急危重症并启动标准抢救流程，完成气道与循环的初步处置后按时上报上级。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立主持多发伤、休克等复杂抢救，分配抢救团队分工，并在检查资料不全时做出分级处置与转运决策。
+- key: cardiac_intervention
+  name: 心血管介入诊疗操作
+  category: 手术与介入
+  description: 开展冠脉造影、PCI 等介入操作；取得相应培训资质并获得院内手术授权是前提，持证本身不等于具备独立操作能力
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在已获授权的上级术者指导下完成穿刺、导管送入等步骤，不独立决定器械选择与终止时机。
+    - key: routine
+      label: 能完成常规任务
+      description: 在院内已授权范围内独立完成诊断性造影与单支简单病变处理，并能处理穿刺点出血等常见并发症。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立完成分叉病变、慢性完全闭塞等复杂介入治疗，处理术中急性并发症，并带教下级术者上台。
+- key: surgery_grade3
+  name: 三级及以上手术主刀
+  category: 手术与介入
+  description: 按院内手术分级授权目录承担三级及以上手术主刀；授权是前提，实际能力需看主刀记录与术中处置
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 以一助身份参与三级手术，关键步骤由上级完成，或全程在上级手把手指导下操作。
+    - key: routine
+      label: 能完成常规任务
+      description: 在授权范围内独立主刀解剖清晰的三级手术，遇到超出授权的情况能及时请上级上台接手。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立主刀四级手术或解剖变异、粘连严重的病例，术中能改变手术方式并处理意外出血。
+- key: perioperative_management
+  name: 围手术期管理
+  category: 手术与介入
+  description: 术前评估与讨论、术后处理及并发症识别
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下完成术前准备清单与术后常规医嘱，手术风险评估结论由上级确认。
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成术前评估、术前讨论记录与术后常规处理，能识别需要上报的术后异常。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理高危患者的术前优化与术后并发症，统筹多科协作制定围手术期方案并落实随访。
+- key: nursing_observation
+  name: 基础护理与病情观察
+  category: 护理与患者安全
+  description: 责任护士班的护理操作、观察记录与交接班
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在带教老师在旁时完成基础护理操作，异常指标须由带教老师复核后再上报。
+    - key: routine
+      label: 能完成常规任务
+      description: 独立承担责任护士班，按护理常规完成观察记录、给药双人核对与床旁交接班。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立承担危重患者护理与多管路管理，发现病情变化并组织本班护理人员配合抢救。
+- key: emergency_triage
+  name: 急诊预检分诊
+  category: 护理与患者安全
+  description: 按分级标准完成急诊患者分级分区与候诊调整
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在分诊组长复核下按分级标准完成分诊，疑难分级交由组长判定。
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成常见急诊患者的分级分区，按标准调整候诊顺序并写明分诊依据。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 在批量就诊或主诉与体征不符、信息不全时独立决定分级与分流，协调抢救室与各诊区资源。
+- key: infection_control
+  name: 医院感染防控执行
+  category: 护理与患者安全
+  description: 本岗位感控规范执行、病区自查与隔离上报
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在提示下执行手卫生、隔离与防护用品使用要求，处置记录需他人补填。
+    - key: routine
+      label: 能完成常规任务
+      description: 独立执行本岗位感控规范，完成器械与环境处置记录，并能当场纠正同岗位的明显违规。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立开展病区感控自查与整改跟踪，组织多重耐药菌或疑似暴发情形的隔离、标本送检与上报。
+- key: medical_record_writing
+  name: 病历书写规范
+  category: 病案与质量管理
+  description: 按病历书写规范完成各类记录并在时限内签名
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在上级医师修改下完成入院记录与病程记录，书写时限与签名常需他人提醒。
+    - key: routine
+      label: 能完成常规任务
+      description: 独立按规范完成首次病程、查房记录、知情同意与出院记录，质控缺陷以格式类为主。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立完成疑难病例与死亡病例讨论记录，审修下级医师病历并在记录中写清诊断依据链。
+- key: record_qc_review
+  name: 病案质控审核
+  category: 病案与质量管理
+  description: 运行病历抽查、终末质控定级与专项质控组织
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 按检查表完成形式质控条目，甲乙丙定级结论由质控负责人复核后发出。
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成出院病历终末质控与运行病历抽查，依据规范给出定级与缺陷条目并跟踪整改。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立组织专项质控与季度质量讲评，归纳共性缺陷并提出可执行的整改要求与质控规则变更建议。
+- key: icd_coding
+  name: 疾病与手术操作编码
+  category: 病案与质量管理
+  description: 病案首页主要诊断选择与 ICD-10、ICD-9-CM-3 编码
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在编码组长复核下完成常见病种的编码与首页填写，疑难病种交由他人处理。
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成病案首页主要诊断选择与手术操作编码，能发现并修正明显漏编、错编。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理多部位肿瘤、并发症与一次住院多次手术的编码取舍，承担上报数据口径核对与科室编码培训。
+- key: resident_teaching
+  name: 带教与规培指导
+  category: 教学、继续教育与信息化
+  description: 住院医师规范化培训与实习生的带教、考核与进度管理
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 协助安排轮转与出勤登记，教学活动由带教老师主持。
+    - key: routine
+      label: 能完成常规任务
+      description: 独立承担单项技能带教与出科小结评定，按培训细则记录教学活动与操作例数。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立设计轮转教学计划，主持教学查房与阶段考核，处理学员培训进度落后或考核不合格的个案。
+- key: cme_management
+  name: 继续医学教育管理
+  category: 教学、继续教育与信息化
+  description: 继续教育项目申报、学分登记与个人学分核算
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下完成学分录入与培训签到整理，项目材料由他人审核。
+    - key: routine
+      label: 能完成常规任务
+      description: 独立管理院内项目申报、学分登记与个人学分核算，能识别学分不足人员并提醒补修。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立统筹年度继续教育计划与项目申报，处理跨部门学分争议与上报数据口径分歧。
+- key: emr_system_support
+  name: 电子病历系统支持
+  category: 教学、继续教育与信息化
+  description: 病历模板与质控规则配置、故障定位与上线验证
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 按工单处理账号、打印与模板类常见问题，配置变更由上级执行。
+    - key: routine
+      label: 能完成常规任务
+      description: 独立配置病历模板与质控规则，定位常见故障并完成灰度上线前的验证。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立承担跨系统接口与质控规则改造，评估变更对临床流程的影响并准备回滚方案。
+- key: clinical_data_report
+  name: 临床数据统计与报表
+  category: 教学、继续教育与信息化
+  description: 医疗质量指标取数、报表编制与上报数据核查
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下按既有口径取数并核对明细，口径变更不独立判断。
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成常规医疗质量指标取数与报表，发现口径不一致时能回溯到原始记录核对。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立定义指标口径、处理跨系统数据不一致，完成上报数据质量核查并对异常值给出可验证的解释。

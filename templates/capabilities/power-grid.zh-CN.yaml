@@ -1,0 +1,241 @@
+# 行业参考模板（NERE-19）：省级电网供电公司（变电检修、输电运检、电力调度、安全监察）。合成示例，不代表任何真实企业。
+- key: substation_maintenance
+  name: 变电一次设备检修
+  category: 变电检修与试验
+  description: 对主变、断路器、隔离开关等一次设备开展解体检查、消缺与复装
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 作为工作班成员在工作负责人指派下完成拆装、清擦、紧固等单项工序，工艺卡上的关键数据由他人复核
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成主变渗漏油处理、开关机构部件更换等边界明确的检修项目，按工艺卡自检并填写检修记录
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能组织开关机构大修、主变有载分接开关吊芯检查等多工序作业，自行判断停电范围与工序衔接，复装后数据复测结论可直接归档
+- key: switchgear_defect_handling
+  name: 开关柜缺陷处理
+  category: 变电检修与试验
+  description: 判定并消除中压开关柜的发热、局放、机构卡涩等缺陷
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在带教下完成开关柜清扫、触头打磨等工作，缺陷等级与处理方案由他人判定
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立处理触头接触不良、机构储能超时等常见缺陷，消缺后完成回路电阻复测并闭环缺陷单
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能依据局放图谱、红外图谱和历史数据定位隐蔽性缺陷，判断是检修消缺还是整柜改造，并对改造方案提出技术要求
+- key: hv_routine_test
+  name: 高压例行试验
+  category: 变电检修与试验
+  description: 开展绝缘电阻、介质损耗、耐压、局放等电气试验并出具结论
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在试验负责人指挥下接线、操作试验仪器并抄录数据，试验方案与数据判断由他人完成
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成避雷器泄漏电流、互感器介损等单项带电或停电试验，按规程判断数据是否超标并出具单项报告
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能编制主变、开关柜等成套设备的试验方案，处理试验数据异常时的干扰排查与复测，形成可直接作为验收依据的综合试验报告
+- key: oil_gas_analysis
+  name: 绝缘油与 SF6 气体检测
+  category: 变电检修与试验
+  description: 取样、检测并分析绝缘油色谱与 SF6 气体微水、纯度数据
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按作业指导书完成取样与样品交接，不单独判断数据
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成微水、纯度、油色谱取样与检测，按注意值和增长率判断数据是否正常并填报结论
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能结合三比值法、历史趋势和在线监测数据区分设备真实故障与传感器零漂、取样污染，提出设备处理建议
+- key: line_patrol
+  name: 输电线路巡视
+  category: 输电运维
+  description: 对杆塔、导线、金具、通道开展人工巡视并辨识隐患
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能跟班完成巡视路径上的到位打点和外观检查，隐患是否上报由班长判断
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成分配区段的例行巡视，发现绝缘子破损、通道树障等常见隐患并按等级上报
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在汛期、覆冰、大风等特殊工况下自行安排特巡重点，判断杆塔基础冲刷、导线磨损等隐患的发展趋势并提出处理时限
+- key: live_line_work
+  name: 带电作业
+  category: 输电运维
+  description: 采用绝缘杆法、绝缘手套法或等电位方式开展不停电作业
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能担任地面电工，完成工具传递、绝缘工具检测与现场布置；持有特种作业操作证只是准入前提，不等于具备作业能力
+    - key: routine
+      label: 能完成常规任务
+      description: 能作为杆上或斗内电工，在带电作业班指挥下完成摘除异物、更换防鸟装置等常规项目，作业中能自行保持安全距离与组合间隙
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能带队完成等电位更换绝缘子、消除导线发热点等复杂项目，自行编制作业方案、核算组合间隙并在天气与负荷变化时决定是否终止作业
+- key: line_fault_locating
+  name: 输电线路故障查找
+  category: 输电运维
+  description: 跳闸后结合保护信息与现场痕迹定位故障点
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按指定区段参加故障巡视，发现放电痕迹后向班长汇报
+    - key: routine
+      label: 能完成常规任务
+      description: 能根据故障录波测距和保护动作信息缩小查找范围，独立完成单相接地等常见故障的点位确认和原因初判
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能处理雷击、外力破坏、鸟害痕迹并存的疑难故障，组合测距、图谱与现场证据给出可追溯的原因结论，并提出反复跳闸区段的治理方案
+- key: drone_inspection
+  name: 无人机通道巡检
+  category: 输电运维
+  description: 规划航线、执行精细化机巡并判读图像与红外图谱
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在持证操控员带飞下完成起降场地布置、电池与空域资料准备
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立执行既有航线的通道巡检与杆塔精细化拍摄，按清单完成缺陷标注和成果上传
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能针对跨越、密集通道自主规划航线并评估风险，从可见光与红外成果中判读发热点、金具缺失等隐患，成果可直接转为缺陷流程
+- key: dispatch_operation
+  name: 调度值班与指令发令
+  category: 电网调度与运行
+  description: 承担值班调度员职责，发布调度指令并处理电网异常
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在正值监护下复诵、记录和转发调度指令，不独立决定操作顺序；取得调度员资格证书是上岗前提，不等于具备独立值班能力
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立承担正常方式下的值班发令，按预先批准的检修计划安排停送电，异常时能按事故处理预案完成第一步处置
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在母线全停、多重故障等复杂工况下自行判断负荷转供路径，协调多个运维单位完成处置，并对处置过程给出可复核的决策依据
+- key: switching_operation
+  name: 倒闸操作与操作票
+  category: 电网调度与运行
+  description: 编制、审核与执行倒闸操作票，完成设备状态转换
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在监护下担任操作人，逐项复诵并执行已批准的操作票
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立编制常规停送电操作票，核对接地刀闸与闭锁条件，发现位置指示不到位等异常时中止操作并汇报
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能审核非典型方式下的操作票，识别带负荷拉刀闸、非同期合环等风险项，并在设备状态与图纸不一致时给出处理结论
+- key: load_forecast_plan
+  name: 运行方式与负荷预测
+  category: 电网调度与运行
+  description: 编制运行方式、检修计划平衡与负荷预测
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能收集负荷与检修申请数据，按模板填报日报与月报
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成日前负荷预测和常规检修计划的停电风险校核，发现与安全约束冲突时提出调整建议
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能编制迎峰度夏等特殊时段的运行方式，平衡检修需求与供电可靠性，并对方式调整后的潮流与短路水平给出校核结论
+- key: scada_maintenance
+  name: 调度自动化系统运维
+  category: 电网调度与运行
+  description: 维护主站与厂站自动化系统、遥信遥测遥控与在线监测通道
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能完成画面核对、点表抄录和厂家到场配合，故障定位由他人完成
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成遥控传动验证、信号点表维护和在线监测数据复核，判断报警是设备问题还是采集通道问题
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在系统改造、账号与权限迁移等场景下制定验证方案，处理主站数据库与多厂站通道的联动问题，保证改造前后数据可追溯
+- key: work_permit_management
+  name: 工作票签发与许可
+  category: 安全与资质管控
+  description: 承担工作票签发人、工作负责人或工作许可人职责
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 作为工作班成员能看懂票面安全措施并签字确认；通过「三种人」资格考评只是担任该角色的前提，不等于已具备组织作业的能力
+    - key: routine
+      label: 能完成常规任务
+      description: 能担任第二种工作票工作负责人，独立布置常规安全措施、交待风险并完成工作终结，复杂票面由班长复核
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能签发或担任第一种工作票负责人，核对停电范围与接地点，处理工作任务变更、延期和多班组交叉作业时的安全措施衔接
+- key: onsite_safety_supervision
+  name: 现场安全监护与风险管控
+  category: 安全与资质管控
+  description: 开展现场监护、到岗到位检查与违章纠正
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按监护分工看护固定作业面，发现异常后向工作负责人报告
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立开展单一专业的到岗到位检查，对照规程指出安全措施、安全带使用等问题并跟踪当场整改
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能组织多专业交叉作业现场的综合督查，判定违章性质与责任界面，并把反复出现的问题转为班组级风险管控措施
+- key: safety_rule_training
+  name: 安规培训与考试组织
+  category: 安全与资质管控
+  description: 组织《电力安全工作规程》培训、考试与反事故演练
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能完成考场布置、签到统计和成绩录入等支持性工作
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立组织班组或中心级年度安规考试与外协入场培训，按岗位选题并完成档案归档
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能根据事故通报和现场违章情况设计培训与演练科目，为不便使用电脑的一线员工设计口头问答等替代考核方式，并对演练结果提出改进项
+- key: qualification_management
+  name: 作业资质与「三种人」台账管理
+  category: 安全与资质管控
+  description: 维护特种作业操作证、技能等级与「三种人」资格的台账与到期提醒
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按清单录入证书信息并核对扫描件是否齐全
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立维护证书与资格台账，按复审、换证周期发出到期提醒，核对持证范围与岗位是否匹配
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在制度或资格目录调整时重建台账口径，核查历史证书的现行有效性，并在资格与实际岗位不符时提出停止担任相应角色的处理意见

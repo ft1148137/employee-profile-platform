@@ -1,0 +1,66 @@
+slug: qingli-saas
+name: 青栎云（模拟）
+industry: SaaS 软件（面向中小制造企业的采购协同）
+gbt4754:
+  section: I
+  section_name: 信息传输、软件和信息技术服务业
+  code: '6550'
+  class_name: 信息处理和存储支持服务
+org_structure: matrix
+org_structure_note: 职能部门管人和职级，产品线小组管事和排期；产品经理牵头产品线小组并担任项目经理，但不是任何部门负责人。研发、测试、实施人员的第二汇报人指向所在产品线的项目经理。
+capability_template: templates/capabilities/saas-software.zh-CN.yaml
+uses_jira: true
+sources:
+- name: Jira
+  kind: jira
+  description: Jira Cloud，项目 PUR（采购协同 2.0）、SUP（供应商门户）
+- name: Git
+  kind: work_records
+  description: 自建 Git 平台的合并请求、代码评审、发布与流水线提交
+hr_it_departments:
+- 人力与信息部
+departments:
+- name: 平台研发部
+  pcf_categories:
+  - 2.0 Develop and Manage Products and Services
+  - 8.0 Manage Information Technology (IT)
+  responsibilities: 采购协同与供应商门户的后端、前端与基础设施开发，多租户隔离与数据库演进
+- name: 产品与设计部
+  pcf_categories:
+  - 1.0 Develop Vision and Strategy
+  - 2.0 Develop and Manage Products and Services
+  responsibilities: 需求调研、产品方案与验收标准、交互设计与设计规范维护
+- name: 质量与运维部
+  pcf_categories:
+  - 2.0 Develop and Manage Products and Services
+  - 8.0 Manage Information Technology (IT)
+  responsibilities: 测试设计与自动化、版本发布与回滚、线上监控与故障处理
+- name: 客户成功部
+  pcf_categories:
+  - 5.0 Deliver Services
+  - 6.0 Manage Customer Service
+  responsibilities: 客户上线实施、历史数据迁移、培训交付与报障受理
+- name: 人力与信息部
+  pcf_categories:
+  - 7.0 Develop and Manage Human Capital
+  - 8.0 Manage Information Technology (IT)
+  responsibilities: 招聘与人事档案、职级评定支持、内部 IT 与账号权限、数据合规配置
+projects:
+- code: PUR
+  name: 采购协同 2.0
+  manager: QL010
+  members:
+  - QL003
+  - QL004
+  - QL014
+  - QL019
+  note: 产品线小组，由高级产品经理任项目经理；他不是任何部门负责人
+- code: SUP
+  name: 供应商门户
+  manager: QL011
+  members:
+  - QL002
+  - QL005
+  - QL017
+  - QL020
+  note: 产品线小组，由产品经理任项目经理；她不是任何部门负责人

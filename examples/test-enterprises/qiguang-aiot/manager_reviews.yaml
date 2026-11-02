@@ -1,0 +1,144 @@
+- id: MR01
+  employee_code: QG012
+  reviewer_employee_code: QG011
+  capability_key: rknn_conversion
+  question: 阚屿能独立完成复杂的 RKNN 模型转换与量化吗？
+  answer: independent_complex
+  comment: INT8 掉点那次他自己从归一化参数查到校准集分布，混合量化配置也是他定的；工具链升级后的算子差异回归是他独立完成的。
+  reviewed_at: '2026-10-08T10:30:00+08:00'
+- id: MR02
+  employee_code: QG003
+  reviewer_employee_code: QG001
+  capability_key: emc_debug
+  question: 苏棠能独立完成复杂的 EMC 整改吗？
+  answer: needs_support
+  comment: 两次整改的噪声源定位和方向都是测试与认证部给的，他负责按建议改板和跟进器件。独立定位耦合路径这一步目前还没看到他自己做过。
+  reviewed_at: '2026-10-09T15:20:00+08:00'
+- id: MR03
+  employee_code: QG003
+  reviewer_employee_code: QG001
+  capability_key: power_emc_design
+  question: 苏棠能独立完成常规的电源与 EMC 前期设计吗？
+  answer: routine
+  comment: DCDC 选型、去耦与防护位置他能自己定，评审上只被提过取值细节；这块比整改要熟。
+  reviewed_at: '2026-10-09T15:40:00+08:00'
+- id: MR04
+  employee_code: QG007
+  reviewer_employee_code: QG006
+  capability_key: firmware_integration
+  question: 唐知野能独立完成复杂的固件集成与 OTA 方案吗？
+  answer: routine
+  comment: 差分升级和断电回滚他做得稳。签名校验和灰度策略这两块我在系统里只看到零散记录，所以暂时按常规任务算。
+  reviewed_at: '2026-10-12T09:50:00+08:00'
+- id: MR05
+  employee_code: QG009
+  reviewer_employee_code: QG006
+  capability_key: camera_isp_tuning
+  question: 文瀚能独立完成复杂的相机与 ISP 调试吗？
+  answer: not_sure
+  comment: 摄像头是他点亮的没问题。3A 这块他一直在原厂参数上微调，换新传感器能不能自己标定我没看到过证据，不好下结论。
+  reviewed_at: '2026-10-12T10:10:00+08:00'
+- id: MR06
+  employee_code: QG008
+  reviewer_employee_code: QG006
+  capability_key: bsp_driver
+  question: 冉苜能独立完成复杂的 BSP 与驱动开发吗？
+  answer: independent_complex
+  comment: 跨内核版本升级是他一个人合的补丁，看门狗饿死和 PHY 复位时序这两个偶发问题他都给出了根因，不是试出来的。
+  reviewed_at: '2026-10-12T10:30:00+08:00'
+- id: MR07
+  employee_code: QG013
+  reviewer_employee_code: QG011
+  capability_key: model_training
+  question: 花晓渝能独立完成复杂的视觉模型训练与评估吗？
+  answer: routine
+  comment: 数据清洗、训练和固定口径评估她能独立做完。评估集与门限的设计是我给的框架，复杂的分布与标注口径问题还需要一起看。
+  reviewed_at: '2026-10-14T11:00:00+08:00'
+- id: MR08
+  employee_code: QG015
+  reviewer_employee_code: QG011
+  capability_key: npu_performance_tuning
+  question: 殷朗能独立完成复杂的 NPU 性能调优吗？
+  answer: independent_complex
+  comment: 内存优化和零拷贝通路都是他自己规划的，多核分配方案也是他提的。他自述写得保守，实际交付比自述强。
+  reviewed_at: '2026-10-14T11:20:00+08:00'
+- id: MR09
+  employee_code: QG014
+  reviewer_employee_code: QG011
+  capability_key: model_training
+  question: 卞知吟能独立完成常规的视觉模型训练与评估吗？
+  answer: not_sure
+  comment: 九月中旬刚入职，还在熟悉数据集和工具链，没有可供判断的交付记录。不确定不代表她不会，等她做完第一个任务再看。
+  reviewed_at: '2026-10-15T09:30:00+08:00'
+- id: MR10
+  employee_code: QG017
+  reviewer_employee_code: QG016
+  capability_key: emc_debug
+  question: 晏清和能独立完成复杂的 EMC 整改吗？
+  answer: independent_complex
+  comment: 辐射发射、ESD 和传导骚扰三类问题他都独立定位过噪声源与耦合路径，整改建议给硬件后一次复测通过。
+  reviewed_at: '2026-10-16T14:00:00+08:00'
+- id: MR11
+  employee_code: QG018
+  reviewer_employee_code: QG016
+  capability_key: reliability_test
+  question: 席南能独立完成复杂的环境与可靠性测试吗？
+  answer: routine
+  comment: 按标准条件执行和记录没问题，失效件也会拆开分析。试验矩阵一直用部门模板，自己按场景裁剪加速条件还没做过。
+  reviewed_at: '2026-10-16T14:20:00+08:00'
+- id: MR12
+  employee_code: QG019
+  reviewer_employee_code: QG016
+  capability_key: reliability_test
+  question: 邓寒能独立完成常规的环境与可靠性测试吗？
+  answer: needs_support
+  comment: 他从固件岗转过来半年，软件测试和自动化很强，环境试验目前是跟着席南做用例执行，设备操作还需要带。
+  reviewed_at: '2026-10-19T10:15:00+08:00'
+- id: MR13
+  employee_code: QG002
+  reviewer_employee_code: QG001
+  capability_key: schematic_design
+  question: 乔砚之能独立完成复杂的硬件原理图设计吗？
+  answer: independent_complex
+  comment: V3 整板原理图是他从零做的，评审上能自己解释成本、功耗与可制造性的取舍，问题项都是细节。
+  reviewed_at: '2026-10-20T16:00:00+08:00'
+- id: MR14
+  employee_code: QG005
+  reviewer_employee_code: QG002
+  capability_key: pcb_layout
+  question: 郗嘉禾能独立完成常规的 PCB 布局布线吗？
+  answer: needs_support
+  comment: 实习生，电源和低速区的线能画，但提交和 DRC 复核都是我过的，高速部分还没让他碰。
+  reviewed_at: '2026-10-20T16:30:00+08:00'
+- id: MR15
+  employee_code: QG004
+  reviewer_employee_code: QG001
+  capability_key: structure_thermal
+  question: 项澄宇能独立完成常规的结构与散热设计吗？
+  answer: routine
+  comment: 压铸壳体和导热垫片方案他自己定的，壳温实测验证也做了。密闭无风扇加上跌落要求同时压过来时还会来找我。
+  reviewed_at: '2026-10-21T09:40:00+08:00'
+- id: MR16
+  employee_code: QG021
+  reviewer_employee_code: QG020
+  capability_key: dfm_review
+  question: 卓蔚能独立完成复杂的 DFM 可制造性评审吗？
+  answer: independent_complex
+  comment: 三次评审都是他主持，治具和 ICT 覆盖方案是他结合代工厂良率数据提的，改板成本和量产风险的取舍他能自己讲清楚。
+  reviewed_at: '2026-10-22T14:10:00+08:00'
+- id: MR17
+  employee_code: QG023
+  reviewer_employee_code: QG020
+  capability_key: ecn_bom_management
+  question: 翁沐能独立完成复杂的 ECN 与 BOM 变更管理吗？
+  answer: routine
+  comment: 常规替代料和改版变更他能独立发起并推到闭环。国产替代批量切换那次的风险分级是我带着做的，所以还不算复杂任务。
+  reviewed_at: '2026-10-22T14:30:00+08:00'
+- id: MR18
+  employee_code: QG022
+  reviewer_employee_code: QG020
+  capability_key: certification_project
+  question: 单嘉宁能独立完成常规的产品认证项目管理吗？
+  answer: needs_support
+  comment: 他负责工厂侧资料和试产数据，认证路径与标准适用条款是测试与认证部判断的，这部分他还接不了。
+  reviewed_at: '2026-10-23T11:00:00+08:00'

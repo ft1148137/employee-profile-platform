@@ -1,0 +1,1104 @@
+# 测试用，不导入系统
+# 真实能力（ground truth）用于核对系统推断的画像，对应计划书 §10.1「关键能力核实准确率」。
+slug: hengchuan-auto
+personas:
+- employee_code: HC001
+  display_name: 周立安
+  work_history:
+  - period: 2008-08 至 2014-03
+    org: 某农机铸造厂（虚构）
+    role: 数控车操作工、班长
+    summary: 从操作工做到班长，熟悉单机批量加工和换型
+  - period: 2014-04 至今
+    org: 衡川汽车零部件（模拟）
+    role: 工段长、车间主任
+    summary: 负责机加工车间排产、换型安排和产能爬坡
+  ground_truth:
+    capabilities:
+    - key: machine_changeover
+      level: routine
+      evidence: documented
+      evidence_refs: [record:MES-0038, record:MES-0027, self_report:SR01, manager_review:MR18]
+      note: 记录与项目经理评价一致，系统应能确认到「能完成常规任务」
+    - key: problem_solving_8d
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 8D 全程由质量部主导，他只提供现场数据；真实水平是在他人带领下补齐 D1 至 D3，系统里没有任何记录，应输出未知而不是低能力
+    - key: shopfloor_reporting
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:MES-0038]
+      note: 追溯倒查时他能还原完整事实链，但系统里只有一条他本人署名的记录，不足以确认复杂档
+    certifications: [IATF 16949 内审员, 数控车工职业技能等级证书（高级工）]
+    notes: 内审员证书是真实持有的，但他已三年没参加过内审，不应据证书推断内审能力。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 讲生产节奏和数字，习惯说「这批」「那条线」，不用体系术语
+    attitude: neutral
+    test_focus:
+    - 检查车间整体的产能和换型记录会不会被当成他个人的能力
+    - 看系统会不会因为 8D 没记录就判断他不会做问题解决
+    - 确认下属的工单报工不会算到自己名下
+- employee_code: HC002
+  display_name: 郭长河
+  work_history:
+  - period: 2012-09 至 2016-07
+    org: 某摩托车配件厂（虚构）
+    role: 普车操作工
+    summary: 传统车床批量加工
+  - period: 2016-08 至今
+    org: 衡川汽车零部件（模拟）
+    role: 数控车操作工、一班班长
+    summary: 带一班 6 人，负责报工、换型签认和实习生带教
+  ground_truth:
+    capabilities:
+    - key: machine_changeover
+      level: needs_support
+      evidence: misleading
+      evidence_refs: [record:MES-0008, manager_review:MR01, self_report:SR02]
+      note: 换型单几乎都签他的名，车间主任据此答「能完成常规任务」；实际零点设定和程序版本确认一直是调机技师王德茂做的，他只能按清单拆装夹具。系统很可能高估这一项
+    - key: cnc_machining_operation
+      level: routine
+      evidence: documented
+      evidence_refs: [record:MES-0018, record:MES-0001]
+      note: 常规件批量加工记录充分，等级可确认
+    - key: shopfloor_reporting
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:MES-0034, record:MES-0031, self_report:SR02]
+      note: 他长期替不会填表的同事代录并能说清谁做了什么，自述里主动说明了代填情况
+    certifications: [数控车工职业技能等级证书（高级工）]
+    notes: 他是车间里唯一愿意把「代填」写出来的人，这条自述是系统识别 assignee_mismatch 的关键线索。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, shared_terminal]
+    expression_style: 口语化，爱用「师傅」「我们这边」，很少写完整句子，常把多件事挤在一段里
+    attitude: positive
+    test_focus:
+    - 试试把自己签认但不是自己做的换型从画像里摘出去
+    - 检查替同事代填的报工会不会变成自己的能力证据
+    - 看带教实习生的记录能不能体现为带教而不是本人操作
+- employee_code: HC003
+  display_name: 范大勇
+  work_history:
+  - period: 2010-03 至 2017-02
+    org: 某轴承厂（虚构）
+    role: 加工中心操作工
+    summary: 套圈类零件批量加工
+  - period: 2017-03 至今
+    org: 衡川汽车零部件（模拟）
+    role: 加工中心操作工、二班班长
+    summary: 带二班 5 人，负责齿条类产品的钻铰和精加工排班
+  ground_truth:
+    capabilities:
+    - key: cnc_machining_operation
+      level: routine
+      evidence: documented
+      evidence_refs: [record:MES-0004, record:MES-0012, record:MES-0023]
+      note: 多条报工记录，等级可确认
+    - key: machine_changeover
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 二班换型一直由调机技师做，他本人没独立做过完整一次，系统里也没有任何记录，应输出未知
+    - key: first_article_inspection
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 首件由质量部判定，他只送件；真实水平是看得懂首检表但不能判定，系统无记录
+    certifications: [加工中心操作调整工职业技能等级证书（高级工）]
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, shared_terminal]
+    expression_style: 简短、偏保守，经常回「这个要问工艺」
+    attitude: skeptical
+    test_focus:
+    - 检查系统会不会因为他没有换型记录就写成「不会换型」
+    - 确认二班整体产量不会被算成他一个人的能力
+- employee_code: HC004
+  display_name: 葛敏
+  work_history:
+  - period: 2018-07 至 2021-08
+    org: 某五金制品厂（虚构）
+    role: 数控车操作工
+    summary: 小型紧固件批量加工
+  - period: 2021-09 至今
+    org: 衡川汽车零部件（模拟）
+    role: 数控车操作工
+    summary: 负责卡钳支架车削工序，包括薄壁件的参数调整
+  ground_truth:
+    capabilities:
+    - key: cnc_machining_operation
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:MES-0001, record:MES-0028, manager_review:MR02, self_report:SR03]
+      note: 她已能在薄壁件工况下自行判断切削参数和刀具磨损并把调整写回工艺附页，属复杂档；但多数工单报在班长名下，班长只答「能完成常规任务」，系统会低估。她本人会就这一条申诉
+    - key: precision_measurement
+      level: routine
+      evidence: partial
+      evidence_refs: [record:MES-0009]
+      note: 自检记录齐全但系统录入是班长代填，不足以确认等级
+    - key: shopfloor_reporting
+      level: routine
+      evidence: documented
+      evidence_refs: [record:MES-0028, self_report:SR03]
+      note: 能独立完成终端录入，字段完整
+    certifications: [数控车工职业技能等级证书（中级工）]
+    notes: 系统推断与真实水平相差一档，是检验「申诉入口」和「证据不足提示」的主要用例。
+  usage_profile:
+    digital_literacy: medium
+    devices: [mobile, shared_terminal]
+    expression_style: 讲具体数字和现象，如「外径跑了两个丝」，不用管理术语
+    attitude: worried_about_evaluation
+    test_focus:
+    - 提交申诉说明薄壁件参数调整是自己做的，看申诉是否进入待确认
+    - 检查报在班长名下的工单能否被更正为实际贡献者
+    - 确认经理评价偏低时系统不会直接把它当成结论发布
+- employee_code: HC005
+  display_name: 时建波
+  work_history:
+  - period: 2019-06 至 2022-01
+    org: 某液压件厂（虚构）
+    role: 加工中心操作工
+    summary: 阀体类零件加工
+  - period: 2022-02 至今
+    org: 衡川汽车零部件（模拟）
+    role: 加工中心操作工
+    summary: 独立值守齿条精加工机台，兼做班前点检
+  ground_truth:
+    capabilities:
+    - key: cnc_machining_operation
+      level: routine
+      evidence: documented
+      evidence_refs: [record:MES-0036, record:MES-0012, record:MES-0004]
+      note: 记录充分，等级可确认
+    - key: machine_changeover
+      level: needs_support
+      evidence: partial
+      evidence_refs: [manager_review:MR03]
+      note: 经理明确回答不确定，系统里也没有他独立换型的记录，应保持未知
+    - key: tpm_autonomous_maintenance
+      level: routine
+      evidence: documented
+      evidence_refs: [record:MES-0020, self_report:SR04]
+      note: 自主点检发现气压偏低并自行调整，记录与自述一致
+    certifications: []
+    notes: 没有技能等级证书，但实际操作水平与持中级工证的同事相当；用来检验系统是否把证书当能力。
+  usage_profile:
+    digital_literacy: medium
+    devices: [shared_terminal, mobile]
+    expression_style: 实话实说，会主动说「这个我不敢动」
+    attitude: neutral
+    test_focus:
+    - 检查经理回答不确定时画像是否显示未知而不是最低档
+    - 看没有技能等级证书会不会被系统当成能力不足
+- employee_code: HC006
+  display_name: 卜志刚
+  work_history:
+  - period: 2003-09 至 2015-05
+    org: 某齿轮厂（虚构）
+    role: 磨工
+    summary: 外圆磨、平面磨十余年
+  - period: 2015-06 至今
+    org: 衡川汽车零部件（模拟）
+    role: 磨工
+    summary: 负责齿条端面磨削，是厂里唯一能处理端面跳动异常的磨工
+  ground_truth:
+    capabilities:
+    - key: cnc_machining_operation
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:MES-0021, record:MES-0007]
+      note: 磨削手艺确实到复杂档，能从砂轮和主轴状态判断跳动来源；但报工记录少、过程数据几乎没有，不足以确认
+    - key: precision_measurement
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:MES-0021, manager_review:MR04]
+      note: 记录和经理评价一致，真实水平就是需要协助：跳动自检只记一两件、不看量具校准状态。他自述里却说「再难的活都能独立干」，与此矛盾
+    - key: shopfloor_reporting
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:MES-0021]
+      note: 自检记录偏少已在记录里体现
+    certifications: [磨工职业技能等级证书（高级工）]
+    notes: HR 档案里还挂着一张 2023 年已过期的熔化焊接与热切割作业特种作业操作证，现在不安排他做任何焊割作业；用来检验系统是否把过期证书当现行资质。
+  usage_profile:
+    digital_literacy: low
+    devices: [shared_terminal]
+    expression_style: 浓重方言词，爱说「这个砂轮不行了」「吃不住」，不会写书面材料，自述是请人代打的
+    attitude: skeptical
+    test_focus:
+    - 看系统会不会因为他自述夸大就把测量能力判高
+    - 检查过期的焊割操作证是否被当成现行资质
+    - 试试能不能用语音或口述的方式补充证据
+- employee_code: HC007
+  display_name: 雷小娥
+  work_history:
+  - period: 2015-03 至 2023-03
+    org: 某家电配件厂（虚构）
+    role: 装配工
+    summary: 流水线装配与外观检查
+  - period: 2023-04 至今
+    org: 衡川汽车零部件（模拟）
+    role: 去毛刺与装配操作工
+    summary: 负责卡钳支架去毛刺、清洗和目视外观检查
+  ground_truth:
+    capabilities:
+    - key: shopfloor_reporting
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:MES-0031, manager_review:MR05, self_report:SR06]
+      note: 报工一直由班长代填，纸质记录常漏字段；真实水平就是需要协助，这一项记录是准确的
+    - key: nonconformance_handling
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 她目视判毛刺残留非常准，发现问题会主动挑出来并喊检验员，但 QMS 里的退回单都署终检员的名，系统里完全没有她的记录，应输出未知
+    certifications: []
+    notes: 典型的「会干活但不会填表」的人。她担心系统把「不会填表」当成「不会干活」，并会就经理评价提出申诉。
+  usage_profile:
+    digital_literacy: low
+    devices: [mobile]
+    expression_style: 只会口语化描述，用语音转文字，错别字和断句混乱，常把两件事说成一件
+    attitude: worried_about_evaluation
+    test_focus:
+    - 用手机语音补充自述，看能不能提交成功
+    - 就「现场记录与系统填报」的评价提出申诉
+    - 检查画像有没有把填表能力写成干活能力
+    - 看看自己能不能看懂画像页面上的能力等级说明
+- employee_code: HC008
+  display_name: 汪树林
+  work_history:
+  - period: 2009-04 至 2019-04
+    org: 某物流园（虚构）
+    role: 叉车司机
+    summary: 仓库装卸与高位货架作业
+  - period: 2019-05 至今
+    org: 衡川汽车零部件（模拟）
+    role: 物料员兼叉车司机
+    summary: 负责车间内物料配送、在制品周转和超长件搬运
+  ground_truth:
+    capabilities:
+    - key: forklift_logistics_safety
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:MES-0032, manager_review:MR06, self_report:SR07]
+      note: 超长料架的搬运方案和交通组织确实是他自己规划的，属复杂档；但系统里只有一条记录，经理也回答不确定，不足以确认
+    - key: shopfloor_reporting
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:MES-0033, self_report:SR07]
+      note: 点检表由物料组长代录，他只在纸上签字
+    - key: tpm_autonomous_maintenance
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 叉车的日常保养项目他自己全包了，但这些不进 MES，系统里没有记录
+    certifications: [特种设备作业人员证（叉车司机 N1）]
+    notes: 持证且在有效期内，但「持证」不等于能独立处理复杂搬运工况；这条用来检验系统是否把资质当能力。
+  usage_profile:
+    digital_literacy: low
+    devices: [mobile]
+    expression_style: 口语，爱说「一托」「拐弯那块」，不会用公司系统，自述是让人帮着在手机上打的
+    attitude: neutral
+    test_focus:
+    - 检查叉车证会不会被直接当成「能独立完成复杂搬运」
+    - 看只有一条记录时系统给的是未知还是确认结论
+    - 试试在手机上找到自己的画像页
+- employee_code: HC009
+  display_name: 邱子涵
+  work_history:
+  - period: 2023-09 至 2026-06
+    org: 某市高级技工学校（虚构）
+    role: 数控技术专业学生
+    summary: 在校完成数控车、加工中心实训
+  - period: 2026-09 至今
+    org: 衡川汽车零部件（模拟）
+    role: 机加工实习生
+    summary: 跟一班班长和调机技师学习上下料、报工和换型辅助
+  ground_truth:
+    capabilities:
+    - key: cnc_machining_operation
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:MES-0034, manager_review:MR07, self_report:SR08]
+      note: 记录、经理评价和自述三方一致，是实习生的正常水平
+    - key: machine_changeover
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:MES-0035]
+      note: 只在带教下拆装夹具，记录里写明零点设定由技师完成
+    - key: precision_measurement
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 在校学过三坐标基础操作，厂里还没让他碰量具，系统无记录
+    certifications: []
+    notes: 入职不满两个月，MES 里有少量带教记录；他出现在工单的 participants 里而不是 actor，用来检验系统能否区分「参与」和「负责」。
+  usage_profile:
+    digital_literacy: high
+    devices: [mobile, pc]
+    expression_style: 用词规范、爱问为什么，会主动说明哪些是自己做的哪些是看的
+    attitude: positive
+    test_focus:
+    - 检查作为 participants 出现的记录会不会被算成独立完成
+    - 看实习生身份有没有在画像里标明
+    - 试着补充在校实训经历，看是否进入待确认而不是直接发布
+- employee_code: HC010
+  display_name: 王德茂
+  work_history:
+  - period: 1999-07 至 2008-08
+    org: 某机床厂（虚构）
+    role: 装配调试工
+    summary: 机床整机装配与精度调试
+  - period: 2008-09 至今
+    org: 衡川汽车零部件（模拟）
+    role: 调机技师
+    summary: 全车间换型、零点设定、刀具寿命验证的实际执行人
+  ground_truth:
+    capabilities:
+    - key: machine_changeover
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:MES-0014, record:MES-0027, record:MES-0035, manager_review:MR08, self_report:SR09]
+      note: 记录充分、评价与自述一致，系统应能确认复杂档
+    - key: cnc_machining_operation
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:MES-0007, record:MES-0002]
+      note: 2023 年系统升级前他用旧工号 WG-WANG，那批调机试切记录不会归到现工号名下，系统会少看到一半证据而低估他；来源里显示的名字还是「王工」
+    - key: tpm_autonomous_maintenance
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 换型时顺手做的润滑和精度复核没有任何记录
+    certifications: [数控机床装调维修工职业技能等级证书（技师）]
+    notes: 车间里真正的「关键人」。多数换型被别人签认，他的能力容易被分散到班长名下。
+  usage_profile:
+    digital_literacy: low
+    devices: [shared_terminal]
+    expression_style: 讲工艺细节但不讲系统术语，说「那个老号」指旧工号，不会自己改账号
+    attitude: neutral
+    test_focus:
+    - 检查旧工号 WG-WANG 的历史记录能否合并到自己名下
+    - 看来源里「王工」这个显示名会不会被当成另一个人
+    - 确认别人签认的换型能被归到实际执行人
+- employee_code: HC011
+  display_name: 隋明辉
+  work_history:
+  - period: 2018-06 至 2021-02
+    org: 某汽配贸易公司（虚构）
+    role: 仓管员
+    summary: 配件入库与盘点
+  - period: 2021-03 至 2026-06
+    org: 衡川汽车零部件（模拟）
+    role: 数控车操作工
+    summary: 负责卡钳支架与齿条粗精车工序，2026 年 6 月离职
+  ground_truth:
+    capabilities:
+    - key: cnc_machining_operation
+      level: routine
+      evidence: documented
+      evidence_refs: [record:MES-0010, record:MES-0029, record:MES-0026]
+      note: 离职前留下多条报工记录，等级可确认
+    - key: shopfloor_reporting
+      level: routine
+      evidence: partial
+      evidence_refs: [record:MES-0010]
+      note: 自检记录齐全，但离职后无法再确认
+    certifications: [数控车工职业技能等级证书（中级工）]
+    notes: 已离职、没有登录账号，但 MES 里留有 2025-12 至 2026-06 的历史记录；用来检验系统能否保留离职人员的历史而不生成登录入口。
+  usage_profile:
+    digital_literacy: medium
+    devices: [mobile]
+    expression_style: 已离职，无法再采集表达风格；此处记录仅为数据完整性
+    attitude: neutral
+    test_focus:
+    - 确认离职人员没有登录账号但历史记录仍可追溯
+    - 检查离职人员是否仍被列入可调配资源
+- employee_code: HC012
+  display_name: 乔砚文
+  work_history:
+  - period: 2010-08 至 2017-10
+    org: 某商用车桥厂（虚构）
+    role: 质量工程师、质量主管
+    summary: 负责体系与客户质量
+  - period: 2017-11 至今
+    org: 衡川汽车零部件（模拟）
+    role: 质量部经理
+    summary: 主管检验、不合格品控制、客户抱诉和 IATF 16949 体系，亲自牵头齿条跳动 8D 专项
+  ground_truth:
+    capabilities:
+    - key: iatf_internal_audit
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:QMS-0020, record:QMS-0011]
+      note: 带组审核并识别出点检周期未按故障数据更新的体系性问题，记录充分
+    - key: problem_solving_8d
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:QMS-0007, record:QMS-0015]
+      note: 两份 8D 报告都以他名义提交客户，系统容易判到复杂档；实际 5Why、鱼骨图和验证试验设计都是工艺工程师丁书彤做的，他的真实水平是能组织小组、能完成常规失效模式分析
+    - key: nonconformance_handling
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:QMS-0003, record:QMS-0019]
+      note: 多次评审隔离与分选处置，等级可确认
+    certifications: [IATF 16949 内审员, 质量工程师职业资格（中级）]
+    notes: 他既是部门负责人又是 RACK8D 专项负责人，是 dept_and_project_lead 的样本。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 用体系术语和条款编号，句子完整，习惯先给结论再给证据
+    attitude: positive
+    test_focus:
+    - 检查以部门名义提交的 8D 报告会不会把能力全算到自己头上
+    - 看部门负责人身份和专项负责人身份是否被分开呈现
+    - 确认自己作为经理只能看到下属的必要信息而不是全部自述
+- employee_code: HC013
+  display_name: 陈懿
+  work_history:
+  - period: 2017-07 至 2020-06
+    org: 某电子制造服务商（虚构）
+    role: 客户质量工程师
+    summary: 对接海外客户的质量投诉与报告提交
+  - period: 2020-07 至今
+    org: 衡川汽车零部件（模拟）
+    role: 客户质量工程师，兼电子驻车支架二期量产导入负责人
+    summary: 负责 PPAP 提交、客户抱诉接口和新件量产导入
+  ground_truth:
+    capabilities:
+    - key: ppap_submission
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:QMS-0010, record:QMS-0023, manager_review:MR09, self_report:SR10]
+      note: 两次提交、退回处理和偏差申请都有记录，等级可确认
+    - key: iatf_internal_audit
+      level: needs_support
+      evidence: misleading
+      evidence_refs: [self_report:SR10]
+      note: HR 档案里同时有 IATF 16949 内审员证书和 VDA 6.3 过程审核员资格（后者已于 2026-03 过期未复训），容易被当成审核能力；他实际只做过客户侧沟通，没有独立审核过任何过程
+    - key: nonconformance_handling
+      level: routine
+      evidence: partial
+      evidence_refs: [record:QMS-0006, record:QMS-0027]
+      note: 客户抱诉的接收与回复有记录，但内部围堵和分选不是他执行的，不足以确认等级
+    certifications: [IATF 16949 内审员]
+    notes: 他在客户质量门户上的账号 ivy.chen 由客户开通、HR 未登记，英文显示名 Ivy Chen 与中文名并存。他是项目负责人但不是任何部门负责人。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 中英混用，爱写 PPAP、MSA、deviation 这类缩写，邮件体
+    attitude: positive
+    test_focus:
+    - 检查客户门户账号 ivy.chen 的记录能否关联到自己
+    - 看英文显示名 Ivy Chen 会不会被识别成另一个人
+    - 确认已过期的 VDA 6.3 资格不会被当成现行审核能力
+    - 作为项目负责人能否评价不在自己部门的项目成员
+- employee_code: HC014
+  display_name: 柯慧兰
+  work_history:
+  - period: 2012-05 至 2018-09
+    org: 某汽车内饰件厂（虚构）
+    role: 检验员
+    summary: 外观件与尺寸检验
+  - period: 2018-10 至今
+    org: 衡川汽车零部件（模拟）
+    role: 过程检验员
+    summary: 负责首件检验、过程巡检和检验记录录入
+  ground_truth:
+    capabilities:
+    - key: first_article_inspection
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:QMS-0026, record:QMS-0009, manager_review:MR10, self_report:SR11]
+      note: 今年的首检报告几乎都署她的名，经理据此答「能独立完成复杂任务」；实际涉及形位公差和量具能力判断的复杂首件都靠三坐标测量员芮承宇测量判读，她只负责抄录。她自己在自述里说清了，自述与经理评价相互矛盾
+    - key: precision_measurement
+      level: routine
+      evidence: documented
+      evidence_refs: [record:QMS-0002, record:QMS-0016, record:QMS-0022]
+      note: 常规外径、孔径巡检记录充分，等级可确认
+    certifications: []
+    notes: 典型的「记录署名人不是实际判定人」。系统应当发现自述与经理评价冲突并保持待确认。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, shared_terminal]
+    expression_style: 按检验表的口径说话，会写「实测值」「判定」，但不写分析
+    attitude: neutral
+    test_focus:
+    - 检查自述与经理评价矛盾时系统是否停在待确认
+    - 看署名人与实际判定人能否被区分
+    - 确认经理把等级评高时自己能提出更正
+- employee_code: HC015
+  display_name: 滕佳
+  work_history:
+  - period: 2021-07 至 2024-02
+    org: 某紧固件厂（虚构）
+    role: 终检员
+    summary: 入库检验与不合格品标识
+  - period: 2024-03 至今
+    org: 衡川汽车零部件（模拟）
+    role: 终检与入库检验员
+    summary: 负责终检、不合格品隔离与返工跟踪
+  ground_truth:
+    capabilities:
+    - key: nonconformance_handling
+      level: routine
+      evidence: documented
+      evidence_refs: [record:QMS-0003, record:QMS-0012, record:QMS-0019, manager_review:MR15]
+      note: 隔离、追溯界定、分选跟踪记录充分，等级与经理评价一致
+    - key: first_article_inspection
+      level: routine
+      evidence: documented
+      evidence_refs: [record:QMS-0018, record:QMS-0024]
+      note: 独立完成常规件首件判定并放行
+    certifications: []
+    notes: 没有涉及已发货围堵的经验，复杂档不应被推断出来。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 简洁、按流程讲，爱用「按规定」
+    attitude: neutral
+    test_focus:
+    - 检查系统会不会从常规处置推断出复杂围堵能力
+    - 看未经历过的场景是否标为未知
+- employee_code: HC016
+  display_name: 芮承宇
+  work_history:
+  - period: 2016-09 至 2019-07
+    org: 某计量检测服务公司（虚构）
+    role: 检测工程师
+    summary: 三坐标与影像测量服务
+  - period: 2019-08 至今
+    org: 衡川汽车零部件（模拟）
+    role: 计量与三坐标测量员
+    summary: 负责三坐标检测程序编制、量具内校、MSA 与过程能力分析
+  ground_truth:
+    capabilities:
+    - key: precision_measurement
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:QMS-0017, record:QMS-0026, record:QMS-0001, self_report:SR12]
+      note: 自行设计基准找正方案并编制检测程序，记录充分
+    - key: msa_spc_analysis
+      level: routine
+      evidence: documented
+      evidence_refs: [record:QMS-0004, record:QMS-0021, manager_review:MR11]
+      note: GRR 与 Cpk 常规分析充分；他本人也承认计数型和破坏性场景没做过，等级确认为常规档是准确的
+    - key: first_article_inspection
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:QMS-0026]
+      note: 复杂首件的形位公差判定实际由他完成，但 QMS 记录人写的是过程检验员，这项能力会被算到柯慧兰头上而他本人显示为空白。他会就此申诉
+    certifications: [计量内校员（长度类）]
+    notes: 与 HC014 构成一对「证据署名错位」的样本，两边的画像都会偏。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 给数字和公差带，句子短，不展开背景
+    attitude: skeptical
+    test_focus:
+    - 申诉首件检验的实际判定人是自己
+    - 检查以参与者身份出现的测量工作能否形成自己的证据
+    - 看经理给的常规档与自己承认的边界是否一致
+- employee_code: HC017
+  display_name: 邢文勉
+  work_history:
+  - period: 2006-07 至 2013-08
+    org: 某变速器壳体厂（虚构）
+    role: 工艺工程师、工艺主管
+    summary: 箱体类零件工艺与夹具
+  - period: 2013-09 至今
+    org: 衡川汽车零部件（模拟）
+    role: 工艺技术部经理
+    summary: 主管工艺路线、控制计划、CAM 编程和工装方案
+  ground_truth:
+    capabilities:
+    - key: process_planning
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:QMS-0014, record:QMS-0025]
+      note: 两次控制计划评审记录充分，等级可确认
+    - key: fixture_tooling_design
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 薄壁件专用夹具方案是他和夹具工程师一起定的，但方案评审没有进 QMS，系统里完全没有他的记录，应输出未知
+    - key: iatf_internal_audit
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只作为受审核方参加过内审，没有审核经验，系统无记录
+    certifications: [机械工程师（中级职称）]
+    notes: 工艺部门的评审活动大量停留在线下文档，是「真实能力强但系统里无证据」的代表。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 讲工艺逻辑和取舍，爱画草图说明，文字偏书面
+    attitude: neutral
+    test_focus:
+    - 检查线下评审的能力能否通过自述补充进来
+    - 看系统会不会因为没有夹具记录就判他不会做工装
+    - 确认部门负责人不会自动获得下属的能力
+- employee_code: HC018
+  display_name: 丁书彤
+  work_history:
+  - period: 2016-09 至 2019-01
+    org: 某汽车密封件厂（虚构）
+    role: 检验员
+    summary: 橡胶件尺寸与外观检验
+  - period: 2019-02 至 2026-01
+    org: 衡川汽车零部件（模拟）
+    role: 过程检验员（质量部）
+    summary: 首件与巡检，期间取得 IATF 16949 内审员资格
+  - period: 2026-02 至今
+    org: 衡川汽车零部件（模拟）
+    role: 工艺工程师（制动件）
+    summary: 转岗工艺技术部，负责制动件工艺与控制计划，并承担齿条跳动 8D 的根因分析
+  ground_truth:
+    capabilities:
+    - key: problem_solving_8d
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:QMS-0007, record:QMS-0015, manager_review:MR12, self_report:SR13]
+      note: 她设计了验证试验并定位到刀柄锥面拉伤叠加磨床主轴劣化的双因原因，属复杂档；但 D1 至 D4 报告署质量部经理名，现任上级又回答不确定，系统会低估
+    - key: process_planning
+      level: routine
+      evidence: documented
+      evidence_refs: [record:QMS-0014, record:QMS-0011]
+      note: 转岗后独立编制制动件控制计划，记录可确认常规档
+    - key: iatf_internal_audit
+      level: routine
+      evidence: partial
+      evidence_refs: [record:QMS-0011, record:QMS-0020]
+      note: 两次以组员身份取证，条款判定由组长确认，不足以确认常规档以上
+    certifications: [IATF 16949 内审员]
+    notes: 2026-02 从质量部转到工艺技术部，QMS 里能看到转岗前后两个岗位的痕迹；她同时在 MES（M3012）和 QMS（qms.ding）两个系统里活动。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 结构化，会分点写原因和措施，用 5Why、Cpk 这类术语
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查转岗前在质量部的记录是否仍归属自己
+    - 看 8D 报告的实际分析人能否被识别出来
+    - 确认现任上级回答不确定时不会直接写成低等级
+    - 试试把 MES 和 QMS 两个账号的记录看成同一个人
+- employee_code: HC019
+  display_name: 姜知遥
+  work_history:
+  - period: 2015-07 至 2018-06
+    org: 某模具厂（虚构）
+    role: CAM 编程员
+    summary: 模具型腔编程与试切
+  - period: 2018-07 至今
+    org: 衡川汽车零部件（模拟）
+    role: 工艺工程师兼 CAM 编程
+    summary: 负责齿条类产品工艺、多轴程序和宏程序优化
+  ground_truth:
+    capabilities:
+    - key: cam_programming
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [manager_review:MR13, self_report:SR14]
+      note: 经理评价与自述一致，但证据都来自评价和自述、没有系统记录；系统应能确认等级同时标注证据类型偏单一
+    - key: process_planning
+      level: routine
+      evidence: documented
+      evidence_refs: [record:QMS-0025, record:QMS-0007]
+      note: 换版控制计划由他编制，记录可确认
+    certifications: []
+    notes: CAM 工作全部在工艺软件里完成，不进 MES 也不进 QMS，证据只能靠自述和经理评价，是「证据类型单一」的用例。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 技术术语密集，讲刀路和节拍，不讲人
+    attitude: neutral
+    test_focus:
+    - 检查只有自述和经理评价时系统的信心标注
+    - 看没有工单记录的岗位会不会被判成低能力
+- employee_code: HC020
+  display_name: 仲启明
+  work_history:
+  - period: 2017-08 至 2021-10
+    org: 某工装夹具公司（虚构）
+    role: 夹具设计员
+    summary: 标准夹具选型与非标设计
+  - period: 2021-11 至今
+    org: 衡川汽车零部件（模拟）
+    role: 夹具与刀具工程师
+    summary: 负责定位方案、刀具选型和刀具寿命验证
+  ground_truth:
+    capabilities:
+    - key: fixture_tooling_design
+      level: routine
+      evidence: documented
+      evidence_refs: [record:MES-0013, record:QMS-0025, manager_review:MR14]
+      note: 刀具寿命验证和工装支持记录充分，等级与经理评价一致
+    - key: cam_programming
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只会改参数，不能独立出程序；系统里没有任何编程记录，应输出未知而不是推断
+    certifications: []
+    notes: 他同时在 MES（M3014）和 QMS（qms.zhong）里出现，但两个账号都已在 HR 登记。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 讲定位和夹紧力，习惯附带成本与良率的权衡
+    attitude: positive
+    test_focus:
+    - 检查两个已登记账号的记录是否合并到同一个人
+    - 看没有编程记录时系统是否保持未知
+- employee_code: HC021
+  display_name: 聂长庚
+  work_history:
+  - period: 2004-09 至 2015-01
+    org: 某纺织机械厂（虚构）
+    role: 设备维修工、设备科长
+    summary: 设备维修与动力管理
+  - period: 2015-02 至今
+    org: 衡川汽车零部件（模拟）
+    role: 设备动力部经理
+    summary: 主管机床维修、TPM 和公用动力
+  ground_truth:
+    capabilities:
+    - key: equipment_maintenance
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:MES-0017]
+      note: 只以审核人身份出现在一条维修单里，实际他能自己定几何精度恢复方案，证据不足以确认
+    - key: tpm_autonomous_maintenance
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 点检体系是他建的，但他本人不执行点检，系统里没有记录
+    certifications: [特种作业操作证（低压电工作业）]
+    notes: 管理岗的「签字型」记录不能当成亲手做过的证据。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 讲停机时间和备件，偏结论式
+    attitude: neutral
+    test_focus:
+    - 检查以审核人身份出现的记录会不会被算成亲手维修
+    - 看部门负责人的画像会不会吸收下属的证据
+- employee_code: HC022
+  display_name: 蒯建军
+  work_history:
+  - period: 2007-07 至 2012-04
+    org: 某重型机械厂（虚构）
+    role: 机修钳工
+    summary: 大型设备装配与检修
+  - period: 2012-05 至今
+    org: 衡川汽车零部件（模拟）
+    role: 机械维修技师
+    summary: 负责机床机械与液压故障、主轴精度恢复
+  ground_truth:
+    capabilities:
+    - key: equipment_maintenance
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:MES-0005, record:MES-0017, record:MES-0030, manager_review:MR16, self_report:SR15]
+      note: 三条维修单加评价和自述，等级可确认
+    - key: precision_measurement
+      level: routine
+      evidence: partial
+      evidence_refs: [record:MES-0030]
+      note: 主轴端面跳动复测他自己做的，但记录写的是设备侧结论，不足以确认测量能力
+    certifications: [机修钳工职业技能等级证书（技师）]
+    notes: 这是全厂证据最充分的一条链，用来当正向对照。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 讲故障现象和处理步骤，口语但条理清楚
+    attitude: positive
+    test_focus:
+    - 确认证据充分时系统给出的等级与真实一致
+    - 检查维修能力不会被误扩展到测量能力
+- employee_code: HC023
+  display_name: 宓海涛
+  work_history:
+  - period: 2016-08 至 2020-03
+    org: 某电气安装公司（虚构）
+    role: 电气调试员
+    summary: 配电与控制柜调试
+  - period: 2020-04 至今
+    org: 衡川汽车零部件（模拟）
+    role: 电气维修技师
+    summary: 负责数控系统报警、伺服与气源相关故障
+  ground_truth:
+    capabilities:
+    - key: equipment_maintenance
+      level: routine
+      evidence: documented
+      evidence_refs: [record:MES-0011, record:MES-0022, record:MES-0037]
+      note: 三条维修单覆盖报警处理、间歇性故障跟踪和气源处理；间歇性故障那次只做了屏蔽处理未定位根因，确认为常规档是准确的
+    - key: tpm_autonomous_maintenance
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 不参与点检，系统无记录
+    certifications: [特种作业操作证（低压电工作业）, 特种作业操作证（高处作业）]
+    notes: 间歇性故障那次没有找到根因只做了屏蔽处理，记录如实写了「暂判」，系统不应据此判到复杂档。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 用报警码和参数说明问题，如「E31 报警」
+    attitude: neutral
+    test_focus:
+    - 检查「暂判未复现」的记录会不会被当成已解决的复杂问题
+    - 看两张特种作业操作证会不会被当成维修能力
+- employee_code: HC024
+  display_name: 胥文博
+  work_history:
+  - period: 2016-07 至 2019-09
+    org: 某压铸件厂（虚构）
+    role: 加工中心操作工
+    summary: 壳体类零件批量加工
+  - period: 2019-10 至 2025-11
+    org: 衡川汽车零部件（模拟）
+    role: 加工中心操作工（机加工车间）
+    summary: 齿条类产品加工，兼做本机点检
+  - period: 2025-12 至今
+    org: 衡川汽车零部件（模拟）
+    role: TPM 点检员（设备动力部）
+    summary: 转岗设备动力部，负责全车间点检体系和精度抽检
+  ground_truth:
+    capabilities:
+    - key: tpm_autonomous_maintenance
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:MES-0025, record:MES-0015, record:MES-0003, manager_review:MR17]
+      note: 依据故障数据调整点检周期并培训操作工，属复杂档；经理只给常规档，记录本身是充分的
+    - key: cnc_machining_operation
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 转岗前六年都是加工中心操作工，但旧岗位的报工记录在 2025-11 之前、不在本数据集范围内，系统会看不到，应输出未知
+    - key: equipment_maintenance
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:MES-0030]
+      note: 只以协同身份参与过一次主轴精度恢复
+    certifications: []
+    notes: 2025-12 从机加工车间转到设备动力部，转岗前后在 MES 里都有记录但岗位角色不同。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile, shared_terminal]
+    expression_style: 讲点检项目和异常现象，会列清单
+    attitude: positive
+    test_focus:
+    - 检查转岗前的操作工经历会不会因为超出数据范围被判成不会
+    - 看点检体系改进能否被识别为复杂档
+    - 确认转岗记录里的岗位变化被正确呈现
+- employee_code: HC025
+  display_name: 甘慧
+  work_history:
+  - period: 2009-07 至 2015-12
+    org: 某电子代工厂（虚构）
+    role: 人事主管
+    summary: 招聘与员工关系
+  - period: 2016-01 至今
+    org: 衡川汽车零部件（模拟）
+    role: 人力行政部经理
+    summary: 主管招聘、技能矩阵、资质台账和培训
+  ground_truth:
+    capabilities:
+    - key: iatf_internal_audit
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只作为受审核方配合过人力过程审核，系统无记录
+    - key: shopfloor_reporting
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 她维护资质台账和技能矩阵，但这些不在 MES/QMS 里，系统里完全没有她的记录
+    certifications: [企业人力资源管理师（二级）]
+    notes: 职能岗在两个来源里都没有记录，是「完全没有工作记录」的样本之一。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 讲制度和台账，表述完整
+    attitude: neutral
+    test_focus:
+    - 检查没有任何来源记录的人画像是否全部显示未知
+    - 看资质台账里的证书会不会被直接当成能力
+- employee_code: HC026
+  display_name: 骆青桐
+  work_history:
+  - period: 2019-07 至 2021-05
+    org: 某人力服务公司（虚构）
+    role: 招聘专员
+    summary: 制造业蓝领招聘
+  - period: 2021-06 至今
+    org: 衡川汽车零部件（模拟）
+    role: 人事专员，兼本系统企业管理员
+    summary: 负责入离职、技能矩阵维护和 MES/QMS 账号申请
+  ground_truth:
+    capabilities:
+    - key: shopfloor_reporting
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 她最清楚哪些账号对应哪个人、哪些记录是代填的，但她本人不出现在任何工作记录里
+    - key: iatf_internal_audit
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 没有审核经验，系统无记录
+    certifications: []
+    notes: 本企业唯一的 org_admin，是人力行政部的普通员工而不是部门负责人。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 条理清楚，会主动区分「档案上写的」和「实际情况」
+    attitude: positive
+    test_focus:
+    - 作为企业管理员检查能力词典和评价口径的改动是否留版本
+    - 核对账号映射，试着把未登记账号关联到员工
+    - 确认管理员能看到总体进度但看不到全部自述内容
+- employee_code: HC027
+  display_name: 虞延
+  work_history:
+  - period: 2018-09 至 2022-08
+    org: 某系统集成商（虚构）
+    role: 运维工程师
+    summary: 服务器与网络运维
+  - period: 2022-09 至今
+    org: 衡川汽车零部件（模拟）
+    role: IT 与系统管理员
+    summary: 负责 MES/QMS 的账号、接口和基础设施运维
+  ground_truth:
+    capabilities:
+    - key: shopfloor_reporting
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 他知道 2023 年系统升级时哪些工号没有迁移，是还原记录事实链的关键人，但自己不产生任何生产记录
+    - key: msa_spc_analysis
+      level: none
+      evidence: undocumented
+      evidence_refs: []
+      note: 完全不涉及质量分析，真实水平为不具备；系统没有记录时应显示未知，不应显示为不具备
+    certifications: []
+    notes: 用来区分「系统输出未知」和「真实为不具备」两种情况。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 讲账号、接口和日志，技术口径
+    attitude: skeptical
+    test_focus:
+    - 检查公共终端账号和旧工号在系统里的处理方式
+    - 看「未知」和「不具备」在界面上是否能区分
+- employee_code: HC028
+  display_name: 温嘉树
+  work_history:
+  - period: 2022-07 至 2025-06
+    org: 某物业公司（虚构）
+    role: 薪酬专员
+    summary: 薪酬核算与社保
+  - period: 2025-07 至今
+    org: 衡川汽车零部件（模拟）
+    role: 薪酬与培训专员
+    summary: 负责计件薪酬核算、特种作业证到期提醒和内部培训组织
+  ground_truth:
+    capabilities:
+    - key: shopfloor_reporting
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 他每月从 MES 导报工数据做计件核算，但只是读取方，系统里没有他的记录
+    - key: iatf_internal_audit
+      level: none
+      evidence: undocumented
+      evidence_refs: []
+      note: 真实为不具备；系统应显示未知
+    certifications: []
+    notes: 入职一年多，但在 MES 和 QMS 里都没有任何记录。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 讲报表和口径，习惯问「这个数从哪来」
+    attitude: neutral
+    test_focus:
+    - 检查只读取数据的人会不会被生成能力结论
+    - 看证书到期提醒能否在画像里体现为资质状态而不是能力
+account_truth:
+- source: MES
+  account_id: LINE3-PUB
+  owner: null
+  note: 三号线公共报工终端账号，多名操作工共用，不属于任何员工；MES-0006 和 MES-0016 的报工都挂在这个账号下
+- source: MES
+  account_id: T-TEMP-07
+  owner: null
+  note: 劳务派遣人员的临时工号，人员离场后停用，HR 未保留姓名映射
+- source: MES
+  account_id: WG-WANG
+  owner: HC010
+  note: 2023 年 MES 升级前王德茂使用的旧工号，升级时未迁移，显示名是「王工」；实际属于 HC010 但系统不知道
+- source: QMS
+  account_id: ivy.chen
+  owner: HC013
+  note: 客户质量门户的单点登录账号，由客户方开通，HR 未登记；显示名为英文名 Ivy Chen
+edge_cases:
+- tag: unlinked_account
+  employees: []
+  refs: [record:MES-0006, record:MES-0016, record:MES-0019]
+  note: LINE3-PUB 是三号线公共终端、T-TEMP-07 是已离场派遣人员的临时工号，两个账号在 MES 里都有报工记录但不属于任何员工，系统不应把这些记录分配给任何人
+- tag: multi_account
+  employees: [HC010, HC013, HC018]
+  refs: [record:MES-0007, record:QMS-0010, record:QMS-0011, record:MES-0038]
+  note: HC010 有现工号 M1030 和未登记的旧工号 WG-WANG；HC013 有已登记的 qms.chen.yi 和未登记的客户门户账号 ivy.chen；HC018 同时在 MES（M3012）和 QMS（qms.ding）活动
+- tag: transfer
+  employees: [HC018, HC024]
+  refs: [record:QMS-0011, record:QMS-0014, record:MES-0025, record:MES-0015]
+  note: HC018 于 2026-02 从质量部检验员转为工艺技术部工艺工程师，QMS 里能看到她先以组员身份内审、后以编制人身份出控制计划；HC024 于 2025-12 从加工中心操作工转为 TPM 点检员
+- tag: intern
+  employees: [HC009]
+  refs: [record:MES-0034, record:MES-0035]
+  note: 技校来的机加工实习生，2026-09-07 入职，只以 participants 身份出现在带教记录里
+- tag: departed
+  employees: [HC011]
+  refs: [record:MES-0010, record:MES-0029, record:MES-0026]
+  note: 2026-06-30 离职，没有登录账号，但 MES 里留有 2025-12 至 2026-06 的报工记录
+- tag: assignee_mismatch
+  employees: [HC002, HC004, HC009, HC010, HC012, HC014, HC016, HC018]
+  refs: [record:MES-0001, record:MES-0008, record:MES-0034, record:QMS-0007, record:QMS-0026]
+  note: MES-0001 和 MES-0034 报在班长 HC002 名下，实际操作人分别是 HC004 与 HC011、HC009；MES-0008 的换型由 HC002 签认但零点设定是 HC010 做的；QMS-0007 的 8D 报告署 HC012 名义而根因分析是 HC018 做的；QMS-0026 的首检记录人是 HC014 而复杂判定由 HC016 完成
+- tag: cross_source_duplicate
+  employees: [HC010, HC018, HC022]
+  refs: [record:MES-0024, record:QMS-0015, record:MES-0030, record:QMS-0021]
+  note: 齿条端面跳动这一件事在 MES（刀柄更换 MES-0024、磨床主轴精度恢复 MES-0030）和 QMS（8D 报告 QMS-0015、Cpk 复测 QMS-0021）里各记一遍，系统不应把它算成四件独立的事
+- tag: review_conflict
+  employees: [HC006, HC014]
+  refs: [self_report:SR05, manager_review:MR04, self_report:SR11, manager_review:MR10]
+  note: HC006 自述说端面磨再难的活都能独立干，经理却认为测量这块还需要协助；HC014 自述说复杂判定是三坐标测量员做的，经理却答「能独立完成复杂任务」。两边都应停在待确认
+- tag: appeal
+  employees: [HC004, HC007, HC016]
+  refs: [manager_review:MR02, manager_review:MR05, manager_review:MR11]
+  note: HC004 认为薄壁件参数调整是自己做的、不该只给常规档；HC007 认为被评的是「不会填表」而不是「不会干活」；HC016 认为复杂首件的判定应归自己。三人都会在测试时走申诉入口
+- tag: manager_unsure
+  employees: [HC005, HC008, HC018]
+  refs: [manager_review:MR03, manager_review:MR06, manager_review:MR12]
+  note: 二班班长不确定 HC005 能否独立换型；一班班长不确定 HC008 的超长件方案是否本人所定；工艺经理因 8D 报告署名在质量部而无法判断 HC018
+- tag: no_forms
+  employees: [HC006, HC007, HC008]
+  refs: [record:MES-0009, record:MES-0031, record:MES-0033, record:MES-0021]
+  note: 三名一线员工数字素养低，报工和点检记录都由班长或组长代填，纸面签字才是本人；系统不能把「没有本人录入」读成「没有做」
+- tag: colloquial
+  employees: [HC002, HC006, HC007, HC008, HC010]
+  refs: [self_report:SR02, self_report:SR06, self_report:SR07, self_report:SR09]
+  note: 这几位只会口语化表达，HC007 用语音转文字且错别字多，HC006 的自述是请人代打的，HC010 把旧工号说成「那个老号」
+- tag: dept_and_project_lead
+  employees: [HC012]
+  refs: [record:QMS-0007, record:QMS-0020]
+  note: 质量部经理既是部门负责人又是 RACK8D 专项负责人，部门管理和专项牵头两种身份的证据要分开看
+- tag: pm_not_dept_manager
+  employees: [HC013]
+  refs: [record:QMS-0010, record:QMS-0023]
+  note: 电子驻车支架二期量产导入负责人是质量部的客户质量工程师，他不是任何部门的负责人，但可以评价本项目成员

@@ -1,0 +1,242 @@
+# 行业参考模板（NERE-19）：面向中小制造企业的采购协同 SaaS 厂商。合成示例，不代表任何真实企业。
+# 三档只描述可观察的工作行为，不含绩效、态度或品德评价；缺少记录应保持「未知」，不得推断为「不会」。
+- key: requirement_discovery
+  name: 需求调研与边界定义
+  category: 产品与需求
+  description: 面向采购、仓储、供应商等角色做现状调研，明确要解决的问题和本期不做的范围
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在他人带领下参加客户访谈，能按给定提纲记录过程，访谈提纲与结论由他人整理
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成单一角色（如采购员）的访谈，输出现状流程图与问题清单，范围边界交上级确认
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立组织跨角色调研，在采购、仓储与供应商的冲突诉求中给出取舍结论和「本期不做」清单，并能说明判断依据
+- key: product_spec
+  name: 产品方案与验收标准编写
+  category: 产品与需求
+  description: 把需求写成可实现、可测试的方案与验收条件
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 按模板补充已定方案的字段与文案说明，验收条件由他人给出
+    - key: routine
+      label: 能完成常规任务
+      description: 为边界清晰的单个功能写出用户故事与可测试的验收标准，异常分支由评审补齐
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 为跨模块方案拆分里程碑，写出含异常流、数据迁移与灰度策略的验收标准，并与研发、测试逐条确认可实现
+- key: interaction_design
+  name: 交互设计与可用性验证
+  category: 产品与需求
+  description: 设计业务界面并用观察到的使用行为验证设计
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在既有设计规范内绘制页面，交互细节与异常态需要设计评审补充
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成常规表单与列表页设计，产出可交付的标注稿、状态说明与空数据态
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立设计比价、多级审批等多状态流程，组织可用性走查并依据观察记录修改方案
+- key: backend_api
+  name: 后端服务与 API 开发
+  category: 工程开发
+  description: 实现采购协同业务的服务接口与业务状态流转
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在已有代码框架内按说明实现单个接口，边界条件与错误码靠评审补充
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成边界明确的接口与单元测试，能处理常见的幂等、重复提交与参数校验问题
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立设计跨模块的接口与单据状态机，处理乐观锁冲突、批量操作与数据迁移回滚，并给出可复现的验证记录
+- key: frontend_web
+  name: 前端 Web 实现
+  category: 工程开发
+  description: 实现企业后台类界面，含大数据量列表与权限联动
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 按设计稿实现静态页面，状态管理与接口联调需要同事协助
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成常规列表与表单页面，处理分页、表单校验与错误提示
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立完成十万行量级列表的虚拟滚动、按租户权限联动的字段显示与跨页状态保持，并给出渲染耗时的前后对比
+- key: data_modeling
+  name: 数据建模与查询优化
+  category: 工程开发
+  description: 设计多租户业务表结构并优化查询
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按既有表结构写增删改查语句，索引与约束由他人设计
+    - key: routine
+      label: 能完成常规任务
+      description: 独立为新功能设计表结构、唯一约束与索引，能读执行计划并修正明显低效的查询
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立完成大表分区、物化视图与查询下推改造，提交改造前后的执行计划与耗时对比
+- key: integration_connector
+  name: 外部系统对接
+  category: 工程开发
+  description: 与客户 ERP、财务或条码系统做接口对接和对账
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在已有对接代码上修改字段映射，联调过程由他人主导
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成单一外部系统版本的接口对接，与客户确认字段口径并跑通联调用例
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理多版本 ERP 的字段口径差异，设计幂等键、补偿任务与对账方案，并能在客户现场定位对接故障
+- key: multi_tenant_isolation
+  name: 多租户隔离与权限
+  category: 工程开发
+  description: 保证租户与角色之间的数据不互相可见
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按规范为新接口加上租户过滤，遗漏情况依靠评审发现
+    - key: routine
+      label: 能完成常规任务
+      description: 独立实现租户与角色级的数据过滤和字段权限，并写出覆盖越权场景的测试
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立设计租户上下文在异步任务、导出与报表中的传递机制，识别并修复跨租户泄漏路径，给出可复现的验证用例
+- key: test_design
+  name: 测试设计与用例维护
+  category: 质量工程
+  description: 根据业务规则设计用例并维护回归范围
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按用例执行测试并记录结果，用例设计由他人完成
+    - key: routine
+      label: 能完成常规任务
+      description: 独立为单个功能设计正常流与常见异常流用例，维护所属模块的回归用例集
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立为单据状态机、权限矩阵等组合场景设计用例，能说明覆盖取舍的理由，并按缺陷分布调整回归范围
+- key: test_automation
+  name: 自动化测试与流水线集成
+  category: 质量工程
+  description: 编写自动化脚本并接入持续集成
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在已有框架里补充单条脚本，环境与数据准备问题需他人处理
+    - key: routine
+      label: 能完成常规任务
+      description: 独立编写并维护接口与端到端脚本，处理常见的等待、数据准备与断言稳定性问题
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立搭建自动化框架与测试数据生成器，解决并行执行与环境隔离问题，并把结果接入流水线门禁
+- key: release_management
+  name: 版本发布与回滚
+  category: 质量工程
+  description: 执行与决策多租户 SaaS 的版本发布
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按发布手册执行既定步骤，出现异常时上报等待他人处理
+    - key: routine
+      label: 能完成常规任务
+      description: 独立执行常规版本发布与数据库迁移，发布前后逐项核对检查清单
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立制定灰度分批与回滚预案，发布异常时按预案决定回滚并完成受影响租户的核对
+- key: observability
+  name: 可观测性与故障定位
+  category: 运维与安全
+  description: 建设监控埋点并定位线上问题
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按指引查看监控面板与日志，定位结论需他人确认
+    - key: routine
+      label: 能完成常规任务
+      description: 独立为新功能补充日志与指标埋点，依据告警定位常见故障并记录处理过程
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立定义服务级目标与告警规则，串联日志、指标与调用链定位跨服务问题，并给出可验证的根因说明
+- key: data_security_compliance
+  name: 数据安全与合规配置
+  category: 运维与安全
+  description: 配置权限、脱敏与审计，满足客户的数据要求
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按清单执行账号权限的开通与回收，范围判断依赖他人
+    - key: routine
+      label: 能完成常规任务
+      description: 独立配置导出脱敏、最小权限与审计日志，能逐项说明配置对应的要求来源
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立评审新功能的数据流与留存范围，设计跨租户数据处理与留痕方案。相关培训合格或资质只是前提条件，不等于具备本项能力
+- key: onboarding_implementation
+  name: 客户上线实施与数据迁移
+  category: 客户与实施
+  description: 带客户完成配置、历史数据迁移与上线验收
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按实施清单执行单项任务，进度与风险由他人跟踪
+    - key: routine
+      label: 能完成常规任务
+      description: 独立负责一家中小客户的标准上线，完成参数配置、历史数据导入与验收确认
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立负责多工厂客户上线，处理历史数据清洗冲突、与客户 ERP 的并行运行以及切换回退方案
+- key: customer_support
+  name: 客户问题诊断与支持
+  category: 客户与实施
+  description: 受理、复现并闭环客户报障
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能记录客户描述并转交二线，复现步骤常需他人补全
+    - key: routine
+      label: 能完成常规任务
+      description: 独立复现并分类常见问题，依据日志区分配置问题与产品缺陷，按承诺时限闭环
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理跨系统、与数据量相关的疑难问题，给出临时规避方案并把根因反馈到研发形成闭环
+- key: tenant_training
+  name: 客户培训与文档交付
+  category: 客户与实施
+  description: 面向客户不同角色做培训并交付操作文档
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能照既有讲稿演示标准功能，客户追问需他人补充
+    - key: routine
+      label: 能完成常规任务
+      description: 独立为采购员等单一角色设计培训并输出操作手册
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立设计覆盖多角色与权限差异的培训方案，按客户实际流程改写材料，并用培训后的操作正确率验证效果

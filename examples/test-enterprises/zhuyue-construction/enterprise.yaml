@@ -1,0 +1,50 @@
+slug: zhuyue-construction
+name: 筑岳建设工程（模拟）
+industry: 房屋建筑施工总承包
+gbt4754:
+  section: E
+  section_name: 建筑业
+  code: '4710'
+  class_name: 住宅房屋建筑
+org_structure: hybrid
+org_structure_note: 职能部门管人、管标准，项目部管现场生产。栖湖花园项目部的负责人就是项目经理（一级建造师），既是部门负责人又是项目负责人；维保与小型改造项目由工程管理部的生产经理牵头，他不是任何部门的负责人。安全质量部的安全员、质量员按项目派驻，行政关系留在安全质量部，现场工作听项目经理安排。
+capability_template: templates/capabilities/construction-general-contracting.zh-CN.yaml
+uses_jira: false
+sources:
+- name: 施工日志
+  kind: work_records
+  description: 公司统一的项目管理平台施工日志模块，手机端和电脑端都能填报，是全员主账号所在系统
+- name: 安全检查
+  kind: work_records
+  description: 安全检查与隐患整改闭环系统，记录巡检、整改通知、复查关闭；监理和分包单位用建设单位分配的外部账号
+- name: 质量验收
+  kind: work_records
+  description: 质量验收系统，记录检验批验收、隐蔽工程验收、材料报验与返工处置
+hr_it_departments: [人力行政部]
+departments:
+- name: 栖湖花园项目部
+  pcf_categories: ['4.0 Deliver Physical Products', '10.0 Acquire, Construct, and Manage Assets']
+  responsibilities: 栖湖花园住宅项目的现场施工生产组织、劳务班组管理、进度与现场安全文明施工落实
+- name: 安全质量部
+  pcf_categories: ['11.0 Manage Enterprise Risk, Compliance, Remediation, and Resiliency', '13.0 Develop and Manage Business Capabilities']
+  responsibilities: 公司安全生产与质量管理标准制定、隐患排查与整改闭环、检验批与隐蔽工程验收监督、安全员与质量员派驻管理
+- name: 工程管理部
+  pcf_categories: ['2.0 Develop and Manage Products and Services', '4.0 Deliver Physical Products']
+  responsibilities: 施工方案与技术管理、进度计划审核、机电与 BIM 技术支持，并承担维保与小型改造项目的生产组织
+- name: 商务合约部
+  pcf_categories: ['9.0 Manage Financial Resources', '12.0 Manage External Relationships']
+  responsibilities: 投标报价、分包合约签订、工程量计量与进度款报量、变更签证与索赔管理
+- name: 人力行政部
+  pcf_categories: ['7.0 Develop and Manage Human Capital', '8.0 Manage Information Technology (IT)']
+  responsibilities: 人员招聘与劳动关系、证书与特种作业证台账、实名制管理、公司信息系统账号与权限维护
+projects:
+- code: QHHY
+  name: 栖湖花园住宅项目
+  manager: ZY001
+  members: [ZY002, ZY003, ZY004, ZY005, ZY006, ZY007, ZY008, ZY010, ZY011, ZY016, ZY020, ZY027]
+  note: 项目经理冯承岳同时是栖湖花园项目部负责人，一人身兼部门负责人和项目负责人
+- code: WBXM
+  name: 维保与小型改造项目群
+  manager: ZY015
+  members: [ZY004, ZY012, ZY017, ZY018, ZY021]
+  note: 由工程管理部生产经理段嘉懿牵头，他不是任何部门的负责人；成员跨三个职能部门

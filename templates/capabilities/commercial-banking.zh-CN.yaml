@@ -1,0 +1,242 @@
+# 行业参考模板（NERE-19）：城市商业银行分行。合成示例，不代表任何真实企业。
+# 描述只写可观察的工作行为，不含绩效、态度或品德评价；执业资质是开展业务的前提，不等于具备能力。
+- key: corporate_credit_investigation
+  name: 对公贷前调查
+  category: 公司信贷
+  description: 对公司客户开展现场走访与资料核实，形成可供审查使用的贷前调查报告
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在客户经理带领下参与现场走访和资料收集，行业分析与还款来源测算由他人完成
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成单一主体、担保结构简单客户的现场调查与报告撰写，审查环节偶有补充资料要求
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立调查集团客户或并购等复杂交易，核实交易背景与关联关系，报告可一次通过审查
+- key: credit_report_writing
+  name: 授信方案与报告撰写
+  category: 公司信贷
+  description: 根据调查结论设计授信额度、期限、用途监控与放款条件并撰写方案
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按模板填写客户与财务基础信息，额度测算和用途监控条款需上级改写
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立撰写常规流动资金贷款方案，写清额度、期限、受托支付与贷后监控要求
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能为并购、银团或多币种等复杂结构设计分期放款与条件落实安排，并在审查会上逐项回应质询
+- key: post_loan_monitoring
+  name: 贷后检查与风险预警
+  category: 公司信贷
+  description: 按周期核查资金用途与经营状况，识别风险信号并跟踪处置
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按检查清单收集贷后资料并填报表单，异常信号是否成立依赖他人判断
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成常规贷后检查，核对受托支付凭证、开票与经营数据并按时出具检查报告
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能从税务、用电、流水等多源数据中识别早期风险信号，提出降额或追加担保等处置建议并跟踪落实
+- key: collateral_review
+  name: 押品与担保审查
+  category: 公司信贷
+  description: 核实押品权属与价值，维护押品台账并设计风险缓释安排
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能整理押品权证与评估资料，权属风险和价值合理性由他人判断
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成常见住宅、商业用房与通用设备押品的价值核对、年度复估与台账更新
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能处理共有权、在建工程、多重抵押与跨区域押品等复杂情形，并提出可执行的缓释方案
+- key: retail_loan_processing
+  name: 个人贷款受理与审查
+  category: 零售与财富
+  description: 受理个人贷款申请，完成面签、资料核验、收入测算与归档
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在带教下完成资料收集与系统录入，收入测算和反欺诈核查需他人复核后才能提交
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立受理常规住房、消费与经营贷款，完成面签、影像上传与资料归档
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立处理收入来源复杂或共同借款人情形，识别包装资料并写清判断依据供审查复核
+- key: wealth_product_suitability
+  name: 代销产品适当性管理
+  category: 零售与财富
+  description: 开展风险测评、产品匹配、风险揭示与销售留痕；基金和保险等代销资质是开展业务的前提，持有资格不等于具备本项能力
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能完成风险测评系统操作，产品匹配与风险揭示话术需有经验的同事在场把关
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立为风险测评结果与购买意愿一致的客户完成匹配、风险揭示与双录留痕
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能处理测评结果与购买意愿不一致、代理购买等争议情形，说清产品结构与最大损失情景并完整留痕
+- key: customer_acquisition
+  name: 客户拓展与维护
+  category: 客户与协同
+  description: 围绕目标客群开展走访、方案沟通与存量客户维护
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按名单完成电话与上门联系，客户需求梳理和方案沟通需同事陪同
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立维护既有客群，完成走访计划、需求记录与常规产品推荐
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能自主开拓园区、商圈或产业链客群，组织多产品组合方案沟通并推动客户落地
+- key: cross_line_collaboration
+  name: 条线协同与联动
+  category: 客户与协同
+  description: 在条线与分支机构之间推动信息共享、联动营销与问题闭环
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按要求参加条线会议并执行分配任务，跨部门事项需上级出面协调
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立对接一个条线的日常事项，按时传递要求并反馈执行情况
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能牵头多部门共同处理的事项，明确分工与时限，并把分歧收敛成书面结论
+- key: counter_operations
+  name: 柜面业务办理
+  category: 运营与柜面
+  description: 按操作规程办理账户、现金、结算与挂失等柜面业务
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在他人看护下办理开户、存取款等基础业务，要素录入需逐笔复核
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立办理账户变更、结算、挂失解挂等常规业务，凭证与印章使用符合规程
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立处理单位结算账户疑难变更、代理与上门服务等非常规业务，并说清适用规程与风险点
+- key: transaction_authorization
+  name: 柜面授权
+  category: 运营与柜面
+  description: 对超权限与特殊业务进行事中复核、要素核验与授权留痕
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能识别需授权的业务类型并提交申请，是否放行由上级判断
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成大额支取、账户解控等常规授权，核验要素齐全并留存影像
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在要素存疑或规程未明确的情形下作出放行或拒绝的判断，写明理由并同步风险条线
+- key: error_handling
+  name: 业务差错处理与整改
+  category: 运营与柜面
+  description: 登记差错、组织冲正或补正，分析成因并推动流程改进
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 发现差错后能及时上报，冲正与补正操作由他人带着完成
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成常见录入、凭证与归档差错的当日冲正、登记与说明
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能组织跨岗位差错复盘，定位成因并提出可执行的流程或系统改进措施
+- key: cash_management
+  name: 现金与重要空白凭证管理
+  category: 运营与柜面
+  description: 负责尾箱与库存现金盘点、重要空白凭证出入库与作废登记
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能参与双人盘点并记录数据，账实不符时的查找依赖他人
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立承担尾箱管理、日终轧账与重要空白凭证的出入库登记
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能主办季度盘库，处理编号断号、错号与作废凭证追溯等复杂情形并形成书面结论
+- key: credit_review
+  name: 信贷审查
+  category: 风险与合规
+  description: 独立于营销环节审查授信方案，出具同意、退回或附条件的审查意见
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能核对申报材料完整性与政策符合性，审查意见需由复核人改写后发出
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立审查常规流贷与个人贷款，针对还款来源与担保结构提出明确意见
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能审查复杂交易结构与集团客户，指出交易背景或估值依据不足之处并给出可落地的附加条件
+- key: aml_customer_due_diligence
+  name: 反洗钱客户尽职调查
+  category: 风险与合规
+  description: 开展客户身份识别、受益所有人穿透、风险等级划分与可疑交易分析
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按清单收集身份资料并录入系统，风险等级与可疑判断由他人给出
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成常规客户的身份识别、受益所有人核对与风险等级定期复核
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能处理多层股权结构与跨境交易的穿透分析，形成可疑交易分析结论并说明保留或排除的依据
+- key: compliance_inspection
+  name: 合规检查与整改跟踪
+  category: 风险与合规
+  description: 组织现场与非现场合规检查，开出问题清单并跟踪整改闭环
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按检查表逐项抽查并记录结果，问题定性与条款引用需他人确认
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成一个网点或一类业务的检查，写出问题清单、责任岗位与整改时限
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能设计检查方案与抽样口径，判断问题是个案还是流程缺陷，并推动制度或系统层面的整改
+- key: internal_control_review
+  name: 事后监督与内控检查
+  category: 风险与合规
+  description: 对已办业务开展事后监督抽查，核对凭证与系统记录并反馈整改
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按抽样清单核对凭证要素，是否构成问题由监督主办确认
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成月度事后监督抽查，出具问题通报并回收网点整改回执
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能根据差错分布调整抽样重点，识别账号共用、权限越界等系统性问题并提出控制措施

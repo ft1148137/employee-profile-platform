@@ -1,0 +1,487 @@
+- employee_code: YH001
+  grade: Partner（合伙人）
+  hired_on: '2014-03-03'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: situ.mingzhao
+  certifications:
+  - name: 注册管理咨询师（CMC）
+    issued_on: '2016-05-20'
+    valid_until: '2028-05-19'
+    note: ''
+  - name: 高级经济师
+    issued_on: '2019-12-01'
+    valid_until: null
+    note: 评审通过，无有效期
+- employee_code: YH002
+  grade: Senior Manager（高级经理）
+  hired_on: '2017-08-21'
+  reports_to: YH001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: lu.weizhen
+  certifications:
+  - name: PMP 项目管理专业人士
+    issued_on: '2019-06-15'
+    valid_until: '2028-06-14'
+    note: ''
+- employee_code: YH003
+  grade: Manager（经理）
+  hired_on: '2019-04-15'
+  reports_to: YH001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: gao.yunzhi
+  certifications:
+  - name: PMP 项目管理专业人士
+    issued_on: '2021-03-20'
+    valid_until: '2027-03-19'
+    note: ''
+- employee_code: YH004
+  grade: Senior Consultant（资深顾问）
+  hired_on: '2021-07-12'
+  reports_to: YH001
+  secondary_reports_to: [YH003]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: shao.yuchu
+  certifications:
+  - name: 六西格玛绿带
+    issued_on: '2022-05-11'
+    valid_until: null
+    note: ''
+- employee_code: YH005
+  grade: Consultant（顾问）
+  hired_on: '2023-07-10'
+  reports_to: YH001
+  secondary_reports_to: [YH003, YH002]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: wen.jiashu
+  certifications:
+  - name: 中级经济师
+    issued_on: '2025-11-20'
+    valid_until: null
+    note: ''
+- employee_code: YH006
+  grade: Intern（实习顾问）
+  hired_on: '2026-06-29'
+  reports_to: YH001
+  secondary_reports_to: [YH003]
+  system_role: employee
+  employment_type: intern
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: YH007
+  grade: Partner（合伙人）
+  hired_on: '2015-09-07'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: pei.yunshu
+  certifications:
+  - name: 注册管理咨询师（CMC）
+    issued_on: '2017-09-01'
+    valid_until: '2029-08-31'
+    note: ''
+  - name: CPIM 生产与库存管理认证
+    issued_on: '2018-04-20'
+    valid_until: null
+    note: ''
+- employee_code: YH008
+  grade: Manager（经理）
+  hired_on: '2018-11-19'
+  reports_to: YH007
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: eric.zeng
+  certifications:
+  - name: CPIM 生产与库存管理认证
+    issued_on: '2020-07-10'
+    valid_until: null
+    note: ''
+  - name: PMP 项目管理专业人士
+    issued_on: '2022-09-05'
+    valid_until: '2028-09-04'
+    note: ''
+- employee_code: YH009
+  grade: Senior Consultant（资深顾问）
+  hired_on: '2020-03-16'
+  reports_to: YH007
+  secondary_reports_to: [YH001, YH008]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: jiang.boyan
+  certifications:
+  - name: 六西格玛黑带
+    issued_on: '2021-10-15'
+    valid_until: null
+    note: ''
+- employee_code: YH010
+  grade: Consultant（顾问）
+  hired_on: '2022-09-05'
+  reports_to: YH007
+  secondary_reports_to: [YH008, YH002]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: mo.yingqiu
+  certifications: []
+- employee_code: YH011
+  grade: Analyst（分析师）
+  hired_on: '2024-07-08'
+  reports_to: YH007
+  secondary_reports_to: [YH008]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: hong.yan
+  certifications: []
+- employee_code: YH012
+  grade: Senior Manager（高级经理）
+  hired_on: '2017-02-13'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: liang.shuyan
+  certifications:
+  - name: ITIL 4 Managing Professional
+    issued_on: '2019-08-22'
+    valid_until: null
+    note: ''
+  - name: PMP 项目管理专业人士
+    issued_on: '2018-05-10'
+    valid_until: '2024-05-09'
+    note: 已过有效期，HR 档案未更新续证记录
+- employee_code: YH013
+  grade: Manager（经理）
+  hired_on: '2020-06-01'
+  reports_to: YH012
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: kelvin.duan
+  certifications:
+  - name: TOGAF 9 企业架构认证
+    issued_on: '2021-11-30'
+    valid_until: null
+    note: ''
+- employee_code: YH014
+  grade: Senior Consultant（资深顾问）
+  hired_on: '2021-03-08'
+  reports_to: YH012
+  secondary_reports_to: [YH013]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: tong.yu
+  certifications:
+  - name: CDMP 数据管理专业人士（Associate）
+    issued_on: '2022-06-18'
+    valid_until: '2025-12-31'
+    note: 已过有效期，未换证；HR 档案仍按有效状态显示
+- employee_code: YH015
+  grade: Consultant（顾问）
+  hired_on: '2023-02-20'
+  reports_to: YH012
+  secondary_reports_to: [YH013]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers:
+  - effective_on: '2026-04-01'
+    from_department: 知识与研究中心
+    from_title: 研究员
+    to_department: 数字化咨询部
+  external_accounts:
+  - source: 交付物库
+    account_id: ke.yining
+  certifications: []
+- employee_code: YH016
+  grade: Consultant（顾问）
+  hired_on: '2024-03-04'
+  reports_to: YH012
+  secondary_reports_to: [YH013]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: chi.you
+  certifications: []
+- employee_code: YH017
+  grade: Analyst（分析师）
+  hired_on: '2026-09-14'
+  reports_to: YH012
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: YH018
+  grade: Senior Manager（研究总监）
+  hired_on: '2016-05-09'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: qu.yanqiu
+  certifications:
+  - name: 高级经济师
+    issued_on: '2021-12-01'
+    valid_until: null
+    note: ''
+- employee_code: YH019
+  grade: Senior Consultant（资深研究员）
+  hired_on: '2019-09-02'
+  reports_to: YH018
+  secondary_reports_to: [YH003]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: ouyang.qinghe
+  certifications:
+  - name: 中级经济师
+    issued_on: '2020-12-01'
+    valid_until: null
+    note: ''
+- employee_code: YH020
+  grade: Consultant（研究员）
+  hired_on: '2022-07-11'
+  reports_to: YH018
+  secondary_reports_to: [YH001, YH019]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: ban.yiheng
+  certifications: []
+- employee_code: YH021
+  grade: Analyst（信息分析师）
+  hired_on: '2025-07-14'
+  reports_to: YH018
+  secondary_reports_to: [YH002]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: yin.miao
+  certifications: []
+- employee_code: YH022
+  grade: Senior Manager（运营总监）
+  hired_on: '2016-10-10'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: bian.qiucheng
+  certifications:
+  - name: 人力资源管理师（二级）
+    issued_on: '2018-06-30'
+    valid_until: null
+    note: ''
+- employee_code: YH023
+  grade: Consultant（职能序列·专员）
+  hired_on: '2021-11-01'
+  reports_to: YH022
+  secondary_reports_to: []
+  system_role: org_admin
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 人力资源管理师（三级）
+    issued_on: '2022-12-18'
+    valid_until: null
+    note: ''
+- employee_code: YH024
+  grade: Consultant（职能序列·专员）
+  hired_on: '2022-04-11'
+  reports_to: YH022
+  secondary_reports_to: [YH013]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: [数字化咨询部]
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: gan.tang
+  certifications: []
+- employee_code: YH025
+  grade: Consultant（职能序列·专员）
+  hired_on: '2020-08-17'
+  reports_to: YH022
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: hao.tinglan
+  certifications:
+  - name: 中级会计师
+    issued_on: '2021-05-22'
+    valid_until: null
+    note: ''
+- employee_code: YH026
+  grade: Senior Consultant（资深顾问）
+  hired_on: '2019-06-03'
+  reports_to: YH012
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: departed
+  left_on: '2026-07-31'
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: ivan.zhuo
+  certifications:
+  - name: TOGAF 9 企业架构认证
+    issued_on: '2020-09-14'
+    valid_until: null
+    note: ''
+- employee_code: YH027
+  grade: Consultant（顾问）
+  hired_on: '2022-02-14'
+  reports_to: YH007
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: departed
+  left_on: '2026-02-27'
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 交付物库
+    account_id: wen.yucen
+  certifications: []

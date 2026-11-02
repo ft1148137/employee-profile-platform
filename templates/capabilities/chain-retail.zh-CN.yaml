@@ -1,0 +1,242 @@
+# 行业参考模板（NERE-19）：区域连锁超市（事业部 + 门店）。合成示例，不代表任何真实企业。
+# 三档只描述可观察的工作行为，不含绩效、态度、品德评价；资质是岗位前提，不等于能力。
+- key: store_opening_closing
+  name: 门店开闭店管理
+  category: 门店运营与现场管理
+  description: 按流程完成门店开闭店的设备启停、备用金交接、安全巡查与班次交接
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在值班经理在场时完成开闭店清单中的单项工作（开关照明、收银机开机、清点备用金），遇到异常上报后等待指示
+    - key: routine
+      label: 能完成常规任务
+      description: 独立值守一个班次的开店或闭店全流程，完成设备启停、备用金双人交接、闭店安全巡查并填写交接记录
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 在停电、冷柜故障、安保事件等异常情况下主导现场处置，决定延迟闭店或转移商品，事后补齐记录并提出流程改动
+- key: shift_scheduling
+  name: 排班与人力调度
+  category: 门店运营与现场管理
+  description: 按客流、岗位资质与用工规则编制班表，并处理换班、请假与跨店支援
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 按已排好的班表登记出勤、提交换班申请，班次冲突和工时超限交由他人调整
+    - key: routine
+      label: 能完成常规任务
+      description: 独立编制单店周班表，覆盖客流高峰、法定休息与持证岗位要求，并处理常规换班、请假和考勤异常核对
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 在促销档期、全店盘点或员工集中请假时跨门店协调人力，权衡用工成本、资质限制与门店服务水平并说明取舍依据
+- key: store_inspection
+  name: 巡店检查与整改跟踪
+  category: 门店运营与现场管理
+  description: 按检查标准完成巡店打分、开出整改项并跟踪闭环
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 随同督导巡店，能照着检查表记录看到的问题，是否构成扣分项需要他人判定
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成单店巡店，按标准判定扣分项、开出带责任人和期限的整改项，并复查到期闭环
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 把多店反复出现的同类扣分归因到订货、排班或交接流程，提出可落地的整改方案并用后续巡店数据验证改善
+- key: staff_coaching
+  name: 新人带教与岗位培训
+  category: 门店运营与现场管理
+  description: 按岗位标准带教新员工上岗并确认操作要点
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能示范自己熟悉的单项作业（扫码收款、补货上架），标准口径和注意事项需要他人补充讲解
+    - key: routine
+      label: 能完成常规任务
+      description: 独立带教新员工完成本岗位上岗培训，按清单逐项确认操作要点、同台陪练并记录带教过程
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 为多个岗位设计带教内容与上岗考核方式，能纠正老员工形成的错误习惯并跟踪上岗后的差错率变化
+- key: shelf_replenishment
+  name: 货架补货与陈列维护
+  category: 商品与库损管理
+  description: 维护责任区域的排面、先进先出、价签对位与端架陈列
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 按他人指定的排面和数量补货上架，陈列图变更或端架调整时需要带着做
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成责任区域的补货、先进先出轮换、价签对位和端架维护，缺货与滞销能及时反馈给课长
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 依据销售与周转数据调整排面大小和陈列位置，在季节或档期切换时主导整区陈列改造并安排人力与物料
+- key: inventory_count
+  name: 盘点作业
+  category: 商品与库损管理
+  description: 组织或执行分区盘点、差异复核与盘点结论
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在他人分配的小区域内按指引清点并录入数量，差异由他人核对
+    - key: routine
+      label: 能完成常规任务
+      description: 独立负责一个课组的盘点，完成分区划分、初盘复盘、差异逐项核对并提交盘点表
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 组织全店盘点的分工与时间计划，带人把大额差异追查到收货验收、串码、未报损等具体环节并形成可执行结论
+- key: loss_control
+  name: 损耗控制与报损处理
+  category: 商品与库损管理
+  description: 按标准判定与登记损耗，并从作业环节降低损耗
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按格式填写报损单并保留破损商品，是否达到报损标准需要他人判断
+    - key: routine
+      label: 能完成常规任务
+      description: 独立按标准判定临期、破损、折价处理的时点与幅度，完成报损登记、凭证留存和账面调整申请
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 从损耗数据定位到订货过量、加工出成率、陈列温区、收货验收等具体环节，推动改变作业方式并用后续损耗率验证
+- key: order_replenish
+  name: 门店订货与库存周转
+  category: 商品与库损管理
+  description: 结合销售、天气与节令确定订货量，控制缺货与积压
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 按系统建议量下单，对建议量的增减需要他人复核后提交
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成责任品类的日常订货，按库存天数、天气和节假日调整数量，并跟踪到货与缺货情况
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 在供应到货不稳定或促销爆量时重排订货节奏与批次规格，平衡缺货率与积压损耗并说明判断依据
+- key: fresh_processing
+  name: 生鲜加工与保鲜处理
+  category: 生鲜与食品安全
+  description: 按标准完成生鲜分级、加工、保鲜与温区管理，并登记出成率
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在有经验员工旁边完成分割、摘洗、包装、称重贴标等单项操作，刀具分色与温区要求需要提醒
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成责任品类的分级加工、喷淋与冷藏保鲜、温区巡查和出成率登记，按标准处理临期品与下架品
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 制定加工计划与出成率标准，为叶菜、水产等高损耗品类设计保鲜与分级方案，并带教加工岗落实
+- key: food_safety
+  name: 食品安全日常管理
+  category: 生鲜与食品安全
+  description: 执行索证索票、温度记录、清洁消杀与不合格品处置。持有食品安全管理员培训合格证明与从业人员健康证明是岗位前提，不等于具备本能力
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按张贴的要求完成温度抄录和清洁作业，发现疑似变质或标识缺失时上报后等待指示
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成责任区域的索证索票归档、温度与清洁记录、临期下架与留样，按制度处置常规不合格情况
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 组织门店自查并应对监管或第三方抽检，把不合格项追溯到供应商或作业环节，落实制度层面整改并复查
+- key: label_price_compliance
+  name: 标价与标签合规
+  category: 生鲜与食品安全
+  description: 维护价签与商品的对应关系、标签信息完整性和档期价格一致性
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 按指令更换价签，价签与商品的对应关系需要他人复核
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成档期价签更换与逐排核对，处理标价与收银结算不一致的常见情形并保留变更记录
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 系统排查多店标价不符与标签信息缺失的成因，建立档期上线前的复核方式并验证不再复发
+- key: pos_operation
+  name: 收银操作与现金管理
+  category: 顾客服务与前台
+  description: 完成收银结算、促销与会员规则适用、差错冲正和备用金交接
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在他人协助下完成扫码、收款、开票等基础操作，遇到挂单、撤单、券核销失败时呼叫值班经理
+    - key: routine
+      label: 能完成常规任务
+      description: 独立值守收银台，完成常规结算、促销折扣与会员价适用、挂单退单和班次备用金双人交接，长短款能自查
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 处理重复扣款冲正、券与会员价叠加异常、系统离线后补录等复杂差错，复核班次差异并带教收银岗
+- key: customer_complaint
+  name: 顾客投诉与退换货处理
+  category: 顾客服务与前台
+  description: 按制度完成退换货受理与投诉现场处理，并推动问题回溯
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按统一话术接待并把诉求完整转交给值班经理，处理方案由他人决定
+    - key: routine
+      label: 能完成常规任务
+      description: 独立按制度完成常规退换货和一般投诉的现场处理，登记商品与处理结果并通知相关课组
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 处理涉及食品安全、金额较大或要求赔偿的投诉，协调门店、采购与供应商给出处理方案并跟踪回溯批次
+- key: promotion_execution
+  name: 促销与档期执行
+  category: 顾客服务与前台
+  description: 按档期方案完成堆头、物料、价签与库存的落地执行
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 按布置图摆放堆头和宣传物料，位置与数量细节需要他人确认
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成责任区域的档期切换，核对价签、库存与物料并按时上线，过期物料能及时撤除
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 统筹全店档期执行，协调订货、人力与陈列资源，处理爆量缺货或方案变更并在档期后复盘执行偏差
+- key: supplier_negotiation
+  name: 供应商谈判与商品引进
+  category: 采购与品类管理
+  description: 完成供应商资质收集、价格账期谈判与新品引进
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 整理报价与资质资料、准备比价表，谈判与条款确定由他人主导
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成常规供应商的价格、账期、促销支持谈判，落实合同签署与资质证照收集归档
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 主导重点品类的供应商结构调整和新品引进，处理断供、涨价、独家条款等复杂情形并给出备选方案
+- key: category_management
+  name: 品类结构与价格带管理
+  category: 采购与品类管理
+  description: 维护品类的单品结构、价格带与商品档案
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 按模板维护商品档案与价格带表格，增汰建议需要他人判断
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成责任品类的单品增汰与价格带调整，能用销售和毛利数据解释调整依据
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 结合区域竞争和门店客群重构品类角色与价格带，评估调整对毛利、客流和库存周转的影响并跟踪结果

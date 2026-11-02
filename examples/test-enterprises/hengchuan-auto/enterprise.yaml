@@ -1,0 +1,47 @@
+slug: hengchuan-auto
+name: 衡川汽车零部件（模拟）
+industry: 汽车零部件制造（制动、转向机加工件，二级供应商）
+gbt4754:
+  section: C
+  section_name: 制造业
+  code: '3670'
+  class_name: 汽车零部件及配件制造
+org_structure: functional
+org_structure_note: 职能制，车间按班组管生产；质量部独立于生产汇报，拥有不合格品和放行的否决权；工艺技术部提供工艺文件但不指挥车间人员。
+capability_template: templates/capabilities/auto-parts-manufacturing.zh-CN.yaml
+uses_jira: false
+sources:
+- name: MES
+  kind: work_records
+  description: 车间制造执行系统，记录工单报工、换型、设备点检与维修派工
+- name: QMS
+  kind: work_records
+  description: 质量管理系统，记录首件检验、巡检、不合格品、8D、PPAP 与内审
+hr_it_departments: [人力行政部]
+departments:
+- name: 机加工车间
+  pcf_categories: ['4.0 Deliver Physical Products']
+  responsibilities: 制动卡钳支架、转向齿条等机加工件的批量生产、换型与报工
+- name: 质量部
+  pcf_categories: ['4.0 Deliver Physical Products', '11.0 Manage Enterprise Risk, Compliance, Remediation, and Resiliency']
+  responsibilities: 首件与过程检验、不合格品控制、客户抱诉与 8D、PPAP 提交、IATF 16949 体系内审
+- name: 工艺技术部
+  pcf_categories: ['2.0 Develop and Manage Products and Services']
+  responsibilities: 工艺路线与控制计划编制、CAM 编程、夹具刀具方案、新件量产导入
+- name: 设备动力部
+  pcf_categories: ['10.0 Acquire, Construct, and Manage Assets']
+  responsibilities: 机床与公用动力设备的点检、保养、故障维修与精度恢复
+- name: 人力行政部
+  pcf_categories: ['7.0 Develop and Manage Human Capital', '8.0 Manage Information Technology (IT)']
+  responsibilities: 招聘与技能矩阵、特种作业与体系资质台账、薪酬与培训、MES/QMS 账号与基础 IT 运维
+projects:
+- code: EPB-2
+  name: 电子驻车卡钳支架二期量产导入
+  manager: HC013
+  members: [HC001, HC016, HC018, HC019, HC020]
+  note: 由质量部的客户质量工程师任量产导入负责人，他不是任何部门负责人
+- code: RACK8D
+  name: 转向齿条端面跳动超差 8D 专项
+  manager: HC012
+  members: [HC002, HC010, HC014, HC018, HC022]
+  note: 质量部经理亲自牵头客户抱诉专项，既是部门负责人又是专项负责人

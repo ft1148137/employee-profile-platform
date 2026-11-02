@@ -1,0 +1,489 @@
+- employee_code: QG001
+  grade: M3
+  hired_on: '2019-03-11'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: jiang.muchuan
+  certifications:
+  - name: 高级工程师职称（电子技术）
+    issued_on: '2021-12-20'
+    valid_until: null
+    note: 长期有效
+- employee_code: QG002
+  grade: P7
+  hired_on: '2020-07-06'
+  reports_to: QG001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: qiao.yanzhi
+  certifications:
+  - name: 工程师职称（电子技术）
+    issued_on: '2022-12-18'
+    valid_until: null
+    note: ''
+  - name: PCB 设计工具高级培训合格证
+    issued_on: '2021-05-28'
+    valid_until: null
+    note: 培训证书，不是执业资质
+- employee_code: QG003
+  grade: P6
+  hired_on: '2021-09-13'
+  reports_to: QG001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: su.tang
+  certifications:
+  - name: EMC 设计与整改培训合格证（第三方实验室）
+    issued_on: '2022-09-20'
+    valid_until: '2025-09-30'
+    note: 已过有效期，未参加复训
+- employee_code: QG004
+  grade: P6
+  hired_on: '2021-04-19'
+  reports_to: QG001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: xiang.chengyu
+  certifications:
+  - name: 机械工程师职称
+    issued_on: '2023-12-15'
+    valid_until: null
+    note: ''
+- employee_code: QG005
+  grade: 实习生
+  hired_on: '2026-07-06'
+  reports_to: QG002
+  secondary_reports_to:
+  - QG001
+  system_role: employee
+  employment_type: intern
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: xi.jiahe
+  certifications: []
+- employee_code: QG006
+  grade: M3
+  hired_on: '2018-11-05'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: shao.yan.plm
+  certifications:
+  - name: 系统架构设计师（计算机技术与软件专业技术资格·高级）
+    issued_on: '2019-12-20'
+    valid_until: null
+    note: ''
+- employee_code: QG007
+  grade: P6
+  hired_on: '2020-03-16'
+  reports_to: QG006
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: kevin.tang
+  certifications:
+  - name: 软件设计师（计算机技术与软件专业技术资格·中级）
+    issued_on: '2021-12-17'
+    valid_until: null
+    note: ''
+- employee_code: QG008
+  grade: P7
+  hired_on: '2021-06-21'
+  reports_to: QG006
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: ran.mu
+  certifications:
+  - name: 嵌入式系统设计师（计算机技术与软件专业技术资格·中级）
+    issued_on: '2022-06-24'
+    valid_until: null
+    note: ''
+- employee_code: QG009
+  grade: P5
+  hired_on: '2022-08-15'
+  reports_to: QG006
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: wen.han
+  certifications: []
+- employee_code: QG010
+  grade: P6
+  hired_on: '2019-09-02'
+  reports_to: QG006
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: departed
+  left_on: '2026-06-30'
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: han.tinglan
+  certifications:
+  - name: 软件设计师（计算机技术与软件专业技术资格·中级）
+    issued_on: '2020-12-18'
+    valid_until: null
+    note: ''
+- employee_code: QG011
+  grade: M3
+  hired_on: '2019-05-20'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: nie.yunshu
+  certifications:
+  - name: 高级工程师职称（计算机应用）
+    issued_on: '2022-12-16'
+    valid_until: null
+    note: ''
+- employee_code: QG012
+  grade: P6
+  hired_on: '2021-02-22'
+  reports_to: QG011
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: QG013
+  grade: P5
+  hired_on: '2022-03-07'
+  reports_to: QG011
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 深度学习工程师培训证书（厂商培训）
+    issued_on: '2022-08-26'
+    valid_until: '2025-08-25'
+    note: 已过有效期；培训证书不代表当前能力
+- employee_code: QG014
+  grade: P5
+  hired_on: '2026-09-14'
+  reports_to: QG011
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 软件设计师（计算机技术与软件专业技术资格·中级）
+    issued_on: '2024-12-20'
+    valid_until: null
+    note: 入职材料已登记
+- employee_code: QG015
+  grade: P7
+  hired_on: '2020-10-12'
+  reports_to: QG011
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: QG016
+  grade: M2
+  hired_on: '2018-06-25'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: fu.qi
+  certifications:
+  - name: 产品认证法规培训合格证（CE/CCC 方向）
+    issued_on: '2023-04-21'
+    valid_until: null
+    note: 培训证书；是否能独立判断认证路径需另行核实
+- employee_code: QG017
+  grade: P6
+  hired_on: '2021-11-08'
+  reports_to: QG016
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: yan.qinghe
+  certifications:
+  - name: EMC 测试工程师培训合格证
+    issued_on: '2022-03-25'
+    valid_until: '2027-03-24'
+    note: ''
+- employee_code: QG018
+  grade: P5
+  hired_on: '2022-05-16'
+  reports_to: QG016
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: xi.nan
+  certifications:
+  - name: 可靠性工程师培训证书
+    issued_on: '2023-06-09'
+    valid_until: null
+    note: ''
+- employee_code: QG019
+  grade: P6
+  hired_on: '2021-07-12'
+  reports_to: QG016
+  secondary_reports_to:
+  - QG006
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers:
+  - effective_on: '2026-01-15'
+    from_department: 嵌入式软件部
+    from_title: 固件工程师
+    to_department: 测试与认证部
+  external_accounts:
+  - source: PLM
+    account_id: deng.han
+  certifications:
+  - name: 软件评测师（计算机技术与软件专业技术资格·中级）
+    issued_on: '2023-12-15'
+    valid_until: null
+    note: ''
+- employee_code: QG020
+  grade: M2
+  hired_on: '2019-01-07'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: chu.mingye
+  certifications:
+  - name: 高级工程师职称（机械制造）
+    issued_on: '2020-12-18'
+    valid_until: null
+    note: ''
+  - name: 六西格玛绿带
+    issued_on: '2021-10-15'
+    valid_until: null
+    note: ''
+- employee_code: QG021
+  grade: P6
+  hired_on: '2020-09-14'
+  reports_to: QG020
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: zhuo.wei
+  certifications:
+  - name: IPC-A-610 认证专家（CIS）
+    issued_on: '2022-07-15'
+    valid_until: '2026-07-14'
+    note: 已过有效期，复审材料在准备中
+- employee_code: QG022
+  grade: P6
+  hired_on: '2021-03-29'
+  reports_to: QG020
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: shan.jianing
+  certifications:
+  - name: 六西格玛绿带
+    issued_on: '2023-05-19'
+    valid_until: null
+    note: ''
+- employee_code: QG023
+  grade: P5
+  hired_on: '2022-11-21'
+  reports_to: QG020
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: weng.mu
+  certifications: []
+- employee_code: QG024
+  grade: M2
+  hired_on: '2019-06-17'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 人力资源管理师（二级）
+    issued_on: '2018-11-24'
+    valid_until: null
+    note: ''
+- employee_code: QG025
+  grade: P6
+  hired_on: '2020-12-07'
+  reports_to: QG024
+  secondary_reports_to: []
+  system_role: org_admin
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: PLM
+    account_id: plm.admin
+  certifications:
+  - name: 信息系统管理工程师（计算机技术与软件专业技术资格·中级）
+    issued_on: '2021-12-17'
+    valid_until: null
+    note: ''
+- employee_code: QG026
+  grade: P5
+  hired_on: '2023-03-13'
+  reports_to: QG024
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 人力资源管理师（三级）
+    issued_on: '2022-11-26'
+    valid_until: null
+    note: ''
+- employee_code: QG027
+  grade: P5
+  hired_on: '2022-06-06'
+  reports_to: QG024
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
