@@ -2,6 +2,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import func
+from sqlalchemy.orm import aliased
 from sqlmodel import Session, col, select
 
 from app.authz.policies import employee_scope_clause
@@ -57,6 +58,15 @@ def employee_summary(session: Session, employee: Employee) -> EmployeeSummary:
         .order_by(col(ProfileVersion.revision).desc())
         .limit(1)
     ).first()
+    return _employee_summary(employee, department, progress, version)
+
+
+def _employee_summary(
+    employee: Employee,
+    department: Department | None,
+    progress: ProfileProgress | None,
+    version: ProfileVersion | None,
+) -> EmployeeSummary:
     return EmployeeSummary(
         **employee.model_dump(
             include={"id", "display_name", "title", "employment_status"}
@@ -76,19 +86,44 @@ def list_employees(
     skip: int,
     limit: int,
 ) -> EmployeesPublic:
-    statement = select(Employee).where(employee_scope_clause(principal))
+    filters = [employee_scope_clause(principal)]
     if department_id is not None:
-        statement = statement.where(Employee.department_id == department_id)
+        filters.append(col(Employee.department_id) == department_id)
     if q:
-        statement = statement.where(
-            col(Employee.display_name).icontains(q, autoescape=True)
+        filters.append(col(Employee.display_name).icontains(q, autoescape=True))
+    count = session.exec(
+        select(func.count()).select_from(Employee).where(*filters)
+    ).one()
+    latest_version = aliased(
+        ProfileVersion,
+        select(ProfileVersion)
+        .where(ProfileVersion.org_id == principal.org_id)
+        .distinct(col(ProfileVersion.subject_employee_id))
+        .order_by(
+            col(ProfileVersion.subject_employee_id), col(ProfileVersion.revision).desc()
         )
-    count = session.exec(select(func.count()).select_from(statement.subquery())).one()
-    employees = session.exec(
-        statement.order_by(Employee.display_name, col(Employee.id))
+        .subquery(),
+    )
+    rows = session.exec(
+        select(Employee, Department, ProfileProgress, latest_version)
+        .where(*filters)
+        .outerjoin(
+            Department,
+            (col(Department.org_id) == Employee.org_id)
+            & (col(Department.id) == Employee.department_id),
+        )
+        .outerjoin(
+            ProfileProgress,
+            (col(ProfileProgress.org_id) == Employee.org_id)
+            & (col(ProfileProgress.employee_id) == Employee.id),
+        )
+        .outerjoin(
+            latest_version,
+            (col(latest_version.org_id) == Employee.org_id)
+            & (col(latest_version.subject_employee_id) == Employee.id),
+        )
+        .order_by(Employee.display_name, col(Employee.id))
         .offset(skip)
         .limit(limit)
     ).all()
-    return EmployeesPublic(
-        data=[employee_summary(session, e) for e in employees], count=count
-    )
+    return EmployeesPublic(data=[_employee_summary(*row) for row in rows], count=count)
