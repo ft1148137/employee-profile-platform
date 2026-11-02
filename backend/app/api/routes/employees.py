@@ -37,5 +37,5 @@ def read_employee(
         )
     ).first()
     if employee is None:
-        raise HTTPException(status_code=404, detail="Employee not found")
+        raise HTTPException(status_code=404, detail="未找到该员工或你没有权限查看")
     return employee_summary(session, employee)

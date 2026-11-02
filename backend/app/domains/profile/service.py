@@ -7,7 +7,7 @@ from sqlmodel import Session, col, select
 from app.authz.principal import Principal
 from app.domains.capability.models import CapabilitySchemaVersion
 from app.domains.capability.schemas import CapabilityPublic, SchemaVersionPublic
-from app.domains.capability.service import get_schema, list_capabilities
+from app.domains.capability.service import SchemaNotFound, get_schema, list_capabilities
 from app.domains.evidence.models import Evidence
 from app.domains.evidence.service import evidence_access, restricted_title
 from app.domains.org.models import Employee, OrgMembership
@@ -35,7 +35,7 @@ from app.models import User
 
 class VersionNotFound(HTTPException):
     def __init__(self) -> None:
-        super().__init__(404, "Profile version not found")
+        super().__init__(404, "画像版本不存在")
 
 
 def profile_items(
@@ -79,7 +79,16 @@ def read_profile(
     employee = employee_summary(
         session, visible_employee(session, principal, employee_id)
     )
-    schema = get_schema(session, principal.org_id)
+    try:
+        schema = get_schema(session, principal.org_id)
+    except SchemaNotFound:
+        return ProfileView(
+            employee=employee,
+            schema_version=None,
+            latest_published=employee.latest_published,
+            items=[],
+            counts=ProfileCounts(),
+        )
     rows = session.exec(
         select(ProfileClaim)
         .where(

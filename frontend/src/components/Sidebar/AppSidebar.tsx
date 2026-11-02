@@ -13,6 +13,8 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
 } from "@/components/ui/sidebar"
 import useAuth from "@/hooks/useAuth"
@@ -34,8 +36,6 @@ export function AppSidebar() {
     })
   if (roles.includes("org_admin") || roles.includes("dept_manager"))
     items.push({ icon: Users, title: "员工", path: "/employees" })
-  if (currentUser?.is_superuser)
-    items.push({ icon: Users, title: "平台用户", path: "/admin" })
   items.push({ icon: Settings, title: "设置", path: "/settings" })
 
   return (
@@ -69,6 +69,11 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <Main items={items} />
+        {roles.includes("org_admin") && (
+          <SidebarGroup>
+            <SidebarGroupLabel>管理</SidebarGroupLabel>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter>
         <SidebarAppearance />

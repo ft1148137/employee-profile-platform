@@ -27,6 +27,6 @@ def test_health_check_database_unavailable(client: TestClient) -> None:
     try:
         response = client.get("/api/v1/utils/health-check/")
         assert response.status_code == 503
-        assert response.json() == {"detail": "Database unavailable"}
+        assert response.json() == {"detail": "数据库暂时不可用"}
     finally:
         app.dependency_overrides.pop(get_db)

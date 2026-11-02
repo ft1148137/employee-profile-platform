@@ -93,7 +93,7 @@ def activate_template(
 
 class SchemaNotFound(HTTPException):
     def __init__(self) -> None:
-        super().__init__(404, "Capability schema not found")
+        super().__init__(404, "能力词典不存在")
 
 
 def get_schema(

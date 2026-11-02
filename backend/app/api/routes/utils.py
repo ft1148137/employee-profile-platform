@@ -33,5 +33,5 @@ def health_check(session: SessionDep) -> bool:
     try:
         session.exec(select(1))
     except SQLAlchemyError:
-        raise HTTPException(status_code=503, detail="Database unavailable")
+        raise HTTPException(status_code=503, detail="数据库暂时不可用")
     return True

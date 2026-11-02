@@ -58,7 +58,7 @@ class ProfileCounts(SQLModel):
 
 class ProfileView(SQLModel):
     employee: EmployeeSummary
-    schema_version: SchemaVersionPublic
+    schema_version: SchemaVersionPublic | None
     latest_published: PublishedSummary | None
     counts: ProfileCounts
     items: list[ProfileItem]

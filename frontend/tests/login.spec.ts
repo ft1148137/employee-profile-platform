@@ -95,7 +95,7 @@ test("Successful log out", async ({ page }) => {
   await expect(page.getByTestId("user-menu")).toBeVisible()
 
   await page.getByTestId("user-menu").click()
-  await page.getByRole("menuitem", { name: "Log out" }).click()
+  await page.getByRole("menuitem", { name: "退出登录" }).click()
   await page.waitForURL("/login")
 })
 
@@ -110,7 +110,7 @@ test("Logged-out user cannot access protected routes", async ({ page }) => {
   await expect(page.getByTestId("user-menu")).toBeVisible()
 
   await page.getByTestId("user-menu").click()
-  await page.getByRole("menuitem", { name: "Log out" }).click()
+  await page.getByRole("menuitem", { name: "退出登录" }).click()
   await page.waitForURL("/login")
 
   await page.goto("/settings")

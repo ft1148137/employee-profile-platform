@@ -18,9 +18,6 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-xs">{children}</div>
         </div>
-        <footer className="text-center text-sm text-muted-foreground">
-          员工画像平台
-        </footer>
       </div>
     </div>
   )
