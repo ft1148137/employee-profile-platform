@@ -19,7 +19,6 @@ from app.models import (
     User,
     UserCreate,
     UserPublic,
-    UserRegister,
     UsersPublic,
     UserUpdate,
     UserUpdateMe,
@@ -27,6 +26,11 @@ from app.models import (
 from app.utils import generate_new_account_email, send_email
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+class UsernameAlreadyExists(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(status_code=409, detail="登录名已存在")
 
 
 class UserBelongsToOrganization(HTTPException):
@@ -77,6 +81,8 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
     Create new user.
     """
+    if crud.get_user_by_username(session=session, username=user_in.username):
+        raise UsernameAlreadyExists()
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user:
         raise HTTPException(
@@ -87,7 +93,7 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     user = crud.create_user(session=session, user_create=user_in)
     if settings.emails_enabled and user_in.email:
         email_data = generate_new_account_email(
-            email_to=user_in.email, username=user_in.email, password=user_in.password
+            email_to=user_in.email, username=user_in.username, password=user_in.password
         )
         send_email(
             email_to=user_in.email,
@@ -163,23 +169,7 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
     return Message(message="User deleted successfully")
 
 
-@router.post("/signup", response_model=UserPublic)
-def register_user(session: SessionDep, user_in: UserRegister) -> Any:
-    """
-    Create new user without the need to be logged in.
-    """
-    user = crud.get_user_by_email(session=session, email=user_in.email)
-    if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this email already exists in the system",
-        )
-    user_create = UserCreate.model_validate(user_in)
-    user = crud.create_user(session=session, user_create=user_create)
-    return user
-
-
-@router.get("/{user_id}", response_model=UserPublic)
+@router.get("/{user_id:uuid}", response_model=UserPublic)
 def read_user_by_id(
     user_id: uuid.UUID, session: SessionDep, current_user: CurrentUser
 ) -> Any:
@@ -200,7 +190,7 @@ def read_user_by_id(
 
 
 @router.patch(
-    "/{user_id}",
+    "/{user_id:uuid}",
     dependencies=[Depends(get_current_active_superuser)],
     response_model=UserPublic,
 )
@@ -231,7 +221,7 @@ def update_user(
     return db_user
 
 
-@router.delete("/{user_id}", dependencies=[Depends(get_current_active_superuser)])
+@router.delete("/{user_id:uuid}", dependencies=[Depends(get_current_active_superuser)])
 def delete_user(
     session: SessionDep, current_user: CurrentUser, user_id: uuid.UUID
 ) -> Message:

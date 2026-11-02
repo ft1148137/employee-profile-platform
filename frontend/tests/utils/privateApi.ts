@@ -16,9 +16,9 @@ export const createUser = async ({
 }) => {
   const response = await PrivateService.createUser({
     body: {
+      username: email.split("@")[0],
       email,
       password,
-      is_verified: true,
       full_name: "Test User",
     },
   })

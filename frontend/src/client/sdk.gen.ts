@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { capabilitiesReadCapabilitiesData, capabilitiesReadCapabilitiesErrors, capabilitiesReadCapabilitiesResponses, employeesReadEmployeeData, employeesReadEmployeeErrors, employeesReadEmployeeResponses, employeesReadEmployeesData, employeesReadEmployeesErrors, employeesReadEmployeesResponses, evidenceReadEmployeeEvidenceData, evidenceReadEmployeeEvidenceErrors, evidenceReadEmployeeEvidenceResponses, evidenceReadEvidenceData, evidenceReadEvidenceErrors, evidenceReadEvidenceResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginRecoverPasswordData, loginRecoverPasswordErrors, loginRecoverPasswordHtmlContentData, loginRecoverPasswordHtmlContentErrors, loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordResponses, loginResetPasswordData, loginResetPasswordErrors, loginResetPasswordResponses, loginTestTokenData, loginTestTokenResponses, meReadMembershipsData, meReadMembershipsResponses, orgsReadDepartmentsData, orgsReadDepartmentsErrors, orgsReadDepartmentsResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesReadProfileData, profilesReadProfileErrors, profilesReadProfileResponses, profilesReadProfileVersionData, profilesReadProfileVersionErrors, profilesReadProfileVersionResponses, profilesReadProfileVersionsData, profilesReadProfileVersionsErrors, profilesReadProfileVersionsResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersRegisterUserData, usersRegisterUserErrors, usersRegisterUserResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
+import type { capabilitiesReadCapabilitiesData, capabilitiesReadCapabilitiesErrors, capabilitiesReadCapabilitiesResponses, employeesReadEmployeeData, employeesReadEmployeeErrors, employeesReadEmployeeResponses, employeesReadEmployeesData, employeesReadEmployeesErrors, employeesReadEmployeesResponses, evidenceReadEmployeeEvidenceData, evidenceReadEmployeeEvidenceErrors, evidenceReadEmployeeEvidenceResponses, evidenceReadEvidenceData, evidenceReadEvidenceErrors, evidenceReadEvidenceResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginTestTokenData, loginTestTokenResponses, meReadMembershipsData, meReadMembershipsResponses, orgsReadDepartmentsData, orgsReadDepartmentsErrors, orgsReadDepartmentsResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesReadProfileData, profilesReadProfileErrors, profilesReadProfileResponses, profilesReadProfileVersionData, profilesReadProfileVersionErrors, profilesReadProfileVersionResponses, profilesReadProfileVersionsData, profilesReadProfileVersionsErrors, profilesReadProfileVersionsResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -47,50 +47,6 @@ export class LoginService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/login/test-token',
-            ...options
-        });
-    }
-    
-    /**
-     * Recover Password
-     *
-     * Password Recovery
-     */
-    public static recoverPassword<ThrowOnError extends boolean = true>(options: Options<loginRecoverPasswordData, ThrowOnError>) {
-        return (options.client ?? client).post<loginRecoverPasswordResponses, loginRecoverPasswordErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/password-recovery/{email}',
-            ...options
-        });
-    }
-    
-    /**
-     * Reset Password
-     *
-     * Reset password
-     */
-    public static resetPassword<ThrowOnError extends boolean = true>(options: Options<loginResetPasswordData, ThrowOnError>) {
-        return (options.client ?? client).post<loginResetPasswordResponses, loginResetPasswordErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/reset-password/',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-    }
-    
-    /**
-     * Recover Password Html Content
-     *
-     * HTML Content for Password Recovery
-     */
-    public static recoverPasswordHtmlContent<ThrowOnError extends boolean = true>(options: Options<loginRecoverPasswordHtmlContentData, ThrowOnError>) {
-        return (options.client ?? client).post<loginRecoverPasswordHtmlContentResponses, loginRecoverPasswordHtmlContentErrors, ThrowOnError>({
-            responseType: 'text',
-            security: [{ scheme: 'bearer', type: 'http' }],
-            url: '/api/v1/password-recovery-html-content/{email}',
             ...options
         });
     }
@@ -185,23 +141,6 @@ export class UsersService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/users/me/password',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-    }
-    
-    /**
-     * Register User
-     *
-     * Create new user without the need to be logged in.
-     */
-    public static registerUser<ThrowOnError extends boolean = true>(options: Options<usersRegisterUserData, ThrowOnError>) {
-        return (options.client ?? client).post<usersRegisterUserResponses, usersRegisterUserErrors, ThrowOnError>({
-            responseType: 'json',
-            url: '/api/v1/users/signup',
             ...options,
             headers: {
                 'Content-Type': 'application/json',

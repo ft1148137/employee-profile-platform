@@ -4,6 +4,7 @@ x-backend: &backend
   environment:
     PROJECT_NAME: ${PROJECT_NAME:?Variable not set}
     SECRET_KEY: ${SECRET_KEY:?Variable not set}
+    FIRST_SUPERUSER_USERNAME: ${FIRST_SUPERUSER_USERNAME:-superadmin}
     FIRST_SUPERUSER: ${FIRST_SUPERUSER:?Variable not set}
     FIRST_SUPERUSER_PASSWORD: ${FIRST_SUPERUSER_PASSWORD:?Variable not set}
     SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}

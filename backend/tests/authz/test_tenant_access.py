@@ -44,6 +44,7 @@ def tenant_data(
     orgs = [Organization(slug=str(uuid.uuid7()), name="Synthetic") for _ in range(2)]
     users = [
         User(
+            username=str(uuid.uuid7()),
             email=f"{uuid.uuid7()}@example.com",
             hashed_password="unused",
             is_superuser=i == 4,
@@ -265,7 +266,11 @@ def test_worker_and_user_cleanup(
                 and response.json()["detail"] == "User still belongs to an organization"
             )
     existing = set(db.exec(select(User.id)).all())
-    disposable = User(email=f"{uuid.uuid7()}@example.com", hashed_password="unused")
+    disposable = User(
+        username=str(uuid.uuid7()),
+        email=f"{uuid.uuid7()}@example.com",
+        hashed_password="unused",
+    )
     disposable_id = disposable.id
     db.add(disposable)
     db.commit()

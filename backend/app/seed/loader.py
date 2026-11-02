@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -94,20 +95,39 @@ def load_demo(
             if user is None and email == settings.FIRST_SUPERUSER:
                 raise SeedError("Run initial_data.py before loading demo data")
             counts["user"]["existing" if user else "added"] += 1
-            if user is None:
-                user = User(
-                    email=email,
-                    hashed_password=get_password_hash(settings.DEMO_USER_PASSWORD),
-                )
-                session.add(user)
-                session.flush()
-            users[email] = user
             account = accounts.get(email)
             account_employee = (
                 employees[account.employee_code]
                 if account and account.employee_code
                 else None
             )
+            username = (
+                settings.FIRST_SUPERUSER_USERNAME
+                if email == settings.FIRST_SUPERUSER
+                else account_employee.employee_code
+                if account_employee and account_employee.employee_code
+                else email.split("@")[0]
+            )
+            if user is None:
+                user = User(
+                    username=username,
+                    email=email,
+                    full_name=account_employee.display_name
+                    if account_employee
+                    else "企业管理员",
+                    hashed_password=get_password_hash(settings.DEMO_USER_PASSWORD),
+                )
+                session.add(user)
+                session.flush()
+            if user.username == email:
+                user.username = username
+                session.add(user)
+            if not user.full_name:
+                user.full_name = (
+                    account_employee.display_name if account_employee else "企业管理员"
+                )
+                session.add(user)
+            users[email] = user
             membership = ensure(
                 OrgMembership,
                 lookup={**tenant, "user_id": user.id},
@@ -133,7 +153,11 @@ def load_demo(
             lookup={**tenant, "version": 1},
             status=SchemaStatus.ACTIVE,
             template_ref="tech-rnd.zh-CN@1",
+            activated_at=datetime.now(UTC),
         )
+        if schema.activated_at is None:
+            schema.activated_at = datetime.now(UTC)
+            session.add(schema)
         capabilities = {
             row.key: ensure(
                 CapabilityDefinition,

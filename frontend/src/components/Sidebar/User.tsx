@@ -21,7 +21,7 @@ import { getInitials } from "@/utils"
 
 interface UserInfoProps {
   fullName?: string
-  email?: string
+  email?: string | null
 }
 
 function UserInfo({ fullName, email }: UserInfoProps) {

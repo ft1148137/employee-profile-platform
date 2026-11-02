@@ -8,11 +8,12 @@ from sqlmodel import Session, col, func, select
 
 from app.core.config import settings
 from app.core.db import engine
-from app.domains.capability.models import CapabilityDefinition
+from app.domains.capability.models import CapabilityDefinition, CapabilitySchemaVersion
 from app.domains.evidence.models import Evidence, EvidenceKind, Visibility
-from app.domains.org.models import Employee, Organization
+from app.domains.org.models import Employee, Organization, OrgMembership
 from app.domains.profile.models import ClaimEvidence, ProfileClaim, ProfileVersion
 from app.domains.profile.service import SnapshotError, build_profile_snapshot
+from app.models import User
 from app.seed.loader import load_demo
 from app.seed.schema import SeedError, read_bundle
 
@@ -32,6 +33,23 @@ def test_import(seed_path: Path) -> None:
         employees = session.exec(
             select(Employee).where(Employee.org_id == org.id)
         ).all()
+        assert (
+            session.exec(
+                select(CapabilitySchemaVersion).where(
+                    CapabilitySchemaVersion.org_id == org.id
+                )
+            )
+            .one()
+            .activated_at
+        )
+        assert all(
+            user.full_name
+            for user in session.exec(
+                select(User)
+                .join(OrgMembership, OrgMembership.user_id == User.id)
+                .where(OrgMembership.org_id == org.id)
+            ).all()
+        )
         assert len(employees) == 12
         assert len({e.id for e in employees if e.display_name == "张伟"}) == 2
         evidence = session.exec(select(Evidence).where(Evidence.org_id == org.id)).all()

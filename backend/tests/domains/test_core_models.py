@@ -48,7 +48,11 @@ def rows(session: Session) -> Rows:
     a, b = (
         Organization(slug=str(uuid.uuid7()), name="Synthetic org") for _ in range(2)
     )
-    user = User(email=f"{uuid.uuid7()}@example.com", hashed_password="unused")
+    user = User(
+        username=str(uuid.uuid7()),
+        email=f"{uuid.uuid7()}@example.com",
+        hashed_password="unused",
+    )
     session.add_all([a, b, user])
     session.flush()
     dept = Department(org_id=a.id, name="Engineering")
