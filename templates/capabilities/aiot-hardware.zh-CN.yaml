@@ -1,0 +1,241 @@
+# 行业参考模板（NERE-19）：智能硬件 / AIoT 端侧视觉模组与方案研发。合成示例，不代表任何真实企业。
+- key: schematic_design
+  name: 硬件原理图设计
+  category: 硬件设计
+  description: 按方案要求完成电路选型与原理图设计，并通过评审
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在他人给定的参考设计上修改局部电路，选型与关键参数计算需要资深工程师确认
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成已有平台的派生板原理图，自查电源树、上电顺序与接口保护，评审问题项多为细节
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在新主控平台上从零完成整板原理图，自行权衡成本、功耗与可制造性，并在评审中解释取舍依据
+- key: pcb_layout
+  name: PCB 布局布线
+  category: 硬件设计
+  description: 完成叠层设计与布局布线，处理信号完整性与电源完整性约束
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能完成低速信号与电源区的布线并通过 DRC，高速走线和地平面分割需要他人指导
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成含 DDR 与 MIPI 的常规四到六层板布线，按阻抗要求定叠层并解决常见 DRC 冲突
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立处理多片 DDR、高速串行接口与严苛空间限制的布线，结合仿真结果调整并说明回流路径设计
+- key: power_emc_design
+  name: 电源与 EMC 前期设计
+  category: 硬件设计
+  description: 设计供电方案并在设计阶段预留 EMC 与防护措施
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按已有电路照搬滤波与防护器件，取值和位置需要他人复核
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成常规 DCDC 与 LDO 选型、环路补偿与去耦布置，并按经验预留共模与 ESD 防护位置
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在设计阶段结合噪声源与机壳接地方案规划滤波与屏蔽，使整机首次 EMC 测试即接近限值要求
+- key: structure_thermal
+  name: 结构与散热设计
+  category: 硬件设计
+  description: 设计外壳与散热方案，并用仿真与实测验证温升
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按已定方案出结构图并跟进样件，散热方案和材料选型需要他人决定
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成常规自然散热外壳设计、选择导热界面材料并通过壳温实测验证
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在密闭无风扇且空间受限的条件下自行完成热仿真与方案比选，兼顾跌落、防护等级与装配工艺
+- key: bsp_driver
+  name: BSP 与驱动开发
+  category: 嵌入式软件
+  description: 维护内核与板级支持包，开发和调试外设驱动
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按文档修改设备树与配置项并编译烧写，驱动问题定位需要他人带着看
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立点亮常见外设、合并原厂补丁并用日志与寄存器定位常规驱动故障
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立完成跨内核版本的 BSP 升级，定位时序、供电与并发相关的偶发故障并给出根因分析
+- key: firmware_integration
+  name: 固件集成与 OTA
+  category: 嵌入式软件
+  description: 组织固件版本、分区与升级方案，保证可追溯与可回滚
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按既定流程打包固件和执行升级验证，分区与版本规则由他人确定
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立维护分区表与版本号规则，完成差分升级打包并验证断电重试
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立设计含签名校验、灰度分组与回滚策略的升级方案，并把固件版本与 BOM 对应关系做成可追溯记录
+- key: camera_isp_tuning
+  name: 相机与 ISP 调试
+  category: 嵌入式软件
+  description: 点亮摄像头并调试图像效果参数
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能导入原厂参数让摄像头出图，效果问题需要他人判断调整方向
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成 MIPI 时序与上电顺序调试，按场景微调白平衡、曝光与降噪参数
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能在新传感器与新镜头组合上独立完成 3A 标定与效果调优，并用客观指标说明低照度与动态范围的折中
+- key: model_training
+  name: 视觉模型训练与评估
+  category: 端侧算法
+  description: 组织数据、训练检测或识别模型并给出可比较的评估结论
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按既有脚本跑通训练并产出指标，数据问题与指标异常需要他人解释
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成数据清洗、训练与固定口径评估，针对漏检误检补充样本并复现改进
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立设计评估集与门限，定位数据分布、标注口径与模型结构导致的问题并权衡端侧算力约束
+- key: rknn_conversion
+  name: RKNN 模型转换与量化
+  category: 端侧算法
+  description: 用 RKNN-Toolkit 把训练模型转换到瑞芯微 NPU 并控制量化掉点
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按文档跑通 ONNX 到 RKNN 的转换，转换报错与精度异常需要他人协助定位
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成常规模型的转换与 INT8 量化，准备校准集并用逐层比对确认掉点在可接受范围
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立处理不支持算子的替换与拆图、设计混合量化配置，定位归一化与校准集分布导致的掉点并在工具链升级后完成回归
+- key: npu_performance_tuning
+  name: NPU 性能调优
+  category: 端侧算法
+  description: 优化端侧推理的耗时、内存与多核利用率
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能用现成脚本测出耗时和内存数据，优化方向需要他人给出
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立定位常见瓶颈，通过复用缓冲、调整输入尺寸与批量把耗时和内存降到目标范围
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立规划多核分配与零拷贝数据通路，在多模型并发下设计优先级与超时策略并给出稳定的 P99 耗时
+- key: edge_integration
+  name: 端侧算法包集成
+  category: 端侧算法
+  description: 把模型与前后处理打包成可交付的算法包并与固件联调
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按约定目录结构打包算法文件，接口与版本问题需要他人处理
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立按固件接口打包算法包、处理启动顺序与版本校验，联调常规问题
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立定义算法包与固件的接口与版本矩阵，处理分区容量、加密加载与运行库兼容等跨团队约束
+- key: emc_debug
+  name: EMC 整改
+  category: 测试与认证
+  description: 定位电磁兼容超标原因并给出整改方案直至复测通过
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在实验室配合换件和复测，超标原因与整改方向由他人判断
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成常见辐射发射与传导骚扰的排查，按经验增加滤波、屏蔽或接地改动并验证效果
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立用近场探头与频谱定位噪声源与耦合路径，针对 ESD 与浪涌等问题给出改板级整改方案并一次复测通过
+- key: reliability_test
+  name: 环境与可靠性测试
+  category: 测试与认证
+  description: 按标准设计并执行环境、机械与寿命试验，输出可追溯结论
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按试验作业指导书操作设备并记录数据，异常是否判不合格需要他人确认
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立按标准条件安排高温高湿、冷启动、跌落与振动试验，完整记录过程并识别常见失效
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立按产品使用场景裁剪试验矩阵与加速条件，对失效件做分析并把结论反馈到设计与工艺改进
+- key: certification_project
+  name: 产品认证项目管理
+  category: 测试与认证
+  description: 组织第三方认证的资料准备、送检与工厂检查
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按清单收集和整理资料，认证路径与标准适用范围需要他人判断
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成常规认证的资料准备、送检对接与补件，按计划推动到发证
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立判断多地区认证路径与标准适用条款，安排关键件证书与一致性文件，应对工厂检查的不符合项整改。取得认证资质或证书是开展工作的前提，不等于具备该能力
+- key: dfm_review
+  name: DFM 可制造性评审
+  category: 制造与变更
+  description: 从贴装、测试与装配角度评审设计并推动整改闭环
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能用检查表对照找出明显的工艺问题，是否必须改板需要他人决定
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立主持常规 DFM 评审，提出钢网、拼板、元件间距与测试点问题并跟踪整改
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立结合代工厂产能与良率数据提出治具与测试覆盖方案，在设计与制造之间权衡改板成本与量产风险
+- key: ecn_bom_management
+  name: ECN 与 BOM 变更管理
+  category: 制造与变更
+  description: 维护物料清单与工程变更流程，保证变更有依据、有影响评估、可追溯
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在系统里录入变更单与物料信息，影响范围与风险判断需要他人补充
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立发起常规替代料与改版变更，列出影响的版本、库存与测试项并推动审批闭环
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立为批量国产替代或供应商变更做风险分级，安排验证项与切换批次，并保证固件、BOM 与认证资料同步更新

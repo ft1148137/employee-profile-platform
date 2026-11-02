@@ -1,0 +1,55 @@
+slug: helin-retail
+name: 禾邻超市（模拟）
+industry: 连锁超市
+gbt4754:
+  section: F
+  section_name: 批发和零售业
+  code: '5212'
+  class_name: 超级市场零售
+org_structure: divisional
+org_structure_note: 区域事业部制。东城区域运营部对辖内门店的销售、损耗和服务负责，区域经理管人管事；门店是独立核算单元，店长向区域经理汇报；商品采购部和人力与信息部是总部职能部门，不直接指挥门店人员。
+capability_template: templates/capabilities/chain-retail.zh-CN.yaml
+uses_jira: false
+sources:
+- name: 排班系统
+  kind: work_records
+  description: 门店排班与考勤系统，按周记录班次岗位、换班申请、考勤异常核对与跨店支援调度
+- name: POS 系统
+  kind: work_records
+  description: 收银前台按班次汇总的销售、长短款与差错冲正、退换货和损耗调整记录；不保存任何顾客身份或支付信息
+- name: 巡店系统
+  kind: work_records
+  description: 区域督导巡店打分、食品安全专项检查、盘点抽查与整改项闭环跟踪
+hr_it_departments: [人力与信息部]
+departments:
+- name: 东城区域运营部
+  pcf_categories:
+  - 3.0 Market and Sell Products and Services
+  - 4.0 Deliver Physical Products
+  responsibilities: 东城区域门店的销售与损耗指标、督导巡店与整改、生鲜运营标准、跨店人力调度
+- name: 滨江店
+  pcf_categories:
+  - 3.0 Market and Sell Products and Services
+  - 6.0 Manage Customer Service
+  responsibilities: 滨江店的开闭店、收银前台、理货陈列、生鲜加工与食品安全日常管理
+- name: 南湖店
+  pcf_categories:
+  - 3.0 Market and Sell Products and Services
+  - 6.0 Manage Customer Service
+  responsibilities: 南湖店的开闭店、收银前台、理货陈列、生鲜加工与盘点损耗管理
+- name: 商品采购部
+  pcf_categories:
+  - 4.0 Deliver Physical Products
+  - 12.0 Manage External Relationships
+  responsibilities: 生鲜、包装食品与非食品类的供应商谈判、商品引进、品类结构与价格带、索证索票归档
+- name: 人力与信息部
+  pcf_categories:
+  - 7.0 Develop and Manage Human Capital
+  - 8.0 Manage Information Technology (IT)
+  responsibilities: 用工与排班制度、员工培训与食品安全培训组织、排班与 POS 等门店系统的账号和权限管理
+projects:
+- code: SX01
+  name: 生鲜损耗专项改善
+  manager: HL002
+  members: [HL005, HL013, HL016, HL017, HL021]
+  note: 跨门店专项，由东城区域运营部的区域督导牵头；督导不是任何部门的负责人，专项成员来自区域、门店和采购三方

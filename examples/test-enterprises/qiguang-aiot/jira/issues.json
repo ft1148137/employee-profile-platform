@@ -1,0 +1,1201 @@
+{
+  "issues": [
+    {
+      "key": "EDGE-101",
+      "fields": {
+        "summary": "人形检测模型 v3 基线训练与评估",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-013",
+          "displayName": "花晓渝"
+        },
+        "reporter": {
+          "accountId": "qg-jira-011",
+          "displayName": "聂云舒"
+        },
+        "created": "2025-11-10T10:00:00.000+0800",
+        "resolutiondate": "2025-12-05T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "model"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "整理 12 万张合成与公开数据样本，训练人形检测基线模型，输出 mAP 与漏检分析报告。"
+      }
+    },
+    {
+      "key": "EDGE-102",
+      "fields": {
+        "summary": "RKNN-Toolkit2 转换脚本接入 CI",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-012",
+          "displayName": "阚屿"
+        },
+        "reporter": {
+          "accountId": "qg-jira-011",
+          "displayName": "聂云舒"
+        },
+        "created": "2025-11-18T10:00:00.000+0800",
+        "resolutiondate": "2025-12-12T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "rknn",
+          "ci"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "把 ONNX 到 RKNN 的转换与精度比对脚本接入流水线，转换失败时阻断构建。"
+      }
+    },
+    {
+      "key": "EDGE-103",
+      "fields": {
+        "summary": "RK3588 NPU 三核推理分配验证",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-015",
+          "displayName": "殷朗"
+        },
+        "reporter": {
+          "accountId": "qg-jira-011",
+          "displayName": "聂云舒"
+        },
+        "created": "2025-11-25T10:00:00.000+0800",
+        "resolutiondate": "2025-12-20T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "npu"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "验证单模型跨 NPU 三核分配与多核并行两种策略的吞吐差异，记录核心占用曲线。"
+      }
+    },
+    {
+      "key": "EDGE-104",
+      "fields": {
+        "summary": "INT8 量化后人形检测精度下降 6.8% 排查",
+        "issuetype": {
+          "name": "Bug"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-012",
+          "displayName": "阚屿"
+        },
+        "reporter": {
+          "accountId": "qg-jira-019",
+          "displayName": "邓寒"
+        },
+        "created": "2025-12-08T10:00:00.000+0800",
+        "resolutiondate": "2026-01-09T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "rknn",
+          "quantization"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "定位到输入归一化参数与量化校准集分布不一致，重做 200 张校准集后掉点收敛到 1.2%。"
+      }
+    },
+    {
+      "key": "EDGE-105",
+      "fields": {
+        "summary": "混合量化配置：首尾层保留 FP16",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-012",
+          "displayName": "阚屿"
+        },
+        "reporter": {
+          "accountId": "qg-jira-015",
+          "displayName": "殷朗"
+        },
+        "created": "2026-01-12T10:00:00.000+0800",
+        "resolutiondate": "2026-02-03T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "rknn",
+          "quantization"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "用 hybrid_quantization 对首层卷积与检测头保留浮点，评估精度与耗时的折中。"
+      }
+    },
+    {
+      "key": "EDGE-106",
+      "fields": {
+        "summary": "训练数据清洗与标注返工",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-013",
+          "displayName": "花晓渝"
+        },
+        "reporter": {
+          "accountId": "qg-jira-013",
+          "displayName": "花晓渝"
+        },
+        "created": "2026-01-15T10:00:00.000+0800",
+        "resolutiondate": "2026-02-10T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "data"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "清理重复帧与错标框，补充夜间与逆光样本，更新数据集版本号。"
+      }
+    },
+    {
+      "key": "EDGE-107",
+      "fields": {
+        "summary": "模型评估报告模板与门限",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-013",
+          "displayName": "花晓渝"
+        },
+        "reporter": {
+          "accountId": "qg-jira-011",
+          "displayName": "聂云舒"
+        },
+        "created": "2026-02-02T10:00:00.000+0800",
+        "resolutiondate": "2026-02-20T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "model"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "固定评估集与指标口径，约定上线门限，避免每次口径不同无法比较。"
+      }
+    },
+    {
+      "key": "EDGE-108",
+      "fields": {
+        "summary": "RKNN-Toolkit2 版本升级回归",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-012",
+          "displayName": "阚屿"
+        },
+        "reporter": {
+          "accountId": "qg-jira-019",
+          "displayName": "邓寒"
+        },
+        "created": "2026-02-09T10:00:00.000+0800",
+        "resolutiondate": "2026-03-06T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "rknn"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "升级工具链后重跑全部模型转换与精度比对，记录算子支持差异与规避方案。"
+      }
+    },
+    {
+      "key": "EDGE-109",
+      "fields": {
+        "summary": "端侧推理内存占用优化",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-015",
+          "displayName": "殷朗"
+        },
+        "reporter": {
+          "accountId": "qg-jira-011",
+          "displayName": "聂云舒"
+        },
+        "created": "2026-02-16T10:00:00.000+0800",
+        "resolutiondate": "2026-03-18T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "npu",
+          "perf"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "复用输入输出缓冲并关闭中间层保留，常驻内存从 412MB 降到 236MB。"
+      }
+    },
+    {
+      "key": "EDGE-110",
+      "fields": {
+        "summary": "零拷贝 DMA 输入接入",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-015",
+          "displayName": "殷朗"
+        },
+        "reporter": {
+          "accountId": "qg-jira-008",
+          "displayName": "冉苜"
+        },
+        "created": "2026-03-02T10:00:00.000+0800",
+        "resolutiondate": "2026-04-07T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "npu",
+          "driver"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "摄像头缓冲直通 NPU 输入，省掉一次内存拷贝，单帧端到端耗时下降 8ms。"
+      }
+    },
+    {
+      "key": "EDGE-111",
+      "fields": {
+        "summary": "模型文件加密与签名校验加载",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-011",
+          "displayName": "聂云舒"
+        },
+        "reporter": {
+          "accountId": "qg-jira-006",
+          "displayName": "邵衍"
+        },
+        "created": "2026-03-10T10:00:00.000+0800",
+        "resolutiondate": "2026-04-14T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "security"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "模型包加密存储并在加载时校验签名，密钥随整机一机一密方案下发。"
+      }
+    },
+    {
+      "key": "EDGE-112",
+      "fields": {
+        "summary": "多模型并发调度策略",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "qg-jira-015",
+          "displayName": "殷朗"
+        },
+        "reporter": {
+          "accountId": "qg-jira-011",
+          "displayName": "聂云舒"
+        },
+        "created": "2026-09-14T10:00:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "edge",
+          "npu"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "检测与属性识别两路模型并发时的优先级与超时策略，仍在压测。"
+      }
+    },
+    {
+      "key": "EDGE-113",
+      "fields": {
+        "summary": "算法侧日志与异常上报",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-013",
+          "displayName": "花晓渝"
+        },
+        "reporter": {
+          "accountId": "qg-jira-019",
+          "displayName": "邓寒"
+        },
+        "created": "2026-03-23T10:00:00.000+0800",
+        "resolutiondate": "2026-04-21T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "observability"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "统一推理异常码，补充丢帧与超时计数，方便现场定位。"
+      }
+    },
+    {
+      "key": "EDGE-114",
+      "fields": {
+        "summary": "量化感知训练（QAT）试点",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-011",
+          "displayName": "聂云舒"
+        },
+        "reporter": {
+          "accountId": "qg-jira-011",
+          "displayName": "聂云舒"
+        },
+        "created": "2026-04-06T10:00:00.000+0800",
+        "resolutiondate": "2026-05-15T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "rknn",
+          "quantization"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "在人形检测模型上试点量化感知训练，对比训练后量化的精度差异。"
+      }
+    },
+    {
+      "key": "EDGE-115",
+      "fields": {
+        "summary": "低光场景误检整改",
+        "issuetype": {
+          "name": "Bug"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-013",
+          "displayName": "花晓渝"
+        },
+        "reporter": {
+          "accountId": "qg-jira-019",
+          "displayName": "邓寒"
+        },
+        "created": "2026-04-20T10:00:00.000+0800",
+        "resolutiondate": "2026-05-22T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "model"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "补充低照度样本并调整后处理阈值，夜间误检率从 7.1% 降到 2.4%。"
+      }
+    },
+    {
+      "key": "EDGE-116",
+      "fields": {
+        "summary": "模组 V3 算法包与固件联调",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-012",
+          "displayName": "阚屿"
+        },
+        "reporter": {
+          "accountId": "qg-jira-006",
+          "displayName": "邵衍"
+        },
+        "created": "2026-05-06T10:00:00.000+0800",
+        "resolutiondate": "2026-06-05T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "integration"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "算法包按固件接口打包，联调分区容量、启动顺序与版本校验。"
+      }
+    },
+    {
+      "key": "EDGE-117",
+      "fields": {
+        "summary": "NPU 驱动版本与运行库不兼容",
+        "issuetype": {
+          "name": "Bug"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-015",
+          "displayName": "殷朗"
+        },
+        "reporter": {
+          "accountId": "qg-jira-008",
+          "displayName": "冉苜"
+        },
+        "created": "2026-05-18T10:00:00.000+0800",
+        "resolutiondate": "2026-06-16T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "npu",
+          "driver"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "固件内 NPU 驱动与算法包运行库版本不匹配导致初始化失败，约定版本矩阵。"
+      }
+    },
+    {
+      "key": "EDGE-118",
+      "fields": {
+        "summary": "推理耗时基准脚本",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-019",
+          "displayName": "邓寒"
+        },
+        "reporter": {
+          "accountId": "qg-jira-011",
+          "displayName": "聂云舒"
+        },
+        "created": "2026-06-01T10:00:00.000+0800",
+        "resolutiondate": "2026-06-29T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "test"
+        ],
+        "components": [
+          {
+            "name": "测试与认证部"
+          }
+        ],
+        "description": "固定温度与电源条件下的耗时基准脚本，连续 1000 帧统计 P50 与 P99。"
+      }
+    },
+    {
+      "key": "EDGE-119",
+      "fields": {
+        "summary": "端侧算法环境搭建与上手文档",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-013",
+          "displayName": "花晓渝"
+        },
+        "reporter": {
+          "accountId": "qg-jira-011",
+          "displayName": "聂云舒"
+        },
+        "created": "2026-09-21T10:00:00.000+0800",
+        "resolutiondate": "2026-10-16T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "doc"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "整理交叉编译环境、板子刷机与转换工具链的上手步骤，供新同事使用。"
+      }
+    },
+    {
+      "key": "EDGE-120",
+      "fields": {
+        "summary": "整机 EMC 整改后算法包复测配合",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-012",
+          "displayName": "阚屿"
+        },
+        "reporter": {
+          "accountId": "qg-jira-016",
+          "displayName": "傅岐"
+        },
+        "created": "2026-03-16T10:00:00.000+0800",
+        "resolutiondate": "2026-04-02T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "edge",
+          "emc"
+        ],
+        "components": [
+          {
+            "name": "端侧算法部"
+          }
+        ],
+        "description": "ESD 整改改版后重跑算法包功能与耗时，确认接地改动未影响推理稳定性。"
+      }
+    },
+    {
+      "key": "FW-201",
+      "fields": {
+        "summary": "RK3588 BSP 升级到 5.10 内核",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-008",
+          "displayName": "冉苜"
+        },
+        "reporter": {
+          "accountId": "qg-jira-006",
+          "displayName": "邵衍"
+        },
+        "created": "2025-11-12T10:00:00.000+0800",
+        "resolutiondate": "2025-12-19T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "bsp"
+        ],
+        "components": [
+          {
+            "name": "嵌入式软件部"
+          }
+        ],
+        "description": "合并芯片原厂 5.10 内核补丁，适配本板串口、PMIC 与存储配置。"
+      }
+    },
+    {
+      "key": "FW-202",
+      "fields": {
+        "summary": "MIPI 摄像头点亮（IMX415）",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-009",
+          "displayName": "文瀚"
+        },
+        "reporter": {
+          "accountId": "qg-jira-006",
+          "displayName": "邵衍"
+        },
+        "created": "2025-11-26T10:00:00.000+0800",
+        "resolutiondate": "2026-01-08T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "camera"
+        ],
+        "components": [
+          {
+            "name": "嵌入式软件部"
+          }
+        ],
+        "description": "补齐 MIPI 四 lane 时序与供电上电顺序，摄像头出图正常。"
+      }
+    },
+    {
+      "key": "FW-203",
+      "fields": {
+        "summary": "ISP 3A 调试参数导入",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-009",
+          "displayName": "文瀚"
+        },
+        "reporter": {
+          "accountId": "qg-jira-011",
+          "displayName": "聂云舒"
+        },
+        "created": "2026-01-12T10:00:00.000+0800",
+        "resolutiondate": "2026-02-26T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "camera",
+          "isp"
+        ],
+        "components": [
+          {
+            "name": "嵌入式软件部"
+          }
+        ],
+        "description": "导入原厂 3A 参数并按本镜头微调白平衡与降噪，低光噪点仍有争议。"
+      }
+    },
+    {
+      "key": "FW-204",
+      "fields": {
+        "summary": "OTA 差分升级断电恢复",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-007",
+          "displayName": "Kevin Tang"
+        },
+        "reporter": {
+          "accountId": "qg-jira-006",
+          "displayName": "邵衍"
+        },
+        "created": "2026-01-19T10:00:00.000+0800",
+        "resolutiondate": "2026-03-05T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "ota"
+        ],
+        "components": [
+          {
+            "name": "嵌入式软件部"
+          }
+        ],
+        "description": "A/B 分区差分升级，升级过程断电后能回滚到上一版本并重试。"
+      }
+    },
+    {
+      "key": "FW-205",
+      "fields": {
+        "summary": "固件版本号与 BOM 对应关系",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-007",
+          "displayName": "Kevin Tang"
+        },
+        "reporter": {
+          "accountId": "qg-jira-023",
+          "displayName": "翁沐"
+        },
+        "created": "2026-02-09T10:00:00.000+0800",
+        "resolutiondate": "2026-03-12T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "bom"
+        ],
+        "components": [
+          {
+            "name": "嵌入式软件部"
+          }
+        ],
+        "description": "固件版本写入对应主板 BOM 版本与摄像头二供标识，便于现场追溯。"
+      }
+    },
+    {
+      "key": "FW-206",
+      "fields": {
+        "summary": "看门狗误触发与异常重启日志",
+        "issuetype": {
+          "name": "Bug"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-008",
+          "displayName": "冉苜"
+        },
+        "reporter": {
+          "accountId": "qg-jira-019",
+          "displayName": "邓寒"
+        },
+        "created": "2026-02-23T10:00:00.000+0800",
+        "resolutiondate": "2026-03-26T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "bsp"
+        ],
+        "components": [
+          {
+            "name": "嵌入式软件部"
+          }
+        ],
+        "description": "高负载下喂狗线程被饿死导致重启，调整优先级并保留重启原因寄存器。"
+      }
+    },
+    {
+      "key": "FW-207",
+      "fields": {
+        "summary": "量产固件关闭串口调试口",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-007",
+          "displayName": "Kevin Tang"
+        },
+        "reporter": {
+          "accountId": "qg-jira-016",
+          "displayName": "傅岐"
+        },
+        "created": "2026-03-09T10:00:00.000+0800",
+        "resolutiondate": "2026-04-09T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "security"
+        ],
+        "components": [
+          {
+            "name": "嵌入式软件部"
+          }
+        ],
+        "description": "量产版本关闭调试串口与 root 登录，保留故障时的离线日志导出。"
+      }
+    },
+    {
+      "key": "FW-208",
+      "fields": {
+        "summary": "温升保护策略与降频曲线",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-008",
+          "displayName": "冉苜"
+        },
+        "reporter": {
+          "accountId": "qg-jira-003",
+          "displayName": "苏棠"
+        },
+        "created": "2026-03-24T10:00:00.000+0800",
+        "resolutiondate": "2026-05-07T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "thermal"
+        ],
+        "components": [
+          {
+            "name": "嵌入式软件部"
+          }
+        ],
+        "description": "按结构散热实测数据设定壳温门限与分档降频曲线，避免 NPU 直接掉算力。"
+      }
+    },
+    {
+      "key": "FW-209",
+      "fields": {
+        "summary": "以太网 PHY 偶发丢包",
+        "issuetype": {
+          "name": "Bug"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-010",
+          "displayName": "韩听澜"
+        },
+        "reporter": {
+          "accountId": "qg-jira-006",
+          "displayName": "邵衍"
+        },
+        "created": "2026-04-07T10:00:00.000+0800",
+        "resolutiondate": "2026-05-11T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "network"
+        ],
+        "components": [
+          {
+            "name": "嵌入式软件部"
+          }
+        ],
+        "description": "PHY 复位时序偏早导致协商失败，延长复位保持时间后连续 72 小时无丢包。"
+      }
+    },
+    {
+      "key": "FW-210",
+      "fields": {
+        "summary": "Wi-Fi 模组驱动适配",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-010",
+          "displayName": "韩听澜"
+        },
+        "reporter": {
+          "accountId": "qg-jira-006",
+          "displayName": "邵衍"
+        },
+        "created": "2026-02-16T10:00:00.000+0800",
+        "resolutiondate": "2026-03-30T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "network"
+        ],
+        "components": [
+          {
+            "name": "嵌入式软件部"
+          }
+        ],
+        "description": "适配二供 Wi-Fi 模组驱动与国家码配置，补充断线重连策略。"
+      }
+    },
+    {
+      "key": "FW-211",
+      "fields": {
+        "summary": "固件自动化测试框架",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-019",
+          "displayName": "邓寒"
+        },
+        "reporter": {
+          "accountId": "qg-jira-006",
+          "displayName": "邵衍"
+        },
+        "created": "2026-04-13T10:00:00.000+0800",
+        "resolutiondate": "2026-05-28T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "test"
+        ],
+        "components": [
+          {
+            "name": "测试与认证部"
+          }
+        ],
+        "description": "基于串口与 ADB 的自动化用例框架，覆盖升级、重启与摄像头出图。"
+      }
+    },
+    {
+      "key": "FW-212",
+      "fields": {
+        "summary": "量产烧录工具与校准流程",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-007",
+          "displayName": "Kevin Tang"
+        },
+        "reporter": {
+          "accountId": "qg-jira-022",
+          "displayName": "单嘉宁"
+        },
+        "created": "2026-04-27T10:00:00.000+0800",
+        "resolutiondate": "2026-06-11T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "production"
+        ],
+        "components": [
+          {
+            "name": "嵌入式软件部"
+          }
+        ],
+        "description": "烧录工具一键写入固件、序列号与校准参数，并回读校验。"
+      }
+    },
+    {
+      "key": "FW-213",
+      "fields": {
+        "summary": "RTC 走时偏差修复",
+        "issuetype": {
+          "name": "Bug"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-009",
+          "displayName": "文瀚"
+        },
+        "reporter": {
+          "accountId": "qg-jira-019",
+          "displayName": "邓寒"
+        },
+        "created": "2026-06-08T10:00:00.000+0800",
+        "resolutiondate": "2026-07-03T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "bsp"
+        ],
+        "components": [
+          {
+            "name": "嵌入式软件部"
+          }
+        ],
+        "description": "RTC 晶振负载电容选型偏差导致每天慢 4 秒，软件侧补偿并提出改板建议。"
+      }
+    },
+    {
+      "key": "FW-214",
+      "fields": {
+        "summary": "固件静态扫描告警清理",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "In Progress"
+        },
+        "assignee": {
+          "accountId": "qg-jira-008",
+          "displayName": "冉苜"
+        },
+        "reporter": {
+          "accountId": "qg-jira-006",
+          "displayName": "邵衍"
+        },
+        "created": "2026-09-28T10:00:00.000+0800",
+        "resolutiondate": null,
+        "labels": [
+          "synthetic",
+          "firmware",
+          "quality"
+        ],
+        "components": [
+          {
+            "name": "嵌入式软件部"
+          }
+        ],
+        "description": "清理静态扫描的空指针与越界告警，剩余第三方库告警待评估。"
+      }
+    },
+    {
+      "key": "FW-215",
+      "fields": {
+        "summary": "EMC 整改后固件回归",
+        "issuetype": {
+          "name": "Task"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-019",
+          "displayName": "邓寒"
+        },
+        "reporter": {
+          "accountId": "qg-jira-017",
+          "displayName": "晏清和"
+        },
+        "created": "2026-03-18T10:00:00.000+0800",
+        "resolutiondate": "2026-04-03T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "emc",
+          "test"
+        ],
+        "components": [
+          {
+            "name": "测试与认证部"
+          }
+        ],
+        "description": "ESD 整改改板后回归升级、网络与摄像头用例，确认固件无需改动。"
+      }
+    },
+    {
+      "key": "FW-216",
+      "fields": {
+        "summary": "OTA 服务端接口对接",
+        "issuetype": {
+          "name": "Story"
+        },
+        "status": {
+          "name": "Done"
+        },
+        "assignee": {
+          "accountId": "qg-jira-007",
+          "displayName": "Kevin Tang"
+        },
+        "reporter": {
+          "accountId": "qg-jira-025",
+          "displayName": "邵昀"
+        },
+        "created": "2026-07-06T10:00:00.000+0800",
+        "resolutiondate": "2026-08-14T17:30:00.000+0800",
+        "labels": [
+          "synthetic",
+          "firmware",
+          "ota"
+        ],
+        "components": [
+          {
+            "name": "嵌入式软件部"
+          }
+        ],
+        "description": "对接公司内网 OTA 服务的灰度分组与回滚接口，联调签名校验。"
+      }
+    }
+  ]
+}

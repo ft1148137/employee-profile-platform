@@ -1,0 +1,50 @@
+slug: lanjiang-grid
+name: 岚江省电力公司（模拟）
+industry: 省级电网供电公司
+gbt4754:
+  section: D
+  section_name: 电力、热力、燃气及水生产和供应业
+  code: '4420'
+  class_name: 电力供应
+org_structure: line_functional
+org_structure_note: 直线职能制。中心（部）主任对本专业全面负责，班组长不是部门负责人，向中心主任直接汇报；安全监察部和人力资源部对各生产中心只有业务指导权，没有人事任免权。
+capability_template: templates/capabilities/power-grid.zh-CN.yaml
+uses_jira: false
+sources:
+- name: 工作票系统
+  kind: work_records
+  description: 生产作业票证系统，记录第一种工作票、第二种工作票和倒闸操作票的签发人、工作负责人、工作许可人与工作班成员
+- name: 检修记录系统
+  kind: work_records
+  description: 生产管理系统的检修模块，记录缺陷处理闭环、例行试验报告、线路巡视与无人机机巡成果、在线监测分析
+- name: 安全培训考试系统
+  kind: work_records
+  description: 安全监察部与人力资源部共用的培训考试平台，记录《电力安全工作规程》考试、「三种人」资格考评、反事故演练和到岗到位检查
+hr_it_departments: [人力资源部]
+departments:
+- name: 变电检修中心
+  pcf_categories: ['10.0 Acquire, Construct, and Manage Assets', '5.0 Deliver Services']
+  responsibilities: 辖区 500kV 至 35kV 变电站一次设备检修、开关柜消缺、高压例行试验与绝缘油气检测，下设变电检修一班、变电检修二班、高压试验班
+- name: 输电运检中心
+  pcf_categories: ['10.0 Acquire, Construct, and Manage Assets']
+  responsibilities: 220kV 及 110kV 架空线路巡视、通道治理、带电作业、故障查找与无人机机巡，下设线路运维班、带电作业班
+- name: 电力调度控制中心
+  pcf_categories: ['5.0 Deliver Services', '8.0 Manage Information Technology (IT)']
+  responsibilities: 辖区电网值班调度、倒闸操作发令、检修计划平衡与负荷预测、调度自动化系统运维
+- name: 安全监察部
+  pcf_categories: ['11.0 Manage Enterprise Risk, Compliance, Remediation, and Resiliency']
+  responsibilities: 安全监督与到岗到位检查、违章查处、「三种人」资格考评、安规培训与反事故演练组织
+- name: 人力资源部
+  pcf_categories: ['7.0 Develop and Manage Human Capital']
+  responsibilities: 人员档案与劳资管理、培训计划与考试组织、特种作业操作证与技能等级台账维护，并承担本公司信息系统的账号与权限管理
+projects:
+- code: YF2026
+  name: 2026 年迎峰度夏保供专项
+  manager: LJ001
+  members: [LJ002, LJ005, LJ009, LJ014, LJ018]
+  note: 直线职能制下的跨中心专项，由变电检修中心主任兼任专项负责人，他同时是本部门负责人
+- code: LJGG
+  name: 云栖变 35kV 老旧开关柜改造专项
+  manager: LJ005
+  members: [LJ003, LJ004, LJ006]
+  note: 专项负责人是高压试验班班长，他不是任何部门的负责人

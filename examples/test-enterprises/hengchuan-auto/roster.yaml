@@ -1,0 +1,486 @@
+- employee_code: HC001
+  grade: M3
+  hired_on: '2014-04-07'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: QMS
+    account_id: qms.zhou
+  certifications:
+  - name: IATF 16949 内审员
+    issued_on: '2022-05-20'
+    valid_until: null
+    note: 外部机构培训合格证书
+  - name: 数控车工职业技能等级证书（高级工）
+    issued_on: '2012-11-18'
+    valid_until: null
+    note: ''
+- employee_code: HC002
+  grade: 高级工
+  hired_on: '2016-08-15'
+  reports_to: HC001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: QMS
+    account_id: qms.guo
+  certifications:
+  - name: 数控车工职业技能等级证书（高级工）
+    issued_on: '2019-06-28'
+    valid_until: null
+    note: ''
+- employee_code: HC003
+  grade: 高级工
+  hired_on: '2017-03-06'
+  reports_to: HC001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 加工中心操作调整工职业技能等级证书（高级工）
+    issued_on: '2020-10-16'
+    valid_until: null
+    note: ''
+- employee_code: HC004
+  grade: 中级工
+  hired_on: '2021-09-13'
+  reports_to: HC002
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 数控车工职业技能等级证书（中级工）
+    issued_on: '2023-05-19'
+    valid_until: null
+    note: ''
+- employee_code: HC005
+  grade: 中级工
+  hired_on: '2022-02-21'
+  reports_to: HC003
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: HC006
+  grade: 高级工
+  hired_on: '2015-06-01'
+  reports_to: HC002
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 磨工职业技能等级证书（高级工）
+    issued_on: '2018-12-07'
+    valid_until: null
+    note: ''
+  - name: 熔化焊接与热切割作业特种作业操作证
+    issued_on: '2017-09-11'
+    valid_until: '2023-09-10'
+    note: 已过有效期，未复审；现不安排任何焊接切割作业
+- employee_code: HC007
+  grade: 初级工
+  hired_on: '2023-04-10'
+  reports_to: HC003
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: HC008
+  grade: 中级工
+  hired_on: '2019-05-06'
+  reports_to: HC002
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种设备作业人员证（叉车司机 N1）
+    issued_on: '2019-07-22'
+    valid_until: '2027-07-21'
+    note: 2023 年已复审一次
+- employee_code: HC009
+  grade: 实习生
+  hired_on: '2026-09-07'
+  reports_to: HC002
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: intern
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: HC010
+  grade: 技师
+  hired_on: '2008-09-01'
+  reports_to: HC001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 数控机床装调维修工职业技能等级证书（技师）
+    issued_on: '2016-04-25'
+    valid_until: null
+    note: ''
+- employee_code: HC011
+  grade: 中级工
+  hired_on: '2021-03-15'
+  reports_to: HC002
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: departed
+  left_on: '2026-06-30'
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 数控车工职业技能等级证书（中级工）
+    issued_on: '2022-08-12'
+    valid_until: null
+    note: ''
+- employee_code: HC012
+  grade: M3
+  hired_on: '2017-11-20'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: QMS
+    account_id: qms.qiao
+  certifications:
+  - name: IATF 16949 内审员
+    issued_on: '2018-07-13'
+    valid_until: null
+    note: ''
+  - name: 质量工程师职业资格（中级）
+    issued_on: '2015-12-26'
+    valid_until: null
+    note: ''
+- employee_code: HC013
+  grade: T3
+  hired_on: '2020-07-01'
+  reports_to: HC012
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: QMS
+    account_id: qms.chen.yi
+  certifications:
+  - name: IATF 16949 内审员
+    issued_on: '2021-09-24'
+    valid_until: null
+    note: ''
+  - name: VDA 6.3 过程审核员
+    issued_on: '2023-03-17'
+    valid_until: '2026-03-16'
+    note: 资格已到期，2026 年复训名额未排上
+- employee_code: HC014
+  grade: 中级工
+  hired_on: '2018-10-08'
+  reports_to: HC012
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: QMS
+    account_id: qms.ke
+  certifications: []
+- employee_code: HC015
+  grade: 初级工
+  hired_on: '2024-03-04'
+  reports_to: HC012
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: QMS
+    account_id: qms.teng
+  certifications: []
+- employee_code: HC016
+  grade: T2
+  hired_on: '2019-08-19'
+  reports_to: HC012
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: QMS
+    account_id: qms.rui
+  certifications:
+  - name: 计量内校员（长度类）
+    issued_on: '2021-04-15'
+    valid_until: '2027-04-14'
+    note: ''
+- employee_code: HC017
+  grade: M3
+  hired_on: '2013-09-02'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: QMS
+    account_id: qms.xing
+  certifications:
+  - name: 机械工程师（中级职称）
+    issued_on: '2016-12-30'
+    valid_until: null
+    note: ''
+- employee_code: HC018
+  grade: T2
+  hired_on: '2019-02-25'
+  reports_to: HC017
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers:
+  - effective_on: '2026-02-01'
+    from_department: 质量部
+    from_title: 过程检验员
+    to_department: 工艺技术部
+  external_accounts:
+  - source: QMS
+    account_id: qms.ding
+  certifications:
+  - name: IATF 16949 内审员
+    issued_on: '2022-11-04'
+    valid_until: null
+    note: 在质量部任检验员期间取得
+- employee_code: HC019
+  grade: T3
+  hired_on: '2018-07-16'
+  reports_to: HC017
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: QMS
+    account_id: qms.jiang
+  certifications: []
+- employee_code: HC020
+  grade: T2
+  hired_on: '2021-11-08'
+  reports_to: HC017
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: QMS
+    account_id: qms.zhong
+  certifications: []
+- employee_code: HC021
+  grade: M2
+  hired_on: '2015-02-09'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: QMS
+    account_id: qms.nie
+  certifications:
+  - name: 特种作业操作证（低压电工作业）
+    issued_on: '2021-10-26'
+    valid_until: '2027-10-25'
+    note: ''
+- employee_code: HC022
+  grade: 技师
+  hired_on: '2012-05-14'
+  reports_to: HC021
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 机修钳工职业技能等级证书（技师）
+    issued_on: '2019-03-29'
+    valid_until: null
+    note: ''
+- employee_code: HC023
+  grade: 高级工
+  hired_on: '2020-04-20'
+  reports_to: HC021
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种作业操作证（低压电工作业）
+    issued_on: '2022-06-08'
+    valid_until: '2028-06-07'
+    note: ''
+  - name: 特种作业操作证（高处作业）
+    issued_on: '2023-05-11'
+    valid_until: '2029-05-10'
+    note: ''
+- employee_code: HC024
+  grade: 中级工
+  hired_on: '2019-10-28'
+  reports_to: HC021
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers:
+  - effective_on: '2025-12-01'
+    from_department: 机加工车间
+    from_title: 加工中心操作工
+    to_department: 设备动力部
+  external_accounts:
+  - source: QMS
+    account_id: qms.xu
+  certifications: []
+- employee_code: HC025
+  grade: M3
+  hired_on: '2016-01-11'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 企业人力资源管理师（二级）
+    issued_on: '2017-06-23'
+    valid_until: null
+    note: ''
+- employee_code: HC026
+  grade: T2
+  hired_on: '2021-06-07'
+  reports_to: HC025
+  secondary_reports_to: []
+  system_role: org_admin
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: HC027
+  grade: T2
+  hired_on: '2022-09-19'
+  reports_to: HC025
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: HC028
+  grade: T1
+  hired_on: '2025-07-14'
+  reports_to: HC025
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []

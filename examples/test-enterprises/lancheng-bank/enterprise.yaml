@@ -1,0 +1,58 @@
+slug: lancheng-bank
+name: 岚城银行汀州分行（模拟）
+industry: 城市商业银行分行
+gbt4754:
+  section: J
+  section_name: 金融业
+  code: '6621'
+  class_name: 商业银行服务
+org_structure: matrix
+org_structure_note: 支行按属地管人，分行条线管业务口径；支行客户经理向支行行长汇报，同时向分行公司金融部或零售金融部负责人报告条线事项。产品经理和专项负责人不是部门负责人。
+capability_template: templates/capabilities/commercial-banking.zh-CN.yaml
+uses_jira: false
+sources:
+- name: 信贷系统
+  kind: work_records
+  description: 分行信贷管理系统，记录贷前调查、授信审查、授信方案、押品复估、贷后检查与风险预警处置
+- name: 柜面运营
+  kind: work_records
+  description: 运营管理系统，记录柜面业务办理、授权、业务差错、事后监督、现金与重要空白凭证管理
+- name: 培训平台
+  kind: work_records
+  description: 全行培训平台，记录反洗钱必修培训、合规考试、新产品与岗前培训的组织与参加情况
+hr_it_departments: [综合管理部]
+departments:
+- name: 公司金融部
+  pcf_categories: ['3.0 Market and Sell Products and Services', '5.0 Deliver Services']
+  responsibilities: 对公客户拓展与维护、贷前调查组织、授信方案申报与条线口径管理
+- name: 零售金融部
+  pcf_categories: ['3.0 Market and Sell Products and Services', '2.0 Develop and Manage Products and Services']
+  responsibilities: 个人贷款与财富业务的产品管理、零售条线客户经理指导与代销适当性管理
+- name: 风险合规部
+  pcf_categories: ['11.0 Manage Enterprise Risk, Compliance, Remediation, and Resiliency']
+  responsibilities: 信贷审查、贷后管理、反洗钱、合规检查与整改跟踪
+- name: 运营管理部
+  pcf_categories: ['5.0 Deliver Services', '6.0 Manage Customer Service']
+  responsibilities: 柜面运营管理、集中授权、事后监督、业务差错管理与现金凭证管理
+- name: 云溪支行
+  pcf_categories: ['5.0 Deliver Services', '3.0 Market and Sell Products and Services']
+  responsibilities: 属地网点的对公与零售客户经营、柜面服务与网点转型落地
+- name: 综合管理部
+  pcf_categories: ['7.0 Develop and Manage Human Capital', '8.0 Manage Information Technology (IT)']
+  responsibilities: 人力资源与培训管理、分行信息科技运维支持、行政与安保
+projects:
+- code: XWD
+  name: 普惠小微贷款线上化项目
+  manager: LC011
+  members: [LC012, LC017, LC026, LC003, LC008]
+  note: 零售产品经理任项目经理，不是任何部门负责人
+- code: AML
+  name: 反洗钱系统升级与培训专项
+  manager: LC019
+  members: [LC016, LC021, LC027, LC028, LC004]
+  note: 反洗钱岗普通员工任专项负责人，跨风险合规部、运营管理部、云溪支行与综合管理部
+- code: YXZQ
+  name: 云溪支行网点转型项目
+  manager: LC024
+  members: [LC025, LC026, LC027, LC023]
+  note: 支行行长既是部门负责人又是项目负责人

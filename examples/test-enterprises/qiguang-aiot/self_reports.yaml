@@ -1,0 +1,127 @@
+- id: SR01
+  employee_code: QG012
+  submitted_at: '2026-09-08T20:40:00+08:00'
+  text: 这一年模型转换和量化基本都是我在做。INT8 掉点那次是我把校准集重做了 200 张才收敛到 1.2%，混合量化的配置也是我写的。工具链升级后的回归我跑了两轮。有些单子不是挂在我名下，比如量化感知训练那个试点，实际是我做的实验和结论。
+  related_task_keys:
+  - EDGE-104
+  - EDGE-105
+  - EDGE-108
+  - PLM-0018
+- id: SR02
+  employee_code: QG003
+  submitted_at: '2026-09-10T09:15:00+08:00'
+  text: 整机的 EMC 问题这两年都是我独立解决的，辐射发射和 ESD 两次整改方案都是我出的，改完一次就过了。我可以独立负责整机 EMC 整改，不需要别人帮忙。
+  related_task_keys:
+  - PLM-0005
+  - PLM-0013
+  - PLM-0026
+- id: SR03
+  employee_code: QG007
+  submitted_at: '2026-09-15T18:20:00+08:00'
+  text: OTA 这块是我从头搭的，A/B 分区、差分包、断电回滚和服务端灰度接口都做完了。顺便说一下，PLM 里我的账号是 kevin.tang，Jira 是中文名，两边记录对不上，我自己看都要找半天。固件版本和 BOM 的对应表也是我整理的。
+  related_task_keys:
+  - FW-204
+  - FW-205
+  - FW-216
+  - PLM-0028
+- id: SR04
+  employee_code: QG013
+  submitted_at: '2026-09-18T11:05:00+08:00'
+  text: 我负责检测模型的数据和训练。基线模型、低光整改和评估模板都是我做的，夜间误检从 7.1% 降到 2.4%。评估口径以前每次都不一样，现在固定下来了。模型往板子上部署那部分我不熟，是阚屿在做。
+  related_task_keys:
+  - EDGE-101
+  - EDGE-106
+  - EDGE-107
+  - EDGE-115
+- id: SR05
+  employee_code: QG015
+  submitted_at: '2026-09-22T19:30:00+08:00'
+  text: 我做了一些推理性能相关的工作，内存从 412MB 降到 236MB，零拷贝输入省了 8ms。多模型并发还在压测，结论不敢说。这些数字都是在固定温度和电源条件下测的，换条件可能不一样，所以不好直接当结论用。
+  related_task_keys:
+  - EDGE-109
+  - EDGE-110
+  - EDGE-112
+- id: SR06
+  employee_code: QG017
+  submitted_at: '2026-09-25T16:45:00+08:00'
+  text: 这一年整机做了四轮 EMC：辐射发射超标 3.2dB、ESD ±8kV 复位、传导骚扰整改复测。噪声源定位和整改方向是我用近场探头找出来的，硬件按我的建议改板。CE 送检资料因为缺二供模组证书被退回过一次。
+  related_task_keys:
+  - PLM-0004
+  - PLM-0006
+  - PLM-0012
+  - PLM-0026
+- id: SR07
+  employee_code: QG021
+  submitted_at: '2026-09-29T10:20:00+08:00'
+  text: 模组 V3 的三次 DFM 评审都是我主持的，钢网开口、拼板工艺边、测试点覆盖率这些问题提了二十多条，ICT 覆盖率从 71% 提到 93%。治具方案是和代工厂一起定的。
+  related_task_keys:
+  - PLM-0007
+  - PLM-0016
+  - PLM-0027
+- id: SR08
+  employee_code: QG008
+  submitted_at: '2026-10-06T14:10:00+08:00'
+  text: BSP 升到 5.10 内核是我合的补丁，串口、PMIC、存储都重新适配过。看门狗误触发那个问题查了一周，是喂狗线程被饿死，顺手把重启原因寄存器保留下来了。温升降频曲线是按结构的实测数据定的。
+  related_task_keys:
+  - FW-201
+  - FW-206
+  - FW-208
+- id: SR09
+  employee_code: QG009
+  submitted_at: '2026-10-09T17:25:00+08:00'
+  text: 摄像头是我点亮的，MIPI 四 lane 时序和上电顺序折腾了很久。3A 参数是导原厂的再微调，低光噪点现在还有人说不好，我也不确定是参数问题还是镜头问题。这块我自己觉得只能算半懂。
+  related_task_keys:
+  - FW-202
+  - FW-203
+- id: SR10
+  employee_code: QG002
+  submitted_at: '2026-10-12T15:00:00+08:00'
+  text: V3 和 V3.1 的原理图与布线是我负责的，DDR 阻抗按仿真调到 40 欧姆，叠层也改了。V3.1 的电源与低速区布线我按期提交了 b2 版本并通过 DRC。
+  related_task_keys:
+  - PLM-0001
+  - PLM-0002
+  - PLM-0023
+  - PLM-0024
+- id: SR11
+  employee_code: QG005
+  submitted_at: '2026-10-15T21:50:00+08:00'
+  text: 我是七月来实习的，一开始就跟着乔工看板子。那个 V3.1 电源跟低速那块的线，其实是我画的，画了三版，DRC 报的错也是我一个个清掉的，最后提交是乔工提交的，所以单子上写的是他。评审会我做记录，顺便学了不少。我不太会写这种东西，想到哪写到哪。
+  related_task_keys:
+  - PLM-0023
+  - PLM-0024
+- id: SR12
+  employee_code: QG023
+  submitted_at: '2026-10-19T09:40:00+08:00'
+  text: BOM 和 ECN 这边的单子大部分是我在整理：PMIC 替代料、摄像头二供、23 个料号的国产替代批次。连接器变更那张单子的影响评估和验证项清单也是我写的，提交时是部门经理发起的，系统里看不出来。
+  related_task_keys:
+  - PLM-0003
+  - PLM-0015
+  - PLM-0021
+  - PLM-0022
+- id: SR13
+  employee_code: QG018
+  submitted_at: '2026-10-22T13:35:00+08:00'
+  text: 可靠性这边今年做了双八五 500 小时、跌落振动、低温冷启动和 72 小时老化。失效件我都做了记录，接插件氧化那个我拆开看过，反馈给结构了。试验矩阵是按部门以前的模板来的。
+  related_task_keys:
+  - PLM-0008
+  - PLM-0014
+  - PLM-0019
+  - PLM-0025
+- id: SR14
+  employee_code: QG011
+  submitted_at: '2026-10-26T11:15:00+08:00'
+  text: 我负责端侧算法部和 EDGE 项目。今年算法包的加密加载、与固件的接口评审、分区容量调整这些跨团队的事是我在推。量化和调优的具体实现主要是组里同事做的，我把方向和验收口径定下来。
+  related_task_keys:
+  - EDGE-111
+  - EDGE-114
+  - PLM-0017
+  - PLM-0030
+- id: SR15
+  employee_code: QG019
+  submitted_at: '2026-10-28T16:05:00+08:00'
+  text: 我年初从嵌入式软件部转到测试与认证部。固件自动化测试框架是我在原岗位搭的，转过来之后继续维护，EMC 和 ESD 改板后的回归也是我跑的。耗时基准脚本是我写的，P50 和 P99 都出。
+  related_task_keys:
+  - FW-211
+  - FW-215
+  - EDGE-118
+  - PLM-0012

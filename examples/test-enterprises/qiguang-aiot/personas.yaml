@@ -1,0 +1,1341 @@
+# 测试用，不导入系统
+# 真实能力（ground truth）用于核对系统推断的画像，对应计划书 §10.1「关键能力核实准确率」。
+# 栖光智联（模拟）的设计意图：Jira 只覆盖软件与算法任务，硬件、结构、制造、认证的工作全在 PLM；
+# 因此「有没有记录」在这家公司高度依赖岗位，评估系统很容易把硬件和制造岗判成「没证据」。
+slug: qiguang-aiot
+personas:
+- employee_code: QG001
+  display_name: 蒋沐川
+  work_history:
+  - period: 2012-07 至 2016-05
+    org: 某消费电子代工企业（虚构）
+    role: 硬件工程师
+    summary: 做机顶盒与网络摄像机主板，负责电源与接口电路
+  - period: 2016-06 至 2019-02
+    org: 某安防设备公司（虚构）
+    role: 硬件主管
+    summary: 带 4 人小组做前端摄像机硬件，开始接触 EMC 整改
+  - period: 2019-03 至今
+    org: 栖光智联（模拟）
+    role: 硬件研发部负责人
+    summary: 管硬件、结构两条线，兼任模组 V3 硬件平台项目负责人
+  ground_truth:
+    capabilities:
+    - key: schematic_design
+      level: independent_complex
+      evidence: partial
+      evidence_refs:
+      - record:PLM-0001
+      - record:PLM-0009
+      - record:PLM-0023
+      note: PLM 里他只以评审主持人身份出现，没有一条他本人画图的记录——他近三年确实不画图了。系统若按记录统计，会把他判成只会组织评审。
+    - key: power_emc_design
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 电源树与防护布置的方案实际由他拍板，但都发生在会上，系统里没有任何痕迹。
+    - key: dfm_review
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 早年在代工厂工作时常跟产线，能看出明显工艺问题，公司系统无记录。
+    certifications:
+    - 高级工程师职称（电子技术）
+    notes: 典型的「管理者证据稀薄」样本：职级最高，记录最少。
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    - mobile
+    expression_style: 讲结论和取舍，不写细节，常用「这块」「那条线」指代具体模块
+    attitude: skeptical
+    test_focus:
+    - 看系统会不会因为自己没有设计记录就把能力判低
+    - 查下属画像里有没有把别人做的事算到某个人头上
+    - 试着给评审记录补充说明，看能不能作为证据
+- employee_code: QG002
+  display_name: 乔砚之
+  work_history:
+  - period: 2016-07 至 2020-06
+    org: 某工业控制板卡公司（虚构）
+    role: 硬件工程师
+    summary: 做工业网关主板，熟悉 DDR 与高速接口布线
+  - period: 2020-07 至今
+    org: 栖光智联（模拟）
+    role: 高级硬件工程师
+    summary: 负责模组 V3 / V3.1 主板原理图与 PCB，带实习生
+  ground_truth:
+    capabilities:
+    - key: schematic_design
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - record:PLM-0001
+      - record:PLM-0002
+      - record:PLM-0023
+      - self_report:SR10
+      - manager_review:MR13
+      note: 记录、自述、经理评价一致，系统应能确认到复杂独立。
+    - key: pcb_layout
+      level: independent_complex
+      evidence: misleading
+      evidence_refs:
+      - record:PLM-0024
+      - self_report:SR10
+      note: PLM-0024 的 V3.1 电源与低速区布线实际是实习生郗嘉禾画的三版，他只做复核和提交；他本人的复杂布线证据在 V3 主板（DDR/MIPI）上，但那部分没有独立记录。两头都错位。
+    - key: power_emc_design
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - record:PLM-0002
+      note: 阻抗与叠层他能自己定，EMC 预留主要听苏棠和晏清和的建议。
+    certifications:
+    - 工程师职称（电子技术）
+    notes: ''
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 写得细、带参数和版本号，习惯贴走线和叠层说明
+    attitude: neutral
+    test_focus:
+    - 确认 PLM-0024 的贡献归属能不能更正
+    - 看系统是否把 V3 主板的复杂布线算成自己的能力
+- employee_code: QG003
+  display_name: 苏棠
+  work_history:
+  - period: 2018-09 至 2021-08
+    org: 某电源模块厂（虚构）
+    role: 电源工程师
+    summary: 做 AC-DC 适配器，接触过传导骚扰整改
+  - period: 2021-09 至今
+    org: 栖光智联（模拟）
+    role: 硬件工程师（电源与防护）
+    summary: 负责电源电路与 EMC 整改落地，模组 V3 与认证专项成员
+  ground_truth:
+    capabilities:
+    - key: emc_debug
+      level: routine
+      evidence: misleading
+      evidence_refs:
+      - record:PLM-0005
+      - record:PLM-0013
+      - self_report:SR02
+      - manager_review:MR02
+      note: 三重误导：自述说「独立解决、一次就过」夸大了；经理评价压到需要协助又偏低；HR 档案里的 EMC 培训证书 2025-09-30 已过期。真实水平是常规——噪声源和耦合路径是晏清和定的，整改实施、器件选择与复测跟进确实由他独立完成。
+    - key: power_emc_design
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - record:PLM-0005
+      - manager_review:MR03
+      note: 记录与评价一致，系统应能确认常规水平。
+    - key: schematic_design
+      level: needs_support
+      evidence: partial
+      evidence_refs:
+      - record:PLM-0001
+      note: 只以评审人身份出现，整板原理图没做过。
+    certifications: []
+    notes: 真实持有的有效证书为空——过期的 EMC 培训证书不应算作持证。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - mobile
+    expression_style: 语气肯定、爱用「独立」「一次通过」这类词，细节不足
+    attitude: worried_about_evaluation
+    test_focus:
+    - 看到经理评价是「需要协助」后提出申诉
+    - 试图用两次整改的 ECN 单子证明自己能独立做 EMC
+    - 检查过期的培训证书是否被当成扣分项
+- employee_code: QG004
+  display_name: 项澄宇
+  work_history:
+  - period: 2017-07 至 2021-03
+    org: 某家电结构件企业（虚构）
+    role: 结构工程师
+    summary: 做小家电外壳与模具，熟压铸与注塑工艺
+  - period: 2021-04 至今
+    org: 栖光智联（模拟）
+    role: 结构工程师
+    summary: 负责模组外壳、散热与装配工艺，配合可靠性试验
+  ground_truth:
+    capabilities:
+    - key: structure_thermal
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - record:PLM-0009
+      - record:PLM-0010
+      - manager_review:MR15
+      note: 评审、ECN 与经理评价一致。
+    - key: reliability_test
+      level: needs_support
+      evidence: partial
+      evidence_refs:
+      - record:PLM-0008
+      - record:PLM-0014
+      note: 他在试验记录里是「结构确认」参与者，系统容易把可靠性试验能力算到他头上。实际设备操作与判定都不是他做的。
+    - key: dfm_review
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 模具与装配工艺的可制造性他看得准，但 DFM 评审记录里没有他。
+    certifications:
+    - 机械工程师职称
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    expression_style: 偏流程化，描述里常带尺寸和材料牌号，不太写自己的判断过程
+    attitude: neutral
+    test_focus:
+    - 看系统会不会因为「参与可靠性试验」就给他测试能力
+    - 补充结构散热方面没有记录的工作
+- employee_code: QG005
+  display_name: 郗嘉禾
+  work_history:
+  - period: 2023-09 至今
+    org: 某理工类院校（虚构）
+    role: 电子信息工程在读本科生
+    summary: 校内实验室做过循迹小车主板，自己画过两层板
+  - period: 2026-07 至今
+    org: 栖光智联（模拟）
+    role: 硬件实习生
+    summary: 跟乔砚之做 V3.1 布线与评审记录
+  ground_truth:
+    capabilities:
+    - key: pcb_layout
+      level: routine
+      evidence: misleading
+      evidence_refs:
+      - record:PLM-0024
+      - self_report:SR11
+      - manager_review:MR14
+      note: 他实际完成了 V3.1 电源与低速区布线的三个版本并清掉所有 DRC 报错，但 PLM-0024 的设计责任人写的是乔砚之；经理按「实习生」身份给了需要协助。真实水平在电源与低速区已达常规，高速部分确实没碰过。
+    - key: schematic_design
+      level: needs_support
+      evidence: partial
+      evidence_refs:
+      - record:PLM-0023
+      note: 只在评审里当记录人，原理图没独立做过。
+    certifications: []
+    notes: 实习生的贡献被署名规则吞掉，是「指派人不等于贡献者」的核心样本。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - mobile
+    expression_style: 口语、想到哪写到哪，爱用「其实」「顺便」，不会写正式总结
+    attitude: worried_about_evaluation
+    test_focus:
+    - 试着说明 PLM-0024 的布线是自己做的，看系统能不能接受
+    - 看实习生身份会不会导致能力直接被压低
+    - 确认自己的画像会不会给带教老师看到
+- employee_code: QG006
+  display_name: 邵衍
+  work_history:
+  - period: 2012-07 至 2015-10
+    org: 某通信设备公司（虚构）
+    role: 嵌入式软件工程师
+    summary: 做接入设备固件，负责 Linux 内核裁剪
+  - period: 2015-11 至 2018-10
+    org: 某车载终端公司（虚构）
+    role: 固件主管
+    summary: 带固件小组做车载 T-Box，建立过 OTA 升级体系
+  - period: 2018-11 至今
+    org: 栖光智联（模拟）
+    role: 嵌入式软件部负责人
+    summary: 管 BSP、驱动与固件集成，兼任固件统一平台 2.0 项目负责人
+  ground_truth:
+    capabilities:
+    - key: firmware_integration
+      level: independent_complex
+      evidence: partial
+      evidence_refs:
+      - jira:FW-204
+      - jira:FW-207
+      - record:PLM-0017
+      note: 分区规则、版本矩阵与回滚策略是他定的，但 Jira 里他几乎只作为报告人出现，系统会把这些算到执行人头上。
+    - key: bsp_driver
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 上一代产品的内核裁剪与驱动主力是他，在本公司系统里一条记录都没有。
+    - key: edge_integration
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - jira:EDGE-111
+      - record:PLM-0017
+      note: 接口评审他主导，算法侧细节不深入。
+    certifications:
+    - 系统架构设计师（计算机技术与软件专业技术资格·高级）
+    notes: ''
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 结构化、爱列条目和版本矩阵，少用形容词
+    attitude: positive
+    test_focus:
+    - 检查「报告人」是否被当成贡献证据
+    - 看离职同事韩听澜的历史任务会不会算到接手人身上
+    - 确认 not_sure 的评价不会被当成负面结论
+- employee_code: QG007
+  display_name: 唐知野
+  work_history:
+  - period: 2017-07 至 2020-02
+    org: 某智能家居公司（虚构）
+    role: 固件工程师
+    summary: 做 Wi-Fi 面板固件，第一次做 OTA 升级
+  - period: 2020-03 至今
+    org: 栖光智联（模拟）
+    role: 固件工程师
+    summary: 负责 OTA、量产烧录与固件版本管理，EDGE 项目固件接口人
+  ground_truth:
+    capabilities:
+    - key: firmware_integration
+      level: independent_complex
+      evidence: misleading
+      evidence_refs:
+      - jira:FW-204
+      - jira:FW-216
+      - record:PLM-0028
+      - self_report:SR03
+      - manager_review:MR04
+      note: 他在 Jira 显示名是英文 Kevin Tang、账号 qg-jira-007，在 PLM 用 kevin.tang，系统不合并账号就只看到一半工作，经理也因此只给 routine。真实已能独立设计含签名校验、灰度分组与回滚的升级方案。
+    - key: ecn_bom_management
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:FW-205
+      - record:PLM-0028
+      note: 固件与 BOM 对应关系的变更单是他发起的，两个来源都能看到。
+    - key: camera_isp_tuning
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 能在别人指导下改参数，没有任何记录。
+    certifications:
+    - 软件设计师（计算机技术与软件专业技术资格·中级）
+    notes: 账号分裂导致的系统性低估样本。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - mobile
+    expression_style: 中英混杂，爱写 OTA、rollback 这类英文词，顺手吐槽工具
+    attitude: skeptical
+    test_focus:
+    - 查两个账号的工作有没有被合并
+    - 对「只到常规水平」的评价提出申诉
+    - 试着在画像里把 PLM 账号关联到自己名下
+- employee_code: QG008
+  display_name: 冉苜
+  work_history:
+  - period: 2018-07 至 2021-05
+    org: 某芯片方案公司（虚构）
+    role: BSP 工程师
+    summary: 做参考设计的内核适配与驱动调试
+  - period: 2021-06 至今
+    org: 栖光智联（模拟）
+    role: BSP 与驱动工程师
+    summary: 负责内核升级、外设驱动与异常定位
+  ground_truth:
+    capabilities:
+    - key: bsp_driver
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:FW-201
+      - jira:FW-206
+      - jira:FW-208
+      - self_report:SR08
+      - manager_review:MR06
+      note: 记录充分且一致，系统应能确认。
+    - key: edge_integration
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - jira:EDGE-110
+      - jira:EDGE-117
+      note: 零拷贝与驱动兼容他参与得多，但单子挂在算法侧。
+    - key: camera_isp_tuning
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 能帮着看时序，没有自己的记录。
+    certifications:
+    - 嵌入式系统设计师（计算机技术与软件专业技术资格·中级）
+    notes: ''
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 简洁、直接给根因和寄存器现象，不愿写过程
+    attitude: neutral
+    test_focus:
+    - 看接手韩听澜遗留问题的工作算谁的
+    - 确认跨部门单子（EDGE 项目）里的贡献能不能体现
+- employee_code: QG009
+  display_name: 文瀚
+  work_history:
+  - period: 2022-08 至今
+    org: 栖光智联（模拟）
+    role: 固件工程师（相机与 ISP）
+    summary: 校招入职，负责摄像头点亮与图像效果参数
+  ground_truth:
+    capabilities:
+    - key: camera_isp_tuning
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - jira:FW-202
+      - jira:FW-203
+      - self_report:SR09
+      - manager_review:MR05
+      note: 真实已到常规水平（能独立做 MIPI 时序与参数微调），但自述偏保守、经理答 not_sure，系统应输出「暂定/待确认」而不是「低」。
+    - key: bsp_driver
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:FW-202
+      - jira:FW-213
+      note: 驱动侧的常规问题他能独立处理。
+    - key: firmware_integration
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只按流程打过包，没有记录。
+    certifications: []
+    notes: ''
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 保守、爱加「我也不确定」「只能算半懂」这类限定语
+    attitude: worried_about_evaluation
+    test_focus:
+    - 看经理的 not_sure 会不会显示成能力不足
+    - 确认自述里的自我贬低会不会被当成证据
+- employee_code: QG010
+  display_name: 韩听澜
+  work_history:
+  - period: 2016-07 至 2019-08
+    org: 某网络设备公司（虚构）
+    role: 嵌入式软件工程师
+    summary: 做交换机底层驱动，熟以太网 PHY
+  - period: 2019-09 至 2026-06
+    org: 栖光智联（模拟）
+    role: 固件工程师
+    summary: 负责网络相关驱动与 Wi-Fi 模组适配，2026-06-30 离职
+  ground_truth:
+    capabilities:
+    - key: bsp_driver
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:FW-209
+      - jira:FW-210
+      - record:PLM-0032
+      note: 离职前的记录完整，系统应能显示历史并明确标注已离职。
+    - key: firmware_integration
+      level: needs_support
+      evidence: partial
+      evidence_refs:
+      - jira:FW-210
+      note: 只做过模组驱动相关的打包验证。
+    certifications:
+    - 软件设计师（计算机技术与软件专业技术资格·中级）
+    notes: 已离职、无登录账号，但两个来源都有历史记录；测试点是历史不能丢，也不能把他的任务算给接手人冉苜。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 已离职，不会再提交任何内容
+    attitude: neutral
+    test_focus:
+    - 离职人员的画像是否只读、是否还能被检索到
+- employee_code: QG011
+  display_name: 聂云舒
+  work_history:
+  - period: 2014-07 至 2019-04
+    org: 某计算机视觉创业公司（虚构）
+    role: 算法工程师、算法组长
+    summary: 做人脸与人形检测，带过 5 人小组
+  - period: 2019-05 至今
+    org: 栖光智联（模拟）
+    role: 端侧算法部负责人
+    summary: 管算法部，兼任端侧视觉算法包 V3 项目负责人
+  ground_truth:
+    capabilities:
+    - key: rknn_conversion
+      level: routine
+      evidence: misleading
+      evidence_refs:
+      - jira:EDGE-114
+      - jira:EDGE-102
+      - self_report:SR14
+      - manager_review:MR01
+      note: EDGE-114 量化感知训练试点指派并报告都是她，实际实验与结论是阚屿做的。她真实水平是能看懂配置、定验收口径（常规），系统若按指派人统计会判成独立复杂。
+    - key: edge_integration
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:EDGE-111
+      - jira:EDGE-116
+      - record:PLM-0017
+      - record:PLM-0018
+      - self_report:SR14
+      note: 接口、版本矩阵与加密加载这些跨团队约束确实由她定，记录充分。
+    - key: model_training
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - jira:EDGE-107
+      note: 她定评估框架，具体训练已多年不做。
+    certifications:
+    - 高级工程师职称（计算机应用）
+    notes: ''
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - tablet
+    expression_style: 偏项目管理口径，讲接口、验收和风险，少讲自己动手的细节
+    attitude: positive
+    test_focus:
+    - 确认指派给自己的单子不会被算成自己的动手能力
+    - 检查新人卞知吟的画像是否显示为未知而不是能力低
+    - 看组内两人的能力描述能否区分「定方向」和「做实现」
+- employee_code: QG012
+  display_name: 阚屿
+  work_history:
+  - period: 2019-07 至 2021-01
+    org: 某边缘计算盒子公司（虚构）
+    role: 算法部署工程师
+    summary: 做多平台模型部署，接触过多种 NPU 工具链
+  - period: 2021-02 至今
+    org: 栖光智联（模拟）
+    role: 算法工程师（模型部署）
+    summary: 负责 RKNN 转换与量化、工具链回归与算法包打包
+  ground_truth:
+    capabilities:
+    - key: rknn_conversion
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:EDGE-104
+      - jira:EDGE-105
+      - jira:EDGE-108
+      - record:PLM-0018
+      - self_report:SR01
+      - manager_review:MR01
+      note: 不支持算子拆图、混合量化配置、校准集分布与工具链升级回归都有记录，系统应能确认复杂独立。
+    - key: edge_integration
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:EDGE-116
+      - record:PLM-0017
+      note: 算法包打包与联调有记录。
+    - key: npu_performance_tuning
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 他能做常规耗时与内存优化，但性能相关的单子全在殷朗名下，系统里没有属于他的性能记录。
+    certifications: []
+    notes: 没有任何证书，但技术水平是部门最高之一——用来检查系统是否把证书当能力前提。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 技术术语密集，爱给具体数字（掉点百分比、层名、工具版本）
+    attitude: skeptical
+    test_focus:
+    - 查 PLM 里的旧账号 kanyu.old 的工作有没有算到自己名下
+    - 看 EDGE-114 的贡献归属能不能更正
+    - 确认「没有证书」不会压低画像结论
+- employee_code: QG013
+  display_name: 花晓渝
+  work_history:
+  - period: 2022-03 至今
+    org: 栖光智联（模拟）
+    role: 算法工程师（模型训练）
+    summary: 校招入职，负责检测模型数据、训练与评估
+  ground_truth:
+    capabilities:
+    - key: model_training
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:EDGE-101
+      - jira:EDGE-106
+      - jira:EDGE-115
+      - self_report:SR04
+      - manager_review:MR07
+      note: 记录、自述、评价三者一致。
+    - key: rknn_conversion
+      level: needs_support
+      evidence: partial
+      evidence_refs:
+      - jira:EDGE-113
+      - self_report:SR04
+      note: 她自己说明了部署不是她做的，系统不该因为同在 EDGE 项目就给她转换能力。
+    - key: edge_integration
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 打过包但没有记录。
+    certifications: []
+    notes: HR 档案里的深度学习培训证书 2025-08-25 已过期，不应算作当前持证，也不应因此下调能力。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - mobile
+    expression_style: 条理清楚、会主动写清边界（哪部分不是自己做的）
+    attitude: positive
+    test_focus:
+    - 看系统会不会把同项目的部署工作算成自己的
+    - 确认过期的培训证书不会被当成能力下降
+- employee_code: QG014
+  display_name: 卞知吟
+  work_history:
+  - period: 2024-07 至 2026-08
+    org: 某智能门锁公司（虚构）
+    role: 算法工程师
+    summary: 做人脸检测与活体判断模型训练，独立负责过一个产品的模型迭代
+  - period: 2026-09 至今
+    org: 栖光智联（模拟）
+    role: 算法工程师
+    summary: 入职一个半月，还在熟悉数据集与工具链，未分配正式任务
+  ground_truth:
+    capabilities:
+    - key: model_training
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 上一家公司做过两年检测模型训练，真实已到常规水平。本公司系统里没有任何记录，系统必须输出「未知」，不能判成能力低。
+    - key: rknn_conversion
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只用过别的平台工具链，RKNN 没碰过；同样没有记录。
+    certifications:
+    - 软件设计师（计算机技术与软件专业技术资格·中级）
+    notes: 新入职无记录样本：唯一关联是一条 not_sure 的经理评价。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - mobile
+    expression_style: 简洁但谨慎，刚入职不确定该写多细
+    attitude: worried_about_evaluation
+    test_focus:
+    - 看自己的画像是「未知」还是「能力低」
+    - 试着补充上一家公司的工作经历，看系统怎么处理没有证据的自述
+    - 确认经理的 not_sure 不会显示成负面结论
+- employee_code: QG015
+  display_name: 殷朗
+  work_history:
+  - period: 2016-07 至 2020-09
+    org: 某 GPU 中间件公司（虚构）
+    role: 性能优化工程师
+    summary: 做图形与推理库性能优化，熟内存与流水线分析
+  - period: 2020-10 至今
+    org: 栖光智联（模拟）
+    role: 算法工程师（NPU 性能）
+    summary: 负责端侧推理耗时、内存与多核调度优化
+  ground_truth:
+    capabilities:
+    - key: npu_performance_tuning
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:EDGE-109
+      - jira:EDGE-110
+      - jira:EDGE-112
+      - self_report:SR05
+      - manager_review:MR08
+      note: 记录与经理评价都支持复杂独立；他自述偏保守，系统不应被自述拉低。
+    - key: rknn_conversion
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:EDGE-103
+      - jira:EDGE-105
+      note: 能独立完成常规转换与量化配置调整。
+    - key: edge_integration
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - jira:EDGE-117
+      note: 运行库与驱动版本矩阵他参与定，记录不完整。
+    certifications: []
+    notes: 自述保守与证据充分的组合，用来测「自述不是唯一依据」。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 只给可复现的数字和测试条件，常主动声明结论的适用范围
+    attitude: skeptical
+    test_focus:
+    - 看系统会不会因为自述保守而低估
+    - 检查性能数字有没有被当成绩效指标使用
+- employee_code: QG016
+  display_name: 傅岐
+  work_history:
+  - period: 2011-07 至 2015-06
+    org: 某第三方检测实验室（虚构）
+    role: EMC 测试工程师
+    summary: 做整机 EMC 与安规测试，熟标准条款
+  - period: 2015-07 至 2018-05
+    org: 某无线模组公司（虚构）
+    role: 认证工程师
+    summary: 负责多地区无线与安规认证
+  - period: 2018-06 至今
+    org: 栖光智联（模拟）
+    role: 测试与认证部负责人
+    summary: 管测试、EMC、可靠性与认证，兼任认证与可靠性专项负责人
+  ground_truth:
+    capabilities:
+    - key: certification_project
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - record:PLM-0020
+      - record:PLM-0029
+      note: 送检路径判断、关键件证书与工厂检查准备都有记录。
+    - key: emc_debug
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - jira:EDGE-120
+      - jira:FW-215
+      note: 他只以报告人身份出现在整改回归单里，真实能判断测试方案与标准适用，具体定位靠晏清和。
+    - key: reliability_test
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 试验矩阵与加速条件的裁剪规则是他在实验室期间形成的，公司系统里没有记录。
+    certifications:
+    - 产品认证法规培训合格证（CE/CCC 方向）
+    notes: 认证资质是开展工作的前提，不等于能力——这条要在画像里体现。
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    - mobile
+    expression_style: 引标准条款和限值，表述严谨、爱写「按……要求」
+    attitude: neutral
+    test_focus:
+    - 看系统是否把「持证」直接当成能力结论
+    - 检查报告人身份是否被当成贡献证据
+    - 确认部门内两人的 EMC 能力能被区分开
+- employee_code: QG017
+  display_name: 晏清和
+  work_history:
+  - period: 2017-07 至 2021-10
+    org: 某第三方检测实验室（虚构）
+    role: EMC 测试工程师
+    summary: 做辐射发射与抗扰度测试，帮客户现场整改
+  - period: 2021-11 至今
+    org: 栖光智联（模拟）
+    role: EMC 工程师
+    summary: 负责整机 EMC 测试与整改方向判断，认证专项成员
+  ground_truth:
+    capabilities:
+    - key: emc_debug
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - record:PLM-0004
+      - record:PLM-0006
+      - record:PLM-0012
+      - record:PLM-0026
+      - self_report:SR06
+      - manager_review:MR10
+      note: 四轮测试记录、自述与经理评价一致，系统应能确认。
+    - key: certification_project
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - record:PLM-0020
+      - record:PLM-0029
+      note: 资料准备与补件他能独立做，路径判断靠部门负责人。
+    - key: reliability_test
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 做过环境试验的辅助操作，没有记录。
+    certifications:
+    - EMC 测试工程师培训合格证
+    notes: ''
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 带频点、限值与余量数字，描述现象先于结论
+    attitude: positive
+    test_focus:
+    - 确认整改方向的判断功劳不会全归到改板的硬件同事身上
+    - 看自己的能力描述是否区分「测试执行」和「定位整改」
+- employee_code: QG018
+  display_name: 席南
+  work_history:
+  - period: 2022-05 至今
+    org: 栖光智联（模拟）
+    role: 可靠性测试工程师
+    summary: 校招入职，负责环境、机械与寿命试验执行与记录
+  ground_truth:
+    capabilities:
+    - key: reliability_test
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - record:PLM-0008
+      - record:PLM-0014
+      - record:PLM-0019
+      - record:PLM-0025
+      - self_report:SR13
+      - manager_review:MR11
+      note: 四条试验记录与评价一致，系统应能确认常规水平。
+    - key: structure_thermal
+      level: needs_support
+      evidence: partial
+      evidence_refs:
+      - record:PLM-0009
+      note: 只作为评审人参与结构评审。
+    - key: emc_debug
+      level: none
+      evidence: undocumented
+      evidence_refs: []
+      note: 确实不做 EMC；但系统应输出「未知/不涉及」，不要直接写成「不会」。
+    certifications:
+    - 可靠性工程师培训证书
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    - shared_terminal
+    expression_style: 按试验报告格式写，条件、样本数、现象齐全，判断少
+    attitude: neutral
+    test_focus:
+    - 看实验室公用终端提交的记录会不会归属错人
+    - 确认失效件分析的工作有没有体现
+- employee_code: QG019
+  display_name: 邓寒
+  work_history:
+  - period: 2019-07 至 2021-06
+    org: 某智能音箱公司（虚构）
+    role: 固件测试工程师
+    summary: 做固件自动化测试与升级验证
+  - period: 2021-07 至 2026-01
+    org: 栖光智联（模拟）
+    role: 固件工程师
+    summary: 在嵌入式软件部做固件与自动化测试框架
+  - period: 2026-01 至今
+    org: 栖光智联（模拟）
+    role: 软件测试工程师
+    summary: 转岗到测试与认证部，负责系统测试与改板回归
+  ground_truth:
+    capabilities:
+    - key: firmware_integration
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:FW-211
+      - jira:FW-215
+      - self_report:SR15
+      note: 转岗前后的记录都在，系统要能把两段岗位连起来。
+    - key: npu_performance_tuning
+      level: needs_support
+      evidence: partial
+      evidence_refs:
+      - jira:EDGE-118
+      note: 他写了耗时基准脚本，但调优决策不是他做的，系统容易把基准脚本算成调优能力。
+    - key: reliability_test
+      level: needs_support
+      evidence: documented
+      evidence_refs:
+      - record:PLM-0025
+      - manager_review:MR12
+      note: 转岗后跟着做用例执行，记录与评价一致。
+    certifications:
+    - 软件评测师（计算机技术与软件专业技术资格·中级）
+    notes: 转岗样本：两个部门、两个来源都有痕迹。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 用例化表述，先写前置条件再写结果，爱贴日志片段
+    attitude: positive
+    test_focus:
+    - 看转岗前的固件记录是否仍算在自己名下
+    - 确认新部门的能力项不会覆盖掉原岗位的能力
+- employee_code: QG020
+  display_name: 褚明野
+  work_history:
+  - period: 2010-07 至 2014-08
+    org: 某电子代工厂（虚构）
+    role: 工艺工程师
+    summary: 负责 SMT 工艺与良率改善
+  - period: 2014-09 至 2018-12
+    org: 某模组制造企业（虚构）
+    role: 制造工程经理
+    summary: 管工艺与测试工程，负责新品导入
+  - period: 2019-01 至今
+    org: 栖光智联（模拟）
+    role: 供应链与制造工程部负责人
+    summary: 管元器件、BOM 与 ECN、DFM 与 EMS 代工厂对接
+  ground_truth:
+    capabilities:
+    - key: ecn_bom_management
+      level: independent_complex
+      evidence: misleading
+      evidence_refs:
+      - record:PLM-0021
+      - self_report:SR12
+      - manager_review:MR17
+      note: PLM-0021 连接器变更的发起人署名是他，影响评估与验证项清单实际是翁沐写的。他本人的复杂变更能力（国产替代批量切换的风险分级）确实到位，但不能用这条记录证明。
+    - key: dfm_review
+      level: independent_complex
+      evidence: partial
+      evidence_refs:
+      - record:PLM-0003
+      - record:PLM-0022
+      note: 他只在变更单里做审批人，DFM 评审记录里没有他，而他是部门里最懂工艺的。
+    - key: certification_project
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只配合提供工厂资料，没有记录。
+    certifications:
+    - 高级工程师职称（机械制造）
+    - 六西格玛绿带
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    - mobile
+    expression_style: 讲交期、良率和成本，爱用「这批」「切换」这类口头说法
+    attitude: neutral
+    test_focus:
+    - 看以自己名义提交的变更单会不会被当成自己的工作
+    - 检查下属翁沐的贡献是否被系统吞掉
+- employee_code: QG021
+  display_name: 卓蔚
+  work_history:
+  - period: 2016-07 至 2020-08
+    org: 某消费电子 ODM（虚构）
+    role: 工艺工程师
+    summary: 做 SMT 与测试治具，熟 DFM 检查
+  - period: 2020-09 至今
+    org: 栖光智联（模拟）
+    role: 制造工程师（DFM）
+    summary: 主持 DFM 评审、治具与 ICT 覆盖方案，模组 V3 项目成员
+  ground_truth:
+    capabilities:
+    - key: dfm_review
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - record:PLM-0007
+      - record:PLM-0016
+      - record:PLM-0027
+      - self_report:SR07
+      - manager_review:MR16
+      note: 三次评审记录完整，结论与评价一致。注意 HR 档案里 IPC-A-610 证书 2026-07-14 已过期，能力并未因此下降。
+    - key: ecn_bom_management
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - record:PLM-0003
+      - record:PLM-0010
+      note: 以制造确认人身份参与变更，常规水平。
+    - key: reliability_test
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 看过试验报告，没有自己的记录。
+    certifications: []
+    notes: 真实有效证书为空——IPC-A-610 已过期；用来测「证书过期不等于能力下降」。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - mobile
+    expression_style: 条目式、带覆盖率和不良率数字，爱附图说明工艺问题
+    attitude: positive
+    test_focus:
+    - 看过期证书会不会把画像结论拉低
+    - 确认与代工厂驻场工程师共同完成的评审归属正确
+- employee_code: QG022
+  display_name: 单嘉宁
+  work_history:
+  - period: 2017-07 至 2021-02
+    org: 某手机配件制造企业（虚构）
+    role: NPI 工程师
+    summary: 负责新品试产与一次通过率改善
+  - period: 2021-03 至今
+    org: 栖光智联（模拟）
+    role: NPI 工程师
+    summary: 对接 EMS 代工厂试产、工厂资料与量产准备
+  ground_truth:
+    capabilities:
+    - key: dfm_review
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - record:PLM-0011
+      - record:PLM-0027
+      note: 试产与评审记录支持常规水平。
+    - key: certification_project
+      level: needs_support
+      evidence: documented
+      evidence_refs:
+      - record:PLM-0029
+      - manager_review:MR18
+      note: 工厂侧资料他能整理，认证路径判断接不了，记录与评价一致。
+    - key: ecn_bom_management
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 试产阶段的临时替代料处理是他做的，但走的是线下邮件，PLM 里没有记录。
+    certifications:
+    - 六西格玛绿带
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    - mobile
+    expression_style: 讲一次通过率、不良分布，常驻工厂、习惯用手机拍照说明问题
+    attitude: neutral
+    test_focus:
+    - 看与代工厂驻场工程师（未登记账号）共同的记录怎么归属
+    - 补充线下处理、系统里没有的工作
+- employee_code: QG023
+  display_name: 翁沐
+  work_history:
+  - period: 2022-11 至今
+    org: 栖光智联（模拟）
+    role: 元器件与变更工程师
+    summary: 社招入职，负责元器件选型、二供导入与 ECN/BOM 维护
+  ground_truth:
+    capabilities:
+    - key: ecn_bom_management
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - record:PLM-0003
+      - record:PLM-0015
+      - record:PLM-0022
+      - self_report:SR12
+      - manager_review:MR17
+      note: 常规变更有记录，但连接器变更（PLM-0021）的影响评估实际是他做的、署名是部门经理，系统会低估他在复杂变更上的参与。
+    - key: dfm_review
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 跟过两次评审，没有自己的记录。
+    certifications: []
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    expression_style: 爱列料号和影响范围清单，叙述平实
+    attitude: skeptical
+    test_focus:
+    - 对 PLM-0021 的贡献归属提出申诉
+    - 看系统会不会因为单子署名而把工作算给经理
+- employee_code: QG024
+  display_name: 魏芝瑜
+  work_history:
+  - period: 2013-07 至 2019-05
+    org: 某电子制造企业（虚构）
+    role: 人力资源主管
+    summary: 负责招聘与培训体系
+  - period: 2019-06 至今
+    org: 栖光智联（模拟）
+    role: 综合管理部负责人
+    summary: 管人力、行政与内部 IT，负责证书与培训档案
+  ground_truth:
+    capabilities:
+    - key: certification_project
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只做证书与培训档案的归档提醒，不判断认证路径。系统应输出未知，不要据此推断技术能力。
+    - key: ecn_bom_management
+      level: none
+      evidence: undocumented
+      evidence_refs: []
+      note: 完全不涉及。「没有记录」在这里确实是「不涉及」，但系统仍应显示未知而不是「不会」。
+    certifications:
+    - 人力资源管理师（二级）
+    notes: 职能岗在技术能力词典下没有合适项，是「词典覆盖不全」的测试点。
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    - mobile
+    expression_style: 公文式，爱写「各位同事」「请于本周内」
+    attitude: neutral
+    test_focus:
+    - 看职能岗在技术能力词典下的画像是不是一片「不会」
+    - 检查管理员能看到的进度统计是否包含不该看的自述正文
+- employee_code: QG025
+  display_name: 邵昀
+  work_history:
+  - period: 2017-07 至 2020-11
+    org: 某系统集成公司（虚构）
+    role: 运维工程师
+    summary: 负责内网系统运维与权限管理
+  - period: 2020-12 至今
+    org: 栖光智联（模拟）
+    role: IT 管理员
+    summary: 维护 Jira、PLM 与账号权限，本企业的 org_admin
+  ground_truth:
+    capabilities:
+    - key: ecn_bom_management
+      level: needs_support
+      evidence: misleading
+      evidence_refs:
+      - record:PLM-0031
+      - jira:FW-216
+      note: PLM-0031 是他维护的同步服务账号跑的夜间批处理，不是他本人的变更管理工作；FW-216 他只是报告人。系统若按账号关系统计，会给他一个不存在的变更管理能力。
+    - key: firmware_integration
+      level: none
+      evidence: undocumented
+      evidence_refs: []
+      note: 不涉及；OTA 服务端是他开的网络策略，不是固件工作。
+    certifications:
+    - 信息系统管理工程师（计算机技术与软件专业技术资格·中级）
+    notes: 管理员本人也有画像，用来测「管理员权限不等于能看到全部自述」。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 工单式、简短，常直接贴系统报错
+    attitude: positive
+    test_focus:
+    - 以 org_admin 身份检查权限边界：能否看到员工自述正文
+    - 把未登记的 PLM 账号（驻场工程师、同步服务、旧账号）做关联或标记
+    - 看服务账号的记录会不会生成人的能力结论
+- employee_code: QG026
+  display_name: 费清禾
+  work_history:
+  - period: 2020-07 至 2023-02
+    org: 某制造企业（虚构）
+    role: 人事专员
+    summary: 负责招聘与入离职手续
+  - period: 2023-03 至今
+    org: 栖光智联（模拟）
+    role: 人力资源专员
+    summary: 负责招聘、入职档案与培训记录登记
+  ground_truth:
+    capabilities:
+    - key: certification_project
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只登记证书有效期，不参与认证工作，系统里没有记录。
+    - key: model_training
+      level: none
+      evidence: undocumented
+      evidence_refs: []
+      note: 完全不涉及，保留此项是为了检查系统不会把空白写成「不会」。
+    certifications:
+    - 人力资源管理师（三级）
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    - mobile
+    expression_style: 口语化、短句，常用「麻烦大家」「记得交」
+    attitude: neutral
+    test_focus:
+    - 检查 HR 登记的证书与员工真实持证是否一致
+    - 看过期证书在系统里的呈现方式
+- employee_code: QG027
+  display_name: 罗歆
+  work_history:
+  - period: 2019-09 至 2022-05
+    org: 某贸易公司（虚构）
+    role: 行政专员
+    summary: 负责办公采购与来访接待
+  - period: 2022-06 至今
+    org: 栖光智联（模拟）
+    role: 行政与采购专员
+    summary: 负责办公与样机物流、送检样品寄送、会议安排
+  ground_truth:
+    capabilities:
+    - key: certification_project
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只负责送检样品的寄送与回收，没有记录，也不懂标准。
+    - key: ecn_bom_management
+      level: none
+      evidence: undocumented
+      evidence_refs: []
+      note: 不涉及。
+    certifications: []
+    notes: ''
+  usage_profile:
+    digital_literacy: low
+    devices:
+    - mobile
+    expression_style: 只会口语化描述，常用语音转文字，句子断得碎
+    attitude: worried_about_evaluation
+    test_focus:
+    - 用手机填自述，看表单在小屏幕上能不能用
+    - 看自己几乎没有记录时画像长什么样
+account_truth:
+- source: PLM
+  account_id: ems.lin.h
+  owner: null
+  note: EMS 代工厂驻场工艺工程师的 PLM 外部账号，合同方人员，HR 没有建档。出现在 EMC 测试配合、DFM 评审与试产记录里。
+- source: PLM
+  account_id: plm.svc.sync
+  owner: null
+  note: PLM 与 ERP 的夜间同步服务账号，不是人。系统不能为它生成画像，也不能把它的记录算到任何员工名下。
+- source: PLM
+  account_id: kanyu.old
+  owner: QG012
+  note: 2025 年 PLM 迁库前的旧账号，实际使用者是阚屿，HR 没有登记这条映射。他的 ECN 与评审记录分散在新旧两个身份上。
+edge_cases:
+- tag: multi_account
+  employees:
+  - QG007
+  - QG012
+  refs:
+  - jira:FW-204
+  - record:PLM-0028
+  - jira:EDGE-104
+  - record:PLM-0018
+  note: 唐知野 Jira 账号 qg-jira-007（显示名 Kevin Tang）、PLM 账号 kevin.tang，已在花名册登记；阚屿的 PLM 旧账号 kanyu.old 没有登记，只在 account_truth 里。两人的工作都散在两个账号上。
+- tag: unlinked_account
+  employees: []
+  refs:
+  - record:PLM-0004
+  - record:PLM-0007
+  - record:PLM-0011
+  - record:PLM-0031
+  note: ems.lin.h（代工厂驻场工程师）和 plm.svc.sync（同步服务）都在 PLM 记录里出现过，但不属于任何员工。系统应标为待确认，不应猜给某个人。
+- tag: new_hire_no_history
+  employees:
+  - QG014
+  refs:
+  - manager_review:MR09
+  note: 卞知吟 2026-09-14 入职，Jira、PLM 里都没有她的账号出现，也没有自述。唯一关联是一条 not_sure 的经理评价。真实有两年检测模型训练经验，系统必须输出未知。
+- tag: intern
+  employees:
+  - QG005
+  refs:
+  - record:PLM-0023
+  - record:PLM-0024
+  - self_report:SR11
+  note: 郗嘉禾是在读本科实习生，employment_type 为 intern，有真实产出但署名不在他名下。
+- tag: assignee_mismatch
+  employees:
+  - QG011
+  - QG012
+  - QG002
+  - QG005
+  - QG020
+  - QG023
+  refs:
+  - jira:EDGE-114
+  - record:PLM-0024
+  - record:PLM-0021
+  note: 三处错位——EDGE-114 量化感知训练试点指派给聂云舒，实际实验与结论是阚屿做的；PLM-0024 的 V3.1 布线署名乔砚之，实际由实习生郗嘉禾完成三版；PLM-0021 连接器变更署名褚明野，影响评估实际由翁沐撰写。相关人的 ground_truth 都已标注。
+- tag: cross_source_duplicate
+  employees:
+  - QG017
+  - QG019
+  - QG012
+  - QG007
+  - QG023
+  refs:
+  - record:PLM-0012
+  - jira:FW-215
+  - jira:EDGE-120
+  - record:PLM-0028
+  - jira:FW-205
+  note: 同一次 ESD 整改在 PLM（PLM-0012 测试与整改）和 Jira（FW-215 固件回归、EDGE-120 算法包复测）各有记录；固件与 BOM 对应关系同时存在于 FW-205 和 PLM-0028。系统不应把同一件事算成两份工作量。
+- tag: review_conflict
+  employees:
+  - QG003
+  - QG005
+  - QG007
+  refs:
+  - self_report:SR02
+  - manager_review:MR02
+  - self_report:SR11
+  - manager_review:MR14
+  - self_report:SR03
+  - manager_review:MR04
+  note: 苏棠自述「独立解决 EMC、一次通过」对经理的「需要协助」；郗嘉禾自述布线是自己做的对经理的「需要协助」；唐知野自述 OTA 全链路对经理的「常规水平」。三组矛盾的真实答案各不相同。
+- tag: english_name
+  employees:
+  - QG007
+  refs:
+  - jira:FW-204
+  - record:PLM-0028
+  note: 唐知野在 Jira 的显示名是 Kevin Tang，在 PLM 的显示名是 Kevin Tang、账号 kevin.tang，中文名只出现在花名册和邮箱里。
+- tag: dept_and_project_lead
+  employees:
+  - QG001
+  - QG006
+  - QG011
+  - QG016
+  refs:
+  - record:PLM-0001
+  - jira:FW-204
+  - jira:EDGE-111
+  - record:PLM-0020
+  note: 职能制下四个项目（MODX、FW、EDGE、CERT）的负责人都是部门负责人本人，项目不改变汇报关系。部门负责人的画像容易把项目成员的产出吸附过来。
+- tag: departed
+  employees:
+  - QG010
+  refs:
+  - jira:FW-209
+  - jira:FW-210
+  - record:PLM-0032
+  note: 韩听澜 2026-06-30 离职，没有登录账号，但 Jira 与 PLM 都有历史记录，PHY 复位时序的后续由冉苜接手。历史不能丢，也不能把他的任务算给接手人。
+- tag: transfer
+  employees:
+  - QG019
+  refs:
+  - jira:FW-211
+  - record:PLM-0025
+  - self_report:SR15
+  note: 邓寒 2026-01-15 从嵌入式软件部固件工程师转到测试与认证部软件测试工程师，两个岗位在 Jira 和 PLM 里都留下痕迹，secondary_reports_to 仍指向原部门负责人。
+- tag: appeal
+  employees:
+  - QG003
+  - QG007
+  - QG023
+  refs:
+  - manager_review:MR02
+  - manager_review:MR04
+  - manager_review:MR17
+  note: 苏棠认为「需要协助」低估了自己（但他自述也夸大了）；唐知野认为低估源于两个账号没合并（确实如此）；翁沐认为复杂变更的工作被署名规则吞掉（确实如此）。三个申诉里有一个不成立，用来测申诉不等于自动改结论。
+- tag: manager_unsure
+  employees:
+  - QG009
+  - QG014
+  refs:
+  - manager_review:MR05
+  - manager_review:MR09
+  note: 文瀚的 ISP 调试、卞知吟的模型训练，经理都答 not_sure。两人真实都到常规水平，系统应显示未知而不是能力低。

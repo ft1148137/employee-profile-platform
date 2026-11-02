@@ -1,0 +1,70 @@
+slug: yuanheng-consulting
+name: 远衡管理咨询（模拟）
+industry: 管理咨询
+gbt4754:
+  section: L
+  section_name: 租赁和商务服务业
+  code: '7243'
+  class_name: 社会经济咨询
+org_structure: projectized
+org_structure_note: 项目制。人归 Practice（部门）管，活按 Engagement（项目）组织；项目经理从项目中抽调跨 Practice 的顾问，向项目经理汇报进度，向 Practice 负责人汇报发展。多数项目经理不是部门负责人；只有合伙人司徒明昭既是战略与组织咨询部负责人，又亲自担任正桥集团项目的项目经理。
+capability_template: templates/capabilities/management-consulting.zh-CN.yaml
+uses_jira: false
+sources:
+- name: 工时系统
+  kind: work_records
+  description: 顾问按周填报项目工时，项目经理审批；项目复盘模块与它共用同一套登录账号
+- name: 交付物库
+  kind: work_records
+  description: 报告、模型、访谈纪要、底稿的版本库，每份交付物记录作者与审核人
+- name: 项目复盘
+  kind: work_records
+  description: 阶段复盘与结项复盘记录，含主持人和参与人
+hr_it_departments: [人力与运营支持部]
+departments:
+- name: 战略与组织咨询部
+  pcf_categories: ['1.0 Develop Vision and Strategy', '5.0 Deliver Services']
+  responsibilities: 面向客户的战略规划、集团管控与组织设计咨询；承接集团型客户的高层议题
+- name: 运营与供应链咨询部
+  pcf_categories: ['5.0 Deliver Services', '13.0 Develop and Manage Business Capabilities']
+  responsibilities: 流程诊断、运营效率提升、供应链计划与库存优化咨询
+- name: 数字化咨询部
+  pcf_categories: ['5.0 Deliver Services', '8.0 Manage Information Technology (IT)']
+  responsibilities: 数字化转型蓝图、IT 治理与数据治理咨询
+- name: 知识与研究中心
+  pcf_categories: ['13.0 Develop and Manage Business Capabilities']
+  responsibilities: 行业研究、基准数据库与方法论资产建设，为各 Practice 提供研究支持
+- name: 人力与运营支持部
+  pcf_categories: ['7.0 Develop and Manage Human Capital', '8.0 Manage Information Technology (IT)', '9.0 Manage Financial Resources']
+  responsibilities: 招聘与职级管理、项目资源排程（Staffing）、工时与合约财务、内部系统管理
+projects:
+- code: ENG-ZQ
+  name: 正桥集团集团管控与组织重设计（虚构客户）
+  manager: YH001
+  members: [YH002, YH004, YH009, YH020]
+  note: 合伙人司徒明昭既是战略与组织咨询部负责人，又亲自担任本项目项目经理；从运营与供应链咨询部抽调蒋柏延、从知识与研究中心抽调班以珩
+- code: ENG-HX
+  name: 华序零售三年战略规划（虚构客户）
+  manager: YH003
+  members: [YH004, YH005, YH006, YH019]
+  note: 项目经理高韵之是 Manager，不是任何部门负责人；暑期实习生郗嘉禾在本项目实习
+- code: ENG-LT
+  name: 澜涛食品供应链降本与计划体系优化（虚构客户）
+  manager: YH008
+  members: [YH009, YH010, YH011, YH027]
+  note: 项目经理曾翊不是部门负责人；成员温语岑已于 2026-02 离职，交付物留在交付物库
+- code: ENG-SZ
+  name: 明曜制造数字化转型蓝图与 IT 治理（虚构客户）
+  manager: YH013
+  members: [YH014, YH015, YH016, YH024, YH026]
+  note: 项目经理段佳霖不是部门负责人；人力与运营支持部的甘棠以兼岗身份做项目运营支持
+- code: ENG-PX
+  name: 岱川银行网点运营效率诊断（虚构客户）
+  manager: YH002
+  members: [YH005, YH010, YH021]
+  note: 项目经理陆维桢是高级经理，不是部门负责人；成员跨三个 Practice
+- code: ENG-KM
+  name: 知识资产库与行业基准库建设（内部项目）
+  manager: YH019
+  members: [YH018, YH020, YH021, YH024]
+  note: 内部投入项目，项目经理欧阳清和是资深研究员，不是部门负责人；部门负责人屈砚秋作为成员参与

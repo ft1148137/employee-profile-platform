@@ -1,0 +1,1025 @@
+# 测试用，不导入系统
+# 真实能力（ground truth）用于核对系统推断的画像，对应计划书 §10.1「关键能力核实准确率」。
+slug: zhuyue-construction
+personas:
+- employee_code: ZY001
+  display_name: 冯承岳
+  work_history:
+  - period: 2008-07 至 2014-03
+    org: 某省属建筑公司（虚构）
+    role: 施工员、技术负责人
+    summary: 从施工员做到项目技术负责人，参与过四个住宅项目的主体与装饰阶段
+  - period: 2014-04 至今
+    org: 筑岳建设工程（模拟）
+    role: 项目经理
+    summary: 先后担任两个住宅项目的项目经理，现负责栖湖花园项目并兼项目部负责人
+  ground_truth:
+    capabilities:
+    - key: project_overall_management
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:RZ-0012, record:RZ-0024, record:AQ-0014, record:AQ-0009]
+      note: 例会主持、台风前部署和局部停工决定都有记录，系统应能确认他在项目统筹上的独立性
+    - key: safety_hazard_inspection
+      level: routine
+      evidence: partial
+      evidence_refs: [record:AQ-0003, record:AQ-0014]
+      note: 他主持专项检查，但日常隐患定性和整改通知基本由安全员出；记录不足以支撑「能独立完成复杂任务」
+    - key: construction_schedule
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 栖湖花园的总进度计划和两次节点重排都是他本人做的，公司没有计划管理系统，三个来源里只看得到例会结论，系统应输出「未知」而不是降级
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 简短、按条列事；习惯用「部位＋节点＋责任人」的说法
+    attitude: positive
+    test_focus:
+    - 查看项目部成员的画像是否把分包班组干的活算到项目部员工身上
+    - 检查自己的进度计划能力是否被系统写成「证据不足所以能力低」
+    - 试一次以项目经理身份能不能看到派驻安全员、质量员的完整记录
+- employee_code: ZY002
+  display_name: 陆嘉树
+  work_history:
+  - period: 2012-07 至 2016-07
+    org: 某建筑设计咨询公司（虚构）
+    role: 结构设计助理
+    summary: 做住宅结构施工图配合与变更处理
+  - period: 2016-08 至今
+    org: 筑岳建设工程（模拟）
+    role: 技术员、项目总工
+    summary: 负责施工方案编制、技术交底与质量技术处置
+  ground_truth:
+    capabilities:
+    - key: construction_scheme_drafting
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:RZ-0014, self_report:SR02, manager_review:MR01]
+      note: 方案编制与技术交底记录完整，系统应能得出接近真实的结论
+    - key: concealed_work_acceptance
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:ZL-0002, record:ZL-0012]
+      note: 这两条记录用他的账号提交，实际现场复尺和评定是质量员简宁做的，他只做签认；系统容易把质量员的能力算到他头上
+    - key: survey_layout
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 他只会看复核结果，不会独立操作全站仪；系统里没有任何测量记录，应保持未知而不是按总工身份推高
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 书面化、爱引规范条文编号
+    attitude: neutral
+    test_focus:
+    - 检查以他账号提交的验收记录会不会被系统当成他本人的能力证据
+    - 看系统能否区分「签认人」和「实际检查人」
+- employee_code: ZY003
+  display_name: 王海涛
+  work_history:
+  - period: 2016-09 至 2019-06
+    org: 某劳务公司（虚构）
+    role: 施工班组技术员
+    summary: 跟班管模板与钢筋作业
+  - period: 2019-07 至今
+    org: 筑岳建设工程（模拟）
+    role: 土建施工员
+    summary: 负责栖湖花园主体与二次结构的现场生产组织、日志填报和班组对接
+  ground_truth:
+    capabilities:
+    - key: construction_log_reporting
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:RZ-0001, record:RZ-0013, record:RZ-0025, manager_review:MR03]
+      note: 全项目填报最规范的人，日志与安全、验收记录能对上，系统应能确认
+    - key: site_production_coordination
+      level: routine
+      evidence: misleading
+      evidence_refs: [self_report:SR03, record:RZ-0009, record:RZ-0019]
+      note: 自述把自己写成能独立组织高峰期多专业穿插，实际常规穿插没问题，遇到机电与土建抢作业面还是要项目总工到场；系统若只看自述会高估
+    - key: labor_subcontract_management
+      level: routine
+      evidence: partial
+      evidence_refs: [record:RZ-0009, record:RZ-0019]
+      note: 日常带两个班组够用，换班组时的工程量交接没独立做过，记录看不出来
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 口语里夹工地术语，书面写得比说得规整；日志爱写部位和人数
+    attitude: positive
+    test_focus:
+    - 试试系统会不会把同名的安全员王海涛的安全检查记录并到自己名下
+    - 看自述里说的穿插组织能力会不会被直接采信
+- employee_code: ZY004
+  display_name: 郝明远
+  work_history:
+  - period: 2017-07 至 2020-02
+    org: 某机电安装公司（虚构）
+    role: 安装工、技术员
+    summary: 做住宅给排水与消防管道安装
+  - period: 2020-03 至今
+    org: 筑岳建设工程（模拟）
+    role: 机电施工员
+    summary: 负责栖湖花园机电安装现场，2026 年 5 月接手离职同事的全部机电作业面
+  ground_truth:
+    capabilities:
+    - key: site_production_coordination
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:RZ-0016, manager_review:MR04]
+      note: 他独立完成了离职同事遗留作业面的梳理和分包逐项确认，但 RZ-0016 的状态是「已退回」（日志格式不合要求被打回），系统容易据此低估
+    - key: inspection_lot_acceptance
+      level: routine
+      evidence: documented
+      evidence_refs: [record:ZL-0009, record:RZ-0026]
+      note: 机电检验批报验独立完成，记录清楚
+    - key: temp_electricity_fire_safety
+      level: routine
+      evidence: partial
+      evidence_refs: [record:AQ-0005, record:RZ-0008]
+      note: 他是整改落实人不是判定人，记录不足以区分「会整改」和「会判定」
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 说话实在，爱讲具体管径和部位，不愿意写评价性的话
+    attitude: worried_about_evaluation
+    test_focus:
+    - 看一条状态是已退回的日志会不会把自己的画像拉低
+    - 检查接手离职同事作业面这件事系统有没有看见
+- employee_code: ZY005
+  display_name: 邵文倩
+  work_history:
+  - period: 2019-09 至 2021-03
+    org: 某工程咨询公司（虚构）
+    role: 资料助理
+    summary: 整理监理资料与竣工备案资料
+  - period: 2021-04 至今
+    org: 筑岳建设工程（模拟）
+    role: 资料员
+    summary: 负责栖湖花园全部施工资料台账、验收资料收集与归档
+  ground_truth:
+    capabilities:
+    - key: project_document_archiving
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:ZL-0016, record:RZ-0022, self_report:SR05, manager_review:MR05]
+      note: 独立组织过一次跨年度资料补档，记录和自述、经理评价一致
+    - key: construction_log_reporting
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:RZ-0008]
+      note: RZ-0008 是她替机电施工员代录的，内容是别人的工作；系统如果按填报人统计，会把机电复工检查算成她的现场能力
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 条目化、爱用清单和编号
+    attitude: neutral
+    test_focus:
+    - 检查代录的日志会不会变成自己的工作证据
+    - 看资料归档能力是否被系统当成行政工作而不是专业能力
+- employee_code: ZY006
+  display_name: 孟广才
+  work_history:
+  - period: 2003 至 2024
+    org: 多家劳务分包单位（虚构）
+    role: 木工、木工班组长
+    summary: 二十余年模板作业，近十年带班，做过多个住宅项目的模板支撑体系
+  - period: 2024-09 至今
+    org: 鸿途劳务（分包单位，虚构）派驻筑岳建设工程（模拟）
+    role: 木工班组长
+    summary: 带 16 至 20 人木工班，负责模板搭设、拆除与周转
+  ground_truth:
+    capabilities:
+    - key: labor_subcontract_management
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:RZ-0007, record:RZ-0010, manager_review:MR06]
+      note: 带班、调人、处理工序争议都是他在做，但系统里只有两条他自己提交的日志，不足以确认到最高档
+    - key: construction_log_reporting
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:RZ-0007, record:RZ-0010, self_report:SR06]
+      note: 两条日志都是语音转文字，写不了格式化内容，真实水平就是「需要协助」，这一项系统应能判准
+    - key: scaffold_lifting_safety
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 他其实看得懂支撑体系和连墙件做法，但他的架子工证 2023 年就过期、公司不再安排他做架子活，系统里没有任何正面记录；不能用过期证书推出「不会」
+  usage_profile:
+    digital_literacy: low
+    devices: [mobile]
+    expression_style: 只会口语化描述，用语音转文字，常出现错别字和「那个那个」这类口头语，不会填表格
+    attitude: skeptical
+    test_focus:
+    - 用语音转文字提交自述，看系统能不能读懂并且不把错别字当成能力不足
+    - 看过期的架子工证会不会让画像写成不会搭架子
+    - 在手机上找一遍自己的画像在哪里看，页面太复杂就提 bug
+- employee_code: ZY007
+  display_name: 蒙双全
+  work_history:
+  - period: 2010 至 2025
+    org: 多家劳务分包单位（虚构）
+    role: 钢筋工、钢筋班组长
+    summary: 长期做钢筋加工与绑扎，带班五年
+  - period: 2025-03 至今
+    org: 鸿途劳务（分包单位，虚构）派驻筑岳建设工程（模拟）
+    role: 钢筋班组长
+    summary: 带 20 余人钢筋班，负责底板、墙柱梁板钢筋作业
+  ground_truth:
+    capabilities:
+    - key: labor_subcontract_management
+      level: routine
+      evidence: partial
+      evidence_refs: [record:RZ-0020, manager_review:MR07]
+      note: 带一个班组可以，经理自己也说不确定；记录只有一条他本人提交的日志
+    - key: safety_education_briefing
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 每天上工前都讲钢筋作业的注意事项，但交底记录一律签在施工员名下，系统里查不到他；应保持未知
+  usage_profile:
+    digital_literacy: low
+    devices: [mobile]
+    expression_style: 方言口音重，说得短，常说「弄好了」「没啥事」，自己不会在系统里打字
+    attitude: worried_about_evaluation
+    test_focus:
+    - 看系统会不会因为没有记录就判定自己什么都不会
+    - 试试能不能让施工员帮自己补充一条说明
+- employee_code: ZY008
+  display_name: 祁春来
+  work_history:
+  - period: 2020-07 至 2022-05
+    org: 某测绘服务公司（虚构）
+    role: 测量员
+    summary: 做市政道路与场地测量
+  - period: 2022-06 至今
+    org: 筑岳建设工程（模拟）
+    role: 测量员
+    summary: 负责控制网建立、轴线投测、标高传递与沉降观测
+  ground_truth:
+    capabilities:
+    - key: survey_layout
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:RZ-0004, record:RZ-0023, record:ZL-0013, manager_review:MR08]
+      note: 控制网、垂直度复核、沉降观测异常处理都有记录，系统应能确认
+    - key: construction_log_reporting
+      level: routine
+      evidence: partial
+      evidence_refs: [record:RZ-0004]
+      note: 只写测量相关日志，其他现场内容没写过
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 讲数据和偏差值，不爱做定性描述
+    attitude: positive
+    test_focus:
+    - 检查沉降观测这类周期性记录会不会被当成重复工作而降低权重
+    - 看能力词典里有没有把测量和质量验收混在一起
+- employee_code: ZY009
+  display_name: 卫立群
+  work_history:
+  - period: 2005-07 至 2013-10
+    org: 某建筑集团（虚构）
+    role: 安全员、安全主管
+    summary: 项目驻场安全管理，经历过两次政府专项检查
+  - period: 2013-11 至今
+    org: 筑岳建设工程（模拟）
+    role: 安全质量部经理
+    summary: 负责公司安全质量标准、月度与季度检查、安全员与质量员派驻管理
+  ground_truth:
+    capabilities:
+    - key: safety_hazard_inspection
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:AQ-0003, record:AQ-0009]
+      note: 公司级月度和季度检查都是他带队，隐患分级和闭环要求由他定
+    - key: temp_electricity_fire_safety
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:AQ-0003]
+      note: 检查记录是汇总式的，看不出他本人对单项问题的判定过程
+    - key: subcontract_claim_management
+      level: none
+      evidence: undocumented
+      evidence_refs: []
+      note: 他完全不做商务，系统不应因为他是部门经理就推断他懂合约索赔
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 说话严格，爱说依据和条款，批评时点部位不点人
+    attitude: neutral
+    test_focus:
+    - 看部门经理身份会不会让系统给他推断出不相关的能力
+    - 检查派驻安全员的记录统计口径是算在部门还是算在项目
+- employee_code: ZY010
+  display_name: 王海涛
+  work_history:
+  - period: 2018-03 至 2020-10
+    org: 某建筑劳务与安全服务公司（虚构）
+    role: 安全巡检员
+    summary: 多项目巡检，负责隐患台账
+  - period: 2020-11 至今
+    org: 筑岳建设工程（模拟）
+    role: 专职安全员，派驻栖湖花园项目部
+    summary: 负责项目日常巡检、整改通知与复查闭环，配合监理巡查整改
+  ground_truth:
+    capabilities:
+    - key: safety_hazard_inspection
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:AQ-0007, record:AQ-0008, record:AQ-0013, manager_review:MR09]
+      note: 发现、定性、下通知、复查关闭四步都有留痕，是全企业最完整的闭环证据
+    - key: scaffold_lifting_safety
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:AQ-0007, record:AQ-0008]
+      note: 连墙件缺失的判定与拉拔抽查复核由他独立完成
+    - key: temp_electricity_fire_safety
+      level: routine
+      evidence: partial
+      evidence_refs: [record:AQ-0005, record:AQ-0011]
+      note: 常规检查可以，高峰期负荷调整没独立处理过，记录里看不出区别
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 按隐患描述、依据、责任人、期限四段写，习惯配照片
+    attitude: positive
+    test_focus:
+    - 重点试同名问题，看项目部那位王海涛的施工日志会不会算到自己名下
+    - 检查自己在安全检查系统和统一平台两个账号的记录能不能合并
+    - 看整改闭环的三条记录会不会被系统当成三件独立的事
+- employee_code: ZY011
+  display_name: 简宁
+  work_history:
+  - period: 2018-07 至 2021-01
+    org: 某工程质量检测公司（虚构）
+    role: 检测员
+    summary: 做主体结构实体检测与报告编制
+  - period: 2021-02 至今
+    org: 筑岳建设工程（模拟）
+    role: 专职质量员，派驻栖湖花园项目部
+    summary: 负责检验批划分与验收、隐蔽工程验收、质量通病整治跟踪
+  ground_truth:
+    capabilities:
+    - key: inspection_lot_acceptance
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:ZL-0014, self_report:SR10, manager_review:MR10]
+      note: 砌体检验批争议是她组织扩大检查、委托检测并谈成让步接收的，但部门经理按系统里「她名下记录少」给了需要协助；真实水平是最高档
+    - key: concealed_work_acceptance
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:ZL-0001, record:ZL-0006, record:ZL-0012]
+      note: 后浇带等复杂节点的复尺和评定都是她做的，ZL-0012 的提交账号是项目总工，系统按提交人统计会把能力记错人
+    - key: project_overall_management
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 她有二级建造师证但从没担任项目经理岗，持证不等于能力，系统不应据证书推断她能统筹项目
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 严谨、爱写实测数据和规范依据，被误判时会写长段申诉理由
+    attitude: skeptical
+    test_focus:
+    - 一定要申诉经理评价里的「需要协助」，看申诉入口能不能附上 ZL-0014 的记录
+    - 检查用别人账号提交的验收记录能不能把自己补成实际贡献者
+    - 看二级建造师证会不会被系统当成项目管理能力
+- employee_code: ZY012
+  display_name: 柴明睿
+  work_history:
+  - period: 2021-07 至 2023-04
+    org: 某装饰工程公司（虚构）
+    role: 安全员
+    summary: 负责装饰装修项目的动火与高处作业管理
+  - period: 2023-05 至今
+    org: 筑岳建设工程（模拟）
+    role: 专职安全员，派驻维保与小型改造项目
+    summary: 负责维保项目群的吊篮作业、临时用电与消防通道安全管理
+  ground_truth:
+    capabilities:
+    - key: safety_hazard_inspection
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:AQ-0010, record:AQ-0016, manager_review:MR11]
+      note: 维保项目体量小，一年只有三条检查记录，生产经理按条数给了需要协助；他实际能独立完成日常巡检到复查关闭的全过程
+    - key: temp_electricity_fire_safety
+      level: routine
+      evidence: partial
+      evidence_refs: [record:AQ-0015, manager_review:MR12]
+      note: 部门经理对这一项直接回答不确定，记录只有一条配电箱整改
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 写得短，爱加「已整改完成」这类结论句，解释原因时才写长
+    attitude: worried_about_evaluation
+    test_focus:
+    - 申诉用记录条数衡量能力这件事，看系统有没有地方说明记录少不等于能力低
+    - 看维保项目的记录会不会因为项目小被系统忽略
+    - 检查自己在安全质量部和工程管理部两边的身份会不会重复统计
+- employee_code: ZY013
+  display_name: 乔雨桐
+  work_history:
+  - period: 2022-09 至 2025-11
+    org: 筑岳建设工程（模拟）
+    role: 资料员（栖湖花园项目部）
+    summary: 做施工资料台账与报验资料收集
+  - period: 2025-12 至今
+    org: 筑岳建设工程（模拟）
+    role: 试验与检测员（安全质量部）
+    summary: 负责混凝土试块、材料报验与试验数据管理
+  ground_truth:
+    capabilities:
+    - key: inspection_lot_acceptance
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:ZL-0005]
+      note: 只做材料与试块报验，检验批评定还要质量员带，记录正好反映真实水平
+    - key: project_document_archiving
+      level: routine
+      evidence: partial
+      evidence_refs: [record:RZ-0004, manager_review:MR13]
+      note: 转岗前三年做资料员，系统里只剩一条参与记录，容易被判成没做过资料
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 平实、按数据说话，不主动展开
+    attitude: neutral
+    test_focus:
+    - 检查转岗前的资料员经历会不会从画像里消失
+    - 看系统会不会把现在的试验岗能力和以前的资料岗混在一起
+- employee_code: ZY014
+  display_name: 聂志坤
+  work_history:
+  - period: 2003-07 至 2012-02
+    org: 某市政建设公司（虚构）
+    role: 技术员、项目总工
+    summary: 参与住宅与市政配套项目的技术管理
+  - period: 2012-03 至今
+    org: 筑岳建设工程（模拟）
+    role: 项目经理、工程管理部经理
+    summary: 2012 至 2019 年带过三个住宅项目，之后转到公司层面做技术与生产管理
+  ground_truth:
+    capabilities:
+    - key: inspection_lot_acceptance
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:ZL-0010]
+      note: 公司质量巡检的实测实量和通病判定由他定口径
+    - key: construction_scheme_drafting
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:ZL-0010]
+      note: 他审方案不写方案，系统里只有巡检记录，看不出方案编制能力
+    - key: project_overall_management
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 2012 至 2019 年独立带过三个项目，公司 2023 年换系统时旧记录没有迁移，三个来源里完全查不到；系统应输出未知
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 话少，直接讲做法和规范要求
+    attitude: neutral
+    test_focus:
+    - 看系统换代前的项目经历没有记录时画像怎么写
+    - 检查审方案和写方案会不会被系统当成同一件事
+- employee_code: ZY015
+  display_name: 段嘉懿
+  work_history:
+  - period: 2013-07 至 2018-04
+    org: 某建筑工程公司（虚构）
+    role: 施工员、生产主管
+    summary: 住宅与小型公建的现场生产组织
+  - period: 2018-05 至今
+    org: 筑岳建设工程（模拟）
+    role: 生产经理，兼维保与小型改造项目群负责人
+    summary: 在工程管理部做生产协调，并牵头维保与小型改造项目，不担任任何部门负责人
+  ground_truth:
+    capabilities:
+    - key: project_overall_management
+      level: routine
+      evidence: documented
+      evidence_refs: [record:RZ-0017, record:AQ-0015, record:ZL-0011, manager_review:MR14]
+      note: 维保项目的进度、安全、验收都由他统筹，记录覆盖三个来源；一级建造师已注册但没独立带过大体量在建项目，真实水平就是常规档
+    - key: construction_schedule
+      level: routine
+      evidence: partial
+      evidence_refs: [record:RZ-0017]
+      note: 维保项目工期短，看不出总进度计划能力
+    - key: concealed_work_acceptance
+      level: routine
+      evidence: partial
+      evidence_refs: [record:ZL-0011]
+      note: 屋面防水翻修验收是他签的，复杂节点没独立处理过
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 讲工期和人机料，喜欢用时间节点说事
+    attitude: positive
+    test_focus:
+    - 检查项目负责人但不是部门负责人这种身份系统能不能正确显示
+    - 看跨三个部门的项目成员能不能都被关联到维保项目
+- employee_code: ZY016
+  display_name: 欧阳敏
+  work_history:
+  - period: 2014-07 至 2017-08
+    org: 某建筑工程公司（虚构）
+    role: 技术员
+    summary: 做方案编制与技术资料
+  - period: 2017-09 至今
+    org: 筑岳建设工程（模拟）
+    role: 技术管理工程师，派驻支持栖湖花园项目部
+    summary: 负责方案审核、质量技术处置与返工方案
+  ground_truth:
+    capabilities:
+    - key: construction_scheme_drafting
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:ZL-0008, self_report:SR14, manager_review:MR15]
+      note: 保护层偏差的返工处置方案由她独立出具，记录与评价一致
+    - key: inspection_lot_acceptance
+      level: routine
+      evidence: partial
+      evidence_refs: [record:ZL-0008, record:ZL-0014]
+      note: 她参与争议处置但不是主办人，记录看不出独立评定能力
+    - key: survey_layout
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 早年做技术员时常独立放线，现在岗位不涉及，系统里没有记录，应保持未知
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 书面规范、爱画示意图，文字里常附做法图编号
+    attitude: neutral
+    test_focus:
+    - 检查复姓会不会被系统拆成姓欧名阳敏
+    - 看派驻支持项目部的工作算在工程管理部还是项目部
+- employee_code: ZY017
+  display_name: 滕立新
+  work_history:
+  - period: 2018-07 至 2021-07
+    org: 某机电安装公司（虚构）
+    role: 电气施工员
+    summary: 住宅电气安装与配电改造
+  - period: 2021-08 至今
+    org: 筑岳建设工程（模拟）
+    role: 机电施工员（项目部）、机电工程师（工程管理部）
+    summary: 2026 年 4 月从栖湖花园项目部转到工程管理部，现做机电技术支持与维保项目验收
+  ground_truth:
+    capabilities:
+    - key: concealed_work_acceptance
+      level: routine
+      evidence: documented
+      evidence_refs: [record:ZL-0007, record:ZL-0015, manager_review:MR16]
+      note: 转岗前后两个阶段的机电隐蔽与改造验收都有记录，系统应能确认常规档
+    - key: temp_electricity_fire_safety
+      level: routine
+      evidence: partial
+      evidence_refs: [record:ZL-0015]
+      note: 他有建筑电工操作证，但系统里只有一条配电箱验收，不足以确认现场临电管理能力
+    - key: site_production_coordination
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 转岗前在项目部组织过多轮机电穿插，除 RZ-0011 之外没留下痕迹，转岗后岗位也不涉及；应保持未知
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 讲回路和参数，口头表达偏技术细节
+    attitude: neutral
+    test_focus:
+    - 检查转岗前后的记录会不会被拆成两个人或只保留一边
+    - 看建筑电工操作证会不会被直接当成临电管理能力
+- employee_code: ZY018
+  display_name: 许知行
+  work_history:
+  - period: 2024-07 至今
+    org: 筑岳建设工程（模拟）
+    role: BIM 技术工程师
+    summary: 负责模型搭建、管综复核与出图，支持维保与改造项目
+  ground_truth:
+    capabilities:
+    - key: construction_scheme_drafting
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:RZ-0018, manager_review:MR17]
+      note: 能用模型复核并出调整图，方案主体还要工程师带；经理对他的验收能力回答不确定，这与真实情况一致
+    - key: inspection_lot_acceptance
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:AQ-0016]
+      note: 只跟过现场，没独立做过检验批评定
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 爱用软件和模型术语，现场术语说不准
+    attitude: positive
+    test_focus:
+    - 看经理回答不确定时画像会不会写成能力低
+    - 检查入职两年多、记录很少的人画像是什么样
+- employee_code: ZY019
+  display_name: 詹秀兰
+  work_history:
+  - period: 2007-07 至 2015-09
+    org: 某造价咨询公司（虚构）
+    role: 造价员、项目负责人
+    summary: 住宅与公建项目的预算审核和结算
+  - period: 2015-10 至今
+    org: 筑岳建设工程（模拟）
+    role: 商务合约部经理
+    summary: 负责投标报价、分包合约、结算与索赔
+  ground_truth:
+    capabilities:
+    - key: quantity_takeoff_pricing
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 公司商务系统不在本数据集的三个来源内，她在施工日志、安全检查、质量验收里都没有记录；系统应输出未知，不能因为「零记录」判成不会
+    - key: subcontract_claim_management
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 两次工期索赔谈判都是她主办，证据全在合同台账里，本数据集看不到
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 谈数字和条款，说话留余地
+    attitude: skeptical
+    test_focus:
+    - 重点看商务口的人因为没接入来源系统画像是不是一片空白
+    - 检查系统会不会把「没有记录」显示成「能力不足」
+- employee_code: ZY020
+  display_name: 温博文
+  work_history:
+  - period: 2019-07 至 2022-01
+    org: 某房地产开发公司（虚构）
+    role: 成本专员
+    summary: 做成本台账与分包付款审核
+  - period: 2022-02 至今
+    org: 筑岳建设工程（模拟）
+    role: 合约工程师
+    summary: 负责分包合同、现场计量签认与变更签证
+  ground_truth:
+    capabilities:
+    - key: quantity_takeoff_pricing
+      level: routine
+      evidence: partial
+      evidence_refs: [record:RZ-0019, manager_review:MR18]
+      note: 现场计量签认有日志痕迹，报量和对账过程看不到
+    - key: subcontract_claim_management
+      level: routine
+      evidence: partial
+      evidence_refs: [record:RZ-0012, manager_review:MR18]
+      note: 常规分包合同能起草，索赔只参与过资料整理
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 公文式，爱写「依据合同第 X 条」
+    attitude: neutral
+    test_focus:
+    - 看作为参与人出现在施工日志里的记录能不能成为自己的证据
+    - 检查商务能力词条的描述是否符合合约岗实际工作
+- employee_code: ZY021
+  display_name: 荀亦可
+  work_history:
+  - period: 2015-07 至 2019-11
+    org: 某造价咨询公司（虚构）
+    role: 造价员
+    summary: 土建专业预算与结算
+  - period: 2019-11 至今
+    org: 筑岳建设工程（模拟）
+    role: 造价工程师，参与维保与小型改造项目群
+    summary: 负责工程量计算、措施费调整、材料调差与核量对账
+  ground_truth:
+    capabilities:
+    - key: quantity_takeoff_pricing
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:RZ-0017, self_report:SR17, manager_review:MR19]
+      note: 一级造价工程师并独立处理过清单缺项与材料调差，但三个来源里只有一条进场记录，支撑不足
+    - key: subcontract_claim_management
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 协助做过索赔证据链整理，本数据集的来源看不到合同类资料
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 精确到小数位，爱追问计量口径
+    attitude: neutral
+    test_focus:
+    - 检查持一级造价工程师证会不会被直接当成最高档能力
+    - 看维保项目成员身份会不会带来不相关的现场能力推断
+- employee_code: ZY022
+  display_name: 骆思成
+  work_history:
+  - period: 2022-09 至 2026-06
+    org: 某高校（虚构）
+    role: 工程造价专业学生
+    summary: 在校期间做过两次造价软件实训
+  ground_truth:
+    capabilities:
+    - key: quantity_takeoff_pricing
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 2026 年 9 月入职，还在跟师傅学；系统里没有任何记录，应显示未知并提示待确认
+    - key: project_document_archiving
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只做过资料整理的辅助工作，没有留痕
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 用词偏学生化，爱问流程
+    attitude: neutral
+    test_focus:
+    - 看新人零记录时画像页面显示什么，有没有引导去填自述
+    - 检查系统会不会把入职时间短误写成能力不足
+- employee_code: ZY023
+  display_name: 卓丽华
+  work_history:
+  - period: 2010-07 至 2017-12
+    org: 某建筑劳务公司（虚构）
+    role: 人事主管
+    summary: 负责招聘、实名制与社保事务
+  - period: 2018-01 至今
+    org: 筑岳建设工程（模拟）
+    role: 人力行政部经理
+    summary: 负责人员招聘、证书台账、实名制管理与行政事务
+  ground_truth:
+    capabilities:
+    - key: project_document_archiving
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 她管证书和实名制台账，和工程资料归档相邻但不是同一件事；三个来源都没有她的记录
+    - key: safety_education_briefing
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只组织入场教育的场地和签到，不讲技术内容
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 行政口径，爱强调台账和签字
+    attitude: neutral
+    test_focus:
+    - 看职能部门人员完全没有工程记录时画像怎么表达
+    - 检查证书台账里的过期证书会不会直接影响画像结论
+- employee_code: ZY024
+  display_name: 傅雅琪
+  work_history:
+  - period: 2020-07 至 2023-02
+    org: 某人力资源服务公司（虚构）
+    role: 人事专员
+    summary: 做入离职手续与系统账号维护
+  - period: 2023-03 至今
+    org: 筑岳建设工程（模拟）
+    role: 人事专员，兼公司系统管理员
+    summary: 负责人员信息维护、三个来源系统的账号与权限、外部账号映射登记
+  ground_truth:
+    capabilities:
+    - key: project_document_archiving
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 她做人事档案不做工程资料，系统里没有记录
+    - key: construction_log_reporting
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只会在后台看日志，没填过
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 流程化、爱确认权限范围
+    attitude: positive
+    test_focus:
+    - 以企业管理员身份检查能不能看到不该看的员工自述内容
+    - 试着登记一个未关联的分包账号，看系统怎么处理历史记录归属
+    - 检查管理员能否看到总体进度而不是全部自述正文
+- employee_code: ZY025
+  display_name: 鞠红梅
+  work_history:
+  - period: 2014-03 至 2021-05
+    org: 某物业服务公司（虚构）
+    role: 行政助理
+    summary: 办公行政与后勤事务
+  - period: 2021-06 至今
+    org: 筑岳建设工程（模拟）
+    role: 行政专员
+    summary: 负责办公管理、车辆与后勤、会议安排
+  ground_truth:
+    capabilities:
+    - key: project_document_archiving
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只做行政文件收发，工程资料没碰过
+    - key: safety_education_briefing
+      level: none
+      evidence: undocumented
+      evidence_refs: []
+      note: 完全不涉及，系统里也没有任何相关记录
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 日常口语，写东西短
+    attitude: neutral
+    test_focus:
+    - 看与施工无关的岗位会不会被硬套上施工类能力词条
+- employee_code: ZY026
+  display_name: 石俊豪
+  work_history:
+  - period: 2023-09 至今
+    org: 某职业技术学院（虚构）
+    role: 工程造价专业在读学生
+    summary: 2026 年暑期起在公司做信息管理实习
+  ground_truth:
+    capabilities:
+    - key: construction_log_reporting
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:RZ-0022, manager_review:MR20]
+      note: 只做纸质日志扫描补录，真实水平是需要协助，记录与评价一致
+    - key: project_document_archiving
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:RZ-0022]
+      note: 一条补录记录看不出他对资料体系的理解
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 网络用语多，描述工作时说不清专业名词
+    attitude: positive
+    test_focus:
+    - 看实习生身份会不会被系统当成正式员工统计
+    - 检查补录历史记录的人会不会被当成这些记录的作者
+- employee_code: ZY027
+  display_name: 蔺国平
+  work_history:
+  - period: 2015-07 至 2023-02
+    org: 某机电安装公司（虚构）
+    role: 安装工、施工员
+    summary: 住宅机电安装现场管理
+  - period: 2023-03 至 2026-05
+    org: 筑岳建设工程（模拟）
+    role: 机电施工员（已离职）
+    summary: 负责栖湖花园地下室与屋面机电作业，2026 年 5 月离职
+  ground_truth:
+    capabilities:
+    - key: concealed_work_acceptance
+      level: routine
+      evidence: documented
+      evidence_refs: [record:RZ-0002, record:ZL-0007, record:RZ-0015]
+      note: 离职前留下完整的机电隐蔽验收与预埋记录，系统应能还原他做过什么
+    - key: site_production_coordination
+      level: routine
+      evidence: partial
+      evidence_refs: [record:RZ-0015]
+      note: 离职交接清单没有进系统，交接组织能力看不出来
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 简短务实，离职后不再使用系统
+    attitude: neutral
+    test_focus:
+    - 离职人员没有登录账号，由管理员代为查看其历史记录是否完整
+- employee_code: ZY028
+  display_name: 芮晓冬
+  work_history:
+  - period: 2018-07 至 2021-08
+    org: 某建筑工程公司（虚构）
+    role: 安全员
+    summary: 项目驻场安全巡检
+  - period: 2021-09 至 2026-02
+    org: 筑岳建设工程（模拟）
+    role: 专职安全员（已离职）
+    summary: 负责栖湖花园前期的安全巡检与节前检查，2026 年 2 月离职
+  ground_truth:
+    capabilities:
+    - key: safety_hazard_inspection
+      level: routine
+      evidence: documented
+      evidence_refs: [record:AQ-0001, record:AQ-0004]
+      note: 开洞防护与节前检查记录完整，能看出常规巡检水平
+    - key: scaffold_lifting_safety
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 外架验收一直由部门经理带着做，系统里没有他独立签署的记录
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 按模板写检查记录，很少写原因分析
+    attitude: neutral
+    test_focus:
+    - 离职人员的 C 证已过期，看系统会不会把过期证书写成当前结论
+account_truth:
+- source: 施工日志
+  account_id: hongtu-02
+  owner: null
+  note: 鸿途劳务（分包单位，虚构）在统一平台上的共享账号，现场负责人轮流使用，不属于任何一位本公司员工；大量施工日志的参与人栏位都挂着它
+- source: 安全检查
+  account_id: JL-SUP-07
+  owner: null
+  note: 监理单位安全监理工程师的账号，由建设单位统一分配，公司人力行政部没有登记这个人；监理巡查通知单和部分验收记录里都出现
+- source: 施工日志
+  account_id: menggc-old
+  owner: ZY006
+  note: 孟广才换手机后用新号码重新注册了账号，旧账号没注销；RZ-0007 其实是他本人提交的，系统不知道这两个账号是一个人
+edge_cases:
+- tag: same_name
+  employees: [ZY003, ZY010]
+  refs: [record:RZ-0024, record:AQ-0007]
+  note: 项目部土建施工员和安全质量部派驻安全员都叫王海涛，统一平台账号分别是 wang.haitao 和 wang.haitao2；RZ-0024 里两人同时在场，容易把记录算错
+- tag: multi_account
+  employees: [ZY006, ZY010]
+  refs: [record:RZ-0007, record:RZ-0010, record:AQ-0007, record:RZ-0024]
+  note: 孟广才有新旧两个统一平台账号（meng.guangcai、menggc-old，旧账号未登记）；王海涛（ZY010）有统一平台账号 wang.haitao2 和安全检查系统账号 aq-wanght-02
+- tag: unlinked_account
+  employees: []
+  refs: [record:RZ-0001, record:AQ-0006, record:ZL-0012]
+  note: hongtu-02（分包单位共享账号）和 JL-SUP-07（监理工程师账号）都在来源数据里反复出现，但不属于任何员工，系统不应为它们生成画像
+- tag: transfer
+  employees: [ZY013, ZY017]
+  refs: [record:RZ-0004, record:ZL-0005, record:RZ-0011, record:ZL-0015]
+  note: 乔雨桐 2025-12 从项目部资料员转安全质量部试验员，滕立新 2026-04 从项目部机电施工员转工程管理部机电工程师；两人在转岗前后的记录里岗位名称不同
+- tag: concurrent_post
+  employees: [ZY010, ZY011, ZY012, ZY016]
+  refs: [record:AQ-0007, record:ZL-0014, record:AQ-0010, record:ZL-0008]
+  note: 安全员、质量员按项目派驻，行政关系在安全质量部，现场听项目经理安排；技术管理工程师欧阳敏也派驻支持栖湖花园项目部
+- tag: departed
+  employees: [ZY027, ZY028]
+  refs: [record:RZ-0015, record:ZL-0007, record:AQ-0004]
+  note: 蔺国平 2026-05 离职、芮晓冬 2026-02 离职，都没有登录账号，但三个来源里留有历史记录
+- tag: new_hire_no_history
+  employees: [ZY022]
+  refs: []
+  note: 骆思成 2026-09-07 入职，没有任何工作记录，也没有提交自述；系统应显示未知并引导补充，而不是判定能力低
+- tag: contractor
+  employees: [ZY006, ZY007]
+  refs: [record:RZ-0010, record:RZ-0020]
+  note: 两位劳务班组长由鸿途劳务派驻，是外包人员，只用手机、不会填表，日常靠语音转文字
+- tag: intern
+  employees: [ZY026]
+  refs: [record:RZ-0022]
+  note: 石俊豪是暑期起的信息管理实习生，唯一的记录是补录历史纸质日志
+- tag: assignee_mismatch
+  employees: [ZY002, ZY011]
+  refs: [record:ZL-0002, record:ZL-0012]
+  note: 这两条检验批与隐蔽工程验收记录的提交账号是项目总工陆嘉树（zl-lujs），实际现场取点、复尺和评定都是质量员简宁做的，原因是质量验收系统只给总工开了提交签认权限
+- tag: assignee_mismatch
+  employees: [ZY005, ZY004]
+  refs: [record:RZ-0008]
+  note: RZ-0008 的填报人是资料员邵文倩，实际现场检查是机电施工员郝明远做的，日志里只写了「由机电施工员口述」
+- tag: cross_source_duplicate
+  employees: [ZY010, ZY003, ZY006]
+  refs: [record:AQ-0007, record:RZ-0013, record:AQ-0008]
+  note: 同一次脚手架连墙件整改在安全检查（发现、复查关闭）和施工日志（整改施工）里各出现一次，系统不应算成三件独立的事
+- tag: cross_source_duplicate
+  employees: [ZY010, ZY003]
+  refs: [record:AQ-0012, record:RZ-0021, record:AQ-0013]
+  note: 监理下发的动火作业整改通知、现场整改日志和复查关闭记录分布在两个来源，描述同一件事
+- tag: review_conflict
+  employees: [ZY003, ZY011, ZY012]
+  refs: [self_report:SR03, manager_review:MR02, self_report:SR10, manager_review:MR10, self_report:SR11, manager_review:MR11]
+  note: 王海涛自述高于经理评价（他说能独立组织复杂穿插，经理给常规档）；简宁和柴明睿的自述高于经理评价，且经理的理由都是「系统里记录少」
+- tag: appeal
+  employees: [ZY011, ZY012]
+  refs: [manager_review:MR10, manager_review:MR11]
+  note: 简宁认为争议检验批是她主办的、记录挂在总工名下不代表她没做；柴明睿认为用记录条数衡量能力不合理，两人都会在系统里提申诉
+- tag: manager_unsure
+  employees: [ZY007, ZY012, ZY018]
+  refs: [manager_review:MR07, manager_review:MR12, manager_review:MR17]
+  note: 班组长蒙双全、维保安全员柴明睿、BIM 工程师许知行各有一条 not_sure 的经理评价，理由都是缺少可核对的记录
+- tag: no_forms
+  employees: [ZY006, ZY007]
+  refs: [self_report:SR06, self_report:SR07]
+  note: 两位班组长数字素养低，表格填不了，自述是语音转文字直接提交的
+- tag: mobile_only
+  employees: [ZY006, ZY007]
+  refs: [record:RZ-0010, record:RZ-0020]
+  note: 只用手机，没有电脑；所有日志都在手机端提交
+- tag: colloquial
+  employees: [ZY006, ZY007]
+  refs: [record:RZ-0007, record:RZ-0020, self_report:SR06, self_report:SR07]
+  note: 日志和自述都是口语，带方言词和错别字，句子不完整
+- tag: compound_surname
+  employees: [ZY016]
+  refs: [record:ZL-0008]
+  note: 欧阳敏是复姓，账号 ouyang.min；测试系统会不会把姓拆成「欧」
+- tag: dept_and_project_lead
+  employees: [ZY001]
+  refs: [record:RZ-0012, record:AQ-0014]
+  note: 冯承岳既是栖湖花园项目部负责人，又是栖湖花园项目的项目经理，一人两个身份
+- tag: pm_not_dept_manager
+  employees: [ZY015]
+  refs: [record:RZ-0017, record:ZL-0011]
+  note: 段嘉懿是维保与小型改造项目群的项目负责人，但他只是工程管理部的生产经理，不是任何部门的负责人

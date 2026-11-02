@@ -1,0 +1,586 @@
+- employee_code: LJ001
+  grade: 管理岗四级
+  hired_on: '2004-08-02'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种作业操作证（高压电工作业）
+    issued_on: '2022-04-18'
+    valid_until: '2028-04-17'
+    note: 三年复审一次，最近一次复审 2025-04
+  - name: 工作票签发人资格
+    issued_on: '2025-11-28'
+    valid_until: '2026-12-31'
+    note: 年度考评合格，资格按年度重新发布
+  - name: 技能等级证书（电气试验高级技师）
+    issued_on: '2016-12-10'
+    valid_until: null
+    note: ''
+- employee_code: LJ002
+  grade: 技能岗高级技师
+  hired_on: '2006-07-10'
+  reports_to: LJ001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种作业操作证（高压电工作业）
+    issued_on: '2021-09-06'
+    valid_until: '2027-09-05'
+    note: ''
+  - name: 工作票签发人资格
+    issued_on: '2025-11-28'
+    valid_until: '2026-12-31'
+    note: 年度考评合格
+  - name: 工作负责人资格
+    issued_on: '2025-11-28'
+    valid_until: '2026-12-31'
+    note: ''
+  - name: 电工进网作业许可证（高压类）
+    issued_on: '2009-05-18'
+    valid_until: '2013-05-17'
+    note: 已过有效期，未换证；现行上岗资质以特种作业操作证和「三种人」资格为准，本数据集不对该证书的现行制度状态作判断
+  - name: 技能等级证书（变电检修高级技师）
+    issued_on: '2018-11-20'
+    valid_until: null
+    note: ''
+- employee_code: LJ003
+  grade: 技能岗高级工
+  hired_on: '2013-07-15'
+  reports_to: LJ002
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种作业操作证（高压电工作业）
+    issued_on: '2023-03-14'
+    valid_until: '2029-03-13'
+    note: ''
+  - name: 工作负责人资格
+    issued_on: '2025-11-28'
+    valid_until: '2026-12-31'
+    note: ''
+  - name: 技能等级证书（变电检修高级工）
+    issued_on: '2020-10-16'
+    valid_until: null
+    note: ''
+- employee_code: LJ004
+  grade: 技能岗中级工
+  hired_on: '2024-03-11'
+  reports_to: LJ002
+  secondary_reports_to: [LJ005]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种作业操作证（高压电工作业）
+    issued_on: '2024-06-21'
+    valid_until: '2030-06-20'
+    note: ''
+  - name: 工作负责人资格
+    issued_on: '2026-05-08'
+    valid_until: '2026-12-31'
+    note: 2026 年下半年补充考评取得，限第二种工作票
+- employee_code: LJ005
+  grade: 技能岗高级技师
+  hired_on: '2008-09-01'
+  reports_to: LJ001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种作业操作证（高压电工作业）
+    issued_on: '2022-07-12'
+    valid_until: '2028-07-11'
+    note: ''
+  - name: 工作票签发人资格
+    issued_on: '2025-11-28'
+    valid_until: '2026-12-31'
+    note: ''
+  - name: 技能等级证书（电气试验高级技师）
+    issued_on: '2019-05-23'
+    valid_until: null
+    note: ''
+- employee_code: LJ006
+  grade: 技能岗高级工
+  hired_on: '2017-07-20'
+  reports_to: LJ005
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种作业操作证（高压电工作业）
+    issued_on: '2023-08-09'
+    valid_until: '2029-08-08'
+    note: ''
+  - name: 工作负责人资格
+    issued_on: '2026-05-08'
+    valid_until: '2026-12-31'
+    note: 2026 年下半年补充考评取得
+  - name: 技能等级证书（电气试验高级工）
+    issued_on: '2022-12-05'
+    valid_until: null
+    note: ''
+- employee_code: LJ007
+  grade: 外协班组成员（不纳入公司职级序列）
+  hired_on: '2025-09-01'
+  reports_to: LJ002
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: contractor
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种作业操作证（高压电工作业）
+    issued_on: '2021-11-25'
+    valid_until: '2027-11-24'
+    note: 由劳务单位提供复印件，原件未入本公司档案
+  - name: 外协人员入场安全培训合格证
+    issued_on: '2026-01-14'
+    valid_until: '2027-01-13'
+    note: 入场准入凭证，不等于可担任工作票三种人
+- employee_code: LJ008
+  grade: 管理岗四级
+  hired_on: '2005-07-18'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种作业操作证（高压电工作业）
+    issued_on: '2021-06-15'
+    valid_until: '2027-06-14'
+    note: ''
+  - name: 工作票签发人资格
+    issued_on: '2025-11-28'
+    valid_until: '2026-12-31'
+    note: ''
+  - name: 注册安全工程师（其他安全）
+    issued_on: '2019-01-20'
+    valid_until: null
+    note: ''
+- employee_code: LJ009
+  grade: 技能岗技师
+  hired_on: '2010-08-05'
+  reports_to: LJ008
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种作业操作证（高压电工作业）
+    issued_on: '2022-10-11'
+    valid_until: '2028-10-10'
+    note: ''
+  - name: 特种作业操作证（高处作业·登高架设作业）
+    issued_on: '2022-10-11'
+    valid_until: '2028-10-10'
+    note: ''
+  - name: 工作负责人资格
+    issued_on: '2025-11-28'
+    valid_until: '2026-12-31'
+    note: ''
+- employee_code: LJ010
+  grade: 技能岗中级工
+  hired_on: '2007-04-09'
+  reports_to: LJ009
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种作业操作证（高处作业·登高架设作业）
+    issued_on: '2021-05-19'
+    valid_until: '2027-05-18'
+    note: ''
+  - name: 技能等级证书（输电线路运维中级工）
+    issued_on: '2014-09-28'
+    valid_until: null
+    note: 2019 年起多次放弃高级工评定，原因是理论考试需要上机答题
+- employee_code: LJ011
+  grade: 技能岗高级技师
+  hired_on: '2009-07-13'
+  reports_to: LJ008
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种作业操作证（高压电工作业）
+    issued_on: '2023-02-16'
+    valid_until: '2029-02-15'
+    note: ''
+  - name: 特种作业操作证（高处作业·登高架设作业）
+    issued_on: '2023-02-16'
+    valid_until: '2029-02-15'
+    note: ''
+  - name: 工作负责人资格
+    issued_on: '2025-11-28'
+    valid_until: '2026-12-31'
+    note: ''
+  - name: 技能等级证书（带电作业高级技师）
+    issued_on: '2021-03-22'
+    valid_until: null
+    note: ''
+- employee_code: LJ012
+  grade: 技能岗高级工
+  hired_on: '2018-08-06'
+  reports_to: LJ009
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种作业操作证（高处作业·登高架设作业）
+    issued_on: '2022-03-30'
+    valid_until: '2028-03-29'
+    note: ''
+  - name: 民用无人驾驶航空器操控员执照（多旋翼·视距内）
+    issued_on: '2023-06-12'
+    valid_until: '2029-06-11'
+    note: ''
+  - name: 技能等级证书（输电线路运维高级工）
+    issued_on: '2024-11-08'
+    valid_until: null
+    note: ''
+- employee_code: LJ013
+  grade: 管理岗四级
+  hired_on: '2003-07-21'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 省级电网调度值班员资格证书
+    issued_on: '2012-05-14'
+    valid_until: null
+    note: 现已不参加轮值，资格保留
+  - name: 工作票签发人资格
+    issued_on: '2025-11-28'
+    valid_until: '2026-12-31'
+    note: ''
+- employee_code: LJ014
+  grade: 专业技术岗七级
+  hired_on: '2011-07-11'
+  reports_to: LJ013
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 省级电网调度值班员资格证书
+    issued_on: '2014-09-19'
+    valid_until: null
+    note: 正值资格，2019 年升正值
+  - name: 工作许可人资格
+    issued_on: '2025-11-28'
+    valid_until: '2026-12-31'
+    note: ''
+- employee_code: LJ015
+  grade: 专业技术岗九级
+  hired_on: '2021-08-02'
+  reports_to: LJ014
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 省级电网调度值班员资格证书
+    issued_on: '2023-04-25'
+    valid_until: null
+    note: 副值资格，尚未取得正值资格
+  - name: 工作许可人资格
+    issued_on: '2025-11-28'
+    valid_until: '2026-12-31'
+    note: ''
+- employee_code: LJ016
+  grade: 专业技术岗九级
+  hired_on: '2019-07-08'
+  reports_to: LJ013
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 工作票系统
+    account_id: zdy-0271
+  certifications:
+  - name: 特种作业操作证（低压电工作业）
+    issued_on: '2022-09-23'
+    valid_until: '2028-09-22'
+    note: ''
+  - name: 信息系统项目管理师
+    issued_on: '2021-12-18'
+    valid_until: null
+    note: ''
+- employee_code: LJ017
+  grade: 管理岗四级
+  hired_on: '2006-09-04'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 注册安全工程师（其他安全）
+    issued_on: '2017-03-15'
+    valid_until: null
+    note: ''
+  - name: 特种作业操作证（高压电工作业）
+    issued_on: '2021-04-28'
+    valid_until: '2027-04-27'
+    note: ''
+  - name: 工作票签发人资格
+    issued_on: '2025-11-28'
+    valid_until: '2026-12-31'
+    note: ''
+- employee_code: LJ018
+  grade: 专业技术岗八级
+  hired_on: '2015-07-13'
+  reports_to: LJ017
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 注册安全工程师（其他安全）
+    issued_on: '2022-02-26'
+    valid_until: null
+    note: ''
+  - name: 特种作业操作证（低压电工作业）
+    issued_on: '2023-05-17'
+    valid_until: '2029-05-16'
+    note: ''
+- employee_code: LJ019
+  grade: 专业技术岗九级
+  hired_on: '2016-08-15'
+  reports_to: LJ017
+  secondary_reports_to: [LJ021]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: [人力资源部]
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 企业培训师（二级）
+    issued_on: '2020-07-24'
+    valid_until: null
+    note: ''
+  - name: 特种作业操作证（低压电工作业）
+    issued_on: '2022-11-09'
+    valid_until: '2028-11-08'
+    note: ''
+- employee_code: LJ020
+  grade: 专业技术岗九级
+  hired_on: '2012-07-16'
+  reports_to: LJ017
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers:
+  - effective_on: '2026-03-01'
+    from_department: 变电检修中心
+    from_title: 变电检修工
+    to_department: 安全监察部
+  external_accounts:
+  - source: 安全培训考试系统
+    account_id: anjian-mhs
+  certifications:
+  - name: 特种作业操作证（高压电工作业）
+    issued_on: '2021-08-19'
+    valid_until: '2027-08-18'
+    note: ''
+  - name: 工作负责人资格
+    issued_on: '2025-11-28'
+    valid_until: '2026-12-31'
+    note: 转岗安监后未再担任，资格仍在年度名单内
+  - name: 技能等级证书（变电检修高级工）
+    issued_on: '2019-09-27'
+    valid_until: null
+    note: ''
+- employee_code: LJ021
+  grade: 管理岗四级
+  hired_on: '2008-07-14'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 企业人力资源管理师（一级）
+    issued_on: '2016-11-30'
+    valid_until: null
+    note: ''
+- employee_code: LJ022
+  grade: 专业技术岗九级
+  hired_on: '2020-07-06'
+  reports_to: LJ021
+  secondary_reports_to: []
+  system_role: org_admin
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 企业人力资源管理师（二级）
+    issued_on: '2023-06-18'
+    valid_until: null
+    note: ''
+- employee_code: LJ023
+  grade: 专业技术岗九级
+  hired_on: '2017-08-21'
+  reports_to: LJ021
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 企业培训师（三级）
+    issued_on: '2021-10-15'
+    valid_until: null
+    note: ''
+- employee_code: LJ024
+  grade: 专业技术岗十级
+  hired_on: '2022-07-11'
+  reports_to: LJ021
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: LJ025
+  grade: 技能岗高级工
+  hired_on: '2009-09-07'
+  reports_to: LJ002
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: departed
+  left_on: '2026-06-30'
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 特种作业操作证（高压电工作业）
+    issued_on: '2022-05-13'
+    valid_until: '2028-05-12'
+    note: 离职时未办理注销，台账仍显示有效
+  - name: 技能等级证书（变电检修高级工）
+    issued_on: '2018-06-29'
+    valid_until: null
+    note: ''
+- employee_code: LJ026
+  grade: 专业技术岗九级
+  hired_on: '2018-07-09'
+  reports_to: LJ014
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: departed
+  left_on: '2026-02-28'
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 省级电网调度值班员资格证书
+    issued_on: '2020-10-20'
+    valid_until: null
+    note: 副值资格

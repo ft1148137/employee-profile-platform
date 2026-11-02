@@ -1,0 +1,69 @@
+slug: tinglan-university
+name: 汀兰大学（模拟）
+industry: 普通高等学校
+gbt4754:
+  section: P
+  section_name: 教育
+  code: '8341'
+  class_name: 普通高等教育
+org_structure: hybrid
+org_structure_note: 学院与职能处室双线。学院按学科管人管课，职能处室按业务条线管流程；科研项目负责人（PI）由教师担任，不随行政职务变动。
+capability_template: templates/capabilities/higher-education.zh-CN.yaml
+uses_jira: false
+sources:
+- name: 教务系统
+  kind: work_records
+  description: 本科教务系统，记录开课申报、调停课、实验教学、成绩录入与教学检查
+- name: 科研管理系统
+  kind: work_records
+  description: 科研管理系统，记录纵向与横向项目的申报、立项、中期检查、结题、经费审核与成果登记
+- name: 学生工作系统
+  kind: work_records
+  description: 学生工作系统，记录辅导员谈心谈话、奖助评审、宿舍走访与突发事件处置，只保留不含学生个人信息的过程记录
+hr_it_departments: [信息化办公室]
+departments:
+- name: 计算机科学与技术学院
+  pcf_categories:
+  - '5.0 Deliver Services'
+  - '2.0 Develop and Manage Products and Services'
+  responsibilities: 计算机类本科与研究生教学、学科科研、专业实验室与学生培养
+- name: 机械工程学院
+  pcf_categories:
+  - '5.0 Deliver Services'
+  - '2.0 Develop and Manage Products and Services'
+  responsibilities: 机械类教学、工程训练与虚拟仿真实验、面向企业的横向技术服务
+- name: 学生工作部
+  pcf_categories:
+  - '6.0 Manage Customer Service'
+  - '5.0 Deliver Services'
+  responsibilities: 辅导员队伍管理、学业帮扶、奖助评审与学生突发事件处置
+- name: 科研处
+  pcf_categories:
+  - '2.0 Develop and Manage Products and Services'
+  - '13.0 Develop and Manage Business Capabilities'
+  responsibilities: 纵向项目组织申报与过程管理、横向合同与知识产权、科研经费合规与成果统计
+- name: 信息化办公室
+  pcf_categories:
+  - '8.0 Manage Information Technology (IT)'
+  responsibilities: 教务、科研、学工等业务系统的建设与运维、账号与权限管理、数据核对
+projects:
+- code: KJ2026-01
+  name: 面向制造场景的边缘视觉检测方法研究（纵向，国家级面上项目）
+  manager: TL002
+  members: [TL003, TL005, TL006]
+  note: PI 是计算机学院教授兼科研处副处长，不是学院院长；项目组跨教师与实验技术岗
+- code: HX2026-07
+  name: 汀兰智能装备（模拟）产线振动监测技术服务（横向）
+  manager: TL009
+  members: [TL010, TL011, TL021]
+  note: 横向合同项目负责人是副教授，不是任何部门负责人；科研处知识产权岗以项目成员身份参与
+- code: PT2026-03
+  name: 省级虚拟仿真实验教学中心建设
+  manager: TL008
+  members: [TL011, TL013, TL026]
+  note: 机械工程学院院长同时是平台建设项目负责人，部门负责人与项目负责人重合
+- code: DC2026-15
+  name: 本科生创新训练计划项目（校级，2026 年度）
+  manager: TL004
+  members: [TL007, TL016]
+  note: 指导教师是外籍讲师，项目在科研管理系统与学生工作系统各有一份记录

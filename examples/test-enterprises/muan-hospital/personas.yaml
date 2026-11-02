@@ -1,0 +1,1070 @@
+# 测试用，不导入系统
+# 真实能力（ground truth）用于核对系统推断的画像，对应计划书 §10.1「关键能力核实准确率」。
+# 本文件中的病案号、手术编号均为合成编号，不含任何患者信息或真实临床数据。
+slug: muan-hospital
+personas:
+- employee_code: MA001
+  display_name: 云嘉树
+  work_history:
+  - period: 1999-08 至 2006-07
+    org: 某省属综合医院（虚构）
+    role: 心内科住院医师、主治医师
+    summary: 完成内科住院医师训练，开始参与冠脉介入
+  - period: 2006-08 至今
+    org: 沐安市中心医院（模拟）
+    role: 心血管内科主治医师、副主任医师、主任医师、科主任
+    summary: 负责科室医疗与教学，牵头心衰 MDT 协作组
+  ground_truth:
+    capabilities:
+    - key: cardiac_intervention
+      level: independent_complex
+      evidence: documented
+      evidence_refs: ['record:SS-0008', 'record:SS-0015', 'record:SS-0002']
+      note: 分叉病变、慢性完全闭塞的四级介入台次都在手术记录里，系统应能确认复杂等级。
+    - key: resident_teaching
+      level: independent_complex
+      evidence: partial
+      evidence_refs: ['record:JX-0001', 'record:JX-0011']
+      note: 只有授课与 MDT 讨论会记录；教学查房和阶段考核由科教干事登记在自己名下，看不出他主持教学的程度。
+    - key: inpatient_management
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 疑难病例讨论的主持记录在纸质讨论本上，四个来源都没有；系统应输出未知。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 内科专业）, 心血管疾病介入诊疗技术培训合格证书]
+    notes: 既是科室负责人又是 MDT 牵头人，系统容易把 MDT 成员的台次算成他的。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 简短、用临床术语，习惯口头交代而不写系统
+    attitude: neutral
+    test_focus:
+    - 检查画像有没有把 MDT 其他成员的手术和讨论记录算到自己名下
+    - 检查系统是否把「科主任」默认等同于全科最高水平
+    - 查看自己没有系统记录的疑难病例讨论能力是否被写成「不会」
+- employee_code: MA002
+  display_name: 李沐
+  work_history:
+  - period: 2012-07 至今
+    org: 沐安市中心医院（模拟）
+    role: 心血管内科住院医师、主治医师、副主任医师
+    summary: 承担病区与介入手术，三级介入独立开展
+  ground_truth:
+    capabilities:
+    - key: cardiac_intervention
+      level: routine
+      evidence: misleading
+      evidence_refs: ['record:SS-0002', 'record:PB-0013', 'record:JX-0002']
+      note: 真实水平是三级介入独立、四级需上级在台。手术记录里他和普通外科的李沐显示名完全相同，一旦按姓名聚合，外科的三级手术台次会算到他头上，造成高估。
+    - key: inpatient_management
+      level: independent_complex
+      evidence: partial
+      evidence_refs: ['record:ZK-0012', 'record:PB-0001']
+      note: 只有排班和一份乙级抽查，记录不足以确认复杂等级。
+    - key: outpatient_consult
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 专家门诊班次在门诊系统，排班系统未覆盖，四个来源都看不到他的门诊量；系统应输出未知。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 内科专业）, 心血管疾病介入诊疗技术培训合格证书]
+    notes: 和 MA009 同名，是本企业同名识别的主要测试对象。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 书面、克制，愿意写清边界条件
+    attitude: skeptical
+    test_focus:
+    - 搜索「李沐」时能否区分两个人，手术台次有没有被合并
+    - 检查介入等级是否被系统写成四级独立
+    - 门诊能力在没有记录时是否被标为未知
+- employee_code: MA003
+  display_name: 沈砚
+  work_history:
+  - period: 2016-07 至今
+    org: 沐安市中心医院（模拟）
+    role: 心血管内科住院医师、主治医师
+    summary: 承担病区、夜班二线，曾参与介入培训
+  ground_truth:
+    capabilities:
+    - key: cardiac_intervention
+      level: needs_support
+      evidence: misleading
+      evidence_refs: ['manager_review:MR01', 'self_report:SR01']
+      note: HR 档案里的介入培训证书已于 2024 年底过期、院内授权同时失效（roster 有记录）。证书本身容易被读成「具备能力」，经理评价又偏低；真实水平是在上级指导下能完成基本步骤。
+    - key: medical_record_writing
+      level: routine
+      evidence: misleading
+      evidence_refs: ['record:ZK-0002', 'record:ZK-0012', 'manager_review:MR18']
+      note: 两条质控扣分都按制度记在她名下，病历实际由规培医师书写。直接把扣分当书写水平会低估她。
+    - key: inpatient_management
+      level: routine
+      evidence: documented
+      evidence_refs: ['record:PB-0002', 'record:PB-0011', 'record:ZK-0001']
+      note: 夜班二线与甲级病历记录一致，系统应能确认常规等级。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 内科专业）, 住院医师规范化培训合格证书（内科）]
+    notes: 过期证书 + 扣分错配 + 担心被追责的自述，三重误导叠在一个人身上。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 谨慎、留余地，爱写「不好说」「怕写高了」
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查质控扣分是否被当成自己的病历书写水平，准备就此申诉
+    - 看过期证书会不会被系统当成现有资质
+    - 确认画像里「介入」写的是未确认而不是不会
+- employee_code: MA004
+  display_name: 其木格
+  work_history:
+  - period: 2023-08 至今
+    org: 沐安市中心医院（模拟）
+    role: 心血管内科住院医师（规培在培、2026 年结业）
+    summary: 完成内科规培，现独立管稳定病人
+  ground_truth:
+    capabilities:
+    - key: inpatient_management
+      level: routine
+      evidence: documented
+      evidence_refs: ['record:ZK-0009', 'manager_review:MR10', 'self_report:SR09']
+      note: 记录、自述与经理评价一致，系统应能确认常规等级。
+    - key: medical_record_writing
+      level: routine
+      evidence: partial
+      evidence_refs: ['record:ZK-0009', 'record:JX-0008']
+      note: 只有一次缺陷记录和一次培训记录，不足以确认等级。
+    - key: critical_care
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 规培期间在急诊轮转三个月，轮转记录在规培基地的培训系统里，本院四个来源都没有；系统应输出未知。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 内科专业）, 住院医师规范化培训合格证书（内科）]
+    notes: 蒙古族姓名，无姓氏结构，邮箱与账号的拼音规则与汉族姓名不同。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 条理清楚，会主动补充时间和例数
+    attitude: positive
+    test_focus:
+    - 检查姓名在搜索、排序和邮箱生成里是否被错误拆成姓和名
+    - 看规培轮转经历能不能补录为自述证据
+    - 确认急诊能力显示为未知
+- employee_code: MA005
+  display_name: 谭䶮
+  work_history:
+  - period: 2025-08 至今
+    org: 沐安市中心医院（模拟，规培基地）
+    role: 住院医师规范化培训在培（第二年，心血管内科轮转）
+    summary: 值一线夜班，病历书写量大
+  ground_truth:
+    capabilities:
+    - key: medical_record_writing
+      level: needs_support
+      evidence: documented
+      evidence_refs: ['record:ZK-0002', 'record:ZK-0012', 'manager_review:MR02', 'self_report:SR02']
+      note: 两条抽查记录都写明书写医师是他，自述也承认首程超时，系统应能确认需要协助。
+    - key: inpatient_management
+      level: needs_support
+      evidence: documented
+      evidence_refs: ['record:PB-0011']
+      note: 一线夜班呼叫上级 2 次写在排班记录里，等级清楚。
+    - key: cardiac_intervention
+      level: none
+      evidence: undocumented
+      evidence_refs: []
+      note: 规培阶段只在导管室观摩，真实为不具备。系统不能因为他在心血管内科就推断他会介入。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 内科专业，执业活动须在带教医师指导下开展）]
+    notes: 姓名含生僻字「䶮」，自述用语音转文字，错别字和口语化并存。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 口语化，常用语音转文字，错别字多，句子短
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查「䶮」在姓名显示、搜索、导出 CSV 和邮件标题里是否乱码
+    - 看语音转文字的自述能不能正常提交和被引用
+    - 确认系统不会因为科室属性给自己安上介入能力
+- employee_code: MA006
+  display_name: 柳青禾
+  work_history:
+  - period: 2008-07 至今
+    org: 沐安市中心医院（模拟）
+    role: 心血管内科护士、护师、主管护师、护士长
+    summary: 负责 CCU 与普通病区护理排班、带教与感控自查
+  ground_truth:
+    capabilities:
+    - key: nursing_observation
+      level: independent_complex
+      evidence: partial
+      evidence_refs: ['record:PB-0005', 'record:PB-0015', 'record:JX-0010']
+      note: 排班与管理培训记录只能看出她是护理负责人，危重患者护理的具体操作记录在护理文书系统，本数据集未覆盖。
+    - key: infection_control
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 病区感控自查与整改跟踪写在纸质台账上，系统无记录；应输出未知。
+    - key: resident_teaching
+      level: routine
+      evidence: partial
+      evidence_refs: ['record:PB-0015']
+      note: 新护士跟班只在排班备注里提了一句，带教过程记在纸质手册。
+    certifications: [护士执业证书, 重症专科护士培训合格证书]
+    notes: 护理的真实工作量远大于四个来源能看到的部分，是「记录缺失不等于能力低」的典型。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, shared_terminal]
+    expression_style: 务实、按条目列，习惯用护理术语
+    attitude: neutral
+    test_focus:
+    - 检查感控与危重护理在无记录时是否被判为低水平
+    - 看护士长在病区共用终端上登录是否会被当成异常
+    - 确认新护士的跟班情况可以由自己补充说明
+- employee_code: MA007
+  display_name: 金雪
+  work_history:
+  - period: 2024-07 至 2026-08
+    org: 某县级医院（虚构）
+    role: 内科护士
+    summary: 独立承担责任护士班两年
+  - period: 2026-09 至今
+    org: 沐安市中心医院（模拟）
+    role: 心血管内科护士（岗前跟班）
+    summary: 入职一个多月，尚未独立排班
+  ground_truth:
+    capabilities:
+    - key: nursing_observation
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 在外院已独立上班两年，本院四个来源一条记录都没有。系统必须输出未知，而不是「不会」。
+    - key: infection_control
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 同上，入职前培训记录不在本院系统。
+    certifications: [护士执业证书]
+    notes: 新入职无历史记录；经理评价是 not_sure，这是系统唯一能看到的线索。
+  usage_profile:
+    digital_literacy: high
+    devices: [mobile, pc]
+    expression_style: 简洁，愿意主动填表
+    attitude: positive
+    test_focus:
+    - 检查完全没有记录时画像是否显示未知并提示补充自述
+    - 看能不能自己录入外院工作经历作为待确认证据
+- employee_code: MA008
+  display_name: 褚衡
+  work_history:
+  - period: 2000-08 至 2007-06
+    org: 某市立医院（虚构）
+    role: 普通外科住院医师、主治医师
+    summary: 完成外科训练
+  - period: 2007-07 至今
+    org: 沐安市中心医院（模拟）
+    role: 普通外科主治医师、副主任医师、主任医师、科主任
+    summary: 承担四级手术，负责科室手术分级授权执行
+  ground_truth:
+    capabilities:
+    - key: surgery_grade3
+      level: independent_complex
+      evidence: documented
+      evidence_refs: ['record:SS-0006', 'record:SS-0016', 'record:SS-0001']
+      note: 四级手术台次充分，系统应能确认复杂等级。
+    - key: perioperative_management
+      level: independent_complex
+      evidence: partial
+      evidence_refs: ['record:JX-0007', 'record:ZK-0010']
+      note: 培训与首页质控只能间接说明，围手术期的具体处置记录不在本数据集。
+    - key: resident_teaching
+      level: routine
+      evidence: partial
+      evidence_refs: ['record:JX-0007']
+      note: 只有一次院内授课记录。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 外科专业）, 院内手术分级授权（四级手术 普通外科）]
+    notes: SS-0010 登记的主刀是他，实际是下级完成，系统会高估他的台次、低估下级。
+  usage_profile:
+    digital_literacy: low
+    devices: [pc, shared_terminal]
+    expression_style: 极简，常让秘书代填，拒绝长表单
+    attitude: skeptical
+    test_focus:
+    - 检查挂名主刀的台次有没有全算成自己的能力证据
+    - 看能不能一次性为科室多人做评价而不用逐条点开
+    - 确认系统不会因为授权等级直接判定能力等级
+- employee_code: MA009
+  display_name: 李沐
+  work_history:
+  - period: 2017-07 至今
+    org: 沐安市中心医院（模拟）
+    role: 普通外科住院医师、主治医师
+    summary: 三级手术独立主刀，四级手术担任一助
+  ground_truth:
+    capabilities:
+    - key: surgery_grade3
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: ['record:SS-0010', 'record:SS-0011', 'record:SS-0014', 'manager_review:MR04', 'self_report:SR03']
+      note: 真实水平是复杂三级手术独立完成、四级手术能承担关键步骤。SS-0010 的主刀登记成科主任，台次会被算给别人；同时与心内科的李沐同名，姓名聚合又会把介入台次算给他。记录同时造成低估和高估。
+    - key: perioperative_management
+      level: routine
+      evidence: documented
+      evidence_refs: ['record:SS-0011', 'record:SS-0014', 'record:JX-0007']
+      note: 记录与实际一致。
+    - key: medical_record_writing
+      level: routine
+      evidence: partial
+      evidence_refs: ['record:ZK-0005', 'record:ZK-0011']
+      note: 两条专项质控里他是主管医师，只能看出合格，看不出等级。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 外科专业）, 住院医师规范化培训合格证书（外科）, 院内手术分级授权（三级手术 普通外科）]
+    notes: 同名、挂名主刀、自述与经理评价冲突三件事叠加。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 直接，爱举手术编号和台次佐证
+    attitude: skeptical
+    test_focus:
+    - 检查 SS-0010 的实际主刀能否通过申诉纠正到自己名下
+    - 搜索「李沐」时自己的台次有没有和心内科同名医师混在一起
+    - 看经理评价与自述冲突时画像写成什么
+    - 确认画像不会把「未获四级授权」写成「不具备四级手术能力」
+- employee_code: MA010
+  display_name: 傅行舟
+  work_history:
+  - period: 2013-07 至今
+    org: 沐安市中心医院（模拟）
+    role: 普通外科主治医师、副主任医师，2025 年起兼医务部病案质控医师
+    summary: 四级手术主刀，同时承担手术病历专项质控
+  ground_truth:
+    capabilities:
+    - key: record_qc_review
+      level: independent_complex
+      evidence: documented
+      evidence_refs: ['record:ZK-0005', 'record:ZK-0011', 'manager_review:MR07', 'self_report:SR10']
+      note: 两次专项质控都是他独立组织，记录、自述与评价一致。
+    - key: surgery_grade3
+      level: independent_complex
+      evidence: documented
+      evidence_refs: ['record:SS-0013', 'record:SS-0007', 'record:SS-0009']
+      note: 四级手术有记录；但 SS-0009 用的是未登记的旧术者编码，不做账号归并会漏算一台。
+    - key: outpatient_consult
+      level: independent_complex
+      evidence: partial
+      evidence_refs: ['record:PB-0014']
+      note: 只有一条专家门诊排班，看不出门诊疑难病例的处理情况。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 外科专业）, 院内手术分级授权（四级手术 普通外科）, 病案质量管理专项培训合格证明]
+    notes: 跨部门兼岗 + 同一人两个术者编码，是账号归并和兼岗归属的主要测试对象。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 结构化，会分「外科」「质控」两段讲
+    attitude: skeptical
+    test_focus:
+    - 检查两个术者编码的手术台次是否合并到同一个人
+    - 看兼岗的质控工作归在普通外科还是医务部，经理评价由谁给
+    - 确认手术能力和质控能力分开呈现而不是混成一条
+- employee_code: MA011
+  display_name: 周子珩
+  work_history:
+  - period: 2024-08 至今
+    org: 沐安市中心医院（模拟）
+    role: 普通外科住院医师
+    summary: 以一助参与三级与四级手术，独立值夜班
+  ground_truth:
+    capabilities:
+    - key: perioperative_management
+      level: routine
+      evidence: documented
+      evidence_refs: ['record:SS-0007', 'record:PB-0016', 'manager_review:MR06', 'self_report:SR06']
+      note: 记录、自述与评价一致。
+    - key: surgery_grade3
+      level: needs_support
+      evidence: documented
+      evidence_refs: ['record:SS-0003', 'record:SS-0011', 'record:SS-0013']
+      note: 全部以一助、二助出现，等级清楚。
+    - key: medical_record_writing
+      level: routine
+      evidence: misleading
+      evidence_refs: ['record:ZK-0006', 'record:JX-0009']
+      note: 首页漏编记在他名下，实际是手术记录单未按时回传导致。另外来源系统显示名是 Jerry Zhou，与花名册姓名不同，按显示名聚合会把他的记录拆成两个人。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 外科专业）]
+    notes: 中文名与英文名并存，PB-0016、JX-0009 的显示名是 Jerry Zhou。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 中英混用，习惯写要点列表
+    attitude: positive
+    test_focus:
+    - 检查 Jerry Zhou 与周子珩是否被识别为同一人
+    - 看首页漏编的责任归属能否说明清楚
+    - 确认「一助」不会被统计成主刀台次
+- employee_code: MA012
+  display_name: 郑婉
+  work_history:
+  - period: 2010-07 至今
+    org: 沐安市中心医院（模拟）
+    role: 普通外科护士、护师、主管护师、护士长
+    summary: 负责病区护理排班、手术配合轮转与实习生带教
+  ground_truth:
+    capabilities:
+    - key: nursing_observation
+      level: independent_complex
+      evidence: partial
+      evidence_refs: ['record:PB-0010', 'record:JX-0010', 'manager_review:MR12']
+      note: 排班与培训记录只能看出她是护理负责人和带教老师。
+    - key: infection_control
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 手术配合中的器械与环境处置记录在手术室护理文书，本数据集未覆盖。
+    - key: resident_teaching
+      level: routine
+      evidence: documented
+      evidence_refs: ['record:PB-0010', 'manager_review:MR12']
+      note: 实习生带教安排与评价都有记录。
+    certifications: [护士执业证书, 手术室专科护士培训合格证书]
+    notes: 手术记录里她以器械护士、巡回护士出现，容易被当成手术能力证据。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, shared_terminal]
+    expression_style: 按流程讲，爱引用护理规范条目
+    attitude: neutral
+    test_focus:
+    - 检查手术记录里的护理配合是否被算成「手术主刀」类能力
+    - 看实习生的能力结论会不会连带写进自己的画像
+    - 确认共用终端下的操作能区分登录人
+- employee_code: MA013
+  display_name: 宋亦
+  work_history:
+  - period: 2026-07 至今
+    org: 沐安市中心医院（模拟）
+    role: 护理实习生（在校第四年，普通外科轮转）
+    summary: 随责任护士跟班，不单独值守
+  ground_truth:
+    capabilities:
+    - key: nursing_observation
+      level: needs_support
+      evidence: documented
+      evidence_refs: ['record:PB-0010', 'record:JX-0005', 'manager_review:MR12', 'self_report:SR12']
+      note: 记录、自述与评价完全一致，系统应能确认需要协助。
+    - key: infection_control
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 实习生感控考核在学校与科室纸质记录里，系统无记录。
+    certifications: []
+    notes: 实习生身份；系统不应为其生成可被调配的能力结论。
+  usage_profile:
+    digital_literacy: medium
+    devices: [mobile]
+    expression_style: 口语化，爱用「老师」「跟班」这类说法，句子零散
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查实习生是否被列入可调配资源池
+    - 用手机填自述时表单能不能正常提交
+    - 确认带教老师在旁完成的操作不被写成独立完成
+- employee_code: MA014
+  display_name: 顾长风
+  work_history:
+  - period: 2009-07 至今
+    org: 沐安市中心医院（模拟）
+    role: 急诊医学科住院医师、主治医师、副主任医师、科主任
+    summary: 承担二线与总值班，负责急诊分诊标准与规培师资
+  ground_truth:
+    capabilities:
+    - key: critical_care
+      level: independent_complex
+      evidence: partial
+      evidence_refs: ['record:PB-0009', 'record:PB-0012']
+      note: 只有排班与总值班记录，看不出他主持复杂抢救的过程；真实水平高于记录能支持的结论。
+    - key: resident_teaching
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 规培师资资格在 HR 档案里，教学查房与阶段考核记录没有进入任何来源。
+    - key: emergency_triage
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 分诊标准由他审定，但他本人不排分诊班，系统里没有任何分诊记录。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 急救医学专业）, 急诊医学科住院医师规范化培训师资资格]
+    notes: 抢救记录系统不在本数据集范围内，急诊科主任的核心能力几乎没有数字痕迹。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 短句、结论先行，强调「现场谁在场」
+    attitude: neutral
+    test_focus:
+    - 检查抢救主持能力在缺少抢救记录时怎么呈现
+    - 看自己给下属的评价会不会被当成唯一依据
+    - 确认总值班记录不会被当成临床能力证据
+- employee_code: MA015
+  display_name: 艾力·买买提
+  work_history:
+  - period: 2018-07 至今
+    org: 沐安市中心医院（模拟）
+    role: 急诊医学科住院医师、主治医师
+    summary: 承担急诊二线值班，主持休克与多发伤抢救
+  ground_truth:
+    capabilities:
+    - key: critical_care
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: ['record:PB-0004', 'record:PB-0009', 'manager_review:MR05', 'self_report:SR04']
+      note: 真实能独立主持复杂抢救。经理评价写成需要协助，与自述直接冲突；系统若只采信经理评价会低估他。
+    - key: medical_record_writing
+      level: routine
+      evidence: documented
+      evidence_refs: ['record:ZK-0007']
+      note: 急诊留观病历评为甲级，记录一致。
+    - key: outpatient_consult
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 急诊门诊接诊量没有进入排班或质控系统，系统应输出未知。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 急救医学专业）, 住院医师规范化培训合格证书（急诊科）]
+    notes: 维吾尔族姓名带间隔号；继续教育平台用拼音账号 aili.maimaiti，HR 未登记映射。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 直率，情绪明确，会直接说「我不同意」
+    attitude: skeptical
+    test_focus:
+    - 带间隔号的姓名在搜索、登录和导出时是否正常
+    - 继续教育平台的学分能否归并到自己名下
+    - 对经理评价提出申诉的入口是否可用、申诉后画像怎么变
+    - 检查自述与经理评价冲突时系统是否强行二选一
+- employee_code: MA016
+  display_name: 温野
+  work_history:
+  - period: 2025-08 至今
+    org: 沐安市中心医院（模拟）
+    role: 急诊医学科住院医师
+    summary: 一线值班，承担留观病区日常处理
+  ground_truth:
+    capabilities:
+    - key: critical_care
+      level: routine
+      evidence: documented
+      evidence_refs: ['record:PB-0004', 'record:PB-0009', 'manager_review:MR15']
+      note: 排班记录与经理评价一致，系统应能确认常规等级。
+    - key: medical_record_writing
+      level: routine
+      evidence: documented
+      evidence_refs: ['record:ZK-0015', 'record:JX-0008']
+      note: 甲级病历加培训记录，结论清楚。
+    - key: inpatient_management
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 留观病区的病程管理没有单独记录。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 急救医学专业）]
+    notes: PB-0007 由科室共用终端代为登记替班，他的班次出现在别人的账号下。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 平实，按时间顺序叙述
+    attitude: positive
+    test_focus:
+    - 检查共用终端代填的替班记录能否追溯到自己
+    - 看一线值班的记录会不会被当成独立主持抢救
+- employee_code: MA017
+  display_name: 蓝昔
+  work_history:
+  - period: 2019-07 至 2026-02
+    org: 沐安市中心医院（模拟）
+    role: 心血管内科护师（CCU）
+    summary: 承担监护与多管路护理
+  - period: 2026-03 至今
+    org: 沐安市中心医院（模拟）
+    role: 急诊医学科护师
+    summary: 抢救室跟班，完成分诊标准化培训
+  ground_truth:
+    capabilities:
+    - key: emergency_triage
+      level: routine
+      evidence: documented
+      evidence_refs: ['record:JX-0014', 'record:PB-0008', 'manager_review:MR11', 'self_report:SR05']
+      note: 培训、排班与评价一致。
+    - key: nursing_observation
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: ['record:PB-0005', 'record:PB-0008']
+      note: 转岗前在 CCU 具备危重与多管路护理能力，但记录只剩一条排班；转岗后的记录全在急诊，只按当前部门看会低估她。转岗痕迹只存在排班系统里。
+    - key: infection_control
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 无系统记录。
+    certifications: [护士执业证书, 急诊预检分诊标准化培训合格证明]
+    notes: 2026-03-01 转岗，前后岗位在排班记录里都有痕迹。
+  usage_profile:
+    digital_literacy: medium
+    devices: [mobile, shared_terminal]
+    expression_style: 简短，爱说「一般的我能做，多的还是喊护士长」
+    attitude: neutral
+    test_focus:
+    - 检查转岗前在 CCU 的能力是否被保留在画像里
+    - 看画像是否按当前科室把以前的经历清零
+    - 手机端查看自己的画像历史是否可用
+- employee_code: MA018
+  display_name: 关月
+  work_history:
+  - period: 2011-07 至今
+    org: 沐安市中心医院（模拟）
+    role: 急诊医学科护士、护师、主管护师、护士长
+    summary: 负责急诊护理排班、分诊落地与专科培训
+  ground_truth:
+    capabilities:
+    - key: emergency_triage
+      level: independent_complex
+      evidence: documented
+      evidence_refs: ['record:PB-0004', 'record:PB-0008', 'self_report:SR14']
+      note: 排班与自述一致，批量就诊时的分诊决策由她承担。
+    - key: nursing_observation
+      level: independent_complex
+      evidence: partial
+      evidence_refs: ['record:JX-0010', 'record:JX-0005']
+      note: 培训与授课记录只能间接说明护理水平。
+    - key: resident_teaching
+      level: routine
+      evidence: documented
+      evidence_refs: ['record:JX-0005', 'record:PB-0008']
+      note: 授课与带教跟班安排都有记录。
+    certifications: [护士执业证书, 急诊专科护士培训合格证书]
+    notes: 没有经理评价，自述是系统能看到的主要主观证据。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 条目化，先说责任范围再说具体事
+    attitude: positive
+    test_focus:
+    - 检查只有自述、没有经理评价时画像的信心标签怎么写
+    - 看带教与培训记录是否被区分为教学能力而不是护理能力
+- employee_code: MA019
+  display_name: 邵令仪
+  work_history:
+  - period: 1999-08 至 2005-06
+    org: 某市立医院（虚构）
+    role: 普通外科医师
+    summary: 完成外科训练
+  - period: 2005-07 至今
+    org: 沐安市中心医院（模拟）
+    role: 普通外科副主任医师、医务部主任
+    summary: 负责医疗质量与安全、病案质控、手术分级授权审核，牵头授权规范修订
+  ground_truth:
+    capabilities:
+    - key: record_qc_review
+      level: independent_complex
+      evidence: documented
+      evidence_refs: ['record:ZK-0013', 'record:JX-0012']
+      note: 季度讲评与授权规范修订有记录，系统应能确认。
+    - key: outpatient_consult
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 转任职能部门后只偶尔出诊，排班系统没有他的门诊班次。
+    - key: critical_care
+      level: routine
+      evidence: partial
+      evidence_refs: ['record:PB-0012']
+      note: 总值班记录只能看出协调职责，不能据此判断临床处置水平。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 外科专业）, 医疗质量管理专项培训合格证明]
+    notes: 既是医务部负责人，又是手术分级授权规范修订的项目负责人。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 公文式，爱写「按规定」「需科室书面说明」
+    attitude: neutral
+    test_focus:
+    - 检查部门负责人兼项目负责人时权限与评价人身份是否正确
+    - 看总值班记录是否被误当成临床能力证据
+    - 确认自己能看到全院质控进度但看不到员工自述全文
+- employee_code: MA020
+  display_name: 席南
+  work_history:
+  - period: 2015-07 至 2019-05
+    org: 沐安市中心医院（模拟）
+    role: 心血管内科住院医师、主治医师
+    summary: 临床岗，后转病案质控
+  - period: 2019-06 至今
+    org: 沐安市中心医院（模拟）
+    role: 医务部病案质控医师
+    summary: 承担终末质控、运行病历抽查与季度讲评
+  ground_truth:
+    capabilities:
+    - key: record_qc_review
+      level: independent_complex
+      evidence: documented
+      evidence_refs: ['record:ZK-0001', 'record:ZK-0013', 'manager_review:MR08', 'self_report:SR07']
+      note: 记录充分且与评价一致。
+    - key: emr_system_support
+      level: needs_support
+      evidence: documented
+      evidence_refs: ['record:ZK-0008', 'record:ZK-0016', 'manager_review:MR17']
+      note: 她在质控规则项目里只做业务校验，不做配置；项目经理的评价与记录一致。
+    - key: icd_coding
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 编码能力来自早年在病案室的经历，系统无记录。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 内科专业）, 病案质量管理专项培训合格证明]
+    notes: 她的岗位决定了「质控扣分记在主管医师名下」这条规则，是扣分归属问题的解释者。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 精确，爱写定级依据和条目编号
+    attitude: positive
+    test_focus:
+    - 检查系统是否把质控扣分直接当成被扣分医师的书写能力
+    - 看她参与系统项目的记录会不会被算成 IT 能力
+    - 确认质控定级的依据链在画像里可追溯
+- employee_code: MA021
+  display_name: 常徽
+  work_history:
+  - period: 2014-09 至今
+    org: 沐安市中心医院（模拟）
+    role: 病案室编码员、病案信息技术师
+    summary: 负责病案首页质控与上报批次编码核对
+  ground_truth:
+    capabilities:
+    - key: icd_coding
+      level: independent_complex
+      evidence: documented
+      evidence_refs: ['record:ZK-0003', 'record:ZK-0014', 'manager_review:MR09', 'self_report:SR08']
+      note: 记录、自述与评价一致。
+    - key: clinical_data_report
+      level: routine
+      evidence: partial
+      evidence_refs: ['record:ZK-0014']
+      note: 只有一条上报前核对记录，看不出报表编制能力。
+    - key: resident_teaching
+      level: routine
+      evidence: partial
+      evidence_refs: ['manager_review:MR09']
+      note: 她做的科室编码培训只在经理评价里被提到一句，系统没有培训记录。
+    certifications: [病案信息技术（主管技师）专业技术资格, ICD-10 与 ICD-9-CM-3 编码培训合格证书]
+    notes: 技师序列职称，不走医师序列，职级字段容易被按医师体系误读。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 数字化，爱写份数和比例
+    attitude: positive
+    test_focus:
+    - 检查技师职称在职级显示里是否被当成医师职称
+    - 看只在评价里提到的培训能否转成待确认证据
+- employee_code: MA022
+  display_name: 骆斐
+  work_history:
+  - period: 2019-09 至今
+    org: 沐安市中心医院（模拟）
+    role: 医务部科教干事
+    summary: 负责继续教育学分、项目申报与规培考核材料
+  ground_truth:
+    capabilities:
+    - key: cme_management
+      level: routine
+      evidence: documented
+      evidence_refs: ['record:JX-0001', 'record:JX-0013', 'manager_review:MR16', 'self_report:SR11']
+      note: 记录与评价一致。
+    - key: clinical_data_report
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 学分统计报表用表格手工做，系统没有记录。
+    - key: resident_teaching
+      level: needs_support
+      evidence: partial
+      evidence_refs: ['record:JX-0003']
+      note: 她只做阶段考核的登记，教学由临床师资承担；记录容易被误读为她在带教。
+    certifications: [继续医学教育项目管理培训合格证明]
+    notes: 管理岗，不是卫生技术人员，不应被套用医师职称体系。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 事务性，按流程节点讲
+    attitude: neutral
+    test_focus:
+    - 检查学分登记记录会不会被算成她本人的教学能力
+    - 看管理岗在能力词典里是否被强行匹配临床能力
+- employee_code: MA023
+  display_name: 聂川
+  work_history:
+  - period: 2011-03 至今
+    org: 沐安市中心医院（模拟）
+    role: 信息中心工程师、主任
+    summary: 负责 HIS 与电子病历运维、数据上报支持
+  ground_truth:
+    capabilities:
+    - key: emr_system_support
+      level: independent_complex
+      evidence: partial
+      evidence_refs: ['record:JX-0006']
+      note: 具体配置由下属执行，系统里只有一条培训参加记录。
+    - key: clinical_data_report
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 上报口径的决策在会议纪要里，四个来源都没有。
+    certifications: [信息系统项目管理师]
+    notes: 部门负责人，但下属岑屹是项目经理，汇报线与项目线不一致。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 技术化，爱讲系统边界和权限模型
+    attitude: skeptical
+    test_focus:
+    - 检查部门负责人与项目经理的权限边界是否正确
+    - 看自己只有一条培训记录时画像会不会写成低水平
+- employee_code: MA024
+  display_name: 汤屿
+  work_history:
+  - period: 2018-04 至今
+    org: 沐安市中心医院（模拟）
+    role: 信息中心系统运维工程师
+    summary: 负责账号权限、数据导出支持，兼本企业系统管理员
+  ground_truth:
+    capabilities:
+    - key: emr_system_support
+      level: routine
+      evidence: partial
+      evidence_refs: ['record:ZK-0014', 'record:JX-0006']
+      note: 只有一次数据导出支持和一次培训记录；日常工单在运维系统，本数据集未覆盖。
+    - key: clinical_data_report
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 无系统记录。
+    certifications: [网络工程师（软考中级）]
+    notes: 本企业的 org_admin，是普通员工而不是部门负责人。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 工单式，爱写复现步骤
+    attitude: positive
+    test_focus:
+    - 管理员能否看到全院进度但看不到员工自述全文
+    - 账号归并、未登记账号的处理入口是否可用
+    - 检查管理员身份不会自动获得部门负责人的评价权
+- employee_code: MA025
+  display_name: 岑屹
+  work_history:
+  - period: 2017-06 至今
+    org: 沐安市中心医院（模拟）
+    role: 信息中心电子病历工程师
+    summary: 负责病历模板与质控规则，任质控系统升级项目经理
+  ground_truth:
+    capabilities:
+    - key: emr_system_support
+      level: independent_complex
+      evidence: documented
+      evidence_refs: ['record:ZK-0008', 'record:ZK-0016', 'manager_review:MR13', 'self_report:SR13']
+      note: 两期规则配置与上线记录充分，评价一致。
+    - key: record_qc_review
+      level: needs_support
+      evidence: partial
+      evidence_refs: ['record:ZK-0016']
+      note: 他懂质控规则，但不做质控定级；记录容易被误读为他具备质控审核能力。
+    - key: clinical_data_report
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 指标取数脚本没有在系统里留记录。
+    certifications: [软件设计师（软考中级）]
+    notes: 项目经理但不是部门负责人，权限模型的主要测试对象。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 精确，爱讲灰度范围和回滚方案
+    attitude: skeptical
+    test_focus:
+    - 项目经理不是部门负责人时能否拿到项目成员的查看权
+    - 检查在病历质控来源里的记录是否被算成临床质控能力
+    - 看自己给跨部门成员的评价是否被接受
+- employee_code: MA026
+  display_name: 黎向晚
+  work_history:
+  - period: 2023-07 至 2026-07
+    org: 某区卫生健康统计中心（虚构）
+    role: 统计员
+    summary: 负责区域医疗质量指标报表
+  - period: 2026-08 至今
+    org: 沐安市中心医院（模拟）
+    role: 信息中心数据统计工程师
+    summary: 入职两个多月，正在熟悉院内数据口径
+  ground_truth:
+    capabilities:
+    - key: clinical_data_report
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 入职前做了三年报表，本院四个来源一条记录都没有；系统必须输出未知。
+    - key: emr_system_support
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 同上，还在熟悉院内系统。
+    certifications: []
+    notes: 新入职无历史记录；经理评价是 not_sure，这是系统唯一的线索。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 数据导向，爱确认口径定义
+    attitude: positive
+    test_focus:
+    - 检查无记录时画像是否显示未知并提示补充自述
+    - 看能否录入外单位经历作为待确认证据
+- employee_code: MA027
+  display_name: 卫沉
+  work_history:
+  - period: 2014-07 至 2026-06
+    org: 沐安市中心医院（模拟）
+    role: 心血管内科住院医师、主治医师
+    summary: 承担起搏器植入等四级手术，2026 年 6 月离职
+  ground_truth:
+    capabilities:
+    - key: cardiac_intervention
+      level: independent_complex
+      evidence: documented
+      evidence_refs: ['record:SS-0005']
+      note: 起搏器植入的四级手术记录清楚；人已离职，系统里仍留着历史记录和术者编码。
+    - key: medical_record_writing
+      level: needs_support
+      evidence: misleading
+      evidence_refs: ['record:ZK-0004']
+      note: 丙级病历是他离职交接期留下的，缺陷主要源于交接不全。仅凭这一条会严重低估他的书写水平。
+    - key: inpatient_management
+      level: routine
+      evidence: partial
+      evidence_refs: ['record:PB-0003']
+      note: 只有一条门诊排班记录。
+    certifications: [医师资格证书（临床类别）, 医师执业证书（执业范围 内科专业）, 心血管疾病介入诊疗技术培训合格证书]
+    notes: 已离职，没有登录账号，但历史记录仍在排班、质控、手术三个来源里。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 不适用，已离职，不会登录系统
+    attitude: neutral
+    test_focus:
+    - 离职人员是否仍占用登录账号或出现在可调配资源池
+    - 检查离职人员的历史记录是否被归到接手医师名下
+- employee_code: MA028
+  display_name: 甘棠
+  work_history:
+  - period: 2016-07 至 2026-02
+    org: 沐安市中心医院（模拟）
+    role: 普通外科护士、护师（含手术配合轮转）
+    summary: 承担病区护理与手术器械、巡回配合，2026 年 2 月离职
+  ground_truth:
+    capabilities:
+    - key: nursing_observation
+      level: routine
+      evidence: partial
+      evidence_refs: ['record:SS-0001', 'record:SS-0003', 'record:PB-0006']
+      note: 只能看出她承担手术配合，病区护理的记录不在本数据集。
+    - key: infection_control
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 器械与环境处置记录在手术室纸质台账。
+    certifications: [护士执业证书（离职时未办理延续注册）]
+    notes: 已离职，护士执业证书有效期到 2026-07-19 且未延续，是「证书状态与在职状态都要看」的例子。
+  usage_profile:
+    digital_literacy: medium
+    devices: [mobile]
+    expression_style: 不适用，已离职，不会登录系统
+    attitude: neutral
+    test_focus:
+    - 离职人员的过期执业证书是否被当成有效资质
+    - 检查她在手术记录里的护理配合是否被算到在职护士名下
+account_truth:
+- source: 排班
+  account_id: PB-T07
+  owner: null
+  note: 急诊科共用排班终端账号，节假日由值班人员代为登记替班，不属于任何员工；PB-0007 就是这样产生的。
+- source: 手术记录
+  account_id: DR-9001
+  owner: null
+  note: 受邀到场指导的外院专家在手术记录系统里的临时术者编码，不是本院员工，HR 系统没有这个人。
+- source: 手术记录
+  account_id: DR-2108
+  owner: MA010
+  note: 科室合并前傅行舟使用的旧术者编码，手术系统里仍在用，HR 没有登记这条映射，系统默认会漏算 SS-0009 这台手术。
+- source: 继续医学教育
+  account_id: aili.maimaiti
+  owner: MA015
+  note: 继续教育平台的拼音用户名，与院内工号没有建立映射，JX-0004 的学分默认挂不到本人名下。
+edge_cases:
+- tag: same_name
+  employees: [MA002, MA009]
+  refs: ['record:SS-0002', 'record:SS-0011', 'record:PB-0013']
+  note: 两位医师都叫李沐。一位在心血管内科（工号 YG20114、术者编码 DR-1023），一位在普通外科（工号 YG20327、术者编码 DR-2014）。手术记录系统里显示名完全相同，只能靠账号区分；两人的手术类型完全不同，混淆后会同时出现高估和错配。
+- tag: multi_account
+  employees: [MA002, MA009, MA010, MA015]
+  refs: ['record:SS-0009', 'record:JX-0004', 'record:SS-0002', 'record:PB-0013']
+  note: 医师在排班、病历质控、继续教育里用院内工号，在手术记录里用术者编码，属于同一人的两个账号。傅行舟还有第三个未登记的旧术者编码 DR-2108；艾力·买买提的继续教育账号是拼音用户名 aili.maimaiti。
+- tag: unlinked_account
+  employees: []
+  refs: ['record:PB-0007', 'record:SS-0006']
+  note: PB-T07 是急诊科共用排班终端账号，DR-9001 是外院指导专家的临时术者编码。两者都在来源数据里出现过，都不属于任何员工，系统不应为它们生成画像。
+- tag: transfer
+  employees: [MA017]
+  refs: ['record:PB-0005', 'record:PB-0008', 'record:JX-0014']
+  note: 蓝昔 2026-03-01 从心血管内科 CCU 转到急诊医学科。PB-0005 是转岗前在心内科的护理排班，PB-0008 是转岗后首月在急诊抢救室跟班，JX-0014 是转岗后补修的分诊培训，前后岗位的痕迹都在排班与继续教育里。
+- tag: concurrent_post
+  employees: [MA010]
+  refs: ['record:ZK-0005', 'record:ZK-0011', 'record:SS-0013']
+  note: 傅行舟主岗在普通外科，兼任医务部病案质控医师，第二汇报人是医务部主任。手术记录和病历质控里都有他，两类能力必须分开呈现。
+- tag: departed
+  employees: [MA027, MA028]
+  refs: ['record:SS-0005', 'record:ZK-0004', 'record:SS-0001']
+  note: 卫沉 2026-06-30 离职、甘棠 2026-02-28 离职，都没有登录账号，但历史记录仍留在排班、病历质控和手术记录里，其中 ZK-0004 的丙级病历还处在已退回状态。
+- tag: new_hire_no_history
+  employees: [MA007, MA026]
+  refs: ['manager_review:MR03', 'manager_review:MR14']
+  note: 金雪 2026-09-07 入职、黎向晚 2026-08-17 入职，都不出现在任何工作记录（含 participants），也没有自述。系统能看到的只有两条 not_sure 的经理评价，画像必须是未知而不是不会。
+- tag: intern
+  employees: [MA013]
+  refs: ['record:PB-0010', 'record:JX-0005']
+  note: 宋亦是在校护理实习生，排班里只写跟班、不单独值守，培训记录明确不计学分，不应被纳入可调配资源。
+- tag: assignee_mismatch
+  employees: [MA003, MA005, MA008, MA009]
+  refs: ['record:SS-0010', 'record:ZK-0002', 'record:ZK-0011']
+  note: 两类错配。一是手术挂名：SS-0010 登记主刀为科主任褚衡（MA008），实际全部操作由主治医师李沐（MA009）完成，科主任仅在台指导，ZK-0011 的签名不一致说的是同一台手术。二是质控扣分归属：ZK-0002 按制度把扣分记在主管医师沈砚（MA003）名下，病历实际由规培医师谭䶮（MA005）书写。
+- tag: cross_source_duplicate
+  employees: [MA008, MA009, MA010]
+  refs: ['record:SS-0010', 'record:ZK-0011']
+  note: 同一台腹腔镜胆囊切除术（手术编号 OP-2026-0708）在手术记录里是 SS-0010，在病历质控里以病案号 BAH-2026-0802 出现为 ZK-0011。两条记录对主刀是谁的说法不一致，不去重会把一台手术算成两台。
+- tag: review_conflict
+  employees: [MA009, MA015]
+  refs: ['self_report:SR03', 'manager_review:MR04', 'self_report:SR04', 'manager_review:MR05']
+  note: 李沐自述能承担四级手术，科主任只认到常规三级；艾力·买买提自述能独立主持复杂抢救，科主任认为仍需协助。两组自述与评价直接矛盾，系统不应强行二选一。
+- tag: appeal
+  employees: [MA003, MA015]
+  refs: ['manager_review:MR01', 'manager_review:MR05', 'manager_review:MR18']
+  note: 沈砚认为质控扣分不该记成自己的病历书写水平，也不认可按过期证书判断介入能力，会去申诉；艾力·买买提不接受「复杂抢救需要协助」的结论，自述里已经写明要申诉。
+- tag: manager_unsure
+  employees: [MA005, MA007, MA026]
+  refs: ['manager_review:MR02', 'manager_review:MR03', 'manager_review:MR14']
+  note: 三条 not_sure。谭䶮的书写样本太少无法判断；金雪和黎向晚入职不久、系统里没有记录，经理明确表示不确定而不是评低。
+- tag: ethnic_minority_name
+  employees: [MA004, MA015]
+  refs: ['record:JX-0004', 'record:PB-0004']
+  note: 其木格是蒙古族姓名，没有姓氏结构；艾力·买买提是维吾尔族姓名，带间隔号。两者在姓名拆分、拼音邮箱生成、搜索和 CSV 导出里都容易出问题，艾力·买买提的继续教育账号还是拼音用户名。
+- tag: rare_character
+  employees: [MA005]
+  refs: ['record:PB-0011', 'record:ZK-0002']
+  note: 谭䶮的「䶮」是 U+4D6E，属 CJK 统一汉字扩展 A 区，仍在基本多文种平面（BMP）内，UTF-8 占 3 字节，不是 4 字节字符。需要测试字体缺字、搜索分词、CSV 导出与邮件标题编码。
+- tag: english_name
+  employees: [MA011]
+  refs: ['record:PB-0016', 'record:JX-0009']
+  note: 周子珩在排班和继续教育系统里的显示名是 Jerry Zhou，与花名册的中文名并存。按显示名聚合会把同一个人拆成两条画像。
+- tag: dept_and_project_lead
+  employees: [MA001, MA019]
+  refs: ['record:JX-0011', 'record:JX-0012']
+  note: 云嘉树既是心血管内科主任又是心衰 MDT 协作组负责人；邵令仪既是医务部主任又是手术分级授权管理规范修订的负责人。部门负责人与项目负责人两种身份叠加，权限和评价人判定都要测。
+- tag: pm_not_dept_manager
+  employees: [MA025]
+  refs: ['record:ZK-0008', 'record:ZK-0016']
+  note: 岑屹是电子病历质控系统升级项目的项目经理，但不是任何部门的负责人，他的直属上级是信息中心主任。项目成员里还有医务部的人，跨部门评价权需要按项目关系授予。
+- tag: colloquial
+  employees: [MA005, MA013]
+  refs: ['self_report:SR02', 'self_report:SR12']
+  note: 谭䶮的自述用语音转文字，口语化、有错别字；宋亦是实习护生，自述零散、爱用「老师」「跟班」这类说法。两人的自述都需要系统能接受非书面语并正确引用。

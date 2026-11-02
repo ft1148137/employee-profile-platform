@@ -1,0 +1,58 @@
+slug: muan-hospital
+name: 沐安市中心医院（模拟）
+industry: 三级甲等综合医院
+gbt4754:
+  section: Q
+  section_name: 卫生和社会工作
+  code: '8411'
+  class_name: 综合医院
+org_structure: line_functional
+org_structure_note: 院领导—职能部门—临床科室三层。科室主任对本科室的医疗、教学和人员负责；医务部、信息中心等职能部门对科室行使业务管理、质控与授权审核职能，不直接管理科室人员。
+capability_template: templates/capabilities/hospital.zh-CN.yaml
+uses_jira: false
+sources:
+- name: 排班
+  kind: work_records
+  description: 医师与护理排班系统，记录门诊、病区、夜班与总值班的排班确认和值班执行
+- name: 病历质控
+  kind: work_records
+  description: 病案质控系统，记录运行病历抽查、出院病历终末质控定级（甲／乙／丙级）与质控规则维护；只使用合成病案号
+- name: 继续医学教育
+  kind: work_records
+  description: 继续医学教育与院内培训平台，记录 I／II 类学分、规培阶段考核与院内培训台账
+- name: 手术记录
+  kind: work_records
+  description: 手术记录系统，记录手术分级、主刀与助手、手术配合护理；只使用合成手术编号
+hr_it_departments: [信息中心]
+departments:
+- name: 心血管内科
+  pcf_categories: ['5.0 Deliver Services']
+  responsibilities: 心血管疾病门诊与住院诊疗、CCU 监护、冠脉造影与介入治疗、心衰随访
+- name: 普通外科
+  pcf_categories: ['5.0 Deliver Services']
+  responsibilities: 肝胆、胃肠、疝与甲乳疾病的门诊与手术治疗，腹腔镜与开腹手术，围手术期管理
+- name: 急诊医学科
+  pcf_categories: ['5.0 Deliver Services', '6.0 Manage Customer Service']
+  responsibilities: 急诊预检分诊、抢救室与留观病区、院前衔接与急危重症初步处置
+- name: 医务部
+  pcf_categories: ['11.0 Manage Enterprise Risk, Compliance, Remediation, and Resiliency', '13.0 Develop and Manage Business Capabilities']
+  responsibilities: 医疗质量与安全管理、病案质控与编码、手术分级授权审核、继续医学教育与规培管理、行政总值班
+- name: 信息中心
+  pcf_categories: ['8.0 Manage Information Technology (IT)']
+  responsibilities: 电子病历与 HIS 运维、病历质控规则配置、账号与权限管理、医疗质量数据统计与上报支持
+projects:
+- code: CHF-MDT
+  name: 心衰多学科诊疗（MDT）协作组
+  manager: MA001
+  members: [MA002, MA003, MA010, MA015]
+  note: 心血管内科主任既是科室负责人又是 MDT 牵头人（dept_and_project_lead）
+- code: EMR-ZK
+  name: 电子病历质控系统升级
+  manager: MA025
+  members: [MA020, MA021, MA024, MA003]
+  note: 项目经理是信息中心的电子病历工程师，不是任何部门负责人（pm_not_dept_manager）
+- code: SSFJ
+  name: 手术分级授权管理规范修订
+  manager: MA019
+  members: [MA001, MA008, MA010, MA020]
+  note: 医务部主任既是部门负责人又是该修订工作的负责人（dept_and_project_lead）

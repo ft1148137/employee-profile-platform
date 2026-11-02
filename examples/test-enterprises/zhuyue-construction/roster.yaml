@@ -1,0 +1,544 @@
+- employee_code: ZY001
+  grade: M3（一级项目经理）
+  hired_on: '2014-04-07'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 安全检查
+    account_id: aq-fengcy-00
+  certifications:
+  - name: 一级建造师（建筑工程）
+    issued_on: '2017-05-20'
+    valid_until: '2029-05-19'
+    note: 注册在本公司，栖湖花园项目的项目经理备案人
+  - name: 建筑施工企业主要负责人及项目负责人安全生产考核合格证书（B 类）
+    issued_on: '2023-07-01'
+    valid_until: '2026-06-30'
+    note: 已过有效期，换证申请在人力行政部排队，现场仍按项目经理岗安排工作
+- employee_code: ZY002
+  grade: T5（项目总工）
+  hired_on: '2016-08-15'
+  reports_to: ZY001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 质量验收
+    account_id: zl-lujs
+  certifications:
+  - name: 二级建造师（建筑工程）
+    issued_on: '2019-06-01'
+    valid_until: '2028-05-31'
+    note: ''
+  - name: 工程师（土建）职称
+    issued_on: '2021-12-20'
+    valid_until: null
+    note: 中级职称
+- employee_code: ZY003
+  grade: T3（施工员）
+  hired_on: '2019-07-01'
+  reports_to: ZY002
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 质量验收
+    account_id: zl-wanghaitao
+  certifications:
+  - name: 施工现场专业人员（施工员-土建施工）岗位证书
+    issued_on: '2019-11-10'
+    valid_until: null
+    note: ''
+- employee_code: ZY004
+  grade: T3（施工员）
+  hired_on: '2020-03-02'
+  reports_to: ZY002
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 质量验收
+    account_id: zl-haomy
+  certifications:
+  - name: 施工现场专业人员（施工员-设备安装施工）岗位证书
+    issued_on: '2020-09-14'
+    valid_until: null
+    note: ''
+- employee_code: ZY005
+  grade: T2（资料员）
+  hired_on: '2021-04-12'
+  reports_to: ZY002
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 质量验收
+    account_id: zl-shaowq
+  certifications:
+  - name: 施工现场专业人员（资料员）岗位证书
+    issued_on: '2021-08-20'
+    valid_until: null
+    note: ''
+- employee_code: ZY006
+  grade: 劳务班组长（分包单位派驻）
+  hired_on: '2024-09-02'
+  reports_to: ZY003
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: contractor
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 建筑施工特种作业操作证（建筑架子工）
+    issued_on: '2017-08-15'
+    valid_until: '2023-08-14'
+    note: 已过有效期、未换证；现场不再安排其从事架子作业，HR 台账尚未更新
+- employee_code: ZY007
+  grade: 劳务班组长（分包单位派驻）
+  hired_on: '2025-03-10'
+  reports_to: ZY003
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: contractor
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: ZY008
+  grade: T2（测量员）
+  hired_on: '2022-06-06'
+  reports_to: ZY002
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 质量验收
+    account_id: zl-qicl
+  certifications:
+  - name: 施工现场专业人员（测量员）岗位证书
+    issued_on: '2022-10-18'
+    valid_until: null
+    note: ''
+- employee_code: ZY009
+  grade: M3（部门经理）
+  hired_on: '2013-11-04'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 安全检查
+    account_id: aq-weilq-01
+  certifications:
+  - name: 中级注册安全工程师（建筑施工安全）
+    issued_on: '2020-04-10'
+    valid_until: '2029-04-09'
+    note: ''
+  - name: 建筑施工企业主要负责人及项目负责人安全生产考核合格证书（B 类）
+    issued_on: '2024-03-01'
+    valid_until: '2027-02-28'
+    note: ''
+- employee_code: ZY010
+  grade: T3（专职安全员）
+  hired_on: '2020-11-16'
+  reports_to: ZY009
+  secondary_reports_to: [ZY001]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: [栖湖花园项目部]
+  transfers: []
+  external_accounts:
+  - source: 安全检查
+    account_id: aq-wanght-02
+  certifications:
+  - name: 施工现场专业人员（安全员）岗位证书
+    issued_on: '2021-02-25'
+    valid_until: null
+    note: ''
+  - name: 建筑施工企业专职安全生产管理人员安全生产考核合格证书（C 类）
+    issued_on: '2024-05-08'
+    valid_until: '2027-05-07'
+    note: ''
+- employee_code: ZY011
+  grade: T3（专职质量员）
+  hired_on: '2021-02-22'
+  reports_to: ZY009
+  secondary_reports_to: [ZY001]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: [栖湖花园项目部]
+  transfers: []
+  external_accounts:
+  - source: 质量验收
+    account_id: zl-jianning
+  certifications:
+  - name: 施工现场专业人员（质量员-土建施工）岗位证书
+    issued_on: '2021-07-09'
+    valid_until: null
+    note: ''
+  - name: 二级建造师（建筑工程）
+    issued_on: '2024-06-15'
+    valid_until: '2033-06-14'
+    note: 已取得但未担任过项目经理岗
+- employee_code: ZY012
+  grade: T2（专职安全员）
+  hired_on: '2023-05-08'
+  reports_to: ZY009
+  secondary_reports_to: [ZY015]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: [工程管理部]
+  transfers: []
+  external_accounts:
+  - source: 安全检查
+    account_id: aq-cmr-05
+  certifications:
+  - name: 施工现场专业人员（安全员）岗位证书
+    issued_on: '2023-09-11'
+    valid_until: null
+    note: ''
+  - name: 建筑施工企业专职安全生产管理人员安全生产考核合格证书（C 类）
+    issued_on: '2023-11-20'
+    valid_until: '2026-11-19'
+    note: ''
+- employee_code: ZY013
+  grade: T2（试验检测）
+  hired_on: '2022-09-05'
+  reports_to: ZY009
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers:
+  - effective_on: '2025-12-01'
+    from_department: 栖湖花园项目部
+    from_title: 资料员
+    to_department: 安全质量部
+  external_accounts:
+  - source: 质量验收
+    account_id: zl-qiaoyt
+  certifications:
+  - name: 建筑材料试验员（中级）
+    issued_on: '2026-01-16'
+    valid_until: null
+    note: 转岗后考取
+- employee_code: ZY014
+  grade: M3（部门经理）
+  hired_on: '2012-03-19'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 质量验收
+    account_id: zl-niezk
+  certifications:
+  - name: 一级建造师（建筑工程）
+    issued_on: '2015-06-10'
+    valid_until: '2027-06-09'
+    note: ''
+  - name: 高级工程师（土建）职称
+    issued_on: '2022-11-28'
+    valid_until: null
+    note: ''
+- employee_code: ZY015
+  grade: M2（生产经理）
+  hired_on: '2018-05-21'
+  reports_to: ZY014
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 安全检查
+    account_id: aq-duanjy-06
+  - source: 质量验收
+    account_id: zl-duanjy
+  certifications:
+  - name: 一级建造师（建筑工程）
+    issued_on: '2023-05-26'
+    valid_until: '2029-05-25'
+    note: 已注册，尚未担任过独立项目的项目经理备案人
+  - name: 建筑施工企业主要负责人及项目负责人安全生产考核合格证书（B 类）
+    issued_on: '2024-08-15'
+    valid_until: '2027-08-14'
+    note: ''
+- employee_code: ZY016
+  grade: T4（技术管理）
+  hired_on: '2017-09-04'
+  reports_to: ZY014
+  secondary_reports_to: [ZY001]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: [栖湖花园项目部]
+  transfers: []
+  external_accounts:
+  - source: 质量验收
+    account_id: zl-ouyangmin
+  certifications:
+  - name: 二级建造师（建筑工程）
+    issued_on: '2020-07-03'
+    valid_until: '2029-07-02'
+    note: ''
+  - name: 工程师（土建）职称
+    issued_on: '2020-12-15'
+    valid_until: null
+    note: ''
+- employee_code: ZY017
+  grade: T3（机电工程师）
+  hired_on: '2021-08-16'
+  reports_to: ZY014
+  secondary_reports_to: [ZY015]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers:
+  - effective_on: '2026-04-01'
+    from_department: 栖湖花园项目部
+    from_title: 机电施工员
+    to_department: 工程管理部
+  external_accounts:
+  - source: 质量验收
+    account_id: zl-tenglx
+  certifications:
+  - name: 建筑施工特种作业操作证（建筑电工）
+    issued_on: '2022-04-11'
+    valid_until: '2028-04-10'
+    note: ''
+  - name: 助理工程师（机电）职称
+    issued_on: '2023-12-01'
+    valid_until: null
+    note: ''
+- employee_code: ZY018
+  grade: T2（技术员）
+  hired_on: '2024-07-15'
+  reports_to: ZY014
+  secondary_reports_to: [ZY015]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 施工现场专业人员（施工员-土建施工）岗位证书
+    issued_on: '2024-12-06'
+    valid_until: null
+    note: ''
+- employee_code: ZY019
+  grade: M3（部门经理）
+  hired_on: '2015-10-12'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 一级造价工程师（土木建筑工程）
+    issued_on: '2018-08-30'
+    valid_until: '2027-08-29'
+    note: ''
+- employee_code: ZY020
+  grade: T3（合约工程师）
+  hired_on: '2022-02-14'
+  reports_to: ZY019
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 中级经济师（建筑与房地产经济）
+    issued_on: '2024-12-18'
+    valid_until: null
+    note: ''
+- employee_code: ZY021
+  grade: T4（造价工程师）
+  hired_on: '2019-11-25'
+  reports_to: ZY019
+  secondary_reports_to: [ZY015]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 一级造价工程师（土木建筑工程）
+    issued_on: '2023-08-28'
+    valid_until: '2029-08-27'
+    note: ''
+- employee_code: ZY022
+  grade: T1（商务助理）
+  hired_on: '2026-09-07'
+  reports_to: ZY019
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: ZY023
+  grade: M2（部门经理）
+  hired_on: '2018-01-08'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 企业人力资源管理师（三级）
+    issued_on: '2019-05-24'
+    valid_until: null
+    note: ''
+- employee_code: ZY024
+  grade: T2（人事专员）
+  hired_on: '2023-03-13'
+  reports_to: ZY023
+  secondary_reports_to: []
+  system_role: org_admin
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: ZY025
+  grade: T2（行政专员）
+  hired_on: '2021-06-21'
+  reports_to: ZY023
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: ZY026
+  grade: 实习生
+  hired_on: '2026-07-06'
+  reports_to: ZY023
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: intern
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: ZY027
+  grade: T3（施工员）
+  hired_on: '2023-03-06'
+  reports_to: ZY002
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: departed
+  left_on: '2026-05-20'
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 质量验收
+    account_id: zl-linguoping
+  certifications:
+  - name: 施工现场专业人员（施工员-设备安装施工）岗位证书
+    issued_on: '2023-07-19'
+    valid_until: null
+    note: ''
+- employee_code: ZY028
+  grade: T2（专职安全员）
+  hired_on: '2021-09-01'
+  reports_to: ZY009
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: departed
+  left_on: '2026-02-28'
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 安全检查
+    account_id: aq-ruixd-03
+  certifications:
+  - name: 施工现场专业人员（安全员）岗位证书
+    issued_on: '2021-12-13'
+    valid_until: null
+    note: ''
+  - name: 建筑施工企业专职安全生产管理人员安全生产考核合格证书（C 类）
+    issued_on: '2022-01-10'
+    valid_until: '2025-01-09'
+    note: 离职前已过期，未换证

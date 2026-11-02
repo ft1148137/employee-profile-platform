@@ -1,0 +1,493 @@
+- employee_code: HL001
+  grade: M4
+  hired_on: '2016-04-11'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 食品安全管理员培训合格证明
+    issued_on: '2025-03-18'
+    valid_until: '2028-03-17'
+    note: ''
+- employee_code: HL002
+  grade: M2
+  hired_on: '2019-08-01'
+  reports_to: HL001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 巡店系统
+    account_id: xd-sv-01
+  certifications:
+  - name: 食品安全管理员培训合格证明
+    issued_on: '2024-11-05'
+    valid_until: '2027-11-04'
+    note: ''
+- employee_code: HL003
+  grade: M2
+  hired_on: '2021-02-22'
+  reports_to: HL001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 巡店系统
+    account_id: xd-sv-02
+  certifications:
+  - name: 食品安全管理员培训合格证明
+    issued_on: '2025-06-10'
+    valid_until: '2028-06-09'
+    note: ''
+- employee_code: HL004
+  grade: P3
+  hired_on: '2022-07-04'
+  reports_to: HL001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: HL005
+  grade: P4
+  hired_on: '2018-09-17'
+  reports_to: HL001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 巡店系统
+    account_id: xd-sv-05
+  certifications:
+  - name: 食品安全管理员培训合格证明
+    issued_on: '2024-04-08'
+    valid_until: '2027-04-07'
+    note: ''
+  - name: 从业人员健康证明
+    issued_on: '2026-03-02'
+    valid_until: '2027-03-01'
+    note: ''
+- employee_code: HL006
+  grade: 店长 A 级
+  hired_on: '2017-06-05'
+  reports_to: HL001
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 巡店系统
+    account_id: xd-bj-01
+  certifications:
+  - name: 食品安全管理员培训合格证明
+    issued_on: '2025-01-14'
+    valid_until: '2028-01-13'
+    note: ''
+  - name: 从业人员健康证明
+    issued_on: '2026-02-09'
+    valid_until: '2027-02-08'
+    note: ''
+- employee_code: HL007
+  grade: 值班经理
+  hired_on: '2019-03-25'
+  reports_to: HL006
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: POS 系统
+    account_id: POS-BJ-02
+  certifications:
+  - name: 食品安全管理员培训合格证明
+    issued_on: '2025-01-14'
+    valid_until: '2028-01-13'
+    note: ''
+  - name: 消防设施操作员（初级）
+    issued_on: '2023-05-20'
+    valid_until: null
+    note: 技能等级证书，无有效期
+  - name: 从业人员健康证明
+    issued_on: '2026-01-20'
+    valid_until: '2027-01-19'
+    note: ''
+- employee_code: HL008
+  grade: 店员三级
+  hired_on: '2022-11-14'
+  reports_to: HL007
+  secondary_reports_to: [HL006]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: POS 系统
+    account_id: POS-BJ-03
+  certifications:
+  - name: 从业人员健康证明
+    issued_on: '2026-04-15'
+    valid_until: '2027-04-14'
+    note: ''
+- employee_code: HL009
+  grade: 店员二级
+  hired_on: '2023-05-08'
+  reports_to: HL007
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 从业人员健康证明
+    issued_on: '2026-05-06'
+    valid_until: '2027-05-05'
+    note: ''
+- employee_code: HL010
+  grade: 店员三级
+  hired_on: '2020-10-19'
+  reports_to: HL007
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 从业人员健康证明
+    issued_on: '2025-05-01'
+    valid_until: '2026-04-30'
+    note: 已过有效期，未复检；HR 档案未更新，门店仍按在岗安排生鲜与日配作业
+  - name: 特种设备作业人员证（叉车 N1）
+    issued_on: '2023-08-11'
+    valid_until: '2027-08-10'
+    note: ''
+- employee_code: HL011
+  grade: 厂家派驻岗
+  hired_on: '2024-09-02'
+  reports_to: HL007
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: contractor
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 从业人员健康证明
+    issued_on: '2026-03-24'
+    valid_until: '2027-03-23'
+    note: 由品牌厂家组织办理，门店留存复印件
+- employee_code: HL012
+  grade: 实习生
+  hired_on: '2026-07-01'
+  reports_to: HL007
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: intern
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: POS 系统
+    account_id: POS-BJ-09
+  certifications:
+  - name: 从业人员健康证明
+    issued_on: '2026-06-24'
+    valid_until: '2027-06-23'
+    note: ''
+- employee_code: HL013
+  grade: 店长 B 级
+  hired_on: '2018-04-16'
+  reports_to: HL001
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 巡店系统
+    account_id: xd-nh-01
+  certifications:
+  - name: 食品安全管理员培训合格证明
+    issued_on: '2024-09-23'
+    valid_until: '2027-09-22'
+    note: ''
+  - name: 从业人员健康证明
+    issued_on: '2026-02-27'
+    valid_until: '2027-02-26'
+    note: ''
+- employee_code: HL014
+  grade: 课组长
+  hired_on: '2021-06-28'
+  reports_to: HL013
+  secondary_reports_to: [HL015]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: POS 系统
+    account_id: POS-NH-02
+  certifications:
+  - name: 从业人员健康证明
+    issued_on: '2026-03-12'
+    valid_until: '2027-03-11'
+    note: ''
+- employee_code: HL015
+  grade: 值班经理
+  hired_on: '2019-11-11'
+  reports_to: HL013
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: POS 系统
+    account_id: POS-NH-01
+  certifications:
+  - name: 食品安全管理员培训合格证明
+    issued_on: '2024-09-23'
+    valid_until: '2027-09-22'
+    note: ''
+  - name: 从业人员健康证明
+    issued_on: '2026-01-08'
+    valid_until: '2027-01-07'
+    note: ''
+- employee_code: HL016
+  grade: 课组长
+  hired_on: '2020-03-09'
+  reports_to: HL013
+  secondary_reports_to: [HL005]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers:
+  - effective_on: '2026-05-01'
+    from_department: 滨江店
+    from_title: 生鲜理货员
+    to_department: 南湖店
+  external_accounts: []
+  certifications:
+  - name: 食品安全管理员培训合格证明
+    issued_on: '2026-05-19'
+    valid_until: '2029-05-18'
+    note: 任生鲜课长后补办
+  - name: 从业人员健康证明
+    issued_on: '2026-04-21'
+    valid_until: '2027-04-20'
+    note: ''
+- employee_code: HL017
+  grade: 店员二级
+  hired_on: '2021-09-13'
+  reports_to: HL015
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 从业人员健康证明
+    issued_on: '2026-06-03'
+    valid_until: '2027-06-02'
+    note: ''
+- employee_code: HL018
+  grade: 厂家派驻岗
+  hired_on: '2025-04-07'
+  reports_to: HL015
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: contractor
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 从业人员健康证明
+    issued_on: '2026-04-02'
+    valid_until: '2027-04-01'
+    note: 由品牌厂家组织办理，门店留存复印件
+- employee_code: HL019
+  grade: 店员一级
+  hired_on: '2024-02-19'
+  reports_to: HL013
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: departed
+  left_on: '2026-06-30'
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: POS 系统
+    account_id: POS-NH-05
+  certifications:
+  - name: 从业人员健康证明
+    issued_on: '2025-07-15'
+    valid_until: '2026-07-14'
+    note: 离职时未续办
+- employee_code: HL020
+  grade: M3
+  hired_on: '2017-11-20'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: HL021
+  grade: P4
+  hired_on: '2020-05-25'
+  reports_to: HL020
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 食品安全管理员培训合格证明
+    issued_on: '2025-08-12'
+    valid_until: '2028-08-11'
+    note: ''
+- employee_code: HL022
+  grade: P3
+  hired_on: '2022-03-14'
+  reports_to: HL020
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 食品安全管理员培训合格证明
+    issued_on: '2025-08-12'
+    valid_until: '2028-08-11'
+    note: ''
+- employee_code: HL023
+  grade: P3
+  hired_on: '2023-01-09'
+  reports_to: HL020
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: HL024
+  grade: M3
+  hired_on: '2018-08-13'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: HL025
+  grade: P3
+  hired_on: '2021-12-06'
+  reports_to: HL024
+  secondary_reports_to: []
+  system_role: org_admin
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: HL026
+  grade: P2
+  hired_on: '2023-09-18'
+  reports_to: HL024
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: HL027
+  grade: P2
+  hired_on: '2024-06-24'
+  reports_to: HL024
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 食品安全管理员培训合格证明
+    issued_on: '2025-10-27'
+    valid_until: '2028-10-26'
+    note: ''

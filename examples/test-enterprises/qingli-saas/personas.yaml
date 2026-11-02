@@ -1,0 +1,1369 @@
+# 测试用，不导入系统
+# 真实能力（ground truth）用于核对系统推断的画像，对应计划书 §10.1「关键能力核实准确率」。
+# 全部人员、客户、账号均为虚构；不含任何真实企业或个人信息。
+slug: qingli-saas
+personas:
+- employee_code: QL001
+  display_name: 姜柏然
+  work_history:
+  - period: 2013-07 至 2017-03
+    org: 某电商平台（虚构）
+    role: 后端工程师
+    summary: 订单与库存服务开发
+  - period: 2017-04 至 2019-02
+    org: 某企业软件公司（虚构）
+    role: 后端技术主管
+    summary: 带 5 人小组做工单系统
+  - period: 2019-03 至今
+    org: 青栎云（模拟）
+    role: 平台研发部经理
+    summary: 管研发团队，自己只做架构评审和少量原型
+  ground_truth:
+    capabilities:
+    - key: multi_tenant_isolation
+      level: independent_complex
+      evidence: partial
+      evidence_refs:
+      - record:G-0009
+      - jira:PUR-207
+      note: 隔离方案的关键约束是他在评审里提出的，但记录上他只是评审人、PUR-207 的 reporter，系统难以区分设计者与评审者，容易低估。
+    - key: backend_api
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 近三年不写生产代码，系统里没有他的提交；真实能力仍在，应输出未知而不是低等级。
+    - key: release_management
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 发布的放量与回滚决策在值班会上做，系统无记录。
+    certifications:
+    - 信息系统项目管理师（软考高级）
+    notes: 管理岗的典型情况：决策留在会议里，系统只看到评审痕迹。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 简洁，爱用「证据呢」反问，不写长段落
+    attitude: skeptical
+    test_focus:
+    - 检查系统会不会把下属的交付算成自己的能力
+    - 检查「评审人」和「作者」在画像里是否区分
+    - 看能不能导出整个部门的待确认问题清单
+- employee_code: QL002
+  display_name: 王浩
+  work_history:
+  - period: 2020-08 至 2023-04
+    org: 某制造企业信息部（虚构）
+    role: 开发工程师
+    summary: 维护内部采购审批系统
+  - period: 2023-05 至今
+    org: 青栎云（模拟）
+    role: 后端工程师
+    summary: 供应商门户后端与租户字段权限
+  ground_truth:
+    capabilities:
+    - key: integration_connector
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:SUP-302
+      - jira:SUP-303
+      - record:G-0023
+      - record:G-0024
+      - self_report:SR05
+      note: 门户侧对接记录完整，等级与真实一致。
+    - key: backend_api
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - jira:PUR-208
+      - record:G-0011
+      note: 只有两条记录，看不出是否能处理跨模块状态机。
+    - key: data_modeling
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 表结构都是沈砚给的，系统里没有能体现他建模水平的记录。
+    certifications: []
+    notes: 与 QL014 同名。系统若按显示名聚合，会把测试记录算到他头上。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - mobile
+    expression_style: 条目式，习惯把账号和编号写清楚
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查画像有没有把质量与运维部那位王浩的记录算到自己头上
+    - 试着在自述里声明账号归属，看系统是否采纳
+    - 看自己没做过的 ERP 对接会不会被推断成会
+- employee_code: QL003
+  display_name: 沈砚
+  work_history:
+  - period: 2016-07 至 2021-01
+    org: 某支付公司（虚构）
+    role: 后端工程师
+    summary: 交易对账与清算服务
+  - period: 2021-02 至今
+    org: 青栎云（模拟）
+    role: 资深后端工程师
+    summary: 询价单领域模型、多租户隔离中间件
+  ground_truth:
+    capabilities:
+    - key: backend_api
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:PUR-203
+      - jira:PUR-204
+      - record:G-0001
+      - record:G-0003
+      - self_report:SR01
+      - manager_review:MR01
+      note: 记录充分且一致，系统应能确认。
+    - key: multi_tenant_isolation
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:PUR-207
+      - record:G-0010
+      note: 设计、实现、越权用例三方面都有记录。
+    - key: data_modeling
+      level: independent_complex
+      evidence: partial
+      evidence_refs:
+      - jira:PUR-203
+      note: 只能看到表结构设计，查询优化的记录在温亦然名下。
+    - key: integration_connector
+      level: needs_support
+      evidence: misleading
+      evidence_refs:
+      - jira:PUR-212
+      - record:G-0015
+      note: PUR-212 的 Jira 指派人是他，代码与自测实际由傅京完成。若按指派人归集，会把批量审批与对接类工作算成他的，从而高估；他本人在自述里也说明了只做评审。
+    certifications:
+    - PostgreSQL 认证专家（厂商认证，虚构机构）
+    notes: 本企业最可靠的「记录充分」样本，用于检验系统在证据齐全时是否仍过度保留。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 技术术语密集，喜欢贴执行计划和耗时数字
+    attitude: neutral
+    test_focus:
+    - 检查 PUR-212 会不会被算成自己的能力证据
+    - 看画像能否区分「设计」和「实现」
+    - 检查引用的证据能否点开看到原始记录
+- employee_code: QL004
+  display_name: 赵清越
+  work_history:
+  - period: 2019-09 至 2022-07
+    org: 某跨境电商（虚构）
+    role: 前端工程师
+    summary: 商家后台与数据看板
+  - period: 2022-08 至今
+    org: 青栎云（模拟）
+    role: 前端工程师
+    summary: 询价单列表、审批流配置页、供应商报价页
+  ground_truth:
+    capabilities:
+    - key: frontend_web
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:PUR-205
+      - jira:SUP-305
+      - record:G-0004
+      - record:G-0026
+      - self_report:SR02
+      - manager_review:MR02
+      note: 真实水平是能独立完成复杂任务（十万行虚拟滚动有量化结果），经理只给了常规任务，差一档。
+    - key: interaction_design
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - record:G-0036
+      note: 她实际会按规范做设计落地，但记录都挂在设计师名下。
+    - key: data_modeling
+      level: none
+      evidence: undocumented
+      evidence_refs: []
+      note: 没有后端建模经验，系统不应因为她在研发部就推断具备。
+    certifications: []
+    notes: 同一人三个账号：Jira ql-jira-04（显示名 Chloe Zhao）、Git chloe.z、Git qingyue.z（个人邮箱，未登记）。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - mobile
+    expression_style: 中英混杂，常用 list、virtual scroll 这类词，句子短
+    attitude: positive
+    test_focus:
+    - 检查 qingyue.z 的提交是否被算进自己的画像
+    - 检查显示名 Chloe Zhao 和中文名能否关联到同一人
+    - 看经理评价低一档时系统是否仍保留自述的证据
+- employee_code: QL005
+  display_name: 温亦然
+  work_history:
+  - period: 2017-03 至 2020-10
+    org: 某云服务商（虚构）
+    role: 运维开发工程师
+    summary: 自建 Kubernetes 集群与数据库运维
+  - period: 2020-11 至今
+    org: 青栎云（模拟）
+    role: 基础设施工程师
+    summary: 数据库性能、对象存储迁移、单点登录
+  ground_truth:
+    capabilities:
+    - key: data_modeling
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:PUR-213
+      - record:G-0008
+      - self_report:SR03
+      note: 查询下推与物化视图有执行计划和耗时对比，证据过硬。
+    - key: observability
+      level: routine
+      evidence: misleading
+      evidence_refs:
+      - jira:SUP-310
+      - record:G-0032
+      - manager_review:MR03
+      note: 经理按「基础设施都是他」的印象给了独立完成复杂任务（MR03）。实际服务级目标与告警规则由范清让定义，他只做埋点接入；他本人在 SR03 里主动纠正过。真实水平是常规任务。
+    - key: data_security_compliance
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 没做过合规配置，系统里也没有记录。
+    certifications: []
+    notes: HR 档案里的 CKA 证书 2025-08 已过期未复认证，是「持证不等于能力、且证书本身失效」的双重误导点。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 冷静、准确，主动纠正夸大的说法
+    attitude: neutral
+    test_focus:
+    - 检查系统会不会把过期的 CKA 证书当成现行能力证据
+    - 检查自述里的主动纠正能否压低经理的偏高评价
+    - 看埋点接入与告警规则定义是否被区分
+- employee_code: QL006
+  display_name: 傅京
+  work_history:
+  - period: 2022-06 至 2024-06
+    org: 某工业软件公司（虚构）
+    role: 测试工程师
+    summary: 接口测试与用例设计
+  - period: 2024-07 至 2026-02
+    org: 青栎云（模拟）
+    role: 测试工程师（质量与运维部）
+    summary: 采购协同测试设计
+  - period: 2026-03 至今
+    org: 青栎云（模拟）
+    role: 后端工程师（平台研发部）
+    summary: 导入校验、批量审批、导出改造
+  ground_truth:
+    capabilities:
+    - key: backend_api
+      level: routine
+      evidence: misleading
+      evidence_refs:
+      - jira:PUR-212
+      - record:G-0015
+      - manager_review:MR04
+      - self_report:SR04
+      note: 真实水平是常规任务能独立完成。MR04 按转岗初期印象给了需要协助，而他实际完成的 PUR-212 在 Jira 上署名沈砚，功劳与差评同时错位。他会就 MR04 提出申诉。
+    - key: test_design
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 转岗前在质量与运维部做了近两年测试设计，系统里没有那段记录；若按「研发部的人」推断，会判成不会。
+    - key: data_modeling
+      level: needs_support
+      evidence: partial
+      evidence_refs:
+      - record:G-0035
+      note: 导出改造涉及分页查询，但还在联调，看不出水平。
+    certifications: []
+    notes: 转岗 + 指派错位 + 经理印象滞后，三重因素叠加，是本企业最需要人工确认的样本。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 偏书面，会按时间线讲清经过，带一点委屈
+    attitude: worried_about_evaluation
+    test_focus:
+    - 对 MR04 提出申诉，看申诉是否进入待确认队列
+    - 检查转岗前的测试经历会不会被判成「不具备」
+    - 检查 PUR-212 的实际贡献者能否被纠正
+- employee_code: QL007
+  display_name: 柯屿
+  work_history:
+  - period: 2023-07 至 2026-08
+    org: 某在线教育公司（虚构）
+    role: 前端工程师
+    summary: 课程后台与直播控制台
+  ground_truth:
+    capabilities:
+    - key: frontend_web
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 2026-09-14 入职，系统里没有任何记录。应输出「未知」，不得输出「不会」。
+    - key: interaction_design
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 同上，无记录。
+    certifications: []
+    notes: 新入职无历史样本。不出现在任何 Jira、Git 记录和自述里。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - mobile
+    expression_style: 客气、简短，不确定的地方会问
+    attitude: neutral
+    test_focus:
+    - 看自己的画像是「未知」还是被判成低能力
+    - 试着第一次填自述，看系统有没有引导
+    - 检查入职不满两个月时系统是否要求经理评价
+- employee_code: QL008
+  display_name: 陶砚秋
+  work_history:
+  - period: 2015-09 至 2020-03
+    org: 某 ERP 厂商（虚构）
+    role: 实施开发工程师
+    summary: 客户侧接口与报表定制
+  - period: 2020-04 至 2026-06
+    org: 青栎云（模拟）
+    role: 资深后端工程师
+    summary: ERP 对接、主数据同步，2026-06-30 离职
+  ground_truth:
+    capabilities:
+    - key: integration_connector
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:PUR-210
+      - jira:PUR-211
+      - record:G-0006
+      - record:G-0007
+      note: 多版本字段口径、幂等键与对账任务都有记录，是本企业对接能力的最强证据。
+    - key: backend_api
+      level: independent_complex
+      evidence: partial
+      evidence_refs:
+      - record:G-0029
+      note: 离职前的提交没有对应的 Jira 任务，单条记录看不出复杂度。
+    certifications: []
+    notes: 已离职、无登录账号，但历史记录必须仍归属到她。她走后主数据同步作业无人接手，是「关键人物流失」场景。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 不适用（已离职，不参与测试扮演）
+    attitude: neutral
+    test_focus:
+    - 检查离职人员是否仍能被检索到历史画像且无法登录
+    - 检查她名下的对接能力会不会被错误转移给评审人
+- employee_code: QL009
+  display_name: 宁致远
+  work_history:
+  - period: 2012-08 至 2016-06
+    org: 某咨询公司（虚构）
+    role: 业务分析师
+    summary: 制造业采购流程诊断
+  - period: 2016-07 至 2019-08
+    org: 某供应链 SaaS（虚构）
+    role: 产品负责人
+    summary: 寻源与招投标模块
+  - period: 2019-09 至今
+    org: 青栎云（模拟）
+    role: 产品与设计部经理
+    summary: 产品规划与设计规范，自己不直接带项目
+  ground_truth:
+    capabilities:
+    - key: product_spec
+      level: independent_complex
+      evidence: partial
+      evidence_refs:
+      - jira:PUR-202
+      - jira:SUP-301
+      note: 他是这两个任务的 reporter，不是执行人；记录只能证明他发起过。
+    - key: requirement_discovery
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 行业经验来自上一家公司，系统里没有记录。
+    - key: interaction_design
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 能评审设计稿但不动手，无记录。
+    certifications: []
+    notes: 典型「reporter 很多、executor 很少」的部门负责人，用于检验系统是否把 reporter 当成贡献者。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - tablet
+    expression_style: 讲结构，先说结论再说理由
+    attitude: positive
+    test_focus:
+    - 检查 reporter 身份是否被当成能力证据
+    - 看部门视图能否显示每人的待确认项
+- employee_code: QL010
+  display_name: 欧阳岑
+  work_history:
+  - period: 2018-03 至 2021-05
+    org: 某工业品电商（虚构）
+    role: 高级产品经理
+    summary: 询价与比价模块
+  - period: 2021-06 至今
+    org: 青栎云（模拟）
+    role: 高级产品经理、PUR 产品线项目经理
+    summary: 采购协同 2.0 的调研、方案与排期
+  ground_truth:
+    capabilities:
+    - key: requirement_discovery
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:PUR-201
+      - self_report:SR15
+      - manager_review:MR15
+      note: 三方证据一致，系统应能确认。
+    - key: product_spec
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:PUR-202
+      note: 含异常流与迁移策略的验收标准有记录。
+    - key: data_modeling
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 看得懂表结构但不会设计，无记录。
+    certifications:
+    - NPDP 产品经理国际资格认证
+    notes: 复姓「欧阳」。是 PUR 项目经理但不是任何部门负责人，常被系统误认为平台研发部负责人。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - mobile
+    expression_style: 口头表达强，写字偏长，爱列「不做清单」
+    attitude: positive
+    test_focus:
+    - 检查系统是否把自己错标成平台研发部负责人
+    - 检查复姓在搜索和排序里是否被拆错
+    - 看能否以项目经理身份评价不在自己部门的组员
+- employee_code: QL011
+  display_name: 苏晚
+  work_history:
+  - period: 2019-07 至 2022-02
+    org: 某物流软件公司（虚构）
+    role: 产品助理到产品经理
+    summary: 承运商管理模块
+  - period: 2022-03 至今
+    org: 青栎云（模拟）
+    role: 产品经理、SUP 产品线项目经理
+    summary: 供应商门户的需求边界与验收标准
+  ground_truth:
+    capabilities:
+    - key: requirement_discovery
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:SUP-301
+      - manager_review:MR18
+      note: 门户范围梳理有记录，等级与真实一致。
+    - key: product_spec
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - jira:SUP-302
+      - jira:SUP-303
+      note: 她是 reporter，验收标准本身不在系统里。
+    - key: tenant_training
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 没做过客户培训。
+    certifications: []
+    notes: SUP 项目经理，不是部门负责人。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 谨慎，常写「需要确认」
+    attitude: neutral
+    test_focus:
+    - 以项目经理身份给跨部门组员做评价，看权限是否放开
+    - 检查 reporter 身份带来的证据会不会被夸大
+    - 看同名员工王浩的归属问题能否在评价界面里标注
+- employee_code: QL012
+  display_name: 卓一凡
+  work_history:
+  - period: 2021-04 至 2023-08
+    org: 某设计外包公司（虚构）
+    role: 交互设计师
+    summary: 企业后台类产品设计
+  - period: 2023-09 至今
+    org: 青栎云（模拟）
+    role: 交互设计师
+    summary: 比价看板、移动端适配、设计规范
+  ground_truth:
+    capabilities:
+    - key: interaction_design
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:PUR-206
+      - record:G-0038
+      - self_report:SR16
+      - manager_review:MR16
+      note: 真实水平是能独立完成复杂任务，经理按常规任务给（MR16），差一档；系统应把差异标为待确认。
+    - key: frontend_web
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - record:G-0036
+      note: 他会写样式变量，但记录里是评审人。
+    certifications: []
+    notes: 设计师在 Git 里也有提交，用于检验系统会不会据此推断他是前端开发。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - tablet
+    expression_style: 爱贴截图和走查结论，文字少
+    attitude: positive
+    test_focus:
+    - 检查 Git 提交会不会把自己推断成前端工程师
+    - 看自述和经理评价差一档时系统的处理方式
+- employee_code: QL013
+  display_name: 郑亦舒
+  work_history:
+  - period: 2014-09 至 2020-01
+    org: 某金融科技公司（虚构）
+    role: 测试经理
+    summary: 带测试团队做核心系统回归
+  - period: 2020-02 至今
+    org: 青栎云（模拟）
+    role: 质量与运维部经理
+    summary: 质量体系、发布流程与值班制度
+  ground_truth:
+    capabilities:
+    - key: test_design
+      level: independent_complex
+      evidence: partial
+      evidence_refs:
+      - jira:PUR-214
+      - jira:SUP-309
+      note: 她是 reporter，用例设计是下属做的；她的真实水平更高但没有本人产出的记录。
+    - key: release_management
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 发布审批在流程外，无记录。
+    certifications:
+    - ISTQB 高级测试经理
+    notes: 她对下属的评价多处偏离事实（MR09 低估简宁、MR07 答不确定），是检验「经理评价不等于结论」的主要来源。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 直接，常写「我没看到记录」
+    attitude: skeptical
+    test_focus:
+    - 检查自己名下的 reporter 任务是否被当成个人能力
+    - 填写不确定的评价，看系统是否转成待确认问题而不是结论
+    - 看下属申诉后自己会不会收到复核提醒
+- employee_code: QL014
+  display_name: 王浩
+  work_history:
+  - period: 2021-03 至 2023-10
+    org: 某医疗信息化公司（虚构）
+    role: 测试工程师
+    summary: 功能测试与缺陷跟踪
+  - period: 2023-11 至今
+    org: 青栎云（模拟）
+    role: 测试工程师
+    summary: 询价单状态机回归、用例集维护
+  ground_truth:
+    capabilities:
+    - key: test_design
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:PUR-214
+      - record:G-0037
+      - self_report:SR06
+      - manager_review:MR06
+      note: 三方一致，等级可确认。
+    - key: test_automation
+      level: needs_support
+      evidence: partial
+      evidence_refs:
+      - record:G-0018
+      note: 他只是评审人，真实水平是需要协助；若按参与记录推断会偏高。
+    - key: multi_tenant_isolation
+      level: none
+      evidence: undocumented
+      evidence_refs: []
+      note: 完全没接触过，系统不应因为部门相关就推断具备。
+    certifications:
+    - ISTQB 基础级认证
+    notes: 与 QL002 同名。Jira 账号 ql-jira-14，Git 账号 wang.hao.qa；另一位王浩是 ql-jira-02 / wang.hao，账号前缀相似，容易混。
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    expression_style: 平实，会反复强调自己是哪个王浩
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查画像里有没有混入平台研发部王浩的后端记录
+    - 搜索「王浩」看结果能否区分两人
+    - 检查自己作为评审人的记录是否被算成自动化能力
+- employee_code: QL015
+  display_name: 范清让
+  work_history:
+  - period: 2018-05 至 2021-07
+    org: 某游戏公司（虚构）
+    role: 运维工程师
+    summary: 服务器与监控体系
+  - period: 2021-08 至今
+    org: 青栎云（模拟）
+    role: 运维工程师
+    summary: 发布、监控告警、线上故障处理
+  ground_truth:
+    capabilities:
+    - key: release_management
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:SUP-308
+      - record:G-0030
+      - self_report:SR07
+      note: 预案、灰度与一次真实回滚都有记录；经理却答不确定（MR07），因为演练没有留痕。
+    - key: observability
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:PUR-216
+      - record:G-0019
+      - record:G-0032
+      note: 服务级目标与告警规则确实由他定义，与温亦然的埋点接入要区分开。
+    - key: data_security_compliance
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 做过权限回收和审计开关，但都在运维后台操作，系统无记录。
+    certifications: []
+    notes: 「记录齐全但经理答不确定」的样本，用于检验系统会不会因为一条 not_sure 把已有证据作废。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - mobile
+    expression_style: 工程化，爱写时间线和阈值
+    attitude: neutral
+    test_focus:
+    - 检查经理的 not_sure 会不会覆盖掉 Git 和 Jira 的证据
+    - 看能否补充演练记录作为新证据
+    - 检查告警规则定义与埋点接入在画像里是否归属正确
+- employee_code: QL016
+  display_name: 莫晨
+  work_history:
+  - period: 2022-04 至 2025-08
+    org: 某测试服务供应商（虚构）
+    role: 测试工程师（驻场）
+    summary: 为多家客户做功能与接口测试
+  - period: 2025-09 至今
+    org: 青栎云（模拟）
+    role: 测试工程师（外包）
+    summary: 字段权限回归、压测脚本
+  ground_truth:
+    capabilities:
+    - key: test_automation
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:PUR-224
+      - record:G-0020
+      - record:G-0034
+      - manager_review:MR08
+      note: 等级与真实一致，但大部分提交挂在未登记的供应商账号上，工作量会被低估。
+    - key: test_design
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - self_report:SR08
+      note: 只有自述，且她写得保守。
+    - key: integration_connector
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 没做过对接。
+    certifications: []
+    notes: 外包人员。Git 账号 mochen-vendor 未在 HR 登记，是 multi_account 与工作量归集的测试点。
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    - mobile
+    expression_style: 简短保守，反复问「这个会不会影响我们续约」
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查供应商账号 mochen-vendor 的提交是否计入自己的画像
+    - 看外包身份在画像里如何标注、谁能看到
+    - 检查自己能看到的范围是否只限于本人
+- employee_code: QL017
+  display_name: 简宁
+  work_history:
+  - period: 2019-08 至 2022-04
+    org: 某出行平台（虚构）
+    role: 测试开发工程师
+    summary: 自动化框架与持续集成
+  - period: 2022-05 至今
+    org: 青栎云（模拟）
+    role: 测试开发工程师
+    summary: 自动化框架、测试数据工厂、流水线门禁
+  ground_truth:
+    capabilities:
+    - key: test_automation
+      level: independent_complex
+      evidence: misleading
+      evidence_refs:
+      - jira:PUR-215
+      - record:G-0017
+      - record:G-0018
+      - manager_review:MR09
+      - self_report:SR09
+      note: 真实水平是能独立完成复杂任务。PUR-215 的脚本主体由实习生提交，经理据此在 MR09 给了需要协助；而真正体现她水平的 G-0018（并行执行与环境隔离）没有对应 Jira 任务，容易被忽略。她会就此申诉。
+    - key: test_design
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:SUP-309
+      - record:G-0031
+      note: 三组接口用例与门禁接入有记录。
+    - key: backend_api
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 能读写服务端代码做测试桩，但没有产品代码提交记录。
+    certifications: []
+    notes: 本企业 appeal 场景的主角：指派错位 + 经理偏低 + 关键证据缺少 Jira 对应。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 有条理，会直接写「我不认可这条评价」并列证据编号
+    attitude: skeptical
+    test_focus:
+    - 对 MR09 提出申诉并附上 G-0018，看系统是否受理
+    - 检查没有 Jira 对应的 Git 记录能否成为证据
+    - 检查实习生的产出是否被算成自己的能力
+    - 看申诉后画像是否标为「存在争议」而不是直接改写
+- employee_code: QL018
+  display_name: 骆程
+  work_history:
+  - period: 2013-06 至 2017-09
+    org: 某 ERP 实施公司（虚构）
+    role: 实施顾问到项目经理
+    summary: 中小制造企业 ERP 上线
+  - period: 2017-10 至 2020-05
+    org: 某 SaaS 公司（虚构）
+    role: 客户成功负责人
+    summary: 建立续约与健康度机制
+  - period: 2020-06 至今
+    org: 青栎云（模拟）
+    role: 客户成功部经理
+    summary: 实施、支持与培训团队管理
+  ground_truth:
+    capabilities:
+    - key: onboarding_implementation
+      level: independent_complex
+      evidence: partial
+      evidence_refs:
+      - jira:PUR-219
+      - jira:PUR-220
+      note: 他是 reporter，现场工作是闵之桐做的。
+    - key: customer_support
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 疑难工单的兜底判断由他做，但不在系统里留痕。
+    certifications: []
+    notes: 对下属的评价质量不一：MR10、MR12 具体，MR13 明显基于过时印象。
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    - mobile
+    expression_style: 口语化、爱讲客户故事，不爱填表
+    attitude: positive
+    test_focus:
+    - 检查评价表单是否强迫自己给出不确定的结论
+    - 看能否只填「不确定」并补一句理由
+    - 检查下属画像里哪些问题需要自己确认
+- employee_code: QL019
+  display_name: 闵之桐
+  work_history:
+  - period: 2019-03 至 2022-08
+    org: 某制造企业信息中心（虚构）
+    role: 系统管理员
+    summary: 采购与仓储系统运维
+  - period: 2022-09 至今
+    org: 青栎云（模拟）
+    role: 高级实施顾问
+    summary: 多厂区客户上线与历史数据迁移
+  ground_truth:
+    capabilities:
+    - key: onboarding_implementation
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:PUR-219
+      - jira:PUR-220
+      - record:G-0040
+      - self_report:SR10
+      - manager_review:MR10
+      note: 四方证据一致，系统应能确认。
+    - key: integration_connector
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - record:G-0040
+      note: 迁移脚本涉及字段换算，但不能证明他会做接口对接。
+    - key: tenant_training
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 上线时顺带做过操作培训，没有记录。
+    certifications: []
+    notes: 实施岗在 Git 里有提交，用于检验系统会不会把他推断成研发。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    - mobile
+    expression_style: 按时间线讲现场经过，细节多
+    attitude: positive
+    test_focus:
+    - 检查 Git 提交会不会把自己推断成后端工程师
+    - 看跨部门项目经理的评价能否进入自己的画像
+- employee_code: QL020
+  display_name: 乔羽
+  work_history:
+  - period: 2022-07 至 2024-02
+    org: 某呼叫中心外包公司（虚构）
+    role: 技术支持专员
+    summary: 一线报障受理
+  - period: 2024-03 至今
+    org: 青栎云（模拟）
+    role: 技术支持工程师
+    summary: 工单受理、分类与升级
+  ground_truth:
+    capabilities:
+    - key: customer_support
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:SUP-312
+      - jira:PUR-216
+      - self_report:SR11
+      - manager_review:MR11
+      note: 三方一致，等级可确认。
+    - key: observability
+      level: needs_support
+      evidence: partial
+      evidence_refs:
+      - jira:PUR-223
+      note: 他是 reporter，看日志能做初步判断但定位不了根因。
+    - key: tenant_training
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 没独立讲过培训。
+    certifications: []
+    notes: 「报障人」身份大量出现在 Jira reporter 字段，用于检验 reporter 是否被当成能力证据。
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    - mobile
+    expression_style: 客服式，先复述问题再说处理
+    attitude: neutral
+    test_focus:
+    - 检查自己提的 bug 会不会被算成自己的研发能力
+    - 看画像能否区分「发现问题」和「解决问题」
+- employee_code: QL021
+  display_name: 樊知微
+  work_history:
+  - period: 2017-09 至 2021-10
+    org: 某工业培训机构（虚构）
+    role: 培训讲师
+    summary: 制造业采购流程课程
+  - period: 2021-11 至今
+    org: 青栎云（模拟）
+    role: 客户成功经理（兼产品与设计部）
+    summary: 客户培训、续约与需求反馈
+  ground_truth:
+    capabilities:
+    - key: tenant_training
+      level: independent_complex
+      evidence: documented
+      evidence_refs:
+      - jira:PUR-221
+      - self_report:SR12
+      - manager_review:MR12
+      note: 三方一致且经理理由具体，系统应能确认。
+    - key: requirement_discovery
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 兼岗产品与设计部后做过几轮客户访谈，纪要留在客户处，系统无记录。
+    - key: onboarding_implementation
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - jira:PUR-219
+      note: 只参与了培训环节，看不出她能否独立带上线。
+    certifications: []
+    notes: 跨部门兼岗（客户成功部 + 产品与设计部），两条汇报线。
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    - mobile
+    expression_style: 热情，爱举客户例子，少用术语
+    attitude: positive
+    test_focus:
+    - 检查兼岗后两个部门的经理能否都看到自己的画像
+    - 检查产品侧的访谈工作会不会因为无记录被判成不会
+    - 看兼岗部门的负责人能否发起评价
+- employee_code: QL022
+  display_name: 殷岚
+  work_history:
+  - period: 2023-02 至 2024-09
+    org: 某建材贸易公司（虚构）
+    role: 内勤
+    summary: 订单录入与对账
+  - period: 2024-10 至今
+    org: 青栎云（模拟）
+    role: 技术支持工程师
+    summary: 工单受理与供应商侧文档
+  ground_truth:
+    capabilities:
+    - key: customer_support
+      level: routine
+      evidence: misleading
+      evidence_refs:
+      - self_report:SR13
+      - manager_review:MR13
+      note: 真实水平是常规任务能独立完成。自述（SR13）夸大成能独立处理复杂跨系统排障，经理评价（MR13）基于入职首月的印象给了需要协助，两条证据一高一低都不可信。
+    - key: tenant_training
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:SUP-313
+      note: 供应商手册确实是她写的并改了两版。
+    certifications: []
+    notes: 自述与经理评价直接冲突，系统应把该能力标为存在争议并要求补证据，而不是取平均。
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - mobile
+    - pc
+    expression_style: 偏口语，爱用「基本都能」「差不多」这类模糊量词
+    attitude: positive
+    test_focus:
+    - 检查自述与经理评价冲突时系统给出什么结论
+    - 看夸大的自述会不会被直接采信
+    - 试着补充工单编号作为证据
+- employee_code: QL023
+  display_name: 施屿
+  work_history:
+  - period: 2018-06 至 2021-02
+    org: 某条码设备商（虚构）
+    role: 售后工程师
+    summary: 现场设备调试
+  - period: 2021-03 至 2026-04
+    org: 青栎云（模拟）
+    role: 实施顾问
+    summary: 客户账号批量导入与基础配置，2026-04-30 离职
+  ground_truth:
+    capabilities:
+    - key: onboarding_implementation
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:SUP-314
+      note: 账号批量导入与重复联系人合并有记录。
+    - key: customer_support
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 长期处理客户电话咨询，没有工单记录。
+    certifications: []
+    notes: 第二位离职人员，离职较早、记录较少，用于检验「记录少的离职人员」不会被判成低能力。
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    - mobile
+    expression_style: 不适用（已离职，不参与测试扮演）
+    attitude: neutral
+    test_focus:
+    - 检查离职人员的历史画像是否只读可查
+- employee_code: QL024
+  display_name: 冯屹
+  work_history:
+  - period: 2011-07 至 2016-04
+    org: 某制造集团人力部（虚构）
+    role: 人力资源专员到主管
+    summary: 招聘与薪酬核算
+  - period: 2016-05 至 2019-04
+    org: 某软件公司（虚构）
+    role: 人力资源经理
+    summary: 职级体系搭建
+  - period: 2019-05 至今
+    org: 青栎云（模拟）
+    role: 人力与信息部经理
+    summary: 人事、职级评定与内部 IT 管理
+  ground_truth:
+    capabilities:
+    - key: data_security_compliance
+      level: routine
+      evidence: partial
+      evidence_refs:
+      - jira:SUP-311
+      note: 他是 reporter，具体配置是蒋柚做的。
+    - key: requirement_discovery
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 人力岗，没有产品调研经验。
+    certifications: []
+    notes: 人力负责人不应因为管理身份被推断具备技术能力。
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    expression_style: 偏行政口径，关心权限边界
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查经理能看到的下属自述范围是否受限
+    - 看职级与能力等级是否被混在一起
+- employee_code: QL025
+  display_name: 蒋柚
+  work_history:
+  - period: 2018-09 至 2021-09
+    org: 某零售企业信息部（虚构）
+    role: 系统管理员
+    summary: 账号权限与办公系统运维
+  - period: 2021-10 至今
+    org: 青栎云（模拟）
+    role: 信息系统管理员
+    summary: 内部账号权限、数据脱敏与审计配置
+  ground_truth:
+    capabilities:
+    - key: data_security_compliance
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - jira:SUP-311
+      - record:G-0039
+      - manager_review:MR17
+      note: 三方一致，等级可确认；注意她的 ISO 27001 内审员证书已于 2026-05 过期。
+    - key: multi_tenant_isolation
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 她管内部账号，不懂产品侧的租户隔离实现。
+    - key: backend_api
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 会写配置和脚本，不写服务代码。
+    certifications: []
+    notes: 本企业唯一的 org_admin，是人力与信息部的普通员工，不是部门负责人。
+  usage_profile:
+    digital_literacy: high
+    devices:
+    - pc
+    expression_style: 严谨，爱确认权限和审计留痕
+    attitude: neutral
+    test_focus:
+    - 以企业管理员身份检查能力词典与权限配置
+    - 检查管理员能否看到不该看到的员工自述正文
+    - 检查过期证书在画像里是否被标注为失效
+    - 看审计日志是否记录了自己的每次配置变更
+- employee_code: QL026
+  display_name: 鹿念
+  work_history:
+  - period: 2019-07 至 2022-06
+    org: 某互联网公司（虚构）
+    role: 人力资源业务伙伴
+    summary: 研发线招聘与员工关系
+  - period: 2022-07 至今
+    org: 青栎云（模拟）
+    role: 人力资源业务伙伴
+    summary: 研发线人才盘点与绩效流程支持
+  ground_truth:
+    capabilities:
+    - key: requirement_discovery
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 无任何工作记录来源覆盖她的岗位，画像应为未知。
+    - key: tenant_training
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 做过内部培训但不是客户培训，系统无记录。
+    certifications: []
+    notes: 「系统里完全没有记录」的样本：既不在 Jira 也不在 Git，只能靠自述和经理评价，而两者都没有。
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    expression_style: 规范，爱引用制度条款
+    attitude: skeptical
+    test_focus:
+    - 检查没有任何记录的人画像显示成什么
+    - 确认系统没有把「无记录」写成「能力低」
+    - 看人力岗能否被排除在技术能力词典之外
+- employee_code: QL027
+  display_name: 邵聆
+  work_history:
+  - period: 2022-03 至 2024-11
+    org: 某招聘服务公司（虚构）
+    role: 招聘顾问
+    summary: 技术岗位猎聘
+  - period: 2024-12 至今
+    org: 青栎云（模拟）
+    role: 招聘专员
+    summary: 研发与客户成功岗位招聘
+  ground_truth:
+    capabilities:
+    - key: requirement_discovery
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 做的是岗位需求澄清，与产品需求调研不是一回事；系统无记录。
+    - key: customer_support
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 无记录。
+    certifications: []
+    notes: 第二个无记录样本，岗位与能力词典基本不匹配，用于检验词典适配提示。
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    - mobile
+    expression_style: 简短口语，常用语音转文字，偶有错别字
+    attitude: neutral
+    test_focus:
+    - 检查能力词典与自己岗位不匹配时系统怎么提示
+    - 用语音转文字提交自述，看系统能否正常处理
+- employee_code: QL028
+  display_name: 聂小满
+  work_history:
+  - period: 2026-07 至今
+    org: 青栎云（模拟）
+    role: 测试实习生
+    summary: 自动化脚本编写，在简宁指导下工作
+  ground_truth:
+    capabilities:
+    - key: test_automation
+      level: routine
+      evidence: documented
+      evidence_refs:
+      - record:G-0017
+      - record:G-0031
+      - self_report:SR14
+      - manager_review:MR14
+      note: 她的真实水平介于需要协助和常规任务之间，偏常规；脚本量大但设计由简宁给出。记录足够看清这个分工。
+    - key: test_design
+      level: needs_support
+      evidence: partial
+      evidence_refs:
+      - jira:PUR-215
+      note: 任务指派给简宁，她只是实际提交人，看不出用例设计水平。
+    certifications: []
+    notes: 实习生。PUR-215 的指派人与实际贡献者不一致，是 assignee_mismatch 的另一端。
+  usage_profile:
+    digital_literacy: medium
+    devices:
+    - pc
+    - mobile
+    expression_style: 口语化，爱用「大概」「基本上」，会直说自己不懂
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查实习生的画像会不会直接写成低能力
+    - 看自己的脚本产出是否被算到简宁名下
+    - 检查实习生能否看到经理对自己的评价
+account_truth:
+- source: Git
+  account_id: ci-bot
+  owner: null
+  note: 流水线机器人账号，用于自动合并、打标与回滚。出现在 G-0002、G-0013、G-0033，不属于任何员工，系统不应为它生成画像。
+- source: Git
+  account_id: qingyue.z
+  owner: QL004
+  note: 赵清越 2026 年 3 月前用个人邮箱注册的 Git 账号，HR 未登记映射。出现在 G-0005、G-0036。
+- source: Git
+  account_id: mochen-vendor
+  owner: QL016
+  note: 外包测试莫晨使用供应商侧 Git 账号提交，HR 未登记映射。出现在 G-0020、G-0034，若不关联会低估她的工作量。
+edge_cases:
+- tag: same_name
+  employees:
+  - QL002
+  - QL014
+  refs:
+  - jira:PUR-208
+  - jira:PUR-214
+  - record:G-0011
+  - record:G-0037
+  - manager_review:MR05
+  note: 平台研发部和质量与运维部各有一位王浩。Jira 账号分别为 ql-jira-02 与 ql-jira-14，Git 账号为 wang.hao 与 wang.hao.qa，只能靠账号区分。苏晚在 MR05 里明确说分不清，答了 not_sure。
+- tag: multi_account
+  employees:
+  - QL004
+  - QL016
+  refs:
+  - record:G-0004
+  - record:G-0005
+  - record:G-0020
+  - record:G-0034
+  note: 赵清越有三个在数据里出现过的账号（Jira ql-jira-04 显示名 Chloe Zhao、Git chloe.z、未登记的 Git qingyue.z）；莫晨有两个（Jira ql-jira-16、未登记的 Git mochen-vendor）。
+- tag: unlinked_account
+  employees: []
+  refs:
+  - record:G-0002
+  - record:G-0013
+  - record:G-0033
+  note: ci-bot 在 Git 记录里有三条活动，不属于任何员工。系统应识别为非人账号而不是建一个空画像。
+- tag: departed
+  employees:
+  - QL008
+  - QL023
+  refs:
+  - jira:PUR-210
+  - jira:SUP-314
+  - record:G-0006
+  - record:G-0029
+  note: 两人均已离职、无登录账号，但历史记录仍在。陶砚秋名下的 ERP 对接能力是全公司最强证据，离职后无人接手。
+- tag: contractor
+  employees:
+  - QL016
+  refs:
+  - jira:PUR-224
+  - record:G-0020
+  note: 外包测试工程师，有工作邮箱和登录账号，但代码提交走供应商账号，画像需标注外包身份并限制可见范围。
+- tag: intern
+  employees:
+  - QL028
+  refs:
+  - record:G-0017
+  - manager_review:MR14
+  note: 测试实习生，2026-07 入职。产出集中在脚本实现，设计由带教人给出。
+- tag: transfer
+  employees:
+  - QL006
+  refs:
+  - jira:PUR-209
+  - record:G-0012
+  note: 2026-03-01 从质量与运维部测试工程师转为平台研发部后端工程师。转岗后的后端记录从 2026-02 的导入校验开始出现，转岗前的测试工作系统里没有任何痕迹。
+- tag: concurrent_post
+  employees:
+  - QL021
+  refs:
+  - jira:PUR-221
+  note: 客户成功经理兼产品与设计部，两条汇报线（骆程、宁致远）。产品侧的客户访谈没有系统记录。
+- tag: new_hire_no_history
+  employees:
+  - QL007
+  refs: []
+  note: 2026-09-14 入职的前端工程师，不出现在任何 Jira、Git 记录（含 participants），也没有自述。画像必须是「未知」。
+- tag: assignee_mismatch
+  employees:
+  - QL003
+  - QL006
+  - QL017
+  - QL028
+  refs:
+  - jira:PUR-212
+  - record:G-0015
+  - jira:PUR-215
+  - record:G-0017
+  note: 两处错位。PUR-212 指派给沈砚，实际由傅京完成（G-0015 作者为 fu.jing），结果沈砚被高估、傅京被经理低估。PUR-215 指派给简宁，脚本主体由实习生聂小满提交（G-0017 作者为 nie.xiaoman），结果简宁被低估、实习生可能被高估。
+- tag: cross_source_duplicate
+  employees:
+  - QL003
+  - QL004
+  refs:
+  - jira:PUR-204
+  - record:G-0003
+  - jira:SUP-305
+  - record:G-0026
+  note: 同一需求在 Jira 和 Git 各有一条记录，描述里互相提及。系统应合并为同一事件，不应把一件事算成两份证据。
+- tag: review_conflict
+  employees:
+  - QL006
+  - QL022
+  refs:
+  - self_report:SR04
+  - manager_review:MR04
+  - self_report:SR13
+  - manager_review:MR13
+  note: 傅京自述说批量审批是自己做的（有 Git 证据），经理按转岗初期印象给需要协助。殷岚自述夸大成能独立处理复杂排障，经理按入职首月印象给需要协助，一高一低都偏离真实的常规水平。
+- tag: appeal
+  employees:
+  - QL006
+  - QL017
+  refs:
+  - manager_review:MR04
+  - manager_review:MR09
+  - record:G-0015
+  - record:G-0018
+  note: 傅京认为 MR04 没看到 PUR-212 的实际贡献；简宁认为 MR09 只看了实习生的提交量而忽略了 G-0018 的框架工作。两人测试时都会提交申诉并附证据编号。
+- tag: manager_unsure
+  employees:
+  - QL002
+  - QL015
+  refs:
+  - manager_review:MR05
+  - manager_review:MR07
+  note: 苏晚因同名分不清王浩的记录而答不确定；郑亦舒因回滚演练没有留痕而对范清让答不确定。两条 not_sure 都应转成待确认问题，不得当成低等级结论。
+- tag: compound_surname
+  employees:
+  - QL010
+  refs:
+  - jira:PUR-201
+  note: 欧阳岑，复姓欧阳。检查搜索、排序与姓名拆分是否把「欧」当成姓。
+- tag: english_name
+  employees:
+  - QL004
+  refs:
+  - record:G-0004
+  - record:G-0026
+  note: 赵清越在 Jira 的显示名是 Chloe Zhao，Git 账号 chloe.z 的显示名是 Chloe，中文名只出现在花名册和个人邮箱账号 qingyue.z 上。三种写法要能关联到同一人。
+- tag: pm_not_dept_manager
+  employees:
+  - QL010
+  - QL011
+  refs:
+  - jira:PUR-201
+  - jira:SUP-301
+  note: PUR 项目经理欧阳岑、SUP 项目经理苏晚都是产品与设计部的普通员工，不是任何部门负责人。他们对跨部门组员的评价必须以项目经理身份成立。

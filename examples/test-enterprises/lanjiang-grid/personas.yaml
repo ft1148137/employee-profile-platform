@@ -1,0 +1,998 @@
+# 测试用，不导入系统
+# 真实能力（ground truth）用于核对系统推断的画像，对应计划书 §10.1「关键能力核实准确率」。
+slug: lanjiang-grid
+personas:
+- employee_code: LJ001
+  display_name: 岑启舟
+  work_history:
+  - period: 2004-08 至 2011-05
+    org: 岚江省电力公司（模拟）变电检修中心
+    role: 高压试验工
+    summary: 从高压试验班起步，参与过多轮主变和开关设备的交接与例行试验
+  - period: 2011-06 至 2019-12
+    org: 岚江省电力公司（模拟）变电检修中心
+    role: 变电检修一班班长
+    summary: 带班完成辖区变电站一次设备检修，取得电气试验高级技师
+  ground_truth:
+    capabilities:
+    - key: work_permit_management
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:AK-0003, record:GZP-0018, record:GZP-0028]
+      note: 年度签发人资格考评合格，全年大量第一种工作票由他签发，记录充分
+    - key: substation_maintenance
+      level: routine
+      evidence: partial
+      evidence_refs: [record:GZP-0001]
+      note: 检修出身但现在以组织和签发为主，亲自动手的记录只剩签发人签名，系统只能判断到「常规」
+    - key: onsite_safety_supervision
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 专项现场督查靠口头布置和班组微信群，系统里没有任何记录，应输出未知
+    certifications: [特种作业操作证（高压电工作业）, 工作票签发人资格, 技能等级证书（电气试验高级技师）]
+    notes: 迎峰度夏专项负责人，既是部门负责人又是专项负责人。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 简短、习惯用票号和设备双重名称指代工作
+    attitude: neutral
+    test_focus:
+    - 检查画像是否把他签发的工作票算成他本人动手做的检修
+    - 看专项负责人身份会不会被误判成第二个部门负责人
+- employee_code: LJ002
+  display_name: 邵同安
+  work_history:
+  - period: 2006-07 至 2015-12
+    org: 岚江省电力公司（模拟）变电检修中心
+    role: 变电检修工
+    summary: 长期从事断路器、隔离开关解体检修
+  - period: 2016-01 至今
+    org: 岚江省电力公司（模拟）变电检修中心
+    role: 变电检修一班班长
+    summary: 带班完成第一种工作票作业，兼任外协检修队的现场带教
+  ground_truth:
+    capabilities:
+    - key: substation_maintenance
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:GZP-0018, record:GZP-0021, record:GZP-0028, manager_review:MR11]
+      note: 记录与评价一致，系统应能确认
+    - key: work_permit_management
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:AK-0003, manager_review:MR12]
+      note: 签发人资格与票面记录都齐全
+    - key: oil_gas_analysis
+      level: needs_support
+      evidence: misleading
+      evidence_refs: [record:GZP-0018, self_report:SR10]
+      note: SF6 微水检测的工作票写在他名下，实际检测与数据判断由高压试验班做；HR 档案里那张 2013 年过期的进网许可证也容易被当成试验资质，两处都会高估他
+    certifications: [特种作业操作证（高压电工作业）, 工作票签发人资格, 工作负责人资格, 技能等级证书（变电检修高级技师）]
+    notes: 档案里的进网作业许可证早已过期未换证，现行上岗资质是特种作业操作证和年度「三种人」资格。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 用票号和设备编号说话，爱强调「按规程」
+    attitude: neutral
+    test_focus:
+    - 检查过期的进网许可证会不会被当成有效资质
+    - 检查工作票负责人身份会不会被当成他本人完成了票内所有工序
+- employee_code: LJ003
+  display_name: 傅延川
+  work_history:
+  - period: 2013-07 至今
+    org: 岚江省电力公司（模拟）变电检修中心
+    role: 变电检修工
+    summary: 主变本体、直流系统、开关机构检修，2025 年起取得工作负责人资格
+  ground_truth:
+    capabilities:
+    - key: substation_maintenance
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:JX-0001, record:JX-0014, record:JX-0020, manager_review:MR05, self_report:SR06]
+      note: 消缺记录、经理评价、自述三方一致，是本企业最干净的一条证据链
+    - key: switchgear_defect_handling
+      level: routine
+      evidence: partial
+      evidence_refs: [record:GZP-0009]
+      note: 只有一条直流屏相关记录，开关柜缺陷的实际经验在记录里看不出来
+    - key: oil_gas_analysis
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只做过取样配合，没有任何数据分析记录，系统应输出未知
+    certifications: [特种作业操作证（高压电工作业）, 工作负责人资格, 技能等级证书（变电检修高级工）]
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 按工序顺序叙述，会主动区分「我做的」和「我配合的」
+    attitude: positive
+    test_focus:
+    - 检查画像能否区分主业务能力和只做过配合的能力
+    - 检查他自述里划清界限的部分会不会被系统放大
+- employee_code: LJ004
+  display_name: 卞㵘
+  work_history:
+  - period: 2021-09 至 2024-02
+    org: 岚江职业技术学院（虚构）
+    role: 电力系统自动化技术专业学生
+    summary: 在校期间在模拟变电站完成实训
+  - period: 2024-03 至今
+    org: 岚江省电力公司（模拟）变电检修中心
+    role: 变电检修工
+    summary: 跟班完成开关柜清扫、触头处理，2026 年取得限第二种工作票的工作负责人资格
+  ground_truth:
+    capabilities:
+    - key: switchgear_defect_handling
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:JX-0016, record:GZP-0026, manager_review:MR03, self_report:SR02]
+      note: 梧坪变 2202 隔离开关触头消缺主要由他完成，但他自述保守、班长答 not_sure，系统容易把真实的「常规」判成「需要协助」
+    - key: work_permit_management
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:GZP-0026, record:AK-0010]
+      note: 资格记录和首次担任负责人的记录都在，等级判断准确
+    - key: substation_maintenance
+      level: routine
+      evidence: partial
+      evidence_refs: [record:JX-0004]
+      note: 多数作业以工作班成员出现在参与者里，记录不足以判断等级
+    certifications: [特种作业操作证（高压电工作业）, 工作负责人资格]
+    notes: 姓名含生僻字「㵘」（U+3D18，CJK 扩展 A，UTF-8 三字节，仍在 BMP 内）。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 书面、谨慎，习惯先说自己还不会什么
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查生僻字姓名在列表、搜索和导出里是否正常显示
+    - 检查「经理说不确定 + 自述保守」是否被系统直接判成能力低
+    - 试试把自己的自述改得更客观一点，看画像会不会变
+- employee_code: LJ005
+  display_name: 鞠承望
+  work_history:
+  - period: 2008-09 至 2014-06
+    org: 岚江省电力公司（模拟）变电检修中心
+    role: 高压试验工
+    summary: 从事变压器、互感器、避雷器电气试验
+  - period: 2014-07 至今
+    org: 岚江省电力公司（模拟）变电检修中心
+    role: 高压试验班班长
+    summary: 带班承担辖区例行试验与交接试验，兼任老旧开关柜改造专项负责人
+  ground_truth:
+    capabilities:
+    - key: hv_routine_test
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:GZP-0008, record:GZP-0025, record:JX-0019]
+      note: 主变与成套开关柜的试验方案确实由他编制，记录充分
+    - key: work_permit_management
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:GZP-0003, record:GZP-0020]
+      note: 多张试验工作票的工作负责人签他的名，现场组织实际由应岚舒做，票面会高估他的到场参与程度
+    - key: switchgear_defect_handling
+      level: routine
+      evidence: partial
+      evidence_refs: [record:GZP-0014]
+      note: 改造前试验有记录，缺陷处理本身的记录在别人名下
+    certifications: [特种作业操作证（高压电工作业）, 工作票签发人资格, 技能等级证书（电气试验高级技师）]
+    notes: 专项负责人但不是任何部门负责人。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 以试验数据和注意值说话，不愿意给下属下结论
+    attitude: skeptical
+    test_focus:
+    - 检查项目负责人身份会不会被当成部门负责人
+    - 检查他签名的工作票会不会被算成他本人的现场工作量
+- employee_code: LJ006
+  display_name: 应岚舒
+  work_history:
+  - period: 2017-07 至今
+    org: 岚江省电力公司（模拟）变电检修中心
+    role: 高压试验工
+    summary: 承担互感器介损、避雷器泄漏电流、开关柜交接试验，报告大多由她起草
+  ground_truth:
+    capabilities:
+    - key: hv_routine_test
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:JX-0013, record:JX-0019, manager_review:MR01, self_report:SR01]
+      note: 她能独立出具试验结论，但多数工作票负责人写的是班长，经理又答 needs_support，记录和评价会一起把她压低
+    - key: oil_gas_analysis
+      level: routine
+      evidence: documented
+      evidence_refs: [record:JX-0005, manager_review:MR02]
+      note: 记录与评价一致
+    - key: switchgear_defect_handling
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只在试验中接触过开关柜本体，没有消缺记录，应输出未知
+    certifications: [特种作业操作证（高压电工作业）, 工作负责人资格, 技能等级证书（电气试验高级工）]
+    notes: 本企业「证据低于真实水平」的主要样本，她会去申诉。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 条理清楚，引用具体报告编号和数据
+    attitude: skeptical
+    test_focus:
+    - 提交申诉，看系统是否保留原始评价并记录争议状态
+    - 检查画像会不会因为工作票负责人是班长就判定她只会配合
+    - 检查同一份试验报告的「起草人」和「审核人」是否被区分
+- employee_code: LJ007
+  display_name: 覃德茂
+  work_history:
+  - period: 2014-03 至 2025-08
+    org: 岚通电力工程劳务有限公司（虚构）
+    role: 检修工
+    summary: 在多家供电单位驻场做变电检修辅助作业
+  - period: 2025-09 至今
+    org: 岚江省电力公司（模拟）变电检修中心
+    role: 外协检修队员
+    summary: 驻场配合变电检修一班完成站用变更换、隔离开关触头处理
+  ground_truth:
+    capabilities:
+    - key: substation_maintenance
+      level: routine
+      evidence: documented
+      evidence_refs: [record:GZP-0012, record:GZP-0021, record:GZP-0028, manager_review:MR13]
+      note: 作为工作班成员的记录齐全，经理评价也到位
+    - key: switchgear_defect_handling
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:JX-0016]
+      note: 只以配合人出现，实际参与程度看不出来
+    - key: work_permit_management
+      level: none
+      evidence: partial
+      evidence_refs: [record:AK-0006]
+      note: 按规定外协人员不能担任工作票三种人，入场培训合格证只是准入凭证；系统不要把「有培训记录」读成「能担任负责人」
+    certifications: [特种作业操作证（高压电工作业）, 外协人员入场安全培训合格证]
+    notes: 外包身份，认为自己的活都记在班长名下。
+  usage_profile:
+    digital_literacy: low
+    devices: [mobile]
+    expression_style: 口语、方言词多，常用语音转文字，句子不分段
+    attitude: worried_about_evaluation
+    test_focus:
+    - 用手机语音输入提自述，看系统能不能存下来
+    - 看外包身份会不会让他的画像被直接标成不可用
+    - 对经理评价提出申诉，试试外包人员有没有申诉入口
+- employee_code: LJ008
+  display_name: 邬守诚
+  work_history:
+  - period: 2005-07 至 2013-08
+    org: 岚江省电力公司（模拟）输电运检中心
+    role: 带电作业班成员
+    summary: 从带电作业班起步，后转线路运维
+  - period: 2013-09 至今
+    org: 岚江省电力公司（模拟）输电运检中心
+    role: 中心主任
+    summary: 负责线路巡视、通道治理、带电作业与故障抢修的组织与票证签发
+  ground_truth:
+    capabilities:
+    - key: work_permit_management
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:GZP-0004, record:GZP-0016, record:GZP-0023]
+      note: 全年线路停电作业票由他签发，记录充分
+    - key: line_fault_locating
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:GZP-0010]
+      note: 疑难故障会诊由他主持，但主持过程没有进系统，只剩一张签发记录
+    - key: live_line_work
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 带电作业班出身，近五年没有任何带电作业记录，系统应输出未知而不是不会
+    certifications: [特种作业操作证（高压电工作业）, 工作票签发人资格, 注册安全工程师（其他安全）]
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 简短、以线路名称和杆号定位问题
+    attitude: neutral
+    test_focus:
+    - 检查「多年前干过、现在没记录」的能力是否被输出为未知
+- employee_code: LJ009
+  display_name: 蔺长河
+  work_history:
+  - period: 2010-08 至 2017-12
+    org: 岚江省电力公司（模拟）输电运检中心
+    role: 线路巡检工
+    summary: 负责 220kV 线路例行巡视与通道清障
+  - period: 2018-01 至今
+    org: 岚江省电力公司（模拟）输电运检中心
+    role: 线路运维班班长
+    summary: 带班完成停电检修、故障查找，并代班内不会用电脑的员工录入记录
+  ground_truth:
+    capabilities:
+    - key: line_patrol
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:JX-0003, record:JX-0010, record:GZP-0019]
+      note: 记录充分
+    - key: line_fault_locating
+      level: routine
+      evidence: documented
+      evidence_refs: [record:GZP-0010, manager_review:MR20]
+      note: 记录与评价一致
+    - key: drone_inspection
+      level: needs_support
+      evidence: misleading
+      evidence_refs: [record:JX-0006, record:JX-0015]
+      note: 机巡成果的审核人都是他，实际航线规划和飞行由艾尼瓦尔完成；审核签名容易被当成作业能力
+    certifications: [特种作业操作证（高压电工作业）, 特种作业操作证（高处作业·登高架设作业）, 工作负责人资格]
+    notes: 他是班内多条巡视、消缺记录的代录人，画像容易把别人的工作量堆到他身上。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 直白，会主动说明哪条记录是替谁录的
+    attitude: positive
+    test_focus:
+    - 检查「记录录入人」会不会被当成「实际执行人」
+    - 检查审核签名会不会被算成作业能力
+- employee_code: LJ010
+  display_name: 柴满仓
+  work_history:
+  - period: 2007-04 至今
+    org: 岚江省电力公司（模拟）输电运检中心
+    role: 线路巡检工
+    summary: 近二十年负责同一批 220kV 线路的巡视，熟悉每基杆塔的通道和隐患史
+  ground_truth:
+    capabilities:
+    - key: line_patrol
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:JX-0003, record:JX-0010, manager_review:MR06, self_report:SR03]
+      note: 巡视记录的录入人都是班长或班组公用终端，他只出现在参与者里；按记录数量会严重低估他
+    - key: line_fault_locating
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 多次夜间跳闸由他带路找到故障点，全部口头交办，没有任何书面记录
+    - key: drone_inspection
+      level: none
+      evidence: documented
+      evidence_refs: [manager_review:MR07]
+      note: 他确实不会机巡，记录和评价一致，这一项系统判对就算正确
+    certifications: [特种作业操作证（高处作业·登高架设作业）, 技能等级证书（输电线路运维中级工）]
+    notes: 多次放弃高级工评定的原因是理论考试要上机答题，不是技能不够。
+  usage_profile:
+    digital_literacy: low
+    devices: [mobile]
+    expression_style: 只会口语化描述，用语音转文字，错别字多，不分段
+    attitude: skeptical
+    test_focus:
+    - 只用手机、只用语音，试试能不能把自述提上去
+    - 看画像会不会因为他名下记录少就判定能力低
+    - 试试考试系统能不能用班组代填账号，看会不会把成绩算到别人头上
+- employee_code: LJ011
+  display_name: 杜焕明
+  work_history:
+  - period: 2009-07 至 2016-05
+    org: 岚江省电力公司（模拟）输电运检中心
+    role: 线路巡检工
+    summary: 线路巡视与金具更换
+  - period: 2016-06 至今
+    org: 岚江省电力公司（模拟）输电运检中心
+    role: 带电作业班班长
+    summary: 带队完成绝缘手套法和等电位带电作业
+  ground_truth:
+    capabilities:
+    - key: live_line_work
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:GZP-0005, record:GZP-0024, manager_review:MR17, self_report:SR12]
+      note: 记录、评价、自述一致
+    - key: line_patrol
+      level: routine
+      evidence: partial
+      evidence_refs: [record:GZP-0016]
+      note: 停电作业记录能看出他熟悉通道，但没有独立巡视记录
+    - key: safety_rule_training
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 班组内部带电作业安全讲解由他主讲，未计入培训系统
+    certifications: [特种作业操作证（高压电工作业）, 特种作业操作证（高处作业·登高架设作业）, 工作负责人资格, 技能等级证书（带电作业高级技师）]
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 用作业方法名称（绝缘手套法、等电位）描述工作
+    attitude: positive
+    test_focus:
+    - 检查持有特种作业操作证是否被直接当成具备带电作业能力
+- employee_code: LJ012
+  display_name: 艾尼瓦尔·托合提
+  work_history:
+  - period: 2015-09 至 2018-07
+    org: 岚西电力职业学院（虚构）
+    role: 输电线路工程技术专业学生
+    summary: 在校完成登杆与金具实训
+  - period: 2018-08 至今
+    org: 岚江省电力公司（模拟）输电运检中心
+    role: 线路巡检工
+    summary: 承担无人机通道巡检与登塔作业，2023 年取得无人机操控员执照
+  ground_truth:
+    capabilities:
+    - key: drone_inspection
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:JX-0006, record:JX-0015, manager_review:MR08, self_report:SR04]
+      note: 记录充分，系统应能确认
+    - key: line_patrol
+      level: routine
+      evidence: documented
+      evidence_refs: [record:JX-0010, record:JX-0012]
+      note: 记录与实际相符
+    - key: line_fault_locating
+      level: routine
+      evidence: misleading
+      evidence_refs: [manager_review:MR09]
+      note: 他已独立处理过两次单相接地故障查找，都是班组口头交办没有记录，班长只凭印象答 not_sure，会低估他
+    certifications: [特种作业操作证（高处作业·登高架设作业）, 民用无人驾驶航空器操控员执照（多旋翼·视距内）, 技能等级证书（输电线路运维高级工）]
+    notes: 维吾尔族姓名，含间隔号「·」。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile, tablet]
+    expression_style: 普通话书面表达，习惯附架次、坐标和图谱编号
+    attitude: positive
+    test_focus:
+    - 检查带间隔号的姓名在搜索、排序和导出里是否被截断
+    - 检查工作票负责人是班长时，他的登塔作业是否还能归到他名下
+    - 看经理答 not_sure 时系统是输出未知还是输出能力低
+- employee_code: LJ013
+  display_name: 乔叙白
+  work_history:
+  - period: 2003-07 至 2012-04
+    org: 岚江省电力公司（模拟）电力调度控制中心
+    role: 值班调度员
+    summary: 从副值做到正值，参与多次电网事故处理
+  - period: 2012-05 至今
+    org: 岚江省电力公司（模拟）电力调度控制中心
+    role: 中心主任
+    summary: 负责值班管理、运行方式审定、反事故演练组织
+  ground_truth:
+    capabilities:
+    - key: dispatch_operation
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:AK-0005, record:AK-0012, self_report:SR15]
+      note: 演练总指挥记录充分
+    - key: load_forecast_plan
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 月度运行方式报告由他审定，报告是纸质签批，系统里查不到，应输出未知
+    - key: scada_maintenance
+      level: routine
+      evidence: partial
+      evidence_refs: [record:JX-0011]
+      note: 只以审核人出现，实际技术判断由自动化运维员做
+    certifications: [省级电网调度值班员资格证书, 工作票签发人资格]
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 用调度术语和方式编号，句子短
+    attitude: neutral
+    test_focus:
+    - 检查纸质签批的工作是否被当成「没做过」
+    - 检查审核人身份是否被算成技术能力
+- employee_code: LJ014
+  display_name: 沈疏桐
+  work_history:
+  - period: 2011-07 至 2019-03
+    org: 岚江省电力公司（模拟）电力调度控制中心
+    role: 值班调度员（副值）
+    summary: 承担正常方式下的指令复诵与记录
+  - period: 2019-04 至今
+    org: 岚江省电力公司（模拟）电力调度控制中心
+    role: 值班调度员（正值）
+    summary: 独立值班发令，审核非典型方式的倒闸操作票
+  ground_truth:
+    capabilities:
+    - key: switching_operation
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:GZP-0002, record:GZP-0011, record:GZP-0022, manager_review:MR19]
+      note: 记录与评价一致
+    - key: dispatch_operation
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:AK-0012, self_report:SR13]
+      note: 记录充分
+    - key: load_forecast_plan
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:AK-0005]
+      note: 只做过数据校核，记录不足以判断等级
+    certifications: [省级电网调度值班员资格证书, 工作许可人资格]
+    notes: ''
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 精确、按时间顺序复述操作过程
+    attitude: positive
+    test_focus:
+    - 检查她作为工作许可人的记录是否被混成她执行了现场作业
+- employee_code: LJ015
+  display_name: 郎亦川
+  work_history:
+  - period: 2021-08 至今
+    org: 岚江省电力公司（模拟）电力调度控制中心
+    role: 值班调度员（副值）
+    summary: 在正值监护下发令，2023 年取得副值资格
+  ground_truth:
+    capabilities:
+    - key: switching_operation
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:GZP-0007, record:GZP-0015, self_report:SR05]
+      note: 自述称已能独立担任正值，实际操作票发令仍由正值全程监护；自述会高估他
+    - key: dispatch_operation
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:AK-0012, manager_review:MR10]
+      note: 演练记录与经理评价一致，系统应能判对
+    certifications: [省级电网调度值班员资格证书, 工作许可人资格]
+    notes: 本企业「自述高于真实水平」的样本，与 MR10 构成矛盾。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 自信、爱用「已经可以」「没有问题」
+    attitude: positive
+    test_focus:
+    - 提交偏高的自述，看系统会不会直接采信
+    - 检查自述与经理评价矛盾时画像是否标出争议
+- employee_code: LJ016
+  display_name: 温嘉树
+  work_history:
+  - period: 2019-07 至今
+    org: 岚江省电力公司（模拟）电力调度控制中心
+    role: 调度自动化运维员
+    summary: 维护主站与厂站自动化系统，2026 年系统改造后账号由 zdy-0271 换为现工号
+  ground_truth:
+    capabilities:
+    - key: scada_maintenance
+      level: routine
+      evidence: documented
+      evidence_refs: [record:JX-0011, record:GZP-0027, manager_review:MR16]
+      note: 新旧账号的记录加起来才完整，只看新账号会低估工作量
+    - key: oil_gas_analysis
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只配合核对过在线监测数据，自身检测能力无记录
+    - key: dispatch_operation
+      level: none
+      evidence: partial
+      evidence_refs: [record:AK-0009]
+      note: 他参加的只是安规复测，不涉及发令资格；记录不足以推断调度能力，应输出未知而不是推断为会
+    certifications: [特种作业操作证（低压电工作业）, 信息系统项目管理师]
+    notes: 旧账号 zdy-0271 仍留在 2025-11 至 2026-01 的历史工作票和试验记录里。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 技术术语，爱贴点表名和告警编号
+    attitude: positive
+    test_focus:
+    - 检查系统能否把 zdy-0271 和现工号认成同一个人
+    - 检查改造前的历史记录是否算进他的画像
+    - 试试手动合并账号后画像是否重算
+- employee_code: LJ017
+  display_name: 卓振邦
+  work_history:
+  - period: 2006-09 至 2014-10
+    org: 岚江省电力公司（模拟）变电检修中心
+    role: 变电检修工
+    summary: 一线检修出身，后调入安全监察
+  - period: 2014-11 至今
+    org: 岚江省电力公司（模拟）安全监察部
+    role: 部门主任
+    summary: 组织安全监督、「三种人」资格考评与违章查处
+  ground_truth:
+    capabilities:
+    - key: onsite_safety_supervision
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:AK-0003, record:AK-0010]
+      note: 考评组长记录充分
+    - key: safety_rule_training
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:AK-0003]
+      note: 培训多由专责执行，他的方案制定没有单独记录
+    - key: work_permit_management
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 票面质量抽查结论写在月度安全例会纪要上，系统无记录
+    certifications: [注册安全工程师（其他安全）, 特种作业操作证（高压电工作业）, 工作票签发人资格]
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 引用规程条款编号，措辞严谨
+    attitude: neutral
+    test_focus:
+    - 检查会议纪要类工作没有进系统时画像是否输出未知
+- employee_code: LJ018
+  display_name: 房楚瑜
+  work_history:
+  - period: 2015-07 至今
+    org: 岚江省电力公司（模拟）安全监察部
+    role: 安全监察专责
+    summary: 到岗到位检查、违章纠正与「三种人」资格考评
+  ground_truth:
+    capabilities:
+    - key: onsite_safety_supervision
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:AK-0004, record:AK-0007, manager_review:MR14, self_report:SR11]
+      note: 记录、评价、自述三方一致
+    - key: safety_rule_training
+      level: routine
+      evidence: documented
+      evidence_refs: [record:AK-0004]
+      note: 考评员记录清楚
+    - key: substation_maintenance
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 非检修出身，设备本体工作没有任何记录，应输出未知
+    certifications: [注册安全工程师（其他安全）, 特种作业操作证（低压电工作业）]
+    notes: ''
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 按检查项列点，引用条款和整改时限
+    attitude: positive
+    test_focus:
+    - 检查她检查别人违章的记录会不会被算成她本人违章
+- employee_code: LJ019
+  display_name: 滕绍钧
+  work_history:
+  - period: 2016-08 至今
+    org: 岚江省电力公司（模拟）安全监察部
+    role: 安全培训专责
+    summary: 组织年度安规考试、外协入场培训与反事故演练，培训工作同时受人力资源部业务指导
+  ground_truth:
+    capabilities:
+    - key: safety_rule_training
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:AK-0001, record:AK-0002, record:AK-0006, manager_review:MR18, self_report:SR14]
+      note: 证据链完整
+    - key: onsite_safety_supervision
+      level: routine
+      evidence: partial
+      evidence_refs: [record:AK-0011]
+      note: 培训记录多、现场检查记录少，等级判断不足
+    - key: work_permit_management
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 没有任何票证相关记录，应输出未知
+    certifications: [企业培训师（二级）, 特种作业操作证（低压电工作业）]
+    notes: 跨部门兼岗：主岗安全监察部，兼人力资源部培训条线。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 按科目和班次组织表达，爱给替代考核方式举例
+    attitude: positive
+    test_focus:
+    - 检查兼岗人员的画像会不会在两个部门里重复出现
+    - 检查第二汇报人是否能给他做评价
+- employee_code: LJ020
+  display_name: 宓怀山
+  work_history:
+  - period: 2012-07 至 2026-02
+    org: 岚江省电力公司（模拟）变电检修中心
+    role: 变电检修工
+    summary: 长期做开关柜检修与局放检测，是中心里局放图谱判读最熟的人
+  - period: 2026-03 至今
+    org: 岚江省电力公司（模拟）安全监察部
+    role: 安全监察专责
+    summary: 转岗后承担现场到岗到位检查与违章纠正
+  ground_truth:
+    capabilities:
+    - key: onsite_safety_supervision
+      level: routine
+      evidence: documented
+      evidence_refs: [record:AK-0008, record:AK-0014, manager_review:MR15]
+      note: 转岗后记录与评价一致
+    - key: switchgear_defect_handling
+      level: independent_complex
+      evidence: misleading
+      evidence_refs: [record:GZP-0013, record:JX-0009, self_report:SR08]
+      note: 检修记录停在 2026-02，只看最近半年会判断他不会检修；实际开关柜局放判断仍是中心最强的
+    - key: hv_routine_test
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 配合试验多年但从未作为试验负责人，没有记录
+    certifications: [特种作业操作证（高压电工作业）, 工作负责人资格, 技能等级证书（变电检修高级工）]
+    notes: 两个账号：工作票系统工号（检修岗时期）与安全培训考试系统账号 anjian-mhs（转岗后）。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 会把转岗前后的工作分开说
+    attitude: neutral
+    test_focus:
+    - 检查转岗后画像是否丢掉转岗前的检修能力
+    - 检查两个来源的账号是否被认成同一个人
+- employee_code: LJ021
+  display_name: 容书宁
+  work_history:
+  - period: 2008-07 至 2016-10
+    org: 岚江省电力公司（模拟）人力资源部
+    role: 劳资专责
+    summary: 负责薪酬与用工管理
+  - period: 2016-11 至今
+    org: 岚江省电力公司（模拟）人力资源部
+    role: 部门主任
+    summary: 负责人员档案、培训计划与资质台账的总体管理
+  ground_truth:
+    capabilities:
+    - key: qualification_management
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 资质目录调整时的台账口径由她定，决策过程在部门会议上，系统里没有任何记录
+    - key: safety_rule_training
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 培训计划由她审定，执行记录都在专责名下，应输出未知
+    certifications: [企业人力资源管理师（一级）]
+    notes: 人力资源部没有接入任何工作记录来源，全部门都是「无记录」样本。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 公文式，爱说「按制度」「按台账」
+    attitude: neutral
+    test_focus:
+    - 检查完全没有工作记录的部门画像是否都显示未知而不是能力低
+- employee_code: LJ022
+  display_name: 柳芊
+  work_history:
+  - period: 2020-07 至今
+    org: 岚江省电力公司（模拟）人力资源部
+    role: 人力资源专责
+    summary: 维护人员档案、特种作业操作证与「三种人」资格台账，并管理本公司信息系统账号与权限
+  ground_truth:
+    capabilities:
+    - key: qualification_management
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 她维护的资格台账是独立电子表格，没有接入系统；系统应输出未知而不是判定她不会
+    - key: safety_rule_training
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只做考场支持，没有记录
+    certifications: [企业人力资源管理师（二级）]
+    notes: 本企业唯一的 org_admin，人力资源部普通员工，不是部门负责人。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 清楚、按字段和台账列项说明
+    attitude: positive
+    test_focus:
+    - 作为管理员检查能否看到全公司进度，但看不到员工自述原文
+    - 检查账号合并、离职账号停用等管理操作是否留审计
+    - 检查过期证书（如 LJ002 的进网许可证）在台账里是否被标出
+- employee_code: LJ023
+  display_name: 莫维桓
+  work_history:
+  - period: 2017-08 至今
+    org: 岚江省电力公司（模拟）人力资源部
+    role: 培训管理专责
+    summary: 与安全监察部联合组织安规考试与秋检前专项考试
+  ground_truth:
+    capabilities:
+    - key: safety_rule_training
+      level: routine
+      evidence: documented
+      evidence_refs: [record:AK-0009, record:AK-0013]
+      note: 两场考试的组织记录都在
+    - key: qualification_management
+      level: routine
+      evidence: partial
+      evidence_refs: [record:AK-0013]
+      note: 考试记录能看出他核对过参检人员资格，但台账维护工作没有记录
+    certifications: [企业培训师（三级）]
+    notes: ''
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 按场次、人数、合格率汇报
+    attitude: positive
+    test_focus:
+    - 检查跨部门联合组织的考试记录归谁
+- employee_code: LJ024
+  display_name: 殷竹筠
+  work_history:
+  - period: 2022-07 至今
+    org: 岚江省电力公司（模拟）人力资源部
+    role: 劳资专责
+    summary: 负责用工与薪酬核算，不参与生产作业与培训执行
+  ground_truth:
+    capabilities:
+    - key: qualification_management
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 只做过证书扫描件归档，没有任何来源记录
+    - key: safety_rule_training
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 没有记录，系统应输出未知
+    certifications: []
+    notes: 在职但在三个来源里都没有任何记录，也没有自述和经理评价，用来检验「无数据」展示。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 简短、回避评价性表述
+    attitude: worried_about_evaluation
+    test_focus:
+    - 打开自己的画像，看完全没有证据时页面显示什么
+    - 检查系统会不会因为没有记录就给出低能力结论
+- employee_code: LJ025
+  display_name: 车宏业
+  work_history:
+  - period: 2009-09 至 2026-06
+    org: 岚江省电力公司（模拟）变电检修中心
+    role: 变电检修工
+    summary: 长期从事主变与 SF6 开关检修，2026 年 6 月离职
+  ground_truth:
+    capabilities:
+    - key: substation_maintenance
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:GZP-0030, record:JX-0021, record:GZP-0001]
+      note: 离职前的记录完整，画像应保留历史但不再更新
+    - key: switchgear_defect_handling
+      level: routine
+      evidence: partial
+      evidence_refs: [record:GZP-0001]
+      note: 多以工作班成员出现，等级看不出来
+    certifications: [特种作业操作证（高压电工作业）, 技能等级证书（变电检修高级工）]
+    notes: 已离职，没有登录账号，但 2025-11 至 2026-05 的工作票和检修记录里都有他。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 已离职，不参与测试
+    attitude: neutral
+    test_focus:
+    - 检查离职人员是否仍能登录（应当不能）
+    - 检查他的历史记录是否还挂在正确的人名下
+- employee_code: LJ026
+  display_name: 聂澜
+  work_history:
+  - period: 2018-07 至 2026-02
+    org: 岚江省电力公司（模拟）电力调度控制中心
+    role: 值班调度员（副值）
+    summary: 承担副值发令与值班记录，2026 年 2 月离职
+  ground_truth:
+    capabilities:
+    - key: switching_operation
+      level: routine
+      evidence: documented
+      evidence_refs: [record:GZP-0029]
+      note: 离职前的操作票发令记录在
+    - key: dispatch_operation
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:AK-0005]
+      note: 只有一条演练参演记录，等级判断不足
+    certifications: [省级电网调度值班员资格证书]
+    notes: 已离职，没有登录账号。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 已离职，不参与测试
+    attitude: neutral
+    test_focus:
+    - 检查离职人员的画像是否被标为不再维护
+account_truth:
+- source: 工作票系统
+  account_id: yw-0518
+  owner: null
+  note: 变电运维班值班员（工作许可人）账号。本数据集只取检修、运检、调度、安监、人资五个部门，变电运维班不在范围内，系统里查不到对应员工。
+- source: 工作票系统
+  account_id: wb-dl-0096
+  owner: null
+  note: 外协线路施工队作业人员共用账号，分包单位自行管理，公司未建人员档案，无法确定每条记录是谁做的。
+- source: 检修记录系统
+  account_id: jx-gongyong-03
+  owner: null
+  note: 生产现场班组公用终端账号，变电检修二班与线路运维班共用，用于替不会打字的员工代录记录，无法区分实际录入人。
+- source: 安全培训考试系统
+  account_id: tk-0342
+  owner: LJ010
+  note: 柴满仓不会用电脑，安规考试和复训由班组用这个临时账号替他登录提交，HR 没有登记这个映射。
+edge_cases:
+- tag: multi_account
+  employees: [LJ016, LJ020, LJ010]
+  refs: [record:GZP-0027, record:JX-0011, record:GZP-0008, record:AK-0008, record:GZP-0013, record:AK-0002]
+  note: 温嘉树改造后换工号、旧账号 zdy-0271 仍在历史工作票里；宓怀山转岗后在安全培训考试系统用 anjian-mhs；柴满仓的考试由班组用 tk-0342 代提交。
+- tag: transfer
+  employees: [LJ020]
+  refs: [record:GZP-0013, record:JX-0009, record:AK-0008]
+  note: 2026-03-01 从变电检修中心转到安全监察部。2026-02 的记录里他还是检修岗工作负责人，4 月起以检查人身份出现。
+- tag: contractor
+  employees: [LJ007]
+  refs: [record:GZP-0012, record:GZP-0021, record:AK-0006]
+  note: 劳务单位派驻的外协检修队员，有入场培训和作业记录，但按规定不能担任工作票三种人。
+- tag: assignee_mismatch
+  employees: [LJ009, LJ010, LJ012, LJ005, LJ006]
+  refs: [record:GZP-0023, record:JX-0003, record:JX-0013, record:GZP-0020]
+  note: GZP-0023 的工作负责人是蔺长河，实际登塔更换耐张线夹的是艾尼瓦尔·托合提；JX-0003 的录入人是蔺长河，实际巡视人是柴满仓；JX-0013 与 GZP-0020 的试验负责人签的是鞠承望，数据采集和结论实际由应岚舒完成。
+- tag: appeal
+  employees: [LJ006, LJ007]
+  refs: [manager_review:MR01, manager_review:MR13, self_report:SR01, self_report:SR09]
+  note: 应岚舒认为 MR01 把她压到「需要协助」不符合事实，会拿报告编号申诉；覃德茂认为外协身份让他的活都记在班长名下，会要求更正。
+- tag: no_forms
+  employees: [LJ010, LJ007]
+  refs: [record:JX-0003, record:AK-0011]
+  note: 两人都不会填表，巡视和消缺记录靠班长或班组公用终端代录，培训签到也靠班组协助。
+- tag: mobile_only
+  employees: [LJ010, LJ007]
+  refs: [self_report:SR03, self_report:SR09]
+  note: 只有手机，没有公司电脑，自述都是语音转文字提交的。
+- tag: colloquial
+  employees: [LJ010, LJ007]
+  refs: [self_report:SR03, self_report:SR09]
+  note: 自述是口语化长句，有方言词和语音转文字造成的错别字，不分段。
+- tag: ethnic_minority_name
+  employees: [LJ012]
+  refs: [record:JX-0006, record:JX-0015]
+  note: 维吾尔族姓名「艾尼瓦尔·托合提」含间隔号 U+00B7，工作票系统和检修记录系统里显示一致。
+- tag: rare_character
+  employees: [LJ004]
+  refs: [record:GZP-0026, record:JX-0016]
+  note: 「㵘」为 U+3D18，属 CJK 统一汉字扩展 A 区，UTF-8 三字节，仍在 BMP 内，不是四字节字符。
+- tag: unlinked_account
+  employees: []
+  refs: [record:GZP-0004, record:JX-0007, record:JX-0010, record:GZP-0001]
+  note: yw-0518（运维班许可人）、wb-dl-0096（外协线路队）、jx-gongyong-03（班组公用终端）三个账号在来源数据里大量出现，但不属于任何已登记员工。
+- tag: departed
+  employees: [LJ025, LJ026]
+  refs: [record:GZP-0030, record:JX-0021, record:GZP-0029]
+  note: 两人均已离职、没有登录账号，但历史工作票、检修记录和演练记录里都有他们。
+- tag: cross_source_duplicate
+  employees: [LJ002, LJ003]
+  refs: [record:GZP-0001, record:JX-0001]
+  note: 云栖变 2 号主变渗漏油同一件事在工作票系统（GZP-0001）和检修记录系统（JX-0001）各记一次，负责人与消缺执行人不是同一个人。
+- tag: review_conflict
+  employees: [LJ006, LJ015]
+  refs: [manager_review:MR01, self_report:SR01, manager_review:MR10, self_report:SR05]
+  note: 应岚舒自述能独立出报告、班长答需要协助（自述更接近事实）；郎亦川自述已能独立正值、正值答需要协助（评价更接近事实）。两种方向都要测。
+- tag: manager_unsure
+  employees: [LJ004, LJ012]
+  refs: [manager_review:MR03, manager_review:MR09]
+  note: 班长对两人分别答 not_sure，实际水平都高于这个印象，系统应输出未确认而不是能力低。
+- tag: concurrent_post
+  employees: [LJ019]
+  refs: [record:AK-0001, record:AK-0011]
+  note: 主岗安全监察部安全培训专责，兼人力资源部培训条线，第二汇报人是人力资源部主任。
+- tag: dept_and_project_lead
+  employees: [LJ001]
+  refs: [record:GZP-0020, record:GZP-0021]
+  note: 变电检修中心主任同时是迎峰度夏保供专项（YF2026）负责人。
+- tag: pm_not_dept_manager
+  employees: [LJ005]
+  refs: [record:GZP-0014, record:GZP-0025]
+  note: 老旧开关柜改造专项（LJGG）负责人是高压试验班班长，他不是任何部门的负责人。

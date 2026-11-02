@@ -1,0 +1,460 @@
+- employee_code: TL001
+  grade: 教授三级
+  hired_on: '2006-09-01'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 科研管理系统
+    account_id: KY-T20061
+  certifications:
+  - name: 高等学校教师资格证
+    issued_on: '2007-06-30'
+    valid_until: null
+    note: ''
+- employee_code: TL002
+  grade: 教授四级
+  hired_on: '2008-08-20'
+  reports_to: TL001
+  secondary_reports_to: [TL019]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: [科研处]
+  transfers: []
+  external_accounts:
+  - source: 科研管理系统
+    account_id: KY-T20082
+  certifications:
+  - name: 高等学校教师资格证
+    issued_on: '2009-06-30'
+    valid_until: null
+    note: ''
+- employee_code: TL003
+  grade: 副教授五级
+  hired_on: '2014-09-01'
+  reports_to: TL001
+  secondary_reports_to: [TL002]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 高等学校教师资格证
+    issued_on: '2015-06-30'
+    valid_until: null
+    note: ''
+- employee_code: TL004
+  grade: 讲师八级
+  hired_on: '2021-09-01'
+  reports_to: TL001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 来华工作许可（外国人来华工作，B 类）
+    issued_on: '2024-08-15'
+    valid_until: '2027-08-14'
+    note: 人事处登记的在华工作与居留类证件，不涉及教学能力
+- employee_code: TL005
+  grade: 实验师（中级）
+  hired_on: '2011-07-18'
+  reports_to: TL001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 实验室危险化学品安全培训合格证
+    issued_on: '2021-12-20'
+    valid_until: '2024-12-31'
+    note: 已过有效期，未复训；现行实验室准入以年度安全考试为准
+- employee_code: TL006
+  grade: 助教十二级
+  hired_on: '2024-09-01'
+  reports_to: TL001
+  secondary_reports_to: [TL002]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 高等学校教师资格证
+    issued_on: '2025-06-30'
+    valid_until: null
+    note: ''
+- employee_code: TL007
+  grade: 研究生助管（校内岗）
+  hired_on: '2025-09-15'
+  reports_to: TL003
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: intern
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: TL008
+  grade: 教授二级
+  hired_on: '2002-08-26'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 高等学校教师资格证
+    issued_on: '2003-06-30'
+    valid_until: null
+    note: ''
+- employee_code: TL009
+  grade: 副教授六级
+  hired_on: '2013-09-02'
+  reports_to: TL008
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts:
+  - source: 科研管理系统
+    account_id: KY-T20132
+  certifications:
+  - name: 高等学校教师资格证
+    issued_on: '2014-06-30'
+    valid_until: null
+    note: ''
+- employee_code: TL010
+  grade: 讲师十级
+  hired_on: '2018-09-03'
+  reports_to: TL008
+  secondary_reports_to: [TL009]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 高等学校教师资格证
+    issued_on: '2019-06-30'
+    valid_until: null
+    note: ''
+- employee_code: TL011
+  grade: 高级实验师（副高）
+  hired_on: '2009-07-20'
+  reports_to: TL008
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 实验室安全管理人员培训合格证
+    issued_on: '2025-04-10'
+    valid_until: '2028-04-09'
+    note: ''
+  - name: 特种作业操作证（低压电工作业）
+    issued_on: '2023-05-12'
+    valid_until: '2029-05-11'
+    note: 工程训练中心用电设备维护需要
+- employee_code: TL012
+  grade: 讲师十级
+  hired_on: '2019-03-04'
+  reports_to: TL008
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers:
+  - effective_on: '2026-03-01'
+    from_department: 科研处
+    from_title: 纵向项目管理岗
+    to_department: 机械工程学院
+  external_accounts:
+  - source: 科研管理系统
+    account_id: A20191
+  certifications:
+  - name: 高等学校教师资格证
+    issued_on: '2026-01-20'
+    valid_until: null
+    note: 转任专任教师前取得
+- employee_code: TL013
+  grade: 助教十二级
+  hired_on: '2024-09-01'
+  reports_to: TL008
+  secondary_reports_to: [TL011]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: TL014
+  grade: 管理七级
+  hired_on: '2008-07-14'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 高校辅导员骨干培训合格证
+    issued_on: '2016-11-25'
+    valid_until: null
+    note: ''
+- employee_code: TL015
+  grade: 辅导员四级
+  hired_on: '2017-08-21'
+  reports_to: TL014
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 高校辅导员岗前培训合格证
+    issued_on: '2017-10-20'
+    valid_until: null
+    note: ''
+  - name: 心理健康教育初级培训合格证
+    issued_on: '2023-07-08'
+    valid_until: null
+    note: ''
+- employee_code: TL016
+  grade: 辅导员三级
+  hired_on: '2015-08-24'
+  reports_to: TL014
+  secondary_reports_to: [TL001]
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: [计算机科学与技术学院]
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 高校辅导员岗前培训合格证
+    issued_on: '2015-10-16'
+    valid_until: null
+    note: ''
+- employee_code: TL017
+  grade: 辅导员四级
+  hired_on: '2019-08-19'
+  reports_to: TL014
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 高校辅导员岗前培训合格证
+    issued_on: '2019-10-18'
+    valid_until: null
+    note: ''
+- employee_code: TL018
+  grade: 管理九级
+  hired_on: '2020-07-13'
+  reports_to: TL014
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: TL019
+  grade: 教授四级（兼管理六级）
+  hired_on: '2005-09-01'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 高等学校教师资格证
+    issued_on: '2006-06-30'
+    valid_until: null
+    note: ''
+- employee_code: TL020
+  grade: 管理八级
+  hired_on: '2016-07-11'
+  reports_to: TL019
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: TL021
+  grade: 管理八级
+  hired_on: '2014-07-15'
+  reports_to: TL019
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 专利代理师资格证书
+    issued_on: '2021-12-28'
+    valid_until: null
+    note: 资格是办理专利事务的前提，不等于已具备权属争议处理能力
+- employee_code: TL022
+  grade: 管理九级
+  hired_on: '2018-07-16'
+  reports_to: TL019
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 初级会计专业技术资格
+    issued_on: '2019-09-20'
+    valid_until: null
+    note: ''
+- employee_code: TL023
+  grade: 管理十级
+  hired_on: '2026-09-07'
+  reports_to: TL019
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: TL024
+  grade: 管理七级
+  hired_on: '2010-08-16'
+  reports_to: null
+  secondary_reports_to: []
+  system_role: dept_manager
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: TL025
+  grade: 专业技术九级
+  hired_on: '2017-07-10'
+  reports_to: TL024
+  secondary_reports_to: []
+  system_role: org_admin
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: TL026
+  grade: 专业技术十级
+  hired_on: '2018-08-13'
+  reports_to: TL024
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: TL027
+  grade: 派遣岗（技术）
+  hired_on: '2025-03-10'
+  reports_to: TL024
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: contractor
+  status: active
+  left_on: null
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications: []
+- employee_code: TL028
+  grade: 讲师十级
+  hired_on: '2020-09-01'
+  reports_to: TL001
+  secondary_reports_to: []
+  system_role: employee
+  employment_type: full_time
+  status: departed
+  left_on: '2026-06-30'
+  secondary_departments: []
+  transfers: []
+  external_accounts: []
+  certifications:
+  - name: 高等学校教师资格证
+    issued_on: '2021-06-30'
+    valid_until: null
+    note: ''

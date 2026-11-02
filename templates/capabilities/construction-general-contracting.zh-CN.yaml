@@ -1,0 +1,241 @@
+# 行业参考模板（NERE-19）：房屋建筑施工总承包企业。合成示例，不代表任何真实企业。
+- key: project_overall_management
+  name: 项目整体管理（项目经理岗）
+  category: 施工生产管理
+  description: 统筹在建项目的进度、安全、质量、成本与对外协调。注册建造师执业资格是担任项目经理岗的前提条件，持证本身不等于具备本能力，需要以实际统筹过的项目和留痕为依据。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在项目经理带领下统筹单个分区或单个专业的日常生产，涉及工期、费用、对外答复的事项上报后由他人决策。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立统筹一个常规住宅项目的某个施工阶段，按月完成进度、安全、质量三方面的例行部署，主持生产例会并留下可查的会议与指令记录。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立统筹体量较大或工期紧张的在建项目，处理工期索赔、专项验收不通过、周边投诉等交叉问题，并能向建设单位和监理说明处置依据与后续安排。
+- key: construction_schedule
+  name: 施工进度计划管理
+  category: 施工生产管理
+  description: 编制并动态调整总进度计划、月计划和周计划，跟踪关键节点完成情况。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按模板填写周计划和完成情况，工序搭接逻辑与资源配置需技术负责人核对后才可下发。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立编制月度与周施工计划，核对关键节点与前后工序搭接，按周统计完成率并说明偏差原因和补救安排。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立编制总进度计划，并在停工、设计变更、劳动力短缺后重排网络计划，给出赶工资源方案和可验证的追补节点。
+- key: site_production_coordination
+  name: 现场生产组织与穿插协调
+  category: 施工生产管理
+  description: 按作业面组织多工种施工，安排工序交接与作业面移交。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按交底看护单个工种的现场作业，出现工序交叉或材料不到位时需请施工员到场协调。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立组织土建与机电的常规穿插作业，安排每日作业面移交，并在施工日志中记录实际完成部位与在场人数。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立组织高峰期多专业、多班组同时作业，处理作业面冲突、材料进场受限、夜间施工审批等复杂约束并留下安排依据。
+- key: labor_subcontract_management
+  name: 劳务分包与班组管理
+  category: 施工生产管理
+  description: 管理劳务班组的进场、实名制登记、出勤、工序质量回退与产值确认配合。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按名单核对班组每日出勤和在场人数，用工纠纷、产值确认由上级处理。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立管理单个劳务班组的进场手续、实名制登记、日常出勤和工序质量回退，按月配合商务完成产值确认。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立管理多个劳务班组，处理班组间工序交接争议、工资争议预警，并在更换班组时完成工作面与未完工程量的交接确认。
+- key: safety_hazard_inspection
+  name: 安全隐患排查与整改闭环
+  category: 安全生产管理
+  description: 开展日常巡检与专项检查，开具整改通知并跟踪复查关闭。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能跟随检查组记录隐患位置和影像，隐患定性、依据条款和整改要求由安全员给出。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成日常巡检，按部位写明隐患描述、依据条款、整改责任人和期限，并跟踪复查直至关闭。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立组织专项检查和重大隐患处置，判定是否需要局部停工，复查后形成可追溯的闭环记录，并针对同类隐患提出预防措施。
+- key: scaffold_lifting_safety
+  name: 脚手架与起重吊装安全管理
+  category: 安全生产管理
+  description: 对照专项方案开展脚手架验收与起重吊装作业的安全管理。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能辨识缺扣件、缺连墙件、缺防护栏杆等明显问题并上报，不独立签署验收意见。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立对照专项方案验收落地式或悬挑脚手架的常规部位，核对塔式起重机日常检查记录以及司索、信号人员的持证情况。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立组织危大工程范围内的吊装和脚手架验收，核对方案计算书与现场实际，发现方案与现场不符时提出修改意见并留痕。
+- key: safety_education_briefing
+  name: 安全教育与班前交底
+  category: 安全生产管理
+  description: 面向作业班组开展入场教育与班前交底，并确认受教育人是否理解。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按模板读交底内容并收集签字，遇到提问需请他人解答。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立针对当日作业内容做班前交底，结合本工序常见伤害说明防护要求，并留下交底记录。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立针对以方言为主、书面阅读困难的班组设计交底方式（图示、实操演示、现场问答），并通过提问验证受教育人是否真正理解。
+- key: temp_electricity_fire_safety
+  name: 临时用电与消防安全管理
+  category: 安全生产管理
+  description: 管理施工现场临时用电、动火作业和消防设施配置。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能检查配电箱是否上锁、灭火器是否在位有效，判定是否违规需请他人确认。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立按三级配电两级保护核对现场临时用电，检查动火审批、看火人到位和周边可燃物清理情况。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立处理高峰期用电负荷调整、多点交叉动火作业的审批与看护安排，并在隐患发生后组织复查和整改验证。
+- key: inspection_lot_acceptance
+  name: 检验批与分项工程验收
+  category: 质量与技术管理
+  description: 划分检验批，按规范取点检查、记录实测数据并作出评定。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按表格填写检验批原始数据，取点部位和评定结论需质量员复核。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立划分并组织常规检验批（砌体、抹灰、楼地面等）的现场检查，按验收规范取点、记录实测偏差并作出评定。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立处理结论有争议的检验批，组织扩大检查或委托检测，依据规范条文与监理、建设单位沟通并提出返工或让步接收的处理建议。
+- key: concealed_work_acceptance
+  name: 隐蔽工程验收
+  category: 质量与技术管理
+  description: 在隐蔽部位覆盖前完成现场核验，留存影像与验收记录。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能拍摄隐蔽部位影像、整理资料，验收结论由他人签署。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立组织钢筋、防水、机电管线等常规隐蔽工程验收，核对图纸与现场的规格、间距、保护层厚度，并在覆盖前留下影像和记录。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立组织后浇带、变形缝、地下室外防水细部等复杂节点的隐蔽验收，发现与设计不符时组织设计确认，处理方案落实后再允许覆盖。
+- key: construction_scheme_drafting
+  name: 施工方案编制与技术交底
+  category: 质量与技术管理
+  description: 编制分项工程与专项施工方案，并转化为可执行的技术交底。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在他人给定的方案框架下补充工艺做法和材料参数段落。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立编制常规分项工程施工方案并完成书面技术交底，方案内容与现场实际做法一致。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立编制危大工程专项施工方案，准备内部评审或专家论证所需资料，并把方案要求拆解为班组能照着做的交底内容。
+- key: survey_layout
+  name: 施工测量放线
+  category: 质量与技术管理
+  description: 建立与复核控制网，完成轴线投测、标高传递和沉降观测。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能在带教下操作全站仪或水准仪完成简单抄平和点位放样。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成楼层轴线投测、标高传递与复核，按规定做闭合校核并记录偏差值。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立建立并复核项目平面控制网和高程控制网，处理高层垂直度偏差、沉降观测数据异常等情况并给出纠偏措施。
+- key: quantity_takeoff_pricing
+  name: 工程量计量与计价
+  category: 商务与合约管理
+  description: 完成工程量计算、进度款报量与分包计量核对。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按既有清单套价和录入数据，工程量计算结果需他人复核。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立完成常规分部分项的工程量计算、月度进度款报量和分包计量核对，数据与现场签认一致。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立处理清单缺项、措施费调整、材料调差等复杂计价问题，并组织与建设单位的核量对账。
+- key: subcontract_claim_management
+  name: 分包合约与变更索赔管理
+  category: 商务与合约管理
+  description: 起草分包合同条款，管理变更签证与工期、费用索赔资料。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能收集变更资料并按模板整理台账，条款取舍由上级决定。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立起草常规劳务与专业分包合同条款、整理变更签证资料，并核对现场签认与合同约定是否一致。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立组织工期或费用索赔的事实梳理、证据链整理和谈判要点准备，并应对分包单位的反索赔。
+- key: project_document_archiving
+  name: 工程资料归档与竣工资料
+  category: 资料与协同
+  description: 维护施工资料台账，按验收节点同步收集并最终形成竣工验收资料。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 能按分类把资料归入既有目录，缺项由他人提醒后补齐。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立维护施工资料台账，按验收节点同步收集检验批、隐蔽验收和材料报验资料，保持资料与现场进度一致。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立组织整套竣工验收资料的编制与移交，处理跨年度资料缺失、签字追溯以及与城建档案要求不一致的问题。
+- key: construction_log_reporting
+  name: 施工日志与现场填报
+  category: 资料与协同
+  description: 按日填报施工日志与现场情况，保持记录与实际作业一致。
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 只能口述当日情况由他人代录，或仅能完成拍照上传，自己不独立提交日志。
+    - key: routine
+      label: 能完成常规任务
+      description: 能独立在手机或电脑端按日填报施工日志，写清作业部位、在场人数、天气、材料进场和当日问题。
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 能独立制定项目全员的日报填报规则，核对日志与验收、安全检查记录的一致性，并在事后争议中还原当时事实。

@@ -1,0 +1,111 @@
+- id: SR01
+  employee_code: HC001
+  submitted_at: '2026-09-18T16:40:00+08:00'
+  text: 今年主要盯二期导入的换型顺序和产能爬坡。换型方案和首件安排我自己定；8D 和客户答辩主要是质量部在跑，我只提供现场数据。
+  related_task_keys:
+  - MES-0038
+  - MES-0027
+- id: SR02
+  employee_code: HC002
+  submitted_at: '2026-09-22T19:05:00+08:00'
+  text: 一班的工单都是我报的，换型也是我签的。零点和程序版本其实是王师傅定的，我只核对夹具编号对不对。九月份带了个实习生，上下料是他做的。
+  related_task_keys:
+  - MES-0034
+  - MES-0008
+  - MES-0018
+- id: SR03
+  employee_code: HC004
+  submitted_at: '2026-09-25T17:20:00+08:00'
+  text: 薄壁那批外径老是跑，我自己把进给和刀补调过来了，调完的数写在工艺附页上。工单报的是班长名字，活是我和另一个人干的，这点希望能看清楚。
+  related_task_keys:
+  - MES-0028
+  - MES-0001
+- id: SR04
+  employee_code: HC005
+  submitted_at: '2026-10-09T18:30:00+08:00'
+  text: 加工中心我一个人能顶一个班，点检发现气压低我自己就调了。换型还是喊王师傅来，我自己不敢动零点。
+  related_task_keys:
+  - MES-0020
+  - MES-0036
+- id: SR05
+  employee_code: HC006
+  submitted_at: '2026-10-12T17:45:00+08:00'
+  text: 端面磨这块厂里没人比我熟，再难的活我都能独立干下来，跳动超差的根子我一看就知道。
+  related_task_keys:
+  - MES-0021
+  - MES-0007
+- id: SR06
+  employee_code: HC007
+  submitted_at: '2026-10-15T20:10:00+08:00'
+  text: 我就是去毛刺跟看外观，一天一千六七百个没问题，手上活我有数的。填表这个事我真不会弄，手机上点半天点不对，都是班长帮我报的，不是我不干。
+  related_task_keys:
+  - MES-0031
+- id: SR07
+  employee_code: HC008
+  submitted_at: '2026-10-16T19:25:00+08:00'
+  text: 开叉车十来年了，长料架那回路线是我自己划的，还让人在路口拦着，一托都没碰到。点检表是组长帮我在电脑上弄的，我只在纸上签个字。
+  related_task_keys:
+  - MES-0032
+  - MES-0033
+- id: SR08
+  employee_code: HC009
+  submitted_at: '2026-10-19T18:00:00+08:00'
+  text: 来了一个多月，上下料和报工师傅教过我会做了。换型我就在旁边看着拆夹具，零点那些还不会。首件检验我去看过一次，没自己判过。
+  related_task_keys:
+  - MES-0034
+  - MES-0035
+- id: SR09
+  employee_code: HC010
+  submitted_at: '2026-10-20T16:15:00+08:00'
+  text: 换型基本都是我做的，跨产品族那次定位销方案我自己改的，时间压到 52 分钟。要说明一下系统里还有个我以前的旧工号，升级的时候没合过来，那些记录也是我的。
+  related_task_keys:
+  - MES-0014
+  - MES-0024
+  - MES-0035
+- id: SR10
+  employee_code: HC013
+  submitted_at: '2026-10-21T11:30:00+08:00'
+  text: 二期 PPAP 两次提交都是我组织的，退回补 MSA 和偏差申请也是我跟客户谈的。客户门户那个账号是客户给我开的，公司这边没登记过。VDA 6.3 的资格今年三月到期了，还没排上复训。
+  related_task_keys:
+  - QMS-0010
+  - QMS-0023
+  - QMS-0006
+- id: SR11
+  employee_code: HC014
+  submitted_at: '2026-10-22T15:50:00+08:00'
+  text: 首件都是我在做，今年量具不够用那次我提出改三坐标补测。十月那次齿条首件，跳动和平面度是芮工测的，我只是把结果抄进系统，报告上写的是我。
+  related_task_keys:
+  - QMS-0009
+  - QMS-0026
+  - QMS-0013
+- id: SR12
+  employee_code: HC016
+  submitted_at: '2026-10-23T14:20:00+08:00'
+  text: 三坐标的检测程序和基准找正方案是我自己编的，重复性做到 0.004。气动量仪的 GRR 和两次 Cpk 分析也是我做的。计数型的量具研究我没做过，没把握。
+  related_task_keys:
+  - QMS-0017
+  - QMS-0004
+  - QMS-0021
+- id: SR13
+  employee_code: HC018
+  submitted_at: '2026-10-26T10:40:00+08:00'
+  text: 齿条那个 8D 的 5Why 和鱼骨图是我做的，D5 到 D8 的验证试验也是我设计的，D1 到 D4 那份报告署的是部门名义。二月从质量部转到工艺以后开始自己编控制计划。
+  related_task_keys:
+  - QMS-0015
+  - QMS-0007
+  - QMS-0014
+- id: SR14
+  employee_code: HC019
+  submitted_at: '2026-10-28T11:15:00+08:00'
+  text: 二期换版的控制计划是我编的，CAM 这边多轴的程序和宏我都能独立写。8D 里我只做了工艺侧的参数复核。
+  related_task_keys:
+  - QMS-0025
+  - QMS-0007
+- id: SR15
+  employee_code: HC022
+  submitted_at: '2026-10-29T16:05:00+08:00'
+  text: MC-07 主轴异响前后两次都是我处理的，第二次换了轴承还做了几何精度恢复。磨床主轴那回研磨端面调预紧也是我干的，恢复后 Cpk 复测过了。
+  related_task_keys:
+  - MES-0017
+  - MES-0030
+  - MES-0005

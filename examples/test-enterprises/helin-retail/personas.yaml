@@ -1,0 +1,1067 @@
+# 测试用，不导入系统
+# 真实能力（ground truth）用于核对系统推断的画像，对应计划书 §10.1「关键能力核实准确率」。
+# 本企业的设计意图：门店一线的真实能力大量落在三个来源之外（口头交接、现场处置、代填表单），
+# 巡店扣分又集中记在店长名下，系统很容易把「门店得分」当成「店长个人能力」。
+slug: helin-retail
+personas:
+- employee_code: HL001
+  display_name: 乔砚秋
+  work_history:
+  - period: 2010-09 至 2016-03
+    org: 某区域连锁便利店（虚构）
+    role: 门店运营主管
+    summary: 负责十余家便利店的巡店与人力调度
+  - period: 2016-04 至今
+    org: 禾邻超市（模拟）
+    role: 店长、区域运营经理
+    summary: 先后任滨江店店长、东城区域运营经理，负责区域销售、损耗与服务指标
+  ground_truth:
+    capabilities:
+    - key: shift_scheduling
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 盘点期和档期的跨店人力调配都是他定的方案，排班系统里的操作人写的是运营支持专员，系统里查不到他的任何记录
+    - key: store_inspection
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 两名督导的检查标准和扣分口径由他制定，巡店记录里只出现督导账号；系统应输出「未知」而不是推断他不会巡店
+    - key: loss_control
+      level: routine
+      evidence: partial
+      evidence_refs: []
+      note: 他能看懂损耗结构并下达要求，但具体到环节的拆解靠生鲜运营专员和店长，记录里没有他的判断过程
+    certifications: [食品安全管理员培训合格证明]
+    notes: 区域经理的工作几乎不落在排班、POS、巡店三个来源里，是「证据空白但能力很强」的典型。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 简洁，开口就是得分、损耗率、人效、客单价
+    attitude: neutral
+    test_focus:
+    - 检查系统会不会因为他在三个来源里没有记录就把画像做成空白或低能力
+    - 检查区域内多店反复出现的问题会不会被归到门店而忽略区域管理职责
+    - 检查他能看到的下属画像范围是否受最小权限约束
+- employee_code: HL002
+  display_name: 邵禾
+  work_history:
+  - period: 2015-07 至 2019-07
+    org: 某百货超市（虚构）
+    role: 生鲜课长
+    summary: 负责生鲜课加工与损耗
+  - period: 2019-08 至今
+    org: 禾邻超市（模拟）
+    role: 区域督导
+    summary: 负责东城区域两店的例行巡店、盘点抽查与整改闭环，兼生鲜损耗专项负责人
+  ground_truth:
+    capabilities:
+    - key: store_inspection
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:XD-0001, record:XD-0013, record:XD-0014, self_report:SR11]
+      note: 记录充分：把反复出现的标价扣分归因到档期上线流程，并用后续巡店验证
+    - key: loss_control
+      level: routine
+      evidence: documented
+      evidence_refs: [record:XD-0004, record:XD-0013]
+      note: 抽查能追到环节，但具体改法依赖门店生鲜课长，没到独立处理复杂情形
+    - key: staff_coaching
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 他带过两任新店长的上岗适应，巡店系统里只有检查和整改，没有带教记录
+    certifications: [食品安全管理员培训合格证明]
+    notes: 他是生鲜损耗专项的项目经理，但不是任何部门负责人，用来检验系统能否区分项目职责和部门职责。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 条理清晰，习惯按检查表项目编号逐条说问题和整改期限
+    attitude: positive
+    test_focus:
+    - 检查专项负责人的身份会不会被误当成部门负责人
+    - 检查他开出的整改项是否被算成门店员工的能力证据
+    - 检查巡店扣分能否同时关联门店和具体岗位责任人
+- employee_code: HL003
+  display_name: 裴照
+  work_history:
+  - period: 2017-03 至 2021-01
+    org: 某社区生鲜店（虚构）
+    role: 店长
+    summary: 单店全盘管理
+  - period: 2021-02 至今
+    org: 禾邻超市（模拟）
+    role: 区域督导
+    summary: 负责南湖店例行巡店、神秘顾客检查复核与标价合规检查
+  ground_truth:
+    capabilities:
+    - key: store_inspection
+      level: routine
+      evidence: documented
+      evidence_refs: [record:XD-0002, record:XD-0010, record:XD-0015]
+      note: 按标准独立巡店打分和开整改项，归因到流程的部分还依赖另一名督导
+    - key: label_price_compliance
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:XD-0015, record:XD-0017]
+      note: 礼盒标价整改的回复和双人复核机制由南湖店店长提交、他只做验证，系统容易把整改成果算成他的标价合规能力；真实水平是能独立完成常规核对与判定
+    - key: food_safety
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:XD-0002]
+      note: 温度记录缺项他能看出来，但不合格项的追溯和制度整改要生鲜运营专员主导
+    certifications: [食品安全管理员培训合格证明]
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 简短，爱用扣分项编号和分值说话，不写背景
+    attitude: skeptical
+    test_focus:
+    - 检查「验证人」角色会不会被当成整改成果的贡献者
+    - 检查他的画像会不会把门店的整改成绩算成自己的能力
+- employee_code: HL004
+  display_name: 温允
+  work_history:
+  - period: 2022-07 至今
+    org: 禾邻超市（模拟）
+    role: 运营支持专员
+    summary: 负责东城区域两店的周排班汇总、考勤异常核对与跨店支援调度
+  ground_truth:
+    capabilities:
+    - key: shift_scheduling
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:PB-0003, record:PB-0006, record:PB-0011, record:PB-0018, record:PB-0021]
+      note: 记录充分：盘点期和专项期的跨店调配都由他落地，考勤异常核对也是他做
+    - key: inventory_count
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:PB-0007]
+      note: 只参与盘点的人力安排，没有做过分区清点和差异追溯
+    - key: staff_coaching
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 没有带教经历，系统里也没有任何相关记录
+    certifications: []
+    notes: 排班记录的「操作人」大量是他，容易把区域经理和店长的调度决策算到他头上。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 用表格和系统字段名表达，几乎不写主观描述
+    attitude: neutral
+    test_focus:
+    - 检查「系统操作人」会不会被当成决策人
+    - 检查排班记录多会不会被推成高能力
+- employee_code: HL005
+  display_name: 郝宜川
+  work_history:
+  - period: 2013-05 至 2018-08
+    org: 某农产品批发企业（虚构）
+    role: 品控员
+    summary: 负责蔬果验收与保鲜
+  - period: 2018-09 至今
+    org: 禾邻超市（模拟）
+    role: 生鲜运营专员
+    summary: 制定区域生鲜作业与保鲜标准，主检门店食品安全专项检查
+  ground_truth:
+    capabilities:
+    - key: food_safety
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:XD-0006, record:XD-0011, record:XD-0016, manager_review:MR16]
+      note: 记录充分且准确，不合格项能追到供应商批次或作业环节
+    - key: loss_control
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:XD-0006, record:XD-0007]
+      note: 从叶菜未分级直接定位到损耗来源并给出可执行整改
+    - key: fresh_processing
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:XD-0006]
+      note: 他能亲手示范分级和喷淋保鲜，但巡店记录只体现检查身份，看不出他的动手水平
+    certifications: [食品安全管理员培训合格证明, 从业人员健康证明]
+    notes: ''
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 用温度、出成率、损耗率等数据说话，结论前先列事实
+    attitude: positive
+    test_focus:
+    - 检查「检查人」身份能否作为自身作业能力的证据
+    - 检查跨门店的专项记录是否被正确归到他名下
+- employee_code: HL006
+  display_name: 鲁思勉
+  work_history:
+  - period: 2012-08 至 2017-05
+    org: 某大型超市（虚构）
+    role: 收银主管、值班经理
+    summary: 负责前台与夜间值守
+  - period: 2017-06 至今
+    org: 禾邻超市（模拟）
+    role: 值班经理、店长
+    summary: 2021 年起任滨江店店长，负责门店全盘与食品安全第一责任
+  ground_truth:
+    capabilities:
+    - key: food_safety
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:XD-0011, record:XD-0012, self_report:SR09]
+      note: 6 月熟食区温度缺记扣 6 分记在门店和他名下，实际漏记发生在日配理货员的班次；系统容易把这条读成店长食品安全能力不足。真实水平是能按制度组织整改和复查，但不到独立应对监管抽检那一档
+    - key: store_inspection
+      level: routine
+      evidence: documented
+      evidence_refs: [record:XD-0001, record:XD-0012, manager_review:MR12]
+      note: 记录与经理评价一致，能自查并闭环整改
+    - key: store_opening_closing
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:PB-0014]
+      note: 他处置过两次冷柜故障和一次消防报警，排班记录里只能看到他改了交接时点
+    - key: promotion_execution
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [record:PB-0019, record:PB-0022]
+      note: 档期统筹的证据只有排班，陈列与订货协调没有留痕
+    certifications: [食品安全管理员培训合格证明, 从业人员健康证明]
+    notes: 他是「门店得分被当成个人能力」的核心测试对象。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 条理清楚但不爱写长文，习惯先认责任再说整改
+    attitude: worried_about_evaluation
+    test_focus:
+    - 检查巡店扣分是否被写成对他个人食品安全能力的结论
+    - 检查门店整改闭环的记录能否作为他的正面证据
+    - 检查他能否说明扣分项的实际责任人而不被当成推责
+- employee_code: HL007
+  display_name: 闻星
+  work_history:
+  - period: 2019-03 至今
+    org: 禾邻超市（模拟）
+    role: 收银员、值班经理
+    summary: 2022 年起任滨江店值班经理，负责前台、夜间值守与收银带教
+  ground_truth:
+    capabilities:
+    - key: pos_operation
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:POS-0001, record:POS-0019, record:XD-0018, self_report:SR08]
+      note: 记录充分：差错冲正、长短款复核和凭证留存都规范
+    - key: staff_coaching
+      level: routine
+      evidence: documented
+      evidence_refs: [record:PB-0016, record:POS-0014]
+      note: 带教实习生和新收银有排班与差错指导记录
+    - key: store_opening_closing
+      level: independent_complex
+      evidence: partial
+      evidence_refs: [manager_review:MR11]
+      note: 停电延迟闭店这件事只有店长口述和他自己的自述，系统里没有任何记录
+    certifications: [食品安全管理员培训合格证明, 消防设施操作员（初级）, 从业人员健康证明]
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 口语偏多但能把事实讲清，爱说「那一笔」「那台机」
+    attitude: positive
+    test_focus:
+    - 检查只有经理口述、没有系统记录的处置事件会被标成什么状态
+    - 检查带教记录是否被算成他的能力证据
+- employee_code: HL008
+  display_name: 王静
+  work_history:
+  - period: 2019-04 至 2022-10
+    org: 某连锁药房（虚构）
+    role: 店员
+    summary: 负责收银与陈列
+  - period: 2022-11 至今
+    org: 禾邻超市（模拟）
+    role: 收银员
+    summary: 滨江店前台收银与服务台退换货受理，兼新收银同台带教
+  ground_truth:
+    capabilities:
+    - key: pos_operation
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:POS-0002, record:POS-0007, record:POS-0020, manager_review:MR01]
+      note: 南湖店同名同事的重复扣款冲正记录（POS-0007，操作号 POS-NH-02）极易被算到她头上。真实水平是能独立值守常规收银并自查长短款，不能独立处理券与会员价叠加的复杂冲正
+    - key: customer_complaint
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:POS-0004, manager_review:MR02]
+      note: 经理评价写 needs_support，实际服务台退换货多数由她独立完成；服务台公用操作号 POS-BJ-PUB 让她的工作没有个人痕迹。她会就这条申诉
+    - key: staff_coaching
+      level: routine
+      evidence: documented
+      evidence_refs: [record:PB-0016, record:POS-0014]
+      note: 带教实习生的记录明确，与真实情况一致
+    certifications: [从业人员健康证明]
+    notes: 同名、公用账号、多账号三件事叠在同一个人身上。
+  usage_profile:
+    digital_literacy: medium
+    devices: [mobile, shared_terminal]
+    expression_style: 口语化，常用「那笔单」「那台机」指代，不记单号只记时间段
+    attitude: skeptical
+    test_focus:
+    - 对 2026-10 的服务台能力评价提出申诉，看申诉入口和留痕
+    - 检查南湖店同名同事的 POS 记录是否被合并到自己名下
+    - 检查服务台公用操作号上的工作能否补充说明并被采信
+    - 检查排班工号和 POS 操作号是否都归到自己名下
+- employee_code: HL009
+  display_name: 阿依努尔·吐尔逊
+  work_history:
+  - period: 2021-06 至 2023-04
+    org: 某清真食品加工厂（虚构）
+    role: 分割工
+    summary: 负责牛羊肉分割与包装
+  - period: 2023-05 至今
+    org: 禾邻超市（模拟）
+    role: 生鲜加工员
+    summary: 滨江店生鲜分割、包装、称重贴标与加工区清洁
+  ground_truth:
+    capabilities:
+    - key: fresh_processing
+      level: routine
+      evidence: partial
+      evidence_refs: [record:XD-0016, self_report:SR03, manager_review:MR05]
+      note: 记录只覆盖清洁规范与加工登记，没有体现保鲜方案；经理答 not_sure。系统应输出「未知」而不是「不会」
+    - key: food_safety
+      level: routine
+      evidence: documented
+      evidence_refs: [record:XD-0016, record:PB-0014]
+      note: 专项检查无扣分项，记录与真实一致
+    - key: label_price_compliance
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 她只按指令换称重标签，系统里没有任何标价相关记录
+    certifications: [从业人员健康证明]
+    notes: 姓名含间隔号，用来检验搜索、排序、登录和导出。
+  usage_profile:
+    digital_literacy: medium
+    devices: [mobile, shared_terminal]
+    expression_style: 中文口语流利，书面表达简短，拼音输入偶有错别字
+    attitude: positive
+    test_focus:
+    - 检查姓名中的间隔号在搜索、模糊匹配和导出时是否正常
+    - 检查 not_sure 的经理评价会不会被当成能力不足
+    - 检查她能否自己补充「保鲜方案由课长定」这类上下文
+- employee_code: HL010
+  display_name: 石丰年
+  work_history:
+  - period: 2014-03 至 2020-09
+    org: 某农贸市场个体摊位（虚构）
+    role: 摊主帮工
+    summary: 蔬果分级与售卖
+  - period: 2020-10 至今
+    org: 禾邻超市（模拟）
+    role: 理货员
+    summary: 滨江店日配与收货作业，兼生鲜课临时支援
+  ground_truth:
+    capabilities:
+    - key: shelf_replenishment
+      level: routine
+      evidence: misleading
+      evidence_refs: [self_report:SR02, manager_review:MR03]
+      note: 自述称换季整区陈列改造他自己能弄，实际只参与执行、方案和人力由课长定。真实水平是能完成常规补货与陈列维护；自述夸大会把画像推高一档
+    - key: food_safety
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:XD-0011, record:XD-0012, manager_review:MR04]
+      note: 温度记录连续缺记确实发生在他班次，记录与真实一致。另外他的从业人员健康证明已于 2026-04-30 过期未复检，HR 档案未更新，属于「持证状态不等于能力」的反例
+    - key: fresh_processing
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 他在生鲜课帮了三年工，会分割和叶菜保鲜，系统里没有任何生鲜加工记录。系统应输出「未知」
+    certifications: [特种设备作业人员证（叉车 N1）]
+    notes: 真实持证只有叉车证，健康证明已过期；HR 档案里两张都在。
+  usage_profile:
+    digital_literacy: low
+    devices: [mobile]
+    expression_style: 只会口语，常用语音转文字，错别字多，爱说「那个货」「那边」「那几天」
+    attitude: worried_about_evaluation
+    test_focus:
+    - 用语音输入提交自述，看系统能不能存下来并保留原话
+    - 检查食品安全扣分会不会写成对他个人的能力结论
+    - 检查他不会填的表单有没有代填或口述入口，代填人是否留痕
+    - 检查过期的健康证明会不会被当成现行资质
+- employee_code: HL011
+  display_name: 柴宇
+  work_history:
+  - period: 2021-05 至 2024-08
+    org: 某乳品品牌代理商（虚构）
+    role: 促销员
+    summary: 在多家商超做堆头维护与试饮
+  - period: 2024-09 至今
+    org: 禾邻超市（模拟）
+    role: 促销员
+    summary: 品牌厂家派驻滨江店，负责乳品堆头陈列与物料更换
+  ground_truth:
+    capabilities:
+    - key: promotion_execution
+      level: routine
+      evidence: documented
+      evidence_refs: [record:XD-0005, record:PB-0019, manager_review:MR15]
+      note: 责任区域的档期执行记录与真实一致
+    - key: shelf_replenishment
+      level: routine
+      evidence: partial
+      evidence_refs: [record:PB-0004]
+      note: 只有排班能看出他在店，陈列维护的质量没有记录
+    certifications: [从业人员健康证明]
+    notes: 外包身份，排班系统有工号但没有 POS 权限，用来检验外部人员的画像范围。
+  usage_profile:
+    digital_literacy: medium
+    devices: [mobile]
+    expression_style: 口语化、热情，把商品叫「我们这个牌子」
+    attitude: neutral
+    test_focus:
+    - 检查外包促销员能看到哪些门店数据
+    - 检查他的记录会不会被算进门店员工的整体画像
+- employee_code: HL012
+  display_name: 俞棠
+  work_history:
+  - period: 2026-07 至今
+    org: 禾邻超市（模拟）
+    role: 收银实习生
+    summary: 暑期实习，滨江店与南湖店前台轮岗
+  ground_truth:
+    capabilities:
+    - key: pos_operation
+      level: needs_support
+      evidence: documented
+      evidence_refs: [record:POS-0014, record:POS-0016, self_report:SR07, manager_review:MR10]
+      note: 记录、自述和经理评价三方一致，是本企业证据最干净的一条
+    - key: customer_complaint
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:XD-0014]
+      note: 巡店只看到她在前台的操作规范，没有投诉处理的证据
+    certifications: [从业人员健康证明]
+    notes: 两个月实习记录密度很高，用来检验系统会不会把短期密集记录推成常规能力。
+  usage_profile:
+    digital_literacy: high
+    devices: [mobile, pc]
+    expression_style: 条理清楚，爱用分点和时间顺序描述
+    attitude: positive
+    test_focus:
+    - 检查两个月实习的密集记录会不会被推成「能完成常规任务」
+    - 检查实习结束后账号停用与画像保留的处理
+- employee_code: HL013
+  display_name: 蒙晓渠
+  work_history:
+  - period: 2013-02 至 2018-03
+    org: 某区域超市（虚构）
+    role: 生鲜课长、副店长
+    summary: 负责生鲜与盘点
+  - period: 2018-04 至今
+    org: 禾邻超市（模拟）
+    role: 值班经理、店长
+    summary: 2022 年起任南湖店店长，主导生鲜损耗专项在本店落地
+  ground_truth:
+    capabilities:
+    - key: loss_control
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:XD-0007, record:POS-0011, self_report:SR10, manager_review:MR13]
+      note: 记录充分且与真实一致
+    - key: inventory_count
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:PB-0007, record:PB-0017, record:XD-0013]
+      note: 两次全店盘点的组织与差异追溯都有记录
+    - key: customer_complaint
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 涉及食品安全的几起投诉由他直接处理，处理过程只在门店纸质台账上，系统里没有
+    certifications: [食品安全管理员培训合格证明, 从业人员健康证明]
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 用门店口径讲事实，爱举具体商品和具体某天的例子
+    attitude: positive
+    test_focus:
+    - 检查纸质台账上的处置能否作为补充证据被采信
+    - 检查专项成果会不会被同时算给他和专项负责人
+- employee_code: HL014
+  display_name: 王静
+  work_history:
+  - period: 2018-09 至 2021-05
+    org: 某便利店（虚构）
+    role: 店员
+    summary: 收银与订货
+  - period: 2021-06 至今
+    org: 禾邻超市（模拟）
+    role: 收银员、收银组长
+    summary: 南湖店前台与服务台，连续负责两次全店盘点分区
+  ground_truth:
+    capabilities:
+    - key: inventory_count
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:PB-0007, record:POS-0015, self_report:SR05, manager_review:MR09]
+      note: 记录充分，差异追溯结论可用
+    - key: pos_operation
+      level: routine
+      evidence: misleading
+      evidence_refs: [record:POS-0007, record:POS-0009]
+      note: POS-0007 的重复扣款冲正实际由值班经理执行，她只是发现并上报；记录里她是 actor，容易被当成她能独立冲正。真实水平是常规值守与长短款自查
+    - key: label_price_compliance
+      level: routine
+      evidence: documented
+      evidence_refs: [record:XD-0015, record:XD-0017]
+      note: 礼盒标价整改中她是岗位责任人，双人复核由她落实
+    certifications: [从业人员健康证明]
+    notes: 与 HL008 完全同名，分别使用 POS-NH-02 与 POS-BJ-03。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile, shared_terminal]
+    expression_style: 简短，习惯直接报数字和分区名
+    attitude: neutral
+    test_focus:
+    - 检查与滨江店同名同事的记录是否被混在一起
+    - 检查排班工号与 POS 操作号是否都归到自己名下
+    - 检查 actor 身份会不会被当成实际执行人
+- employee_code: HL015
+  display_name: 左双喜
+  work_history:
+  - period: 2016-04 至 2019-10
+    org: 某仓储会员店（虚构）
+    role: 前台主管
+    summary: 负责收银与现金管理
+  - period: 2019-11 至今
+    org: 禾邻超市（模拟）
+    role: 值班经理
+    summary: 南湖店前台、盘点账面调整与损耗登记
+  ground_truth:
+    capabilities:
+    - key: pos_operation
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:POS-0005, record:POS-0015, record:POS-0017, self_report:SR14, manager_review:MR17]
+      note: 记录充分且与经理评价一致
+    - key: loss_control
+      level: routine
+      evidence: documented
+      evidence_refs: [record:POS-0008, record:POS-0011]
+      note: 能按标准判定与登记，源头改善由生鲜课长主导
+    - key: staff_coaching
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 收银带教归他，但带教过程没有任何系统记录
+    certifications: [食品安全管理员培训合格证明, 从业人员健康证明]
+    notes: 多条 POS 记录的 actor 是他，但部分报损判定其实是生鲜课长的意见。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 直接，先说结论再补一句原因
+    attitude: neutral
+    test_focus:
+    - 检查他作为 actor 的报损记录会不会被算成损耗改善能力
+    - 检查代他人提交的换班申请是否留下代填痕迹
+- employee_code: HL016
+  display_name: 覃志波
+  work_history:
+  - period: 2015-08 至 2020-02
+    org: 某水产批发企业（虚构）
+    role: 加工班组长
+    summary: 水产分割与冰鲜保鲜
+  - period: 2020-03 至今
+    org: 禾邻超市（模拟）
+    role: 生鲜理货员（滨江店）、生鲜课长（南湖店）
+    summary: 2026-05 转岗南湖店任生鲜课长，主导叶菜分级与保鲜改造
+  ground_truth:
+    capabilities:
+    - key: fresh_processing
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:XD-0007, record:XD-0010, self_report:SR04, manager_review:MR07]
+      note: 记录充分，出成率标准由他制定
+    - key: loss_control
+      level: independent_complex
+      evidence: documented
+      evidence_refs: [record:POS-0011, record:XD-0006, manager_review:MR06]
+      note: 从订货规格到陈列温区的三段拆解有记录支撑
+    - key: staff_coaching
+      level: routine
+      evidence: partial
+      evidence_refs: [record:PB-0011, record:XD-0007]
+      note: 带教发生在借调期间，用的是旧工号 hl0988，HR 未登记映射，这段记录可能不归到他名下
+    certifications: [食品安全管理员培训合格证明, 从业人员健康证明]
+    notes: 转岗 + 旧工号未登记，是本企业「同一人被拆成两个人」的主要风险点。
+  usage_profile:
+    digital_literacy: medium
+    devices: [mobile, pc]
+    expression_style: 按作业步骤描述，开口就是温度、出成率、收市时点
+    attitude: positive
+    test_focus:
+    - 检查旧工号 hl0988 的记录是否并入自己的画像
+    - 检查转岗前后的岗位痕迹会不会被当成两个人
+    - 检查 2026-05 之前在滨江店的记录在部门维度如何归属
+- employee_code: HL017
+  display_name: 范秋池
+  work_history:
+  - period: 2012-04 至 2021-08
+    org: 某蔬菜种植合作社（虚构）
+    role: 分级包装工
+    summary: 叶菜分级与装箱
+  - period: 2021-09 至今
+    org: 禾邻超市（模拟）
+    role: 生鲜理货员
+    summary: 南湖店叶菜摘洗分级、上架与收市降价处理
+  ground_truth:
+    capabilities:
+    - key: fresh_processing
+      level: routine
+      evidence: documented
+      evidence_refs: [record:XD-0006, self_report:SR06, manager_review:MR08]
+      note: 现场作业水平与记录一致，速度和降价时点判断都好
+    - key: loss_control
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:POS-0008]
+      note: 报损单是别人替她写的，她口述数量；判定标准她能说清但不会填单
+    - key: staff_coaching
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 她带过四五个新人摘洗分级，没有任何带教记录。系统应输出「未知」
+    certifications: [从业人员健康证明]
+    notes: 典型的「手上很强、纸上为零」，用来检验缺少记录不被推断为能力低。
+  usage_profile:
+    digital_literacy: low
+    devices: [mobile]
+    expression_style: 方言词多，只会口语，表单靠别人代填，常用微信语音
+    attitude: skeptical
+    test_focus:
+    - 试着用语音说一段，看能不能变成自述并保留原话
+    - 检查别人代填的内容会不会算成她自己填的
+    - 检查她的手机界面能不能只用大按钮完成一次自述
+- employee_code: HL018
+  display_name: 林嘉禾
+  work_history:
+  - period: 2022-06 至 2025-03
+    org: 某休闲食品品牌（虚构）
+    role: 促销员
+    summary: 商超堆头维护与节日礼盒推广
+  - period: 2025-04 至今
+    org: 禾邻超市（模拟）
+    role: 促销员
+    summary: 品牌厂家派驻南湖店，负责礼盒区陈列与拆零补货
+  ground_truth:
+    capabilities:
+    - key: promotion_execution
+      level: routine
+      evidence: documented
+      evidence_refs: [record:XD-0015, record:POS-0017, record:PB-0020]
+      note: 档期执行记录与真实一致
+    - key: customer_complaint
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 她在礼盒区接待过不少询问和换货诉求，都转给服务台，系统里没有记录
+    certifications: [从业人员健康证明]
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices: [mobile]
+    expression_style: 口语化、热情，爱说「这个礼盒卖得好」
+    attitude: neutral
+    test_focus:
+    - 检查外包人员能否提交自述以及自述谁能看到
+    - 检查她的记录在门店画像里如何标注外部身份
+- employee_code: HL019
+  display_name: 曲文锦
+  work_history:
+  - period: 2024-02 至 2026-06
+    org: 禾邻超市（模拟）
+    role: 收银员
+    summary: 南湖店前台收银，2026-06-30 离职
+  ground_truth:
+    capabilities:
+    - key: pos_operation
+      level: routine
+      evidence: documented
+      evidence_refs: [record:POS-0013, manager_review:MR18]
+      note: 在职期间的记录与经理回顾一致
+    - key: promotion_execution
+      level: needs_support
+      evidence: partial
+      evidence_refs: [record:POS-0003]
+      note: 只能看出她在促销周值过班，执行质量无记录
+    certifications: []
+    notes: 已离职，没有登录账号；健康证明离职时未续办。历史记录保留在排班与 POS 两个来源里。
+  usage_profile:
+    digital_literacy: medium
+    devices: [mobile]
+    expression_style: 口语化，描述事情爱从时间讲起
+    attitude: neutral
+    test_focus:
+    - 由管理员视角检查离职员工的历史记录与画像是否仍可检索
+    - 检查离职后是否确实无法登录
+    - 检查对离职员工的经理评价是否被标注为历史确认而非现状
+- employee_code: HL020
+  display_name: 窦见青
+  work_history:
+  - period: 2008-07 至 2017-10
+    org: 某连锁百货（虚构）
+    role: 采购主管
+    summary: 包装食品与非食品类采购
+  - period: 2017-11 至今
+    org: 禾邻超市（模拟）
+    role: 采购经理
+    summary: 负责生鲜、食品、非食三条线的供应商结构与品类策略
+  ground_truth:
+    capabilities:
+    - key: supplier_negotiation
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 重点品类的结构调整和断供处理都是他主导，合同和谈判记录不在这三个来源里
+    - key: category_management
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 价格带重构由他决定，系统里完全没有记录
+    - key: food_safety
+      level: routine
+      evidence: partial
+      evidence_refs: [record:XD-0011]
+      note: 索证索票由他部门执行，巡店记录里出现的是下属
+    certifications: []
+    notes: 采购部的工作几乎不进排班、POS、巡店三个来源，整个部门都是「证据稀薄」区。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 用毛利、账期、周转天数和到货及时率说话
+    attitude: skeptical
+    test_focus:
+    - 检查没有来源记录的部门会不会被整体画成低能力
+    - 检查他能看到的下属画像范围
+- employee_code: HL021
+  display_name: 纪朗
+  work_history:
+  - period: 2017-03 至 2020-04
+    org: 某蔬果供应链公司（虚构）
+    role: 采购专员
+    summary: 产地直采与品质验收
+  - period: 2020-05 至今
+    org: 禾邻超市（模拟）
+    role: 生鲜采购
+    summary: 负责蔬果与水产供应商、到货规格与批次安排
+  ground_truth:
+    capabilities:
+    - key: supplier_negotiation
+      level: routine
+      evidence: documented
+      evidence_refs: [record:POS-0008, self_report:SR12, manager_review:MR14]
+      note: 常规供应商谈判有记录支撑，重点品类由采购经理主导
+    - key: order_replenish
+      level: routine
+      evidence: partial
+      evidence_refs: [record:POS-0008]
+      note: 只能看到他参与报损审核，订货节奏的调整没有留痕
+    - key: category_management
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 价格带和单品增汰他只提建议，系统里没有记录
+    certifications: [食品安全管理员培训合格证明]
+    notes: ''
+  usage_profile:
+    digital_literacy: high
+    devices: [pc, mobile]
+    expression_style: 按品类和批次讲事实，爱用到货规格、损耗率佐证
+    attitude: neutral
+    test_focus:
+    - 检查「审核人」身份会不会被当成主要贡献者
+    - 检查跨部门专项中他的贡献如何归属
+- employee_code: HL022
+  display_name: 殷柚
+  work_history:
+  - period: 2019-08 至 2022-02
+    org: 某食品贸易公司（虚构）
+    role: 业务助理
+    summary: 订单与资质资料管理
+  - period: 2022-03 至今
+    org: 禾邻超市（模拟）
+    role: 食品采购
+    summary: 负责包装食品与乳品供应商、索证索票归档
+  ground_truth:
+    capabilities:
+    - key: food_safety
+      level: routine
+      evidence: documented
+      evidence_refs: [record:XD-0011, record:POS-0019]
+      note: 索证索票配合与临期反馈有记录
+    - key: supplier_negotiation
+      level: routine
+      evidence: partial
+      evidence_refs: []
+      note: 她独立谈过十余家常规供应商，三个来源里一条都没有
+    - key: order_replenish
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 促销备货量由她核定，系统里没有记录
+    certifications: [食品安全管理员培训合格证明]
+    notes: ''
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 书面化，习惯列清单和附件名
+    attitude: positive
+    test_focus:
+    - 检查只有两条记录的人画像会不会被过度推断
+    - 检查她能否补充不在系统里的谈判经历并被标为待确认
+- employee_code: HL023
+  display_name: 伍思南
+  work_history:
+  - period: 2018-05 至 2022-12
+    org: 某日化品牌经销商（虚构）
+    role: 渠道专员
+    summary: 非食品类铺货与价格维护
+  - period: 2023-01 至今
+    org: 禾邻超市（模拟）
+    role: 非食采购与品控
+    summary: 负责非食品类供应商、商品档案与标签合规审核
+  ground_truth:
+    capabilities:
+    - key: category_management
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 非食品类的单品增汰和价格带维护都是她做的，三个来源里完全没有她
+    - key: label_price_compliance
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 非食标签合规审核的标准是她定的，巡店系统里只有门店的扣分，没有她的审核记录。系统应输出「未知」
+    certifications: []
+    notes: 全企业唯一一个在三个来源里零记录、且真实能力很高的人，专门用来检验「未知不等于不会」。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 偏书面，爱引用标准条款名称
+    attitude: skeptical
+    test_focus:
+    - 检查完全没有来源记录的员工画像是否写成「未知」而不是能力低
+    - 检查她自己补充的能力是否被标为待确认而不是直接采信
+- employee_code: HL024
+  display_name: 项禾苗
+  work_history:
+  - period: 2011-03 至 2018-07
+    org: 某零售集团（虚构）
+    role: 人力资源主管
+    summary: 门店用工与培训体系
+  - period: 2018-08 至今
+    org: 禾邻超市（模拟）
+    role: 人力与信息部负责人
+    summary: 负责用工制度、排班规则、培训组织与门店系统账号权限
+  ground_truth:
+    capabilities:
+    - key: shift_scheduling
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 排班规则和工时上限是她定的，系统里的操作人不是她
+    - key: staff_coaching
+      level: independent_complex
+      evidence: undocumented
+      evidence_refs: []
+      note: 店长与值班经理的上岗培训体系由她设计，三个来源里没有任何培训记录
+    certifications: []
+    notes: 本企业没有培训系统作为来源，人力部门的工作成果全部不可见。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 制度化表达，爱引用岗位说明书和用工口径
+    attitude: positive
+    test_focus:
+    - 检查规则制定者与系统操作人是否被区分
+    - 检查部门负责人能否看到本部门以外的自述
+- employee_code: HL025
+  display_name: 阚宁
+  work_history:
+  - period: 2019-07 至 2021-11
+    org: 某系统集成公司（虚构）
+    role: 实施工程师
+    summary: 商超 POS 与排班系统实施
+  - period: 2021-12 至今
+    org: 禾邻超市（模拟）
+    role: 信息专员
+    summary: 负责排班、POS、巡店三套系统的账号、权限与故障处理，是本企业的企业管理员
+  ground_truth:
+    capabilities:
+    - key: shift_scheduling
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 他能配置班次规则和工时校验，但自己不排班，系统里没有他的作业记录
+    - key: pos_operation
+      level: needs_support
+      evidence: undocumented
+      evidence_refs: []
+      note: 他能排查 POS 故障和离线补录，但从未独立值守收银台；不要把运维能力当成收银能力
+    certifications: []
+    notes: 企业管理员。本企业的权限测试主力：管理员看到总体进度不等于可读全部自述。
+  usage_profile:
+    digital_literacy: high
+    devices: [pc]
+    expression_style: 术语化，关注字段、权限和日志
+    attitude: skeptical
+    test_focus:
+    - 以企业管理员身份检查能否越权读取一线员工的自述正文
+    - 检查未登记账号（公用号、旧工号、第三方账号）在系统里的提示方式
+    - 检查离职员工账号停用后数据是否仍可审计
+- employee_code: HL026
+  display_name: 陶蔚
+  work_history:
+  - period: 2023-09 至今
+    org: 禾邻超市（模拟）
+    role: 人事专员
+    summary: 负责门店用工办理、健康证明台账与排班制度宣导
+  ground_truth:
+    capabilities:
+    - key: shift_scheduling
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 她审核各店周排班是否违反工时与持证岗位要求，审核动作没有留痕
+    - key: staff_coaching
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 新员工入职培训由她讲，没有培训记录来源
+    certifications: []
+    notes: 健康证明台账由她维护，石丰年过期未复检这条是她漏更新的。
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc]
+    expression_style: 按台账口径表达，爱说「档案里是这样」
+    attitude: neutral
+    test_focus:
+    - 检查 HR 档案里的证书状态与真实状态不一致时系统怎么标注
+    - 检查她能否修正过期证书并留下审计痕迹
+- employee_code: HL027
+  display_name: 时予
+  work_history:
+  - period: 2022-04 至 2024-05
+    org: 某餐饮连锁（虚构）
+    role: 培训助理
+    summary: 门店食品安全培训与考核组织
+  - period: 2024-06 至今
+    org: 禾邻超市（模拟）
+    role: 培训专员
+    summary: 组织食品安全培训、上岗考核与持证统计
+  ground_truth:
+    capabilities:
+    - key: food_safety
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 她讲课并组织考核，本人也能做门店自查，但本企业没有培训系统作为来源
+    - key: staff_coaching
+      level: routine
+      evidence: undocumented
+      evidence_refs: []
+      note: 带教标准和考核表由她编写，系统里没有任何记录
+    certifications: [食品安全管理员培训合格证明]
+    notes: ''
+  usage_profile:
+    digital_literacy: medium
+    devices: [pc, mobile]
+    expression_style: 讲课式，先说要求再举例
+    attitude: positive
+    test_focus:
+    - 检查没有培训来源时系统会不会把「持证」当成能力
+    - 检查她提交的培训记录能否作为补充证据
+account_truth:
+- source: POS 系统
+  account_id: POS-BJ-PUB
+  owner: null
+  note: 滨江店服务台公用操作号，前台多人共用，退换货受理人无法归属到个人；系统不应把这些记录算给任何员工
+- source: 排班系统
+  account_id: hl0988
+  owner: HL016
+  note: 覃志波 2026-05 转岗前在滨江店使用的旧工号，HR 未登记映射；转岗后启用 hl1016，旧工号仍留在历史排班与整改记录里
+- source: 巡店系统
+  account_id: xd-ms-03
+  owner: null
+  note: 委托第三方做神秘顾客检查时开的外部账号，不属于任何员工；其检查结论不应作为任何人的能力证据
+edge_cases:
+- tag: same_name
+  employees: [HL008, HL014]
+  refs: [record:POS-0007, record:POS-0020, record:POS-0002]
+  note: 滨江店收银员与南湖店收银组长都叫王静，排班工号 hl1008 / hl1014，POS 操作号 POS-BJ-03 / POS-NH-02；两人的收银差错记录最容易被合并
+- tag: multi_account
+  employees: [HL008, HL016]
+  refs: [record:POS-0007, record:PB-0011, record:POS-0011]
+  note: 王静（HL008）同时有排班工号 hl1008 和 POS 操作号 POS-BJ-03；覃志波（HL016）有现工号 hl1016 和未登记的旧工号 hl0988
+- tag: unlinked_account
+  employees: []
+  refs: [record:POS-0004, record:POS-0018, record:XD-0008, record:XD-0009]
+  note: 服务台公用操作号 POS-BJ-PUB 和第三方神秘顾客账号 xd-ms-03 都在来源数据里出现过，但不属于任何员工
+- tag: transfer
+  employees: [HL016]
+  refs: [record:PB-0003, record:PB-0011, record:PB-0012, record:XD-0007]
+  note: 2026-05-01 从滨江店生鲜理货员转岗南湖店生鲜课长；转岗前的记录用旧工号 hl0988，转岗后用 hl1016，前后岗位痕迹都在排班与巡店里
+- tag: departed
+  employees: [HL019]
+  refs: [record:POS-0013, record:PB-0015, record:PB-0009, manager_review:MR18]
+  note: 2026-06-30 离职，无登录账号，但排班与 POS 里留有在职期间记录，还有一条离职后补做的历史确认评价
+- tag: contractor
+  employees: [HL011, HL018]
+  refs: [record:XD-0005, record:PB-0019, record:PB-0020, record:POS-0017]
+  note: 两名品牌厂家派驻促销员，排班系统有工号但无 POS 操作权限，健康证明由厂家组织办理
+- tag: intern
+  employees: [HL012]
+  refs: [record:POS-0014, record:POS-0016, record:PB-0016, record:XD-0014]
+  note: 2026-07 入职的暑期收银实习生，两个月内记录密度很高，容易被推成常规能力
+- tag: review_conflict
+  employees: [HL010, HL008]
+  refs: [self_report:SR02, manager_review:MR03, self_report:SR01, manager_review:MR02]
+  note: 石丰年自述能独立做整区陈列改造、经理只确认到常规；王静自述服务台退换货基本自己接、经理却答 needs_support
+- tag: appeal
+  employees: [HL008]
+  refs: [manager_review:MR02, record:POS-0007, record:POS-0004]
+  note: 王静认为服务台能力评价偏低（工作留在公用操作号上）、且同名同事的冲正记录被算到她头上，测试时会就这两点申诉
+- tag: manager_unsure
+  employees: [HL009]
+  refs: [manager_review:MR05, record:XD-0016]
+  note: 值班经理对她能否独立拿出叶菜与水产的保鲜方案答 not_sure，系统应保持「未知」而不是降档
+- tag: no_forms
+  employees: [HL010, HL017]
+  refs: [record:PB-0013, record:POS-0008]
+  note: 日配理货员与生鲜理货员都不会填表单，换班申请和报损单由值班经理代填
+- tag: mobile_only
+  employees: [HL010, HL017]
+  refs: [record:PB-0013, record:PB-0021]
+  note: 两人只有手机，没有门店 PC 账号，所有自述都要在手机上完成
+- tag: colloquial
+  employees: [HL010, HL017, HL011]
+  refs: [self_report:SR02, self_report:SR06, self_report:SR13]
+  note: 自述全是口语和方言词，常用语音转文字，错别字多，不记单号只记时间段
+- tag: ethnic_minority_name
+  employees: [HL009]
+  refs: [record:PB-0023, record:XD-0016]
+  note: 维吾尔族姓名带间隔号「阿依努尔·吐尔逊」，邮箱用拼音 ayinuer.tuerxun，用来检验搜索、排序与导出
+- tag: assignee_mismatch
+  employees: [HL006, HL010]
+  refs: [record:XD-0011, record:XD-0012, manager_review:MR04]
+  note: 2026-06 熟食区温度缺记扣 6 分记在滨江店和店长鲁思勉名下，实际漏记发生在日配理货员石丰年的班次；店长的食品安全能力不应据此降档
+- tag: cross_source_duplicate
+  employees: [HL013, HL017, HL016]
+  refs: [record:XD-0006, record:POS-0008, record:PB-0010, record:XD-0007, record:PB-0011]
+  note: 同一次叶菜损耗整改在巡店系统（专项检查与整改回复）、POS 系统（报损登记）和排班系统（早班调整、借调支援）三个来源里重复出现
+- tag: pm_not_dept_manager
+  employees: [HL002]
+  refs: [record:XD-0013, self_report:SR11]
+  note: 生鲜损耗专项 SX01 的负责人是区域督导邵禾，他不是任何部门的负责人；专项成员跨区域、门店和采购三个部门
