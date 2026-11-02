@@ -89,11 +89,24 @@ export function WizardFrame({ orgId }: { orgId: string }) {
         <section className="min-w-0 space-y-5 rounded-xl border p-4 sm:p-6">
           {setup.data?.completed && !selected ? (
             <>
-              <h2 className="text-xl font-semibold">首次设置已完成</h2>
+              <h2 className="text-xl font-semibold">设置完成</h2>
               <p>企业基础信息已就绪，可以开始使用员工画像平台。</p>
-              <Button asChild>
-                <Link to="/employees">查看员工</Link>
-              </Button>
+              <ul className="list-disc space-y-2 pl-5 text-sm">
+                <li>把账号文件单独交给每位员工，不要发到群里。</li>
+                <li>员工第一次登录要修改密码。</li>
+                <li>以后有人员变动时，重新导入完整名单。</li>
+              </ul>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild>
+                  <Link to="/employees">员工列表</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link to="/admin/roster">导入名单</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link to="/admin/accounts">员工与账号</Link>
+                </Button>
+              </div>
             </>
           ) : (
             step && (
