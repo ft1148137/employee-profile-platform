@@ -129,7 +129,7 @@ test("organization switch updates navigation and scopes requests", async ({
   await page.route("**/api/v1/orgs/*/employees?*", (route) =>
     route.fulfill({ json: { data: [], count: 0 } }),
   )
-  await page.route("**/api/v1/orgs/*/employees/own-employee", (route) =>
+  await page.route("**/api/v1/orgs/*/employees/own-employee/profile", (route) =>
     route.fulfill({ status: 404, json: { detail: "Employee not found" } }),
   )
   await logInUser(page, "admin@demo.example.com", password)
