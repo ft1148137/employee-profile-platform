@@ -29,3 +29,36 @@ jobs:
         run: bash tests/smoke/compose_smoke.sh
       - if: always()
         run: docker compose down -v --remove-orphans
+
+  test-production-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check shell scripts
+        run: shellcheck install.sh upgrade.sh backup.sh restore.sh deploy/common.sh deploy/backup/*.sh
+      - name: Install without demo data
+        env:
+          EPP_ACCESS: http
+          EPP_HTTP_PORT: '8080'
+          COMPOSE_PROJECT_NAME: epp-production-ci
+        run: ./install.sh --non-interactive
+      - name: Verify production install and idempotency
+        run: |
+          ! grep -q changethis .env
+          test "$(stat -c %a .env)" = 600
+          test "$(docker compose exec -T db psql -U postgres -d app -tAc 'select count(*) from organization')" = 0
+          test "$(docker compose exec -T db psql -U postgres -d app -tAc 'select count(*) from "user"')" = 0
+          address=$(hostname -I | awk '{print $1}')
+          curl --noproxy '*' -H 'Accept: text/html' -fsS "http://$address:8080/login" >/dev/null
+          cp .env .env.before
+          ./install.sh --non-interactive
+          cmp .env .env.before
+          file=$(./backup.sh)
+          test -s "$file"
+      - name: Stop test stack
+        if: always()
+        run: docker compose down -v --rmi local --remove-orphans

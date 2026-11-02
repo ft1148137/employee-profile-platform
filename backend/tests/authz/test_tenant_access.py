@@ -5,6 +5,7 @@ from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 from sqlmodel import Session, select
 
 from app.authz.policies import (
@@ -13,6 +14,7 @@ from app.authz.policies import (
     employee_scope_clause,
 )
 from app.authz.principal import InvalidPrincipal, Principal
+from app.core.db import engine
 from app.core.security import create_access_token
 from app.domains.audit.models import ActorKind
 from app.domains.base import utc_now
@@ -26,6 +28,7 @@ from app.domains.org.models import (
     Role,
     RoleGrant,
 )
+from app.domains.org.service import employee_summary, list_employees
 from app.domains.profile.models import ProfileProgress, ProfileVersion
 from app.models import User
 from app.worker.tenant import TenantNotFound, tenant_task
@@ -240,6 +243,47 @@ def test_employee_api(tenant_data: tuple, client: TestClient) -> None:
             assert set(memberships[0]["managed_department_ids"]) == {
                 str(d.id) for d in depts[:2]
             }
+
+
+def test_employee_list_query_bound(tenant_data: tuple, db: Session) -> None:
+    orgs, _, employees, _ = tenant_data
+    db.add_all(
+        Employee(org_id=orgs[0].id, display_name=f"Shared extra {i:03}")
+        for i in range(96)
+    )
+    db.commit()
+    principal = Principal.system_worker(orgs[0].id)
+    expected = [employee_summary(db, employee) for employee in employees[:5]]
+    statements: list[str] = []
+
+    def count_query(*args: object) -> None:
+        statements.append(str(args[2]))
+
+    # Use a fresh session so cached ORM objects cannot hide extra queries.
+    with Session(engine) as session:
+        event.listen(engine, "before_cursor_execute", count_query)
+        try:
+            page = list_employees(
+                session, principal, department_id=None, q=None, skip=0, limit=100
+            )
+        finally:
+            event.remove(engine, "before_cursor_execute", count_query)
+    assert len(statements) <= 3
+    assert page.count == 101
+    assert len(page.data) == 100
+    by_id = {employee.id: employee for employee in page.data}
+    for summary in expected:
+        assert by_id[summary.id] == summary
+    assert by_id[employees[0].id].latest_published.revision == 2
+    assert by_id[employees[1].id].department is None
+    assert by_id[employees[1].id].progress is None
+    assert by_id[employees[1].id].latest_published is None
+    tail = list_employees(
+        db, principal, department_id=None, q="Shared", skip=100, limit=100
+    )
+    assert tail.count == 101
+    assert len(tail.data) == 1
+    assert tail.data[0].id not in by_id
 
 
 def test_worker_and_user_cleanup(
