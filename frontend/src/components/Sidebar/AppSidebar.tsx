@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router"
-import { Settings, UserRound, Users } from "lucide-react"
+import { ListChecks, Settings, UserRound, Users } from "lucide-react"
 import { SidebarAppearance } from "@/components/Common/Appearance"
 import { Logo } from "@/components/Common/Logo"
 import {
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/sidebar"
 import useAuth from "@/hooks/useAuth"
 import { useOrg } from "@/hooks/useOrg"
+import { useSetup } from "@/hooks/useSetup"
 import { type Item, Main } from "./Main"
 import { User } from "./User"
 
@@ -26,6 +27,7 @@ export function AppSidebar() {
   const { user: currentUser } = useAuth()
 
   const { org, memberships, roles, employeeId, setOrg } = useOrg()
+  const setup = useSetup()
   const navigate = useNavigate()
   const items: Item[] = []
   if (employeeId)
@@ -70,14 +72,22 @@ export function AppSidebar() {
       <SidebarContent>
         <Main items={items} />
         {roles.includes("org_admin") && (
-          <SidebarGroup>
-            <SidebarGroupLabel>管理</SidebarGroupLabel>
+          <div>
+            <SidebarGroup>
+              <SidebarGroupLabel>管理</SidebarGroupLabel>
+            </SidebarGroup>
             <Main
               items={[
                 { icon: Users, title: "员工与账号", path: "/admin/accounts" },
+                {
+                  icon: ListChecks,
+                  title: "首次设置",
+                  path: "/setup-wizard",
+                  badge: setup.data?.completed === false ? "待完成" : undefined,
+                },
               ]}
             />
-          </SidebarGroup>
+          </div>
         )}
       </SidebarContent>
       <SidebarFooter>

@@ -36,6 +36,7 @@ for (const account of ["admin", "manager.platform", "employee.platform"]) {
     await logInUser(page, `${account}@demo.example.com`, password)
     await expect(page.getByRole("heading").first()).toBeVisible()
     if (account !== "employee.platform") {
+      await page.goto("/employees")
       await expect(page.getByText("共", { exact: false }).first()).toBeVisible()
       await expectChineseCopy(page)
       await page
@@ -100,6 +101,7 @@ for (const [account, own] of [
       })
     })
     await logInUser(page, `${account}@demo.example.com`, password)
+    if (!own) await page.goto("/employees")
     if (!own)
       await page
         .getByRole("row")

@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutSetupWizardRouteImport } from './routes/_layout/setup-wizard'
 import { Route as LayoutAdminAccountsRouteImport } from './routes/_layout/admin.accounts'
 import { Route as LayoutEmployeesIndexRouteImport } from './routes/_layout/employees.index'
 import { Route as LayoutEmployeesEmployeeIdRouteImport } from './routes/_layout/employees.$employeeId'
@@ -32,6 +34,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LayoutIndexRoute = LayoutIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -40,6 +47,11 @@ const LayoutIndexRoute = LayoutIndexRouteImport.update({
 const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutSetupWizardRoute = LayoutSetupWizardRouteImport.update({
+  id: '/setup-wizard',
+  path: '/setup-wizard',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutAdminAccountsRoute = LayoutAdminAccountsRouteImport.update({
@@ -63,7 +75,9 @@ export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
+  '/setup': typeof SetupRoute
   '/settings': typeof LayoutSettingsRoute
+  '/setup-wizard': typeof LayoutSetupWizardRoute
   '/admin/accounts': typeof LayoutAdminAccountsRoute
   '/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
   '/employees/': typeof LayoutEmployeesIndexRoute
@@ -71,7 +85,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
+  '/setup': typeof SetupRoute
   '/settings': typeof LayoutSettingsRoute
+  '/setup-wizard': typeof LayoutSetupWizardRoute
   '/': typeof LayoutIndexRoute
   '/admin/accounts': typeof LayoutAdminAccountsRoute
   '/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
@@ -82,7 +98,9 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRouteWithChildren
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
+  '/setup': typeof SetupRoute
   '/_layout/settings': typeof LayoutSettingsRoute
+  '/_layout/setup-wizard': typeof LayoutSetupWizardRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/admin/accounts': typeof LayoutAdminAccountsRoute
   '/_layout/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
@@ -94,7 +112,9 @@ export interface FileRouteTypes {
     | '/'
     | '/change-password'
     | '/login'
+    | '/setup'
     | '/settings'
+    | '/setup-wizard'
     | '/admin/accounts'
     | '/employees/$employeeId'
     | '/employees/'
@@ -102,7 +122,9 @@ export interface FileRouteTypes {
   to:
     | '/change-password'
     | '/login'
+    | '/setup'
     | '/settings'
+    | '/setup-wizard'
     | '/'
     | '/admin/accounts'
     | '/employees/$employeeId'
@@ -112,7 +134,9 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/change-password'
     | '/login'
+    | '/setup'
     | '/_layout/settings'
+    | '/_layout/setup-wizard'
     | '/_layout/'
     | '/_layout/admin/accounts'
     | '/_layout/employees/$employeeId'
@@ -123,6 +147,7 @@ export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   ChangePasswordRoute: typeof ChangePasswordRoute
   LoginRoute: typeof LoginRoute
+  SetupRoute: typeof SetupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -148,6 +173,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_layout/': {
       id: '/_layout/'
       path: '/'
@@ -160,6 +192,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof LayoutSettingsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/setup-wizard': {
+      id: '/_layout/setup-wizard'
+      path: '/setup-wizard'
+      fullPath: '/setup-wizard'
+      preLoaderRoute: typeof LayoutSetupWizardRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/admin/accounts': {
@@ -188,6 +227,7 @@ declare module '@tanstack/react-router' {
 
 interface LayoutRouteChildren {
   LayoutSettingsRoute: typeof LayoutSettingsRoute
+  LayoutSetupWizardRoute: typeof LayoutSetupWizardRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
   LayoutAdminAccountsRoute: typeof LayoutAdminAccountsRoute
   LayoutEmployeesEmployeeIdRoute: typeof LayoutEmployeesEmployeeIdRoute
@@ -196,6 +236,7 @@ interface LayoutRouteChildren {
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutSettingsRoute: LayoutSettingsRoute,
+  LayoutSetupWizardRoute: LayoutSetupWizardRoute,
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutAdminAccountsRoute: LayoutAdminAccountsRoute,
   LayoutEmployeesEmployeeIdRoute: LayoutEmployeesEmployeeIdRoute,
@@ -209,6 +250,7 @@ const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   ChangePasswordRoute: ChangePasswordRoute,
   LoginRoute: LoginRoute,
+  SetupRoute: SetupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

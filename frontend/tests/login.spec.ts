@@ -137,7 +137,7 @@ for (const path of ["/", "/settings", "/employees"]) {
 
     await fillForm(page, firstSuperuser, firstSuperuserPassword)
     await page.getByRole("button", { name: "登录" }).click()
-    await page.waitForURL("/employees")
+    await page.waitForURL("/setup-wizard")
     await expect(page.getByTestId("user-menu")).toBeVisible()
   })
 }

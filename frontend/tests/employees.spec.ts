@@ -13,6 +13,7 @@ test("demo admin sees all employees, filters, searches and paginates", async ({
   page,
 }) => {
   await logInUser(page, "admin@demo.example.com", password)
+  await page.goto("/employees")
   await expect(page).toHaveURL(/\/employees\/?$/)
   await expect(page.getByText("共 12 名员工")).toBeVisible()
   await expect(page.locator("tbody tr")).toHaveCount(12)
@@ -98,6 +99,7 @@ test("invalid saved organization falls back to a membership", async ({
     localStorage.setItem("current_org_id", "removed-org"),
   )
   await logInUser(page, "admin@demo.example.com", password)
+  await page.goto("/employees")
   await expect(page.getByText("共 12 名员工")).toBeVisible()
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem("current_org_id")))
@@ -131,6 +133,7 @@ test("organization switch updates navigation and scopes requests", async ({
     route.fulfill({ status: 404, json: { detail: "Employee not found" } }),
   )
   await logInUser(page, "admin@demo.example.com", password)
+  await page.goto("/employees")
   await expect(page.getByText("共 0 名员工")).toBeVisible()
   await page.getByRole("combobox", { name: "当前组织" }).click()
   await page.getByRole("option", { name: "测试组织 2" }).click()
@@ -152,6 +155,7 @@ test("employee list handles failure, retry and empty search", async ({
     route.fulfill({ status: 500, json: { detail: "Temporary failure" } }),
   )
   await logInUser(page, "admin@demo.example.com", password)
+  await page.goto("/employees")
   await expect(page.getByText("无法加载员工列表。")).toBeVisible({
     timeout: 15000,
   })

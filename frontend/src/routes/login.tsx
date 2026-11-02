@@ -1,9 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
 import type { Body_login_login_access_token as AccessToken } from "@/client"
+import { SetupService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
 import {
   Form,
@@ -47,6 +49,10 @@ export const Route = createFileRoute("/login")({
 })
 
 function Login() {
+  const status = useQuery({
+    queryKey: ["setup-status"],
+    queryFn: async () => (await SetupService.readStatus()).data,
+  })
   const { loginMutation } = useAuth()
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -65,6 +71,11 @@ function Login() {
 
   return (
     <AuthLayout>
+      {status.data?.initialized === false && (
+        <p role="status" className="mb-6 rounded-lg border p-4 text-sm">
+          系统还没有初始化。请使用部署时打印的初始化链接完成设置。
+        </p>
+      )}
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}

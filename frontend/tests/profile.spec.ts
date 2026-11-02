@@ -11,6 +11,7 @@ test.use({
 async function openE02(page: Page, email: string) {
   await logInUser(page, email, password)
   if (email !== "employee.platform@demo.example.com") {
+    await page.goto("/employees")
     await page.getByRole("combobox", { name: "部门筛选" }).click()
     await page.getByRole("option", { name: "平台研发部", exact: true }).click()
     await page.getByRole("row").filter({ hasText: "张伟" }).click()
