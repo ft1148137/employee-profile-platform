@@ -1,88 +1,15 @@
-# Full Stack FastAPI Template
+# 企业员工画像与跨部门协同平台
 
-[![Test Docker Compose](../../actions/workflows/test-docker-compose.yml/badge.svg)](../../actions/workflows/test-docker-compose.yml)
-[![Test Backend](../../actions/workflows/test-backend.yml/badge.svg)](../../actions/workflows/test-backend.yml)
+开源、可自托管的员工资源画像平台，让跨部门协同基于可信能力与事实。Phase 1 聚焦：做过什么、能承担哪些工作、证据是什么、哪里需要确认。
 
-## Technology Stack and Features
+基于 Full Stack FastAPI Template，使用 FastAPI、React、PostgreSQL 和 Docker Compose。当前为 M0 项目底座，不含业务画像功能；不做绩效打分或自动排班。
 
-- ⚡ [**FastAPI**](https://fastapi.tiangolo.com) for the Python backend API.
-  - 🧰 [SQLModel](https://sqlmodel.tiangolo.com) for the Python SQL database interactions (ORM).
-  - 🔍 [Pydantic](https://docs.pydantic.dev), used by FastAPI, for the data validation and settings management.
-  - 💾 [PostgreSQL](https://www.postgresql.org) as the SQL database.
-- 🚀 [React](https://react.dev) for the frontend.
-  - 🧩 Built into the backend application and served by FastAPI on the same domain as the API.
-  - 💃 Using TypeScript, hooks, [Vite](https://vitejs.dev), and other parts of a modern frontend stack.
-  - 🎨 [Tailwind CSS](https://tailwindcss.com) and [shadcn/ui](https://ui.shadcn.com) for the frontend components.
-  - 🤖 An automatically generated frontend client.
-  - 🧪 [Playwright](https://playwright.dev) for end-to-end testing.
-  - 🦇 Dark mode support.
-- ☁️ [FastAPI Cloud](https://fastapicloud.com) for deployment.
-- 🐋 [Docker Compose](https://www.docker.com) for local services and self-hosted deployment.
-  - 📞 [Traefik](https://traefik.io) as a reverse proxy with automatic HTTPS.
-- 🔒 Secure password hashing by default.
-- 🔑 JWT (JSON Web Token) authentication.
-- 📫 Email-based password recovery.
-- ✉️ [React Email](https://react.email) for email templates.
-- 📬 [Mailpit](https://mailpit.axllent.org) for local email testing during development.
-- ✅ Tests with [Pytest](https://pytest.org).
-- 🏭 CI (continuous integration) and CD (continuous deployment) based on GitHub Actions.
+从 `cp .env.example .env` 开始，替换示例密钥和密码，再按开发指南启动。不要提交 `.env`。
 
-### Dashboard Login
+- [文档索引](docs/README.md)
+- [开发指南](docs/development.md)
+- [部署指南](docs/deployment-docker-compose.md)
+- [后端](backend/README.md) / [前端](frontend/README.md)
+- [架构决策记录](docs/adr/README.md)
 
-![Dashboard login screenshot](img/login.png)
-
-### Dashboard - Admin
-
-![Admin dashboard screenshot](img/dashboard.png)
-
-### Dashboard - Items
-
-![Items dashboard screenshot](img/dashboard-items.png)
-
-### Dashboard - Dark Mode
-
-![Dark mode dashboard screenshot](img/dashboard-dark.png)
-
-### React Email Templates
-
-![Email templates screenshot](img/react-email.png)
-
-### Mailpit - Local Email Testing
-
-![Mailpit screenshot](img/mailpit.png)
-
-### Interactive API Documentation
-
-![API docs](img/docs.png)
-
-## How to Use It
-
-Click the **Use this template** button at the top of this page to create a new repository.
-
-## Backend Development
-
-Backend docs: [backend/README.md](./backend/README.md).
-
-## Frontend Development
-
-Frontend docs: [frontend/README.md](./frontend/README.md).
-
-## Deployment
-
-FastAPI Cloud deployment: [deployment.md](./deployment.md).
-
-Self-hosted deployment with Docker Compose: [deployment-docker-compose.md](./deployment-docker-compose.md).
-
-## Development
-
-General development docs: [development.md](./development.md).
-
-This includes the local FastAPI and Vite workflow, Docker Compose services, `.env` configuration, and more.
-
-## Release Notes
-
-Check the file [release-notes.md](./release-notes.md).
-
-## License
-
-The Full Stack FastAPI Template is licensed under the terms of the MIT license.
+正式 README 和新用户验收指南将在 M0-S9 补充。保留上游 [MIT 许可证](LICENSE)，发布前在 M4 核验许可证。

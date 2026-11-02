@@ -7,6 +7,8 @@
 
 ## Local Development
 
+See the [development guide](../docs/development.md) and [deployment guide](../docs/deployment-docker-compose.md). Run `cp .env.example .env` from the project root before starting services.
+
 Run the backend locally and connect it to PostgreSQL in Docker Compose.
 
 From the project root, start PostgreSQL and Mailpit:

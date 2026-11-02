@@ -1,5 +1,7 @@
 # FastAPI Project - Development
 
+Before starting, run `cp .env.example .env` from the repository root and replace the example secrets. Run all Compose commands from the repository root.
+
 ## Local Development
 
 For local development, run PostgreSQL and Mailpit with Docker Compose, and run the FastAPI and Vite development servers locally.
@@ -99,9 +101,9 @@ docker compose watch
 
 ## The `.env` File
 
-The tracked `.env` file contains local development defaults, passwords, and other configuration. Its hostnames use `localhost` for processes running on your machine. Docker Compose overrides hostnames such as the database and SMTP server with their Compose service names.
+The ignored local `.env` file contains local development defaults, passwords, and other configuration. Its hostnames use `localhost` for processes running on your machine. Docker Compose overrides hostnames such as the database and SMTP server with their Compose service names.
 
-Do not store deployment secrets in `.env`. Configure them as described in the [FastAPI Cloud deployment guide](./deployment.md) or the [Docker Compose deployment guide](./deployment-docker-compose.md).
+Do not commit secrets. Configure deployment environment variables as described in the [Docker Compose deployment guide](./deployment-docker-compose.md).
 
 ## Pre-commit Hooks and Code Linting
 
