@@ -516,6 +516,50 @@ export type HTTPValidationError = {
  */
 export type InferenceStatus = 'pending' | 'running' | 'generated' | 'failed';
 
+/**
+ * InitializeInput
+ */
+export type InitializeInput = {
+    /**
+     * Token
+     */
+    token: string;
+    /**
+     * Org Name
+     */
+    org_name: string;
+    /**
+     * Admin Username
+     */
+    admin_username: string;
+    /**
+     * Admin Password
+     */
+    admin_password: string;
+    /**
+     * Admin Full Name
+     */
+    admin_full_name?: string | null;
+};
+
+/**
+ * InitializeResult
+ */
+export type InitializeResult = {
+    /**
+     * Access Token
+     */
+    access_token: string;
+    /**
+     * Token Type
+     */
+    token_type?: string;
+    /**
+     * Org Id
+     */
+    org_id: string;
+};
+
 export type JsonValue = unknown;
 
 /**
@@ -777,6 +821,38 @@ export type SchemaVersionPublic = {
      * Template Ref
      */
     template_ref: string | null;
+};
+
+/**
+ * SetupPurpose
+ */
+export type SetupPurpose = 'initial_setup' | 'new_org';
+
+/**
+ * SetupStatus
+ */
+export type SetupStatus = {
+    /**
+     * Initialized
+     */
+    initialized: boolean;
+};
+
+/**
+ * SetupTokenInput
+ */
+export type SetupTokenInput = {
+    purpose: SetupPurpose;
+};
+
+/**
+ * SetupTokenResult
+ */
+export type SetupTokenResult = {
+    /**
+     * Token
+     */
+    token: string;
 };
 
 /**
@@ -1497,6 +1573,72 @@ export type evidenceReadEvidenceResponses = {
 };
 
 export type evidenceReadEvidenceResponse = evidenceReadEvidenceResponses[keyof evidenceReadEvidenceResponses];
+
+export type setupReadStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/setup/status';
+};
+
+export type setupReadStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: SetupStatus;
+};
+
+export type setupReadStatusResponse = setupReadStatusResponses[keyof setupReadStatusResponses];
+
+export type setupInitializeOrganizationData = {
+    body: InitializeInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/setup/initialize';
+};
+
+export type setupInitializeOrganizationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type setupInitializeOrganizationError = setupInitializeOrganizationErrors[keyof setupInitializeOrganizationErrors];
+
+export type setupInitializeOrganizationResponses = {
+    /**
+     * Successful Response
+     */
+    200: InitializeResult;
+};
+
+export type setupInitializeOrganizationResponse = setupInitializeOrganizationResponses[keyof setupInitializeOrganizationResponses];
+
+export type privateCreateSetupTokenData = {
+    body: SetupTokenInput;
+    path?: never;
+    query?: never;
+    url: '/api/v1/private/setup-tokens';
+};
+
+export type privateCreateSetupTokenErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type privateCreateSetupTokenError = privateCreateSetupTokenErrors[keyof privateCreateSetupTokenErrors];
+
+export type privateCreateSetupTokenResponses = {
+    /**
+     * Successful Response
+     */
+    200: SetupTokenResult;
+};
+
+export type privateCreateSetupTokenResponse = privateCreateSetupTokenResponses[keyof privateCreateSetupTokenResponses];
 
 export type privateCreateUserData = {
     body: PrivateUserCreate;

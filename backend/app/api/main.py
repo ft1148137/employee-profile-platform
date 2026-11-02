@@ -10,6 +10,7 @@ from app.api.routes import (
     orgs,
     private,
     profiles,
+    setup,
     users,
     utils,
 )
@@ -26,6 +27,7 @@ api_router.include_router(capabilities.router)
 api_router.include_router(capability_templates.router)
 api_router.include_router(profiles.router)
 api_router.include_router(evidence.router)
+api_router.include_router(setup.router)
 
 
 if settings.FASTAPI_ENV == "development":

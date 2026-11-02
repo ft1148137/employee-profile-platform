@@ -3,6 +3,8 @@ from fastapi import APIRouter
 from app import crud
 from app.api.deps import SessionDep
 from app.domains.org.models import Employee, Organization, OrgMembership
+from app.domains.setup.schemas import SetupTokenInput, SetupTokenResult
+from app.domains.setup.service import issue_token
 from app.models import (
     User,
     UserCreate,
@@ -10,6 +12,13 @@ from app.models import (
 )
 
 router = APIRouter(tags=["private"], prefix="/private")
+
+
+@router.post("/setup-tokens")
+def create_setup_token(data: SetupTokenInput, session: SessionDep) -> SetupTokenResult:
+    token = issue_token(session, data.purpose)
+    session.commit()
+    return SetupTokenResult(token=token)
 
 
 class PrivateUserCreate(UserCreate):
