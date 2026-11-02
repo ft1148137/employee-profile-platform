@@ -283,3 +283,57 @@ def test_evidence_only_references_current_claims(
             if item["capability"]["key"] == "backend_api"
         )
         assert item["claim"]["id"] == claims[reference]
+
+
+@pytest.mark.parametrize("has_schema", [False, True])
+def test_new_employee_has_empty_profile(
+    demo: tuple, client: TestClient, db: Session, has_schema: bool
+) -> None:
+    url, employees, auth = demo
+    org_id = employees["E02"].org_id if has_schema else uuid4()
+    if not has_schema:
+        db.add(Organization(id=org_id, slug=str(org_id), name="空画像测试企业"))
+        db.flush()
+    account = User(username=str(uuid4()), hashed_password="unused")
+    employee = Employee(org_id=org_id, employee_code="EMPTY", display_name="新员工")
+    db.add_all([account, employee])
+    db.flush()
+    membership = OrgMembership(
+        org_id=org_id, user_id=account.id, employee_id=employee.id
+    )
+    db.add(membership)
+    db.commit()
+    try:
+        token = create_access_token(account.id, expires_delta=timedelta(minutes=5))
+        response = client.get(
+            f"/api/v1/orgs/{org_id}/employees/{employee.id}/profile",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        profile = response.json()
+        assert profile["employee"]["display_name"] == "新员工"
+        assert profile["latest_published"] is None
+        assert all(item["claim"] is None for item in profile["items"])
+        assert (profile["schema_version"] is not None) == has_schema
+        if not has_schema:
+            assert profile["items"] == []
+            assert sum(profile["counts"].values()) == 0
+        # A different tenant cannot use the empty response to discover the employee.
+        assert (
+            client.get(
+                f"/api/v1/orgs/{org_id}/employees/{employee.id}/profile",
+                headers=auth["foreign"],
+            ).status_code
+            == 404
+        )
+    finally:
+        db.rollback()
+        if has_schema:
+            db.delete(membership)
+            db.flush()
+            db.delete(employee)
+            db.commit()
+        else:
+            delete_test_organization(db, org_id)
+        db.delete(account)
+        db.commit()

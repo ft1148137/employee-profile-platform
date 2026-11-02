@@ -45,7 +45,7 @@ test("employee reads capability, Jira evidence and earlier published snapshot", 
   await api.getByRole("button", { name: /实现分页查询接口/ }).click()
   await expect(page.getByRole("dialog")).toContainText("PLAT-104")
   await expect(page.getByRole("dialog")).toContainText("背景")
-  await page.getByRole("button", { name: "Close", exact: true }).click()
+  await page.getByRole("button", { name: "关闭", exact: true }).click()
   await page.getByRole("tab", { name: "版本历史" }).click()
   await expect(page.getByRole("tabpanel").getByRole("listitem")).toHaveCount(2)
   await page.getByRole("button", { name: /^r1 ·/ }).click()

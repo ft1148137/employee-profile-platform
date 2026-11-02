@@ -26,7 +26,7 @@ function EmployeePage() {
 }
 
 function EmployeeDetails() {
-  const { org } = useOrg()
+  const { org, employeeId: ownEmployeeId } = useOrg()
   const { employeeId } = Route.useParams()
   const [evidenceId, setEvidenceId] = useState<string | null>(null)
   const query = useQuery({
@@ -64,6 +64,32 @@ function EmployeeDetails() {
           <TabsTrigger value="versions">版本历史</TabsTrigger>
         </TabsList>
         <TabsContent value="capabilities">
+          {!query.data.latest_published &&
+            !query.data.items.some((item) => item.claim) && (
+              <section
+                aria-label="画像说明"
+                className="mb-6 rounded-xl border bg-muted/20 p-6 space-y-3"
+              >
+                <h2 className="font-semibold">
+                  {ownEmployeeId === employeeId
+                    ? "你的画像还没有内容"
+                    : "该员工的画像还没有内容"}
+                </h2>
+                <p>
+                  {ownEmployeeId === employeeId
+                    ? "企业接入工作记录后，系统会先起草一份画像给你本人过目，你确认或修改后才会提交审核。"
+                    : "企业接入工作记录后，系统会先起草一份画像给该员工本人过目，由本人确认或修改后才会提交审核。"}
+                </p>
+                <p>
+                  画像只用来帮助跨部门找到合适的人，不用于绩效、薪酬和晋升。
+                </p>
+              </section>
+            )}
+          {!query.data.schema_version && (
+            <p role="status" className="mb-6 text-muted-foreground">
+              企业管理员还没有选择能力词典
+            </p>
+          )}
           <CapabilityList items={query.data.items} onEvidence={setEvidenceId} />
         </TabsContent>
         <TabsContent value="evidence">

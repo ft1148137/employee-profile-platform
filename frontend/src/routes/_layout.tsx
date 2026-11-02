@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
+import { UsersService } from "@/client"
 
-import { Footer } from "@/components/Common/Footer"
 import AppSidebar from "@/components/Sidebar/AppSidebar"
 import {
   SidebarInset,
@@ -16,6 +16,10 @@ export const Route = createFileRoute("/_layout")({
       throw redirect({
         to: "/login",
       })
+    }
+    const { data: user } = await UsersService.readUserMe()
+    if (user.must_change_password) {
+      throw redirect({ to: "/change-password" })
     }
   },
 })
@@ -33,7 +37,6 @@ function Layout() {
             <Outlet />
           </div>
         </main>
-        <Footer />
       </SidebarInset>
     </SidebarProvider>
   )

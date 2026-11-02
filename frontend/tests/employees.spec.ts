@@ -23,10 +23,8 @@ test("demo admin sees all employees, filters, searches and paginates", async ({
   await page.getByRole("combobox").last().click()
   await page.getByRole("option", { name: "5", exact: true }).click()
   await expect(page.locator("tbody tr")).toHaveCount(5)
-  await page
-    .getByRole("button", { name: "Go to next page", exact: true })
-    .click()
-  await expect(page.getByText("Showing 6 to 10 of 12 entries")).toBeVisible()
+  await page.getByRole("button", { name: "下一页", exact: true }).click()
+  await expect(page.getByText("显示第 6 至 10 条，共 12 条")).toBeVisible()
   await page.getByRole("combobox", { name: "部门筛选" }).click()
   await page.getByRole("option", { name: "平台研发部", exact: true }).click()
   await expect(page.getByText("共 3 名员工")).toBeVisible()

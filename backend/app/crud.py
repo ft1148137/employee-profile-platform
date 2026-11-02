@@ -67,6 +67,5 @@ def authenticate(*, session: Session, username: str, password: str) -> User | No
     if updated_password_hash:
         db_user.hashed_password = updated_password_hash
         session.add(db_user)
-        session.commit()
-        session.refresh(db_user)
+        session.flush()
     return db_user

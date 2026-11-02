@@ -26,7 +26,7 @@ def test_setup_migration_roundtrip(migration_engine: Engine) -> None:
         )
         session.commit()
         org_id = org.id
-    for action, revision in (("downgrade", "a51b093e72c4"), ("upgrade", "head")):
+    for action, revision in (("downgrade", "b62c194f83d5"), ("upgrade", "head")):
         subprocess.run(
             [sys.executable, "-m", "alembic", action, revision],
             check=True,
@@ -35,6 +35,7 @@ def test_setup_migration_roundtrip(migration_engine: Engine) -> None:
         assert ("setup_step_state" in inspect(migration_engine).get_table_names()) == (
             action == "upgrade"
         )
+        assert inspect(migration_engine).has_table("login_attempt")
     with Session(migration_engine) as session:
         assert session.get(Organization, org_id).name == "合成迁移测试"
         assert session.exec(select(SetupStepState)).all() == []

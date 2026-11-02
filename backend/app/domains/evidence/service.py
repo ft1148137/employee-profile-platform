@@ -34,7 +34,7 @@ from app.domains.work.models import Task, WorkEvent
 
 class EvidenceNotFound(HTTPException):
     def __init__(self) -> None:
-        super().__init__(404, "Evidence not found")
+        super().__init__(404, "证据不存在或你没有权限查看")
 
 
 def restricted_title(kind: EvidenceKind) -> str:

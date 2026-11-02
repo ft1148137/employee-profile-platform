@@ -1,13 +1,13 @@
 """Persist organization setup step decisions.
 
 Revision ID: b63e92d7f140
-Revises: a51b093e72c4
+Revises: b62c194f83d5
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "b63e92d7f140"
-down_revision = "a51b093e72c4"
+down_revision = "b62c194f83d5"
 branch_labels = None
 depends_on = None
 

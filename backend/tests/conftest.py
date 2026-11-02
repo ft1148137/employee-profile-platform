@@ -10,17 +10,27 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 from psycopg import sql
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, create_engine, delete
 from sqlmodel import Session, select
 
 from app.core.config import settings
 from app.core.db import engine, init_db
+from app.domains.account.models import LoginAttempt
 from app.domains.org.models import Organization
 from app.main import app
 from app.models import User
 from tests.utils.org import cleanup_new_users, delete_test_organization
 from tests.utils.user import authentication_token_from_email
 from tests.utils.utils import get_superuser_token_headers
+
+
+@pytest.fixture(autouse=True)
+def reset_login_attempts(db: Session) -> Generator[None]:
+    db.execute(delete(LoginAttempt))
+    db.commit()
+    yield
+    db.execute(delete(LoginAttempt))
+    db.commit()
 
 
 @pytest.fixture
