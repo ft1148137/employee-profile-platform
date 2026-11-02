@@ -19,6 +19,7 @@ from app.domains.profile.models import (
     ProfileProgress,
     ProfileVersion,
 )
+from app.domains.setup.models import SetupStepState
 from app.domains.work.models import Task, WorkEvent
 from app.models import User
 
@@ -40,6 +41,7 @@ def delete_test_organization(session: Session, org_id: UUID) -> None:
     if org is None or org.slug == "demo":
         raise ValueError("Only a test-owned organization may be deleted")
     for model in (
+        SetupStepState,
         AuditEvent,
         ClaimEvidence,
         ProfileVersion,
