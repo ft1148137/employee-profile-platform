@@ -4,6 +4,8 @@ from datetime import UTC, datetime
 from pydantic import EmailStr
 from sqlmodel import Field, SQLModel
 
+from app import domains as domains
+
 
 def get_datetime_utc() -> datetime:
     return datetime.now(UTC)
