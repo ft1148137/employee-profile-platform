@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { capabilitiesReadCapabilitiesData, capabilitiesReadCapabilitiesErrors, capabilitiesReadCapabilitiesResponses, employeesReadEmployeeData, employeesReadEmployeeErrors, employeesReadEmployeeResponses, employeesReadEmployeesData, employeesReadEmployeesErrors, employeesReadEmployeesResponses, evidenceReadEmployeeEvidenceData, evidenceReadEmployeeEvidenceErrors, evidenceReadEmployeeEvidenceResponses, evidenceReadEvidenceData, evidenceReadEvidenceErrors, evidenceReadEvidenceResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginTestTokenData, loginTestTokenResponses, meReadMembershipsData, meReadMembershipsResponses, orgsReadDepartmentsData, orgsReadDepartmentsErrors, orgsReadDepartmentsResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesReadProfileData, profilesReadProfileErrors, profilesReadProfileResponses, profilesReadProfileVersionData, profilesReadProfileVersionErrors, profilesReadProfileVersionResponses, profilesReadProfileVersionsData, profilesReadProfileVersionsErrors, profilesReadProfileVersionsResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
+import type { accountsDisableAccountData, accountsDisableAccountErrors, accountsDisableAccountResponses, accountsEnableAccountData, accountsEnableAccountErrors, accountsEnableAccountResponses, accountsIssueAccountsData, accountsIssueAccountsErrors, accountsIssueAccountsResponses, accountsReadAccountsData, accountsReadAccountsErrors, accountsReadAccountsResponses, accountsResetPasswordData, accountsResetPasswordErrors, accountsResetPasswordResponses, capabilitiesReadCapabilitiesData, capabilitiesReadCapabilitiesErrors, capabilitiesReadCapabilitiesResponses, employeesReadEmployeeData, employeesReadEmployeeErrors, employeesReadEmployeeResponses, employeesReadEmployeesData, employeesReadEmployeesErrors, employeesReadEmployeesResponses, evidenceReadEmployeeEvidenceData, evidenceReadEmployeeEvidenceErrors, evidenceReadEmployeeEvidenceResponses, evidenceReadEvidenceData, evidenceReadEvidenceErrors, evidenceReadEvidenceResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginTestTokenData, loginTestTokenResponses, meReadMembershipsData, meReadMembershipsResponses, orgsReadDepartmentsData, orgsReadDepartmentsErrors, orgsReadDepartmentsResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesReadProfileData, profilesReadProfileErrors, profilesReadProfileResponses, profilesReadProfileVersionData, profilesReadProfileVersionErrors, profilesReadProfileVersionResponses, profilesReadProfileVersionsData, profilesReadProfileVersionsErrors, profilesReadProfileVersionsResponses, rolesGrantRoleData, rolesGrantRoleErrors, rolesGrantRoleResponses, rolesReadRolesData, rolesReadRolesErrors, rolesReadRolesResponses, rolesRevokeRoleData, rolesRevokeRoleErrors, rolesRevokeRoleResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -350,6 +350,114 @@ export class EvidenceService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/orgs/{org_id}/evidence/{evidence_id}',
+            ...options
+        });
+    }
+}
+
+export class AccountsService {
+    /**
+     * Read Accounts
+     */
+    public static readAccounts<ThrowOnError extends boolean = true>(options: Options<accountsReadAccountsData, ThrowOnError>) {
+        return (options.client ?? client).get<accountsReadAccountsResponses, accountsReadAccountsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/accounts',
+            ...options
+        });
+    }
+
+    /**
+     * Issue Accounts
+     */
+    public static issueAccounts<ThrowOnError extends boolean = true>(options: Options<accountsIssueAccountsData, ThrowOnError>) {
+        return (options.client ?? client).post<accountsIssueAccountsResponses, accountsIssueAccountsErrors, ThrowOnError>({
+            responseType: 'blob',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/accounts/issue',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+
+    /**
+     * Reset Password
+     */
+    public static resetPassword<ThrowOnError extends boolean = true>(options: Options<accountsResetPasswordData, ThrowOnError>) {
+        return (options.client ?? client).post<accountsResetPasswordResponses, accountsResetPasswordErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/accounts/{user_id}/reset-password',
+            ...options
+        });
+    }
+
+    /**
+     * Disable Account
+     */
+    public static disableAccount<ThrowOnError extends boolean = true>(options: Options<accountsDisableAccountData, ThrowOnError>) {
+        return (options.client ?? client).post<accountsDisableAccountResponses, accountsDisableAccountErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/accounts/{user_id}/disable',
+            ...options
+        });
+    }
+
+    /**
+     * Enable Account
+     */
+    public static enableAccount<ThrowOnError extends boolean = true>(options: Options<accountsEnableAccountData, ThrowOnError>) {
+        return (options.client ?? client).post<accountsEnableAccountResponses, accountsEnableAccountErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/accounts/{user_id}/enable',
+            ...options
+        });
+    }
+}
+
+export class RolesService {
+    /**
+     * Read Roles
+     */
+    public static readRoles<ThrowOnError extends boolean = true>(options: Options<rolesReadRolesData, ThrowOnError>) {
+        return (options.client ?? client).get<rolesReadRolesResponses, rolesReadRolesErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/role-grants',
+            ...options
+        });
+    }
+
+    /**
+     * Grant Role
+     */
+    public static grantRole<ThrowOnError extends boolean = true>(options: Options<rolesGrantRoleData, ThrowOnError>) {
+        return (options.client ?? client).post<rolesGrantRoleResponses, rolesGrantRoleErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/role-grants',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+
+    /**
+     * Revoke Role
+     */
+    public static revokeRole<ThrowOnError extends boolean = true>(options: Options<rolesRevokeRoleData, ThrowOnError>) {
+        return (options.client ?? client).delete<rolesRevokeRoleResponses, rolesRevokeRoleErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/role-grants/{grant_id}',
             ...options
         });
     }
