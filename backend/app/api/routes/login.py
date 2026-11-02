@@ -1,13 +1,14 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app import crud
 from app.api.deps import CurrentUser, SessionDep
 from app.core import security
 from app.core.config import settings
+from app.domains.account.limiter import check_login_limit, record_login_attempt
 from app.models import Token, UserPublic
 
 router = APIRouter(tags=["login"])
@@ -25,25 +26,36 @@ class InactiveAccount(HTTPException):
 
 @router.post("/login/access-token")
 def login_access_token(
-    session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+    request: Request,
+    session: SessionDep,
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
     """
     OAuth2 compatible token login, get an access token for future requests
     """
+    # Bound stored invalid identifiers too; valid usernames normalize to at most 510 characters.
+    identifier = form_data.username.strip().lower()[:512]
+    ip = request.client.host if request.client else "unknown"
+    check_login_limit(session, identifier, ip)
     user = crud.authenticate(
         session=session, username=form_data.username, password=form_data.password
     )
     if not user:
+        record_login_attempt(session, identifier, ip, False)
         raise InvalidCredentials()
     elif not user.is_active:
+        record_login_attempt(session, identifier, ip, False)
         raise InactiveAccount()
     user.last_login_at = datetime.now(UTC)
     session.add(user)
-    session.commit()
+    user_id, password_changed_at = user.id, user.password_changed_at
+    record_login_attempt(session, identifier, ip, True)
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return Token(
         access_token=security.create_access_token(
-            user.id, expires_delta=access_token_expires
+            user_id,
+            expires_delta=access_token_expires,
+            password_changed_at=password_changed_at,
         )
     )
 

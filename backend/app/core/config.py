@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
+    LOGIN_MAX_FAILURES: int = Field(default=5, gt=0)
+    LOGIN_MAX_FAILURES_PER_IP: int = Field(default=30, gt=0)
+    LOGIN_LOCK_MINUTES: int = Field(default=15, gt=0, le=1440)
     FRONTEND_HOST: str = "http://localhost:5173"
     FASTAPI_ENV: Literal["development"] | None = None
     SEED_DEMO_DATA: bool = False

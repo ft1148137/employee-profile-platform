@@ -47,7 +47,8 @@ def test_update_password_me(
     )
     assert r.status_code == 200
     updated_user = r.json()
-    assert updated_user["message"] == "密码修改成功"
+    assert updated_user["access_token"]
+    superuser_token_headers["Authorization"] = f"Bearer {updated_user['access_token']}"
 
     user_query = select(User).where(User.email == settings.FIRST_SUPERUSER)
     user_db = db.exec(user_query).first()
@@ -69,6 +70,7 @@ def test_update_password_me(
     db.refresh(user_db)
 
     assert r.status_code == 200
+    superuser_token_headers["Authorization"] = f"Bearer {r.json()['access_token']}"
     verified, _ = verify_password(
         settings.FIRST_SUPERUSER_PASSWORD, user_db.hashed_password
     )

@@ -29,6 +29,7 @@ const useAuth = () => {
       body: data,
     })
     localStorage.setItem("access_token", response.data.access_token)
+    queryClient.clear()
   }
 
   const loginMutation = useMutation({
