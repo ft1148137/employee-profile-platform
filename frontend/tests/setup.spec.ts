@@ -1,6 +1,9 @@
+import { execFileSync } from "node:child_process"
+import path from "node:path"
 import { expect, type Page, test } from "@playwright/test"
 import type { SetupPublic } from "../src/client"
 import { expectChineseCopy } from "./utils/copy"
+import { logOutUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 test.describe.configure({ mode: "serial" })
@@ -17,6 +20,121 @@ async function fillSetup(page: Page) {
     .getByLabel("确认密码", { exact: true })
     .fill("synthetic-password-2026")
 }
+
+test("complete setup with 30 employees, download accounts and first employee login", async ({
+  page,
+  request,
+}, testInfo) => {
+  test.setTimeout(90000)
+  const response = await request.post("/api/v1/private/setup-tokens", {
+    data: { purpose: "new_org" },
+  })
+  expect(response.ok()).toBeTruthy()
+  await page.goto(`/setup#token=${(await response.json()).token}`)
+  await fillSetup(page)
+  await page.getByLabel("姓名（可选）").fill("测试管理员")
+  await page.getByRole("button", { name: "创建企业并继续" }).click()
+  await expect(page).toHaveURL("/setup-wizard")
+  await page
+    .getByLabel("拖拽名单到这里，或选择文件上传")
+    .setInputFiles(
+      path.resolve(import.meta.dirname, "../../examples/roster/sample-30.csv"),
+    )
+  const preview = page.getByRole("region", { name: "名单预览" })
+  await expect(preview.getByText("新增 30 人", { exact: true })).toBeVisible()
+  await expect(preview.getByText("导入后的部门树")).toBeVisible()
+  await expect(preview.getByText(/研发中心 ·/)).toBeVisible()
+  await expectChineseCopy(page, ["sample"])
+  await page.screenshot({
+    path: testInfo.outputPath("roster-preview.png"),
+    fullPage: true,
+  })
+  await page.getByRole("button", { name: "确认导入", exact: true }).click()
+  await expect(page.getByText("导入成功，员工名单和部门已更新。")).toBeVisible()
+  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await page.getByRole("button", { name: /科技研发/ }).click()
+  await page.getByRole("button", { name: "启用此词典" }).click()
+  await expect(page.getByText("词典已启用，可以完成此步骤。")).toBeVisible()
+  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await expect(page.getByText("还有 30 名在职员工没有账号")).toBeVisible()
+  await page.screenshot({
+    path: testInfo.outputPath("setup-accounts.png"),
+    fullPage: true,
+  })
+  await page.getByRole("button", { name: "生成账号", exact: true }).click()
+  const downloadEvent = page.waitForEvent("download")
+  await page.getByRole("button", { name: "确认生成并下载" }).click()
+  const download = await downloadEvent
+  const xml = execFileSync(
+    "unzip",
+    ["-p", (await download.path())!, "xl/worksheets/sheet1.xml"],
+    { encoding: "utf8" },
+  )
+  const rows = await page.evaluate(
+    (content) =>
+      Array.from(
+        new DOMParser()
+          .parseFromString(content, "application/xml")
+          .querySelectorAll("row"),
+        (row) =>
+          Array.from(
+            row.querySelectorAll("c"),
+            (cell) => cell.textContent ?? "",
+          ),
+      ),
+    xml,
+  )
+  expect(rows).toHaveLength(31)
+  expect(rows[0]).toEqual([
+    "工号",
+    "姓名",
+    "部门",
+    "登录地址",
+    "初始密码",
+    "备注",
+  ])
+  expect(new Set(rows.slice(1).map((row) => row[0])).size).toBe(30)
+  const employee = rows.find((row) => row[0] === "XY002")!
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "关闭", exact: true })
+    .first()
+    .click()
+  await expect(page.getByText("还有 0 名在职员工没有账号")).toBeVisible()
+  const managers = page.getByRole("combobox", {
+    name: "星衍科技 / 管理中心 / 总经办经理",
+    exact: true,
+  })
+  await managers.selectOption({ label: "欧阳宁（XY001）" })
+  await managers.locator("..").getByRole("button", { name: "保存经理" }).click()
+  await expect(page.getByText("部门经理已保存。")).toBeVisible()
+  await expect(managers.locator("..")).toContainText("当前经理：欧阳宁")
+  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await expect(page.getByRole("heading", { name: "设置完成" })).toBeVisible()
+  await expect(
+    page.getByRole("link", { name: "员工列表", exact: true }),
+  ).toBeVisible()
+  await expectChineseCopy(page)
+  await page.screenshot({
+    path: testInfo.outputPath("setup-completed.png"),
+    fullPage: true,
+  })
+  await logOutUser(page)
+  await page.getByTestId("email-input").fill(employee[0])
+  await page.getByTestId("password-input").fill(employee[4])
+  await page.getByRole("button", { name: "登录", exact: true }).click()
+  await expect(page).toHaveURL("/change-password")
+  await page.getByLabel("当前密码", { exact: true }).fill(employee[4])
+  await page
+    .getByLabel("新密码", { exact: true })
+    .fill("synthetic-new-password-2026")
+  await page
+    .getByLabel("确认新密码", { exact: true })
+    .fill("synthetic-new-password-2026")
+  await page.getByRole("button", { name: "保存密码" }).click()
+  await expect(page).toHaveURL(/\/employees\//)
+  await expect(page.getByText("你的画像还没有内容")).toBeVisible()
+})
 
 test("initialize, preview and replace dictionary, persist progress and reject reused token at 375px", async ({
   page,
@@ -131,9 +249,7 @@ test("initialize, preview and replace dictionary, persist progress and reject re
     page.getByRole("button", { name: "完成此步骤并继续" }),
   ).toBeDisabled()
   await page.getByRole("button", { name: "跳过", exact: true }).click()
-  await expect(
-    page.getByRole("heading", { name: "首次设置已完成" }),
-  ).toBeVisible()
+  await expect(page.getByRole("heading", { name: "设置完成" })).toBeVisible()
   await expectChineseCopy(page)
   await page.goto(`/setup#token=${token}`)
   await fillSetup(page)

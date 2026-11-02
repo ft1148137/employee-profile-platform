@@ -84,6 +84,7 @@ export function AppSidebar() {
             </SidebarGroup>
             <Main
               items={[
+                { icon: Users, title: "导入名单", path: "/admin/roster" },
                 { icon: Users, title: "员工与账号", path: "/admin/accounts" },
                 { icon: ScrollText, title: "审计日志", path: "/admin/audit" },
                 {
