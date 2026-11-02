@@ -1,0 +1,118 @@
+"""Add steps by registering a check here and a matching frontend component.
+
+Use spaced order values (M2: 50/60/70/90, M4: 80). No migration is needed;
+new required steps automatically make previously finished setups incomplete.
+"""
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from uuid import UUID
+
+from sqlalchemy import func
+from sqlmodel import Session, col, select
+
+from app.domains.capability.models import CapabilitySchemaVersion, SchemaStatus
+from app.domains.org.models import Employee, EmploymentStatus, OrgMembership
+
+
+@dataclass(frozen=True)
+class SetupStep:
+    key: str
+    title: str
+    description: str
+    order: int
+    required: bool
+    skippable: bool
+    check: Callable[[Session, UUID], list[str]]
+    implicit: bool = False
+
+
+def check_org_profile(_session: Session, _org_id: UUID) -> list[str]:
+    return []
+
+
+def check_roster(session: Session, org_id: UUID) -> list[str]:
+    # shortcut: check active employees until NERE-27's roster_import table lands.
+    employee = session.exec(
+        select(Employee.id).where(
+            Employee.org_id == org_id,
+            Employee.employment_status == EmploymentStatus.ACTIVE,
+        )
+    ).first()
+    return [] if employee else ["还没有在职员工"]
+
+
+def check_capabilities(session: Session, org_id: UUID) -> list[str]:
+    schema = session.exec(
+        select(CapabilitySchemaVersion.id).where(
+            CapabilitySchemaVersion.org_id == org_id,
+            CapabilitySchemaVersion.status == SchemaStatus.ACTIVE,
+        )
+    ).first()
+    return [] if schema else ["还没有选择能力词典"]
+
+
+def check_accounts(session: Session, org_id: UUID) -> list[str]:
+    eligible = (
+        Employee.org_id == org_id,
+        Employee.employment_status == EmploymentStatus.ACTIVE,
+        col(Employee.employee_code).is_not(None),
+        func.trim(Employee.employee_code) != "",
+    )
+    if session.exec(select(Employee.id).where(*eligible)).first() is None:
+        return ["还没有有工号的在职员工"]
+    missing = session.exec(
+        select(func.count())
+        .select_from(Employee)
+        .where(
+            *eligible,
+            ~select(OrgMembership.id)
+            .where(
+                OrgMembership.org_id == org_id,
+                OrgMembership.employee_id == Employee.id,
+            )
+            .exists(),
+        )
+    ).one()
+    return [f"还有 {missing} 名在职员工没有账号"] if missing else []
+
+
+STEPS = [
+    SetupStep(
+        "org_profile",
+        "企业信息与管理员账号",
+        "确认企业名称和管理员账号",
+        10,
+        True,
+        False,
+        check_org_profile,
+        implicit=True,
+    ),
+    SetupStep(
+        "roster",
+        "导入员工名单",
+        "导入名单并确认在职员工",
+        20,
+        True,
+        False,
+        check_roster,
+    ),
+    SetupStep(
+        "capabilities",
+        "选择能力词典",
+        "为企业启用能力词典",
+        30,
+        True,
+        False,
+        check_capabilities,
+    ),
+    SetupStep(
+        "accounts",
+        "生成员工账号",
+        "为有工号的在职员工生成账号",
+        40,
+        True,
+        False,
+        check_accounts,
+    ),
+]
