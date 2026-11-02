@@ -3,9 +3,10 @@ x-backend: &backend
   pull_policy: never
   environment:
     PROJECT_NAME: ${PROJECT_NAME:?Variable not set}
+    FRONTEND_HOST: ${FRONTEND_HOST:-http://localhost:5173}
     SECRET_KEY: ${SECRET_KEY:?Variable not set}
-    FIRST_SUPERUSER: ${FIRST_SUPERUSER:?Variable not set}
-    FIRST_SUPERUSER_PASSWORD: ${FIRST_SUPERUSER_PASSWORD:?Variable not set}
+    FIRST_SUPERUSER: ${FIRST_SUPERUSER:-}
+    FIRST_SUPERUSER_PASSWORD: ${FIRST_SUPERUSER_PASSWORD:-}
     SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
     DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:-}
     # A missing variable is omitted, so Settings keeps its None default.
