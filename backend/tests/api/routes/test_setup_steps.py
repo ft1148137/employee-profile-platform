@@ -19,6 +19,7 @@ from app.domains.org.models import (
     OrgMembership,
     Role,
     RoleGrant,
+    RosterImport,
 )
 from app.domains.setup import steps
 from app.domains.setup.models import SetupStatus, SetupStepState
@@ -176,6 +177,27 @@ def test_complete_persist_and_extend(
     db.add(membership)
     schema.status = SchemaStatus.ACTIVE
     db.add(schema)
+    db.commit()
+    assert (
+        client.post(
+            f"{tenant.url}/setup/steps/roster/complete", headers=auth
+        ).status_code
+        == 422
+    )
+    db.add(
+        RosterImport(
+            org_id=tenant.org_id,
+            status="applied",
+            filename="synthetic.csv",
+            file_sha256="a" * 64,
+            rows=[],
+            column_mapping={},
+            issues=[],
+            summary={},
+            base_revision=0,
+            uploaded_by_user_id=tenant.admin_id,
+        )
+    )
     db.commit()
     for key in ("roster", "capabilities", "accounts"):
         url = f"{tenant.url}/setup/steps/{key}/complete"

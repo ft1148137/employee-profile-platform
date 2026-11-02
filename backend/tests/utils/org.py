@@ -11,7 +11,9 @@ from app.domains.org.models import (
     ExternalIdentity,
     Organization,
     OrgMembership,
+    ReportingLine,
     RoleGrant,
+    RosterImport,
 )
 from app.domains.profile.models import (
     ClaimEvidence,
@@ -53,6 +55,8 @@ def delete_test_organization(session: Session, org_id: UUID) -> None:
         CapabilityDefinition,
         CapabilitySchemaVersion,
         RoleGrant,
+        ReportingLine,
+        RosterImport,
         OrgMembership,
         ExternalIdentity,
         Employee,

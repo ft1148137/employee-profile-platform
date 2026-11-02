@@ -1,8 +1,6 @@
 from collections import Counter, defaultdict
-from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
 from sqlalchemy import func, or_
 from sqlmodel import Session, col, select
 
@@ -15,56 +13,16 @@ from app.domains.org.models import (
     Role,
     RoleGrant,
 )
-from app.domains.org.roster.schemas import ParsedRoster, RosterIssue
-from app.models import User
-
-ChangeKind = Literal[
-    "added", "updated", "transferred", "manager_changed", "deactivated", "reactivated"
-]
-CHANGE_KINDS: tuple[ChangeKind, ...] = (
-    "added",
-    "updated",
-    "transferred",
-    "manager_changed",
-    "deactivated",
-    "reactivated",
+from app.domains.org.roster.schemas import (
+    CHANGE_KINDS,
+    DepartmentNode,
+    EmployeeChange,
+    FieldChange,
+    ParsedRoster,
+    RosterDiff,
+    RosterIssue,
 )
-
-
-class FieldChange(BaseModel):
-    field: Literal["display_name", "title", "email", "department", "manager"]
-    before: str | None
-    after: str | None
-
-
-class EmployeeChange(BaseModel):
-    kind: ChangeKind
-    employee_id: UUID | None
-    employee_code: str
-    display_name: str
-    row_number: int | None
-    fields: list[FieldChange] = Field(default_factory=list)
-
-
-class DepartmentNode(BaseModel):
-    name: str
-    path: tuple[str, ...]
-    department_id: UUID | None
-    is_new: bool
-    employee_count: int = 0
-    children: list[DepartmentNode] = Field(default_factory=list)
-
-
-class RosterDiff(BaseModel):
-    summary: dict[str, int]
-    changes: list[EmployeeChange]
-    departments: list[DepartmentNode]
-    created_departments: list[tuple[str, ...]]
-    unused_departments: list[tuple[str, ...]]
-    warnings: list[RosterIssue]
-    blockers: list[str]
-    active_count: int
-    requires_mass_deactivation_confirm: bool
+from app.models import User
 
 
 def compute_roster_diff(
