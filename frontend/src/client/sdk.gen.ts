@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { capabilitiesReadCapabilitiesData, capabilitiesReadCapabilitiesErrors, capabilitiesReadCapabilitiesResponses, employeesReadEmployeeData, employeesReadEmployeeErrors, employeesReadEmployeeResponses, employeesReadEmployeesData, employeesReadEmployeesErrors, employeesReadEmployeesResponses, evidenceReadEmployeeEvidenceData, evidenceReadEmployeeEvidenceErrors, evidenceReadEmployeeEvidenceResponses, evidenceReadEvidenceData, evidenceReadEvidenceErrors, evidenceReadEvidenceResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginTestTokenData, loginTestTokenResponses, meReadMembershipsData, meReadMembershipsResponses, orgsReadDepartmentsData, orgsReadDepartmentsErrors, orgsReadDepartmentsResponses, orgsRenameOrganizationData, orgsRenameOrganizationErrors, orgsRenameOrganizationResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesReadProfileData, profilesReadProfileErrors, profilesReadProfileResponses, profilesReadProfileVersionData, profilesReadProfileVersionErrors, profilesReadProfileVersionResponses, profilesReadProfileVersionsData, profilesReadProfileVersionsErrors, profilesReadProfileVersionsResponses, setupCompleteStepData, setupCompleteStepErrors, setupCompleteStepResponses, setupReadSetupData, setupReadSetupErrors, setupReadSetupResponses, setupSkipStepData, setupSkipStepErrors, setupSkipStepResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
+import type { capabilitiesReadCapabilitiesData, capabilitiesReadCapabilitiesErrors, capabilitiesReadCapabilitiesResponses, capabilityTemplatesActivateCapabilitySchemaData, capabilityTemplatesActivateCapabilitySchemaErrors, capabilityTemplatesActivateCapabilitySchemaResponses, capabilityTemplatesPreviewTemplateData, capabilityTemplatesPreviewTemplateErrors, capabilityTemplatesPreviewTemplateResponses, capabilityTemplatesReadTemplatesData, capabilityTemplatesReadTemplatesResponses, employeesReadEmployeeData, employeesReadEmployeeErrors, employeesReadEmployeeResponses, employeesReadEmployeesData, employeesReadEmployeesErrors, employeesReadEmployeesResponses, evidenceReadEmployeeEvidenceData, evidenceReadEmployeeEvidenceErrors, evidenceReadEmployeeEvidenceResponses, evidenceReadEvidenceData, evidenceReadEvidenceErrors, evidenceReadEvidenceResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginTestTokenData, loginTestTokenResponses, meReadMembershipsData, meReadMembershipsResponses, orgsReadDepartmentsData, orgsReadDepartmentsErrors, orgsReadDepartmentsResponses, orgsRenameOrganizationData, orgsRenameOrganizationErrors, orgsRenameOrganizationResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesReadProfileData, profilesReadProfileErrors, profilesReadProfileResponses, profilesReadProfileVersionData, profilesReadProfileVersionErrors, profilesReadProfileVersionResponses, profilesReadProfileVersionsData, profilesReadProfileVersionsErrors, profilesReadProfileVersionsResponses, setupCompleteStepData, setupCompleteStepErrors, setupCompleteStepResponses, setupReadSetupData, setupReadSetupErrors, setupReadSetupResponses, setupSkipStepData, setupSkipStepErrors, setupSkipStepResponses, usersCreateUserData, usersCreateUserErrors, usersCreateUserResponses, usersDeleteUserData, usersDeleteUserErrors, usersDeleteUserMeData, usersDeleteUserMeResponses, usersDeleteUserResponses, usersReadUserByIdData, usersReadUserByIdErrors, usersReadUserByIdResponses, usersReadUserMeData, usersReadUserMeResponses, usersReadUsersData, usersReadUsersErrors, usersReadUsersResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, usersUpdateUserData, usersUpdateUserErrors, usersUpdateUserMeData, usersUpdateUserMeErrors, usersUpdateUserMeResponses, usersUpdateUserResponses, utilsHealthCheckData, utilsHealthCheckResponses, utilsTestEmailData, utilsTestEmailErrors, utilsTestEmailResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -341,6 +341,48 @@ export class CapabilitiesService {
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/orgs/{org_id}/capabilities',
             ...options
+        });
+    }
+}
+
+export class CapabilityTemplatesService {
+    /**
+     * Read Templates
+     */
+    public static templatesReadTemplates<ThrowOnError extends boolean = true>(options?: Options<capabilityTemplatesReadTemplatesData, ThrowOnError>) {
+        return (options?.client ?? client).get<capabilityTemplatesReadTemplatesResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/capability-templates',
+            ...options
+        });
+    }
+    
+    /**
+     * Preview Template
+     */
+    public static templatesPreviewTemplate<ThrowOnError extends boolean = true>(options: Options<capabilityTemplatesPreviewTemplateData, ThrowOnError>) {
+        return (options.client ?? client).get<capabilityTemplatesPreviewTemplateResponses, capabilityTemplatesPreviewTemplateErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/capability-templates/{template_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Activate Capability Schema
+     */
+    public static templatesActivateCapabilitySchema<ThrowOnError extends boolean = true>(options: Options<capabilityTemplatesActivateCapabilitySchemaData, ThrowOnError>) {
+        return (options.client ?? client).post<capabilityTemplatesActivateCapabilitySchemaResponses, capabilityTemplatesActivateCapabilitySchemaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/capability-schema',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
         });
     }
 }

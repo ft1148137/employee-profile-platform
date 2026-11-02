@@ -42,10 +42,15 @@ def get_org_principal(
 OrgPrincipalDep = Annotated[Principal, Depends(get_org_principal)]
 
 
-def require_org_admin(principal: OrgPrincipalDep) -> Principal:
+class OrgAdminRequired(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(403, "需要企业管理员权限")
+
+
+def get_org_admin(principal: OrgPrincipalDep) -> Principal:
     if not principal.is_org_admin:
-        raise HTTPException(status_code=403, detail="需要企业管理员权限")
+        raise OrgAdminRequired()
     return principal
 
 
-OrgAdminDep = Annotated[Principal, Depends(require_org_admin)]
+OrgAdminDep = Annotated[Principal, Depends(get_org_admin)]
