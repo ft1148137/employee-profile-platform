@@ -1,14 +1,14 @@
 """Add platform-level one-time setup tokens.
 
 Revision ID: d73e295a94f6
-Revises: b62c194f83d5
+Revises: b63e92d7f140
 """
 
 import sqlalchemy as sa
 from alembic import op
 
 revision = "d73e295a94f6"
-down_revision = "b62c194f83d5"
+down_revision = "b63e92d7f140"
 branch_labels = None
 depends_on = None
 

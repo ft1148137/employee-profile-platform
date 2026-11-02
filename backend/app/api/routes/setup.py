@@ -1,15 +1,19 @@
 from fastapi import APIRouter
 
 from app.api.deps import SessionDep
-from app.domains.setup.schemas import InitializeInput, InitializeResult, SetupStatus
+from app.domains.setup.schemas import (
+    InitializationStatus,
+    InitializeInput,
+    InitializeResult,
+)
 from app.domains.setup.service import initialize, is_initialized
 
 router = APIRouter(prefix="/setup", tags=["setup"])
 
 
 @router.get("/status")
-def read_status(session: SessionDep) -> SetupStatus:
-    return SetupStatus(initialized=is_initialized(session))
+def read_status(session: SessionDep) -> InitializationStatus:
+    return InitializationStatus(initialized=is_initialized(session))
 
 
 @router.post("/initialize")

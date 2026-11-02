@@ -615,6 +615,16 @@ export type InitialPassword = {
 };
 
 /**
+ * InitializationStatus
+ */
+export type InitializationStatus = {
+    /**
+     * Initialized
+     */
+    initialized: boolean;
+};
+
+/**
  * InitializeInput
  */
 export type InitializeInput = {
@@ -719,6 +729,16 @@ export type OrganizationPublic = {
      * Slug
      */
     slug: string;
+};
+
+/**
+ * OrganizationUpdate
+ */
+export type OrganizationUpdate = {
+    /**
+     * Name
+     */
+    name: string;
 };
 
 /**
@@ -964,6 +984,24 @@ export type SchemaVersionPublic = {
 };
 
 /**
+ * SetupPublic
+ */
+export type SetupPublic = {
+    /**
+     * Steps
+     */
+    steps: Array<SetupStepPublic>;
+    /**
+     * Completed
+     */
+    completed: boolean;
+    /**
+     * Next Step Key
+     */
+    next_step_key: string | null;
+};
+
+/**
  * SetupPurpose
  */
 export type SetupPurpose = 'initial_setup' | 'new_org';
@@ -971,11 +1009,44 @@ export type SetupPurpose = 'initial_setup' | 'new_org';
 /**
  * SetupStatus
  */
-export type SetupStatus = {
+export type SetupStatus = 'completed' | 'skipped';
+
+/**
+ * SetupStepPublic
+ */
+export type SetupStepPublic = {
     /**
-     * Initialized
+     * Key
      */
-    initialized: boolean;
+    key: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Order
+     */
+    order: number;
+    /**
+     * Required
+     */
+    required: boolean;
+    /**
+     * Skippable
+     */
+    skippable: boolean;
+    /**
+     * Status
+     */
+    status: SetupStatus | 'pending';
+    /**
+     * Blockers
+     */
+    blockers: Array<string>;
 };
 
 /**
@@ -1304,6 +1375,36 @@ export type meReadMembershipsResponses = {
 
 export type meReadMembershipsResponse = meReadMembershipsResponses[keyof meReadMembershipsResponses];
 
+export type orgsRenameOrganizationData = {
+    body: OrganizationUpdate;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}';
+};
+
+export type orgsRenameOrganizationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type orgsRenameOrganizationError = orgsRenameOrganizationErrors[keyof orgsRenameOrganizationErrors];
+
+export type orgsRenameOrganizationResponses = {
+    /**
+     * Successful Response
+     */
+    200: OrganizationPublic;
+};
+
+export type orgsRenameOrganizationResponse = orgsRenameOrganizationResponses[keyof orgsRenameOrganizationResponses];
+
 export type orgsReadDepartmentsData = {
     body?: never;
     path: {
@@ -1333,6 +1434,104 @@ export type orgsReadDepartmentsResponses = {
 };
 
 export type orgsReadDepartmentsResponse = orgsReadDepartmentsResponses[keyof orgsReadDepartmentsResponses];
+
+export type setupReadSetupData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/setup';
+};
+
+export type setupReadSetupErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type setupReadSetupError = setupReadSetupErrors[keyof setupReadSetupErrors];
+
+export type setupReadSetupResponses = {
+    /**
+     * Successful Response
+     */
+    200: SetupPublic;
+};
+
+export type setupReadSetupResponse = setupReadSetupResponses[keyof setupReadSetupResponses];
+
+export type setupCompleteStepData = {
+    body?: never;
+    path: {
+        /**
+         * Key
+         */
+        key: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/setup/steps/{key}/complete';
+};
+
+export type setupCompleteStepErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type setupCompleteStepError = setupCompleteStepErrors[keyof setupCompleteStepErrors];
+
+export type setupCompleteStepResponses = {
+    /**
+     * Successful Response
+     */
+    200: SetupPublic;
+};
+
+export type setupCompleteStepResponse = setupCompleteStepResponses[keyof setupCompleteStepResponses];
+
+export type setupSkipStepData = {
+    body?: never;
+    path: {
+        /**
+         * Key
+         */
+        key: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/setup/steps/{key}/skip';
+};
+
+export type setupSkipStepErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type setupSkipStepError = setupSkipStepErrors[keyof setupSkipStepErrors];
+
+export type setupSkipStepResponses = {
+    /**
+     * Successful Response
+     */
+    200: SetupPublic;
+};
+
+export type setupSkipStepResponse = setupSkipStepResponses[keyof setupSkipStepResponses];
 
 export type employeesReadEmployeesData = {
     body?: never;
@@ -2004,7 +2203,7 @@ export type setupReadStatusResponses = {
     /**
      * Successful Response
      */
-    200: SetupStatus;
+    200: InitializationStatus;
 };
 
 export type setupReadStatusResponse = setupReadStatusResponses[keyof setupReadStatusResponses];

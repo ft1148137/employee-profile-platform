@@ -1,14 +1,14 @@
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, StringConstraints
 from sqlmodel import Field, SQLModel
 
-from app.domains.setup.models import SetupPurpose
+from app.domains.setup.models import SetupPurpose, SetupStatus
 from app.models import Token
 
 
-class SetupStatus(BaseModel):
+class InitializationStatus(BaseModel):
     initialized: bool
 
 
@@ -34,3 +34,20 @@ class SetupTokenInput(BaseModel):
 
 class SetupTokenResult(BaseModel):
     token: str
+
+
+class SetupStepPublic(SQLModel):
+    key: str
+    title: str
+    description: str
+    order: int
+    required: bool
+    skippable: bool
+    status: SetupStatus | Literal["pending"]
+    blockers: list[str]
+
+
+class SetupPublic(SQLModel):
+    steps: list[SetupStepPublic]
+    completed: bool
+    next_step_key: str | None
