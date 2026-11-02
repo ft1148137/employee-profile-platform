@@ -21,6 +21,9 @@ def init_db(session: Session) -> None:
     # This works because the models are already imported and registered from app.models
     # SQLModel.metadata.create_all(engine)
 
+    if not settings.FIRST_SUPERUSER or not settings.FIRST_SUPERUSER_PASSWORD:
+        return
+
     user = session.exec(
         select(User).where(User.email == settings.FIRST_SUPERUSER)
     ).first()

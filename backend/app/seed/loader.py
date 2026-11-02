@@ -89,7 +89,10 @@ def load_demo(
             )
         accounts = {a.email: a for a in data.org.accounts}
         users = {}
-        for email in [*accounts, str(settings.FIRST_SUPERUSER)]:
+        account_emails = list(accounts)
+        if settings.FIRST_SUPERUSER and settings.FIRST_SUPERUSER not in accounts:
+            account_emails.append(str(settings.FIRST_SUPERUSER))
+        for email in account_emails:
             user = session.exec(select(User).where(User.email == email)).one_or_none()
             if user is None and email == settings.FIRST_SUPERUSER:
                 raise SeedError("Run initial_data.py before loading demo data")

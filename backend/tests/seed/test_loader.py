@@ -132,3 +132,17 @@ def test_guard_and_rollback(seed_path: Path, monkeypatch: pytest.MonkeyPatch) ->
             ).one()
             == 0
         )
+
+
+def test_demo_without_superuser(
+    seed_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "FIRST_SUPERUSER", None)
+    monkeypatch.setattr(settings, "FIRST_SUPERUSER_PASSWORD", None)
+    monkeypatch.setattr(settings, "FASTAPI_ENV", None)
+    with Session(engine) as session:
+        result = load_demo(session, seed_path, allow_non_dev=True)
+        assert (
+            result["counts"]["user"]["added"] + result["counts"]["user"]["existing"]
+            == 4
+        )
