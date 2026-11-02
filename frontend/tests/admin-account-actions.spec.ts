@@ -56,7 +56,7 @@ test("reset password once, disable and enable employee accounts", async ({
   await expectChineseCopy(page, [newPassword])
   await page.screenshot({
     path: "test-results/admin-reset-password.png",
-    fullPage: true,
+    animations: "disabled",
   })
   await page.evaluate(() => {
     Object.defineProperty(navigator, "clipboard", {
@@ -113,7 +113,7 @@ test("reset password once, disable and enable employee accounts", async ({
     await expectChineseCopy(page)
     await page.screenshot({
       path: "test-results/admin-disable-account.png",
-      fullPage: true,
+      animations: "disabled",
     })
     await dialog.getByRole("button", { name: "确认停用" }).click()
     await expect(row("E09")).toContainText("已停用")

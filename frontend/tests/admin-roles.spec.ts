@@ -54,7 +54,7 @@ test("grant and revoke a department manager, preserve the last administrator", a
   await expectChineseCopy(page, ["admin", "superadmin"])
   await page.screenshot({
     path: "test-results/admin-roles.png",
-    fullPage: true,
+    animations: "disabled",
   })
   await page.getByRole("button", { name: "授予角色", exact: true }).click()
   const dialog = page.getByRole("dialog")
@@ -69,7 +69,7 @@ test("grant and revoke a department manager, preserve the last administrator", a
   await expectChineseCopy(page, ["admin", "superadmin"])
   await page.screenshot({
     path: "test-results/admin-grant-role.png",
-    fullPage: true,
+    animations: "disabled",
   })
   await dialog.getByRole("button", { name: "确认授予" }).click()
   await expect(dialog.getByRole("status")).toHaveText("角色已授予")
