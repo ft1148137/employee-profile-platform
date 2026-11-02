@@ -1,5 +1,11 @@
 import { useNavigate } from "@tanstack/react-router"
-import { ListChecks, Settings, UserRound, Users } from "lucide-react"
+import {
+  ListChecks,
+  ScrollText,
+  Settings,
+  UserRound,
+  Users,
+} from "lucide-react"
 import { SidebarAppearance } from "@/components/Common/Appearance"
 import { Logo } from "@/components/Common/Logo"
 import {
@@ -79,6 +85,7 @@ export function AppSidebar() {
             <Main
               items={[
                 { icon: Users, title: "员工与账号", path: "/admin/accounts" },
+                { icon: ScrollText, title: "审计日志", path: "/admin/audit" },
                 {
                   icon: ListChecks,
                   title: "首次设置",

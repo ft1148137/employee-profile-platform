@@ -77,6 +77,11 @@ export type ActiveSchemaPublic = {
 };
 
 /**
+ * ActorKind
+ */
+export type ActorKind = 'user' | 'system_worker' | 'agent' | 'seed' | 'cli';
+
+/**
  * ApplyImport
  */
 export type ApplyImport = {
@@ -94,6 +99,76 @@ export type ApplyImport = {
  * AssessmentStatus
  */
 export type AssessmentStatus = 'confirmed' | 'tentative' | 'unknown' | 'disputed';
+
+/**
+ * AuditActor
+ */
+export type AuditActor = {
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Full Name
+     */
+    full_name: string | null;
+};
+
+/**
+ * AuditEventPublic
+ */
+export type AuditEventPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    actor_type: ActorKind;
+    actor: AuditActor | null;
+    /**
+     * Action
+     */
+    action: string;
+    /**
+     * Target Type
+     */
+    target_type: string;
+    /**
+     * Target Id
+     */
+    target_id: string | null;
+    /**
+     * Target Label
+     */
+    target_label: string | null;
+    /**
+     * Details
+     */
+    details: {
+        [key: string]: JsonValue;
+    };
+};
+
+/**
+ * AuditEventsPublic
+ */
+export type AuditEventsPublic = {
+    /**
+     * Data
+     */
+    data: Array<AuditEventPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
 
 /**
  * Body_login-login_access_token
@@ -2367,6 +2442,61 @@ export type accountsEnableAccountResponses = {
 };
 
 export type accountsEnableAccountResponse = accountsEnableAccountResponses[keyof accountsEnableAccountResponses];
+
+export type auditReadAuditEventsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Action
+         */
+        action?: string | null;
+        /**
+         * Actor User Id
+         */
+        actor_user_id?: string | null;
+        /**
+         * Since
+         */
+        since?: string | null;
+        /**
+         * Until
+         */
+        until?: string | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/orgs/{org_id}/audit-events';
+};
+
+export type auditReadAuditEventsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type auditReadAuditEventsError = auditReadAuditEventsErrors[keyof auditReadAuditEventsErrors];
+
+export type auditReadAuditEventsResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuditEventsPublic;
+};
+
+export type auditReadAuditEventsResponse = auditReadAuditEventsResponses[keyof auditReadAuditEventsResponses];
 
 export type rolesReadRolesData = {
     body?: never;
