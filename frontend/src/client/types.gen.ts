@@ -1293,7 +1293,12 @@ export type evidenceReadEvidenceResponse = evidenceReadEvidenceResponses[keyof e
 export type privateCreateUserData = {
     body: UserCreate;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * With Empty Profile
+         */
+        with_empty_profile?: boolean;
+    };
     url: '/api/v1/private/users/';
 };
 

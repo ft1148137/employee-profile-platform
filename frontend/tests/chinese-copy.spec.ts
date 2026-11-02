@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test"
 import { expectChineseCopy } from "./utils/copy"
+import { createUser } from "./utils/privateApi"
+import { randomEmail, randomPassword } from "./utils/random"
 import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -122,3 +124,23 @@ for (const [account, own] of [
     })
   })
 }
+
+test("new employee logs in to a real empty profile without a dictionary", async ({
+  page,
+}) => {
+  const email = randomEmail()
+  const password = randomPassword()
+  await createUser({ email, password, withEmptyProfile: true })
+  await logInUser(page, email, password)
+  await expect(page).toHaveURL(/\/employees\/[^/]+$/)
+  await expect(
+    page.getByRole("heading", { name: "你的画像还没有内容" }),
+  ).toBeVisible()
+  await expect(page.getByText("企业管理员还没有选择能力词典")).toBeVisible()
+  await expect(page.getByText("未发布", { exact: true })).toBeVisible()
+  await expectChineseCopy(page)
+  await page.screenshot({
+    path: "test-results/new-employee-empty-profile.png",
+    fullPage: true,
+  })
+})
