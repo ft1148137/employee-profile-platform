@@ -13,6 +13,7 @@ extend-exclude = [
     "bun.lock",
     "backend/coverage/",
     "backend/htmlcov/",
+    "backend/app/alembic/versions/procrastinate_*.sql",
     "backend/app/frontend/",
     "frontend/dist/",
     "frontend/public/assets/images/",

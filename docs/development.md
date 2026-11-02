@@ -9,7 +9,7 @@ For local development, run PostgreSQL and Mailpit with Docker Compose, and run t
 Start the supporting services:
 
 ```bash
-docker compose up -d db mailpit
+docker compose -f compose.yml -f compose.dev.yml up -d db mailpit
 ```
 
 Then, from the `backend` directory, install the dependencies and prepare the database:
@@ -59,8 +59,7 @@ The build is written to `backend/app/frontend` and served by FastAPI at <http://
 To run the backend and built frontend in Docker Compose:
 
 ```bash
-docker compose run --rm backend bash scripts/prestart.sh
-docker compose watch
+docker compose -f compose.yml -f compose.dev.yml watch
 ```
 
 Now you can open these URLs:
@@ -71,13 +70,11 @@ Automatic interactive API documentation with Swagger UI: <http://localhost:8000/
 
 Adminer, database web administration: <http://localhost:8080>
 
-Traefik UI, to see how the routes are being handled by the proxy: <http://localhost:8090>
-
 Mailpit: <http://localhost:8025>
 
 Stop a locally running FastAPI server before starting the Compose backend because both use port `8000`.
 
-**Note**: The first time you start the stack, it might take a minute for all the services to be ready. To monitor it, use `docker compose logs`, or `docker compose logs backend` for the backend service.
+**Note**: The first time you start the stack, it might take a minute for all the services to be ready. To monitor it, use `docker compose -f compose.yml -f compose.dev.yml logs`, or `docker compose -f compose.yml -f compose.dev.yml logs backend` for the backend service.
 
 ## Mailpit
 
@@ -85,18 +82,18 @@ Stop a locally running FastAPI server before starting the Compose backend becaus
 
 ## Docker Compose Files and Environment Variables
 
-The main `compose.yml` file contains the configuration shared by the whole stack. Docker Compose loads it automatically.
+`compose.yml` is the default local startup: PostgreSQL, one-shot migrations and initial account setup, Web/API, and Worker. Run `docker compose up -d --wait` and open <http://localhost:8000>. Only the API port is published, on `127.0.0.1:8000`; optionally set `API_BIND` / `API_PORT` in `.env`.
 
-The `compose.override.yml` file adds local development settings, such as mounting the source code as a volume. Docker Compose also loads it automatically and applies it on top of `compose.yml`.
+`compose.dev.yml` adds hot reload, watch, Mailpit, Adminer, Playwright, and host access to PostgreSQL on 5432. It must be selected explicitly. You can set `export COMPOSE_FILE=compose.yml:compose.dev.yml` in your own shell to shorten development commands; do not save it in `.env`. There is no automatically loaded override file.
 
-The `compose.deploy.yml` file contains the deployment-specific settings, including HTTPS and automatic certificate handling. It is explicitly combined with `compose.yml` when deploying the application.
+`deploy/compose.traefik.yml` adds Traefik and HTTPS for a domain deployment; see [deploy/README.md](../deploy/README.md). Never combine it with development services on a public server.
 
-The backend reads local settings from the `.env` file. Docker Compose also uses it for variable interpolation and passes the settings each container needs.
+Compose passes only explicitly listed settings to application containers. `FASTAPI_ENV` is passed through from `.env` when present and omitted otherwise. Development mode permits example secrets and exposes development-only endpoints, so remove it and replace all example secrets before public deployment.
 
 After changing variables, make sure you restart the stack:
 
 ```bash
-docker compose watch
+docker compose -f compose.yml -f compose.dev.yml watch
 ```
 
 ## The `.env` File
@@ -138,3 +135,21 @@ You can also run `prek` manually on all files from the project root:
 ```bash
 uv run prek run --all-files
 ```
+
+## Worker
+
+Run the queue locally after the database migrations:
+
+```bash
+cd backend
+uv run procrastinate --app=app.worker.app.app worker
+```
+
+In another terminal in `backend/`, enqueue a side-effect-free task and inspect queue configuration:
+
+```bash
+uv run procrastinate --app=app.worker.app.app defer system.ping
+uv run procrastinate --app=app.worker.app.app healthchecks
+```
+
+The same commands can run through `docker compose exec worker` in the default stack. Healthchecks verify configuration, database connectivity and queue table availability; they do not detect a stalled worker heartbeat. See [ADR-0002](adr/0002-worker-and-compose-layout.md) for migrations and future tenant-task requirements.

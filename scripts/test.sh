@@ -4,9 +4,8 @@
 set -e
 set -x
 
-docker compose build
-docker compose down -v --remove-orphans # Remove possibly previous broken stacks left hanging after an error
-docker compose run --rm backend bash scripts/prestart.sh
-docker compose up -d
-docker compose exec -T backend bash scripts/tests-start.sh "$@"
-docker compose down -v --remove-orphans
+docker compose -f compose.yml -f compose.dev.yml build
+docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans # Remove possibly previous broken stacks left hanging after an error
+docker compose -f compose.yml -f compose.dev.yml up -d
+docker compose -f compose.yml -f compose.dev.yml exec -T backend bash scripts/tests-start.sh "$@"
+docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
