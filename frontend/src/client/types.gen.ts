@@ -35,6 +35,103 @@ export type Body_login_login_access_token = {
 };
 
 /**
+ * DepartmentPublic
+ */
+export type DepartmentPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Parent Department Id
+     */
+    parent_department_id: string | null;
+};
+
+/**
+ * DepartmentSummary
+ */
+export type DepartmentSummary = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * DepartmentsPublic
+ */
+export type DepartmentsPublic = {
+    /**
+     * Data
+     */
+    data: Array<DepartmentPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * EmployeeSummary
+ */
+export type EmployeeSummary = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Title
+     */
+    title: string | null;
+    employment_status: EmploymentStatus;
+    department: DepartmentSummary | null;
+    progress: ProgressPublic | null;
+    latest_published: PublishedSummary | null;
+};
+
+/**
+ * EmployeesPublic
+ */
+export type EmployeesPublic = {
+    /**
+     * Data
+     */
+    data: Array<EmployeeSummary>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * EmploymentStatus
+ */
+export type EmploymentStatus = 'active' | 'inactive';
+
+/**
+ * EvidenceQuality
+ */
+export type EvidenceQuality = 'sufficient' | 'weak' | 'conflicting' | 'unknown';
+
+/**
+ * FillStatus
+ */
+export type FillStatus = 'not_started' | 'in_progress' | 'submitted';
+
+/**
  * HTTPValidationError
  */
 export type HTTPValidationError = {
@@ -42,6 +139,30 @@ export type HTTPValidationError = {
      * Detail
      */
     detail?: Array<ValidationError>;
+};
+
+/**
+ * InferenceStatus
+ */
+export type InferenceStatus = 'pending' | 'running' | 'generated' | 'failed';
+
+/**
+ * MembershipPublic
+ */
+export type MembershipPublic = {
+    org: OrganizationPublic;
+    /**
+     * Employee Id
+     */
+    employee_id: string | null;
+    /**
+     * Roles
+     */
+    roles: Array<Role | 'employee'>;
+    /**
+     * Managed Department Ids
+     */
+    managed_department_ids: Array<string>;
 };
 
 /**
@@ -69,6 +190,24 @@ export type NewPassword = {
 };
 
 /**
+ * OrganizationPublic
+ */
+export type OrganizationPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Slug
+     */
+    slug: string;
+};
+
+/**
  * PrivateUserCreate
  */
 export type PrivateUserCreate = {
@@ -89,6 +228,40 @@ export type PrivateUserCreate = {
      */
     is_verified?: boolean;
 };
+
+/**
+ * ProgressPublic
+ */
+export type ProgressPublic = {
+    fill_status: FillStatus;
+    inference_status: InferenceStatus;
+    review_status: ProgressReviewStatus;
+    evidence_quality: EvidenceQuality;
+};
+
+/**
+ * ProgressReviewStatus
+ */
+export type ProgressReviewStatus = 'none' | 'pending_employee' | 'pending_manager' | 'published' | 'disputed';
+
+/**
+ * PublishedSummary
+ */
+export type PublishedSummary = {
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Published At
+     */
+    published_at: string;
+};
+
+/**
+ * Role
+ */
+export type Role = 'org_admin' | 'dept_manager';
 
 /**
  * Token
@@ -703,6 +876,135 @@ export type utilsHealthCheckResponses = {
 };
 
 export type utilsHealthCheckResponse = utilsHealthCheckResponses[keyof utilsHealthCheckResponses];
+
+export type meReadMembershipsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/me/memberships';
+};
+
+export type meReadMembershipsResponses = {
+    /**
+     * Response Me-Read Memberships
+     *
+     * Successful Response
+     */
+    200: Array<MembershipPublic>;
+};
+
+export type meReadMembershipsResponse = meReadMembershipsResponses[keyof meReadMembershipsResponses];
+
+export type orgsReadDepartmentsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/departments';
+};
+
+export type orgsReadDepartmentsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type orgsReadDepartmentsError = orgsReadDepartmentsErrors[keyof orgsReadDepartmentsErrors];
+
+export type orgsReadDepartmentsResponses = {
+    /**
+     * Successful Response
+     */
+    200: DepartmentsPublic;
+};
+
+export type orgsReadDepartmentsResponse = orgsReadDepartmentsResponses[keyof orgsReadDepartmentsResponses];
+
+export type employeesReadEmployeesData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Department Id
+         */
+        department_id?: string | null;
+        /**
+         * Q
+         */
+        q?: string | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/orgs/{org_id}/employees';
+};
+
+export type employeesReadEmployeesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeesReadEmployeesError = employeesReadEmployeesErrors[keyof employeesReadEmployeesErrors];
+
+export type employeesReadEmployeesResponses = {
+    /**
+     * Successful Response
+     */
+    200: EmployeesPublic;
+};
+
+export type employeesReadEmployeesResponse = employeesReadEmployeesResponses[keyof employeesReadEmployeesResponses];
+
+export type employeesReadEmployeeData = {
+    body?: never;
+    path: {
+        /**
+         * Employee Id
+         */
+        employee_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/employees/{employee_id}';
+};
+
+export type employeesReadEmployeeErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeesReadEmployeeError = employeesReadEmployeeErrors[keyof employeesReadEmployeeErrors];
+
+export type employeesReadEmployeeResponses = {
+    /**
+     * Successful Response
+     */
+    200: EmployeeSummary;
+};
+
+export type employeesReadEmployeeResponse = employeesReadEmployeeResponses[keyof employeesReadEmployeeResponses];
 
 export type privateCreateUserData = {
     body: PrivateUserCreate;

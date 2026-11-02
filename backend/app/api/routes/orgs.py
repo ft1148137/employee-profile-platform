@@ -1,0 +1,24 @@
+from fastapi import APIRouter
+from sqlmodel import col, select
+
+from app.api.deps import SessionDep
+from app.authz.deps import OrgPrincipalDep
+from app.domains.org.models import Department
+from app.domains.org.schemas import DepartmentPublic, DepartmentsPublic
+
+router = APIRouter(prefix="/orgs/{org_id}", tags=["orgs"])
+
+
+@router.get("/departments", response_model=DepartmentsPublic)
+def read_departments(
+    session: SessionDep, principal: OrgPrincipalDep
+) -> DepartmentsPublic:
+    departments = session.exec(
+        select(Department)
+        .where(Department.org_id == principal.org_id)
+        .order_by(Department.name, col(Department.id))
+    ).all()
+    return DepartmentsPublic(
+        data=[DepartmentPublic.model_validate(d) for d in departments],
+        count=len(departments),
+    )
