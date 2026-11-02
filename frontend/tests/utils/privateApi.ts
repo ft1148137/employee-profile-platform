@@ -11,10 +11,12 @@ export const createUser = async ({
   email,
   password,
   withEmptyProfile = false,
+  mustChangePassword = false,
 }: {
   email: string
   password: string
   withEmptyProfile?: boolean
+  mustChangePassword?: boolean
 }) => {
   const response = await PrivateService.createUser({
     query: { with_empty_profile: withEmptyProfile },
@@ -23,6 +25,7 @@ export const createUser = async ({
       email,
       password,
       full_name: "测试员工",
+      must_change_password: mustChangePassword,
     },
   })
   return response.data

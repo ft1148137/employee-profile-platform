@@ -1,5 +1,19 @@
 import { AxiosError } from "axios"
 
+export function redirectToPasswordChange(err: unknown): boolean {
+  if (
+    err instanceof AxiosError &&
+    err.response?.status === 403 &&
+    err.response.data?.detail?.code === "password_change_required"
+  ) {
+    if (window.location.pathname !== "/change-password") {
+      window.location.href = "/change-password"
+    }
+    return true
+  }
+  return false
+}
+
 function extractErrorMessage(err: Error): string {
   if (err instanceof AxiosError) {
     if (!err.response) return "无法连接服务器，请检查网络"

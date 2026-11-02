@@ -21,6 +21,9 @@ x-backend: &backend
     EMAILS_FROM_EMAIL: ${EMAILS_FROM_EMAIL:-}
     DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?Variable not set}@db:5432/app
     SENTRY_DSN: ${SENTRY_DSN:-}
+    LOGIN_MAX_FAILURES: ${LOGIN_MAX_FAILURES:-5}
+    LOGIN_MAX_FAILURES_PER_IP: ${LOGIN_MAX_FAILURES_PER_IP:-30}
+    LOGIN_LOCK_MINUTES: ${LOGIN_LOCK_MINUTES:-15}
 
 services:
   db:
