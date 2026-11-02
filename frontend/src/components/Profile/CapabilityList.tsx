@@ -70,7 +70,7 @@ function ClaimCard({
   const actor = claim?.generated_by.actor_type
   const sources: Record<string, string> = {
     seed: "示例数据",
-    agent: "Agent",
+    agent: "助手",
     human: "人工",
     user: "人工",
   }

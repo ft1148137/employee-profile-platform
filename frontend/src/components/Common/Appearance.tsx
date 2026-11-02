@@ -31,10 +31,10 @@ export const SidebarAppearance = () => {
     <SidebarMenuItem>
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
-          <SidebarMenuButton tooltip="Appearance" data-testid="theme-button">
+          <SidebarMenuButton tooltip="外观" data-testid="theme-button">
             <Icon className="size-4 text-muted-foreground" />
-            <span>Appearance</span>
-            <span className="sr-only">Toggle theme</span>
+            <span>外观</span>
+            <span className="sr-only">切换主题</span>
           </SidebarMenuButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -47,18 +47,18 @@ export const SidebarAppearance = () => {
             onClick={() => setTheme("light")}
           >
             <Sun className="mr-2 h-4 w-4" />
-            Light
+            浅色
           </DropdownMenuItem>
           <DropdownMenuItem
             data-testid="dark-mode"
             onClick={() => setTheme("dark")}
           >
             <Moon className="mr-2 h-4 w-4" />
-            Dark
+            深色
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setTheme("system")}>
             <Monitor className="mr-2 h-4 w-4" />
-            System
+            跟随系统
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

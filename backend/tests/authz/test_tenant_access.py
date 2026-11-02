@@ -305,10 +305,7 @@ def test_worker_and_user_cleanup(
             (str(users[index].id), headers(users[4])),
         ):
             response = client.delete(f"/api/v1/users/{target}", headers=auth)
-            assert (
-                response.status_code == 409
-                and response.json()["detail"] == "User still belongs to an organization"
-            )
+            assert response.status_code == 404
     existing = set(db.exec(select(User.id)).all())
     disposable = User(
         username=str(uuid.uuid7()),

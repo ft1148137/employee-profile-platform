@@ -570,7 +570,7 @@ export type ProfileVersionsPublic = {
  */
 export type ProfileView = {
     employee: EmployeeSummary;
-    schema_version: SchemaVersionPublic;
+    schema_version: SchemaVersionPublic | null;
     latest_published: PublishedSummary | null;
     counts: ProfileCounts;
     /**
@@ -764,60 +764,6 @@ export type UserPublic = {
 };
 
 /**
- * UserUpdate
- */
-export type UserUpdate = {
-    /**
-     * Email
-     */
-    email?: string | null;
-    /**
-     * Is Active
-     */
-    is_active?: boolean | null;
-    /**
-     * Is Superuser
-     */
-    is_superuser?: boolean | null;
-    /**
-     * Full Name
-     */
-    full_name?: string | null;
-    /**
-     * Password
-     */
-    password?: string | null;
-};
-
-/**
- * UserUpdateMe
- */
-export type UserUpdateMe = {
-    /**
-     * Full Name
-     */
-    full_name?: string | null;
-    /**
-     * Email
-     */
-    email?: string | null;
-};
-
-/**
- * UsersPublic
- */
-export type UsersPublic = {
-    /**
-     * Data
-     */
-    data: Array<UserPublic>;
-    /**
-     * Count
-     */
-    count: number;
-};
-
-/**
  * ValidationError
  */
 export type ValidationError = {
@@ -905,122 +851,6 @@ export type loginTestTokenResponses = {
 
 export type loginTestTokenResponse = loginTestTokenResponses[keyof loginTestTokenResponses];
 
-export type usersReadUsersData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Skip
-         */
-        skip?: number;
-        /**
-         * Limit
-         */
-        limit?: number;
-    };
-    url: '/api/v1/users/';
-};
-
-export type usersReadUsersErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersReadUsersError = usersReadUsersErrors[keyof usersReadUsersErrors];
-
-export type usersReadUsersResponses = {
-    /**
-     * Successful Response
-     */
-    200: UsersPublic;
-};
-
-export type usersReadUsersResponse = usersReadUsersResponses[keyof usersReadUsersResponses];
-
-export type usersCreateUserData = {
-    body: UserCreate;
-    path?: never;
-    query?: never;
-    url: '/api/v1/users/';
-};
-
-export type usersCreateUserErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersCreateUserError = usersCreateUserErrors[keyof usersCreateUserErrors];
-
-export type usersCreateUserResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserPublic;
-};
-
-export type usersCreateUserResponse = usersCreateUserResponses[keyof usersCreateUserResponses];
-
-export type usersDeleteUserMeData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/users/me';
-};
-
-export type usersDeleteUserMeResponses = {
-    /**
-     * Successful Response
-     */
-    200: Message;
-};
-
-export type usersDeleteUserMeResponse = usersDeleteUserMeResponses[keyof usersDeleteUserMeResponses];
-
-export type usersReadUserMeData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/v1/users/me';
-};
-
-export type usersReadUserMeResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserPublic;
-};
-
-export type usersReadUserMeResponse = usersReadUserMeResponses[keyof usersReadUserMeResponses];
-
-export type usersUpdateUserMeData = {
-    body: UserUpdateMe;
-    path?: never;
-    query?: never;
-    url: '/api/v1/users/me';
-};
-
-export type usersUpdateUserMeErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersUpdateUserMeError = usersUpdateUserMeErrors[keyof usersUpdateUserMeErrors];
-
-export type usersUpdateUserMeResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserPublic;
-};
-
-export type usersUpdateUserMeResponse = usersUpdateUserMeResponses[keyof usersUpdateUserMeResponses];
-
 export type usersUpdatePasswordMeData = {
     body: UpdatePassword;
     path?: never;
@@ -1046,95 +876,21 @@ export type usersUpdatePasswordMeResponses = {
 
 export type usersUpdatePasswordMeResponse = usersUpdatePasswordMeResponses[keyof usersUpdatePasswordMeResponses];
 
-export type usersDeleteUserData = {
+export type usersReadUserMeData = {
     body?: never;
-    path: {
-        /**
-         * User Id
-         */
-        user_id: string;
-    };
+    path?: never;
     query?: never;
-    url: '/api/v1/users/{user_id}';
+    url: '/api/v1/users/me';
 };
 
-export type usersDeleteUserErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersDeleteUserError = usersDeleteUserErrors[keyof usersDeleteUserErrors];
-
-export type usersDeleteUserResponses = {
-    /**
-     * Successful Response
-     */
-    200: Message;
-};
-
-export type usersDeleteUserResponse = usersDeleteUserResponses[keyof usersDeleteUserResponses];
-
-export type usersReadUserByIdData = {
-    body?: never;
-    path: {
-        /**
-         * User Id
-         */
-        user_id: string;
-    };
-    query?: never;
-    url: '/api/v1/users/{user_id}';
-};
-
-export type usersReadUserByIdErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersReadUserByIdError = usersReadUserByIdErrors[keyof usersReadUserByIdErrors];
-
-export type usersReadUserByIdResponses = {
+export type usersReadUserMeResponses = {
     /**
      * Successful Response
      */
     200: UserPublic;
 };
 
-export type usersReadUserByIdResponse = usersReadUserByIdResponses[keyof usersReadUserByIdResponses];
-
-export type usersUpdateUserData = {
-    body: UserUpdate;
-    path: {
-        /**
-         * User Id
-         */
-        user_id: string;
-    };
-    query?: never;
-    url: '/api/v1/users/{user_id}';
-};
-
-export type usersUpdateUserErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type usersUpdateUserError = usersUpdateUserErrors[keyof usersUpdateUserErrors];
-
-export type usersUpdateUserResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserPublic;
-};
-
-export type usersUpdateUserResponse = usersUpdateUserResponses[keyof usersUpdateUserResponses];
+export type usersReadUserMeResponse = usersReadUserMeResponses[keyof usersReadUserMeResponses];
 
 export type utilsTestEmailData = {
     body?: never;

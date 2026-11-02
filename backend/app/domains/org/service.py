@@ -20,7 +20,7 @@ from app.domains.profile.models import ProfileProgress, ProfileVersion
 
 class EmployeeNotFound(HTTPException):
     def __init__(self) -> None:
-        super().__init__(404, "Employee not found")
+        super().__init__(404, "未找到该员工或你没有权限查看")
 
 
 def visible_employee(
