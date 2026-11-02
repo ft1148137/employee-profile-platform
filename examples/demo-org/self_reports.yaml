@@ -1,0 +1,60 @@
+- id: SR01
+  employee_code: E01
+  submitted_at: '2026-05-01T10:00:00+08:00'
+  text: 我梳理了租户接口边界，并验证了回滚路径。
+  related_task_keys:
+  - PLAT-101
+- id: SR02
+  employee_code: E02
+  submitted_at: '2026-05-01T10:00:00+08:00'
+  text: 我独立完成了分页接口，冲突处理还需要同事复核。
+  related_task_keys:
+  - PLAT-104
+- id: SR03
+  employee_code: E03
+  submitted_at: '2026-05-01T10:00:00+08:00'
+  text: 我改进了筛选界面和键盘导航。
+  related_task_keys:
+  - PLAT-107
+- id: SR04
+  employee_code: E04
+  submitted_at: '2026-05-01T10:00:00+08:00'
+  text: 我建立了离线评估样例，误差分析还在进行。
+  related_task_keys:
+  - AI-101
+- id: SR05
+  employee_code: E05
+  submitted_at: '2026-05-01T10:00:00+08:00'
+  text: 我完成了批处理服务，复杂容量规划仍需协助。
+  related_task_keys:
+  - AI-104
+- id: SR06
+  employee_code: E06
+  submitted_at: '2026-05-01T10:00:00+08:00'
+  text: 我补充了字段校验和质量报告。
+  related_task_keys:
+  - AI-107
+- id: SR07
+  employee_code: E07
+  submitted_at: '2026-05-01T10:00:00+08:00'
+  text: 我验证了转换流程，但更多设备型号还未覆盖。
+  related_task_keys:
+  - EDGE-101
+- id: SR08
+  employee_code: E08
+  submitted_at: '2026-05-01T10:00:00+08:00'
+  text: 我认为已经可以独立完成复杂的 RKNN 部署，包括量化精度问题。
+  related_task_keys:
+  - EDGE-104
+- id: SR09
+  employee_code: E09
+  submitted_at: '2026-05-01T10:00:00+08:00'
+  text: 我完成了断网回归验证。
+  related_task_keys:
+  - EDGE-107
+- id: SR10
+  employee_code: E10
+  submitted_at: '2026-05-01T10:00:00+08:00'
+  text: 我整理了交付检查清单并参与联调。
+  related_task_keys:
+  - DELIV-101

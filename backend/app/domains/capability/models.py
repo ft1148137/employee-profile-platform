@@ -46,6 +46,7 @@ class CapabilityDefinition(TenantRecord, table=True):
     )
     schema_version_id: uuid.UUID
     key: str
+    position: int = Field(default=0, sa_column_kwargs={"server_default": "0"})
     name: str
     category: str | None = None
     description: str | None = None

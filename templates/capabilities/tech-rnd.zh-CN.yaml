@@ -1,0 +1,180 @@
+- key: backend_api
+  name: 后端 API 开发
+  category: 工程开发
+  description: 设计和实现可维护的服务接口
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下完成任务
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成边界明确的常规任务
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理复杂约束并验证结果
+- key: frontend_ui
+  name: 前端交互实现
+  category: 工程开发
+  description: 实现可访问的业务交互界面
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下完成任务
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成边界明确的常规任务
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理复杂约束并验证结果
+- key: automated_testing
+  name: 自动化测试
+  category: 工程开发
+  description: 设计覆盖关键行为的自动化测试
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下完成任务
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成边界明确的常规任务
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理复杂约束并验证结果
+- key: model_training
+  name: 模型训练与评估
+  category: AI 与数据
+  description: 构建训练流程并验证模型表现
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下完成任务
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成边界明确的常规任务
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理复杂约束并验证结果
+- key: data_pipeline
+  name: 数据处理
+  category: AI 与数据
+  description: 维护可追溯的数据处理管线
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下完成任务
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成边界明确的常规任务
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理复杂约束并验证结果
+- key: model_serving
+  name: 模型服务化
+  category: AI 与数据
+  description: 提供可监控的推理服务
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下完成任务
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成边界明确的常规任务
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理复杂约束并验证结果
+- key: container_delivery
+  name: 容器部署
+  category: 基础设施与边缘部署
+  description: 构建和交付容器化服务
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下完成任务
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成边界明确的常规任务
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理复杂约束并验证结果
+- key: rknn_deployment
+  name: RKNN 边缘部署
+  category: 基础设施与边缘部署
+  description: 转换并部署 RKNN 模型
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下完成任务
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成边界明确的常规任务
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理复杂约束并验证结果
+- key: observability
+  name: 可观测性
+  category: 基础设施与边缘部署
+  description: 定位运行问题并完善监控
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下完成任务
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成边界明确的常规任务
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理复杂约束并验证结果
+- key: requirements
+  name: 需求澄清
+  category: 交付与协作
+  description: 明确需求边界和验收条件
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下完成任务
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成边界明确的常规任务
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理复杂约束并验证结果
+- key: incident_support
+  name: 问题诊断与支持
+  category: 交付与协作
+  description: 根据事实诊断并跟进问题
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下完成任务
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成边界明确的常规任务
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理复杂约束并验证结果
+- key: technical_docs
+  name: 技术文档与协作
+  category: 交付与协作
+  description: 编写可复用的交付文档
+  level_rubric:
+    levels:
+    - key: needs_support
+      label: 需要协助
+      description: 在指导下完成任务
+    - key: routine
+      label: 能完成常规任务
+      description: 独立完成边界明确的常规任务
+    - key: independent_complex
+      label: 能独立完成复杂任务
+      description: 独立处理复杂约束并验证结果

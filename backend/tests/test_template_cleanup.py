@@ -1,14 +1,14 @@
 import subprocess
 import sys
 
-from sqlalchemy import inspect
+from sqlalchemy import Engine, inspect
 from sqlmodel import Session
 
-from app.core.db import engine
 from app.main import app
 
 
-def test_template_cleanup_migration(db: Session) -> None:
+def test_template_cleanup_migration(db: Session, migration_engine: Engine) -> None:
+    engine = migration_engine
     # Release earlier tests' read locks before running schema changes.
     db.rollback()
     assert "item" not in inspect(engine).get_table_names()

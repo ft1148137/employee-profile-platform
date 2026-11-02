@@ -153,11 +153,11 @@ def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
     """
     Delete own user.
     """
-    check_user_organization_references(session, current_user.id)
     if current_user.is_superuser:
         raise HTTPException(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
+    check_user_organization_references(session, current_user.id)
     session.delete(current_user)
     session.commit()
     return Message(message="User deleted successfully")
@@ -241,11 +241,11 @@ def delete_user(
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    check_user_organization_references(session, user.id)
     if user == current_user:
         raise HTTPException(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
+    check_user_organization_references(session, user.id)
     session.delete(user)
     session.commit()
     return Message(message="User deleted successfully")

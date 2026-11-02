@@ -1,8 +1,10 @@
 import warnings
+from pathlib import Path
 from typing import Literal, Self
 
 from pydantic import (
     EmailStr,
+    Field,
     HttpUrl,
     PostgresDsn,
     computed_field,
@@ -25,6 +27,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     FRONTEND_HOST: str = "http://localhost:5173"
     FASTAPI_ENV: Literal["development"] | None = None
+    SEED_DEMO_DATA: bool = False
+    DEMO_USER_PASSWORD: str | None = Field(default=None, min_length=8, max_length=128)
+    DEMO_DATA_DIR: Path = Path(__file__).resolve().parents[3] / "examples/demo-org"
 
     PROJECT_NAME: str
     SENTRY_DSN: HttpUrl | None = None
