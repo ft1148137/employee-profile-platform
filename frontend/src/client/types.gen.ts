@@ -566,6 +566,40 @@ export type OrganizationPublic = {
 };
 
 /**
+ * PrivateUserCreate
+ */
+export type PrivateUserCreate = {
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Email
+     */
+    email?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
+    /**
+     * Is Superuser
+     */
+    is_superuser?: boolean;
+    /**
+     * Full Name
+     */
+    full_name?: string | null;
+    /**
+     * Password
+     */
+    password: string;
+    /**
+     * Must Change Password
+     */
+    must_change_password?: boolean;
+};
+
+/**
  * ProfileCounts
  */
 export type ProfileCounts = {
@@ -1167,7 +1201,7 @@ export type usersUpdatePasswordMeResponses = {
     /**
      * Successful Response
      */
-    200: Message;
+    200: Token;
 };
 
 export type usersUpdatePasswordMeResponse = usersUpdatePasswordMeResponses[keyof usersUpdatePasswordMeResponses];
@@ -1739,7 +1773,7 @@ export type evidenceReadEvidenceResponses = {
 export type evidenceReadEvidenceResponse = evidenceReadEvidenceResponses[keyof evidenceReadEvidenceResponses];
 
 export type privateCreateUserData = {
-    body: UserCreate;
+    body: PrivateUserCreate;
     path?: never;
     query?: never;
     url: '/api/v1/private/users/';

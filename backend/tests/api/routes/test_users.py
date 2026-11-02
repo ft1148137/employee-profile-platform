@@ -250,7 +250,8 @@ def test_update_password_me(
     )
     assert r.status_code == 200
     updated_user = r.json()
-    assert updated_user["message"] == "Password updated successfully"
+    assert updated_user["access_token"]
+    superuser_token_headers["Authorization"] = f"Bearer {updated_user['access_token']}"
 
     user_query = select(User).where(User.email == settings.FIRST_SUPERUSER)
     user_db = db.exec(user_query).first()
@@ -272,6 +273,7 @@ def test_update_password_me(
     db.refresh(user_db)
 
     assert r.status_code == 200
+    superuser_token_headers["Authorization"] = f"Bearer {r.json()['access_token']}"
     verified, _ = verify_password(
         settings.FIRST_SUPERUSER_PASSWORD, user_db.hashed_password
     )
@@ -290,7 +292,7 @@ def test_update_password_me_incorrect_password(
     )
     assert r.status_code == 400
     updated_user = r.json()
-    assert updated_user["detail"] == "Incorrect password"
+    assert updated_user["detail"] == "当前密码不正确"
 
 
 def test_update_user_me_email_exists(
@@ -328,7 +330,7 @@ def test_update_password_me_same_password_error(
     assert r.status_code == 400
     updated_user = r.json()
     assert (
-        updated_user["detail"] == "New password cannot be the same as the current one"
+        updated_user["detail"] == "新密码不能与当前密码相同"
     )
 
 
@@ -507,4 +509,4 @@ def test_delete_user_without_privileges(
         headers=normal_user_token_headers,
     )
     assert r.status_code == 403
-    assert r.json()["detail"] == "The user doesn't have enough privileges"
+    assert r.json()["detail"] == "权限不足，请联系企业管理员"

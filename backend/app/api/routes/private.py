@@ -12,10 +12,19 @@ from app.models import (
 router = APIRouter(tags=["private"], prefix="/private")
 
 
+class PrivateUserCreate(UserCreate):
+    must_change_password: bool = False
+
+
 @router.post("/users/", response_model=UserPublic)
-def create_user(user_in: UserCreate, session: SessionDep) -> Any:
+def create_user(user_in: PrivateUserCreate, session: SessionDep) -> Any:
     """
     Create a new user.
     """
 
-    return crud.create_user(session=session, user_create=user_in)
+    user = crud.create_user(session=session, user_create=user_in)
+    user.must_change_password = user_in.must_change_password
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user

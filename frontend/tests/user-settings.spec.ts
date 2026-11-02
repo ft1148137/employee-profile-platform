@@ -140,9 +140,9 @@ test.describe("Change password", () => {
     await page.getByTestId("current-password-input").fill(password)
     await page.getByTestId("new-password-input").fill(newPassword)
     await page.getByTestId("confirm-password-input").fill(newPassword)
-    await page.getByRole("button", { name: "Update Password" }).click()
+    await page.getByRole("button", { name: "修改密码" }).click()
 
-    await expect(page.getByText("Password updated successfully")).toBeVisible()
+    await expect(page.getByText("密码修改成功")).toBeVisible()
 
     await logOutUser(page)
     await logInUser(page, email, newPassword)
@@ -172,11 +172,9 @@ test.describe("Change password validation", () => {
     await page.getByTestId("current-password-input").fill(password)
     await page.getByTestId("new-password-input").fill(weakPassword)
     await page.getByTestId("confirm-password-input").fill(weakPassword)
-    await page.getByRole("button", { name: "Update Password" }).click()
+    await page.getByRole("button", { name: "修改密码" }).click()
 
-    await expect(
-      page.getByText("Password must be at least 8 characters"),
-    ).toBeVisible()
+    await expect(page.getByText("密码至少需要 8 个字符")).toBeVisible()
   })
 
   test("New password and confirmation password do not match", async ({
@@ -185,20 +183,18 @@ test.describe("Change password validation", () => {
     await page.getByTestId("current-password-input").fill(password)
     await page.getByTestId("new-password-input").fill(randomPassword())
     await page.getByTestId("confirm-password-input").fill(randomPassword())
-    await page.getByRole("button", { name: "Update Password" }).click()
+    await page.getByRole("button", { name: "修改密码" }).click()
 
-    await expect(page.getByText("The passwords don't match")).toBeVisible()
+    await expect(page.getByText("两次输入的新密码不一致")).toBeVisible()
   })
 
   test("Current password and new password are the same", async ({ page }) => {
     await page.getByTestId("current-password-input").fill(password)
     await page.getByTestId("new-password-input").fill(password)
     await page.getByTestId("confirm-password-input").fill(password)
-    await page.getByRole("button", { name: "Update Password" }).click()
+    await page.getByRole("button", { name: "修改密码" }).click()
 
-    await expect(
-      page.getByText("New password cannot be the same as the current one"),
-    ).toBeVisible()
+    await expect(page.getByText("新密码不能与当前密码相同")).toBeVisible()
   })
 })
 
