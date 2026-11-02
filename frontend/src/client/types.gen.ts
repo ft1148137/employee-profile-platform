@@ -5,6 +5,33 @@ export type ClientOptions = {
 };
 
 /**
+ * ActiveSchemaPublic
+ */
+export type ActiveSchemaPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Version
+     */
+    version: number;
+    /**
+     * Template Ref
+     */
+    template_ref: string | null;
+    /**
+     * Activated At
+     */
+    activated_at: string | null;
+};
+
+/**
+ * AssessmentStatus
+ */
+export type AssessmentStatus = 'confirmed' | 'tentative' | 'unknown' | 'disputed';
+
+/**
  * Body_login-login_access_token
  */
 export type Body_login_login_access_token = {
@@ -33,6 +60,117 @@ export type Body_login_login_access_token = {
      */
     client_secret?: string | null;
 };
+
+/**
+ * CapabilitiesPublic
+ */
+export type CapabilitiesPublic = {
+    schema_version: ActiveSchemaPublic;
+    /**
+     * Data
+     */
+    data: Array<CapabilityPublic>;
+};
+
+/**
+ * CapabilityPublic
+ */
+export type CapabilityPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Category
+     */
+    category: string | null;
+    /**
+     * Description
+     */
+    description: string | null;
+    /**
+     * Level Rubric
+     */
+    level_rubric: {
+        [key: string]: JsonValue;
+    } | null;
+};
+
+/**
+ * ClaimEvidencePublic
+ */
+export type ClaimEvidencePublic = {
+    /**
+     * Evidence Id
+     */
+    evidence_id: string;
+    kind: EvidenceKind;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Occurred At
+     */
+    occurred_at?: string | null;
+    relation: EvidenceRelation;
+    /**
+     * Redacted
+     */
+    redacted?: boolean;
+};
+
+/**
+ * ClaimPublic
+ */
+export type ClaimPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Statement
+     */
+    statement: string;
+    /**
+     * Level
+     */
+    level: string | null;
+    assessment_status: AssessmentStatus;
+    review_status: ClaimReviewStatus;
+    confidence: Confidence | null;
+    /**
+     * Explanation
+     */
+    explanation: string | null;
+    generated_by: GeneratedBy;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Evidence
+     */
+    evidence?: Array<ClaimEvidencePublic>;
+};
+
+/**
+ * ClaimReviewStatus
+ */
+export type ClaimReviewStatus = 'candidate' | 'pending_employee' | 'pending_manager' | 'accepted' | 'rejected';
+
+/**
+ * Confidence
+ */
+export type Confidence = 'low' | 'medium' | 'high';
 
 /**
  * DepartmentPublic
@@ -122,14 +260,164 @@ export type EmployeesPublic = {
 export type EmploymentStatus = 'active' | 'inactive';
 
 /**
+ * EvidenceClaimPublic
+ */
+export type EvidenceClaimPublic = {
+    /**
+     * Claim Id
+     */
+    claim_id: string;
+    /**
+     * Capability Name
+     */
+    capability_name: string;
+    relation: EvidenceRelation;
+};
+
+/**
+ * EvidenceDetail
+ */
+export type EvidenceDetail = {
+    /**
+     * Id
+     */
+    id: string;
+    kind: EvidenceKind;
+    /**
+     * Source
+     */
+    source: string;
+    /**
+     * Source Ref
+     */
+    source_ref: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Occurred At
+     */
+    occurred_at: string | null;
+    status: EvidenceStatus;
+    visibility: Visibility;
+    /**
+     * Redacted
+     */
+    redacted: boolean;
+    /**
+     * Content
+     */
+    content: {
+        [key: string]: JsonValue;
+    } | null;
+    /**
+     * Provenance
+     */
+    provenance: {
+        [key: string]: JsonValue;
+    };
+    work_event: WorkEventPublic | null;
+    task: TaskPublic | null;
+    /**
+     * Supersedes Evidence Id
+     */
+    supersedes_evidence_id: string | null;
+    /**
+     * Claims
+     */
+    claims: Array<EvidenceClaimPublic>;
+};
+
+/**
+ * EvidenceKind
+ */
+export type EvidenceKind = 'work_record' | 'self_report' | 'manager_review';
+
+/**
+ * EvidenceList
+ */
+export type EvidenceList = {
+    /**
+     * Data
+     */
+    data: Array<EvidenceSummary>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * EvidenceQuality
  */
 export type EvidenceQuality = 'sufficient' | 'weak' | 'conflicting' | 'unknown';
 
 /**
+ * EvidenceRelation
+ */
+export type EvidenceRelation = 'supports' | 'contradicts' | 'context';
+
+/**
+ * EvidenceStatus
+ */
+export type EvidenceStatus = 'active' | 'retracted' | 'superseded';
+
+/**
+ * EvidenceSummary
+ */
+export type EvidenceSummary = {
+    /**
+     * Id
+     */
+    id: string;
+    kind: EvidenceKind;
+    /**
+     * Source
+     */
+    source: string;
+    /**
+     * Source Ref
+     */
+    source_ref: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Occurred At
+     */
+    occurred_at: string | null;
+    status: EvidenceStatus;
+    visibility: Visibility;
+    /**
+     * Redacted
+     */
+    redacted: boolean;
+};
+
+/**
  * FillStatus
  */
 export type FillStatus = 'not_started' | 'in_progress' | 'submitted';
+
+/**
+ * GeneratedBy
+ */
+export type GeneratedBy = {
+    /**
+     * Actor Type
+     */
+    actor_type: string;
+    /**
+     * Model
+     */
+    model?: string | null;
+    /**
+     * Model Version
+     */
+    model_version?: string | null;
+};
 
 /**
  * HTTPValidationError
@@ -145,6 +433,8 @@ export type HTTPValidationError = {
  * InferenceStatus
  */
 export type InferenceStatus = 'pending' | 'running' | 'generated' | 'failed';
+
+export type JsonValue = unknown;
 
 /**
  * MembershipPublic
@@ -230,6 +520,102 @@ export type PrivateUserCreate = {
 };
 
 /**
+ * ProfileCounts
+ */
+export type ProfileCounts = {
+    /**
+     * Confirmed
+     */
+    confirmed?: number;
+    /**
+     * Tentative
+     */
+    tentative?: number;
+    /**
+     * Unknown
+     */
+    unknown?: number;
+    /**
+     * Disputed
+     */
+    disputed?: number;
+};
+
+/**
+ * ProfileItem
+ */
+export type ProfileItem = {
+    capability: CapabilityPublic;
+    status: AssessmentStatus;
+    claim: ClaimPublic | null;
+};
+
+/**
+ * ProfileVersionSummary
+ */
+export type ProfileVersionSummary = {
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Published At
+     */
+    published_at: string;
+    published_by: PublisherPublic;
+    schema_version: SchemaVersionPublic;
+};
+
+/**
+ * ProfileVersionView
+ */
+export type ProfileVersionView = {
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Published At
+     */
+    published_at: string;
+    published_by: PublisherPublic;
+    schema_version: SchemaVersionPublic;
+    counts: ProfileCounts;
+    /**
+     * Items
+     */
+    items: Array<ProfileItem>;
+};
+
+/**
+ * ProfileVersionsPublic
+ */
+export type ProfileVersionsPublic = {
+    /**
+     * Data
+     */
+    data: Array<ProfileVersionSummary>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * ProfileView
+ */
+export type ProfileView = {
+    employee: EmployeeSummary;
+    schema_version: SchemaVersionPublic;
+    latest_published: PublishedSummary | null;
+    counts: ProfileCounts;
+    /**
+     * Items
+     */
+    items: Array<ProfileItem>;
+};
+
+/**
  * ProgressPublic
  */
 export type ProgressPublic = {
@@ -259,9 +645,59 @@ export type PublishedSummary = {
 };
 
 /**
+ * PublisherPublic
+ */
+export type PublisherPublic = {
+    /**
+     * Actor Type
+     */
+    actor_type: string;
+    /**
+     * Display Name
+     */
+    display_name: string | null;
+};
+
+/**
  * Role
  */
 export type Role = 'org_admin' | 'dept_manager';
+
+/**
+ * SchemaVersionPublic
+ */
+export type SchemaVersionPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Version
+     */
+    version: number;
+    /**
+     * Template Ref
+     */
+    template_ref: string | null;
+};
+
+/**
+ * TaskPublic
+ */
+export type TaskPublic = {
+    /**
+     * External Key
+     */
+    external_key: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Url
+     */
+    url: string | null;
+};
 
 /**
  * Token
@@ -445,6 +881,25 @@ export type ValidationError = {
     ctx?: {
         [key: string]: unknown;
     };
+};
+
+/**
+ * Visibility
+ */
+export type Visibility = 'standard' | 'restricted';
+
+/**
+ * WorkEventPublic
+ */
+export type WorkEventPublic = {
+    /**
+     * Action
+     */
+    action: string;
+    /**
+     * Occurred At
+     */
+    occurred_at: string;
 };
 
 export type loginLoginAccessTokenData = {
@@ -1005,6 +1460,227 @@ export type employeesReadEmployeeResponses = {
 };
 
 export type employeesReadEmployeeResponse = employeesReadEmployeeResponses[keyof employeesReadEmployeeResponses];
+
+export type capabilitiesReadCapabilitiesData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/capabilities';
+};
+
+export type capabilitiesReadCapabilitiesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilitiesReadCapabilitiesError = capabilitiesReadCapabilitiesErrors[keyof capabilitiesReadCapabilitiesErrors];
+
+export type capabilitiesReadCapabilitiesResponses = {
+    /**
+     * Successful Response
+     */
+    200: CapabilitiesPublic;
+};
+
+export type capabilitiesReadCapabilitiesResponse = capabilitiesReadCapabilitiesResponses[keyof capabilitiesReadCapabilitiesResponses];
+
+export type profilesReadProfileData = {
+    body?: never;
+    path: {
+        /**
+         * Employee Id
+         */
+        employee_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/employees/{employee_id}/profile';
+};
+
+export type profilesReadProfileErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type profilesReadProfileError = profilesReadProfileErrors[keyof profilesReadProfileErrors];
+
+export type profilesReadProfileResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProfileView;
+};
+
+export type profilesReadProfileResponse = profilesReadProfileResponses[keyof profilesReadProfileResponses];
+
+export type profilesReadProfileVersionsData = {
+    body?: never;
+    path: {
+        /**
+         * Employee Id
+         */
+        employee_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/employees/{employee_id}/profile-versions';
+};
+
+export type profilesReadProfileVersionsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type profilesReadProfileVersionsError = profilesReadProfileVersionsErrors[keyof profilesReadProfileVersionsErrors];
+
+export type profilesReadProfileVersionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProfileVersionsPublic;
+};
+
+export type profilesReadProfileVersionsResponse = profilesReadProfileVersionsResponses[keyof profilesReadProfileVersionsResponses];
+
+export type profilesReadProfileVersionData = {
+    body?: never;
+    path: {
+        /**
+         * Employee Id
+         */
+        employee_id: string;
+        /**
+         * Revision
+         */
+        revision: number;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/employees/{employee_id}/profile-versions/{revision}';
+};
+
+export type profilesReadProfileVersionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type profilesReadProfileVersionError = profilesReadProfileVersionErrors[keyof profilesReadProfileVersionErrors];
+
+export type profilesReadProfileVersionResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProfileVersionView;
+};
+
+export type profilesReadProfileVersionResponse = profilesReadProfileVersionResponses[keyof profilesReadProfileVersionResponses];
+
+export type evidenceReadEmployeeEvidenceData = {
+    body?: never;
+    path: {
+        /**
+         * Employee Id
+         */
+        employee_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Kind
+         */
+        kind?: EvidenceKind | null;
+        /**
+         * Include Inactive
+         */
+        include_inactive?: boolean;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/orgs/{org_id}/employees/{employee_id}/evidence';
+};
+
+export type evidenceReadEmployeeEvidenceErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type evidenceReadEmployeeEvidenceError = evidenceReadEmployeeEvidenceErrors[keyof evidenceReadEmployeeEvidenceErrors];
+
+export type evidenceReadEmployeeEvidenceResponses = {
+    /**
+     * Successful Response
+     */
+    200: EvidenceList;
+};
+
+export type evidenceReadEmployeeEvidenceResponse = evidenceReadEmployeeEvidenceResponses[keyof evidenceReadEmployeeEvidenceResponses];
+
+export type evidenceReadEvidenceData = {
+    body?: never;
+    path: {
+        /**
+         * Evidence Id
+         */
+        evidence_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/evidence/{evidence_id}';
+};
+
+export type evidenceReadEvidenceErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type evidenceReadEvidenceError = evidenceReadEvidenceErrors[keyof evidenceReadEvidenceErrors];
+
+export type evidenceReadEvidenceResponses = {
+    /**
+     * Successful Response
+     */
+    200: EvidenceDetail;
+};
+
+export type evidenceReadEvidenceResponse = evidenceReadEvidenceResponses[keyof evidenceReadEvidenceResponses];
 
 export type privateCreateUserData = {
     body: PrivateUserCreate;

@@ -1,6 +1,4 @@
 import json
-import shutil
-from collections.abc import Generator
 from pathlib import Path
 from uuid import uuid4
 
@@ -17,26 +15,6 @@ from app.domains.profile.models import ClaimEvidence, ProfileClaim, ProfileVersi
 from app.domains.profile.service import SnapshotError, build_profile_snapshot
 from app.seed.loader import load_demo
 from app.seed.schema import SeedError, read_bundle
-from tests.utils.org import delete_test_organization
-
-
-@pytest.fixture
-def seed_path(tmp_path: Path) -> Generator[Path]:
-    path = tmp_path / "examples/demo-org"
-    shutil.copytree(settings.DEMO_DATA_DIR, path)
-    shutil.copytree(
-        settings.DEMO_DATA_DIR.parent.parent / "templates", tmp_path / "templates"
-    )
-    org = yaml.safe_load((path / "org.yaml").read_text())
-    org["slug"] = f"seed-test-{uuid4()}"
-    (path / "org.yaml").write_text(yaml.safe_dump(org, allow_unicode=True))
-    yield path
-    with Session(engine) as session:
-        existing = session.exec(
-            select(Organization).where(Organization.slug == org["slug"])
-        ).one_or_none()
-        if existing:
-            delete_test_organization(session, existing.id)
 
 
 def test_import(seed_path: Path) -> None:
