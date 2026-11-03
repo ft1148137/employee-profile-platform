@@ -21,6 +21,9 @@ updates:
   # Python uv
   - package-ecosystem: uv
     directory: /
+    # Upgrade LiteLLM only in a separate, manually reviewed PR.
+    ignore:
+      - dependency-name: "litellm"
     schedule:
       interval: "monthly"
     open-pull-requests-limit: 1

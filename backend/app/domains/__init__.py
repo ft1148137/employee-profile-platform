@@ -5,6 +5,7 @@ from app.domains.audit import models as audit
 from app.domains.capability import models as capability
 from app.domains.change_request import models as change_request
 from app.domains.evidence import models as evidence
+from app.domains.model import models as model
 from app.domains.org import models as org
 from app.domains.profile import models as profile
 from app.domains.setup import models as setup
@@ -16,6 +17,7 @@ __all__ = [
     "capability",
     "change_request",
     "evidence",
+    "model",
     "org",
     "profile",
     "setup",

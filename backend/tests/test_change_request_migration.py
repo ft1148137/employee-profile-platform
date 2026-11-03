@@ -12,7 +12,7 @@ from app.core.db import init_db
 from app.seed.loader import load_demo
 from tests.test_account_migration import migrate
 
-PREVIOUS = "e35a91c7d024"
+PREVIOUS = "f55a901bc001"
 
 
 @pytest.mark.parametrize("nonempty_note", [False, True])

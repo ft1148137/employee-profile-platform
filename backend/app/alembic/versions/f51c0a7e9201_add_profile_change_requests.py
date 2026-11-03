@@ -1,7 +1,7 @@
 """Separate proposed changes from published claims.
 
 Revision ID: f51c0a7e9201
-Revises: e35a91c7d024
+Revises: f55a901bc001
 
 Unversioned candidate/pending_employee/pending_manager/rejected claims become
 manual draft/pending_owner/pending_review/rejected requests. Versioned claims stay.
@@ -17,7 +17,7 @@ the latest retained current claim (or NULL). These pointers are not recoverable.
 from alembic import op
 
 revision = "f51c0a7e9201"
-down_revision = "e35a91c7d024"
+down_revision = "f55a901bc001"
 branch_labels = None
 depends_on = None
 

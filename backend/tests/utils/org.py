@@ -10,6 +10,7 @@ from app.domains.change_request.models import (
     ProfileChangeRequest,
 )
 from app.domains.evidence.models import Evidence
+from app.domains.model.models import ModelSetting
 from app.domains.org.models import (
     Department,
     Employee,
@@ -49,6 +50,7 @@ def delete_test_organization(session: Session, org_id: UUID) -> None:
         raise ValueError("Only a test-owned organization may be deleted")
     for model in (
         SetupStepState,
+        ModelSetting,
         AuditEvent,
         ChangeItemEvidence,
         ChangeItem,
