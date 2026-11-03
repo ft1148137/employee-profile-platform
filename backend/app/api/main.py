@@ -8,6 +8,7 @@ from app.api.routes import (
     change_requests,
     employees,
     evidence,
+    initial_profiles,
     login,
     me,
     model_setting,
@@ -39,6 +40,7 @@ api_router.include_router(capability_templates.router)
 api_router.include_router(profiles.router)
 api_router.include_router(change_requests.router)
 api_router.include_router(evidence.router)
+api_router.include_router(initial_profiles.router)
 api_router.include_router(accounts.router)
 api_router.include_router(audit.router)
 api_router.include_router(roles.router)

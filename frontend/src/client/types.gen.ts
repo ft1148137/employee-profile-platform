@@ -479,6 +479,18 @@ export type ClaimAfter = {
     level?: string | null;
     assessment_status: AssessmentStatus;
     confidence?: Confidence | null;
+    /**
+     * Evidence Count
+     */
+    evidence_count?: number | null;
+    /**
+     * Source Count
+     */
+    source_count?: number | null;
+    /**
+     * Latest Evidence At
+     */
+    latest_evidence_at?: string | null;
 };
 
 /**
@@ -631,6 +643,52 @@ export type DepartmentsPublic = {
      * Count
      */
     count: number;
+};
+
+/**
+ * DraftBody
+ */
+export type DraftBody = {
+    /**
+     * Scope
+     */
+    scope: 'all' | 'failed';
+};
+
+/**
+ * DraftProgress
+ */
+export type DraftProgress = {
+    /**
+     * Mode
+     */
+    mode: 'rules' | 'model';
+    /**
+     * Counts
+     */
+    counts: {
+        [key: string]: number;
+    };
+    /**
+     * Failed
+     */
+    failed: Array<FailedEmployee>;
+    /**
+     * Requests
+     */
+    requests: {
+        [key: string]: number;
+    };
+};
+
+/**
+ * DraftQueued
+ */
+export type DraftQueued = {
+    /**
+     * Queued
+     */
+    queued: number;
 };
 
 /**
@@ -864,6 +922,24 @@ export type EvidenceSummary = {
      * Redacted
      */
     redacted: boolean;
+};
+
+/**
+ * FailedEmployee
+ */
+export type FailedEmployee = {
+    /**
+     * Employee Id
+     */
+    employee_id: string;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Error
+     */
+    error: string | null;
 };
 
 /**
@@ -2964,6 +3040,66 @@ export type evidenceReadEvidenceResponses = {
 };
 
 export type evidenceReadEvidenceResponse = evidenceReadEvidenceResponses[keyof evidenceReadEvidenceResponses];
+
+export type initialProfilesDraftData = {
+    body: DraftBody;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/initial-profiles/draft';
+};
+
+export type initialProfilesDraftErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type initialProfilesDraftError = initialProfilesDraftErrors[keyof initialProfilesDraftErrors];
+
+export type initialProfilesDraftResponses = {
+    /**
+     * Successful Response
+     */
+    202: DraftQueued;
+};
+
+export type initialProfilesDraftResponse = initialProfilesDraftResponses[keyof initialProfilesDraftResponses];
+
+export type initialProfilesProgressData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/initial-profiles/progress';
+};
+
+export type initialProfilesProgressErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type initialProfilesProgressError = initialProfilesProgressErrors[keyof initialProfilesProgressErrors];
+
+export type initialProfilesProgressResponses = {
+    /**
+     * Successful Response
+     */
+    200: DraftProgress;
+};
+
+export type initialProfilesProgressResponse = initialProfilesProgressResponses[keyof initialProfilesProgressResponses];
 
 export type accountsReadAccountsData = {
     body?: never;
