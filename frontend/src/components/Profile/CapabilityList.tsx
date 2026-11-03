@@ -12,9 +12,11 @@ import { StatusBadge } from "./StatusBadge"
 export function CapabilityList({
   items,
   onEvidence,
+  pendingCapabilityIds,
 }: {
   items: ProfileItem[]
   onEvidence: (id: string) => void
+  pendingCapabilityIds?: Set<string>
 }) {
   const groups = new Map<string, ProfileItem[]>()
   for (const item of items) {
@@ -51,6 +53,7 @@ export function CapabilityList({
                 key={item.capability.id}
                 item={item}
                 onEvidence={onEvidence}
+                pending={pendingCapabilityIds?.has(item.capability.id)}
               />
             ))}
           </div>
@@ -63,9 +66,11 @@ export function CapabilityList({
 function ClaimCard({
   item: { capability, status, claim },
   onEvidence,
+  pending,
 }: {
   item: ProfileItem
   onEvidence: (id: string) => void
+  pending?: boolean
 }) {
   const actor = claim?.generated_by.actor_type
   const sources: Record<string, string> = {
@@ -81,7 +86,12 @@ function ClaimCard({
       className="rounded-xl border bg-card p-5 shadow-sm"
     >
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="font-semibold">{capability.name}</h3>
+        <div>
+          <h3 className="font-semibold">{capability.name}</h3>
+          {pending && (
+            <p className="mt-1 text-xs text-muted-foreground">有待处理的改动</p>
+          )}
+        </div>
         <StatusBadge kind="assessment_status" value={status} />
       </div>
       {claim ? (

@@ -326,6 +326,95 @@ export type CapabilityTemplatePublic = {
 };
 
 /**
+ * ChangeItemPublic
+ */
+export type ChangeItemPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    op: ChangeOp;
+    capability: CapabilityPublic;
+    /**
+     * Target Claim Id
+     */
+    target_claim_id: string | null;
+    after: ClaimAfter | null;
+    /**
+     * Explanation
+     */
+    explanation: string | null;
+    /**
+     * Uncertainty
+     */
+    uncertainty: string | null;
+    /**
+     * Evidence
+     */
+    evidence?: Array<ClaimEvidencePublic>;
+};
+
+/**
+ * ChangeOp
+ */
+export type ChangeOp = 'add' | 'modify' | 'retract' | 'attach_evidence';
+
+/**
+ * ChangeRequestPublic
+ */
+export type ChangeRequestPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    origin: RequestOrigin;
+    status: RequestStatus;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+    generated_by: RequestGeneratedBy;
+    /**
+     * Items
+     */
+    items?: Array<ChangeItemPublic>;
+};
+
+/**
+ * ChangeRequestsPublic
+ */
+export type ChangeRequestsPublic = {
+    /**
+     * Data
+     */
+    data: Array<ChangeRequestPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * ClaimAfter
+ */
+export type ClaimAfter = {
+    /**
+     * Statement
+     */
+    statement: string;
+    /**
+     * Level
+     */
+    level?: string | null;
+    assessment_status: AssessmentStatus;
+    confidence?: Confidence | null;
+};
+
+/**
  * ClaimEvidencePublic
  */
 export type ClaimEvidencePublic = {
@@ -1154,6 +1243,30 @@ export type PublisherPublic = {
      */
     display_name: string | null;
 };
+
+/**
+ * RequestGeneratedBy
+ */
+export type RequestGeneratedBy = {
+    /**
+     * Mode
+     */
+    mode?: string | null;
+    /**
+     * Model
+     */
+    model?: string | null;
+};
+
+/**
+ * RequestOrigin
+ */
+export type RequestOrigin = 'initial_sync' | 'incremental_sync' | 'conversation' | 'manual' | 'correction';
+
+/**
+ * RequestStatus
+ */
+export type RequestStatus = 'draft' | 'pending_owner' | 'pending_review' | 'approved' | 'changes_requested' | 'rejected' | 'withdrawn';
 
 /**
  * Role
@@ -2320,6 +2433,45 @@ export type profilesReadProfileVersionResponses = {
 };
 
 export type profilesReadProfileVersionResponse = profilesReadProfileVersionResponses[keyof profilesReadProfileVersionResponses];
+
+export type changeRequestsReadChangeRequestsData = {
+    body?: never;
+    path: {
+        /**
+         * Employee Id
+         */
+        employee_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Status
+         */
+        status?: 'open' | 'all';
+    };
+    url: '/api/v1/orgs/{org_id}/employees/{employee_id}/change-requests';
+};
+
+export type changeRequestsReadChangeRequestsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type changeRequestsReadChangeRequestsError = changeRequestsReadChangeRequestsErrors[keyof changeRequestsReadChangeRequestsErrors];
+
+export type changeRequestsReadChangeRequestsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChangeRequestsPublic;
+};
+
+export type changeRequestsReadChangeRequestsResponse = changeRequestsReadChangeRequestsResponses[keyof changeRequestsReadChangeRequestsResponses];
 
 export type evidenceReadEmployeeEvidenceData = {
     body?: never;
