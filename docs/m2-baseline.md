@@ -1,6 +1,6 @@
 # M2 规则起草基线
 
-日期：2026-11-04（北京时间）。实现基线：`master` `5d7b3c6801cdc1be03bc1d2eada506c6f4c2b521`；数据集：栖光智联 `qiguang-aiot`；词典：`aiot-hardware`；方式：关键词规则，模型关闭。
+日期：2026-11-04（北京时间）。实现基线：`master` `821e17e4bf801f65a413f2261139e5ac0d7135ca`；数据集：栖光智联 `qiguang-aiot`；词典：`aiot-hardware`；方式：关键词规则，模型关闭。
 
 运行 `uv run --project backend python examples/test-enterprises/evaluate_drafts.py qiguang-aiot`，需先启动隔离数据库并迁移。脚本读取仓库 `.env`（环境变量优先），创建 `eval-qiguang-aiot-随机串`，仅导入 org/roster 登记的身份、36 条模拟 Jira 和 32 条 PLM，起草后在 finally 删除临时企业。未使用 personas 的 account_truth、自述、经理评价或预置判断。
 

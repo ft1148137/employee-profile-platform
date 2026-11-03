@@ -1,4 +1,4 @@
-"""Local opt-in continuation after the real Cloud browser walkthrough."""
+"""Verify seeded Jira updates against the browser walkthrough's database."""
 
 import os
 import subprocess
@@ -7,24 +7,16 @@ import time
 from datetime import timedelta
 from pathlib import Path
 
-import pytest
-from fastapi.testclient import TestClient
-from sqlmodel import Session, select
-
 from app.core.security import create_access_token
 from app.domains.evidence.models import Evidence
 from app.domains.org.models import OrgMembership
 from app.domains.source.models import SourceConnection
 from app.models import User
-
-pytestmark = pytest.mark.skipif(
-    os.getenv("M2_JIRA_INCREMENTAL") != "1"
-    or any(not os.getenv(k) for k in ("JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN")),
-    reason="Local real Cloud continuation requires explicit opt-in and credentials",
-)
+from fastapi.testclient import TestClient
+from sqlmodel import Session, select
 
 
-def test_seed_touch_replaces_only_one_evidence(db: Session, client: TestClient) -> None:
+def verify_incremental(db: Session, client: TestClient) -> None:
     connections = [
         c
         for c in db.exec(
@@ -44,7 +36,7 @@ def test_seed_touch_replaces_only_one_evidence(db: Session, client: TestClient) 
         + create_access_token(user.id, timedelta(minutes=5), user.password_changed_at)
     }
     base = f"/api/v1/orgs/{org}"
-    script = Path(__file__).resolve().parents[3] / "scripts/seed_jira_cloud.py"
+    script = Path(__file__).with_name("seed_jira_cloud.py")
 
     def seed(*args: str) -> None:
         subprocess.run(
@@ -95,3 +87,16 @@ def test_seed_touch_replaces_only_one_evidence(db: Session, client: TestClient) 
     assert new[2] != previous[2] and new[3] == changed[0]
     assert result["counts"]["evidence_superseded"] == 1
     assert result["counts"]["evidence_added"] == 0
+
+
+if __name__ == "__main__":
+    if os.getenv("M2_JIRA_INCREMENTAL") != "1" or any(
+        not os.getenv(k) for k in ("JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN")
+    ):
+        raise SystemExit("Requires M2_JIRA_INCREMENTAL=1 and Jira test credentials")
+    from app.core.db import engine
+    from app.main import app
+
+    with Session(engine) as session, TestClient(app) as client:
+        verify_incremental(session, client)
+    print("真实 Cloud 增量续测通过：仅取代一条证据，其余证据状态和哈希不变")

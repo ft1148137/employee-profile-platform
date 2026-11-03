@@ -1,6 +1,6 @@
 # M2 验收记录
 
-日期：2026-11-04（北京时间）；实现基线 `master` `5d7b3c6801cdc1be03bc1d2eada506c6f4c2b521`。所有人员、任务与工作记录均为合成数据。CI 不连接真实 Jira 或真实模型；真实站点凭据只经运行时环境变量进入本地测试容器。
+日期：2026-11-04（北京时间）；实现基线 `master` `821e17e4bf801f65a413f2261139e5ac0d7135ca`。所有人员、任务与工作记录均为合成数据。CI 不连接真实 Jira 或真实模型；真实站点凭据只经运行时环境变量进入本地测试容器。
 
 | 父 issue / 补充验收项 | 用例与实测结果 |
 | --- | --- |
@@ -13,14 +13,14 @@
 | 三个自动起草开关 | `test_switches_pause_resume[False/True]`，能力排除、父子部门关闭、员工退出与恢复均有效，Evidence/ProfileClaim 内容未变，通过 |
 | 栖光智联规则准确率，无通过门槛 | 26 名在职、64 改动项；精确率 53.1%、召回率 47.9%，25 项 undocumented 全部未知；见 [基线](m2-baseline.md) |
 | 网页完整流程 | `m2-walkthrough.spec.ts`，26 名在职员工，Jira 36 条 + PLM 32 条、向导完成、本人改密后可读草稿/证据，通过；sources/employee-evidence 截图作为 Playwright 产物 |
-| 真实 Jira Cloud 完整流程 | `m2-real-jira.spec.ts`，同步 64 条（种子脚本维护其中 60 条），关联员工得到 8 改动项/17 证据引用，逐条对比站点 summary，通过；`test_seed_touch_replaces_only_one_evidence`：`--touch PLAT-101` 后 1 新证据、1 取代、其余 63 条有效证据不变，通过 |
+| 真实 Jira Cloud 完整流程 | `m2-real-jira.spec.ts`，同步 64 条（种子脚本维护其中 60 条），关联员工得到 8 改动项/17 证据引用，逐条对比站点 summary，通过；`verify_m2_real_jira.py`：`--touch PLAT-101` 后 1 新证据、1 取代、其余 63 条有效证据不变，通过 |
 | 真实 ChatGPT 订阅 | 只读本机登录、`chatgpt/gpt-6.1-sol`、high，5 个请求/10 个改动项、0 失败，每项有证据，提供方/模型/强度记录正确；登录文件测试前后 SHA-256 不变 |
 
 真实 ChatGPT 本次未触发用量上限，不宣称实测过真实的 5 小时/每周暂停；暂停与自动续跑由模拟限流及已有进度页面用例验证。模型准确率未测；真实设备码授权流程未重新登录，本次只验证已登录文件的隔离调用。
 
 ## 自动检查
 
-后端模板 mypy、ty、ruff check/format 通过；全量 pytest **604 passed、5 skipped**，coverage **98%**，`--fail-under=90` 通过；真实 Cloud 后续测试默认跳过，本地显式启用时 1 passed。前端 lint、TypeScript/build、OpenAPI 客户端重新生成及 pre-commit 全部通过。PR CI 结果在合并前另行核对，不将本地结果视为 CI 结果。
+后端模板 mypy、ty、ruff check/format 通过；合并并行测试框架后全量 pytest **607 passed、4 skipped**，coverage **98%**，`--fail-under=90` 通过；真实 Cloud 后续验证由独立本地脚本通过。前端 lint、TypeScript/build、OpenAPI 客户端重新生成及 pre-commit 全部通过。PR CI 结果在合并前另行核对，不将本地结果视为 CI 结果。
 
 本机使用 Playwright 1.64.1 / Chromium 156.0.8078.4；模拟流程先在本机运行，再从容器复核。默认 Playwright 基础镜像下载缓慢，本地改用已有 Bun 容器挂载同一工作区、连接本机同版本 Chromium，真实凭据仍只以运行时 `-e` 传入测试容器，没有写进配置。该临时配置不入仓库，默认 Dockerfile 的构建与全套浏览器检查由 PR CI 验证。
 
@@ -43,10 +43,10 @@ docker compose -f compose.yml -f compose.dev.yml run --rm playwright bunx playwr
 真实站点续测：先加载本机凭据，在根目录运行 `uv run --project backend python scripts/seed_jira_cloud.py`，随后按 issue 指定的 `-e JIRA_BASE_URL -e JIRA_EMAIL -e JIRA_API_TOKEN` 运行 `m2-real-jira.spec.ts --trace=off --reporter=line`。保留同一数据库和 worker，再执行：
 
 ```bash
-(cd backend && M2_JIRA_INCREMENTAL=1 uv run pytest tests/acceptance/test_m2_real_jira.py -q --tb=short)
+(cd backend && M2_JIRA_INCREMENTAL=1 uv run python ../scripts/verify_m2_real_jira.py)
 ```
 
-该可选续测调用同一造数脚本（先恢复种子基线，再 `--touch PLAT-101`），检查原证据仅变为 superseded、新记录引用原 id，其余证据的状态和哈希不变；不删除站点记录。未启用 opt-in 时 CI 跳过，不靠放宽检查接入真实服务。
+该独立本地续测连接浏览器所用数据库，避免 pytest 为每个 worker 创建隔离数据库后读不到网页数据。它调用同一造数脚本（先恢复种子基线，再 `--touch PLAT-101`），检查原证据仅变为 superseded、新记录引用原 id，其余证据的状态和哈希不变；不删除站点记录。未启用 opt-in 时拒绝执行，CI 不调用真实服务。
 
 ## 已知边界
 
