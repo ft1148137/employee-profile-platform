@@ -1,10 +1,8 @@
-import subprocess
-import sys
-
 from sqlalchemy import Engine, inspect
 from sqlmodel import Session
 
 from app.main import app
+from tests.utils.migrations import migrate
 
 
 def test_template_cleanup_migration(db: Session, migration_engine: Engine) -> None:
@@ -14,9 +12,7 @@ def test_template_cleanup_migration(db: Session, migration_engine: Engine) -> No
     assert "item" not in inspect(engine).get_table_names()
     assert not any("/items" in path for path in app.openapi()["paths"])
 
-    subprocess.run(
-        [sys.executable, "-m", "alembic", "downgrade", "fe56fa70289e"], check=True
-    )
+    migrate(migration_engine, "downgrade", "fe56fa70289e")
     try:
         inspector = inspect(engine)
         columns = {column["name"]: column for column in inspector.get_columns("item")}
@@ -30,6 +26,6 @@ def test_template_cleanup_migration(db: Session, migration_engine: Engine) -> No
         assert foreign_key["referred_table"] == "user"
         assert foreign_key["options"]["ondelete"] == "CASCADE"
     finally:
-        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+        migrate(migration_engine, "upgrade", "head")
 
     assert "item" not in inspect(engine).get_table_names()
