@@ -161,7 +161,7 @@ export function WizardFrame({ orgId }: { orgId: string }) {
                         update.mutate({ key: step.key, skip: true })
                       }
                     >
-                      跳过
+                      {step.key === "model" ? "跳过，用关键词规则起草" : "跳过"}
                     </Button>
                   )}
                 </div>

@@ -30,9 +30,12 @@ def read_setting(session: Session, org_id: UUID) -> ModelSetting | None:
 
 def public_setting(setting: ModelSetting | None) -> ModelSettingPublic:
     if setting is None:
-        return ModelSettingPublic()
+        return ModelSettingPublic(
+            local_codex=settings.CHATGPT_CODEX_AUTH_FILE is not None
+        )
     return ModelSettingPublic(
         **setting.model_dump(exclude={"api_key_ciphertext"}),
+        local_codex=settings.CHATGPT_CODEX_AUTH_FILE is not None,
         has_api_key=bool(setting.api_key_ciphertext),
         chatgpt=ChatGPTStatus(
             connected=bool(setting.chatgpt_auth_ciphertext),

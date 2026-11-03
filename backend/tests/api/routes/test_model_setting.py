@@ -78,6 +78,7 @@ def test_settings(
         "model": None,
         "base_url": None,
         "has_api_key": False,
+        "local_codex": False,
         "reasoning_effort": None,
         "chatgpt": {
             "connected": False,
@@ -510,3 +511,14 @@ def test_import_boundary() -> None:
         check=False,
     )
     assert "TID251" in result.stdout and result.returncode == 1
+
+
+def test_local_codex_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.domains.model.service import public_setting
+
+    monkeypatch.setattr(
+        settings, "CHATGPT_CODEX_AUTH_FILE", "/does-not-exist/auth.json"
+    )
+    assert public_setting(None).local_codex
+    monkeypatch.setattr(settings, "CHATGPT_CODEX_AUTH_FILE", None)
+    assert not public_setting(None).local_codex
