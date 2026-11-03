@@ -36,6 +36,8 @@ jobs:
         run: uv run bash scripts/prestart.sh
         working-directory: backend
       - name: Run tests
+        env:
+          PYTEST_XDIST_AUTO_NUM_WORKERS: "2"
         run: uv run bash scripts/tests-start.sh "Coverage for ${{ github.sha }}"
         working-directory: backend
       - if: always()

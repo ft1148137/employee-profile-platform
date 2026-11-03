@@ -40,6 +40,9 @@ def pytest_sessionstart(session: pytest.Session) -> None:
         stack.enter_context(isolated_database(url, database, template=template))
         config.stash[MIGRATION_TEMPLATE] = template
         config.pluginmanager.import_plugin("tests.fixtures")
+        from app.core.db import engine
+
+        stack.callback(engine.dispose)
         config.stash[DATABASES] = stack.pop_all()
         config.add_cleanup(config.stash[DATABASES].close)
 
