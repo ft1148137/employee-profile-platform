@@ -10,7 +10,7 @@ import { LastSyncStatus, useSourceRuns } from "./LastSyncStatus"
 
 export function CsvImportCard({ orgId }: { orgId: string }) {
   const client = useQueryClient()
-  const runs = useSourceRuns(orgId)
+  const runs = useSourceRuns(orgId, "csv")
   const [issues, setIssues] = useState<WorkRecordIssue[]>([])
   const upload = useMutation({
     mutationFn: (file: File) =>
@@ -48,8 +48,7 @@ export function CsvImportCard({ orgId }: { orgId: string }) {
       setTimeout(() => URL.revokeObjectURL(url), 1000)
     },
   })
-  const recent =
-    runs.data?.filter((run) => run.kind === "csv").slice(0, 3) ?? []
+  const recent = runs.data ?? []
   return (
     <section
       aria-label="工作记录文件"

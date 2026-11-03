@@ -1,12 +1,16 @@
 import { useQuery } from "@tanstack/react-query"
 import { SourcesService, type SyncRunPublic } from "@/client"
 
-export function useSourceRuns(orgId: string) {
+export function useSourceRuns(orgId: string, kind: SyncRunPublic["kind"]) {
   return useQuery({
-    queryKey: ["source-runs", orgId],
+    queryKey: ["source-runs", orgId, kind],
     queryFn: async () =>
-      (await SourcesService.listSyncRuns({ path: { org_id: orgId } })).data
-        .data,
+      (
+        await SourcesService.listSyncRuns({
+          path: { org_id: orgId },
+          query: { kind, limit: kind === "jira" ? 1 : 3 },
+        })
+      ).data.data,
     refetchInterval: (query) =>
       query.state.data?.some(
         (run) => run.status === "queued" || run.status === "running",

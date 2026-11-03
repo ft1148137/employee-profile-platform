@@ -55,8 +55,8 @@ function JiraForm({
   const [secret, setSecret] = useState("")
   const [hasSecret, setHasSecret] = useState(connection.has_secret)
   const [dirty, setDirty] = useState(false)
-  const runs = useSourceRuns(orgId)
-  const latest = runs.data?.find((run) => run.kind === "jira")
+  const runs = useSourceRuns(orgId, "jira")
+  const latest = runs.data?.[0]
   const syncing = latest?.status === "queued" || latest?.status === "running"
   const save = useMutation({
     mutationFn: () =>
