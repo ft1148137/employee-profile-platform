@@ -381,12 +381,14 @@ def test_csv_merge_roles(context: tuple, client: TestClient, db: Session) -> Non
 
 
 @pytest.mark.parametrize("deployment", ["cloud", "data_center"])
+@pytest.mark.parametrize("retry_after", [0, 1])
 def test_real_queue_retry(
     context: tuple,
     client: TestClient,
     db: Session,
     monkeypatch: pytest.MonkeyPatch,
     deployment: str,
+    retry_after: int,
 ) -> None:
     org, base, auth, _, _ = context
     if deployment == "data_center":
@@ -410,17 +412,35 @@ def test_real_queue_retry(
         nonlocal calls
         calls += 1
         if calls == 1:
-            raise RetryableSourceError("Jira 暂时不可用", retry_after=0)
+            raise RetryableSourceError("Jira 暂时不可用", retry_after=retry_after)
         return original(connection)
 
     monkeypatch.setattr(sync, "jira_client_for", connect)
     run_id = start(client, base, auth)
 
     async def work() -> None:
-        async with app.open_async():
-            await asyncio.wait_for(
-                app.run_worker_async(wait=False, concurrency=1), timeout=20
+        # Scheduled retries must not depend on the app and DB clocks matching.
+        async with app.open_async(), asyncio.TaskGroup() as tasks:
+            worker = tasks.create_task(
+                app.run_worker_async(
+                    wait=True,
+                    concurrency=1,
+                    fetch_job_polling_interval=0.05,
+                    install_signal_handlers=False,
+                )
             )
+            async with asyncio.timeout(20):
+                while True:
+                    with Session(engine) as progress:
+                        status = progress.exec(
+                            select(SyncRun.status).where(
+                                SyncRun.org_id == org, SyncRun.id == UUID(run_id)
+                            )
+                        ).one()
+                    if status in {"succeeded", "failed"}:
+                        break
+                    await asyncio.sleep(0.05)
+            worker.cancel()
 
     asyncio.run(work())
     db.expire_all()
