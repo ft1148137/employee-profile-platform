@@ -162,7 +162,7 @@ export function WizardFrame({ orgId }: { orgId: string }) {
                         update.mutate({ key: step.key, skip: true })
                       }
                     >
-                      跳过
+                      {step.key === "sources" ? "跳过，以后再接" : "跳过"}
                     </Button>
                   )}
                 </div>
