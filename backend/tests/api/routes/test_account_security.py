@@ -14,6 +14,7 @@ from app.core.security import ALGORITHM, create_access_token
 from app.domains.account.models import LoginAttempt
 from app.main import app
 from app.models import User, UserCreate
+from tests.utils.migrations import migrate
 from tests.utils.utils import random_lower_string
 
 URL = settings.API_V1_STR
@@ -194,13 +195,8 @@ def test_invalid_tokens(client: TestClient, db: Session, account: User) -> None:
 
 
 def test_login_attempt_migration(migration_engine: Engine) -> None:
-    import subprocess
-    import sys
-
     assert inspect(migration_engine).has_table("login_attempt")
-    subprocess.run(
-        [sys.executable, "-m", "alembic", "downgrade", "a51b093e72c4"], check=True
-    )
+    migrate(migration_engine, "downgrade", "a51b093e72c4")
     assert not inspect(migration_engine).has_table("login_attempt")
-    subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+    migrate(migration_engine, "upgrade", "head")
     assert inspect(migration_engine).has_table("login_attempt")

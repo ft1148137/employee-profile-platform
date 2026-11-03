@@ -29,7 +29,7 @@ from app.worker.app import app
 from app.worker.tasks import draft_initial
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
 from tests.domains.test_ingest import ingest, person, record, rows
-from tests.test_account_migration import migrate
+from tests.utils.migrations import migrate
 
 
 def work_queue() -> None:
@@ -241,11 +241,11 @@ def test_migration(migration_engine: Engine) -> None:
     assert "inference_error" in {
         c["name"] for c in inspect(migration_engine).get_columns("profile_progress")
     }
-    migrate("downgrade", "093e2d94e5aa")
+    migrate(migration_engine, "downgrade", "093e2d94e5aa")
     assert "inference_error" not in {
         c["name"] for c in inspect(migration_engine).get_columns("profile_progress")
     }
-    migrate("upgrade", "head")
+    migrate(migration_engine, "upgrade", "head")
     with migration_engine.connect() as connection:
         assert (
             len(
