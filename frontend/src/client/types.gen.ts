@@ -867,6 +867,111 @@ export type IssueAccounts = {
     regenerate_pending?: boolean;
 };
 
+/**
+ * JiraConfig
+ */
+export type JiraConfig = {
+    /**
+     * Deployment
+     */
+    deployment: 'cloud' | 'data_center';
+    /**
+     * Base Url
+     */
+    base_url: string;
+    /**
+     * Auth Type
+     */
+    auth_type: 'api_token' | 'pat' | 'basic';
+    /**
+     * Username
+     */
+    username?: string | null;
+    /**
+     * Start Date
+     */
+    start_date?: string;
+    /**
+     * Include Description
+     */
+    include_description?: boolean;
+};
+
+/**
+ * JiraConnectionPublic
+ */
+export type JiraConnectionPublic = {
+    /**
+     * Configured
+     */
+    configured?: boolean;
+    config?: JiraConfig | null;
+    /**
+     * Has Secret
+     */
+    has_secret?: boolean;
+    /**
+     * Synced Until
+     */
+    synced_until?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+};
+
+/**
+ * JiraConnectionTest
+ */
+export type JiraConnectionTest = {
+    /**
+     * Ok
+     */
+    ok: boolean;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Account Name
+     */
+    account_name?: string | null;
+};
+
+/**
+ * JiraConnectionUpdate
+ */
+export type JiraConnectionUpdate = {
+    /**
+     * Deployment
+     */
+    deployment: 'cloud' | 'data_center';
+    /**
+     * Base Url
+     */
+    base_url: string;
+    /**
+     * Auth Type
+     */
+    auth_type: 'api_token' | 'pat' | 'basic';
+    /**
+     * Username
+     */
+    username?: string | null;
+    /**
+     * Start Date
+     */
+    start_date?: string;
+    /**
+     * Include Description
+     */
+    include_description?: boolean;
+    /**
+     * Secret
+     */
+    secret?: null;
+};
+
 export type JsonValue = unknown;
 
 /**
@@ -1635,6 +1740,40 @@ export type WorkEventPublic = {
 };
 
 /**
+ * JiraConnectionUpdate
+ */
+export type JiraConnectionUpdateWritable = {
+    /**
+     * Deployment
+     */
+    deployment: 'cloud' | 'data_center';
+    /**
+     * Base Url
+     */
+    base_url: string;
+    /**
+     * Auth Type
+     */
+    auth_type: 'api_token' | 'pat' | 'basic';
+    /**
+     * Username
+     */
+    username?: string | null;
+    /**
+     * Start Date
+     */
+    start_date?: string;
+    /**
+     * Include Description
+     */
+    include_description?: boolean;
+    /**
+     * Secret
+     */
+    secret?: string | null;
+};
+
+/**
  * ModelSettingUpdate
  */
 export type ModelSettingUpdateWritable = {
@@ -1867,6 +2006,96 @@ export type modelSettingTestModelSettingResponses = {
 };
 
 export type modelSettingTestModelSettingResponse = modelSettingTestModelSettingResponses[keyof modelSettingTestModelSettingResponses];
+
+export type sourcesGetJiraData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/sources/jira';
+};
+
+export type sourcesGetJiraErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type sourcesGetJiraError = sourcesGetJiraErrors[keyof sourcesGetJiraErrors];
+
+export type sourcesGetJiraResponses = {
+    /**
+     * Successful Response
+     */
+    200: JiraConnectionPublic;
+};
+
+export type sourcesGetJiraResponse = sourcesGetJiraResponses[keyof sourcesGetJiraResponses];
+
+export type sourcesPutJiraData = {
+    body: JiraConnectionUpdateWritable;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/sources/jira';
+};
+
+export type sourcesPutJiraErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type sourcesPutJiraError = sourcesPutJiraErrors[keyof sourcesPutJiraErrors];
+
+export type sourcesPutJiraResponses = {
+    /**
+     * Successful Response
+     */
+    200: JiraConnectionPublic;
+};
+
+export type sourcesPutJiraResponse = sourcesPutJiraResponses[keyof sourcesPutJiraResponses];
+
+export type sourcesTestJiraData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/sources/jira/test';
+};
+
+export type sourcesTestJiraErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type sourcesTestJiraError = sourcesTestJiraErrors[keyof sourcesTestJiraErrors];
+
+export type sourcesTestJiraResponses = {
+    /**
+     * Successful Response
+     */
+    200: JiraConnectionTest;
+};
+
+export type sourcesTestJiraResponse = sourcesTestJiraResponses[keyof sourcesTestJiraResponses];
 
 export type orgsRenameOrganizationData = {
     body: OrganizationUpdate;
