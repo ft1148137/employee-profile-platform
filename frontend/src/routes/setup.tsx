@@ -105,7 +105,7 @@ function Initialize() {
               aria-describedby="admin-hint"
             />
             <p id="admin-hint" className="text-xs text-muted-foreground">
-              用来管理系统，和你本人的员工账号分开
+              用来管理系统，和你本人的员工账号分开；不能包含 @
             </p>
           </div>
           <div className="space-y-2">

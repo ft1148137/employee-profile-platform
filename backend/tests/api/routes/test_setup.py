@@ -165,6 +165,29 @@ def test_existing_org_and_new_org(setup_db: tuple[TestClient, Session]) -> None:
     assert len(session.exec(select(Organization)).all()) == 2
 
 
+def test_admin_username_cannot_contain_at(setup_db: tuple[TestClient, Session]) -> None:
+    client, session = setup_db
+    token = issue(client)
+    response = client.post(
+        f"{PREFIX}/setup/initialize",
+        json={**PAYLOAD, "admin_username": "it@example.com", "token": token},
+    )
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "管理员登录名不能包含 @，请用字母或数字，例如 admin"
+    }
+    assert not session.exec(select(Organization)).all()
+    assert not session.exec(select(User)).all()
+    assert not session.exec(select(AuditEvent)).all()
+    assert session.exec(select(SetupToken)).one().used_at is None
+    assert (
+        client.post(
+            f"{PREFIX}/setup/initialize", json={**PAYLOAD, "token": token}
+        ).status_code
+        == 200
+    )
+
+
 def test_username_conflict_is_atomic(setup_db: tuple[TestClient, Session]) -> None:
     client, session = setup_db
     session.add(User(username="setupadmin", hashed_password="unused"))

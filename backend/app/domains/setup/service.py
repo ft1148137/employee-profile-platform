@@ -28,6 +28,11 @@ class InvalidSetupToken(HTTPException):
         super().__init__(400, "初始化链接无效或已过期，请联系部署人员重新获取")
 
 
+class InvalidAdminUsername(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(400, "管理员登录名不能包含 @，请用字母或数字，例如 admin")
+
+
 class UsernameTaken(HTTPException):
     def __init__(self) -> None:
         super().__init__(409, "这个登录名已经被使用，请换一个")
@@ -80,6 +85,8 @@ def initialize(session: Session, data: InitializeInput) -> InitializeResult:
         raise InvalidSetupToken()
     if token.purpose == SetupPurpose.INITIAL_SETUP and is_initialized(session):
         raise AlreadyInitialized()
+    if "@" in data.admin_username:
+        raise InvalidAdminUsername()
     if crud.get_user_by_username(session=session, username=data.admin_username):
         raise UsernameTaken()
     while True:
