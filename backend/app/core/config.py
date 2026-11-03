@@ -7,7 +7,6 @@ from pydantic import (
     Field,
     HttpUrl,
     PostgresDsn,
-    computed_field,
     field_validator,
     model_validator,
 )
@@ -26,7 +25,7 @@ class Settings(BaseSettings):
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     LOGIN_MAX_FAILURES: int = Field(default=5, gt=0)
-    LOGIN_MAX_FAILURES_PER_IP: int = Field(default=30, gt=0)
+    LOGIN_MAX_FAILURES_PER_IP: int = Field(default=300, gt=0)
     LOGIN_LOCK_MINUTES: int = Field(default=15, gt=0, le=1440)
     FRONTEND_HOST: str = "http://localhost:5173"
     FASTAPI_ENV: Literal["development"] | None = None
@@ -49,26 +48,6 @@ class Settings(BaseSettings):
             if database_url.startswith(scheme):
                 return database_url.replace(scheme, "postgresql+psycopg://", 1)
         return database_url
-
-    SMTP_TLS: bool = True
-    SMTP_SSL: bool = False
-    SMTP_PORT: int = 587
-    SMTP_HOST: str | None = None
-    SMTP_USER: str | None = None
-    SMTP_PASSWORD: str | None = None
-    EMAILS_FROM_EMAIL: EmailStr | None = None
-    EMAILS_FROM_NAME: str | None = None
-
-    @model_validator(mode="after")
-    def _set_default_emails_from(self) -> Self:
-        if not self.EMAILS_FROM_NAME:
-            self.EMAILS_FROM_NAME = self.PROJECT_NAME
-        return self
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def emails_enabled(self) -> bool:
-        return bool(self.SMTP_HOST and self.EMAILS_FROM_EMAIL)
 
     EMAIL_TEST_USER: EmailStr = "test@example.com"
     FIRST_SUPERUSER_USERNAME: str = "superadmin"

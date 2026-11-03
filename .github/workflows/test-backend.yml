@@ -31,7 +31,7 @@ jobs:
         with:
           version: "latest-known"
       - run: docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
-      - run: docker compose -f compose.yml -f compose.dev.yml up -d --wait db mailpit
+      - run: docker compose -f compose.yml -f compose.dev.yml up -d --wait db
       - name: Migrate DB
         run: uv run bash scripts/prestart.sh
         working-directory: backend
