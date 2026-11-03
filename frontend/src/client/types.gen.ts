@@ -1063,6 +1063,10 @@ export type ExternalIdentityPublic = {
      * Record Count
      */
     record_count: number;
+    /**
+     * Linked At
+     */
+    linked_at: string | null;
     employee: IdentityEmployee | null;
     candidate: IdentityCandidate | null;
 };

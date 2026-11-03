@@ -19,6 +19,8 @@ export function WizardFrame({ orgId }: { orgId: string }) {
     steps[0]
   const index = steps.findIndex((item) => item.key === step?.key)
   const Component = step ? setupSteps[step.key] : undefined
+  const showCompleted =
+    setup.data?.completed && !setup.data.next_step_key && !selected
   const update = useMutation({
     mutationFn: ({ key, skip }: { key: string; skip?: boolean }) =>
       (skip ? SetupService.skipStep : SetupService.completeStep)({
@@ -28,7 +30,7 @@ export function WizardFrame({ orgId }: { orgId: string }) {
       const completedIndex = steps.findIndex((item) => item.key === key)
       client.setQueryData(["setup", orgId], data)
       setSelected(
-        data.completed
+        data.completed && !data.next_step_key
           ? null
           : (steps[completedIndex + 1]?.key ?? data.next_step_key),
       )
@@ -59,8 +61,7 @@ export function WizardFrame({ orgId }: { orgId: string }) {
                   type="button"
                   disabled={update.isPending}
                   aria-current={
-                    step?.key === item.key &&
-                    !(setup.data?.completed && !selected)
+                    step?.key === item.key && !showCompleted
                       ? "step"
                       : undefined
                   }
@@ -87,7 +88,7 @@ export function WizardFrame({ orgId }: { orgId: string }) {
           </ol>
         </nav>
         <section className="min-w-0 space-y-5 rounded-xl border p-4 sm:p-6">
-          {setup.data?.completed && !selected ? (
+          {showCompleted ? (
             <>
               <h2 className="text-xl font-semibold">设置完成</h2>
               <p>企业基础信息已就绪，可以开始使用员工画像平台。</p>
