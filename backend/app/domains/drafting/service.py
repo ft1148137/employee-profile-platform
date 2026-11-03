@@ -271,6 +271,9 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                     ),
                     capabilities,
                 )
+                names = {c.id: c.name for c in capabilities}
+                for item in items:
+                    item.after.statement = f"有 {item.after.evidence_count} 项与「{names[item.capability_id]}」相关的工作记录"
                 written = write_initial_request(
                     session,
                     org_id,

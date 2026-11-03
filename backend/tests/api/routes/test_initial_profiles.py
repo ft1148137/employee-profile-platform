@@ -5,11 +5,13 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import JsonValue
 from sqlalchemy import Engine, inspect, text
+from sqlalchemy.orm import object_session
 from sqlmodel import Session, col, delete, select
 
 from app.authz.principal import Principal
 from app.core.db import engine
 from app.domains.audit.models import AuditEvent
+from app.domains.capability.models import CapabilityDefinition
 from app.domains.capability.service import activate_template
 from app.domains.capability.templates import InvalidTemplate
 from app.domains.change_request.models import (
@@ -18,13 +20,15 @@ from app.domains.change_request.models import (
     RequestStatus,
 )
 from app.domains.drafting import service
+from app.domains.drafting.collect import CollectedRecord
 from app.domains.drafting.rules import DraftItem
-from app.domains.org.models import Employee, EmploymentStatus
+from app.domains.evidence.service import retract_evidence
+from app.domains.org.models import Employee, EmploymentStatus, ExternalIdentity
 from app.domains.profile.models import ProfileProgress
 from app.worker.app import app
 from app.worker.tasks import draft_initial
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
-from tests.domains.test_ingest import rows
+from tests.domains.test_ingest import ingest, person, record, rows
 from tests.test_account_migration import migrate
 
 
@@ -72,6 +76,14 @@ def test_queue_progress_retry(
     db.exec(delete(ProfileProgress).where(col(ProfileProgress.org_id) == org))
     employees[4].employment_status = EmploymentStatus.INACTIVE
     db.add(employees[4])
+    db.add(
+        ExternalIdentity(
+            org_id=org, employee_id=employees[1].id, source="jira", external_id="alpha"
+        )
+    )
+    db.flush()
+    for index in range(2):
+        ingest(db, org, record(person(), key=f"STAT-{index}"))
     db.commit()
     assert (
         client.get(url + "/progress", headers=auth).json()["counts"]["not_started"] == 4
@@ -84,8 +96,29 @@ def test_queue_progress_retry(
         url + "/draft", headers=auth, json={"scope": "failed"}
     ).json() == {"queued": 0}
     original = service.write_initial_request
-    failed_employee = employees[0].id
+    failed_employee = employees[1].id
     failure: Exception = RuntimeError("Synthetic sensitive exception")
+    original_draft = service.rules.draft
+
+    def update_source(
+        records: list[CollectedRecord],
+        capabilities: list[CapabilityDefinition],
+        keywords: dict[str, list[str]],
+    ) -> list[DraftItem]:
+        items = original_draft(records, capabilities, keywords)
+        if items and len(records) > 1:
+            session = object_session(records[0].evidence)
+            assert isinstance(session, Session)
+            retract_evidence(
+                session,
+                evidence=records[0].evidence,
+                reason="来源在起草过程中更正",
+                actor_type=Principal.system_worker(org).actor_type,
+                actor_id=None,
+            )
+        return items
+
+    monkeypatch.setattr(service.rules, "draft", update_source)
 
     def fail_one(
         session: Session,
@@ -132,6 +165,10 @@ def test_queue_progress_retry(
         and result["requests"]["pending_owner"] == 4
         and not result["failed"]
     )
+    items = rows(db, ChangeItem, org)
+    assert len(items) == 1 and items[0].after is not None
+    assert items[0].after["evidence_count"] == 1
+    assert items[0].after["statement"].startswith("有 1 项")
     for failure in (
         service.InvalidDraft("起草结果使用了词典以外的等级"),
         InvalidTemplate("关键词文件格式无效"),
