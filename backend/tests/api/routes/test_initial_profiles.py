@@ -204,7 +204,7 @@ def test_migration(migration_engine: Engine) -> None:
     assert "inference_error" in {
         c["name"] for c in inspect(migration_engine).get_columns("profile_progress")
     }
-    migrate("downgrade", "f69a901bc002")
+    migrate("downgrade", "f73a901bc001")
     assert "inference_error" not in {
         c["name"] for c in inspect(migration_engine).get_columns("profile_progress")
     }

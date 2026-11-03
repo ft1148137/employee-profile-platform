@@ -6,6 +6,7 @@ from app.api.routes import (
     capabilities,
     capability_templates,
     change_requests,
+    drafting_settings,
     employees,
     evidence,
     external_identities,
@@ -36,6 +37,7 @@ api_router.include_router(sources.router)
 api_router.include_router(external_identities.router)
 api_router.include_router(orgs.router)
 api_router.include_router(setup_steps.router)
+api_router.include_router(drafting_settings.router)
 api_router.include_router(employees.router)
 api_router.include_router(capabilities.router)
 api_router.include_router(capability_templates.router)
