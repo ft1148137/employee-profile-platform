@@ -1,5 +1,3 @@
-import subprocess
-import sys
 from collections.abc import Generator
 from datetime import timedelta
 from uuid import UUID, uuid7
@@ -24,6 +22,7 @@ from app.domains.work.ingest import (
     rederive_identity,
 )
 from app.domains.work.models import Task, WorkEvent
+from tests.utils.migrations import migrate
 
 type Context = tuple[Session, UUID, list[ExternalIdentity]]
 
@@ -368,9 +367,7 @@ def test_external_identity_migration(migration_engine: Engine) -> None:
                     "external": str(employee),
                 },
             )
-    subprocess.run(
-        [sys.executable, "-m", "alembic", "downgrade", "f58a901bc001-1"], check=True
-    )
+    migrate(migration_engine, "downgrade", "f58a901bc001-1")
     with migration_engine.connect() as connection:
         result = connection.execute(
             text(
@@ -383,7 +380,7 @@ def test_external_identity_migration(migration_engine: Engine) -> None:
             and result[0].employee_id == employee_id
             and result[0].linked_at is not None
         )
-    subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+    migrate(migration_engine, "upgrade", "head")
     with migration_engine.connect() as connection:
         assert (
             connection.execute(
