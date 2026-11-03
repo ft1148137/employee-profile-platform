@@ -1,6 +1,6 @@
 # 架构与扩展位置
 
-M0 是合成企业数据的只读演示：4 个部门、12 名员工、12 项能力。FastAPI 提供 Web/API，React 构建产物由同一进程托管；所有业务数据和任务队列共用 PostgreSQL。画像、Claim 和历史版本由种子数据预置，尚无模型推断或审核发布入口。
+M2 支持管理员接 Jira/CSV、确认账号对应，再用关键词或可关闭的模型起草待本人过目的请求。FastAPI 提供 Web/API，React 构建产物由同一进程托管；所有业务数据和任务队列共用 PostgreSQL。演示企业仍由合成种子建立；正式判断只经批准发布，M2 尚无审批或发布入口。
 
 ## 进程与模块
 
@@ -22,11 +22,11 @@ flowchart LR
 
 `compose.yml` 定义 db、prestart、backend、worker。db 健康后 prestart 执行 Alembic、初始化账号和演示导入，成功退出后才启动 backend / worker。两者复用后端镜像；默认只有 Web/API 的 `127.0.0.1:8000` 发布到宿主机。开发服务在 `compose.dev.yml` 中显式选择，HTTPS 部署见 [deploy/README.md](../deploy/README.md)。
 
-路由负责 HTTP 参数和响应，`app/authz` 负责服务端租户身份解析与权限策略，`app/domains/*` 放模型、响应 Schema 和领域服务。`app/seed` 校验并幂等导入合成数据。Worker 当前仅有无业务数据的 `system.ping`；未来业务任务经 `tenant_task(org_id, body)` 校验租户，任务中的查询仍显式限定租户。队列迁移和健康检查限制见 [ADR-0002](adr/0002-worker-and-compose-layout.md)。
+路由负责 HTTP 参数和响应，`app/authz` 负责服务端租户身份解析与权限策略，`app/domains/*` 放模型、响应 Schema 和领域服务。`app/seed` 校验并幂等导入合成数据。Worker 执行 `system.ping`、`sources.sync_run` 和 `profiles.draft_initial`；业务任务经 `tenant_task(org_id, body)` 校验租户，查询仍显式限定租户。队列迁移和健康检查限制见 [ADR-0002](adr/0002-worker-and-compose-layout.md)。
 
 ## 核心对象与实际表
 
-下图对应 `backend/app/domains/*/models.py`、模板 `app/models.py` 和 Alembic：18 张核心业务表，加登录账号 `user`；登录限流表 `login_attempt`、初始化令牌表 `setup_token` 和向导状态表 `setup_step_state` 不列入此图。各框只列身份、关键引用和主要业务字段，不穷举所有列。`TenantRecord` 表共同具有 `id`、`created_at`、`org_id`；Organization 自身就是租户，AuditEvent 的 `org_id` 可空以表示平台事件。
+下图及后面的 M2 增量图对应 `backend/app/domains/*/models.py`、模板 `app/models.py` 和 Alembic；登录限流表 `login_attempt`、初始化令牌表 `setup_token` 和向导状态表 `setup_step_state` 不列入此图。各框只列身份、关键引用和主要业务字段。`TenantRecord` 表共同具有 `id`、`created_at`、`org_id`；Organization 自身就是租户，AuditEvent 的 `org_id` 可空以表示平台事件。
 
 ```mermaid
 erDiagram
@@ -149,7 +149,6 @@ erDiagram
         uuid capability_definition_id FK
         uuid supersedes_claim_id FK
         string assessment_status
-        string review_status
         string confidence
         jsonb generated_by
     }
@@ -174,7 +173,6 @@ erDiagram
         uuid employee_id PK,FK
         string fill_status
         string inference_status
-        string review_status
         string evidence_quality
     }
     audit_event {
@@ -240,7 +238,67 @@ erDiagram
 
 能力词典每个组织最多一个 active 版本；定义的 `key` 在词典版本内唯一，`position` 是 S5 加入的展示顺序。Claim 指向具体版本的能力定义，判断状态与审核状态分开，信心标签不能视为概率。画像按词典补齐无 Claim 的未知项。
 
-Evidence 追加服务在 `app/domains/evidence/service.py`，以组织、来源、来源引用和内容哈希保证幂等。原始正文和归因不可修改；撤销/替代状态变化须同事务追加审计，更正正文追加新 Evidence 并指向原记录。M0 没有修改接口或数据库触发器，写协议的完整执行留待 M1。ProfileVersion 冻结判断字段和证据引用，不复制受限正文；读历史时仍检查当前证据权限。详见 [ADR-0001](adr/0001-tenancy-and-core-objects.md)。
+Evidence 追加服务在 `app/domains/evidence/service.py`，以组织、本人、来源、来源引用和内容哈希保证幂等。原始正文和归因由数据库触发器保护；只允许 active 转为 retracted/superseded，状态变化同事务追加审计，更正正文追加新 Evidence 并指向原记录。ProfileVersion 冻结判断字段和证据引用，不复制受限正文；读历史时仍检查当前权限。详见 [ADR-0001](adr/0001-tenancy-and-core-objects.md) 和 [ADR-0010](adr/0010-source-record-ingestion.md)。
+
+## M2 请求、来源与起草
+
+```mermaid
+erDiagram
+    organization ||--o{ source_connection : configures
+    source_connection ||--o{ sync_run : executes
+    organization ||--o| model_setting : configures
+    organization ||--o| drafting_setting : excludes_capabilities
+    employee ||--o{ profile_change_request : subject
+    profile_version o|--o{ profile_change_request : base_version
+    profile_change_request ||--o{ change_item : proposes
+    capability_definition ||--o{ change_item : defines
+    profile_claim o|--o{ change_item : target
+    change_item ||--o{ change_item_evidence : cites
+    evidence ||--o{ change_item_evidence : references
+    source_connection {
+        uuid org_id FK
+        string kind
+        jsonb config
+        string secret_ciphertext
+        datetime synced_until
+    }
+    sync_run {
+        uuid org_id FK
+        string status
+        jsonb cursor
+        jsonb counts
+    }
+    profile_change_request {
+        uuid org_id FK
+        string origin
+        string status
+        jsonb generated_by
+    }
+    change_item {
+        uuid org_id FK
+        string op
+        jsonb after
+        string explanation
+    }
+```
+
+所有业务引用带租户复合外键。ExternalIdentity 的员工关联可空；账号关联后按已存 Task 重新推导证据，解除时撤销。部门/员工各存自动起草开关；敏感能力 key 放 DraftingSetting。ProfileClaim 只保留正式判断，审核进度从请求/争议/版本推算，不再存 review_status，见 [ADR-0009](adr/0009-profile-change-requests.md)。
+
+```mermaid
+flowchart LR
+    A[管理员保存连接或上传文件] --> B[SyncRun 排队]
+    B --> C[Worker 按页写 Task/WorkEvent/外部账号]
+    C --> D[提交计数与游标，失败按断点重试]
+    D --> E[管理员确认对应，追加本人 Evidence]
+    E --> F[drafting_scope 过滤部门/员工/能力]
+    F --> G[经验编号合并，规则或 LiteLLM 起草]
+    G --> H[输出校验，支持证据重算统计]
+    H --> I[pending_owner 请求，员工只读过目]
+    G --> J[用量上限：记录恢复时间，排队续跑]
+    J --> F
+```
+
+同步每页事务提交，同一来源连接的同步串行；起草每人事务提交，同企业起草串行，一人失败不影响其他人。ChatGPT 令牌按企业加锁，API 与 worker 共用数据库加密凭据。输入只含白名单 standard 工作记录，模型不直接写 Claim。详见 [ADR-0012](adr/0012-resumable-source-sync.md)、[ADR-0013](adr/0013-model-initial-drafting.md)。权限仍沿用下表。
 
 ## 租户与权限
 
@@ -259,11 +317,11 @@ Evidence 追加服务在 `app/domains/evidence/service.py`，以组织、来源�
 
 | Slot | 代码位置与边界 | 当前状态 |
 | --- | --- | --- |
-| Source Slot | `connectors/` 接来源；`app/domains/work` 承接 Task/WorkEvent，`app/domains/evidence/service.py` 追加 Evidence | 目录和追加服务已在；`app/seed` 仅导入合成样例，正式来源插件待 M1/M3 |
-| Profile Slot | `app/domains/profile` 使用 Evidence 与版本化 capability 产生候选 ProfileClaim，经审核冻结 ProfileVersion | 当前仅查询服务和种子 Claim；生成、审核和发布待 M2 |
+| Source Slot | `backend/app/connectors/` 接来源；`app/domains/work` 承接 Task/WorkEvent，证据服务追加 Evidence | Cloud/DC 两个适配器和 CSV/Excel，共用同步与身份推导；seed 仅导入合成样例 |
+| Profile Slot | `app/domains/drafting` 使用 Evidence 与版本化 capability 产生请求，批准后冻结 ProfileVersion | M2 生成 pending_owner 初始请求；员工提交和经理审批在 M3/M4 |
 | Interaction Slot | 后续连接待确认问题、人类回答及统一 Review 流程，回答回到证据/候选判断 | 未实现，没有问题表或交互协议 |
 
-来源插件只提交事实和证据，不直接发布画像；模型只产生候选 Claim。未来模型接入须可替换、可完全关闭，使用输入白名单并记录模型及 Schema 版本。M0 不调用外部模型。
+来源插件只提交事实和证据，不直接发布画像；模型只产生候选改动项。LiteLLM 层可替换、可完全关闭，使用输入白名单并记录提供方、模型、提示词及 Schema 版本。
 
 ## P1–P6 扩展位置（尚未实现）
 

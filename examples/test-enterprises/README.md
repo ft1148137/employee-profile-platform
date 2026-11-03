@@ -6,6 +6,10 @@
 
 研究笔记和来源链接见 [research.md](research.md)。
 
+## 规则起草评测
+
+先按开发配置启动独立 PostgreSQL 并执行迁移，再从仓库根目录运行 `uv run --project backend python examples/test-enterprises/evaluate_drafts.py qiguang-aiot`。脚本使用与后端测试相同的数据库配置（环境变量优先于 `.env`），临时建立企业，用进程内模拟 Jira 和 CSV 起草，按在职员工/能力 key 输出 Markdown 精确率、召回率、证据状态分组及 misleading 明细，最后删除临时企业。只把 `personas.yaml` 当离线答案，不导入系统，也不使用其中的 account_truth 关联身份。无通过门槛；记录见 [M2 基线](../../docs/m2-baseline.md)。
+
 ## 10 家企业
 
 | # | 企业 | 目录 | 行业 | GB/T 4754 | 组织形态 | 部门 | 在职/合计 | 工作记录来源（条数） | 能力词典 |
