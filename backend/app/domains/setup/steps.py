@@ -18,6 +18,7 @@ from app.domains.org.models import (
     OrgMembership,
     RosterImport,
 )
+from app.domains.source.models import SyncRun
 
 
 @dataclass(frozen=True)
@@ -88,6 +89,15 @@ def check_accounts(session: Session, org_id: UUID) -> list[str]:
     return [f"还有 {missing} 名在职员工没有账号"] if missing else []
 
 
+def check_sources(session: Session, org_id: UUID) -> list[str]:
+    succeeded = session.exec(
+        select(SyncRun.id).where(
+            SyncRun.org_id == org_id, SyncRun.status == "succeeded"
+        )
+    ).first()
+    return [] if succeeded else ["还没有成功同步或导入过工作记录"]
+
+
 STEPS = [
     SetupStep(
         "org_profile",
@@ -125,6 +135,15 @@ STEPS = [
         True,
         False,
         check_accounts,
+    ),
+    SetupStep(
+        "sources",
+        "接数据来源",
+        "连接 Jira，或上传工作记录文件",
+        50,
+        False,
+        True,
+        check_sources,
     ),
     SetupStep(
         "identities",
