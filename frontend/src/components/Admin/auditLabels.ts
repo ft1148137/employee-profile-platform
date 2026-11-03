@@ -1,6 +1,17 @@
 import type { AuditEventPublic } from "@/client"
 
 export const auditLabels: Record<string, string> = {
+  "initial_profiles.drafted": "生成初始画像",
+  "sync_run.succeeded": "同步完成",
+  "sync_run.failed": "同步失败",
+  "source.jira_updated": "修改 Jira 连接",
+  "external_identity.linked": "关联外部账号",
+  "external_identity.unlinked": "解除外部账号关联",
+  "model_setting.updated": "修改模型设置",
+  "model_setting.chatgpt_connected": "连接 ChatGPT",
+  "model_setting.chatgpt_disconnected": "断开 ChatGPT",
+  "evidence.superseded": "更正证据",
+  "evidence.retracted": "撤销证据",
   "account.issued": "生成账号",
   "account.password_reset": "重置密码",
   "account.disabled": "停用账号",
@@ -24,6 +35,11 @@ export const actorLabels: Record<string, string> = {
   cli: "命令行",
 }
 export const targetLabels: Record<string, string> = {
+  sync_run: "同步记录",
+  source_connection: "数据来源",
+  external_identity: "外部账号",
+  model_setting: "模型设置",
+  evidence: "证据",
   employee: "员工",
   drafting_setting: "自动起草设置",
   user: "账号",
@@ -38,6 +54,8 @@ const stepLabels: Record<string, string> = {
   roster: "导入员工名单",
   capabilities: "选择能力词典",
   accounts: "生成员工账号",
+  model: "配置模型",
+  initial_profiles: "生成初始画像",
 }
 const countLabels: Record<string, string> = {
   added: "新增",

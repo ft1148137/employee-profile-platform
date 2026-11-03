@@ -3,6 +3,7 @@ import { AccountsStep } from "./AccountsStep"
 import { CapabilitiesStep } from "./CapabilitiesStep"
 import { IdentitiesStep } from "./IdentitiesStep"
 import { InitialProfilesStep } from "./InitialProfilesStep"
+import { ModelStep } from "./ModelStep"
 import { OrgProfileStep } from "./OrgProfileStep"
 import { RosterStep } from "./RosterStep"
 import { SourcesStep } from "./SourcesStep"
@@ -17,4 +18,5 @@ export const setupSteps: Record<string, ComponentType<StepProps>> = {
   sources: SourcesStep,
   identities: IdentitiesStep,
   initial_profiles: InitialProfilesStep,
+  model: ModelStep,
 }

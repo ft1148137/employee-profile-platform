@@ -98,6 +98,17 @@ def check_sources(session: Session, org_id: UUID) -> list[str]:
     return [] if succeeded else ["还没有成功同步或导入过工作记录"]
 
 
+def check_model(session: Session, org_id: UUID) -> list[str]:
+    from app.domains.model.service import read_setting
+
+    setting = read_setting(session, org_id)
+    return (
+        []
+        if setting and setting.enabled
+        else ["还没有启用模型；跳过则按关键词规则起草"]
+    )
+
+
 def check_initial_profiles(session: Session, org_id: UUID) -> list[str]:
     from app.domains.change_request.models import ProfileChangeRequest, RequestOrigin
     from app.domains.drafting.service import active_employees
@@ -184,6 +195,15 @@ STEPS = [
         False,
         True,
         check_org_profile,
+    ),
+    SetupStep(
+        "model",
+        "配置模型",
+        "启用模型或跳过使用关键词规则",
+        70,
+        False,
+        True,
+        check_model,
     ),
     SetupStep(
         "initial_profiles",

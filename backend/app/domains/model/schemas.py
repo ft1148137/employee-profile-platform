@@ -77,6 +77,7 @@ class ChatGPTLogin(BaseModel):
 
 
 class ModelSettingPublic(BaseModel):
+    local_codex: bool = False
     enabled: bool = False
     kind: str | None = None
     model: str | None = None

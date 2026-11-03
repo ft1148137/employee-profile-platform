@@ -99,6 +99,8 @@ export function AppSidebar() {
                   path: "/admin/progress",
                 },
                 { icon: Settings, title: "数据来源", path: "/admin/sources" },
+
+                { icon: Settings, title: "模型", path: "/admin/model" },
                 { icon: ScrollText, title: "审计日志", path: "/admin/audit" },
                 {
                   icon: ListChecks,
