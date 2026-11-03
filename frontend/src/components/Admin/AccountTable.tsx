@@ -1,16 +1,22 @@
+import { useQueryClient } from "@tanstack/react-query"
 import type {
+  CellContext,
   ColumnDef,
   OnChangeFn,
   PaginationState,
 } from "@tanstack/react-table"
-import type { EmployeeAccount } from "@/client"
+import { AccountsService, type EmployeeAccount } from "@/client"
 import {
   DataTable,
   type DataTableFeatures,
 } from "@/components/Common/DataTable"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import useAuth from "@/hooks/useAuth"
+import { useOrg } from "@/hooks/useOrg"
+import { ConfirmActionDialog } from "./ConfirmActionDialog"
 import { accountLabels, employmentLabels, roleLabels } from "./labels"
+import { ResetPasswordDialog } from "./ResetPasswordDialog"
 
 export function AccountTable({
   data,
@@ -91,7 +97,7 @@ export function AccountTable({
           )
           .join("、") || "—",
     },
-    { id: "actions", header: "操作", cell: () => "—" },
+    { id: "actions", header: "操作", cell: AccountActions },
   ]
   return (
     <div className="overflow-x-auto rounded-xl border">
@@ -101,6 +107,45 @@ export function AccountTable({
         rowCount={count}
         pagination={pagination}
         onPaginationChange={onPaginationChange}
+      />
+    </div>
+  )
+}
+
+function AccountActions({
+  row: { original: e },
+}: CellContext<DataTableFeatures, EmployeeAccount>) {
+  const { user } = useAuth()
+  const { org, roles } = useOrg()
+  const client = useQueryClient()
+  const refresh = () => {
+    client.invalidateQueries({ queryKey: ["accounts", org?.id] })
+  }
+  if (!org || !roles.includes("org_admin") || !e.account) return "—"
+  if (e.account.user_id === user?.id) return "请在设置页修改自己的密码"
+  const path = { org_id: org.id, user_id: e.account.user_id }
+  const disabled = e.account.status === "disabled"
+  return (
+    <div className="flex gap-2">
+      <ResetPasswordDialog
+        orgId={org.id}
+        userId={e.account.user_id}
+        name={e.display_name}
+        onSuccess={refresh}
+      />
+      <ConfirmActionDialog
+        title={disabled ? "启用" : "停用"}
+        description={
+          disabled
+            ? `确认启用 ${e.display_name} 的账号？`
+            : `确认停用 ${e.display_name} 的账号？停用后这名员工不能登录，画像和证据保留。`
+        }
+        action={() =>
+          disabled
+            ? AccountsService.enableAccount({ path })
+            : AccountsService.disableAccount({ path })
+        }
+        onSuccess={refresh}
       />
     </div>
   )
