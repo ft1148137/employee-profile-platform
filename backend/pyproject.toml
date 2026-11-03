@@ -19,6 +19,8 @@ dependencies = [
     "procrastinate~=3.10.0",
     "pyyaml>=6.0.3,<7",
     "openpyxl>=3.1.5,<4",
+    "cryptography>=46,<47",
+    "litellm==1.106.6",
 ]
 
 [dependency-groups]
@@ -55,6 +57,7 @@ select = [
     "UP",  # pyupgrade
     "ARG001", # unused arguments in functions
     "T201",   # print statements are not allowed
+    "TID251",
 ]
 ignore = [
     "E501",  # line too long, handled by black
@@ -66,6 +69,12 @@ ignore = [
 [tool.ruff.lint.pyupgrade]
 # Preserve types, even if a file imports `from __future__ import annotations`.
 keep-runtime-typing = true
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"litellm" = { msg = "Use app.domains.model.client instead." }
+
+[tool.ruff.lint.per-file-ignores]
+"app/domains/model/*.py" = ["TID251"]
 
 [tool.coverage.run]
 source = ["app"]
