@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from sqlmodel import col, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.authz.deps import managed_scope
 from app.domains.org.models import Organization, OrgMembership, Role, RoleGrant
 from app.domains.org.schemas import MembershipPublic, OrganizationPublic
 
@@ -36,7 +37,16 @@ def read_memberships(
                 employee_id=membership.employee_id,
                 roles=roles,
                 managed_department_ids=sorted(
-                    {g.department_id for g in grants if g.department_id}
+                    managed_scope(
+                        session,
+                        org.id,
+                        frozenset(
+                            g.department_id
+                            for g in grants
+                            if g.role == Role.DEPT_MANAGER
+                            and g.department_id is not None
+                        ),
+                    )
                 ),
             )
         )
