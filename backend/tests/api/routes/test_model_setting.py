@@ -26,6 +26,8 @@ from app.domains.model.client import (
 from app.domains.model.models import ModelSetting
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
 
+pytestmark = pytest.mark.xdist_group("litellm")
+
 CLOUD_SETTING = {
     "enabled": True,
     "kind": "cloud_api",

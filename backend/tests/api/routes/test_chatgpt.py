@@ -28,6 +28,8 @@ from app.domains.model.models import ModelSetting
 from app.domains.model.service import model_config
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
 
+pytestmark = pytest.mark.xdist_group("litellm")
+
 
 def token(**claims: Any) -> str:
     return jwt.encode(claims, "synthetic-key", algorithm="HS256")
