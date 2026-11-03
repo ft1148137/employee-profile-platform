@@ -11,6 +11,11 @@ from sqlmodel import Session, select
 from app.core.security import create_access_token
 from app.domains.audit.models import AuditEvent
 from app.domains.capability.models import CapabilitySchemaVersion, SchemaStatus
+from app.domains.change_request.models import (
+    ProfileChangeRequest,
+    RequestOrigin,
+    RequestStatus,
+)
 from app.domains.org.models import (
     Department,
     Employee,
@@ -21,6 +26,7 @@ from app.domains.org.models import (
     RoleGrant,
     RosterImport,
 )
+from app.domains.profile.models import InferenceStatus, ProfileProgress
 from app.domains.setup import steps
 from app.domains.setup.models import SetupStatus, SetupStepState
 from app.models import User
@@ -108,12 +114,13 @@ def test_new_setup_and_blockers(
         "roster",
         "capabilities",
         "accounts",
+        "initial_profiles",
     ]
-    assert [s["order"] for s in data["steps"]] == [10, 20, 30, 40]
+    assert [s["order"] for s in data["steps"]] == [10, 20, 30, 40, 90]
     assert all(s["required"] and not s["skippable"] for s in data["steps"])
     assert data["steps"][0]["status"] == "completed"
     assert data["steps"][0]["blockers"] == []
-    for step in data["steps"][1:]:
+    for step in data["steps"][1:-1]:
         assert step["status"] == "pending" and step["blockers"]
         blocked = client.post(
             f"{tenant.url}/setup/steps/{step['key']}/complete",
@@ -209,13 +216,32 @@ def test_complete_persist_and_extend(
         assert (
             state.updated_by_user_id == tenant.admin_id and state.updated_at is not None
         )
+    assert not response.json()["completed"]
+    db.add_all(
+        [
+            ProfileChangeRequest(
+                org_id=tenant.org_id,
+                subject_employee_id=e.id,
+                origin=RequestOrigin.INITIAL_SYNC,
+                status=RequestStatus.PENDING_OWNER,
+                author={},
+            )
+            for e in (employee, no_code)
+        ]
+    )
+    db.commit()
+    response = client.post(
+        f"{tenant.url}/setup/steps/initial_profiles/complete", headers=auth
+    )
+    assert response.status_code == 200
     assert response.json()["completed"] and response.json()["next_step_key"] is None
     events = audits(db, tenant)
-    assert len(events) == 3
+    assert len(events) == 4
     assert {e.details["step_key"] for e in events} == {
         "roster",
         "capabilities",
         "accounts",
+        "initial_profiles",
     }
     assert all(
         e.action == "setup.step_completed" and e.actor_id == str(tenant.admin_id)
@@ -245,7 +271,7 @@ def test_complete_persist_and_extend(
     monkeypatch.setattr(steps, "STEPS", [extra, *original])
     data = client.get(f"{tenant.url}/setup", headers=auth).json()
     assert not data["completed"] and data["next_step_key"] == "future"
-    assert [s["order"] for s in data["steps"]] == [10, 20, 25, 30, 40]
+    assert [s["order"] for s in data["steps"]] == [10, 20, 25, 30, 40, 90]
 
 
 def test_skips_and_unknown_steps(
@@ -255,7 +281,7 @@ def test_skips_and_unknown_steps(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     extra = steps.SetupStep(
-        "optional", "可选设置", "测试跳过", 50, False, True, steps.check_org_profile
+        "optional", "可选设置", "测试跳过", 100, False, True, steps.check_org_profile
     )
     monkeypatch.setattr(steps, "STEPS", [*steps.STEPS, extra])
     base = f"{tenant.url}/setup/steps"
@@ -365,3 +391,90 @@ def test_setup_permissions(
     ]
     assert all(r.status_code == expected for r in responses)
     assert audits(db, tenant) == []
+
+
+def test_initial_profiles_checks(
+    tenant: SetupTenant, client: TestClient, db: Session
+) -> None:
+    base = f"{tenant.url}/setup/steps"
+    auth = tenant.auth["admin"]
+    employee = Employee(org_id=tenant.org_id, display_name="应起草")
+    excluded = Employee(
+        org_id=tenant.org_id, display_name="本人退出", auto_draft_opt_out=True
+    )
+    department = Department(
+        org_id=tenant.org_id, name="已关闭部门", auto_draft_disabled=True
+    )
+    db.add_all([employee, excluded, department])
+    db.flush()
+    db.add(
+        Employee(
+            org_id=tenant.org_id, display_name="部门关闭", department_id=department.id
+        )
+    )
+    foreign = db.exec(
+        select(Employee).where(
+            Employee.org_id != tenant.org_id, Employee.employee_code == "FOREIGN"
+        )
+    ).first()
+    assert foreign is not None
+    db.add_all(
+        [
+            ProfileChangeRequest(
+                org_id=foreign.org_id,
+                subject_employee_id=foreign.id,
+                origin=RequestOrigin.INITIAL_SYNC,
+                status=RequestStatus.PENDING_OWNER,
+                author={},
+            ),
+            ProfileProgress(
+                org_id=foreign.org_id,
+                employee_id=foreign.id,
+                inference_status=InferenceStatus.RUNNING,
+            ),
+            ProfileProgress(
+                org_id=tenant.org_id,
+                employee_id=excluded.id,
+                inference_status=InferenceStatus.PENDING,
+            ),
+        ]
+    )
+    db.commit()
+    assert client.post(f"{base}/initial_profiles/skip", headers=auth).status_code == 422
+    assert steps.check_initial_profiles(db, tenant.org_id) == [
+        "还有 1 名员工没有初始画像"
+    ]
+    blocked = client.post(f"{base}/initial_profiles/complete", headers=auth)
+    assert blocked.status_code == 422
+    assert blocked.json()["detail"]["blockers"] == ["还有 1 名员工没有初始画像"]
+    db.add(
+        ProfileChangeRequest(
+            org_id=tenant.org_id,
+            subject_employee_id=employee.id,
+            origin=RequestOrigin.INITIAL_SYNC,
+            status=RequestStatus.PENDING_OWNER,
+            author={},
+        )
+    )
+    progress = ProfileProgress(
+        org_id=tenant.org_id,
+        employee_id=employee.id,
+        inference_status=InferenceStatus.PENDING,
+    )
+    db.add(progress)
+    db.commit()
+    assert steps.check_initial_profiles(db, tenant.org_id) == ["初始画像还在生成"]
+    progress.inference_status = InferenceStatus.RUNNING
+    db.add(progress)
+    db.commit()
+    assert (
+        client.post(f"{base}/initial_profiles/complete", headers=auth).status_code
+        == 422
+    )
+    progress.inference_status = InferenceStatus.GENERATED
+    db.add(progress)
+    db.commit()
+    assert (
+        client.post(f"{base}/initial_profiles/complete", headers=auth).status_code
+        == 200
+    )

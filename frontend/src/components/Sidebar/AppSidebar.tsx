@@ -92,6 +92,11 @@ export function AppSidebar() {
                   title: "自动起草设置",
                   path: "/admin/drafting",
                 },
+                {
+                  icon: ListChecks,
+                  title: "同步与起草进度",
+                  path: "/admin/progress",
+                },
                 { icon: ScrollText, title: "审计日志", path: "/admin/audit" },
                 {
                   icon: ListChecks,
