@@ -30,6 +30,7 @@ def record_audit(
     target_type: str,
     target_id: str | None,
     details: dict[str, JsonValue],
+    flush: bool = True,
 ) -> AuditEvent:
     """Append an audit event in the caller's transaction without committing."""
     event = AuditEvent(
@@ -42,7 +43,8 @@ def record_audit(
         details=details,
     )
     session.add(event)
-    session.flush()
+    if flush:
+        session.flush()
     return event
 
 
