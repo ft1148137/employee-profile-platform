@@ -89,6 +89,16 @@ def drafting_scope(session: Session, org_id: UUID) -> DraftingScope:
 def read_settings(session: Session, org_id: UUID) -> DraftingSettingsPublic:
     setting = session.get(DraftingSetting, org_id)
     scope = drafting_scope(session, org_id)
+    current_keys = session.exec(
+        select(CapabilityDefinition.key)
+        .join(CapabilitySchemaVersion)
+        .where(
+            CapabilityDefinition.org_id == org_id,
+            CapabilitySchemaVersion.org_id == org_id,
+            CapabilitySchemaVersion.status == SchemaStatus.ACTIVE,
+            col(CapabilityDefinition.key).in_(scope.excluded_capability_keys),
+        )
+    ).all()
     opted_out = session.exec(
         select(Employee.id).where(
             Employee.org_id == org_id,
@@ -96,7 +106,7 @@ def read_settings(session: Session, org_id: UUID) -> DraftingSettingsPublic:
         )
     ).all()
     return DraftingSettingsPublic(
-        excluded_capability_keys=sorted(scope.excluded_capability_keys),
+        excluded_capability_keys=sorted(current_keys),
         disabled_department_ids=sorted(disabled_departments(session, org_id)),
         excluded_employee_count=len(scope.excluded_employee_ids),
         opted_out_count=len(opted_out),

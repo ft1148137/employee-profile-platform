@@ -85,7 +85,7 @@ def test_rules_and_statistics(request: pytest.FixtureRequest, db: Session) -> No
             source="csv:Git",
             key="GIT-1",
             labels=[],
-            title="接口变更，对应 PUR-203",
+            title="接口变更，对应PUR-203",
             occurred_at="2026-04-02T16:30:00Z",
         ),
         record(
@@ -98,7 +98,7 @@ def test_rules_and_statistics(request: pytest.FixtureRequest, db: Session) -> No
         record(person(), key="PUR-206", labels=["RKNN"]),
     ):
         ingest(db, org, source)
-    stale = rows(db, Evidence, org)[0]
+    stale = next(e for e in rows(db, Evidence, org) if e.source_ref == "PUR-203")
     ingest(
         db,
         org,
@@ -195,6 +195,50 @@ def test_rules_and_statistics(request: pytest.FixtureRequest, db: Session) -> No
     assert len(rows(db, ProfileChangeRequest, org)) == before
     with pytest.raises(TenantNotFound):
         draft_initial(org_id=str(uuid7()))
+
+
+@pytest.mark.parametrize("field", ["title", "detail"])
+@pytest.mark.parametrize(
+    "text,keys,count",
+    [
+        ("对应 PUR-203。", ["PUR-203"], 1),
+        ("对应PUR-203。", ["PUR-203"], 1),
+        ("见PLM-0012和FW-215", ["PLM-0012", "FW-215"], 1),
+        ("PUR-203号需求", ["PUR-203"], 1),
+        ("XPUR-203", ["PUR-203"], 2),
+        ("1PUR-203", ["PUR-203"], 2),
+        ("PUR-203x", ["PUR-203"], 2),
+    ],
+)
+def test_record_reference_boundaries(
+    request: pytest.FixtureRequest,
+    db: Session,
+    field: str,
+    text: str,
+    keys: list[str],
+    count: int,
+) -> None:
+    orgs, _, employees, _ = request.getfixturevalue("tenant_data")
+    org, employee = orgs[0].id, employees[0]
+    db.add_all(
+        ExternalIdentity(
+            org_id=org, employee_id=employee.id, source=s, external_id="alpha"
+        )
+        for s in ("jira", "csv:Git")
+    )
+    db.flush()
+    for key in keys:
+        ingest(db, org, record(person(), key=key))
+    ingest(
+        db,
+        org,
+        record(person(), source="csv:Git", key="GIT-1", **{field: text}),
+    )
+    records = collect(db, org, employee)
+    assert len(records) == len(keys) + 1
+    stats = evidence_stats(db, org, [r.evidence.id for r in records])
+    assert (stats.evidence_count, stats.source_count) == (count, 2)
+    assert len({r.experience_id for r in records}) == count
 
 
 def test_seed_fallback_and_transitive_groups(
