@@ -69,6 +69,14 @@ jobs:
           cmp .env .env.before
           file=$(./backup.sh)
           test -s "$file"
+          test -r "$file"
+          test "$(stat -c %u "$file")" = "$(id -u)"
+          test "$(stat -c %a "$file")" = 600
+          docker compose exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d app -c 'CREATE TABLE restore_probe(id int, org_id uuid REFERENCES organization(id)); INSERT INTO restore_probe SELECT 1, id FROM organization;'
+          printf '确认恢复\n' | ./restore.sh "$file"
+          test -z "$(docker compose exec -T db psql -U postgres -d app -tAc "select to_regclass('public.restore_probe')")"
+          test "$(docker compose exec -T db psql -U postgres -d app -tAc 'select count(*) from organization')" = 1
+          curl --noproxy '*' -fsS "http://$address:8080/api/v1/utils/health-check/" >/dev/null
       - name: Stop test stack
         if: always()
         run: docker compose down -v --rmi local --remove-orphans

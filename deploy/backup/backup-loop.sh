@@ -24,6 +24,7 @@ backup_once() (
     partial="$file.partial"
     pg_dump -Fc --no-owner -f "$partial"
     mv "$partial" "$file"
+    chown --reference=/backups "$file"
     shopt -s nullglob
     files=(/backups/app-*.dump)
     excess=$((${#files[@]} - keep))

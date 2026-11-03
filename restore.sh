@@ -11,7 +11,17 @@ read -r -p '请输入「确认恢复」：' answer
 [[ "$answer" == 确认恢复 ]] || fail '已取消恢复'
 docker compose stop backend worker backup
 trap 'echo "恢复失败，应用保持停止。请检查备份和数据库，再重新运行 restore.sh。" >&2' ERR
-docker compose exec -T db pg_restore --exit-on-error --single-transaction --clean --if-exists --no-owner -U postgres -d app < "$1"
+# Finish decoding before opening the transaction; a damaged archive cannot commit partial SQL.
+docker compose exec -T db bash -c '
+    set -euo pipefail
+    sql=$(mktemp)
+    trap "rm -f \"$sql\"" EXIT
+    pg_restore --clean --if-exists --no-owner -f "$sql"
+    {
+        printf "%s\n" "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+        cat "$sql"
+    } | psql -X -v ON_ERROR_STOP=1 --single-transaction -U postgres -d app
+' < "$1"
 # Re-run migrations even when the image and configuration did not change.
 docker compose rm -sf prestart
 docker compose up -d --wait
