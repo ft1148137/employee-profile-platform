@@ -18,6 +18,7 @@ import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutSetupWizardRouteImport } from './routes/_layout/setup-wizard'
 import { Route as LayoutAdminAccountsRouteImport } from './routes/_layout/admin.accounts'
 import { Route as LayoutAdminAuditRouteImport } from './routes/_layout/admin.audit'
+import { Route as LayoutAdminDraftingRouteImport } from './routes/_layout/admin.drafting'
 import { Route as LayoutAdminRolesRouteImport } from './routes/_layout/admin.roles'
 import { Route as LayoutAdminRosterRouteImport } from './routes/_layout/admin.roster'
 import { Route as LayoutEmployeesIndexRouteImport } from './routes/_layout/employees.index'
@@ -67,6 +68,11 @@ const LayoutAdminAuditRoute = LayoutAdminAuditRouteImport.update({
   path: '/admin/audit',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutAdminDraftingRoute = LayoutAdminDraftingRouteImport.update({
+  id: '/admin/drafting',
+  path: '/admin/drafting',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutAdminRolesRoute = LayoutAdminRolesRouteImport.update({
   id: '/admin/roles',
   path: '/admin/roles',
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/setup-wizard': typeof LayoutSetupWizardRoute
   '/admin/accounts': typeof LayoutAdminAccountsRoute
   '/admin/audit': typeof LayoutAdminAuditRoute
+  '/admin/drafting': typeof LayoutAdminDraftingRoute
   '/admin/roles': typeof LayoutAdminRolesRoute
   '/admin/roster': typeof LayoutAdminRosterRoute
   '/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/': typeof LayoutIndexRoute
   '/admin/accounts': typeof LayoutAdminAccountsRoute
   '/admin/audit': typeof LayoutAdminAuditRoute
+  '/admin/drafting': typeof LayoutAdminDraftingRoute
   '/admin/roles': typeof LayoutAdminRolesRoute
   '/admin/roster': typeof LayoutAdminRosterRoute
   '/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/admin/accounts': typeof LayoutAdminAccountsRoute
   '/_layout/admin/audit': typeof LayoutAdminAuditRoute
+  '/_layout/admin/drafting': typeof LayoutAdminDraftingRoute
   '/_layout/admin/roles': typeof LayoutAdminRolesRoute
   '/_layout/admin/roster': typeof LayoutAdminRosterRoute
   '/_layout/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/setup-wizard'
     | '/admin/accounts'
     | '/admin/audit'
+    | '/admin/drafting'
     | '/admin/roles'
     | '/admin/roster'
     | '/employees/$employeeId'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin/accounts'
     | '/admin/audit'
+    | '/admin/drafting'
     | '/admin/roles'
     | '/admin/roster'
     | '/employees/$employeeId'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/_layout/'
     | '/_layout/admin/accounts'
     | '/_layout/admin/audit'
+    | '/_layout/admin/drafting'
     | '/_layout/admin/roles'
     | '/_layout/admin/roster'
     | '/_layout/employees/$employeeId'
@@ -251,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAdminAuditRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/admin/drafting': {
+      id: '/_layout/admin/drafting'
+      path: '/admin/drafting'
+      fullPath: '/admin/drafting'
+      preLoaderRoute: typeof LayoutAdminDraftingRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/admin/roles': {
       id: '/_layout/admin/roles'
       path: '/admin/roles'
@@ -288,6 +307,7 @@ interface LayoutRouteChildren {
   LayoutIndexRoute: typeof LayoutIndexRoute
   LayoutAdminAccountsRoute: typeof LayoutAdminAccountsRoute
   LayoutAdminAuditRoute: typeof LayoutAdminAuditRoute
+  LayoutAdminDraftingRoute: typeof LayoutAdminDraftingRoute
   LayoutAdminRolesRoute: typeof LayoutAdminRolesRoute
   LayoutAdminRosterRoute: typeof LayoutAdminRosterRoute
   LayoutEmployeesEmployeeIdRoute: typeof LayoutEmployeesEmployeeIdRoute
@@ -300,6 +320,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutAdminAccountsRoute: LayoutAdminAccountsRoute,
   LayoutAdminAuditRoute: LayoutAdminAuditRoute,
+  LayoutAdminDraftingRoute: LayoutAdminDraftingRoute,
   LayoutAdminRolesRoute: LayoutAdminRolesRoute,
   LayoutAdminRosterRoute: LayoutAdminRosterRoute,
   LayoutEmployeesEmployeeIdRoute: LayoutEmployeesEmployeeIdRoute,
