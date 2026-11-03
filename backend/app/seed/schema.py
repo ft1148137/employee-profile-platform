@@ -11,8 +11,8 @@ from pydantic import (
     ValidationError,
 )
 
+from app.domains.change_request.claim import ClaimAfter
 from app.domains.change_request.models import ChangeOp, RequestOrigin, RequestStatus
-from app.domains.change_request.schemas import ClaimAfter
 from app.domains.org.models import Role
 from app.domains.profile.models import (
     AssessmentStatus,

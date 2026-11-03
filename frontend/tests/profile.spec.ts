@@ -126,3 +126,103 @@ test("profile recovers from errors and tolerates incomplete evidence fields", as
   await expect(page.getByRole("dialog")).toContainText("关联任务：—")
   await expect(page.getByRole("dialog")).toContainText("来源与导入信息")
 })
+
+for (const [email, title] of [
+  ["employee.platform@demo.example.com", "待你过目：系统起草的初始画像"],
+  ["manager.platform@demo.example.com", "待本人过目：系统起草的初始画像"],
+  ["admin@demo.example.com", "待本人过目：系统起草的初始画像"],
+]) {
+  test(`${email} reads initial draft and opens its evidence`, async ({
+    page,
+  }) => {
+    await openE02(page, email)
+    const draft = page.getByRole("region", {
+      name: "初始画像草稿",
+      exact: true,
+    })
+    await expect(draft.getByRole("heading", { name: title })).toBeVisible()
+    await expect(draft).toContainText("草稿，还没有生效。目前只能查看")
+    await expect(draft.getByRole("region")).toHaveCount(2)
+    await expect(
+      draft.getByText("等级：未给等级", { exact: true }),
+    ).toHaveCount(2)
+    await expect(draft.getByText("暂定", { exact: true })).toHaveCount(2)
+    await expect(
+      draft.getByText(/不确定之处：任务关联不等于已独立完成/),
+    ).toHaveCount(2)
+    for (const capability of ["自动化测试", "问题诊断与支持"]) {
+      await expect(
+        page.getByRole("article", { name: capability, exact: true }),
+      ).toContainText("有待处理的改动")
+    }
+    await draft
+      .getByRole("button", { name: /实现分页查询接口/ })
+      .first()
+      .click()
+    await expect(page.getByRole("dialog")).toContainText("PLAT-104")
+    await page.screenshot({
+      animations: "disabled",
+      path: `test-results/initial-draft-${email.split("@")[0]}.png`,
+      fullPage: true,
+    })
+  })
+}
+
+test("another employee cannot read the initial draft", async ({ page }) => {
+  await openE02(page, "employee.platform@demo.example.com")
+  const url = page.url()
+  await page.getByTestId("user-menu").click()
+  await page.getByRole("menuitem", { name: "退出登录" }).click()
+  await logInUser(page, "employee.algorithm@demo.example.com", password)
+  await page.goto(url)
+  await expect(page.getByRole("alert")).toContainText(
+    "未找到该员工或你没有权限查看",
+  )
+  await expect(
+    page.getByRole("region", { name: "初始画像草稿", exact: true }),
+  ).toHaveCount(0)
+})
+
+test("empty initial draft and other open requests remain read only", async ({
+  page,
+}) => {
+  await page.route("**/employees/*/change-requests", async (route) => {
+    const response = await route.fetch()
+    const body = await response.json()
+    const initial = body.data[0]
+    await route.fulfill({
+      json: {
+        data: [
+          { ...initial, items: [] },
+          {
+            ...initial,
+            id: "other",
+            origin: "manual",
+            status: "pending_review",
+          },
+        ],
+        count: 2,
+      },
+    })
+  })
+  await openE02(page, "employee.platform@demo.example.com")
+  await expect(
+    page.getByRole("region", { name: "初始画像草稿", exact: true }),
+  ).toContainText("系统没有找到能对应到能力词典的工作记录。")
+  const others = page.getByRole("region", { name: "其他待处理请求" })
+  await expect(others).toContainText("待经理审批 · 2 项改动")
+  await expect(others.getByRole("button")).toHaveCount(0)
+})
+
+test("initial draft read failure can be retried", async ({ page }) => {
+  await page.route("**/employees/*/change-requests", (route) =>
+    route.fulfill({ status: 500 }),
+  )
+  await openE02(page, "employee.platform@demo.example.com")
+  await expect(page.getByRole("alert")).toBeVisible()
+  await page.unroute("**/employees/*/change-requests")
+  await page.getByRole("button", { name: "重试" }).click()
+  await expect(
+    page.getByRole("region", { name: "初始画像草稿", exact: true }),
+  ).toBeVisible()
+})
