@@ -190,7 +190,7 @@ class JiraClient:
                 adf_to_text(fields.get("description"))
                 if self.version == "3"
                 else wiki_to_text(fields.get("description"))
-            ).strip()[:4000]
+            ).removesuffix("\n")[:4000]
         return JiraIssue(
             key=issue["key"],
             url=f"{self.config.base_url}/browse/{issue['key']}",

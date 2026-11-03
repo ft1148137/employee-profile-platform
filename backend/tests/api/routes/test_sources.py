@@ -116,6 +116,31 @@ def test_text() -> None:
     )
 
 
+def test_code_description() -> None:
+    original = "  indented_code()\n\tsecond_line()  \n"
+    issue = {
+        "key": "SYNTHETIC-1",
+        "fields": {
+            "summary": "Synthetic code",
+            "created": SINCE.isoformat(),
+            "updated": SINCE.isoformat(),
+            "description": {
+                "type": "codeBlock",
+                "content": [{"type": "text", "text": original}],
+            },
+        },
+    }
+    with httpx.Client(
+        transport=httpx.MockTransport(
+            lambda _: httpx.Response(200, json={"issues": [issue], "isLast": True})
+        )
+    ) as http:
+        with jira_client_for(
+            make_connection({**BODY, "include_description": True}), http
+        ) as adapter:
+            assert adapter.search(SINCE, None).issues[0].description == original
+
+
 def test_settings(
     request: pytest.FixtureRequest,
     client: TestClient,
