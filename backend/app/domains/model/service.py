@@ -59,10 +59,14 @@ def save_setting(
         setting = ModelSetting(
             org_id=principal.org_id, updated_by_user_id=principal.user_id
         )
-    if body.kind == "chatgpt_subscription" and not (
-        setting.chatgpt_auth_ciphertext
-        and not (setting.chatgpt_account or {}).get("needs_relogin")
-        or settings.CHATGPT_CODEX_AUTH_FILE
+    if (
+        body.enabled
+        and body.kind == "chatgpt_subscription"
+        and not (
+            setting.chatgpt_auth_ciphertext
+            and not (setting.chatgpt_account or {}).get("needs_relogin")
+            or settings.CHATGPT_CODEX_AUTH_FILE
+        )
     ):
         raise InvalidModelSetting("请先在设置页连接 ChatGPT")
     changed = body.api_key is not None
