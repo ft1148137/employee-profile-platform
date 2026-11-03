@@ -46,6 +46,15 @@ def user_object(user: dict[str, Any], version: str) -> dict[str, Any]:
         result["emailAddress"] = user["emailAddress"]
     if version == "3":
         result["accountId"] = account
+        result.update(
+            self=f"https://mock.example.com/rest/api/3/user?accountId={account}",
+            accountType="atlassian",
+            timeZone="Asia/Shanghai",
+            avatarUrls={
+                f"{size}x{size}": "https://mock.example.com/avatar"
+                for size in (16, 24, 32, 48)
+            },
+        )
     else:
         result["key"] = "JIRAUSER" + str(
             int(hashlib.sha256(account.encode()).hexdigest()[:12], 16)
@@ -246,6 +255,37 @@ def create_mock_app(examples_dir: Path) -> FastAPI:
         for original in issues[start : start + size]:
             issue = deepcopy(original)
             fields = issue["fields"]
+            if version == "3":
+                issue["expand"] = (
+                    "names,schema,operations,editmeta,changelog,versionedRepresentations"
+                )
+                fields["issuetype"].update(
+                    self="https://mock.example.com/rest/api/3/issuetype/10001",
+                    id="10001",
+                    description="Synthetic issue type",
+                    iconUrl="https://mock.example.com/type",
+                    subtask=False,
+                    avatarId=10001,
+                    entityId="synthetic-type",
+                    hierarchyLevel=0,
+                )
+                category = {
+                    "Done": (3, "done", "green"),
+                    "In Progress": (4, "indeterminate", "yellow"),
+                }.get(fields["status"]["name"], (2, "new", "blue-gray"))
+                fields["status"].update(
+                    self="https://mock.example.com/rest/api/3/status/10001",
+                    id="10001",
+                    description="Synthetic status",
+                    iconUrl="https://mock.example.com/status",
+                    statusCategory={
+                        "self": f"https://mock.example.com/rest/api/3/statuscategory/{category[0]}",
+                        "id": category[0],
+                        "key": category[1],
+                        "colorName": category[2],
+                        "name": category[1],
+                    },
+                )
             for role in ("assignee", "reporter"):
                 if fields.get(role):
                     fields[role] = user_object(fields[role], version)
