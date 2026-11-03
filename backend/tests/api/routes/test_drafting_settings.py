@@ -39,12 +39,14 @@ def test_settings_and_own_choice(demo: tuple, client: TestClient, db: Session) -
     def audits() -> list[AuditEvent]:
         return list(
             db.exec(
-                select(AuditEvent).where(
+                select(AuditEvent)
+                .where(
                     AuditEvent.org_id == org_id,
                     AuditEvent.action.in_(
                         ["drafting_settings.updated", "employee.auto_draft_changed"]
                     ),
                 )
+                .order_by(AuditEvent.created_at, AuditEvent.id)
             ).all()
         )
 
