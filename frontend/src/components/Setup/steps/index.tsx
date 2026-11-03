@@ -5,6 +5,7 @@ import { IdentitiesStep } from "./IdentitiesStep"
 import { InitialProfilesStep } from "./InitialProfilesStep"
 import { OrgProfileStep } from "./OrgProfileStep"
 import { RosterStep } from "./RosterStep"
+import { SourcesStep } from "./SourcesStep"
 
 export type StepProps = { orgId: string; onComplete: () => void }
 
@@ -13,6 +14,7 @@ export const setupSteps: Record<string, ComponentType<StepProps>> = {
   roster: RosterStep,
   capabilities: CapabilitiesStep,
   accounts: AccountsStep,
+  sources: SourcesStep,
   identities: IdentitiesStep,
   initial_profiles: InitialProfilesStep,
 }

@@ -98,6 +98,7 @@ export function AppSidebar() {
                   title: "同步与起草进度",
                   path: "/admin/progress",
                 },
+                { icon: Settings, title: "数据来源", path: "/admin/sources" },
                 { icon: ScrollText, title: "审计日志", path: "/admin/audit" },
                 {
                   icon: ListChecks,
