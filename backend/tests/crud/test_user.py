@@ -1,4 +1,5 @@
 from fastapi.encoders import jsonable_encoder
+from pwdlib import PasswordHash
 from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlmodel import Session
 
@@ -127,3 +128,22 @@ def test_authenticate_user_with_bcrypt_upgrades_to_argon2(db: Session) -> None:
     assert verified
     # Should not need another update since it's already argon2
     assert updated_hash is None
+
+
+def test_production_password_hash_parameters(
+    production_password_hash: PasswordHash,
+) -> None:
+    assert production_password_hash.hash("synthetic-password").startswith(
+        "$argon2id$v=19$m=65536,t=3,p=4$"
+    )
+
+
+def test_legacy_argon2_password(production_password_hash: PasswordHash) -> None:
+    legacy_hash = (
+        "$argon2id$v=19$m=65536,t=3,p=4$Lt67OA/FyerEaQu/KLzJew$"
+        "EZ5xBK+t+Ab+IZxYAGG+H+tsNkmwWxMZpRgSVH7M/3w"
+    )
+    assert verify_password("legacy-synthetic-password", legacy_hash)[0]
+    assert production_password_hash.verify_and_update(
+        "legacy-synthetic-password", legacy_hash
+    ) == (True, None)

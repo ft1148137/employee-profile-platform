@@ -16,12 +16,11 @@ from app.domains.change_request.models import (
 )
 from app.domains.evidence.models import Evidence, EvidenceKind
 from app.domains.profile.models import EvidenceRelation
-from tests.api.routes.test_profiles import demo as demo
 
 
 @pytest.mark.parametrize("role", ["admin", "manager", "employee", "foreign"])
-def test_visibility(demo: tuple, client: TestClient, role: str) -> None:
-    url, employees, auth = demo
+def test_visibility(shared_demo: tuple, client: TestClient, role: str) -> None:
+    url, employees, auth = shared_demo
     response = client.get(
         f"{url}/employees/{employees['E02'].id}/change-requests", headers=auth[role]
     )

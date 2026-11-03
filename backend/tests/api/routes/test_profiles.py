@@ -1,7 +1,5 @@
 import re
-from collections.abc import Generator
 from datetime import timedelta
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -16,49 +14,12 @@ from app.domains.evidence.service import append_evidence
 from app.domains.org.models import Employee, Organization, OrgMembership
 from app.domains.profile.models import ProfileClaim, ProfileVersion
 from app.models import User
-from app.seed.loader import load_demo
-from app.seed.schema import read_bundle
 from tests.utils.org import delete_test_organization
 
 
-@pytest.fixture
-def demo(db: Session, seed_path: Path) -> Generator[tuple]:
-    with Session(engine) as session:
-        load_demo(session, seed_path)
-    org = db.exec(
-        select(Organization).where(Organization.slug == read_bundle(seed_path).org.slug)
-    ).one()
-    employees = {
-        e.employee_code: e
-        for e in db.exec(select(Employee).where(Employee.org_id == org.id)).all()
-    }
-    foreign = Organization(slug=str(uuid4()), name="Synthetic foreign tenant")
-    user = User(
-        username=str(uuid4()), email=f"{uuid4()}@example.com", hashed_password="unused"
-    )
-    db.add_all([foreign, user])
-    db.flush()
-    db.add(OrgMembership(org_id=foreign.id, user_id=user.id))
-    db.commit()
-    auth = {}
-    for role, email in {
-        "admin": "admin@demo.example.com",
-        "manager": "manager.platform@demo.example.com",
-        "employee": "employee.platform@demo.example.com",
-        "foreign": user.email,
-    }.items():
-        account = db.exec(select(User).where(User.email == email)).one()
-        auth[role] = {
-            "Authorization": f"Bearer {create_access_token(account.id, expires_delta=timedelta(minutes=5))}"
-        }
-    yield f"/api/v1/orgs/{org.id}", employees, auth
-    db.rollback()
-    delete_test_organization(db, foreign.id)
-
-
 @pytest.mark.parametrize("role", ["admin", "manager", "employee", "foreign"])
-def test_role_visibility(demo: tuple, client: TestClient, role: str) -> None:
-    url, employees, auth = demo
+def test_role_visibility(shared_demo: tuple, client: TestClient, role: str) -> None:
+    url, employees, auth = shared_demo
     base = f"{url}/employees/{employees['E02'].id}"
     expected = 404 if role == "foreign" else 200
     for suffix in (
@@ -270,9 +231,9 @@ def test_inactive_and_pagination(
 
 @pytest.mark.parametrize("role", ["admin", "manager", "employee"])
 def test_evidence_only_references_current_claims(
-    demo: tuple, client: TestClient, db: Session, role: str
+    shared_demo: tuple, client: TestClient, db: Session, role: str
 ) -> None:
-    url, employees, auth = demo
+    url, employees, auth = shared_demo
     employee = employees["E02"]
     evidence = db.exec(
         select(Evidence).where(
