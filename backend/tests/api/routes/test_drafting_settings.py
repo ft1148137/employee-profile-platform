@@ -8,11 +8,11 @@ from sqlmodel import Session, select
 from app.core.db import engine
 from app.domains.audit.models import AuditEvent
 from app.domains.change_request.models import ChangeItem, ProfileChangeRequest
+from app.domains.drafting.models import DraftingSetting
 from app.domains.drafting.settings import drafting_scope
 from app.domains.evidence.models import Evidence
 from app.domains.org.models import Department, Employee
 from app.domains.profile.models import ProfileClaim
-from tests.api.routes.test_profiles import demo as demo
 from tests.api.routes.test_roster import apply, upload
 from tests.api.routes.test_setup_steps import SetupTenant
 from tests.api.routes.test_setup_steps import tenant as tenant
@@ -182,6 +182,62 @@ def test_invalid_settings_are_atomic(
     )
     db.expire_all()
     assert not db.get(Employee, people["E03"].id).auto_draft_opt_out
+
+
+def test_settings_after_switching_templates(
+    tenant: SetupTenant, client: TestClient, db: Session
+) -> None:
+    url = f"{tenant.url}/drafting-settings"
+    headers = tenant.auth["admin"]
+    for template, keys in (("tech-rnd", ["backend_api"]), ("hospital", [])):
+        activated = client.post(
+            f"{tenant.url}/capability-schema",
+            headers=headers,
+            json={"template_id": template},
+        )
+        assert activated.status_code == 200
+        response = client.get(url, headers=headers)
+        assert response.status_code == 200
+        assert response.json()["excluded_capability_keys"] == []
+        if keys:
+            saved = client.put(
+                url,
+                headers=headers,
+                json={"excluded_capability_keys": keys, "disabled_department_ids": []},
+            )
+            assert saved.status_code == 200
+            assert saved.json()["excluded_capability_keys"] == keys
+    db.expire_all()
+    assert db.get(DraftingSetting, tenant.org_id).excluded_capability_keys == [
+        "backend_api"
+    ]  # Reading must leave persisted settings unchanged.
+    capabilities = client.get(f"{tenant.url}/capabilities", headers=headers).json()
+    key = capabilities["data"][0]["key"]
+    body = {
+        "excluded_capability_keys": [key],
+        "disabled_department_ids": [],
+    }
+    saved = client.put(url, headers=headers, json=body)
+    assert saved.status_code == 200
+    assert saved.json()["excluded_capability_keys"] == [key]
+    assert client.get(url, headers=headers).json() == saved.json()
+    db.expire_all()
+    assert db.get(DraftingSetting, tenant.org_id).excluded_capability_keys == [key]
+    audits = db.exec(
+        select(AuditEvent)
+        .where(
+            AuditEvent.org_id == tenant.org_id,
+            AuditEvent.action == "drafting_settings.updated",
+        )
+        .order_by(AuditEvent.created_at, AuditEvent.id)
+    ).all()
+    assert len(audits) == 2
+    assert audits[-1].details == {
+        "added_capability_keys": [key],
+        "removed_capability_keys": ["backend_api"],
+        "added_department_ids": [],
+        "removed_department_ids": [],
+    }
 
 
 def test_scope_hierarchy_and_bounded_queries(tenant: SetupTenant, db: Session) -> None:

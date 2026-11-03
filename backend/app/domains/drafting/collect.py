@@ -48,7 +48,7 @@ def _collect(
         by_ref.setdefault(key[1], []).append(key)
     for key, task in tasks.items():
         refs = re.findall(
-            r"\b[A-Z][A-Z0-9]*-\d+\b",
+            r"(?<![A-Za-z0-9])[A-Z][A-Z0-9]*-\d+(?![A-Za-z0-9])",
             f"{task.title} {task.attributes.get('detail') or ''}",
         )
         for ref in refs:

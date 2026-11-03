@@ -34,6 +34,34 @@ from app.domains.source.models import SourceConnection, SyncRun
 from app.domains.work.models import Task, WorkEvent
 from app.models import User
 
+ORG_MODELS = (
+    SetupStepState,
+    ModelSetting,
+    SyncRun,
+    DraftingSetting,
+    SourceConnection,
+    AuditEvent,
+    ChangeItemEvidence,
+    ChangeItem,
+    ProfileChangeRequest,
+    ClaimEvidence,
+    ProfileVersion,
+    ProfileClaim,
+    ProfileProgress,
+    Evidence,
+    WorkEvent,
+    Task,
+    CapabilityDefinition,
+    CapabilitySchemaVersion,
+    RoleGrant,
+    ReportingLine,
+    RosterImport,
+    OrgMembership,
+    ExternalIdentity,
+    Employee,
+    Department,
+)
+
 
 def cleanup_new_users(session: Session, existing_user_ids: set[UUID]) -> None:
     session.execute(
@@ -51,33 +79,7 @@ def delete_test_organization(session: Session, org_id: UUID) -> None:
     org = session.get(Organization, org_id)
     if org is None or org.slug == "demo":
         raise ValueError("Only a test-owned organization may be deleted")
-    for model in (
-        SetupStepState,
-        ModelSetting,
-        SyncRun,
-        DraftingSetting,
-        SourceConnection,
-        AuditEvent,
-        ChangeItemEvidence,
-        ChangeItem,
-        ProfileChangeRequest,
-        ClaimEvidence,
-        ProfileVersion,
-        ProfileClaim,
-        ProfileProgress,
-        Evidence,
-        WorkEvent,
-        Task,
-        CapabilityDefinition,
-        CapabilitySchemaVersion,
-        RoleGrant,
-        ReportingLine,
-        RosterImport,
-        OrgMembership,
-        ExternalIdentity,
-        Employee,
-        Department,
-    ):
+    for model in ORG_MODELS:
         if model is Evidence:
             session.execute(text("SET LOCAL app.allow_evidence_delete = 'on'"))
         session.execute(delete(model).where(model.org_id == org_id))
