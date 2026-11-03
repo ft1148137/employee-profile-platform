@@ -2,8 +2,9 @@ import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { isAxiosError } from "axios"
 import { useState } from "react"
-import { ProfilesService } from "@/client"
+import { ChangeRequestsService, ProfilesService } from "@/client"
 import { CapabilityList } from "@/components/Profile/CapabilityList"
+import { ChangeRequestCard } from "@/components/Profile/ChangeRequestCard"
 import { EmployeeSummaryContent } from "@/components/Profile/EmployeeSummary"
 import { EvidenceList } from "@/components/Profile/EvidenceList"
 import { EvidenceSheet } from "@/components/Profile/EvidenceSheet"
@@ -29,6 +30,17 @@ function EmployeeDetails() {
   const { org, employeeId: ownEmployeeId } = useOrg()
   const { employeeId } = Route.useParams()
   const [evidenceId, setEvidenceId] = useState<string | null>(null)
+  const requests = useQuery({
+    queryKey: ["change-requests", org?.id, employeeId],
+    queryFn: async () =>
+      (
+        await ChangeRequestsService.readChangeRequests({
+          path: { org_id: org!.id, employee_id: employeeId },
+        })
+      ).data,
+    enabled: !!org,
+    retry: false,
+  })
   const query = useQuery({
     queryKey: ["profile", org?.id, employeeId],
     queryFn: async () =>
@@ -64,6 +76,17 @@ function EmployeeDetails() {
           <TabsTrigger value="versions">版本历史</TabsTrigger>
         </TabsList>
         <TabsContent value="capabilities">
+          {requests.isPending ? (
+            <ProfileLoading />
+          ) : requests.isError ? (
+            <ProfileError retry={() => requests.refetch()} />
+          ) : (
+            <ChangeRequestCard
+              requests={requests.data.data}
+              isOwner={ownEmployeeId === employeeId}
+              onEvidence={setEvidenceId}
+            />
+          )}
           {!query.data.latest_published &&
             !query.data.items.some((item) => item.claim) && (
               <section
@@ -90,7 +113,17 @@ function EmployeeDetails() {
               企业管理员还没有选择能力词典
             </p>
           )}
-          <CapabilityList items={query.data.items} onEvidence={setEvidenceId} />
+          <CapabilityList
+            items={query.data.items}
+            onEvidence={setEvidenceId}
+            pendingCapabilityIds={
+              new Set(
+                requests.data?.data.flatMap((request) =>
+                  (request.items ?? []).map((item) => item.capability.id),
+                ),
+              )
+            }
+          />
         </TabsContent>
         <TabsContent value="evidence">
           <EvidenceList
