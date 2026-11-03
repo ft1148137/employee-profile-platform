@@ -1,8 +1,6 @@
 import hashlib
 import json
 import shutil
-import subprocess
-import sys
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import timedelta
@@ -30,6 +28,7 @@ from app.main import app
 from app.models import User
 from app.seed.loader import load_demo
 from app.seed.schema import read_bundle
+from tests.utils.migrations import migrate
 from tests.utils.org import ORG_MODELS, cleanup_new_users, delete_test_organization
 from tests.utils.user import authentication_token_from_email
 from tests.utils.utils import get_superuser_token_headers
@@ -65,12 +64,16 @@ def reset_login_attempts(db: Session) -> Generator[None]:
     db.commit()
 
 
-@pytest.fixture
-def migration_engine(monkeypatch: pytest.MonkeyPatch) -> Generator[Engine]:
-    # Downgrade tests must never remove the shared database's demo organization.
-    database = f"migration_test_{uuid4().hex}"
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    for item in items:
+        if "migration_engine" in getattr(item, "fixturenames", ()):
+            item.add_marker(pytest.mark.migration)
+
+
+@pytest.fixture(scope="session")
+def migration_template() -> Generator[str]:
+    database = f"migration_template_{uuid4().hex}"
     url = engine.url.set(database=database)
-    monkeypatch.setenv("DATABASE_URL", url.render_as_string(hide_password=False))
     admin_url = engine.url.set(drivername="postgresql").render_as_string(
         hide_password=False
     )
@@ -78,13 +81,41 @@ def migration_engine(monkeypatch: pytest.MonkeyPatch) -> Generator[Engine]:
         admin.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database)))
         isolated = create_engine(url)
         try:
-            subprocess.run(
-                [sys.executable, "-m", "alembic", "upgrade", "head"], check=True
+            migrate(isolated, "upgrade", "head")
+            isolated.dispose()
+            yield database
+        finally:
+            isolated.dispose()
+            admin.execute(
+                sql.SQL("DROP DATABASE {} WITH (FORCE)").format(
+                    sql.Identifier(database)
+                )
             )
+
+
+@pytest.fixture
+def migration_engine(migration_template: str) -> Generator[Engine]:
+    # Downgrade tests must never remove the shared database's demo organization.
+    database = f"migration_test_{uuid4().hex}"
+    admin_url = engine.url.set(drivername="postgresql").render_as_string(
+        hide_password=False
+    )
+    with psycopg.connect(admin_url, autocommit=True) as admin:
+        admin.execute(
+            sql.SQL("CREATE DATABASE {} TEMPLATE {}").format(
+                sql.Identifier(database), sql.Identifier(migration_template)
+            )
+        )
+        isolated = create_engine(engine.url.set(database=database))
+        try:
             yield isolated
         finally:
             isolated.dispose()
-            admin.execute(sql.SQL("DROP DATABASE {}").format(sql.Identifier(database)))
+            admin.execute(
+                sql.SQL("DROP DATABASE {} WITH (FORCE)").format(
+                    sql.Identifier(database)
+                )
+            )
 
 
 @pytest.fixture(scope="session", autouse=True)

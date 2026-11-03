@@ -16,7 +16,7 @@ from app.domains.profile.models import ProfileClaim
 from tests.api.routes.test_roster import apply, upload
 from tests.api.routes.test_setup_steps import SetupTenant
 from tests.api.routes.test_setup_steps import tenant as tenant
-from tests.test_account_migration import migrate
+from tests.utils.migrations import migrate
 
 
 def snapshot(db: Session, org_id: UUID) -> list:
@@ -338,9 +338,9 @@ def test_roster_preserves_preferences(
 
 
 def test_migration_roundtrip(migration_engine: Engine) -> None:
-    migrate("downgrade", "f69a901bc002")
+    migrate(migration_engine, "downgrade", "f69a901bc002")
     assert "drafting_setting" not in inspect(migration_engine).get_table_names()
-    migrate("upgrade", "head")
+    migrate(migration_engine, "upgrade", "head")
     assert "drafting_setting" in inspect(migration_engine).get_table_names()
     assert "auto_draft_disabled" in {
         c["name"] for c in inspect(migration_engine).get_columns("department")
