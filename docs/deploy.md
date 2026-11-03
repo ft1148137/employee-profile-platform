@@ -54,7 +54,7 @@ EPP_ADDRESS=192.168.1.10 EPP_HTTP_PORT=8080 ./install.sh --non-interactive
 
 安装生成的 `.env` 权限为 600，保存密钥和部署配置；不要提交到 Git，也不要覆盖。`COMPOSE_FILE` 使后续命令沿用生产配置；终端中不要导出另一套 `COMPOSE_FILE`、密钥或数据库密码覆盖它。修改数据库密码仅改 `.env` 不会修改现有数据库密码。
 
-同一登录名在 15 分钟内失败 5 次会被限流；密码重置会清除该账号旧失败的影响。同一来源 IP 默认失败 30 次后，该 IP 下所有登录（包括密码正确的）也会被限流。配置项是 `LOGIN_MAX_FAILURES`、`LOGIN_LOCK_MINUTES`、`LOGIN_MAX_FAILURES_PER_IP`。
+同一登录名在 15 分钟内失败 5 次会被限流；密码重置会清除该账号旧失败的影响。同一来源 IP 默认失败 300 次后，该 IP 下所有登录（包括密码正确的）也会被限流。配置项及默认值为 `LOGIN_MAX_FAILURES=5`、`LOGIN_MAX_FAILURES_PER_IP=300`、`LOGIN_LOCK_MINUTES=15`。
 
 **Docker Desktop、NAT 或反向代理可能把不同人的来源合成同一个 IP。** 本机 Docker Desktop 中，localhost 和局域网访问均可能显示为 `192.168.65.1`。多企业模拟测试建议在 `.env` 增加 `LOGIN_MAX_FAILURES_PER_IP=1000`，保持每账号 5 次限制。生产按实际网络与人数决定，不能把提高阈值当成修复密码问题。修改后执行：
 
@@ -88,6 +88,8 @@ docker compose logs backup # 查看自动备份错误
 ## 升级与回退
 
 升级前确认 Git 工作区干净，保管 `.env` 并记录当前提交 `git rev-parse HEAD`。
+
+如果 `.env` 里手动写过 `LOGIN_MAX_FAILURES_PER_IP=30`，升级后需自行改成 300（或按人数调整），再执行 `docker compose up -d`；没有写过这一项的部署，升级后自动使用 300。安装和升级脚本都会保留已有 `.env`。
 
 ```bash
 ./upgrade.sh                # 当前跟踪分支执行 git pull --ff-only

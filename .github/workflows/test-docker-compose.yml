@@ -52,6 +52,7 @@ jobs:
       - name: Verify production install and idempotency
         run: |
           ! grep -q changethis .env
+          grep -qx 'LOGIN_MAX_FAILURES_PER_IP=300' .env
           test "$(stat -c %a .env)" = 600
           test "$(docker compose exec -T db psql -U postgres -d app -tAc 'select count(*) from organization')" = 0
           test "$(docker compose exec -T db psql -U postgres -d app -tAc 'select count(*) from "user"')" = 0

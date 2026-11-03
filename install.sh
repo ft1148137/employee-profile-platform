@@ -102,6 +102,10 @@ if [[ ! -e .env ]]; then
     cat > "$env_temp" <<ENV
 PROJECT_NAME="Employee Profile Platform"
 SECRET_KEY=$secret_key
+# 登录限流：NAT、Docker Desktop、反向代理后面的所有人可能共用一个 IP，按人数调整 LOGIN_MAX_FAILURES_PER_IP
+LOGIN_MAX_FAILURES=5
+LOGIN_MAX_FAILURES_PER_IP=300
+LOGIN_LOCK_MINUTES=15
 POSTGRES_PASSWORD=$database_password
 FRONTEND_HOST=$host
 DOMAIN=$address

@@ -4,12 +4,12 @@ Before starting, run `cp .env.example .env` from the repository root and replace
 
 ## Local Development
 
-For local development, run PostgreSQL and Mailpit with Docker Compose, and run the FastAPI and Vite development servers locally.
+For local development, run PostgreSQL with Docker Compose, and run the FastAPI and Vite development servers locally.
 
 Start the supporting services:
 
 ```bash
-docker compose -f compose.yml -f compose.dev.yml up -d db mailpit
+docker compose -f compose.yml -f compose.dev.yml up -d db
 ```
 
 Then, from the `backend` directory, install the dependencies and prepare the database:
@@ -40,8 +40,6 @@ Backend API: <http://localhost:8000>
 
 Automatic interactive API documentation with Swagger UI: <http://localhost:8000/docs>
 
-Mailpit: <http://localhost:8025>
-
 The frontend development server uses the backend at `http://localhost:8000`, as configured in `frontend/.env`.
 
 ### Frontend Served by FastAPI
@@ -70,21 +68,15 @@ Automatic interactive API documentation with Swagger UI: <http://localhost:8000/
 
 Adminer, database web administration: <http://localhost:8080>
 
-Mailpit: <http://localhost:8025>
-
 Stop a locally running FastAPI server before starting the Compose backend because both use port `8000`.
 
 **Note**: The first time you start the stack, it might take a minute for all the services to be ready. To monitor it, use `docker compose -f compose.yml -f compose.dev.yml logs`, or `docker compose -f compose.yml -f compose.dev.yml logs backend` for the backend service.
-
-## Mailpit
-
-[Mailpit](https://mailpit.axllent.org) captures emails sent during local development instead of delivering them. The local backend connects to it at `localhost:1025`, and the Compose backend connects to the `mailpit` service. Captured emails are available at <http://localhost:8025>.
 
 ## Docker Compose Files and Environment Variables
 
 `compose.yml` is the default local startup: PostgreSQL, one-shot migrations and initial account setup, Web/API, and Worker. Run `docker compose up -d --wait` and open <http://localhost:8000>. Only the API port is published, on `127.0.0.1:8000`; optionally set `API_BIND` / `API_PORT` in `.env`.
 
-`compose.dev.yml` adds hot reload, watch, Mailpit, Adminer, Playwright, and host access to PostgreSQL on 5432. It must be selected explicitly. You can set `export COMPOSE_FILE=compose.yml:compose.dev.yml` in your own shell to shorten development commands; do not save it in `.env`. There is no automatically loaded override file.
+`compose.dev.yml` adds hot reload, watch, Adminer, Playwright, and host access to PostgreSQL on 5432. It must be selected explicitly. You can set `export COMPOSE_FILE=compose.yml:compose.dev.yml` in your own shell to shorten development commands; do not save it in `.env`. There is no automatically loaded override file.
 
 `deploy/compose.traefik.yml` adds Traefik and HTTPS for a domain deployment; see [deploy/README.md](../deploy/README.md). Never combine it with development services on a public server.
 
@@ -98,7 +90,7 @@ docker compose -f compose.yml -f compose.dev.yml watch
 
 ## The `.env` File
 
-The ignored local `.env` file contains local development defaults, passwords, and other configuration. Its hostnames use `localhost` for processes running on your machine. Docker Compose overrides hostnames such as the database and SMTP server with their Compose service names.
+The ignored local `.env` file contains local development defaults, passwords, and other configuration. Its hostnames use `localhost` for processes running on your machine. Docker Compose overrides hostnames such as the database with their Compose service names.
 
 Do not commit secrets. Configure deployment environment variables as described in the [Docker Compose deployment guide](./deployment-docker-compose.md).
 
