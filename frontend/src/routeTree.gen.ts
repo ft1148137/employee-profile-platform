@@ -21,6 +21,7 @@ import { Route as LayoutAdminAuditRouteImport } from './routes/_layout/admin.aud
 import { Route as LayoutAdminDraftingRouteImport } from './routes/_layout/admin.drafting'
 import { Route as LayoutAdminIdentitiesRouteImport } from './routes/_layout/admin.identities'
 import { Route as LayoutAdminModelRouteImport } from './routes/_layout/admin.model'
+import { Route as LayoutAdminProgressRouteImport } from './routes/_layout/admin.progress'
 import { Route as LayoutAdminRolesRouteImport } from './routes/_layout/admin.roles'
 import { Route as LayoutAdminRosterRouteImport } from './routes/_layout/admin.roster'
 import { Route as LayoutAdminSourcesRouteImport } from './routes/_layout/admin.sources'
@@ -86,6 +87,11 @@ const LayoutAdminModelRoute = LayoutAdminModelRouteImport.update({
   path: '/admin/model',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutAdminProgressRoute = LayoutAdminProgressRouteImport.update({
+  id: '/admin/progress',
+  path: '/admin/progress',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutAdminRolesRoute = LayoutAdminRolesRouteImport.update({
   id: '/admin/roles',
   path: '/admin/roles',
@@ -125,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/admin/drafting': typeof LayoutAdminDraftingRoute
   '/admin/identities': typeof LayoutAdminIdentitiesRoute
   '/admin/model': typeof LayoutAdminModelRoute
+  '/admin/progress': typeof LayoutAdminProgressRoute
   '/admin/roles': typeof LayoutAdminRolesRoute
   '/admin/roster': typeof LayoutAdminRosterRoute
   '/admin/sources': typeof LayoutAdminSourcesRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByTo {
   '/admin/drafting': typeof LayoutAdminDraftingRoute
   '/admin/identities': typeof LayoutAdminIdentitiesRoute
   '/admin/model': typeof LayoutAdminModelRoute
+  '/admin/progress': typeof LayoutAdminProgressRoute
   '/admin/roles': typeof LayoutAdminRolesRoute
   '/admin/roster': typeof LayoutAdminRosterRoute
   '/admin/sources': typeof LayoutAdminSourcesRoute
@@ -163,6 +171,7 @@ export interface FileRoutesById {
   '/_layout/admin/drafting': typeof LayoutAdminDraftingRoute
   '/_layout/admin/identities': typeof LayoutAdminIdentitiesRoute
   '/_layout/admin/model': typeof LayoutAdminModelRoute
+  '/_layout/admin/progress': typeof LayoutAdminProgressRoute
   '/_layout/admin/roles': typeof LayoutAdminRolesRoute
   '/_layout/admin/roster': typeof LayoutAdminRosterRoute
   '/_layout/admin/sources': typeof LayoutAdminSourcesRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/admin/drafting'
     | '/admin/identities'
     | '/admin/model'
+    | '/admin/progress'
     | '/admin/roles'
     | '/admin/roster'
     | '/admin/sources'
@@ -201,6 +211,7 @@ export interface FileRouteTypes {
     | '/admin/drafting'
     | '/admin/identities'
     | '/admin/model'
+    | '/admin/progress'
     | '/admin/roles'
     | '/admin/roster'
     | '/admin/sources'
@@ -220,6 +231,7 @@ export interface FileRouteTypes {
     | '/_layout/admin/drafting'
     | '/_layout/admin/identities'
     | '/_layout/admin/model'
+    | '/_layout/admin/progress'
     | '/_layout/admin/roles'
     | '/_layout/admin/roster'
     | '/_layout/admin/sources'
@@ -320,6 +332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAdminModelRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/admin/progress': {
+      id: '/_layout/admin/progress'
+      path: '/admin/progress'
+      fullPath: '/admin/progress'
+      preLoaderRoute: typeof LayoutAdminProgressRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/admin/roles': {
       id: '/_layout/admin/roles'
       path: '/admin/roles'
@@ -367,6 +386,7 @@ interface LayoutRouteChildren {
   LayoutAdminDraftingRoute: typeof LayoutAdminDraftingRoute
   LayoutAdminIdentitiesRoute: typeof LayoutAdminIdentitiesRoute
   LayoutAdminModelRoute: typeof LayoutAdminModelRoute
+  LayoutAdminProgressRoute: typeof LayoutAdminProgressRoute
   LayoutAdminRolesRoute: typeof LayoutAdminRolesRoute
   LayoutAdminRosterRoute: typeof LayoutAdminRosterRoute
   LayoutAdminSourcesRoute: typeof LayoutAdminSourcesRoute
@@ -383,6 +403,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminDraftingRoute: LayoutAdminDraftingRoute,
   LayoutAdminIdentitiesRoute: LayoutAdminIdentitiesRoute,
   LayoutAdminModelRoute: LayoutAdminModelRoute,
+  LayoutAdminProgressRoute: LayoutAdminProgressRoute,
   LayoutAdminRolesRoute: LayoutAdminRolesRoute,
   LayoutAdminRosterRoute: LayoutAdminRosterRoute,
   LayoutAdminSourcesRoute: LayoutAdminSourcesRoute,
