@@ -90,6 +90,7 @@ def test_candidates_and_batch_queries(
     assert data[str(email.id)]["candidate"]["reason"] == "email"
     assert data[str(email.id)]["candidate"]["id"] == str(employees[0].id)
     assert data[str(email.id)]["record_count"] == 2
+    assert data[str(email.id)]["linked_at"] is None
     assert data[str(name.id)]["candidate"]["reason"] == "name"
     assert data[str(name.id)]["record_count"] == 1
     assert data[str(duplicate.id)]["candidate"] is None
@@ -158,6 +159,7 @@ def test_link_unlink_restore(
     row = client.get(url, headers=auth, params={"status": "linked"}).json()["data"][0]
     assert row["employee"]["id"] == str(employee.id) and row["candidate"] is None
     assert row["employee"]["department"]["name"] is not None
+    assert datetime.fromisoformat(row["linked_at"]) == identity.linked_at
     original = db.exec(select(Evidence).where(Evidence.org_id == org.id)).one()
     original_content = original.content.copy()
     # Same record ingested after linking yields exactly the same active content.

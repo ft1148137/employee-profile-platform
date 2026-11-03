@@ -158,6 +158,15 @@ STEPS = [
         check_accounts,
     ),
     SetupStep(
+        "identities",
+        "确认账号对应",
+        "把 Jira 和工作记录里的账号对应到员工",
+        60,
+        False,
+        True,
+        check_org_profile,
+    ),
+    SetupStep(
         "initial_profiles",
         "生成初始画像",
         "为员工生成待本人过目的初始画像",
