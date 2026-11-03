@@ -1,0 +1,16 @@
+services:
+  mock-jira:
+    image: ${COMPOSE_PROJECT_NAME:-employee-profile}-backend:latest
+    pull_policy: never
+    command: ["uvicorn", "app.connectors.jira.mock:app", "--host", "0.0.0.0", "--port", "8080"]
+    environment:
+      MOCK_JIRA_EMAIL: ${MOCK_JIRA_EMAIL:-jira-admin@example.com}
+      MOCK_JIRA_API_TOKEN: ${MOCK_JIRA_API_TOKEN:-mock-cloud-token}
+      MOCK_JIRA_PAT: ${MOCK_JIRA_PAT:-mock-dc-pat}
+      MOCK_JIRA_USERNAME: ${MOCK_JIRA_USERNAME:-jira-admin}
+      MOCK_JIRA_PASSWORD: ${MOCK_JIRA_PASSWORD:-mock-password}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
