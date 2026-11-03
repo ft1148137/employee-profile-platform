@@ -44,6 +44,9 @@ class Department(TenantRecord, table=True):
         ),
         tenant_fk("parent_department_id", "department"),
     )
+    auto_draft_disabled: bool = Field(
+        default=False, sa_column_kwargs={"server_default": "false"}
+    )
     name: str
     parent_department_id: uuid.UUID | None = None
 
@@ -54,6 +57,9 @@ class Employee(TenantRecord, table=True):
         UniqueConstraint("org_id", "id"),
         UniqueConstraint("org_id", "employee_code"),
         tenant_fk("department_id", "department"),
+    )
+    auto_draft_opt_out: bool = Field(
+        default=False, sa_column_kwargs={"server_default": "false"}
     )
     department_id: uuid.UUID | None = None
     employee_code: str | None = None

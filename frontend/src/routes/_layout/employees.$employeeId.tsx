@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { isAxiosError } from "axios"
 import { useState } from "react"
 import { ChangeRequestsService, ProfilesService } from "@/client"
+import { AutoDraftSetting } from "@/components/Profile/AutoDraftSetting"
 import { CapabilityList } from "@/components/Profile/CapabilityList"
 import { ChangeRequestCard } from "@/components/Profile/ChangeRequestCard"
 import { EmployeeSummaryContent } from "@/components/Profile/EmployeeSummary"
@@ -69,6 +70,7 @@ function EmployeeDetails() {
   return (
     <div className="space-y-8">
       <EmployeeSummaryContent employee={query.data.employee} />
+      {ownEmployeeId === employeeId && <AutoDraftSetting orgId={org.id} />}
       <Tabs defaultValue="capabilities" className="gap-6">
         <TabsList aria-label="画像详情">
           <TabsTrigger value="capabilities">能力画像</TabsTrigger>

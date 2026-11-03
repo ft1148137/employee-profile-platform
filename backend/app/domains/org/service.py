@@ -23,6 +23,25 @@ from app.domains.profile.models import (
 )
 
 
+def managed_scope(
+    session: Session, org_id: UUID, department_ids: frozenset[UUID]
+) -> frozenset[UUID]:
+    if not department_ids:
+        return frozenset()
+    scope = (
+        select(Department.id)
+        .where(Department.org_id == org_id, col(Department.id).in_(department_ids))
+        .cte("managed_scope", recursive=True)
+    )
+    # UNION deduplicates overlapping grants and terminates even with a hierarchy cycle.
+    scope = scope.union(
+        select(Department.id)
+        .join(scope, col(Department.parent_department_id) == scope.c.id)
+        .where(Department.org_id == org_id)
+    )
+    return frozenset(session.exec(select(scope.c.id)).all())
+
+
 class EmployeeNotFound(HTTPException):
     def __init__(self) -> None:
         super().__init__(404, "未找到该员工或你没有权限查看")
