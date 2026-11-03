@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 from procrastinate import App, SyncPsycopgConnector
 from pydantic import BaseModel, JsonValue
+from sqlalchemy import text
 from sqlmodel import Session, col, delete, select
 
 from app.authz.principal import Principal
@@ -389,14 +390,19 @@ def queue_drafting(
         get_schema(session, org_id)
     except SchemaNotFound:
         raise HTTPException(422, "请先启用能力词典") from None
-    if session.exec(
-        select(ProfileProgress).where(
-            ProfileProgress.org_id == org_id,
-            col(ProfileProgress.inference_status).in_(
-                [InferenceStatus.PENDING, InferenceStatus.RUNNING]
+    # Opting out after queueing preserves pending progress after its job finishes.
+    if (
+        session.connection()
+        .execute(
+            text(
+                "SELECT EXISTS (SELECT 1 FROM procrastinate_jobs "
+                "WHERE task_name = 'profiles.draft_initial' "
+                "AND status IN ('todo', 'doing') AND args->>'org_id' = :org_id)"
             ),
+            {"org_id": str(org_id)},
         )
-    ).first():
+        .scalar_one()
+    ):
         raise HTTPException(409, "已有起草任务正在排队或执行")
     failed = set(
         session.exec(

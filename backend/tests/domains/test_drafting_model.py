@@ -30,6 +30,7 @@ from app.domains.model.client import (
 from app.domains.model.models import ModelSetting
 from app.domains.org.models import ExternalIdentity
 from app.domains.profile.models import ProfileProgress
+from app.worker.tasks import draft_initial
 from tests.api.routes.test_initial_profiles import work_queue
 from tests.api.routes.test_model_setting import (
     completions as model_completions,  # noqa: F401
@@ -470,3 +471,39 @@ def test_chatgpt_separate_setting_lock(
         )
     finally:
         isolated.dispose()
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_opt_out_after_queue_does_not_block_next_batch(
+    drafting: tuple, db: Session, request: pytest.FixtureRequest, enabled: bool
+) -> None:
+    org, _, _, employees, _ = drafting
+    replies, _ = request.getfixturevalue("model_completions")
+    replies.extend(['{"items":[]}'] * 9)
+    setting = db.get(ModelSetting, org)
+    setting.enabled = enabled
+    db.add(setting)
+    db.commit()
+    draft_initial.configure(
+        connection=db.connection().connection.driver_connection,
+        lock=f"initial-profiles:{employees[-1].org_id}",
+    ).defer(org_id=str(employees[-1].org_id), employee_ids=[])
+    db.commit()
+    assert service.queue_drafting(db, org, "all") == 5
+    employees[0].auto_draft_opt_out = True
+    db.add(employees[0])
+    db.commit()
+    with pytest.raises(HTTPException) as raised:
+        service.queue_drafting(db, org, "all")
+    assert raised.value.status_code == 409
+    db.rollback()
+    work_queue()
+    db.expire_all()
+    assert db.get(ProfileProgress, (org, employees[0].id)).inference_status == "pending"
+    employees[0].auto_draft_opt_out = False
+    db.add(employees[0])
+    db.commit()
+    assert service.queue_drafting(db, org, "all") == 5
+    work_queue()
+    db.expire_all()
+    assert service.read_progress(db, org).counts["generated"] == 5
