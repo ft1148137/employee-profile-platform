@@ -5,18 +5,19 @@ import type {
   OnChangeFn,
   PaginationState,
 } from "@tanstack/react-table"
+import { useCallback } from "react"
 import { AccountsService, type EmployeeAccount } from "@/client"
 import {
   DataTable,
   type DataTableFeatures,
 } from "@/components/Common/DataTable"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import useAuth from "@/hooks/useAuth"
 import { useOrg } from "@/hooks/useOrg"
 import { ConfirmActionDialog } from "./ConfirmActionDialog"
 import { accountLabels, employmentLabels, roleLabels } from "./labels"
-import { ResetPasswordDialog } from "./ResetPasswordDialog"
 
 export function AccountTable({
   data,
@@ -26,6 +27,7 @@ export function AccountTable({
   onSelect,
   pagination,
   onPaginationChange,
+  onResetPassword,
 }: {
   data: EmployeeAccount[]
   count: number
@@ -34,7 +36,17 @@ export function AccountTable({
   onSelect: (id: string, checked: boolean) => void
   pagination: PaginationState
   onPaginationChange: OnChangeFn<PaginationState>
+  onResetPassword: (employee: EmployeeAccount) => void
 }) {
+  const actions = useCallback(
+    ({ row }: CellContext<DataTableFeatures, EmployeeAccount>) => (
+      <AccountActions
+        employee={row.original}
+        onResetPassword={onResetPassword}
+      />
+    ),
+    [onResetPassword],
+  )
   const columns: ColumnDef<DataTableFeatures, EmployeeAccount>[] = [
     {
       id: "select",
@@ -97,13 +109,18 @@ export function AccountTable({
           )
           .join("、") || "—",
     },
-    { id: "actions", header: "操作", cell: AccountActions },
+    {
+      id: "actions",
+      header: "操作",
+      cell: actions,
+    },
   ]
   return (
     <div className="overflow-x-auto rounded-xl border">
       <DataTable
         columns={columns}
         data={data}
+        getRowId={(employee) => employee.id}
         rowCount={count}
         pagination={pagination}
         onPaginationChange={onPaginationChange}
@@ -113,8 +130,12 @@ export function AccountTable({
 }
 
 function AccountActions({
-  row: { original: e },
-}: CellContext<DataTableFeatures, EmployeeAccount>) {
+  employee: e,
+  onResetPassword,
+}: {
+  employee: EmployeeAccount
+  onResetPassword: (employee: EmployeeAccount) => void
+}) {
   const { user } = useAuth()
   const { org, roles } = useOrg()
   const client = useQueryClient()
@@ -127,12 +148,9 @@ function AccountActions({
   const disabled = e.account.status === "disabled"
   return (
     <div className="flex gap-2">
-      <ResetPasswordDialog
-        orgId={org.id}
-        userId={e.account.user_id}
-        name={e.display_name}
-        onSuccess={refresh}
-      />
+      <Button variant="outline" size="sm" onClick={() => onResetPassword(e)}>
+        重置密码
+      </Button>
       <ConfirmActionDialog
         title={disabled ? "启用" : "停用"}
         description={

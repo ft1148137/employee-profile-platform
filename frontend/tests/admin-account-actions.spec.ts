@@ -131,3 +131,105 @@ test("reset password once, disable and enable employee accounts", async ({
     await context.close()
   }
 })
+
+test("reset password survives refresh when the employee leaves the active filter", async ({
+  page,
+  request,
+}) => {
+  await logInUser(
+    page,
+    "admin@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  const token = await page.evaluate(() => localStorage.getItem("access_token"))
+  const headers = { Authorization: `Bearer ${token}` }
+  const memberships = await request.get("/api/v1/me/memberships", { headers })
+  const orgId = (await memberships.json())[0].org.id
+  const base = `/api/v1/orgs/${orgId}/accounts`
+  const employees = await request.get(base, { headers })
+  let employee = (await employees.json()).data.find(
+    (entry: { employee_code: string }) => entry.employee_code === "E08",
+  )
+  expect(employee).toBeTruthy()
+  if (!employee.account) {
+    const issued = await request.post(`${base}/issue`, {
+      headers,
+      data: { employee_ids: [employee.id] },
+    })
+    expect(issued.ok()).toBeTruthy()
+    const fresh = await request.get(base, { headers })
+    employee = (await fresh.json()).data.find(
+      (entry: { employee_code: string }) => entry.employee_code === "E08",
+    )
+  }
+  const enabled = await request.post(
+    `${base}/${employee.account.user_id}/enable`,
+    {
+      headers,
+    },
+  )
+  expect(enabled.ok()).toBeTruthy()
+  const initial = await request.post(
+    `${base}/${employee.account.user_id}/reset-password`,
+    {
+      headers,
+    },
+  )
+  expect(initial.ok()).toBeTruthy()
+  const initialPassword = (await initial.json()).initial_password
+  const login = await request.post("/api/v1/login/access-token", {
+    form: { username: "E08", password: initialPassword },
+  })
+  expect(login.ok()).toBeTruthy()
+  const changed = await request.patch("/api/v1/users/me/password", {
+    headers: { Authorization: `Bearer ${(await login.json()).access_token}` },
+    data: {
+      current_password: initialPassword,
+      new_password: "synthetic-e08-password-2026",
+    },
+  })
+  expect(changed.ok()).toBeTruthy()
+
+  await page.goto("/admin/accounts")
+  await page.getByRole("combobox", { name: "账号状态筛选" }).click()
+  await page.getByRole("option", { name: "正常", exact: true }).click()
+  const row = page.getByRole("row").filter({
+    has: page.getByRole("cell", { name: "E08", exact: true }),
+  })
+  await expect(row).toContainText("正常")
+  await row.getByRole("button", { name: "重置密码" }).click()
+  const dialog = page.getByRole("dialog")
+  await dialog.getByRole("button", { name: "确认重置密码" }).click()
+  const password = dialog.getByRole("textbox", { name: "新密码" })
+  await expect(password).not.toHaveValue("")
+  const newPassword = await password.inputValue()
+  const refreshed = page.waitForResponse(
+    (response) =>
+      response.url().includes(`${base}?`) &&
+      new URL(response.url()).searchParams.get("status") === "active" &&
+      response.request().method() === "GET",
+  )
+  await page.evaluate(() => window.dispatchEvent(new Event("visibilitychange")))
+  const response = await refreshed
+  expect(response.ok()).toBeTruthy()
+  expect(
+    (await response.json()).data.some(
+      (entry: { employee_code: string }) => entry.employee_code === "E08",
+    ),
+  ).toBeFalsy()
+  await expect(row).toHaveCount(0)
+  await expect(dialog.getByRole("heading")).toHaveText(
+    `重置密码 · ${employee.display_name}`,
+  )
+  await expect(dialog.getByText("登录名：E08", { exact: true })).toBeVisible()
+  await expect(
+    dialog.getByText(`姓名：${employee.display_name}`, { exact: true }),
+  ).toBeVisible()
+  await expect(password).toHaveValue(newPassword)
+  await dialog
+    .getByRole("button", { name: "关闭", exact: true })
+    .first()
+    .click()
+  await expect(page.getByRole("dialog")).toHaveCount(0)
+  await expect(page.locator(`input[value="${newPassword}"]`)).toHaveCount(0)
+})

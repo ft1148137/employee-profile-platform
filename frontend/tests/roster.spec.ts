@@ -108,4 +108,12 @@ test("roster errors, correction, transfer, mass deactivation and stale preview a
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBeTruthy()
+  await upload.setInputFiles(file(original))
+  await expect(
+    preview.getByText("恢复在职 6 人", { exact: true }),
+  ).toBeVisible()
+  const reactivationWarning =
+    preview.getByText(/恢复在职的 6 名员工账号仍然停用/)
+  await expect(reactivationWarning).toHaveCount(1)
+  await expect(reactivationWarning).toBeVisible()
 })

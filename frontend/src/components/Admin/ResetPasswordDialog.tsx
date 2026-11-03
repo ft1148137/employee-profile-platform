@@ -16,14 +16,15 @@ export function ResetPasswordDialog({
   orgId,
   userId,
   name,
-  onSuccess,
+  open,
+  onClose,
 }: {
   orgId: string
   userId: string
   name: string
-  onSuccess: () => void
+  open: boolean
+  onClose: () => void
 }) {
-  const [open, setOpen] = useState(false)
   const [copyMessage, setCopyMessage] = useState("")
   const passwordId = useId()
   const password = useRef<HTMLInputElement>(null)
@@ -35,13 +36,14 @@ export function ResetPasswordDialog({
         })
       ).data,
     gcTime: 0,
-    onSuccess,
   })
   function changeOpen(value: boolean) {
     if (mutation.isPending) return
-    if (!value) mutation.reset()
-    setCopyMessage("")
-    setOpen(value)
+    if (!value) {
+      mutation.reset()
+      setCopyMessage("")
+      onClose()
+    }
   }
   async function copy() {
     if (!mutation.data) return
@@ -65,9 +67,6 @@ export function ResetPasswordDialog({
   }
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
-      <Button variant="outline" size="sm" onClick={() => changeOpen(true)}>
-        重置密码
-      </Button>
       <DialogContent showCloseButton={!mutation.isPending}>
         <DialogHeader>
           <DialogTitle>重置密码 · {name}</DialogTitle>

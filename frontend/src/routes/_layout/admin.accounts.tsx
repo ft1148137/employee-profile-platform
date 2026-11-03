@@ -1,7 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
-import { AccountsService, type EmploymentStatus, OrgsService } from "@/client"
+import {
+  AccountsService,
+  type EmployeeAccount,
+  type EmploymentStatus,
+  OrgsService,
+} from "@/client"
 import { AccountTable } from "@/components/Admin/AccountTable"
 import { departmentOptions } from "@/components/Admin/departments"
 import { IssueAccountsDialog } from "@/components/Admin/IssueAccountsDialog"
@@ -10,6 +15,7 @@ import {
   accountLabels,
   employmentLabels,
 } from "@/components/Admin/labels"
+import { ResetPasswordDialog } from "@/components/Admin/ResetPasswordDialog"
 import { OrgState } from "@/components/Profile/OrgState"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -41,6 +47,9 @@ function AccountsList({ orgId }: { orgId: string }) {
   const [employment, setEmployment] = useState<EmploymentStatus | "all">("all")
   const [search, setSearch] = useState("")
   const [q, setQ] = useState("")
+  const [passwordTarget, setPasswordTarget] = useState<EmployeeAccount | null>(
+    null,
+  )
   const [selected, setSelected] = useState<string[]>([])
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 50 })
   function reset() {
@@ -123,6 +132,18 @@ function AccountsList({ orgId }: { orgId: string }) {
           />
         )}
       </div>
+      {passwordTarget?.account && (
+        <ResetPasswordDialog
+          orgId={orgId}
+          userId={passwordTarget.account.user_id}
+          name={passwordTarget.display_name}
+          open={true}
+          onClose={() => {
+            setPasswordTarget(null)
+            client.invalidateQueries({ queryKey: ["accounts", orgId] })
+          }}
+        />
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <Input
           className="max-w-xs"
@@ -182,6 +203,7 @@ function AccountsList({ orgId }: { orgId: string }) {
       ) : (
         <AccountTable
           data={accounts.data.data}
+          onResetPassword={setPasswordTarget}
           count={accounts.data.count}
           departments={new Map(options.map((d) => [d.id, d.name]))}
           selected={selected}

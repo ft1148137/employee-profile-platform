@@ -20,7 +20,7 @@ const fieldLabels = {
 
 export function RosterPreview({ preview }: { preview: RosterImportPreview }) {
   const errors = preview.issues.filter((issue) => issue.severity === "error")
-  const warnings = [...preview.issues, ...preview.warnings].filter(
+  const warnings = preview.issues.filter(
     (issue) => issue.severity === "warning",
   )
   return (
@@ -54,13 +54,6 @@ export function RosterPreview({ preview }: { preview: RosterImportPreview }) {
               { accessorKey: "message", header: "问题" },
             ]}
           />
-        </div>
-      )}
-      {preview.blockers.length > 0 && (
-        <div role="alert" className="text-destructive">
-          {preview.blockers.map((message) => (
-            <p key={message}>{message}</p>
-          ))}
         </div>
       )}
       {warnings.length > 0 && (
