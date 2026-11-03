@@ -1,7 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { useState } from "react"
-import { SetupService } from "@/client"
+import {
+  ModelSettingService,
+  type ModelSettingUpdateWritable,
+  SetupService,
+} from "@/client"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { useSetup } from "@/hooks/useSetup"
@@ -20,15 +24,33 @@ export function WizardFrame({ orgId }: { orgId: string }) {
   const index = steps.findIndex((item) => item.key === step?.key)
   const Component = step ? setupSteps[step.key] : undefined
   const update = useMutation({
-    mutationFn: ({ key, skip }: { key: string; skip?: boolean }) =>
-      (skip ? SetupService.skipStep : SetupService.completeStep)({
+    mutationFn: async ({ key, skip }: { key: string; skip?: boolean }) => {
+      if (skip && key === "model") {
+        const path = { org_id: orgId }
+        const { data } = await ModelSettingService.settingGetModelSetting({
+          path,
+        })
+        if (data.enabled)
+          await ModelSettingService.settingPutModelSetting({
+            path,
+            body: {
+              enabled: false,
+              kind: data.kind as ModelSettingUpdateWritable["kind"],
+              model: data.model,
+              base_url: data.base_url,
+              reasoning_effort: data.reasoning_effort,
+            },
+          })
+      }
+      return (skip ? SetupService.skipStep : SetupService.completeStep)({
         path: { org_id: orgId, key },
-      }),
+      })
+    },
     onSuccess: ({ data }, { key }) => {
       const completedIndex = steps.findIndex((item) => item.key === key)
       client.setQueryData(["setup", orgId], data)
       setSelected(
-        data.completed
+        data.completed && !data.next_step_key
           ? null
           : (steps[completedIndex + 1]?.key ?? data.next_step_key),
       )

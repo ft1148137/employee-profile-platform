@@ -110,7 +110,23 @@ test("complete setup with 30 employees, download accounts and first employee log
   await expect(page.getByText("部门经理已保存。")).toBeVisible()
   await expect(managers.locator("..")).toContainText("当前经理：欧阳宁")
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await page.getByLabel("模型类型").selectOption("local")
+  await page.getByLabel("启用模型").check()
+  await page.getByLabel("模型名", { exact: true }).fill("ollama_chat/synthetic")
+  await page.getByLabel(/base URL/).fill("http://mock-jira:8080")
+  const modelSaved = page.waitForResponse(
+    (r) => r.url().endsWith("/model-setting") && r.request().method() === "PUT",
+  )
+  await page.getByRole("button", { name: "保存", exact: true }).click()
+  const modelUrl = (await modelSaved).url()
   await page.getByRole("button", { name: "跳过，用关键词规则起草" }).click()
+  const accessToken = await page.evaluate(() =>
+    localStorage.getItem("access_token"),
+  )
+  const modelSetting = await request.get(modelUrl, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  expect((await modelSetting.json()).enabled).toBe(false)
   await expect(page.getByRole("heading", { name: "设置完成" })).toBeVisible()
   await expect(
     page.getByRole("link", { name: "员工列表", exact: true }),

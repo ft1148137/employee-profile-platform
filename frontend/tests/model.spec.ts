@@ -7,6 +7,8 @@ test("model kinds, saved secret, destination changes and disabling preserve conf
   page,
   request,
 }) => {
+  test.setTimeout(60000)
+  await page.setViewportSize({ width: 375, height: 812 })
   const initialized = await request.post("/api/v1/private/setup-tokens", {
     data: { purpose: "new_org" },
   })
@@ -45,6 +47,10 @@ test("model kinds, saved secret, destination changes and disabling preserve conf
   expect(body).not.toContain("ciphertext")
   await page.reload()
   await expect(page.getByPlaceholder("已保存，留空表示不修改")).toBeVisible()
+  await page.screenshot({
+    path: "test-results/model-setting.png",
+    fullPage: true,
+  })
   await page.getByRole("button", { name: "测试连接" }).click()
   await expect(page.getByRole("alert")).toContainText("连不上", {
     timeout: 45000,
@@ -76,9 +82,7 @@ test("model kinds, saved secret, destination changes and disabling preserve conf
   await expect(page.getByLabel(/密钥/)).toHaveCount(0)
 })
 
-test("ChatGPT device login, expiry, connection and disconnect never display tokens", async ({
-  page,
-}) => {
+test("ChatGPT device login, connection and disconnect", async ({ page }) => {
   await logInUser(
     page,
     "admin@demo.example.com",
@@ -152,3 +156,36 @@ for (const role of ["manager", "employee"])
     await expect(page.getByRole("alert")).toHaveText("需要企业管理员权限")
     await expect(page.getByLabel("模型类型")).toHaveCount(0)
   })
+
+test("local Codex mode shows its status without device login", async ({
+  page,
+}) => {
+  await logInUser(
+    page,
+    "admin@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  await page.route("**/model-setting", async (route) => {
+    const response = await route.fetch()
+    await route.fulfill({
+      json: {
+        ...(await response.json()),
+        kind: "chatgpt_subscription",
+        model: "chatgpt/gpt-6.1-sol",
+        local_codex: true,
+      },
+    })
+  })
+  let loginCalls = 0
+  page.on("request", (request) => {
+    if (request.url().endsWith("/chatgpt/login")) loginCalls++
+  })
+  await page.goto("/admin/model")
+  await expect(
+    page.getByText("正在使用本机 Codex 登录（开发模式）"),
+  ).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "连接 ChatGPT", exact: true }),
+  ).toHaveCount(0)
+  expect(loginCalls).toBe(0)
+})
