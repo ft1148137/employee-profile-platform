@@ -232,8 +232,13 @@ def shared_demo(
             org_ids = [org_id, foreign_org_id]
             user_ids = list(
                 db.exec(
-                    select(OrgMembership.user_id).where(
-                        OrgMembership.org_id.in_(org_ids)
+                    select(User.id).where(
+                        User.email.in_(
+                            [
+                                account.email
+                                for account in read_bundle(path).org.accounts
+                            ]
+                        )
                     )
                 ).all()
             )
