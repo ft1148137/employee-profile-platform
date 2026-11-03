@@ -10,6 +10,7 @@ from app.domains.change_request.models import (
     ChangeItemEvidence,
     ProfileChangeRequest,
 )
+from app.domains.drafting.models import DraftingSetting
 from app.domains.evidence.models import Evidence
 from app.domains.model.models import ModelSetting
 from app.domains.org.models import (
@@ -53,6 +54,7 @@ def delete_test_organization(session: Session, org_id: UUID) -> None:
     for model in (
         SetupStepState,
         ModelSetting,
+        DraftingSetting,
         SourceConnection,
         AuditEvent,
         ChangeItemEvidence,
