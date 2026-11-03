@@ -133,6 +133,9 @@ def test_cli_actor_migration(migration_engine: Engine) -> None:
         result = migrate(action, revision)
         assert result.returncode == 0, result.stderr
     with Session(migration_engine) as session:
+        version_before = session.execute(
+            text("SELECT version_num FROM alembic_version")
+        ).scalar_one()
         event = AuditEvent(
             actor_type=ActorKind.CLI,
             actor_id=None,
@@ -151,5 +154,5 @@ def test_cli_actor_migration(migration_engine: Engine) -> None:
             session.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            == "e35a91c7d024"
+            == version_before
         )

@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from sqlalchemy import text
 from sqlmodel import Session, col, delete, select
 
 from app.domains.audit.models import AuditEvent
@@ -62,6 +63,8 @@ def delete_test_organization(session: Session, org_id: UUID) -> None:
         Employee,
         Department,
     ):
+        if model is Evidence:
+            session.execute(text("SET LOCAL app.allow_evidence_delete = 'on'"))
         session.execute(delete(model).where(model.org_id == org_id))
     session.delete(org)
     session.commit()

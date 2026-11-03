@@ -11,6 +11,8 @@ from sqlmodel import Session, col, func, select
 
 from app.authz.policies import can_view_evidence_content, employee_scope_clause
 from app.authz.principal import Principal
+from app.domains.audit.models import ActorKind
+from app.domains.audit.service import record_audit
 from app.domains.capability.models import CapabilityDefinition
 from app.domains.evidence.models import (
     Evidence,
@@ -214,14 +216,6 @@ def append_evidence(
     event_id: UUID | None = None,
 ) -> tuple[Evidence, bool]:
     """Append idempotently, including concurrent writers; leave commit to the caller."""
-    canonical = json.dumps(
-        content,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-        allow_nan=False,
-    )
-    content_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     evidence = Evidence(
         org_id=org_id,
         subject_employee_id=subject_employee_id,
@@ -234,8 +228,23 @@ def append_evidence(
         provenance=provenance,
         occurred_at=occurred_at,
         event_id=event_id,
-        content_hash=content_hash,
+        content_hash=_content_hash(content),
     )
+    return _append_evidence(session, evidence)
+
+
+def _content_hash(content: dict[str, JsonValue]) -> str:
+    canonical = json.dumps(
+        content,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _append_evidence(session: Session, evidence: Evidence) -> tuple[Evidence, bool]:
     statement = (
         insert(Evidence)
         .values(**evidence.model_dump())
@@ -247,10 +256,120 @@ def append_evidence(
         return inserted, True
     existing = session.exec(
         select(Evidence).where(
-            Evidence.org_id == org_id,
-            Evidence.source == source,
-            Evidence.source_ref == source_ref,
-            Evidence.content_hash == content_hash,
+            Evidence.org_id == evidence.org_id,
+            Evidence.source == evidence.source,
+            Evidence.source_ref == evidence.source_ref,
+            Evidence.subject_employee_id == evidence.subject_employee_id,
+            Evidence.content_hash == evidence.content_hash,
         )
     ).one()
     return existing, False
+
+
+class InactiveEvidence(ValueError):
+    """Only active evidence may be superseded or retracted."""
+
+
+class DuplicateEvidenceContent(ValueError):
+    """A correction must not reuse content from an existing evidence row."""
+
+
+def _lock_active_evidence(session: Session, evidence: Evidence) -> Evidence:
+    # Refresh cached instances after a concurrent writer releases the row lock.
+    locked = session.exec(
+        select(Evidence)
+        .where(Evidence.org_id == evidence.org_id, Evidence.id == evidence.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
+    if locked.status != EvidenceStatus.ACTIVE:
+        raise InactiveEvidence("Evidence is no longer active")
+    return locked
+
+
+def supersede_evidence(
+    session: Session,
+    *,
+    original: Evidence,
+    content: dict[str, JsonValue],
+    title: str,
+    occurred_at: datetime | None,
+    event_id: UUID | None,
+    provenance: dict[str, JsonValue],
+    reason: str,
+    actor_type: ActorKind,
+    actor_id: str | None,
+) -> Evidence:
+    """Append a correction and audit in the caller's transaction."""
+    original = _lock_active_evidence(session, original)
+    content_hash = _content_hash(content)
+    if content_hash == original.content_hash:
+        return original
+    correction, created = _append_evidence(
+        session,
+        Evidence(
+            org_id=original.org_id,
+            subject_employee_id=original.subject_employee_id,
+            kind=original.kind,
+            source=original.source,
+            source_ref=original.source_ref,
+            visibility=original.visibility,
+            supersedes_evidence_id=original.id,
+            content=content,
+            content_hash=content_hash,
+            title=title,
+            occurred_at=occurred_at,
+            event_id=event_id,
+            provenance=provenance,
+        ),
+    )
+    if not created:
+        raise DuplicateEvidenceContent("Correction content already exists")
+    original.status = EvidenceStatus.SUPERSEDED
+    original.status_reason = reason
+    record_audit(
+        session,
+        org_id=original.org_id,
+        actor_type=actor_type,
+        actor_id=actor_id,
+        action="evidence.superseded",
+        target_type="evidence",
+        target_id=str(original.id),
+        details={
+            "original_evidence_id": str(original.id),
+            "new_evidence_id": str(correction.id),
+            "reason": reason,
+            "source": original.source,
+            "source_ref": original.source_ref,
+        },
+    )
+    return correction
+
+
+def retract_evidence(
+    session: Session,
+    *,
+    evidence: Evidence,
+    reason: str,
+    actor_type: ActorKind,
+    actor_id: str | None,
+) -> None:
+    """Retract active evidence and audit in the caller's transaction."""
+    evidence = _lock_active_evidence(session, evidence)
+    evidence.status = EvidenceStatus.RETRACTED
+    evidence.status_reason = reason
+    record_audit(
+        session,
+        org_id=evidence.org_id,
+        actor_type=actor_type,
+        actor_id=actor_id,
+        action="evidence.retracted",
+        target_type="evidence",
+        target_id=str(evidence.id),
+        details={
+            "original_evidence_id": str(evidence.id),
+            "reason": reason,
+            "source": evidence.source,
+            "source_ref": evidence.source_ref,
+        },
+    )
