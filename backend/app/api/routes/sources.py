@@ -123,6 +123,7 @@ def list_sync_runs(
     principal: OrgAdminDep,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
+    kind: Literal["jira", "csv"] | None = None,
 ) -> SyncRunsPublic:
     query = (
         select(SyncRun, SourceConnection.kind)
@@ -133,6 +134,8 @@ def list_sync_runs(
         )
         .where(SyncRun.org_id == principal.org_id)
     )
+    if kind is not None:
+        query = query.where(SourceConnection.kind == kind)
     count = session.exec(select(func.count()).select_from(query.subquery())).one()
     rows = session.exec(
         query.order_by(col(SyncRun.created_at).desc(), col(SyncRun.id).desc())

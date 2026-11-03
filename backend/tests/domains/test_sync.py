@@ -252,6 +252,26 @@ def test_csv_api_and_worker(context: tuple, client: TestClient, db: Session) -> 
             run = run_sync(db, org, run_id)
         assert run.status == "succeeded" and run.counts["records"] == 32
         assert run.counts["tasks_added"] == (32 if index == 0 else 0)
+    jira_connection = db.exec(
+        select(SourceConnection).where(
+            SourceConnection.org_id == org, SourceConnection.kind == "jira"
+        )
+    ).one()
+    old_jira = SyncRun(
+        org_id=org,
+        connection_id=jira_connection.id,
+        requested_by_user_id=users[0].id,
+        status="succeeded",
+        created_at=utc_now() - timedelta(days=2),
+    )
+    db.add(old_jira)
+    db.commit()
+    for kind, expected_id, count in (("jira", str(old_jira.id), 1), ("csv", run_id, 2)):
+        listing = client.get(
+            base + f"/sync-runs?kind={kind}&limit=1", headers=auth
+        ).json()
+        assert listing["count"] == count and listing["data"][0]["id"] == expected_id
+    assert client.get(base + "/sync-runs?kind=unknown", headers=auth).status_code == 422
     for fmt, mime in (
         ("csv", "text/csv"),
         ("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
