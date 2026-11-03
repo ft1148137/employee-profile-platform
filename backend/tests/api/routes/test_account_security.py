@@ -4,6 +4,7 @@ from unittest.mock import patch
 import jwt
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import Engine, inspect
 from sqlmodel import Session, select
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
@@ -192,10 +193,14 @@ def test_invalid_tokens(client: TestClient, db: Session, account: User) -> None:
         )
 
 
-@pytest.mark.usefixtures("migration_engine")
-def test_login_attempt_migration() -> None:
+def test_login_attempt_migration(migration_engine: Engine) -> None:
     import subprocess
     import sys
 
-    subprocess.run([sys.executable, "-m", "alembic", "downgrade", "-1"], check=True)
+    assert inspect(migration_engine).has_table("login_attempt")
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "downgrade", "a51b093e72c4"], check=True
+    )
+    assert not inspect(migration_engine).has_table("login_attempt")
     subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+    assert inspect(migration_engine).has_table("login_attempt")
