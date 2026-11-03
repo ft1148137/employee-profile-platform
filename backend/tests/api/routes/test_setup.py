@@ -1,5 +1,4 @@
 import hashlib
-import subprocess
 import sys
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
@@ -25,6 +24,7 @@ from app.domains.setup.models import SetupPurpose, SetupToken
 from app.domains.setup.schemas import InitializeInput
 from app.main import app
 from app.models import User
+from tests.utils.migrations import migrate
 
 PREFIX = settings.API_V1_STR
 PAYLOAD = {
@@ -324,9 +324,7 @@ def test_cli(
 
 def test_migration_roundtrip(migration_engine: Engine) -> None:
     assert "setup_token" in inspect(migration_engine).get_table_names()
-    subprocess.run(
-        [sys.executable, "-m", "alembic", "downgrade", "d73e295a94f6-1"], check=True
-    )
+    migrate(migration_engine, "downgrade", "d73e295a94f6-1")
     assert "setup_token" not in inspect(migration_engine).get_table_names()
-    subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+    migrate(migration_engine, "upgrade", "head")
     assert "setup_token" in inspect(migration_engine).get_table_names()

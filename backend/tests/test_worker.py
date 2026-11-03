@@ -1,6 +1,4 @@
 import asyncio
-import subprocess
-import sys
 
 from sqlalchemy import Engine, inspect, text
 from sqlmodel import Session
@@ -8,6 +6,7 @@ from sqlmodel import Session
 from app.core.db import engine
 from app.worker.app import app
 from app.worker.tasks import ping
+from tests.utils.migrations import migrate
 
 
 def test_ping_job_succeeds(db: Session) -> None:
@@ -31,9 +30,7 @@ def test_ping_job_succeeds(db: Session) -> None:
 def test_worker_migration_roundtrip(db: Session, migration_engine: Engine) -> None:
     engine = migration_engine
     db.rollback()
-    subprocess.run(
-        [sys.executable, "-m", "alembic", "downgrade", "84c2e7d91a60"], check=True
-    )
+    migrate(migration_engine, "downgrade", "84c2e7d91a60")
     try:
         assert {"user", "organization", "evidence"} <= set(
             inspect(engine).get_table_names()
@@ -60,5 +57,5 @@ def test_worker_migration_roundtrip(db: Session, migration_engine: Engine) -> No
                 == 0
             )
     finally:
-        subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], check=True)
+        migrate(migration_engine, "upgrade", "head")
     assert "procrastinate_jobs" in inspect(engine).get_table_names()
