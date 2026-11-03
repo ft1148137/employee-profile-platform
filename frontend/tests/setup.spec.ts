@@ -110,6 +110,14 @@ test("complete setup with 30 employees, download accounts and first employee log
   await expect(page.getByText("部门经理已保存。")).toBeVisible()
   await expect(managers.locator("..")).toContainText("当前经理：欧阳宁")
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await expect(
+    page.getByRole("heading", { name: "确认账号对应" }),
+  ).toBeVisible()
+  await expect(page.getByRole("tab", { name: "未关联（0）" })).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "跳过", exact: true }),
+  ).toBeVisible()
+  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
   await page.getByLabel("模型类型").selectOption("local")
   await page.getByLabel("启用模型").check()
   await page.getByLabel("模型名", { exact: true }).fill("ollama_chat/synthetic")

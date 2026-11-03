@@ -87,6 +87,7 @@ export function AppSidebar() {
                 { icon: Users, title: "导入名单", path: "/admin/roster" },
                 { icon: Users, title: "员工与账号", path: "/admin/accounts" },
                 { icon: Users, title: "角色", path: "/admin/roles" },
+                { icon: Users, title: "账号对应", path: "/admin/identities" },
                 {
                   icon: Settings,
                   title: "自动起草设置",

@@ -138,6 +138,15 @@ STEPS = [
         check_accounts,
     ),
     SetupStep(
+        "identities",
+        "确认账号对应",
+        "把 Jira 和工作记录里的账号对应到员工",
+        60,
+        False,
+        True,
+        check_org_profile,
+    ),
+    SetupStep(
         "model",
         "配置模型",
         "启用模型或跳过使用关键词规则",
