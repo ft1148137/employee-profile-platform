@@ -208,7 +208,8 @@ test("new enterprise imports Jira, drafts in setup and shows the employee their 
 test("progress shows pause, exclusions and failures; retries and confirmation use the right scope", async ({
   page,
 }) => {
-  let counts = { generated: 2, failed: 1, excluded: 3 }
+  // A saved pending row must not block restarting after its worker has stopped.
+  let counts = { generated: 2, failed: 1, excluded: 3, pending: 1 }
   await page.route("**/initial-profiles/progress", (route) =>
     route.fulfill({
       json: {
@@ -298,7 +299,7 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
   await expect(
     page.getByRole("alert").filter({ hasText: "已有同步在进行" }),
   ).toBeVisible()
-  counts = { generated: 3, failed: 0, excluded: 3 }
+  counts = { generated: 3, failed: 0, excluded: 3, pending: 0 }
   await expect(
     page.getByRole("region", { name: "初始画像起草进度" }).getByRole("status"),
   ).toContainText("已为 3 名员工生成初始画像", { timeout: 15000 })

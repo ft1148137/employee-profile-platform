@@ -28,6 +28,7 @@ export function DraftProgress({
       (await InitialProfilesService.profilesProgress({ path })).data,
     refetchInterval: 5000,
   })
+  // Saved pending progress can outlive its job; the API rejects concurrent drafts.
   const draft = useMutation({
     mutationFn: (scope: "all" | "failed") =>
       InitialProfilesService.profilesDraft({ path, body: { scope } }),
@@ -37,9 +38,6 @@ export function DraftProgress({
     },
   })
   const data = progress.data
-  // S12 adds pause fields; older servers omit them.
-  const pausedUntil = data && "paused_until" in data ? data.paused_until : null
-  const pauseReason = data && "pause_reason" in data ? data.pause_reason : null
   const counts = data?.counts ?? {}
   const busy = !!(counts.pending || counts.running)
   const generated =
@@ -55,16 +53,15 @@ export function DraftProgress({
       {data && (
         <>
           <p>当前方式：{data.mode === "model" ? "模型" : "关键词规则"}</p>
-          {typeof pausedUntil === "string" && (
+          {data.paused_until && (
             <div
               role="alert"
               className="rounded-lg border border-amber-500 bg-amber-50 p-4 text-amber-950"
             >
+              <p>{data.pause_reason ?? "起草暂时暂停"}</p>
               <p>
-                {typeof pauseReason === "string" ? pauseReason : "起草暂时暂停"}
-              </p>
-              <p>
-                预计 {new Date(pausedUntil).toLocaleString("zh-CN")} 自动继续
+                预计 {new Date(data.paused_until).toLocaleString("zh-CN")}{" "}
+                自动继续
               </p>
             </div>
           )}
@@ -109,7 +106,7 @@ export function DraftProgress({
       )}
       <div className="flex flex-wrap gap-3">
         <Button
-          disabled={draft.isPending || busy || !data}
+          disabled={draft.isPending || !data}
           onClick={() => {
             if (
               wizard ||
@@ -122,7 +119,7 @@ export function DraftProgress({
         </Button>
         <Button
           variant="outline"
-          disabled={draft.isPending || busy || !counts.failed}
+          disabled={draft.isPending || !counts.failed}
           onClick={() => draft.mutate("failed")}
         >
           重试失败的
