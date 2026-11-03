@@ -47,3 +47,28 @@ role grants authorize organization administration or department management.
 Tenant integrity is checked even for direct SQL writes. Explicit scoped queries
 replace composite ORM relationships. Changes to dictionary definitions require a
 new version; changes to evidence require correction records and audit history.
+
+## Revision: M2 evidence protocol (NERE-52)
+
+- Evidence uniqueness is now `(org_id, source, source_ref, subject_employee_id,
+  content_hash)`. One external record can support multiple employees even when
+  their evidence content is identical; appends remain idempotent per employee.
+- `supersede_evidence` locks and refreshes the original row with `SELECT FOR
+  UPDATE`, requires `active`, appends a correction with the same attribution and
+  visibility, then marks the original `superseded` with a reason. Identical content
+  returns the original without changes; content already present in any other row,
+  including inactive history, raises `DuplicateEvidenceContent`. Repeated
+  corrections form a chain. `retract_evidence` locks the row, requires `active`,
+  and marks it `retracted` with a reason. Both leave commit/rollback to callers.
+- Each transition appends `evidence.superseded` or `evidence.retracted` audit
+  events in the same transaction, targeting the original evidence. Details contain
+  IDs, reason and source only, never evidence content.
+- PostgreSQL triggers reject changes to every column except `status` and
+  `status_reason`, allow status transitions only from `active` to `superseded` or
+  `retracted`, and reject deletes. Only test organization cleanup uses
+  `SET LOCAL app.allow_evidence_delete = 'on'`; this transaction-local escape
+  hatch is not an application or administrator API. Audit insertion is enforced
+  by the services; database append-only enforcement for audit events is deferred.
+- Downgrade removes these triggers and restores the old unique key. It fails
+  without deleting data if multiple employees already share source/reference/hash.
+  Restore drops and rebuilds the schema, so it does not need the delete switch.

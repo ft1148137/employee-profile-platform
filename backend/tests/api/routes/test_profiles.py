@@ -218,8 +218,15 @@ def test_profiles_versions_and_query_bound(
 
 
 @pytest.mark.parametrize("kind", list(EvidenceKind))
+@pytest.mark.parametrize(
+    "status", [EvidenceStatus.RETRACTED, EvidenceStatus.SUPERSEDED]
+)
 def test_inactive_and_pagination(
-    demo: tuple, client: TestClient, db: Session, kind: EvidenceKind
+    demo: tuple,
+    client: TestClient,
+    db: Session,
+    kind: EvidenceKind,
+    status: EvidenceStatus,
 ) -> None:
     url, employees, auth = demo
     employee = employees["E02"]
@@ -242,7 +249,7 @@ def test_inactive_and_pagination(
         visibility=original.visibility,
         provenance={},
     )
-    evidence.status = EvidenceStatus.RETRACTED
+    evidence.status = status
     evidence.status_reason = "Synthetic test fixture"
     db.commit()
     base = f"{url}/employees/{employee.id}/evidence"

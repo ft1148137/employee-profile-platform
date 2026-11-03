@@ -160,6 +160,17 @@ def test_evidence_idempotency_and_tenant_boundary(session: Session, rows: Rows) 
         == hashlib.sha256('{"a":"示例","b":{"a":1,"z":2}}'.encode()).hexdigest()
     )
     assert first.id.version == 7 and first.created_at.utcoffset().total_seconds() == 0
+    other = Employee(org_id=a.id, display_name="Another synthetic employee")
+    session.add(other)
+    session.flush()
+    third, created = append(
+        subject_employee_id=other.id, title="Other employee", content=first.content
+    )
+    assert created and third.id != first.id
+    repeated, created = append(
+        subject_employee_id=other.id, title="Duplicate", content=first.content
+    )
+    assert not created and repeated.id == third.id
     with pytest.raises(IntegrityError) as error, session.begin_nested():
         append(org_id=b.id, title="Wrong tenant", content={})
     assert error.value.orig.sqlstate == "23503"  # type: ignore[attr-defined]

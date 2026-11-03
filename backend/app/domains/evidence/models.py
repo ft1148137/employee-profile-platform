@@ -37,7 +37,12 @@ class Evidence(TenantRecord, table=True):
     __table_args__ = (
         UniqueConstraint("org_id", "id"),
         UniqueConstraint(
-            "org_id", "source", "source_ref", "content_hash", name="uq_evidence_content"
+            "org_id",
+            "source",
+            "source_ref",
+            "subject_employee_id",
+            "content_hash",
+            name="uq_evidence_content",
         ),
         tenant_fk("subject_employee_id", "employee"),
         tenant_fk("event_id", "work_event"),
