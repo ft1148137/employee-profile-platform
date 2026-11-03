@@ -150,7 +150,15 @@ test("initialize, preview and replace dictionary, persist progress and reject re
   await expect(page).toHaveURL("/setup")
   await expect(page.getByLabel("管理员登录名")).toHaveValue("admin")
   await fillSetup(page)
-  await expectChineseCopy(page)
+  const username = page.getByLabel("管理员登录名", { exact: true })
+  const validUsername = await username.inputValue()
+  await username.fill("it@example.com")
+  await page.getByRole("button", { name: "创建企业并继续" }).click()
+  await expect(page.getByRole("alert")).toHaveText(
+    "管理员登录名不能包含 @，请用字母或数字，例如 admin",
+  )
+  await username.fill(validUsername)
+  await expectChineseCopy(page, ["admin"])
   await page.screenshot({
     path: testInfo.outputPath("setup-initialize.png"),
     fullPage: true,

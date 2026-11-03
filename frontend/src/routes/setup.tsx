@@ -65,7 +65,9 @@ function Initialize() {
   const invalid =
     !token ||
     (mutation.error instanceof AxiosError &&
-      mutation.error.response?.status === 400)
+      mutation.error.response?.status === 400 &&
+      mutation.error.response?.data?.detail ===
+        "初始化链接无效或已过期，请联系部署人员重新获取")
   return (
     <AuthLayout>
       <h1 className="mb-2 text-2xl font-bold">欢迎设置你的企业</h1>
