@@ -5,6 +5,7 @@ from sqlmodel import Session, col, delete, select
 from app.domains.audit.models import AuditEvent
 from app.domains.capability.models import CapabilityDefinition, CapabilitySchemaVersion
 from app.domains.evidence.models import Evidence
+from app.domains.model.models import ModelSetting
 from app.domains.org.models import (
     Department,
     Employee,
@@ -44,6 +45,7 @@ def delete_test_organization(session: Session, org_id: UUID) -> None:
         raise ValueError("Only a test-owned organization may be deleted")
     for model in (
         SetupStepState,
+        ModelSetting,
         AuditEvent,
         ClaimEvidence,
         ProfileVersion,

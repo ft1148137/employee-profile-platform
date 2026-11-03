@@ -394,6 +394,20 @@ export type ClaimReviewStatus = 'candidate' | 'pending_employee' | 'pending_mana
 export type Confidence = 'low' | 'medium' | 'high';
 
 /**
+ * ConnectionTest
+ */
+export type ConnectionTest = {
+    /**
+     * Ok
+     */
+    ok: boolean;
+    /**
+     * Message
+     */
+    message: string;
+};
+
+/**
  * DepartmentNode
  */
 export type DepartmentNode = {
@@ -888,6 +902,62 @@ export type Message = {
      * Message
      */
     message: string;
+};
+
+/**
+ * ModelSettingPublic
+ */
+export type ModelSettingPublic = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Kind
+     */
+    kind?: string | null;
+    /**
+     * Model
+     */
+    model?: string | null;
+    /**
+     * Base Url
+     */
+    base_url?: string | null;
+    /**
+     * Has Api Key
+     */
+    has_api_key?: boolean;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+};
+
+/**
+ * ModelSettingUpdate
+ */
+export type ModelSettingUpdate = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
+    /**
+     * Kind
+     */
+    kind?: 'cloud_api' | 'local' | 'openai_compatible' | 'chatgpt_subscription' | null;
+    /**
+     * Model
+     */
+    model?: string | null;
+    /**
+     * Base Url
+     */
+    base_url?: string | null;
+    /**
+     * Api Key
+     */
+    api_key?: null;
 };
 
 /**
@@ -1570,6 +1640,32 @@ export type WorkEventPublic = {
     occurred_at: string;
 };
 
+/**
+ * ModelSettingUpdate
+ */
+export type ModelSettingUpdateWritable = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
+    /**
+     * Kind
+     */
+    kind?: 'cloud_api' | 'local' | 'openai_compatible' | 'chatgpt_subscription' | null;
+    /**
+     * Model
+     */
+    model?: string | null;
+    /**
+     * Base Url
+     */
+    base_url?: string | null;
+    /**
+     * Api Key
+     */
+    api_key?: string | null;
+};
+
 export type loginLoginAccessTokenData = {
     body: Body_login_login_access_token;
     path?: never;
@@ -1687,6 +1783,96 @@ export type meReadMembershipsResponses = {
 };
 
 export type meReadMembershipsResponse = meReadMembershipsResponses[keyof meReadMembershipsResponses];
+
+export type modelSettingGetModelSettingData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/model-setting';
+};
+
+export type modelSettingGetModelSettingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type modelSettingGetModelSettingError = modelSettingGetModelSettingErrors[keyof modelSettingGetModelSettingErrors];
+
+export type modelSettingGetModelSettingResponses = {
+    /**
+     * Successful Response
+     */
+    200: ModelSettingPublic;
+};
+
+export type modelSettingGetModelSettingResponse = modelSettingGetModelSettingResponses[keyof modelSettingGetModelSettingResponses];
+
+export type modelSettingPutModelSettingData = {
+    body: ModelSettingUpdateWritable;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/model-setting';
+};
+
+export type modelSettingPutModelSettingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type modelSettingPutModelSettingError = modelSettingPutModelSettingErrors[keyof modelSettingPutModelSettingErrors];
+
+export type modelSettingPutModelSettingResponses = {
+    /**
+     * Successful Response
+     */
+    200: ModelSettingPublic;
+};
+
+export type modelSettingPutModelSettingResponse = modelSettingPutModelSettingResponses[keyof modelSettingPutModelSettingResponses];
+
+export type modelSettingTestModelSettingData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/model-setting/test';
+};
+
+export type modelSettingTestModelSettingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type modelSettingTestModelSettingError = modelSettingTestModelSettingErrors[keyof modelSettingTestModelSettingErrors];
+
+export type modelSettingTestModelSettingResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConnectionTest;
+};
+
+export type modelSettingTestModelSettingResponse = modelSettingTestModelSettingResponses[keyof modelSettingTestModelSettingResponses];
 
 export type orgsRenameOrganizationData = {
     body: OrganizationUpdate;
