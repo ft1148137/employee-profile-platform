@@ -30,9 +30,12 @@ def read_setting(session: Session, org_id: UUID) -> ModelSetting | None:
 
 def public_setting(setting: ModelSetting | None) -> ModelSettingPublic:
     if setting is None:
-        return ModelSettingPublic()
+        return ModelSettingPublic(
+            local_codex=settings.CHATGPT_CODEX_AUTH_FILE is not None
+        )
     return ModelSettingPublic(
         **setting.model_dump(exclude={"api_key_ciphertext"}),
+        local_codex=settings.CHATGPT_CODEX_AUTH_FILE is not None,
         has_api_key=bool(setting.api_key_ciphertext),
         chatgpt=ChatGPTStatus(
             connected=bool(setting.chatgpt_auth_ciphertext),
@@ -56,10 +59,14 @@ def save_setting(
         setting = ModelSetting(
             org_id=principal.org_id, updated_by_user_id=principal.user_id
         )
-    if body.kind == "chatgpt_subscription" and not (
-        setting.chatgpt_auth_ciphertext
-        and not (setting.chatgpt_account or {}).get("needs_relogin")
-        or settings.CHATGPT_CODEX_AUTH_FILE
+    if (
+        body.enabled
+        and body.kind == "chatgpt_subscription"
+        and not (
+            setting.chatgpt_auth_ciphertext
+            and not (setting.chatgpt_account or {}).get("needs_relogin")
+            or settings.CHATGPT_CODEX_AUTH_FILE
+        )
     ):
         raise InvalidModelSetting("请先在设置页连接 ChatGPT")
     changed = body.api_key is not None

@@ -112,14 +112,15 @@ def test_new_setup_and_blockers(
         "accounts",
         "sources",
         "identities",
+        "model",
     ]
-    assert [s["order"] for s in data["steps"]] == [10, 20, 30, 40, 50, 60]
-    assert all(s["required"] and not s["skippable"] for s in data["steps"][:-2])
-    assert all(not s["required"] and s["skippable"] for s in data["steps"][-2:])
-    assert data["steps"][-1]["blockers"] == []
+    assert [s["order"] for s in data["steps"]] == [10, 20, 30, 40, 50, 60, 70]
+    assert all(s["required"] and not s["skippable"] for s in data["steps"][:-3])
+    assert all(not s["required"] and s["skippable"] for s in data["steps"][-3:])
+    assert data["steps"][-2]["blockers"] == []
     assert data["steps"][0]["status"] == "completed"
     assert data["steps"][0]["blockers"] == []
-    for step in data["steps"][1:-1]:
+    for step in [s for s in data["steps"][1:] if s["key"] != "identities"]:
         assert step["status"] == "pending" and step["blockers"]
         blocked = client.post(
             f"{tenant.url}/setup/steps/{step['key']}/complete",
@@ -222,20 +223,28 @@ def test_complete_persist_and_extend(
         client.post(f"{tenant.url}/setup/steps/sources/skip", headers=auth).status_code
         == 200
     )
+    assert (
+        client.post(f"{tenant.url}/setup/steps/model/skip", headers=auth).status_code
+        == 200
+    )
+    assert (
+        client.get(f"{tenant.url}/setup", headers=auth).json()["next_step_key"] is None
+    )
     events = audits(db, tenant)
-    assert len(events) == 5
+    assert len(events) == 6
     assert {e.details["step_key"] for e in events} == {
         "roster",
         "capabilities",
         "accounts",
         "sources",
         "identities",
+        "model",
     }
     assert all(
         e.action
         == (
             "setup.step_skipped"
-            if e.details["step_key"] == "sources"
+            if e.details["step_key"] in {"sources", "model"}
             else "setup.step_completed"
         )
         and e.actor_id == str(tenant.admin_id)
@@ -265,7 +274,7 @@ def test_complete_persist_and_extend(
     monkeypatch.setattr(steps, "STEPS", [extra, *original])
     data = client.get(f"{tenant.url}/setup", headers=auth).json()
     assert not data["completed"] and data["next_step_key"] == "future"
-    assert [s["order"] for s in data["steps"]] == [10, 20, 25, 30, 40, 50, 60]
+    assert [s["order"] for s in data["steps"]] == [10, 20, 25, 30, 40, 50, 60, 70]
 
 
 @pytest.mark.parametrize(
@@ -447,3 +456,19 @@ def test_sources_success_is_tenant_scoped(
     assert response.status_code == 200
     step = next(s for s in response.json()["steps"] if s["key"] == "sources")
     assert step["status"] == "completed" and not step["blockers"]
+
+
+def test_model_step(tenant: SetupTenant, client: TestClient, db: Session) -> None:
+    from app.domains.model.models import ModelSetting
+
+    url = f"{tenant.url}/setup/steps/model"
+    auth = tenant.auth["admin"]
+    assert client.post(f"{url}/complete", headers=auth).status_code == 422
+    assert client.post(f"{url}/skip", headers=auth).status_code == 200
+    db.add(
+        ModelSetting(
+            org_id=tenant.org_id, enabled=True, updated_by_user_id=tenant.admin_id
+        )
+    )
+    db.commit()
+    assert client.post(f"{url}/complete", headers=auth).status_code == 200

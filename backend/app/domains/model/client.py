@@ -207,7 +207,13 @@ def chat_json[T: BaseModel](
                 )
                 time.sleep(delay if 0 <= delay <= 60 else 1)
                 continue
-            if isinstance(
+            if isinstance(error, sdk.APIConnectionError) or (
+                isinstance(error, sdk.InternalServerError)
+                and "connection error" in str(error).lower()
+            ):
+                # LiteLLM also wraps refused connections as InternalServerError.
+                reason = "连不上模型服务"
+            elif isinstance(
                 error,
                 (
                     sdk.Timeout,
@@ -217,8 +223,6 @@ def chat_json[T: BaseModel](
                 ),
             ):
                 reason = "模型服务暂时不可用"
-            elif isinstance(error, sdk.APIConnectionError):
-                reason = "连不上模型服务"
             else:
                 raise ModelUnavailable(
                     f"模型调用失败（{type(error).__name__}）"
