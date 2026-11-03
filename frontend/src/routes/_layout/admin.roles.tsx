@@ -102,6 +102,7 @@ function RolesList({ orgId }: { orgId: string }) {
       ) : (
         <DataTable
           data={rows}
+          getRowId={(grant) => grant.id}
           columns={[
             {
               accessorKey: "display_name",

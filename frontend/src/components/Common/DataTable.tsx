@@ -47,6 +47,7 @@ interface DataTableProps<TData extends RowData> {
   onPaginationChange?: OnChangeFn<PaginationState>
   pageSizeOptions?: number[]
   rowCount?: number
+  getRowId?: (row: TData) => string
   onRowClick?: (row: TData) => void
 }
 
@@ -56,6 +57,7 @@ export function DataTable<TData extends RowData>({
   pagination,
   onPaginationChange,
   rowCount,
+  getRowId,
   pageSizeOptions = [5, 10, 25, 50],
   onRowClick,
 }: DataTableProps<TData>) {
@@ -63,6 +65,7 @@ export function DataTable<TData extends RowData>({
     features: dataTableFeatures,
     data,
     columns,
+    getRowId,
     ...(pagination
       ? {
           state: { pagination },
