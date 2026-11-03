@@ -128,6 +128,7 @@ test("complete setup with 30 employees, download accounts and first employee log
   await page.getByRole("button", { name: "保存", exact: true }).click()
   const modelUrl = (await modelSaved).url()
   await page.getByRole("button", { name: "跳过，用关键词规则起草" }).click()
+  await expect(page.getByRole("heading", { name: "设置完成" })).toBeVisible()
   const accessToken = await page.evaluate(() =>
     localStorage.getItem("access_token"),
   )

@@ -522,3 +522,19 @@ def test_local_codex_flag(monkeypatch: pytest.MonkeyPatch) -> None:
     assert public_setting(None).local_codex
     monkeypatch.setattr(settings, "CHATGPT_CODEX_AUTH_FILE", None)
     assert not public_setting(None).local_codex
+
+
+def test_wrapped_connection_error(completions: tuple) -> None:
+    replies, _ = completions
+    replies.append(
+        _sdk().InternalServerError(
+            message="Connection error synthetic-key private-prompt",
+            model="gpt-4o-mini",
+            llm_provider="openai",
+        )
+    )
+    with pytest.raises(ModelUnavailable, match="连不上模型服务") as raised:
+        chat_json(
+            ModelConfig("openai/gpt-4o-mini"), [], route.ModelTestOutput, attempts=1
+        )
+    assert "synthetic-key" not in str(raised.value)
