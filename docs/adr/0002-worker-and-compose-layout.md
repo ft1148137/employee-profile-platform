@@ -40,7 +40,7 @@ S2 已先合并，本 revision 已串接其后，保持唯一 head。
 | 文件 | 用途 |
 | --- | --- |
 | `compose.yml` | 默认本地启动，db / prestart / backend / worker；生产形态启动命令，默认仅绑定 127.0.0.1:8000，数据库不发布端口 |
-| `compose.dev.yml` | 显式选择：fastapi dev、watch、Mailpit、Adminer、Playwright、数据库 5432 |
+| `compose.dev.yml` | 显式选择：fastapi dev、watch、Adminer、Playwright、数据库 5432 |
 | `deploy/compose.traefik.yml` | 可选域名 HTTPS：Traefik、证书卷、重启策略；取消 API 宿主机端口，保留模板域名路由模式 |
 
 默认 `docker compose up -d --wait` 自动构建镜像，等待数据库 healthy、prestart 成功，再启动 API 与 Worker。迁移不在每个应用进程里重复执行。API 健康检查执行 `SELECT 1`，连接或查询失败返回不泄露连接详情的 503。
