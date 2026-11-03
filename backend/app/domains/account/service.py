@@ -6,7 +6,6 @@ from pydantic import JsonValue
 from sqlalchemy import case, func, or_
 from sqlmodel import Session, col, select
 
-from app import crud
 from app.authz.principal import Principal
 from app.core.config import settings
 from app.core.security import get_password_hash
@@ -32,6 +31,7 @@ from app.domains.org.models import (
     Role,
     RoleGrant,
 )
+from app.domains.org.paths import department_paths
 from app.domains.org.schemas import DepartmentSummary
 from app.models import User
 
@@ -73,6 +73,8 @@ def audit(
     action: str,
     target_id: UUID,
     grant: RoleGrant | None = None,
+    *,
+    flush: bool = True,
 ) -> None:
     details: dict[str, JsonValue] = {"id": str(target_id)}
     if grant is not None:
@@ -96,6 +98,7 @@ def audit(
         target_type="role_grant" if action.startswith("role.") else "user",
         target_id=str(target_id),
         details=details,
+        flush=flush,
     )
 
 
@@ -167,9 +170,15 @@ def protect_admin(session: Session, org_id: UUID, membership_id: UUID) -> None:
         raise AccountError(409, "不能移除最后一名有效的企业管理员")
 
 
-def reset_password(user: User) -> InitialPassword:
+def generate_initial_password() -> tuple[str, str]:
     password = generate_password()
-    user.hashed_password = get_password_hash(password)
+    return password, get_password_hash(password)
+
+
+def reset_password(
+    user: User, initial_password: tuple[str, str] | None = None
+) -> InitialPassword:
+    password, user.hashed_password = initial_password or generate_initial_password()
     user.must_change_password = True
     user.password_changed_at = utc_now()
     return InitialPassword(
@@ -180,7 +189,7 @@ def reset_password(user: User) -> InitialPassword:
 def issue_accounts(
     session: Session, p: Principal, body: IssueAccounts
 ) -> tuple[Organization, list[list[str]]]:
-    org = lock_org(session, p)
+    require_admin(p)
     query = select(Employee).where(Employee.org_id == p.org_id)
     if body.employee_ids is None:
         query = query.where(
@@ -196,24 +205,63 @@ def issue_accounts(
         )
     else:
         query = query.where(col(Employee.id).in_(body.employee_ids))
+    password_count = (
+        len(body.employee_ids)
+        if body.employee_ids is not None
+        else session.exec(select(func.count()).select_from(query.subquery())).one()
+    )
+    passwords = [generate_initial_password() for _ in range(password_count)]
+    org = lock_org(session, p)
     employees = session.exec(query.order_by(col(Employee.id)).with_for_update()).all()
     if body.employee_ids is not None and {e.id for e in employees} != set(
         body.employee_ids
     ):
         raise AccountError(404, "本企业员工不存在")
+    linked_accounts = {
+        employee_id: user
+        for user, employee_id in session.exec(
+            select(User, OrgMembership.employee_id)
+            .join(OrgMembership)
+            .where(
+                OrgMembership.org_id == p.org_id,
+                col(OrgMembership.employee_id).in_([e.id for e in employees]),
+            )
+            .with_for_update(of=User)
+        ).all()
+    }
+    shared_accounts = set(
+        session.exec(
+            select(OrgMembership.user_id).where(
+                col(OrgMembership.user_id).in_(
+                    [u.id for u in linked_accounts.values()]
+                ),
+                OrgMembership.org_id != p.org_id,
+            )
+        ).all()
+    )
+    occupied_usernames = set(
+        session.exec(
+            select(func.lower(User.username)).where(
+                func.lower(User.username).in_(
+                    [(e.employee_code or "").strip().lower() for e in employees]
+                )
+            )
+        ).all()
+    )
+    occupied_emails = set(
+        session.exec(
+            select(func.lower(User.email)).where(
+                func.lower(User.email).in_(
+                    [e.work_email.lower() for e in employees if e.work_email]
+                )
+            )
+        ).all()
+    )
     conflicts = []
     candidates: list[tuple[Employee, User | None]] = []
     usernames: set[str] = set()
     for employee in employees:
-        linked = session.exec(
-            select(User)
-            .join(OrgMembership)
-            .where(
-                OrgMembership.org_id == p.org_id,
-                OrgMembership.employee_id == employee.id,
-            )
-            .with_for_update(of=User)
-        ).first()
+        linked = linked_accounts.get(employee.id)
         code = (employee.employee_code or "").strip()
         reason = None
         if not code or "@" in code or len(code) > 255:
@@ -221,20 +269,15 @@ def issue_accounts(
         elif employee.employment_status != EmploymentStatus.ACTIVE:
             reason = "员工已离职"
         elif linked:
-            try:
-                require_org_only_account(session, p.org_id, linked)
-            except AccountError as exc:
-                reason = exc.detail
+            if linked.is_superuser or linked.id in shared_accounts:
+                reason = "这个账号同时属于其他企业，只能由部署人员在服务器上处理"
             if reason is None and not (
                 body.regenerate_pending
                 and linked.is_active
                 and linked.must_change_password
             ):
                 reason = "账号已存在，且不允许重新生成"
-        elif (
-            crud.get_user_by_username(session=session, username=code)
-            or code.lower() in usernames
-        ):
+        elif code.lower() in occupied_usernames or code.lower() in usernames:
             reason = "登录名已被占用"
         usernames.add(code.lower())
         if reason:
@@ -250,19 +293,18 @@ def issue_accounts(
         raise AccountError(409, conflicts)
     if not candidates:
         raise AccountError(422, "没有可以生成账号的员工")
-    departments = {
-        d.id: d.name
-        for d in session.exec(
-            select(Department).where(Department.org_id == p.org_id)
-        ).all()
-    }
+    departments = department_paths(
+        session.exec(select(Department).where(Department.org_id == p.org_id)).all()
+    )
     rows = []
-    for employee, user in candidates:
+    for index, (employee, user) in enumerate(candidates):
         note = ""
         if user is None:
             email = employee.work_email or None
-            if email and crud.get_user_by_email(session=session, email=email):
+            if email and email.lower() in occupied_emails:
                 email, note = None, "邮箱已被其他账号使用，暂不能用邮箱登录"
+            if email:
+                occupied_emails.add(email.lower())
             user = User(
                 username=(employee.employee_code or "").strip(),
                 full_name=employee.display_name,
@@ -270,13 +312,19 @@ def issue_accounts(
                 hashed_password="",
             )
             session.add(user)
-            session.flush()
             session.add(
-                OrgMembership(org_id=p.org_id, user_id=user.id, employee_id=employee.id)
+                OrgMembership(
+                    org_id=p.org_id,
+                    user_id=user.id,
+                    employee_id=employee.id,
+                    user=user,
+                )
             )
-        password = reset_password(user)
+        password = reset_password(
+            user, passwords[index] if index < len(passwords) else None
+        )
         session.add(user)
-        audit(session, p, "account.issued", user.id)
+        audit(session, p, "account.issued", user.id, flush=False)
         rows.append(
             [
                 user.username,
@@ -289,6 +337,7 @@ def issue_accounts(
                 note,
             ]
         )
+    session.flush()
     return org, rows
 
 

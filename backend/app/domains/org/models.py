@@ -1,13 +1,17 @@
 import uuid
 from datetime import datetime
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from pydantic import JsonValue
 from sqlalchemy import CheckConstraint, Column, DateTime, Index, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
 
 from app.domains.base import Record, TenantRecord, enum_type, tenant_fk, utc_now
+
+if TYPE_CHECKING:
+    from app.models import User
 
 
 class EmploymentStatus(StrEnum):
@@ -98,6 +102,8 @@ class OrgMembership(TenantRecord, table=True):
     )
     user_id: uuid.UUID = Field(foreign_key="user.id")
     employee_id: uuid.UUID | None = None
+    # Order account inserts before memberships when both are flushed together.
+    user: User = Relationship()
 
 
 class RoleGrant(TenantRecord, table=True):
