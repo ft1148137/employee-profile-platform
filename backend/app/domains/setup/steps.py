@@ -109,6 +109,37 @@ def check_model(session: Session, org_id: UUID) -> list[str]:
     )
 
 
+def check_initial_profiles(session: Session, org_id: UUID) -> list[str]:
+    from app.domains.change_request.models import ProfileChangeRequest, RequestOrigin
+    from app.domains.drafting.service import active_employees
+    from app.domains.drafting.settings import drafting_scope
+    from app.domains.profile.models import InferenceStatus, ProfileProgress
+
+    excluded = drafting_scope(session, org_id).excluded_employee_ids
+    eligible = {e.id for e in active_employees(session, org_id)} - excluded
+    requested = set(
+        session.exec(
+            select(ProfileChangeRequest.subject_employee_id).where(
+                ProfileChangeRequest.org_id == org_id,
+                ProfileChangeRequest.origin == RequestOrigin.INITIAL_SYNC,
+            )
+        )
+    )
+    missing = len(eligible - requested)
+    running = session.exec(
+        select(ProfileProgress.employee_id).where(
+            ProfileProgress.org_id == org_id,
+            col(ProfileProgress.employee_id).in_(eligible),
+            col(ProfileProgress.inference_status).in_(
+                [InferenceStatus.PENDING, InferenceStatus.RUNNING]
+            ),
+        )
+    ).first()
+    return ([f"还有 {missing} 名员工没有初始画像"] if missing else []) + (
+        ["初始画像还在生成"] if running else []
+    )
+
+
 STEPS = [
     SetupStep(
         "org_profile",
@@ -173,5 +204,14 @@ STEPS = [
         False,
         True,
         check_model,
+    ),
+    SetupStep(
+        "initial_profiles",
+        "生成初始画像",
+        "为员工生成待本人过目的初始画像",
+        90,
+        True,
+        False,
+        check_initial_profiles,
     ),
 ]

@@ -93,6 +93,11 @@ export function AppSidebar() {
                   title: "自动起草设置",
                   path: "/admin/drafting",
                 },
+                {
+                  icon: ListChecks,
+                  title: "同步与起草进度",
+                  path: "/admin/progress",
+                },
                 { icon: Settings, title: "数据来源", path: "/admin/sources" },
 
                 { icon: Settings, title: "模型", path: "/admin/model" },
