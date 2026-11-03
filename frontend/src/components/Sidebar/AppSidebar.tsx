@@ -93,6 +93,7 @@ export function AppSidebar() {
                   title: "自动起草设置",
                   path: "/admin/drafting",
                 },
+                { icon: Settings, title: "数据来源", path: "/admin/sources" },
                 { icon: ScrollText, title: "审计日志", path: "/admin/audit" },
                 {
                   icon: ListChecks,

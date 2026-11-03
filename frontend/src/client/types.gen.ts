@@ -2932,6 +2932,10 @@ export type sourcesListSyncRunsData = {
          * Limit
          */
         limit?: number;
+        /**
+         * Kind
+         */
+        kind?: 'jira' | 'csv' | null;
     };
     url: '/api/v1/orgs/{org_id}/sync-runs';
 };
