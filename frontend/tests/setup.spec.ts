@@ -110,6 +110,11 @@ test("complete setup with 30 employees, download accounts and first employee log
   await expect(page.getByText("部门经理已保存。")).toBeVisible()
   await expect(managers.locator("..")).toContainText("当前经理：欧阳宁")
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await expect(page.getByRole("heading", { name: "接数据来源" })).toBeVisible()
+  await expect(
+    page.getByText("没有工作记录也能继续", { exact: false }),
+  ).toBeVisible()
+  await page.getByRole("button", { name: "跳过，以后再接" }).click()
   await expect(page.getByRole("heading", { name: "设置完成" })).toBeVisible()
   await expect(
     page.getByRole("link", { name: "员工列表", exact: true }),

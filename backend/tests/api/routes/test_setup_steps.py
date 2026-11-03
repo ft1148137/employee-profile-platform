@@ -23,6 +23,7 @@ from app.domains.org.models import (
 )
 from app.domains.setup import steps
 from app.domains.setup.models import SetupStatus, SetupStepState
+from app.domains.source.models import SourceConnection, SyncRun
 from app.models import User
 from tests.utils.org import delete_test_organization
 
@@ -31,6 +32,7 @@ from tests.utils.org import delete_test_organization
 class SetupTenant:
     org_id: UUID
     admin_id: UUID
+    foreign_org_id: UUID
     auth: dict[str, dict[str, str]]
 
     @property
@@ -81,7 +83,7 @@ def tenant(db: Session) -> Generator[SetupTenant]:
             ("admin", "manager", "employee", "foreign"), users, strict=True
         )
     }
-    yield SetupTenant(orgs[0].id, users[0].id, auth)
+    yield SetupTenant(orgs[0].id, users[0].id, orgs[1].id, auth)
     db.rollback()
     for org in orgs:
         delete_test_organization(db, org.id)
@@ -108,9 +110,10 @@ def test_new_setup_and_blockers(
         "roster",
         "capabilities",
         "accounts",
+        "sources",
     ]
-    assert [s["order"] for s in data["steps"]] == [10, 20, 30, 40]
-    assert all(s["required"] and not s["skippable"] for s in data["steps"])
+    assert [s["order"] for s in data["steps"]] == [10, 20, 30, 40, 50]
+    assert all(s["required"] and not s["skippable"] for s in data["steps"][:-1])
     assert data["steps"][0]["status"] == "completed"
     assert data["steps"][0]["blockers"] == []
     for step in data["steps"][1:]:
@@ -209,16 +212,29 @@ def test_complete_persist_and_extend(
         assert (
             state.updated_by_user_id == tenant.admin_id and state.updated_at is not None
         )
-    assert response.json()["completed"] and response.json()["next_step_key"] is None
+    assert (
+        response.json()["completed"] and response.json()["next_step_key"] == "sources"
+    )
+    assert (
+        client.post(f"{tenant.url}/setup/steps/sources/skip", headers=auth).status_code
+        == 200
+    )
     events = audits(db, tenant)
-    assert len(events) == 3
+    assert len(events) == 4
     assert {e.details["step_key"] for e in events} == {
         "roster",
         "capabilities",
         "accounts",
+        "sources",
     }
     assert all(
-        e.action == "setup.step_completed" and e.actor_id == str(tenant.admin_id)
+        e.action
+        == (
+            "setup.step_skipped"
+            if e.details["step_key"] == "sources"
+            else "setup.step_completed"
+        )
+        and e.actor_id == str(tenant.admin_id)
         for e in events
     )
 
@@ -245,7 +261,7 @@ def test_complete_persist_and_extend(
     monkeypatch.setattr(steps, "STEPS", [extra, *original])
     data = client.get(f"{tenant.url}/setup", headers=auth).json()
     assert not data["completed"] and data["next_step_key"] == "future"
-    assert [s["order"] for s in data["steps"]] == [10, 20, 25, 30, 40]
+    assert [s["order"] for s in data["steps"]] == [10, 20, 25, 30, 40, 50]
 
 
 def test_skips_and_unknown_steps(
@@ -365,3 +381,51 @@ def test_setup_permissions(
     ]
     assert all(r.status_code == expected for r in responses)
     assert audits(db, tenant) == []
+
+
+def test_sources_success_is_tenant_scoped(
+    tenant: SetupTenant, client: TestClient, db: Session
+) -> None:
+    auth = tenant.auth["admin"]
+    url = f"{tenant.url}/setup/steps/sources"
+    runs = []
+    for org_id, status in (
+        (tenant.org_id, "failed"),
+        (tenant.foreign_org_id, "succeeded"),
+    ):
+        member = db.exec(
+            select(OrgMembership).where(OrgMembership.org_id == org_id)
+        ).first()
+        assert member is not None
+        connection = SourceConnection(
+            org_id=org_id, kind="csv", updated_by_user_id=member.user_id
+        )
+        db.add(connection)
+        db.flush()
+        run = SyncRun(
+            org_id=org_id,
+            connection_id=connection.id,
+            requested_by_user_id=member.user_id,
+            status=status,
+        )
+        db.add(run)
+        runs.append(run)
+    db.commit()
+    run = runs[0]
+    for status in ("failed", "queued", "running"):
+        run.status = status
+        db.add(run)
+        db.commit()
+        response = client.post(f"{url}/complete", headers=auth)
+        assert response.status_code == 422
+        assert response.json()["detail"]["blockers"] == [
+            "还没有成功同步或导入过工作记录"
+        ]
+    assert client.post(f"{url}/skip", headers=auth).status_code == 200
+    run.status = "succeeded"
+    db.add(run)
+    db.commit()
+    response = client.post(f"{url}/complete", headers=auth)
+    assert response.status_code == 200
+    step = next(s for s in response.json()["steps"] if s["key"] == "sources")
+    assert step["status"] == "completed" and not step["blockers"]
