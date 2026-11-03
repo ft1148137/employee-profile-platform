@@ -235,6 +235,16 @@ export type Body_roster_upload_import = {
 };
 
 /**
+ * Body_sources-import_work_records
+ */
+export type Body_sources_import_work_records = {
+    /**
+     * File
+     */
+    file: Blob | File;
+};
+
+/**
  * CapabilitiesPublic
  */
 export type CapabilitiesPublic = {
@@ -591,6 +601,17 @@ export type ConnectionTest = {
      * Message
      */
     message: string;
+};
+
+/**
+ * CsvImportPublic
+ */
+export type CsvImportPublic = {
+    run: SyncRunPublic;
+    /**
+     * Issues
+     */
+    issues: Array<WorkRecordIssue>;
 };
 
 /**
@@ -2097,6 +2118,72 @@ export type SetupTokenResult = {
 };
 
 /**
+ * SyncRunPublic
+ */
+export type SyncRunPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Kind
+     */
+    kind: 'jira' | 'csv';
+    /**
+     * Status
+     */
+    status: 'queued' | 'running' | 'succeeded' | 'failed';
+    /**
+     * Trigger
+     */
+    trigger: 'manual' | 'retry';
+    /**
+     * Attempts
+     */
+    attempts: number;
+    /**
+     * Counts
+     */
+    counts: {
+        [key: string]: number;
+    };
+    /**
+     * Error
+     */
+    error: string | null;
+    /**
+     * Filename
+     */
+    filename: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Started At
+     */
+    started_at: string | null;
+    /**
+     * Finished At
+     */
+    finished_at: string | null;
+};
+
+/**
+ * SyncRunsPublic
+ */
+export type SyncRunsPublic = {
+    /**
+     * Data
+     */
+    data: Array<SyncRunPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * TaskPublic
  */
 export type TaskPublic = {
@@ -2255,6 +2342,28 @@ export type WorkEventPublic = {
      * Occurred At
      */
     occurred_at: string;
+};
+
+/**
+ * WorkRecordIssue
+ */
+export type WorkRecordIssue = {
+    /**
+     * Row Number
+     */
+    row_number: number | null;
+    /**
+     * Column
+     */
+    column: string | null;
+    /**
+     * Level
+     */
+    level: 'error' | 'warning';
+    /**
+     * Message
+     */
+    message: string;
 };
 
 /**
@@ -2619,6 +2728,99 @@ export type modelSettingDisconnectChatgptResponses = {
 
 export type modelSettingDisconnectChatgptResponse = modelSettingDisconnectChatgptResponses[keyof modelSettingDisconnectChatgptResponses];
 
+export type sourcesStartJiraSyncData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/sources/jira/sync';
+};
+
+export type sourcesStartJiraSyncErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type sourcesStartJiraSyncError = sourcesStartJiraSyncErrors[keyof sourcesStartJiraSyncErrors];
+
+export type sourcesStartJiraSyncResponses = {
+    /**
+     * Successful Response
+     */
+    202: SyncRunPublic;
+};
+
+export type sourcesStartJiraSyncResponse = sourcesStartJiraSyncResponses[keyof sourcesStartJiraSyncResponses];
+
+export type sourcesWorkRecordsTemplateData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Format
+         */
+        format?: 'xlsx' | 'csv';
+    };
+    url: '/api/v1/orgs/{org_id}/sources/csv/template';
+};
+
+export type sourcesWorkRecordsTemplateErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type sourcesWorkRecordsTemplateError = sourcesWorkRecordsTemplateErrors[keyof sourcesWorkRecordsTemplateErrors];
+
+export type sourcesWorkRecordsTemplateResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type sourcesImportWorkRecordsData = {
+    body: Body_sources_import_work_records;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/sources/csv/imports';
+};
+
+export type sourcesImportWorkRecordsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type sourcesImportWorkRecordsError = sourcesImportWorkRecordsErrors[keyof sourcesImportWorkRecordsErrors];
+
+export type sourcesImportWorkRecordsResponses = {
+    /**
+     * Successful Response
+     */
+    202: CsvImportPublic;
+};
+
+export type sourcesImportWorkRecordsResponse = sourcesImportWorkRecordsResponses[keyof sourcesImportWorkRecordsResponses];
+
 export type sourcesGetJiraData = {
     body?: never;
     path: {
@@ -2708,6 +2910,79 @@ export type sourcesTestJiraResponses = {
 };
 
 export type sourcesTestJiraResponse = sourcesTestJiraResponses[keyof sourcesTestJiraResponses];
+
+export type sourcesListSyncRunsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/orgs/{org_id}/sync-runs';
+};
+
+export type sourcesListSyncRunsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type sourcesListSyncRunsError = sourcesListSyncRunsErrors[keyof sourcesListSyncRunsErrors];
+
+export type sourcesListSyncRunsResponses = {
+    /**
+     * Successful Response
+     */
+    200: SyncRunsPublic;
+};
+
+export type sourcesListSyncRunsResponse = sourcesListSyncRunsResponses[keyof sourcesListSyncRunsResponses];
+
+export type sourcesRetrySyncData = {
+    body?: never;
+    path: {
+        /**
+         * Run Id
+         */
+        run_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/sync-runs/{run_id}/retry';
+};
+
+export type sourcesRetrySyncErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type sourcesRetrySyncError = sourcesRetrySyncErrors[keyof sourcesRetrySyncErrors];
+
+export type sourcesRetrySyncResponses = {
+    /**
+     * Successful Response
+     */
+    202: SyncRunPublic;
+};
+
+export type sourcesRetrySyncResponse = sourcesRetrySyncResponses[keyof sourcesRetrySyncResponses];
 
 export type externalIdentitiesGetIdentitiesData = {
     body?: never;

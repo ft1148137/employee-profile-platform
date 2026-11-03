@@ -93,7 +93,7 @@ class JiraClient:
                 timeout=(10, 30, 30, 30),
                 **kwargs,
             )
-        except httpx.ReadTimeout:
+        except httpx.TimeoutException:
             raise RetryableSourceError(NETWORK_MESSAGE) from None
         except httpx.RequestError as error:
             message = (

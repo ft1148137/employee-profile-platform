@@ -14,6 +14,7 @@ from app.domains.source.schemas import (
     JiraConnectionPublic,
     JiraConnectionUpdate,
 )
+from app.domains.source.sync import active_sync
 
 
 class InvalidSourceSetting(Exception):
@@ -50,6 +51,8 @@ def save_jira(
         .with_for_update()
     ).one()
     connection = read_jira(session, principal.org_id)
+    if connection is not None and active_sync(session, connection):
+        raise InvalidSourceSetting("同步进行中，请等完成后再修改 Jira 配置")
     config = body.model_dump(mode="json", exclude={"secret"})
     if connection is None:
         connection = SourceConnection(
