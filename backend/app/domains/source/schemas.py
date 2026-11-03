@@ -1,6 +1,7 @@
 from calendar import monthrange
 from datetime import date, datetime
 from typing import Literal, Self
+from uuid import UUID
 
 from pydantic import BaseModel, Field, HttpUrl, SecretStr, TypeAdapter, model_validator
 
@@ -59,3 +60,22 @@ class JiraConnectionTest(BaseModel):
     ok: bool
     message: str
     account_name: str | None = None
+
+
+class SyncRunPublic(BaseModel):
+    id: UUID
+    kind: Literal["jira", "csv"]
+    status: Literal["queued", "running", "succeeded", "failed"]
+    trigger: Literal["manual", "retry"]
+    attempts: int
+    counts: dict[str, int]
+    error: str | None
+    filename: str | None
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+
+
+class SyncRunsPublic(BaseModel):
+    data: list[SyncRunPublic]
+    count: int

@@ -29,7 +29,7 @@ from app.domains.profile.models import (
     ProfileVersion,
 )
 from app.domains.setup.models import SetupStepState
-from app.domains.source.models import SourceConnection
+from app.domains.source.models import SourceConnection, SyncRun
 from app.domains.work.models import Task, WorkEvent
 from app.models import User
 
@@ -53,6 +53,7 @@ def delete_test_organization(session: Session, org_id: UUID) -> None:
     for model in (
         SetupStepState,
         ModelSetting,
+        SyncRun,
         SourceConnection,
         AuditEvent,
         ChangeItemEvidence,
