@@ -76,14 +76,13 @@ class ExternalIdentity(SQLModel, table=True):
     )
     id: uuid.UUID = Field(default_factory=uuid.uuid7, primary_key=True)
     org_id: uuid.UUID = Field(foreign_key="organization.id", index=True)
-    employee_id: uuid.UUID
+    employee_id: uuid.UUID | None = None
     source: str
     external_id: str
     display_name: str | None = None
+    email: str | None = None
     linked_by: str | None = None
-    linked_at: datetime = Field(
-        default_factory=utc_now, sa_type=DateTime(timezone=True)
-    )
+    linked_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
 
 class OrgMembership(TenantRecord, table=True):
