@@ -153,7 +153,7 @@ export class ModelSettingService {
             ...options
         });
     }
-    
+
     /**
      * Poll Chatgpt Login
      */
@@ -165,7 +165,7 @@ export class ModelSettingService {
             ...options
         });
     }
-    
+
     /**
      * Start Chatgpt Login
      */
@@ -177,7 +177,7 @@ export class ModelSettingService {
             ...options
         });
     }
-    
+
     /**
      * Disconnect Chatgpt
      */
