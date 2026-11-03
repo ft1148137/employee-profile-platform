@@ -131,6 +131,121 @@ def test_settings(
     assert client.put(url, headers=auth, json={"enabled": False}).status_code == 200
 
 
+@pytest.mark.parametrize("enabled", [True, False])
+@pytest.mark.parametrize("key_input", [{}, {"api_key": None}])
+@pytest.mark.parametrize(
+    "update",
+    [
+        {"base_url": "https://other.example.com/v1"},
+        {"base_url": None},
+        {"model": "anthropic/claude"},
+        {"kind": "local"},
+    ],
+)
+def test_saved_key_cannot_follow_destination_change(
+    enabled: bool,
+    key_input: dict[str, Any],
+    update: dict[str, Any],
+    request: pytest.FixtureRequest,
+    client: TestClient,
+    db: Session,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    orgs, _, _, users = request.getfixturevalue("tenant_data")
+    url = f"/api/v1/orgs/{orgs[0].id}/model-setting"
+    auth = headers(users[0])
+    body = {**CLOUD_SETTING, "enabled": enabled, "base_url": "https://example.com/v1"}
+    assert client.put(url, headers=auth, json=body).status_code == 200
+    stored = db.get(ModelSetting, orgs[0].id)
+    assert stored
+    before = stored.model_dump()
+    audit_query = select(AuditEvent).where(AuditEvent.org_id == orgs[0].id)
+    audit_ids = [event.id for event in db.exec(audit_query).all()]
+    body.pop("api_key")
+    response = client.put(url, headers=auth, json={**body, **update, **key_input})
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": "更换了模型类型、提供方或服务地址，请重新填写密钥"
+    }
+    db.refresh(stored)
+    assert stored.model_dump() == before
+    assert [event.id for event in db.exec(audit_query).all()] == audit_ids
+    assert "synthetic-key" not in response.text + caplog.text
+
+
+@pytest.mark.parametrize(
+    "initial_key,initial_url,update,expected_key",
+    [
+        ("synthetic-key", None, {"model": "openai/another"}, "synthetic-key"),
+        ("synthetic-key", None, {"base_url": ""}, "synthetic-key"),
+        ("synthetic-key", "", {"base_url": None}, "synthetic-key"),
+        (
+            "synthetic-key",
+            "https://example.com/v1/",
+            {"base_url": "https://example.com/v1"},
+            "synthetic-key",
+        ),
+        (
+            "synthetic-key",
+            "https://example.com/v1",
+            {"base_url": "https://example.com/v1///"},
+            "synthetic-key",
+        ),
+        (
+            "synthetic-key",
+            None,
+            {
+                "base_url": "https://other.example.com/v1",
+                "api_key": "synthetic-new-key",
+            },
+            "synthetic-new-key",
+        ),
+        (
+            "synthetic-key",
+            None,
+            {
+                "kind": "local",
+                "model": "ollama_chat/llama3",
+                "base_url": "http://localhost:11434",
+                "api_key": "",
+            },
+            None,
+        ),
+        ("", "http://localhost:11434", {"base_url": "http://localhost:11435"}, None),
+    ],
+)
+def test_saved_key_destination_updates(
+    initial_key: str,
+    initial_url: str | None,
+    update: dict[str, Any],
+    expected_key: str | None,
+    request: pytest.FixtureRequest,
+    client: TestClient,
+    db: Session,
+) -> None:
+    orgs, _, _, users = request.getfixturevalue("tenant_data")
+    url = f"/api/v1/orgs/{orgs[0].id}/model-setting"
+    auth = headers(users[0])
+    body = {**CLOUD_SETTING, "base_url": initial_url, "api_key": initial_key}
+    if not initial_key:
+        body["kind"] = "local"
+    assert client.put(url, headers=auth, json=body).status_code == 200
+    stored = db.get(ModelSetting, orgs[0].id)
+    assert stored
+    old_token = stored.api_key_ciphertext
+    body.pop("api_key")
+    response = client.put(url, headers=auth, json={**body, **update})
+    assert response.status_code == 200
+    assert response.json()["has_api_key"] == bool(expected_key)
+    db.refresh(stored)
+    assert stored.base_url == update.get("base_url", initial_url)
+    assert (
+        decrypt_secret(stored.api_key_ciphertext) if stored.api_key_ciphertext else None
+    ) == expected_key
+    if "api_key" not in update:
+        assert stored.api_key_ciphertext == old_token
+
+
 @pytest.mark.parametrize(
     "update",
     [

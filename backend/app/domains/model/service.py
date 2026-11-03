@@ -49,6 +49,18 @@ def save_setting(
         )
     changed = body.api_key is not None
     token = setting.api_key_ciphertext
+    if (
+        not changed
+        and token
+        and body.kind != "chatgpt_subscription"
+        and (
+            body.kind != setting.kind
+            or (body.model or "").partition("/")[0]
+            != (setting.model or "").partition("/")[0]
+            or (body.base_url or "").rstrip("/") != (setting.base_url or "").rstrip("/")
+        )
+    ):
+        raise InvalidModelSetting("更换了模型类型、提供方或服务地址，请重新填写密钥")
     if changed:
         assert body.api_key is not None
         key = body.api_key.get_secret_value()
