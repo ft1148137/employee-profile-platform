@@ -17,14 +17,6 @@ class AssessmentStatus(StrEnum):
     DISPUTED = "disputed"
 
 
-class ClaimReviewStatus(StrEnum):
-    CANDIDATE = "candidate"
-    PENDING_EMPLOYEE = "pending_employee"
-    PENDING_MANAGER = "pending_manager"
-    ACCEPTED = "accepted"
-    REJECTED = "rejected"
-
-
 class Confidence(StrEnum):
     LOW = "low"
     MEDIUM = "medium"
@@ -78,9 +70,6 @@ class ProfileClaim(TenantRecord, table=True):
     statement: str
     level: str | None = None
     assessment_status: AssessmentStatus = Field(sa_type=enum_type(AssessmentStatus))
-    review_status: ClaimReviewStatus = Field(
-        default=ClaimReviewStatus.CANDIDATE, sa_type=enum_type(ClaimReviewStatus)
-    )
     confidence: Confidence | None = Field(default=None, sa_type=enum_type(Confidence))
     explanation: str | None = None
     generated_by: dict[str, JsonValue] = Field(sa_column=Column(JSONB, nullable=False))
@@ -132,9 +121,6 @@ class ProfileProgress(SQLModel, table=True):
     )
     inference_status: InferenceStatus = Field(
         default=InferenceStatus.PENDING, sa_type=enum_type(InferenceStatus)
-    )
-    review_status: ProgressReviewStatus = Field(
-        default=ProgressReviewStatus.NONE, sa_type=enum_type(ProgressReviewStatus)
     )
     evidence_quality: EvidenceQuality = Field(
         default=EvidenceQuality.UNKNOWN, sa_type=enum_type(EvidenceQuality)

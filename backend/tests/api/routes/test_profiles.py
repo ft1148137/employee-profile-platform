@@ -14,7 +14,7 @@ from app.core.security import create_access_token
 from app.domains.evidence.models import Evidence, EvidenceKind, EvidenceStatus
 from app.domains.evidence.service import append_evidence
 from app.domains.org.models import Employee, Organization, OrgMembership
-from app.domains.profile.models import ProfileClaim
+from app.domains.profile.models import ProfileClaim, ProfileVersion
 from app.models import User
 from app.seed.loader import load_demo
 from app.seed.schema import read_bundle
@@ -144,10 +144,26 @@ def test_profiles_versions_and_query_bound(
                 for i in profile["items"]
             )
         for item in profile["items"]:
+            if item["claim"]:
+                assert "review_status" not in item["claim"]
             if item["status"] == "disputed":
                 assert any(
                     e["relation"] == "contradicts" for e in item["claim"]["evidence"]
                 )
+    legacy = db.exec(
+        select(ProfileVersion).where(
+            ProfileVersion.org_id == employees["E02"].org_id,
+            ProfileVersion.subject_employee_id == employees["E02"].id,
+            ProfileVersion.revision == 1,
+        )
+    ).one()
+    legacy.snapshot = {
+        "claims": [
+            dict(c, review_status="pending_manager") for c in legacy.snapshot["claims"]
+        ]
+    }
+    db.add(legacy)
+    db.commit()
     base = f"{url}/employees/{employees['E02'].id}"
     for role in ("admin", "manager"):
         history = client.get(f"{base}/profile-versions", headers=auth[role])
@@ -179,7 +195,8 @@ def test_profiles_versions_and_query_bound(
                         assert ref["title"].endswith("（受限）") == ref["redacted"]
             for body in (history.text, response.text):
                 assert all(
-                    key not in body for key in ("seed_ref", "user_id", "snapshot")
+                    key not in body
+                    for key in ("seed_ref", "user_id", "snapshot", "review_status")
                 )
                 assert re.search(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", body) is None
             if role == "admin":

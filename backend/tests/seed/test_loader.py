@@ -25,6 +25,10 @@ def test_import(seed_path: Path) -> None:
         assert first["skipped_jira_issues"] == ["PLAT-999"]
         assert all(c["added"] == 0 for c in second["counts"].values())
         assert first["counts"]["evidence"]["added"] == 54
+        assert first["counts"]["profile_change_request"]["added"] == 5
+        assert first["counts"]["change_item"]["added"] == 6
+        assert second["counts"]["profile_change_request"]["existing"] == 5
+        assert second["counts"]["change_item"]["existing"] == 6
         org = session.exec(
             select(Organization).where(
                 Organization.slug == read_bundle(seed_path).org.slug
@@ -65,7 +69,6 @@ def test_import(seed_path: Path) -> None:
             "confirmed",
             "tentative",
             "unknown",
-            "disputed",
         }
         links = session.exec(
             select(ClaimEvidence).where(ClaimEvidence.org_id == org.id)
@@ -105,6 +108,32 @@ def test_import(seed_path: Path) -> None:
 @pytest.mark.parametrize(
     ("filename", "field", "value"),
     [
+        ("change_requests.yaml", "employee_code", "missing"),
+        ("change_requests.yaml", "id", "C01"),
+        (
+            "change_requests.yaml",
+            "items",
+            [
+                {
+                    "op": "add",
+                    "capability_key": "missing",
+                    "after": {"statement": "test", "assessment_status": "tentative"},
+                    "evidence": [],
+                }
+            ],
+        ),
+        (
+            "change_requests.yaml",
+            "items",
+            [
+                {
+                    "op": "add",
+                    "capability_key": "backend_api",
+                    "after": {"statement": "test", "assessment_status": "tentative"},
+                    "evidence": [{"ref": "jira:PLAT-104", "relation": "supports"}],
+                }
+            ],
+        ),
         ("claims.yaml", "level", "not_sure"),
         ("claims.yaml", "evidence", [{"ref": "jira:missing", "relation": "supports"}]),
         ("claims.yaml", "supersedes", "missing"),
@@ -121,7 +150,10 @@ def test_invalid_file_is_atomic(
     rows[0][field] = value
     file.write_text(yaml.safe_dump(rows))
     with Session(engine) as session:
-        with pytest.raises(SeedError, match="(?s)" + filename + ".*" + field):
+        with pytest.raises(
+            SeedError,
+            match="(?s)" + filename + (".*" + field if field != "items" else ""),
+        ):
             load_demo(session, seed_path)
         slug = yaml.safe_load((seed_path / "org.yaml").read_text())["slug"]
         assert (

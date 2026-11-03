@@ -3,6 +3,7 @@
 from app.domains.account import models as account
 from app.domains.audit import models as audit
 from app.domains.capability import models as capability
+from app.domains.change_request import models as change_request
 from app.domains.evidence import models as evidence
 from app.domains.org import models as org
 from app.domains.profile import models as profile
@@ -13,6 +14,7 @@ __all__ = [
     "account",
     "audit",
     "capability",
+    "change_request",
     "evidence",
     "org",
     "profile",

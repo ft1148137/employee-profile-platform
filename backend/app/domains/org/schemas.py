@@ -65,7 +65,7 @@ class EmployeeSummary(SQLModel):
     title: str | None
     employment_status: EmploymentStatus
     department: DepartmentSummary | None
-    progress: ProgressPublic | None
+    progress: ProgressPublic
     latest_published: PublishedSummary | None
 
 

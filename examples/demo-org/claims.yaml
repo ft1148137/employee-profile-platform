@@ -4,7 +4,6 @@
   statement: 有后端 API 开发的任务记录，当前判断为待验证的示例。
   level: routine
   assessment_status: confirmed
-  review_status: accepted
   confidence: medium
   explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
   evidence:
@@ -20,7 +19,6 @@
   statement: 有后端 API 开发的任务记录，当前判断为待验证的示例。
   level: routine
   assessment_status: tentative
-  review_status: pending_manager
   confidence: medium
   explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
   evidence: &id001
@@ -36,7 +34,6 @@
   statement: 有前端交互实现的任务记录，当前判断为待验证的示例。
   level: routine
   assessment_status: confirmed
-  review_status: accepted
   confidence: medium
   explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
   evidence:
@@ -52,7 +49,6 @@
   statement: 有模型训练与评估的任务记录，当前判断为待验证的示例。
   level: null
   assessment_status: unknown
-  review_status: pending_manager
   confidence: low
   explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
   evidence:
@@ -68,7 +64,6 @@
   statement: 有模型服务化的任务记录，当前判断为待验证的示例。
   level: routine
   assessment_status: tentative
-  review_status: pending_manager
   confidence: medium
   explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
   evidence:
@@ -84,7 +79,6 @@
   statement: 有数据处理的任务记录，当前判断为待验证的示例。
   level: routine
   assessment_status: confirmed
-  review_status: accepted
   confidence: medium
   explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
   evidence:
@@ -94,59 +88,12 @@
     relation: supports
   - ref: manager_review:MR06
     relation: supports
-- id: C07
-  employee_code: E07
-  capability_key: rknn_deployment
-  statement: 有RKNN 边缘部署的任务记录，当前判断为待验证的示例。
-  level: routine
-  assessment_status: tentative
-  review_status: pending_manager
-  confidence: medium
-  explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
-  evidence:
-  - ref: jira:EDGE-101
-    relation: context
-  - ref: self_report:SR07
-    relation: supports
-  - ref: manager_review:MR07
-    relation: supports
-- id: C08
-  employee_code: E08
-  capability_key: rknn_deployment
-  statement: 复杂部署能力存在不同意见，需进一步确认。
-  level: null
-  assessment_status: disputed
-  review_status: pending_manager
-  confidence: low
-  explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
-  evidence:
-  - ref: jira:EDGE-104
-    relation: context
-  - ref: self_report:SR08
-    relation: supports
-  - ref: manager_review:MR08
-    relation: contradicts
-- id: C09
-  employee_code: E09
-  capability_key: automated_testing
-  statement: 有自动化测试的任务记录，当前判断为待验证的示例。
-  level: routine
-  assessment_status: tentative
-  review_status: pending_manager
-  confidence: medium
-  explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
-  evidence:
-  - ref: jira:EDGE-107
-    relation: context
-  - ref: self_report:SR09
-    relation: supports
 - id: C10
   employee_code: E10
   capability_key: requirements
   statement: 有需求澄清的任务记录，当前判断为待验证的示例。
   level: routine
   assessment_status: confirmed
-  review_status: accepted
   confidence: medium
   explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
   evidence:
@@ -154,18 +101,6 @@
     relation: context
   - ref: self_report:SR10
     relation: supports
-- id: C11
-  employee_code: E11
-  capability_key: incident_support
-  statement: 有问题诊断与支持的任务记录，当前判断为待验证的示例。
-  level: null
-  assessment_status: unknown
-  review_status: pending_manager
-  confidence: low
-  explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
-  evidence:
-  - ref: jira:DELIV-104
-    relation: context
 - employee_code: E02
   capability_key: backend_api
   confidence: medium
@@ -174,6 +109,5 @@
   id: C02v2
   level: independent_complex
   assessment_status: confirmed
-  review_status: accepted
   statement: 通过复杂冲突处理任务与经理复核，确认复杂接口实现能力。
   supersedes: C02

@@ -17,6 +17,12 @@ test("demo admin sees all employees, filters, searches and paginates", async ({
   await expect(page).toHaveURL(/\/employees\/?$/)
   await expect(page.getByText("共 12 名员工")).toBeVisible()
   await expect(page.locator("tbody tr")).toHaveCount(12)
+  await expect(
+    page
+      .getByRole("row")
+      .filter({ hasText: "张伟" })
+      .filter({ hasText: "平台研发部" }),
+  ).toContainText("待本人确认")
   await page.screenshot({
     path: "test-results/employees-admin.png",
     fullPage: true,

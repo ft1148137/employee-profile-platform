@@ -43,13 +43,6 @@ export const labels = {
     conflicting: { label: "来源冲突", className: negative },
     unknown: { label: "未知", className: neutral },
   } satisfies Record<EvidenceQuality, Label>,
-  claim_review_status: {
-    candidate: { label: "候选", className: neutral },
-    pending_employee: { label: "待本人确认", className: pending },
-    pending_manager: { label: "待经理审核", className: active },
-    accepted: { label: "已采纳", className: positive },
-    rejected: { label: "已驳回", className: negative },
-  } satisfies Record<string, Label>,
   confidence: {
     low: { label: "低", className: neutral },
     medium: { label: "中", className: pending },

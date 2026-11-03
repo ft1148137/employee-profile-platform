@@ -143,6 +143,10 @@ def test_cli_actor_migration(migration_engine: Engine) -> None:
         session.add(event)
         session.commit()
         event_id = event.id
+    with migration_engine.connect() as connection:
+        previous_head = connection.execute(
+            text("SELECT version_num FROM alembic_version")
+        ).scalar_one()
     result = migrate("downgrade", "c20cd19c259b")
     assert result.returncode != 0 and "CLI audit events exist" in result.stderr
     with Session(migration_engine) as session:
@@ -151,5 +155,5 @@ def test_cli_actor_migration(migration_engine: Engine) -> None:
             session.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-            == "e35a91c7d024"
+            == previous_head
         )

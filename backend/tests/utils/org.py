@@ -4,6 +4,11 @@ from sqlmodel import Session, col, delete, select
 
 from app.domains.audit.models import AuditEvent
 from app.domains.capability.models import CapabilityDefinition, CapabilitySchemaVersion
+from app.domains.change_request.models import (
+    ChangeItem,
+    ChangeItemEvidence,
+    ProfileChangeRequest,
+)
 from app.domains.evidence.models import Evidence
 from app.domains.org.models import (
     Department,
@@ -45,6 +50,9 @@ def delete_test_organization(session: Session, org_id: UUID) -> None:
     for model in (
         SetupStepState,
         AuditEvent,
+        ChangeItemEvidence,
+        ChangeItem,
+        ProfileChangeRequest,
         ClaimEvidence,
         ProfileVersion,
         ProfileClaim,
