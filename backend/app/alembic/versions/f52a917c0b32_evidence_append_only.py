@@ -1,13 +1,13 @@
 """Enforce append-only evidence and employee-scoped content uniqueness.
 
 Revision ID: f52a917c0b32
-Revises: e35a91c7d024
+Revises: f55a901bc001
 """
 
 from alembic import op
 
 revision = "f52a917c0b32"
-down_revision = "e35a91c7d024"
+down_revision = "f55a901bc001"
 branch_labels = None
 depends_on = None
 

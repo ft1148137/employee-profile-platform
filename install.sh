@@ -94,6 +94,9 @@ if [[ ! -e .env ]]; then
         files="$files:deploy/compose.$access.yml"
         host="https://$address"
     fi
+    if "$demo"; then
+        files="$files:deploy/compose.mock-jira.yml"
+    fi
     umask 077
     env_temp=$(mktemp .env.XXXXXX)
     trap 'rm -f "$env_temp"' EXIT
