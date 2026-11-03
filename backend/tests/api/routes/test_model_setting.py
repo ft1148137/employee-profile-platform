@@ -295,6 +295,21 @@ def test_exceptions(name: str, reason: str, count: int, completions: tuple) -> N
     assert "synthetic-key" not in str(raised.value) and len(calls) == count
 
 
+def test_compatible_without_key(completions: tuple) -> None:
+    replies, calls = completions
+    replies.append('{"ok":true}')
+    config = ModelConfig("openai/gpt-4o-mini", base_url="http://localhost:11434/v1")
+    assert chat_json(config, [], route.ModelTestOutput).value.ok
+    assert calls[-1]["api_key"] == "not-needed"
+    sdk = _sdk()
+    assert (
+        sdk.llms.openai.openai.OpenAIChatCompletion()._get_openai_client(
+            is_async=False, api_key=calls[-1]["api_key"], api_base=config.base_url
+        )
+        is not None
+    )
+
+
 def test_rate_limit(completions: tuple) -> None:
     replies, calls = completions
     error = _sdk().RateLimitError(

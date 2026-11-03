@@ -101,7 +101,9 @@ def chat_json[T: BaseModel](
                 model=config.model,
                 messages=conversation,
                 api_base=config.base_url,
-                api_key=config.api_key,
+                # OpenAI's SDK requires a nonempty key even for unauthenticated servers.
+                api_key=config.api_key
+                or ("not-needed" if config.base_url and provider == "openai" else None),
                 temperature=0,
                 timeout=120,
                 num_retries=0,
