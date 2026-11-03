@@ -925,6 +925,56 @@ export type EvidenceSummary = {
 };
 
 /**
+ * ExternalIdentitiesPublic
+ */
+export type ExternalIdentitiesPublic = {
+    /**
+     * Data
+     */
+    data: Array<ExternalIdentityPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * ExternalIdentityPublic
+ */
+export type ExternalIdentityPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Source
+     */
+    source: string;
+    /**
+     * Source Label
+     */
+    source_label: string;
+    /**
+     * External Id
+     */
+    external_id: string;
+    /**
+     * Display Name
+     */
+    display_name: string | null;
+    /**
+     * Email
+     */
+    email: string | null;
+    /**
+     * Record Count
+     */
+    record_count: number;
+    employee: IdentityEmployee | null;
+    candidate: IdentityCandidate | null;
+};
+
+/**
  * FailedEmployee
  */
 export type FailedEmployee = {
@@ -1009,9 +1059,140 @@ export type HTTPValidationError = {
 };
 
 /**
+ * IdentityCandidate
+ */
+export type IdentityCandidate = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Employee Code
+     */
+    employee_code: string | null;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    department: DepartmentSummary | null;
+    employment_status: EmploymentStatus;
+    /**
+     * Reason
+     */
+    reason: 'email' | 'name';
+};
+
+/**
+ * IdentityEmployee
+ */
+export type IdentityEmployee = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Employee Code
+     */
+    employee_code: string | null;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    department: DepartmentSummary | null;
+    employment_status: EmploymentStatus;
+};
+
+/**
+ * IdentityLink
+ */
+export type IdentityLink = {
+    /**
+     * Identity Id
+     */
+    identity_id: string;
+    /**
+     * Employee Id
+     */
+    employee_id: string;
+};
+
+/**
+ * IdentityLinkResult
+ */
+export type IdentityLinkResult = {
+    /**
+     * Linked
+     */
+    linked: number;
+    counts: IngestCounts;
+};
+
+/**
+ * IdentityLinks
+ */
+export type IdentityLinks = {
+    /**
+     * Links
+     */
+    links: Array<IdentityLink>;
+};
+
+/**
+ * IdentityUnlinkResult
+ */
+export type IdentityUnlinkResult = {
+    /**
+     * Evidence Retracted
+     */
+    evidence_retracted: number;
+};
+
+/**
  * InferenceStatus
  */
 export type InferenceStatus = 'pending' | 'running' | 'generated' | 'failed';
+
+/**
+ * IngestCounts
+ */
+export type IngestCounts = {
+    /**
+     * Tasks Added
+     */
+    tasks_added?: number;
+    /**
+     * Tasks Updated
+     */
+    tasks_updated?: number;
+    /**
+     * Events Added
+     */
+    events_added?: number;
+    /**
+     * Events Updated
+     */
+    events_updated?: number;
+    /**
+     * Evidence Added
+     */
+    evidence_added?: number;
+    /**
+     * Evidence Superseded
+     */
+    evidence_superseded?: number;
+    /**
+     * Evidence Retracted
+     */
+    evidence_retracted?: number;
+    /**
+     * Evidence Unchanged
+     */
+    evidence_unchanged?: number;
+    /**
+     * People Unlinked
+     */
+    people_unlinked?: number;
+};
 
 /**
  * InitialPassword
@@ -2463,6 +2644,121 @@ export type sourcesTestJiraResponses = {
 };
 
 export type sourcesTestJiraResponse = sourcesTestJiraResponses[keyof sourcesTestJiraResponses];
+
+export type externalIdentitiesGetIdentitiesData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Status
+         */
+        status?: 'unlinked' | 'linked' | 'all';
+        /**
+         * Source
+         */
+        source?: string | null;
+        /**
+         * Q
+         */
+        q?: string | null;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/orgs/{org_id}/external-identities';
+};
+
+export type externalIdentitiesGetIdentitiesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type externalIdentitiesGetIdentitiesError = externalIdentitiesGetIdentitiesErrors[keyof externalIdentitiesGetIdentitiesErrors];
+
+export type externalIdentitiesGetIdentitiesResponses = {
+    /**
+     * Successful Response
+     */
+    200: ExternalIdentitiesPublic;
+};
+
+export type externalIdentitiesGetIdentitiesResponse = externalIdentitiesGetIdentitiesResponses[keyof externalIdentitiesGetIdentitiesResponses];
+
+export type externalIdentitiesPostLinksData = {
+    body: IdentityLinks;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/external-identities/link';
+};
+
+export type externalIdentitiesPostLinksErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type externalIdentitiesPostLinksError = externalIdentitiesPostLinksErrors[keyof externalIdentitiesPostLinksErrors];
+
+export type externalIdentitiesPostLinksResponses = {
+    /**
+     * Successful Response
+     */
+    200: IdentityLinkResult;
+};
+
+export type externalIdentitiesPostLinksResponse = externalIdentitiesPostLinksResponses[keyof externalIdentitiesPostLinksResponses];
+
+export type externalIdentitiesPostUnlinkData = {
+    body?: never;
+    path: {
+        /**
+         * Identity Id
+         */
+        identity_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/external-identities/{identity_id}/unlink';
+};
+
+export type externalIdentitiesPostUnlinkErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type externalIdentitiesPostUnlinkError = externalIdentitiesPostUnlinkErrors[keyof externalIdentitiesPostUnlinkErrors];
+
+export type externalIdentitiesPostUnlinkResponses = {
+    /**
+     * Successful Response
+     */
+    200: IdentityUnlinkResult;
+};
+
+export type externalIdentitiesPostUnlinkResponse = externalIdentitiesPostUnlinkResponses[keyof externalIdentitiesPostUnlinkResponses];
 
 export type orgsRenameOrganizationData = {
     body: OrganizationUpdate;
