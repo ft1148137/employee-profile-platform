@@ -115,6 +115,14 @@ test("complete setup with 30 employees, download accounts and first employee log
     page.getByText("没有工作记录也能继续", { exact: false }),
   ).toBeVisible()
   await page.getByRole("button", { name: "跳过，以后再接" }).click()
+  await expect(
+    page.getByRole("heading", { name: "确认账号对应" }),
+  ).toBeVisible()
+  await expect(page.getByRole("tab", { name: "未关联（0）" })).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "跳过", exact: true }),
+  ).toBeVisible()
+  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
   await expect(page.getByRole("heading", { name: "设置完成" })).toBeVisible()
   await expect(
     page.getByRole("link", { name: "员工列表", exact: true }),

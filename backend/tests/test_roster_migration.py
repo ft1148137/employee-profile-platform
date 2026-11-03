@@ -1,7 +1,6 @@
-import subprocess
-import sys
 from pathlib import Path
 
+import pytest
 from sqlalchemy import Engine, text
 from sqlmodel import Session, select
 
@@ -9,13 +8,13 @@ from app.core.config import settings
 from app.core.db import init_db
 from app.domains.org.models import Department, Organization
 from app.seed.loader import load_demo
-from tests.test_account_migration import migrate
+from tests.utils.migrations import migrate
 
 PREVIOUS = "d73e295a94f6"
 
 
 def test_roster_migration_roundtrip(migration_engine: Engine) -> None:
-    migrate("downgrade", PREVIOUS)
+    migrate(migration_engine, "downgrade", PREVIOUS)
     # The new column must backfill an organization that predates this migration.
     with migration_engine.begin() as connection:
         connection.execute(
@@ -23,7 +22,7 @@ def test_roster_migration_roundtrip(migration_engine: Engine) -> None:
                 "INSERT INTO organization (id, created_at, slug, name) VALUES (gen_random_uuid(), now(), 'before-roster', 'Synthetic')"
             )
         )
-    migrate("upgrade", "head")
+    migrate(migration_engine, "upgrade", "head")
     with migration_engine.connect() as connection:
         assert (
             connection.execute(
@@ -37,8 +36,8 @@ def test_roster_migration_roundtrip(migration_engine: Engine) -> None:
         init_db(session)
         session.rollback()
         load_demo(session, Path(settings.DEMO_DATA_DIR))
-    migrate("downgrade", PREVIOUS)
-    migrate("upgrade", "head")
+    migrate(migration_engine, "downgrade", PREVIOUS)
+    migrate(migration_engine, "upgrade", "head")
     with Session(migration_engine) as session:
         org = session.exec(
             select(Organization).where(Organization.slug == "demo")
@@ -52,12 +51,8 @@ def test_roster_migration_roundtrip(migration_engine: Engine) -> None:
         session.commit()
         # Seed lookups must keep choosing the root when a child has the same name.
         load_demo(session, Path(settings.DEMO_DATA_DIR))
-    result = subprocess.run(
-        [sys.executable, "-m", "alembic", "downgrade", PREVIOUS],
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode != 0 and "duplicate names" in result.stderr
+    with pytest.raises(ValueError, match="duplicate names"):
+        migrate(migration_engine, "downgrade", PREVIOUS)
     with migration_engine.begin() as connection:
         assert (
             connection.execute(
@@ -68,6 +63,6 @@ def test_roster_migration_roundtrip(migration_engine: Engine) -> None:
         connection.execute(
             text("DELETE FROM department WHERE parent_department_id IS NOT NULL")
         )
-    migrate("downgrade", PREVIOUS)
-    migrate("upgrade", "head")
-    migrate("heads")
+    migrate(migration_engine, "downgrade", PREVIOUS)
+    migrate(migration_engine, "upgrade", "head")
+    migrate(migration_engine, "upgrade", "heads")

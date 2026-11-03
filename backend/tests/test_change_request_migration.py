@@ -1,16 +1,16 @@
 import json
-import subprocess
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, text
+from sqlalchemy.exc import ProgrammingError
 from sqlmodel import Session
 
 from app.core.config import settings
 from app.core.db import init_db
 from app.seed.loader import load_demo
-from tests.test_account_migration import migrate
+from tests.utils.migrations import migrate
 
 PREVIOUS = "f52a917c0b32"
 
@@ -23,7 +23,7 @@ def test_change_request_roundtrip(
         init_db(session)
         session.rollback()
         load_demo(session, Path(settings.DEMO_DATA_DIR))
-    migrate("downgrade", PREVIOUS)
+    migrate(migration_engine, "downgrade", PREVIOUS)
     ids = [uuid4() for _ in range(6)]
     statuses = [
         "accepted",
@@ -94,18 +94,15 @@ def test_change_request_roundtrip(
         original = c.execute(claims_sql, params).mappings().all()
         links = c.execute(links_sql, params).mappings().all()
     if nonempty_note:
-        with pytest.raises(subprocess.CalledProcessError) as error:
-            migrate("upgrade", "head")
-        assert (
-            str(ids[1]).encode() in error.value.stderr and b"note" in error.value.stderr
-        )
+        with pytest.raises(ProgrammingError, match=rf"{ids[1]}.*note"):
+            migrate(migration_engine, "upgrade", "head")
         with migration_engine.connect() as c:
             assert (
                 c.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
                 == PREVIOUS
             )
         return
-    migrate("upgrade", "head")
+    migrate(migration_engine, "upgrade", "head")
     with migration_engine.connect() as c:
         retained = c.execute(claims_sql, params).mappings().all()
         assert {r["id"] for r in retained} == {ids[0], ids[2]}
@@ -147,7 +144,7 @@ def test_change_request_roundtrip(
             assert item["op"] == ("modify" if i == 3 else "add")
             assert item["target_claim_id"] == (ids[0] if i == 3 else None)
             assert c.execute(evidence_sql, key).one() == (evidence, "supports")
-    migrate("downgrade", PREVIOUS)
+    migrate(migration_engine, "downgrade", PREVIOUS)
     with migration_engine.connect() as c:
         restored = c.execute(claims_sql, params).mappings().all()
         expected = [dict(row) for row in original]
@@ -160,7 +157,7 @@ def test_change_request_roundtrip(
             "SELECT review_status FROM profile_progress WHERE org_id=:org AND employee_id=:employee"
         )
         assert c.execute(progress_sql, params).scalar_one() == "pending_employee"
-    migrate("upgrade", "head")
+    migrate(migration_engine, "upgrade", "head")
     with Session(migration_engine) as session:
         # A migrated demo must recognize the original seed refs and positions.
         result = load_demo(session, Path(settings.DEMO_DATA_DIR))

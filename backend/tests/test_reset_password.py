@@ -14,6 +14,7 @@ from app.domains.audit.models import ActorKind, AuditEvent
 from app.domains.base import utc_now
 from app.domains.org.models import OrgMembership
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
+from tests.utils.migrations import migrate
 
 
 @pytest.mark.parametrize("memberships", [0, 1, 2])
@@ -122,16 +123,8 @@ def test_disabled_and_missing(
 
 
 def test_cli_actor_migration(migration_engine: Engine) -> None:
-    def migrate(action: str, revision: str) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            [sys.executable, "-m", "alembic", action, revision],
-            capture_output=True,
-            text=True,
-        )
-
     for action, revision in (("downgrade", "c20cd19c259b"), ("upgrade", "head")):
-        result = migrate(action, revision)
-        assert result.returncode == 0, result.stderr
+        migrate(migration_engine, action, revision)
     with Session(migration_engine) as session:
         event = AuditEvent(
             actor_type=ActorKind.CLI,
@@ -146,8 +139,8 @@ def test_cli_actor_migration(migration_engine: Engine) -> None:
         head = session.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar_one()
-    result = migrate("downgrade", "c20cd19c259b")
-    assert result.returncode != 0 and "CLI audit events exist" in result.stderr
+    with pytest.raises(ValueError, match="CLI audit events exist"):
+        migrate(migration_engine, "downgrade", "c20cd19c259b")
     with Session(migration_engine) as session:
         assert session.get(AuditEvent, event_id).actor_type == ActorKind.CLI
         assert (
