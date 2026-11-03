@@ -8,6 +8,7 @@
 | [0004](0004-login-and-deployment-scope.md) | 登录与部署范围 | 已采用 |
 | [0005](0005-login-session-and-rate-limits.md) | 登录会话与限流 | 已采用 |
 | [0006](0006-manager-descendant-scope.md) | 部门经理的管辖范围包含下级部门 | 已采用 |
+| [0007](0007-mock-jira-service.md) | 数据集驱动的模拟 Jira | 已采用 |
 
 | [0007](0007-profile-change-requests.md) | 画像请求与正式判断分离、审核状态推算及迁移 | 已采用 |
 
