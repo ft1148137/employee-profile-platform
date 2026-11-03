@@ -171,6 +171,30 @@ export type AuditEventsPublic = {
 };
 
 /**
+ * AutoDraftPublic
+ */
+export type AutoDraftPublic = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
+    /**
+     * Department Disabled
+     */
+    department_disabled: boolean;
+};
+
+/**
+ * AutoDraftUpdate
+ */
+export type AutoDraftUpdate = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
+};
+
+/**
  * Body_login-login_access_token
  */
 export type Body_login_login_access_token = {
@@ -652,6 +676,46 @@ export type DepartmentsPublic = {
      * Count
      */
     count: number;
+};
+
+/**
+ * DraftingSettingsPublic
+ */
+export type DraftingSettingsPublic = {
+    /**
+     * Excluded Capability Keys
+     */
+    excluded_capability_keys: Array<string>;
+    /**
+     * Disabled Department Ids
+     */
+    disabled_department_ids: Array<string>;
+    /**
+     * Excluded Employee Count
+     */
+    excluded_employee_count: number;
+    /**
+     * Opted Out Count
+     */
+    opted_out_count: number;
+    /**
+     * Updated At
+     */
+    updated_at: string | null;
+};
+
+/**
+ * DraftingSettingsUpdate
+ */
+export type DraftingSettingsUpdate = {
+    /**
+     * Excluded Capability Keys
+     */
+    excluded_capability_keys: Array<string>;
+    /**
+     * Disabled Department Ids
+     */
+    disabled_department_ids: Array<string>;
 };
 
 /**
@@ -3116,6 +3180,126 @@ export type setupSkipStepResponses = {
 };
 
 export type setupSkipStepResponse = setupSkipStepResponses[keyof setupSkipStepResponses];
+
+export type draftingSettingsGetDraftingSettingsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/drafting-settings';
+};
+
+export type draftingSettingsGetDraftingSettingsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type draftingSettingsGetDraftingSettingsError = draftingSettingsGetDraftingSettingsErrors[keyof draftingSettingsGetDraftingSettingsErrors];
+
+export type draftingSettingsGetDraftingSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: DraftingSettingsPublic;
+};
+
+export type draftingSettingsGetDraftingSettingsResponse = draftingSettingsGetDraftingSettingsResponses[keyof draftingSettingsGetDraftingSettingsResponses];
+
+export type draftingSettingsPutDraftingSettingsData = {
+    body: DraftingSettingsUpdate;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/drafting-settings';
+};
+
+export type draftingSettingsPutDraftingSettingsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type draftingSettingsPutDraftingSettingsError = draftingSettingsPutDraftingSettingsErrors[keyof draftingSettingsPutDraftingSettingsErrors];
+
+export type draftingSettingsPutDraftingSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: DraftingSettingsPublic;
+};
+
+export type draftingSettingsPutDraftingSettingsResponse = draftingSettingsPutDraftingSettingsResponses[keyof draftingSettingsPutDraftingSettingsResponses];
+
+export type draftingSettingsGetAutoDraftData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/auto-draft';
+};
+
+export type draftingSettingsGetAutoDraftErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type draftingSettingsGetAutoDraftError = draftingSettingsGetAutoDraftErrors[keyof draftingSettingsGetAutoDraftErrors];
+
+export type draftingSettingsGetAutoDraftResponses = {
+    /**
+     * Successful Response
+     */
+    200: AutoDraftPublic;
+};
+
+export type draftingSettingsGetAutoDraftResponse = draftingSettingsGetAutoDraftResponses[keyof draftingSettingsGetAutoDraftResponses];
+
+export type draftingSettingsPutAutoDraftData = {
+    body: AutoDraftUpdate;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/auto-draft';
+};
+
+export type draftingSettingsPutAutoDraftErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type draftingSettingsPutAutoDraftError = draftingSettingsPutAutoDraftErrors[keyof draftingSettingsPutAutoDraftErrors];
+
+export type draftingSettingsPutAutoDraftResponses = {
+    /**
+     * Successful Response
+     */
+    200: AutoDraftPublic;
+};
+
+export type draftingSettingsPutAutoDraftResponse = draftingSettingsPutAutoDraftResponses[keyof draftingSettingsPutAutoDraftResponses];
 
 export type employeesReadEmployeesData = {
     body?: never;

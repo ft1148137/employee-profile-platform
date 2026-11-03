@@ -2,31 +2,13 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, HTTPException
-from sqlmodel import Session, col, select
+from sqlmodel import select
 
 from app.api.deps import CurrentUser, SessionDep
 from app.authz.principal import Principal
 from app.domains.audit.models import ActorKind
-from app.domains.org.models import Department, OrgMembership, Role, RoleGrant
-
-
-def managed_scope(
-    session: Session, org_id: UUID, department_ids: frozenset[UUID]
-) -> frozenset[UUID]:
-    if not department_ids:
-        return frozenset()
-    scope = (
-        select(Department.id)
-        .where(Department.org_id == org_id, col(Department.id).in_(department_ids))
-        .cte("managed_scope", recursive=True)
-    )
-    # UNION deduplicates overlapping grants and terminates even with a hierarchy cycle.
-    scope = scope.union(
-        select(Department.id)
-        .join(scope, col(Department.parent_department_id) == scope.c.id)
-        .where(Department.org_id == org_id)
-    )
-    return frozenset(session.exec(select(scope.c.id)).all())
+from app.domains.org.models import OrgMembership, Role, RoleGrant
+from app.domains.org.service import managed_scope as managed_scope
 
 
 def get_org_principal(

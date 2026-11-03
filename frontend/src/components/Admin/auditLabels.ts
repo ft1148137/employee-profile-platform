@@ -13,6 +13,8 @@ export const auditLabels: Record<string, string> = {
   "org.renamed": "修改企业名称",
   "capability_schema.activated": "启用能力词典",
   "seed.loaded": "导入演示数据",
+  "drafting_settings.updated": "修改自动起草设置",
+  "employee.auto_draft_changed": "修改本人自动起草选择",
   "roster.imported": "导入员工名单",
 }
 export const actorLabels: Record<string, string> = {
@@ -22,6 +24,8 @@ export const actorLabels: Record<string, string> = {
   cli: "命令行",
 }
 export const targetLabels: Record<string, string> = {
+  employee: "员工",
+  drafting_setting: "自动起草设置",
   user: "账号",
   role_grant: "角色",
   organization: "企业",

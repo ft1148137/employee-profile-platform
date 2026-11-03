@@ -1,7 +1,7 @@
 """add sync runs
 
 Revision ID: 093e2d94e5aa
-Revises: f69a901bc002
+Revises: f73a901bc001
 Create Date: 2026-11-03 17:24:54.893074
 
 """
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '093e2d94e5aa'
-down_revision = 'f69a901bc002'
+down_revision = 'f73a901bc001'
 branch_labels = None
 depends_on = None
 
