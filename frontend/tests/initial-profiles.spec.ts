@@ -137,7 +137,13 @@ test("new enterprise imports Jira, drafts in setup and shows the employee their 
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
   await expect(page.getByRole("alert")).toContainText("名员工没有初始画像")
   await page.getByRole("button", { name: "生成初始画像", exact: true }).click()
-  const total = preview.active_count
+  const accounts = await (
+    await request.get(`${base}/accounts?employment_status=active&limit=100`, {
+      headers,
+    })
+  ).json()
+  const total = accounts.count
+  expect(total).toBeGreaterThan(0)
   await expect(
     page.getByText(
       `已为 ${total} 名员工生成初始画像，员工登录后能在自己的画像页看到`,
@@ -152,7 +158,9 @@ test("new enterprise imports Jira, drafts in setup and shows the employee their 
     exact: true,
   })
   await expect(syncSection.getByText("Jira", { exact: true })).toBeVisible()
-  await expect(syncSection.getByText("已完成", { exact: true })).toBeVisible()
+  await expect(
+    syncSection.getByRole("cell", { name: "已完成 1 次", exact: true }),
+  ).toBeVisible()
   await expect(syncSection.getByText("记录：38", { exact: true })).toBeVisible()
   await expect(
     page.getByRole("region", { name: "初始画像起草进度" }),
@@ -164,9 +172,6 @@ test("new enterprise imports Jira, drafts in setup and shows the employee their 
   const employee = identities.data.find(
     (identity) => identity.candidate?.employee_code === "QL003",
   )!.candidate!
-  const accounts = await (
-    await request.get(`${base}/accounts?limit=100`, { headers })
-  ).json()
   const account = accounts.data.find(
     (row: { id: string }) => row.id === employee.id,
   ).account
@@ -257,7 +262,12 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
   await expect(page.getByRole("alert")).toContainText(
     "ChatGPT 订阅 5 小时用量已到上限",
   )
-  await expect(page.getByRole("alert")).toContainText(/预计 .* 自动继续/)
+  const resumeAt = await page.evaluate(() =>
+    new Date("2026-11-04T10:40:00Z").toLocaleString("zh-CN"),
+  )
+  await expect(page.getByRole("alert")).toContainText(
+    `预计 ${resumeAt} 自动继续`,
+  )
   await expect(
     page.getByText("3 名员工不自动起草", { exact: false }),
   ).toBeVisible()
