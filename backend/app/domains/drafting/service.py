@@ -1,13 +1,16 @@
+from datetime import datetime, timedelta
 from typing import Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
+from procrastinate import App, SyncPsycopgConnector
 from pydantic import BaseModel, JsonValue
 from sqlmodel import Session, col, delete, select
 
 from app.authz.principal import Principal
 from app.core.db import engine
+from app.core.secrets import SecretUnavailable
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.capability.models import CapabilityDefinition
@@ -21,10 +24,16 @@ from app.domains.change_request.models import (
     RequestOrigin,
     RequestStatus,
 )
-from app.domains.drafting import rules
+from app.domains.drafting import model, rules
 from app.domains.drafting.collect import collect, evidence_stats
 from app.domains.drafting.rules import DraftItem
-from app.domains.model.service import read_setting
+from app.domains.drafting.settings import drafting_scope
+from app.domains.model.client import (
+    ModelOutputInvalid,
+    ModelRateLimited,
+    ModelUnavailable,
+)
+from app.domains.model.service import model_config, read_setting
 from app.domains.org.models import Employee, EmploymentStatus, Organization
 from app.domains.profile.models import (
     AssessmentStatus,
@@ -224,16 +233,26 @@ def active_employees(session: Session, org_id: UUID) -> list[Employee]:
 
 def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
     org_id = principal.org_id
-    with Session(engine) as session:
+    with Session(engine, expire_on_commit=False) as session:
+        scope = drafting_scope(session, org_id)
         ids = [
             e.id
             for e in active_employees(session, org_id)
-            if employee_ids is None or str(e.id) in employee_ids
+            if e.id not in scope.excluded_employee_ids
+            and (employee_ids is None or str(e.id) in employee_ids)
         ]
+        setting = read_setting(session, org_id)
+        mode = "model" if setting and setting.enabled else "rules"
+        if setting:
+            setting.paused_until, setting.pause_reason = None, None
+            session.add(setting)
+            session.commit()
+            # Release the setting row before ChatGPT opens its own locking session.
+            session.expunge(setting)
     counts = {"generated": 0, "failed": 0, "handed_over": 0}
     if employee_ids is not None and not ids:
         return
-    for employee_id in ids:
+    for index, employee_id in enumerate(ids):
         with Session(engine) as session:
             progress_row(session, org_id, employee_id, InferenceStatus.RUNNING)
             session.commit()
@@ -260,47 +279,60 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                     )
                 ).one()
                 schema = get_schema(session, org_id)
-                capabilities = list_capabilities(session, org_id, schema.id)
-                keywords, ref = rules.load_keywords(schema.template_ref)
-                items = postprocess(
-                    session,
-                    org_id,
-                    employee,
-                    rules.draft(
-                        collect(session, org_id, employee), capabilities, keywords
-                    ),
-                    capabilities,
-                )
-                names = {c.id: c.name for c in capabilities}
-                for item in items:
-                    item.after.statement = f"有 {item.after.evidence_count} 项与「{names[item.capability_id]}」相关的工作记录"
-                written = write_initial_request(
-                    session,
-                    org_id,
-                    employee,
-                    items,
-                    {
+                capabilities = [
+                    c
+                    for c in list_capabilities(session, org_id, schema.id)
+                    if c.key not in scope.excluded_capability_keys
+                ]
+                records = collect(session, org_id, employee)
+                generated_by: dict[str, JsonValue]
+                if mode == "model":
+                    items, generated_by = model.draft(
+                        records, capabilities, model_config(setting)
+                    )
+                else:
+                    keywords, ref = rules.load_keywords(schema.template_ref)
+                    items = rules.draft(records, capabilities, keywords)
+                    generated_by = {
                         "mode": "rules",
-                        "schema_version_id": str(schema.id),
                         "keywords_ref": ref,
                         "model": None,
                         "prompt_version": None,
-                    },
+                    }
+                items = postprocess(session, org_id, employee, items, capabilities)
+                if mode == "rules":
+                    names = {c.id: c.name for c in capabilities}
+                    for item in items:
+                        item.after.statement = f"有 {item.after.evidence_count} 项与「{names[item.capability_id]}」相关的工作记录"
+                generated_by["schema_version_id"] = str(schema.id)
+                written = write_initial_request(
+                    session, org_id, employee, items, generated_by
                 )
                 progress_row(session, org_id, employee_id, InferenceStatus.GENERATED)
                 session.commit()
                 counts["generated" if written else "handed_over"] += 1
+            except ModelRateLimited as error:
+                session.rollback()
+                pause_drafting(org_id, ids[index:], error)
+                break
             except Exception as error:
                 # Never expose record contents or database error parameters in progress.
                 session.rollback()
+                message = "起草失败，请重试；若仍失败请联系管理员"
+                if isinstance(error, (InvalidDraft, InvalidTemplate)):
+                    message = str(error)
+                elif isinstance(error, SecretUnavailable):
+                    message = "保存的模型密钥已失效，请重新填写"
+                elif isinstance(error, ModelOutputInvalid):
+                    message = "模型输出不符合格式，已重试 3 次"
+                elif isinstance(error, ModelUnavailable):
+                    message = (
+                        str(error)
+                        if "ChatGPT 登录" in str(error)
+                        else f"连不上模型服务：{error}"
+                    )
                 progress_row(
-                    session,
-                    org_id,
-                    employee_id,
-                    InferenceStatus.FAILED,
-                    str(error)
-                    if isinstance(error, (InvalidDraft, InvalidTemplate))
-                    else "起草失败，请重试；若仍失败请联系管理员",
+                    session, org_id, employee_id, InferenceStatus.FAILED, message
                 )
                 session.commit()
                 counts["failed"] += 1
@@ -313,8 +345,35 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
             action="initial_profiles.drafted",
             target_type="organization",
             target_id=str(org_id),
-            details={"mode": "rules", **counts},
+            details={"mode": mode, **counts},
         )
+        session.commit()
+
+
+def pause_drafting(org_id: UUID, ids: list[UUID], error: ModelRateLimited) -> None:
+    retry_at = error.retry_at or utc_now() + timedelta(minutes=30)
+    with Session(engine) as session:
+        setting = read_setting(session, org_id)
+        assert setting is not None
+        setting.paused_until, setting.pause_reason = retry_at, error.reason
+        session.add(setting)
+        for employee_id in ids:
+            progress_row(
+                session,
+                org_id,
+                employee_id,
+                InferenceStatus.PENDING,
+                f"模型用量已到上限（{error.reason}），预计 {retry_at.isoformat()} 自动继续",
+            )
+        session.flush()
+        # The running Worker's async connector cannot use this sync transaction.
+        App(connector=SyncPsycopgConnector()).configure_task(
+            "profiles.draft_initial",
+            connection=session.connection().connection.driver_connection,
+            lock=f"initial-profiles:{org_id}",
+            queueing_lock=f"draft:{org_id}",
+            schedule_at=retry_at,
+        ).defer(org_id=str(org_id), employee_ids=[str(id_) for id_ in ids])
         session.commit()
 
 
@@ -347,10 +406,11 @@ def queue_drafting(
             )
         )
     )
+    excluded = drafting_scope(session, org_id).excluded_employee_ids
     ids = [
         e.id
         for e in active_employees(session, org_id)
-        if scope == "all" or e.id in failed
+        if e.id not in excluded and (scope == "all" or e.id in failed)
     ]
     for id_ in ids:
         progress_row(session, org_id, id_, InferenceStatus.PENDING)
@@ -375,10 +435,14 @@ class DraftProgress(BaseModel):
     counts: dict[str, int]
     failed: list[FailedEmployee]
     requests: dict[str, int]
+    paused_until: datetime | None = None
+    pause_reason: str | None = None
 
 
 def read_progress(session: Session, org_id: UUID) -> DraftProgress:
-    employees = {e.id: e for e in active_employees(session, org_id)}
+    scope = drafting_scope(session, org_id)
+    active = active_employees(session, org_id)
+    employees = {e.id: e for e in active if e.id not in scope.excluded_employee_ids}
     rows = list(
         session.exec(
             select(ProfileProgress).where(
@@ -388,6 +452,7 @@ def read_progress(session: Session, org_id: UUID) -> DraftProgress:
         )
     )
     counts = {
+        "excluded": len(active) - len(employees),
         "not_started": len(employees) - len(rows),
         **{
             s.value: sum(r.inference_status == s for r in rows) for s in InferenceStatus
@@ -406,6 +471,8 @@ def read_progress(session: Session, org_id: UUID) -> DraftProgress:
     setting = read_setting(session, org_id)
     return DraftProgress(
         mode="model" if setting and setting.enabled else "rules",
+        paused_until=setting.paused_until if setting else None,
+        pause_reason=setting.pause_reason if setting else None,
         counts=counts,
         failed=[
             FailedEmployee(

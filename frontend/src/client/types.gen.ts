@@ -724,6 +724,14 @@ export type DraftProgress = {
     requests: {
         [key: string]: number;
     };
+    /**
+     * Paused Until
+     */
+    paused_until?: string | null;
+    /**
+     * Pause Reason
+     */
+    pause_reason?: string | null;
 };
 
 /**
