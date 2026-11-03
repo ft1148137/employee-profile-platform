@@ -62,7 +62,7 @@ def _issue(
     )
 
 
-def _csv_rows(content: bytes) -> Generator[FileRow]:
+def read_csv_rows(content: bytes) -> Generator[FileRow]:
     try:
         text = content.decode("utf-8-sig")
     except UnicodeDecodeError:
@@ -71,7 +71,7 @@ def _csv_rows(content: bytes) -> Generator[FileRow]:
         yield number, list(values), set()
 
 
-def _xlsx_rows(content: bytes) -> Generator[FileRow]:
+def read_xlsx_rows(content: bytes) -> Generator[FileRow]:
     workbook = load_workbook(BytesIO(content), read_only=True, data_only=True)
     try:
         # Avoid decoding every cell twice in the usual case without formulas.
@@ -277,7 +277,9 @@ def parse_roster(content: bytes, filename: str) -> ParsedRoster:
     if extension not in (".csv", ".xlsx"):
         _issue(result, "暂不支持这种文件格式，请在 Excel 里另存为 .xlsx 或 .csv")
         return result
-    file_rows = _csv_rows(content) if extension == ".csv" else _xlsx_rows(content)
+    file_rows = (
+        read_csv_rows(content) if extension == ".csv" else read_xlsx_rows(content)
+    )
     try:
         _parse_rows(result, file_rows)
     except (
