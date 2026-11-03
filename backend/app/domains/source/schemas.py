@@ -1,8 +1,60 @@
 from calendar import monthrange
 from datetime import date, datetime
 from typing import Literal, Self
+from uuid import UUID
 
 from pydantic import BaseModel, Field, HttpUrl, SecretStr, TypeAdapter, model_validator
+
+from app.domains.org.models import EmploymentStatus
+from app.domains.org.schemas import DepartmentSummary
+from app.domains.work.ingest import IngestCounts
+
+
+class IdentityEmployee(BaseModel):
+    id: UUID
+    employee_code: str | None
+    display_name: str
+    department: DepartmentSummary | None
+    employment_status: EmploymentStatus
+
+
+class IdentityCandidate(IdentityEmployee):
+    reason: Literal["email", "name"]
+
+
+class ExternalIdentityPublic(BaseModel):
+    id: UUID
+    source: str
+    source_label: str
+    external_id: str
+    display_name: str | None
+    email: str | None
+    record_count: int
+    employee: IdentityEmployee | None
+    candidate: IdentityCandidate | None
+
+
+class ExternalIdentitiesPublic(BaseModel):
+    data: list[ExternalIdentityPublic]
+    count: int
+
+
+class IdentityLink(BaseModel):
+    identity_id: UUID
+    employee_id: UUID
+
+
+class IdentityLinks(BaseModel):
+    links: list[IdentityLink] = Field(min_length=1, max_length=200)
+
+
+class IdentityLinkResult(BaseModel):
+    linked: int
+    counts: IngestCounts
+
+
+class IdentityUnlinkResult(BaseModel):
+    evidence_retracted: int
 
 
 def default_start_date() -> date:

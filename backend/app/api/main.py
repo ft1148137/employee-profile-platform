@@ -9,6 +9,7 @@ from app.api.routes import (
     drafting_settings,
     employees,
     evidence,
+    external_identities,
     login,
     me,
     model_setting,
@@ -32,6 +33,7 @@ api_router.include_router(utils.router)
 api_router.include_router(me.router)
 api_router.include_router(model_setting.router)
 api_router.include_router(sources.router)
+api_router.include_router(external_identities.router)
 api_router.include_router(orgs.router)
 api_router.include_router(setup_steps.router)
 api_router.include_router(drafting_settings.router)
