@@ -12,10 +12,19 @@ from sqlmodel import Session, select
 from app.authz.principal import Principal
 from app.core.config import settings
 from app.core.db import engine
+from app.domains.account import service
 from app.domains.account.passwords import ALPHABET, generate_password
+from app.domains.account.schemas import IssueAccounts
 from app.domains.account.service import list_accounts
 from app.domains.audit.models import ActorKind, AuditEvent
-from app.domains.org.models import Employee, EmploymentStatus, OrgMembership, RoleGrant
+from app.domains.org.models import (
+    Department,
+    Employee,
+    EmploymentStatus,
+    Organization,
+    OrgMembership,
+    RoleGrant,
+)
 from app.models import User
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
 
@@ -415,3 +424,186 @@ def test_regenerate_protected_account_rejects_entire_batch(
         select(OrgMembership).where(OrgMembership.employee_id == employees[0].id)
     ).all()
     assert not db.exec(select(AuditEvent).where(AuditEvent.org_id == orgs[0].id)).all()
+
+
+def test_issue_query_bound(accounts: tuple, db: Session) -> None:
+    _, _, orgs, _, _, users = accounts
+    employees = [
+        Employee(
+            org_id=orgs[0].id,
+            employee_code=f"batch-{uuid4()}",
+            display_name=f"Synthetic {i}",
+            work_email="shared@example.com",
+        )
+        for i in range(20)
+    ]
+    db.add_all(employees)
+    db.commit()
+    employee_ids = [e.id for e in employees]
+    principal = Principal(
+        ActorKind.USER, orgs[0].id, users[0].id, None, True, frozenset()
+    )
+    statements: list[str] = []
+    counts = []
+
+    def count(*args: object) -> None:
+        statements.append(str(args[2]))
+
+    for size in (3, 20):
+        with Session(engine) as session:
+            statements.clear()
+            event.listen(engine, "before_cursor_execute", count)
+            try:
+                _, rows = service.issue_accounts(
+                    session, principal, IssueAccounts(employee_ids=employee_ids[:size])
+                )
+                session.flush()
+            finally:
+                event.remove(engine, "before_cursor_execute", count)
+            counts.append(len(statements))
+            assert len(rows) == size
+            assert rows[0][5] == ""
+            assert all("邮箱已被其他账号使用" in row[5] for row in rows[1:])
+            assert (
+                len(
+                    session.exec(
+                        select(AuditEvent).where(AuditEvent.org_id == principal.org_id)
+                    ).all()
+                )
+                == size
+            )
+    assert counts[0] == counts[1]
+
+
+@pytest.mark.parametrize("change", [-1, 0, 1])
+def test_passwords_prepared_before_lock_and_growth(
+    accounts: tuple,
+    client: TestClient,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    change: int,
+) -> None:
+    url, auth, orgs, _, employees, _ = accounts
+    removed_id = employees[4].id
+    locked = False
+    hash_locations: list[bool] = []
+    original_hash, original_lock = service.get_password_hash, service.lock_org
+
+    def hash_password(password: str) -> str:
+        hash_locations.append(locked)
+        return original_hash(password)
+
+    def lock(session: Session, principal: Principal) -> Organization:
+        nonlocal locked
+        if change < 0:
+            employee = session.get(Employee, removed_id)
+            assert employee is not None
+            employee.employment_status = EmploymentStatus.INACTIVE
+            session.add(employee)
+            session.flush()
+        elif change > 0:
+            session.add(
+                Employee(
+                    org_id=orgs[0].id,
+                    employee_code=str(uuid4()),
+                    display_name="Arrived after count",
+                )
+            )
+            session.flush()
+        result = original_lock(session, principal)
+        locked = True
+        return result
+
+    monkeypatch.setattr(service, "get_password_hash", hash_password)
+    monkeypatch.setattr(service, "lock_org", lock)
+    response = client.post(f"{url}/accounts/issue", headers=auth, json={})
+    assert response.status_code == 200
+    assert hash_locations == [False] * 3 + ([True] if change > 0 else [])
+    sheet = load_workbook(BytesIO(response.content)).active
+    assert sheet is not None
+    rows = list(sheet.values)[1:]
+    assert len(rows) == 3 + change
+    assert len({row[4] for row in rows}) == len(rows)
+    for row in rows:
+        login = client.post(
+            "/api/v1/login/access-token", data={"username": row[0], "password": row[4]}
+        )
+        assert login.status_code == 200
+        user = db.exec(select(User).where(User.username == row[0])).one()
+        assert user.must_change_password
+
+
+def test_export_full_department_paths(
+    accounts: tuple, client: TestClient, db: Session
+) -> None:
+    url, auth, orgs, _, employees, _ = accounts
+    parents = [
+        Department(org_id=orgs[0].id, name=name) for name in ("研发中心", "市场中心")
+    ]
+    db.add_all(parents)
+    db.flush()
+    children = [
+        Department(org_id=orgs[0].id, name="质量组", parent_department_id=p.id)
+        for p in parents
+    ]
+    db.add_all(children)
+    db.flush()
+    selected = [employees[i] for i in (0, 3, 4)]
+    for employee, department_id in zip(
+        selected, [children[0].id, children[1].id, None], strict=True
+    ):
+        employee.department_id = department_id
+        db.add(employee)
+    db.commit()
+    response = client.post(
+        f"{url}/accounts/issue",
+        headers=auth,
+        json={"employee_ids": [str(e.id) for e in selected]},
+    )
+    assert response.status_code == 200
+    sheet = load_workbook(BytesIO(response.content)).active
+    assert sheet is not None
+    assert [row[2] for row in list(sheet.values)[1:]] == [
+        "研发中心/质量组",
+        "市场中心/质量组",
+        None,
+    ]
+
+
+@pytest.mark.parametrize("code", ["", "bad@code", "x" * 256])
+def test_issue_invalid_code(
+    accounts: tuple, client: TestClient, db: Session, code: str
+) -> None:
+    url, auth, _, _, employees, _ = accounts
+    employees[0].employee_code = code
+    db.add(employees[0])
+    db.commit()
+    response = client.post(
+        f"{url}/accounts/issue",
+        headers=auth,
+        json={"employee_ids": [str(employees[0].id)]},
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"][0]["reason"] == "工号为空或不能作为登录名"
+
+
+def test_issue_duplicate_username_in_batch(
+    accounts: tuple, client: TestClient, db: Session
+) -> None:
+    url, auth, _, _, employees, _ = accounts
+    employees[3].employee_code = employees[0].employee_code.upper()
+    db.add(employees[3])
+    db.commit()
+    response = client.post(
+        f"{url}/accounts/issue",
+        headers=auth,
+        json={"employee_ids": [str(employees[i].id) for i in (0, 3)]},
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == [
+        {
+            "employee_code": employees[3].employee_code,
+            "display_name": employees[3].display_name,
+            "reason": "登录名已被占用",
+        }
+    ]
