@@ -18,3 +18,4 @@ RUN bun install
 
 COPY ./frontend /app/frontend
 COPY ./examples/roster/sample-30.csv /app/examples/roster/sample-30.csv
+COPY ./examples/test-enterprises/qiguang-aiot/roster.csv /app/examples/test-enterprises/qiguang-aiot/roster.csv
