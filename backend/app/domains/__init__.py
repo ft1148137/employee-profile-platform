@@ -9,6 +9,7 @@ from app.domains.model import models as model
 from app.domains.org import models as org
 from app.domains.profile import models as profile
 from app.domains.setup import models as setup
+from app.domains.source import models as source
 from app.domains.work import models as work
 
 __all__ = [
@@ -21,5 +22,6 @@ __all__ = [
     "org",
     "profile",
     "setup",
+    "source",
     "work",
 ]
