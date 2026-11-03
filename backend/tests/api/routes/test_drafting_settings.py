@@ -12,7 +12,6 @@ from app.domains.drafting.settings import drafting_scope
 from app.domains.evidence.models import Evidence
 from app.domains.org.models import Department, Employee
 from app.domains.profile.models import ProfileClaim
-from tests.api.routes.test_profiles import demo as demo
 from tests.api.routes.test_roster import apply, upload
 from tests.api.routes.test_setup_steps import SetupTenant
 from tests.api.routes.test_setup_steps import tenant as tenant
