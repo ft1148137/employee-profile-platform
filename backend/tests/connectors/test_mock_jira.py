@@ -85,6 +85,13 @@ def test_formats_and_users(jira: TestClient) -> None:
         "displayName": "林澈",
         "emailAddress": "employee01@demo.example.com",
         "active": True,
+        "self": "https://mock.example.com/rest/api/3/user?accountId=demo-jira-01",
+        "accountType": "atlassian",
+        "timeZone": "Asia/Shanghai",
+        "avatarUrls": {
+            f"{size}x{size}": "https://mock.example.com/avatar"
+            for size in (16, 24, 32, 48)
+        },
     }
     assert all(row["fields"]["updated"].endswith(".000+0800") for row in cloud)
 
@@ -165,6 +172,13 @@ def test_modified_dataset_and_timezone(tmp_path: Path) -> None:
             "accountId": "outside-org",
             "displayName": "外部账号",
             "active": True,
+            "self": "https://mock.example.com/rest/api/3/user?accountId=outside-org",
+            "accountType": "atlassian",
+            "timeZone": "Asia/Shanghai",
+            "avatarUrls": {
+                f"{size}x{size}": "https://mock.example.com/avatar"
+                for size in (16, 24, 32, 48)
+            },
         }
         assert len(page["issues"][0]["fields"]["description"]["content"]) == 2
     for app in (client, TestClient(create_mock_app(tmp_path))):
