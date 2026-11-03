@@ -4,12 +4,17 @@ from uuid import UUID
 from sqlmodel import Session, select
 
 from app.authz.principal import Principal
+from app.core.config import settings
 from app.core.secrets import decrypt_secret, encrypt_secret
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.model.client import ModelConfig, ModelUnavailable
 from app.domains.model.models import ModelSetting
-from app.domains.model.schemas import ModelSettingPublic, ModelSettingUpdate
+from app.domains.model.schemas import (
+    ChatGPTStatus,
+    ModelSettingPublic,
+    ModelSettingUpdate,
+)
 from app.domains.org.models import Organization
 
 
@@ -29,6 +34,10 @@ def public_setting(setting: ModelSetting | None) -> ModelSettingPublic:
     return ModelSettingPublic(
         **setting.model_dump(exclude={"api_key_ciphertext"}),
         has_api_key=bool(setting.api_key_ciphertext),
+        chatgpt=ChatGPTStatus(
+            connected=bool(setting.chatgpt_auth_ciphertext),
+            **(setting.chatgpt_account or {}),
+        ),
     )
 
 
@@ -47,6 +56,12 @@ def save_setting(
         setting = ModelSetting(
             org_id=principal.org_id, updated_by_user_id=principal.user_id
         )
+    if body.kind == "chatgpt_subscription" and not (
+        setting.chatgpt_auth_ciphertext
+        and not (setting.chatgpt_account or {}).get("needs_relogin")
+        or settings.CHATGPT_CODEX_AUTH_FILE
+    ):
+        raise InvalidModelSetting("请先在设置页连接 ChatGPT")
     changed = body.api_key is not None
     token = setting.api_key_ciphertext
     if (
@@ -65,6 +80,8 @@ def save_setting(
         assert body.api_key is not None
         key = body.api_key.get_secret_value()
         token = encrypt_secret(key) if key else None
+    if body.kind == "chatgpt_subscription":
+        token = None
     if body.enabled:
         if body.kind == "cloud_api" and not token:
             raise InvalidModelSetting("请填写模型 API 密钥")
@@ -99,6 +116,7 @@ def save_setting(
         },
     )
     session.commit()
+    session.refresh(setting)
     return public_setting(setting)
 
 
@@ -107,6 +125,8 @@ def model_config(setting: ModelSetting | None) -> ModelConfig:
         raise ModelUnavailable("模型已关闭，请先启用模型")
     return ModelConfig(
         model=setting.model,
+        org_id=setting.org_id,
+        reasoning_effort=setting.reasoning_effort,
         base_url=setting.base_url,
         api_key=decrypt_secret(setting.api_key_ciphertext)
         if setting.api_key_ciphertext

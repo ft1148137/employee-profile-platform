@@ -11,6 +11,8 @@ from pydantic import (
     model_validator,
 )
 
+ReasoningEffort = Literal["low", "medium", "high", "xhigh"]
+
 ModelKind = Literal["cloud_api", "local", "openai_compatible", "chatgpt_subscription"]
 
 
@@ -20,13 +22,20 @@ class ModelSettingUpdate(BaseModel):
     model: str | None = Field(default=None, max_length=200)
     base_url: str | None = Field(default=None, max_length=500)
     api_key: SecretStr | None = None
+    reasoning_effort: ReasoningEffort | None = None
 
     @model_validator(mode="after")
     def validate_setting(self) -> Self:
         if self.kind == "chatgpt_subscription":
-            raise ValueError("请先在设置页连接 ChatGPT")
+            self.model = self.model or "chatgpt/gpt-6.1-sol"
+            self.reasoning_effort = self.reasoning_effort or "high"
+            if not self.model.startswith("chatgpt/") or self.base_url or self.api_key:
+                raise ValueError("ChatGPT 订阅必须使用 chatgpt/ 模型，不配置地址或密钥")
         if self.model:
-            if self.model.startswith("chatgpt/"):
+            if (
+                self.model.startswith("chatgpt/")
+                and self.kind != "chatgpt_subscription"
+            ):
                 raise ValueError("chatgpt/ 只能用于 ChatGPT 订阅")
             if self.model.startswith("github_copilot/"):
                 raise ValueError("不支持 GitHub Copilot 订阅登录")
@@ -48,12 +57,35 @@ class ModelSettingUpdate(BaseModel):
         return self
 
 
+class ChatGPTAccount(BaseModel):
+    email: str | None = None
+    plan_type: str | None = None
+    needs_relogin: bool = False
+
+
+class ChatGPTStatus(ChatGPTAccount):
+    connected: bool = False
+
+
+class ChatGPTLogin(BaseModel):
+    status: Literal["none", "pending", "connected", "expired", "error"]
+    verification_url: str | None = None
+    user_code: str | None = None
+    expires_at: datetime | None = None
+    account: ChatGPTAccount | None = None
+    message: str | None = None
+
+
 class ModelSettingPublic(BaseModel):
     enabled: bool = False
     kind: str | None = None
     model: str | None = None
     base_url: str | None = None
     has_api_key: bool = False
+    reasoning_effort: ReasoningEffort | None = None
+    chatgpt: ChatGPTStatus = Field(default_factory=ChatGPTStatus)
+    paused_until: datetime | None = None
+    pause_reason: str | None = None
     updated_at: datetime | None = None
 
 

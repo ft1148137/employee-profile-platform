@@ -1,12 +1,18 @@
 import json
+import logging
 import os
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
+from functools import partial
 from types import ModuleType
+from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, ValidationError
+
+from app.domains.model import chatgpt
 
 
 class ModelUnavailable(Exception):
@@ -32,6 +38,8 @@ class ModelConfig:
     model: str
     base_url: str | None = None
     api_key: str | None = field(default=None, repr=False)
+    org_id: UUID | None = None
+    reasoning_effort: str | None = None
 
 
 @dataclass(frozen=True)
@@ -42,12 +50,24 @@ class ChatResult[T: BaseModel]:
     attempts: int
 
 
+class _AuthLogFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not record.pathname.endswith("/chatgpt/authenticator.py")
+
+
+_AUTH_LOG_FILTER = _AuthLogFilter()
+
+
 def _sdk() -> ModuleType:
     os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
     os.environ["LITELLM_LOCAL_ANTHROPIC_BETA_HEADERS"] = "True"
     os.environ["LITELLM_LOG"] = "ERROR"
+    os.environ["CHATGPT_TOKEN_DIR"] = str(chatgpt.TOKEN_DIR)
+    os.environ["CHATGPT_AUTH_FILE"] = "auth.json"
     import litellm
 
+    # The SDK refresh warning includes the upstream error body, which may contain credentials.
+    logging.getLogger("LiteLLM").addFilter(_AUTH_LOG_FILTER)
     litellm.callbacks = []
     litellm.success_callback = []
     litellm.failure_callback = []
@@ -71,6 +91,39 @@ def _retry_at(error: Exception) -> datetime | None:
             return None
 
 
+def rate_limit(error: Exception) -> tuple[datetime, str]:
+    retry_at = _retry_at(error)
+    response = getattr(error, "response", None)
+    data: dict[str, Any] = {}
+    try:
+        data = response.json() if response is not None else {}
+        data = data.get("error", data)
+        if not isinstance(data, dict):
+            raise ValueError("Invalid limit response")
+        if retry_at is None:
+            if "resets_in_seconds" in data:
+                retry_at = datetime.now(UTC) + timedelta(
+                    seconds=max(0, float(data["resets_in_seconds"]))
+                )
+            elif "resets_at" in data:
+                retry_at = datetime.fromtimestamp(float(data["resets_at"]), UTC)
+    except ValueError, TypeError, AttributeError, OverflowError, OSError:
+        data = data if isinstance(data, dict) else {}
+    window = data.get("limit_window_minutes")
+    reason = (
+        "本周用量已到上限"
+        if window == 10080
+        else "5 小时用量已到上限"
+        if window == 300
+        else "请求过于频繁"
+    )
+    if retry_at is None:
+        return datetime.now(UTC) + timedelta(
+            minutes=30
+        ), reason + "；预计恢复时间未知，30 分钟后重试"
+    return retry_at, reason
+
+
 def chat_json[T: BaseModel](
     config: ModelConfig,
     messages: list[dict[str, str]],
@@ -91,13 +144,21 @@ def chat_json[T: BaseModel](
     ]
     for attempt in range(1, attempts + 1):
         try:
-            provider = sdk.get_llm_provider(model=config.model)[1]
+            # Provider detection itself authenticates chatgpt; defer it until the token lock.
+            provider = (
+                "chatgpt"
+                if config.model.startswith("chatgpt/")
+                else sdk.get_llm_provider(model=config.model)[1]
+            )
             response_format = (
                 {"response_format": output}
-                if sdk.supports_response_schema(model=config.model)
+                if provider != "chatgpt"
+                and sdk.supports_response_schema(model=config.model)
                 else {}
             )
-            response = sdk.completion(
+
+            invoke = partial(
+                sdk.completion,
                 model=config.model,
                 messages=conversation,
                 api_base=config.base_url,
@@ -108,7 +169,18 @@ def chat_json[T: BaseModel](
                 timeout=120,
                 num_retries=0,
                 drop_params=True,
+                **(
+                    {"reasoning_effort": config.reasoning_effort}
+                    if config.reasoning_effort
+                    else {}
+                ),
                 **response_format,
+            )
+
+            response = (
+                chatgpt.completion(config.org_id, invoke)
+                if provider == "chatgpt"
+                else invoke()
             )
         except tuple(sdk.LITELLM_EXCEPTION_TYPES) as error:
             if isinstance(error, (sdk.AuthenticationError, sdk.PermissionDeniedError)):
@@ -127,9 +199,9 @@ def chat_json[T: BaseModel](
             ):
                 raise ModelUnavailable("地址或模型名不对") from None
             if isinstance(error, sdk.RateLimitError):
-                retry_at = _retry_at(error)
-                if attempt == attempts:
-                    raise ModelRateLimited(retry_at) from None
+                retry_at, reason = rate_limit(error)
+                if provider == "chatgpt" or attempt == attempts:
+                    raise ModelRateLimited(retry_at, reason) from None
                 delay = (
                     (retry_at - datetime.now(UTC)).total_seconds() if retry_at else 1
                 )

@@ -78,6 +78,15 @@ def test_settings(
         "model": None,
         "base_url": None,
         "has_api_key": False,
+        "reasoning_effort": None,
+        "chatgpt": {
+            "connected": False,
+            "email": None,
+            "plan_type": None,
+            "needs_relogin": False,
+        },
+        "paused_until": None,
+        "pause_reason": None,
         "updated_at": None,
     }
     body = {

@@ -20,7 +20,7 @@ dependencies = [
     "pyyaml>=6.0.3,<7",
     "openpyxl>=3.1.5,<4",
     "cryptography>=46,<47",
-    "litellm==1.106.6",
+    "litellm[mcp]==1.106.6",
 ]
 
 [dependency-groups]
@@ -92,3 +92,6 @@ error-on-warning = true
 
 [tool.fastapi]
 entrypoint = "app.main:app"
+
+[tool.pytest.ini_options]
+markers = ["chatgpt_live: local opt-in ChatGPT subscription integration"]
