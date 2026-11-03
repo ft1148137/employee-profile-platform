@@ -5,6 +5,7 @@ from app.api.routes import (
     audit,
     capabilities,
     capability_templates,
+    change_requests,
     employees,
     evidence,
     login,
@@ -36,6 +37,7 @@ api_router.include_router(employees.router)
 api_router.include_router(capabilities.router)
 api_router.include_router(capability_templates.router)
 api_router.include_router(profiles.router)
+api_router.include_router(change_requests.router)
 api_router.include_router(evidence.router)
 api_router.include_router(accounts.router)
 api_router.include_router(audit.router)
