@@ -245,5 +245,5 @@ def test_seed_fallback_and_transitive_groups(
         caps,
         {c.key: ["UI", "NPU", "ISP", "POS", "OTA", "CE", "API"] for c in caps},
     )
-    records[0].task.title = "后端API接口 api-v2 api_v3 (API)"
+    records[0].task.title = "后端API接口"
     assert rules.draft(records, caps, {"backend_api": ["API"]})
