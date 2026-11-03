@@ -1,0 +1,14 @@
+# Local development only; never used by install.sh or CI.
+services:
+  backend:
+    environment:
+      FASTAPI_ENV: development
+      CHATGPT_CODEX_AUTH_FILE: /run/secrets/codex-auth.json
+    volumes:
+      - ${HOME}/.codex/auth.json:/run/secrets/codex-auth.json:ro
+  worker:
+    environment:
+      FASTAPI_ENV: development
+      CHATGPT_CODEX_AUTH_FILE: /run/secrets/codex-auth.json
+    volumes:
+      - ${HOME}/.codex/auth.json:/run/secrets/codex-auth.json:ro

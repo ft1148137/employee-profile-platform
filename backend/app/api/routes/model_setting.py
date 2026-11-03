@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from app.api.deps import SessionDep
 from app.authz.deps import OrgAdminDep
 from app.core.secrets import SecretUnavailable
+from app.domains.model import chatgpt
 from app.domains.model.client import (
     ModelOutputInvalid,
     ModelRateLimited,
@@ -16,6 +17,7 @@ from app.domains.model.client import (
     chat_json,
 )
 from app.domains.model.schemas import (
+    ChatGPTLogin,
     ConnectionTest,
     ModelSettingPublic,
     ModelSettingUpdate,
@@ -92,3 +94,22 @@ def test_model_setting(session: SessionDep, principal: OrgAdminDep) -> Connectio
     ) as error:
         return ConnectionTest(ok=False, message=str(error))
     return ConnectionTest(ok=True, message="模型连接成功")
+
+
+@router.post("/chatgpt/login", response_model=ChatGPTLogin)
+def start_chatgpt_login(session: SessionDep, principal: OrgAdminDep) -> ChatGPTLogin:
+    return chatgpt.login(session, principal, start=True)
+
+
+@router.get("/chatgpt/login", response_model=ChatGPTLogin)
+def poll_chatgpt_login(session: SessionDep, principal: OrgAdminDep) -> ChatGPTLogin:
+    return chatgpt.login(session, principal)
+
+
+@router.delete("/chatgpt", response_model=ConnectionTest)
+def disconnect_chatgpt(session: SessionDep, principal: OrgAdminDep) -> ConnectionTest:
+    chatgpt.disconnect(session, principal)
+    return ConnectionTest(
+        ok=True,
+        message="已断开连接。令牌在 OpenAI 仍有效；如需立即作废，请在 ChatGPT 安全设置里退出这个会话。",
+    )

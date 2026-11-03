@@ -326,6 +326,73 @@ export type CapabilityTemplatePublic = {
 };
 
 /**
+ * ChatGPTAccount
+ */
+export type ChatGPTAccount = {
+    /**
+     * Email
+     */
+    email?: string | null;
+    /**
+     * Plan Type
+     */
+    plan_type?: string | null;
+    /**
+     * Needs Relogin
+     */
+    needs_relogin?: boolean;
+};
+
+/**
+ * ChatGPTLogin
+ */
+export type ChatGPTLogin = {
+    /**
+     * Status
+     */
+    status: 'none' | 'pending' | 'connected' | 'expired' | 'error';
+    /**
+     * Verification Url
+     */
+    verification_url?: string | null;
+    /**
+     * User Code
+     */
+    user_code?: string | null;
+    /**
+     * Expires At
+     */
+    expires_at?: string | null;
+    account?: ChatGPTAccount | null;
+    /**
+     * Message
+     */
+    message?: string | null;
+};
+
+/**
+ * ChatGPTStatus
+ */
+export type ChatGPTStatus = {
+    /**
+     * Email
+     */
+    email?: string | null;
+    /**
+     * Plan Type
+     */
+    plan_type?: string | null;
+    /**
+     * Needs Relogin
+     */
+    needs_relogin?: boolean;
+    /**
+     * Connected
+     */
+    connected?: boolean;
+};
+
+/**
  * ClaimEvidencePublic
  */
 export type ClaimEvidencePublic = {
@@ -923,6 +990,19 @@ export type ModelSettingPublic = {
      */
     has_api_key?: boolean;
     /**
+     * Reasoning Effort
+     */
+    reasoning_effort?: 'low' | 'medium' | 'high' | 'xhigh' | null;
+    chatgpt?: ChatGPTStatus;
+    /**
+     * Paused Until
+     */
+    paused_until?: string | null;
+    /**
+     * Pause Reason
+     */
+    pause_reason?: string | null;
+    /**
      * Updated At
      */
     updated_at?: string | null;
@@ -952,6 +1032,10 @@ export type ModelSettingUpdate = {
      * Api Key
      */
     api_key?: null;
+    /**
+     * Reasoning Effort
+     */
+    reasoning_effort?: 'low' | 'medium' | 'high' | 'xhigh' | null;
 };
 
 /**
@@ -1658,6 +1742,10 @@ export type ModelSettingUpdateWritable = {
      * Api Key
      */
     api_key?: string | null;
+    /**
+     * Reasoning Effort
+     */
+    reasoning_effort?: 'low' | 'medium' | 'high' | 'xhigh' | null;
 };
 
 export type loginLoginAccessTokenData = {
@@ -1867,6 +1955,96 @@ export type modelSettingTestModelSettingResponses = {
 };
 
 export type modelSettingTestModelSettingResponse = modelSettingTestModelSettingResponses[keyof modelSettingTestModelSettingResponses];
+
+export type modelSettingPollChatgptLoginData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/model-setting/chatgpt/login';
+};
+
+export type modelSettingPollChatgptLoginErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type modelSettingPollChatgptLoginError = modelSettingPollChatgptLoginErrors[keyof modelSettingPollChatgptLoginErrors];
+
+export type modelSettingPollChatgptLoginResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChatGPTLogin;
+};
+
+export type modelSettingPollChatgptLoginResponse = modelSettingPollChatgptLoginResponses[keyof modelSettingPollChatgptLoginResponses];
+
+export type modelSettingStartChatgptLoginData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/model-setting/chatgpt/login';
+};
+
+export type modelSettingStartChatgptLoginErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type modelSettingStartChatgptLoginError = modelSettingStartChatgptLoginErrors[keyof modelSettingStartChatgptLoginErrors];
+
+export type modelSettingStartChatgptLoginResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChatGPTLogin;
+};
+
+export type modelSettingStartChatgptLoginResponse = modelSettingStartChatgptLoginResponses[keyof modelSettingStartChatgptLoginResponses];
+
+export type modelSettingDisconnectChatgptData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/model-setting/chatgpt';
+};
+
+export type modelSettingDisconnectChatgptErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type modelSettingDisconnectChatgptError = modelSettingDisconnectChatgptErrors[keyof modelSettingDisconnectChatgptErrors];
+
+export type modelSettingDisconnectChatgptResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConnectionTest;
+};
+
+export type modelSettingDisconnectChatgptResponse = modelSettingDisconnectChatgptResponses[keyof modelSettingDisconnectChatgptResponses];
 
 export type orgsRenameOrganizationData = {
     body: OrganizationUpdate;
