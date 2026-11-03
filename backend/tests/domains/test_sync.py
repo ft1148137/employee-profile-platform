@@ -11,11 +11,13 @@ import pytest
 from fastapi.testclient import TestClient
 from procrastinate.exceptions import JobRetry
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.connectors.jira.client import RetryableSourceError, jira_client_for
 from app.connectors.jira.mock import create_mock_app
+from app.core.db import engine
 from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
 from app.domains.evidence.models import Evidence
@@ -416,8 +418,6 @@ def test_lock_and_active_retry(context: tuple, client: TestClient, db: Session) 
     run = db.get(SyncRun, UUID(run_id))
     run.status, run.updated_at = "running", utc_now() - timedelta(minutes=31)
     db.commit()
-    from app.core.db import engine
-
     with engine.connect() as connection:
         key = {"key": str(run.connection_id)}
         connection.execute(
@@ -444,3 +444,47 @@ def test_lock_and_active_retry(context: tuple, client: TestClient, db: Session) 
         == 409
     )
     assert run_sync(db, org, another).status == "succeeded"
+
+
+def test_import_serializes_account_linking(
+    context: tuple, client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    org, base, auth, employees, _ = context
+    identity = ExternalIdentity(org_id=org, source="csv:test", external_id="actor")
+    db.add(identity)
+    db.commit()
+    identity_id = identity.id
+    original = sync.ingest_record
+
+    def ingest(*args: Any, **kwargs: Any) -> Any:
+        with Session(engine) as contender:
+            with pytest.raises(OperationalError) as caught:
+                contender.exec(
+                    select(ExternalIdentity)
+                    .where(
+                        ExternalIdentity.org_id == org,
+                        ExternalIdentity.id == identity_id,
+                    )
+                    .with_for_update(nowait=True)
+                ).one()
+            assert caught.value.orig.sqlstate == "55P03"
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(sync, "ingest_record", ingest)
+    content = b"record_id,source,occurred_at,actor_account,title\n1,test,2026-01-01,actor,test\n"
+    response = client.post(
+        base + "/sources/csv/imports",
+        headers=auth,
+        files={"file": ("work.csv", content)},
+    )
+    assert run_sync(db, org, response.json()["run"]["id"]).status == "succeeded"
+    linked = client.post(
+        base + "/external-identities/link",
+        headers=auth,
+        json={
+            "links": [
+                {"identity_id": str(identity_id), "employee_id": str(employees[0].id)}
+            ],
+        },
+    )
+    assert linked.status_code == 200 and linked.json()["counts"]["evidence_added"] == 1

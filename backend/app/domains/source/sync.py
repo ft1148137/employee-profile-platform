@@ -6,7 +6,7 @@ from uuid import UUID
 from procrastinate import RetryDecision
 from procrastinate.exceptions import JobRetry
 from pydantic import JsonValue
-from sqlalchemy import text
+from sqlalchemy import text, tuple_
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
@@ -22,7 +22,7 @@ from app.core.secrets import SecretUnavailable
 from app.domains.audit.models import ActorKind
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
-from app.domains.org.models import Organization
+from app.domains.org.models import ExternalIdentity, Organization
 from app.domains.source.models import SourceConnection, SyncRun
 from app.domains.source.schemas import JiraConfig, SyncRunPublic
 from app.domains.work.ingest import (
@@ -219,6 +219,18 @@ def _batch(
     records: list[SourceRecord],
     cursor: dict[str, JsonValue],
 ) -> None:
+    # Match account linking's lock order so a concurrent link sees the committed page.
+    session.exec(
+        select(ExternalIdentity)
+        .where(
+            ExternalIdentity.org_id == run.org_id,
+            tuple_(col(ExternalIdentity.source), col(ExternalIdentity.external_id)).in_(
+                {(r.source, p.external_id) for r in records for p in r.people}
+            ),
+        )
+        .order_by(col(ExternalIdentity.id))
+        .with_for_update()
+    ).all()
     counts = dict(run.counts)
     for record in records:
         added = ingest_record(
