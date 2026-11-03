@@ -87,6 +87,19 @@
 
 证据引用写作 `jira:<KEY>`、`record:<record_id>`、`self_report:<id>`、`manager_review:<id>`。
 
+## 可直接上传的 M1 名单
+
+每家目录的 `roster.csv` 是 UTF-8 带 BOM 的六列模板（工号、姓名、部门、职位、上级工号、邮箱），共 260 名在职员工。管理员在首次设置或「管理 → 导入名单」直接选择对应文件。只上传本企业的全量名单，不要混用；同一部署中各企业管理员登录名也要不同。
+
+生成器从 `org.yaml` 取姓名、部门、职位、邮箱，从 `roster.yaml` 只选 `status: active` 并取 `reports_to`。不包含已离职人员、第二汇报人、兼岗、职级或测试用真实能力；角色也不会随文件自动授权。
+
+```bash
+uv run --project backend python examples/test-enterprises/export_rosters.py
+uv run --project backend python examples/test-enterprises/validate.py
+```
+
+生成时调用正式名单解析器，遇错误拒绝导出。校验器还比较 CSV 与 YAML 的生成结果，防止提交过期文件。修改 YAML 后要重新生成并提交 CSV。
+
 ## 校验
 
 在仓库根目录运行：

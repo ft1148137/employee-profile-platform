@@ -99,7 +99,7 @@ export function IssueAccountsDialog({ orgId, employees, onIssued }: Props) {
         link.download = filename
         link.click()
       } finally {
-        URL.revokeObjectURL(url)
+        setTimeout(() => URL.revokeObjectURL(url), 60_000)
       }
       setIssued(Number(response.headers["x-issued-count"]))
     } catch (err) {
