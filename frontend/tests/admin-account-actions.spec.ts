@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test"
 import { expectChineseCopy } from "./utils/copy"
 import { logInUser } from "./utils/user"
 
+test.describe.configure({ mode: "serial" })
+
 test.use({ storageState: { cookies: [], origins: [] } })
 
 test("reset password once, disable and enable employee accounts", async ({

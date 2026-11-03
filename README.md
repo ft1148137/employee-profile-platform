@@ -4,27 +4,36 @@
 
 Phase 1 回答四个问题：**这个人做过什么、能承担哪些工作、证据是什么、哪里还需要确认**。能力判断关联证据，区分已确认、暂定、未知和存在争议；缺少记录不代表不会，信心标签不是概率。不打绩效分、不自动排班、不默认采集私人资料。
 
-基于 Full Stack FastAPI Template，使用 FastAPI、React、PostgreSQL 和 Docker Compose。当前 M0 提供合成企业数据的只读演示，画像和发布版本均为预置示例，尚未接入模型或真实 Jira。
+基于 Full Stack FastAPI Template，使用 FastAPI、React、PostgreSQL 和 Docker Compose。当前 M1 支持一次部署、网页初始化、全量名单导入、账号发放与角色管理；尚未接入模型或真实 Jira。
 
-## 三步启动
+## 生产安装
 
-前提：安装并启动 Docker Desktop，或 Docker Engine + Compose v2；可使用 Git 克隆此仓库（当前为私有仓库，需要访问权限）。本机 `8000` 端口需空闲。
+准备 Git、curl、Docker 和 Docker Compose 2.24.4+，在全新目录运行：
 
-1. 克隆仓库：
+```bash
+git clone https://github.com/ft1148137/employee-profile-platform.git
+cd employee-profile-platform
+./install.sh
+```
 
-   ```bash
-   git clone https://github.com/ft1148137/employee-profile-platform.git
-   ```
+按提示填写服务器 IP 或域名、访问方式和端口。安装器生成随机密钥、启动生产服务并打印一次性初始化链接，**不导入演示数据**。把链接单独交给企业管理员，用网页完成建企业、导入名单、选择词典、下载员工账号。
 
-2. 复制演示配置并启动：
+- [部署与维护指南](docs/deploy.md)：访问方式、备份恢复、升级回退、管理员密码重置。
+- [企业管理员指南](docs/admin-guide.md)：带截图的向导、名单维护、账号和角色管理。
+- [M1 验收记录](docs/m1-acceptance.md)：本机实测范围与限制。
 
-   ```bash
-   cd employee-profile-platform && cp .env.example .env && docker compose up -d --wait
-   ```
+## 本机演示
 
-   首次启动会在本地构建镜像，下载依赖并自动迁移、导入示例数据，可能需要几分钟。`.env.example` 的默认密钥和密码只用于本机演示。已有部署请保留自己的 `.env`，不要覆盖。
+仅在另一个全新克隆目录复制演示配置，8000 端口需空闲：
 
-3. 打开 <http://localhost:8000>，用下表账号登录。
+```bash
+cp .env.example .env
+docker compose up -d --wait
+```
+
+打开 <http://localhost:8000>。此方式有固定测试密码和开发接口，只供本机合成数据演示。已有部署不要覆盖 `.env`。
+
+也可在独立目录运行 `EPP_HTTP_PORT=18080 COMPOSE_PROJECT_NAME=epp-demo ./install.sh --demo --non-interactive`，由安装器生成随机演示密码；下表前四个身份不变，密码以安装器打印值为准；这种方式不创建平台超管，`superadmin` 仅由下面的 `.env.example` 演示配置提供。
 
 ## 演示账号
 
@@ -86,17 +95,18 @@ bash tests/smoke/compose_smoke.sh
 
 默认配置仅供本机演示：包含默认密钥，启用 `FASTAPI_ENV=development`，Web/API 只绑定 `127.0.0.1:8000`，数据库不发布宿主机端口。开发模式提供开发专用接口，不能直接用于对外服务。
 
-对外部署前按 [部署指南](deploy/README.md) 替换密钥、关闭开发模式和演示数据、配置 HTTPS。`.env` 只保存在本地，不提交凭据或真实员工资料。
+对外部署前按 [部署指南](docs/deploy.md) 在全新目录安装生产环境、配置 HTTPS。`.env` 只保存在本地，不提交凭据或真实员工资料。
 
 ## 项目状态与路线图
 
 | 里程碑 | 范围 | 状态 |
 | --- | --- | --- |
-| M0 底座与演示 | 租户权限、示例数据、只读画像、Compose | 本 README 的验收范围 |
-| M1 证据采集 | 来源导入、员工自述与证据写入 | 规划中 |
-| M2 画像闭环 | 候选 Claim、待确认问题、审核和发布 | 规划中 |
-| M3 Jira 接入 | Jira Connector 与显式身份关联 | 规划中 |
-| M4 开源发布 | 安全与许可证核验、发布体验 | 规划中 |
+| M0 底座与演示 | 租户权限、示例数据、只读画像、Compose | 已实现 |
+| M1 一次部署与企业初始化 | 安装、网页向导、名单、账号、角色、审计 | 本 README 的验收范围 |
+| M2 外部数据与初始画像 | 来源同步、初始画像请求 | 后续里程碑 |
+| M3 画像助手与员工更新请求 | 对话、预览、本人确认 | 后续里程碑 |
+| M4 经理审批与持续更新 | 批准发布、增量更新 | 后续里程碑 |
+| M5 按能力找人与开源发布 | 检索、安全与许可证核验 | 后续里程碑 |
 
 不承诺日期，每个里程碑后按真实使用反馈决定下一步。跨部门调配 P1–P6 当前只在架构文档说明扩展位置，不实现调配逻辑。
 

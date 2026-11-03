@@ -22,6 +22,7 @@ from typing import Literal
 
 import yaml
 from app.seed.schema import Capability, Jira, ManagerReview, Org, SelfReport
+from export_rosters import roster_csv
 from pydantic import (
     AwareDatetime,
     BaseModel,
@@ -361,6 +362,13 @@ def check(data: Loaded) -> list[str]:
         repeated = sorted(v for v, n in counts.items() if n > 1)
         require(not repeated, f"duplicate {label}: {repeated}")
         return set(values)
+
+    # Generated upload roster must remain byte-for-byte reproducible.
+    roster_path = data.path / "roster.csv"
+    require(
+        roster_path.exists() and roster_path.read_bytes() == roster_csv(data.path),
+        "roster.csv differs from org.yaml/roster.yaml; run export_rosters.py",
+    )
 
     # Files and headers
     for name in [
