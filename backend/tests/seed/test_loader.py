@@ -10,7 +10,12 @@ from app.core.config import settings
 from app.core.db import engine
 from app.domains.capability.models import CapabilityDefinition, CapabilitySchemaVersion
 from app.domains.evidence.models import Evidence, EvidenceKind, Visibility
-from app.domains.org.models import Employee, Organization, OrgMembership
+from app.domains.org.models import (
+    Employee,
+    ExternalIdentity,
+    Organization,
+    OrgMembership,
+)
 from app.domains.profile.models import ClaimEvidence, ProfileClaim, ProfileVersion
 from app.domains.profile.service import SnapshotError, build_profile_snapshot
 from app.models import User
@@ -21,7 +26,30 @@ from app.seed.schema import SeedError, read_bundle
 def test_import(seed_path: Path) -> None:
     with Session(engine) as session:
         first = load_demo(session, seed_path)
+        with session.begin():
+            org = session.exec(
+                select(Organization).where(
+                    Organization.slug == read_bundle(seed_path).org.slug
+                )
+            ).one()
+            assert all(
+                i.linked_at
+                for i in session.exec(
+                    select(ExternalIdentity).where(ExternalIdentity.org_id == org.id)
+                )
+            )
+            unlinked = next(
+                i for i in read_bundle(seed_path).jira.issues if i.key == "PLAT-999"
+            )
+            session.add(
+                ExternalIdentity(
+                    org_id=org.id,
+                    source="jira",
+                    external_id=unlinked.fields.assignee.accountId,
+                )
+            )
         second = load_demo(session, seed_path)
+        assert second["skipped_jira_issues"] == ["PLAT-999"]
         assert first["skipped_jira_issues"] == ["PLAT-999"]
         assert all(c["added"] == 0 for c in second["counts"].values())
         assert first["counts"]["evidence"]["added"] == 54
