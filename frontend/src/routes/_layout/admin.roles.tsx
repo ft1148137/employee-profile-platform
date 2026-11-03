@@ -68,7 +68,7 @@ function RolesList({ orgId }: { orgId: string }) {
           </p>
           <h1 className="text-3xl font-semibold tracking-tight">角色</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            管理企业管理员与部门经理的角色授予。
+            管理企业管理员与部门经理的角色授予。部门经理可以查看获授权部门及其全部下级部门的员工。
           </p>
         </div>
         {roles.includes("org_admin") &&

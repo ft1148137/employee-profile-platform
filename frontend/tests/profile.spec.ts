@@ -83,7 +83,9 @@ for (const [role, email, restricted] of [
     await expect(sheet.getByRole("listitem")).toHaveCount(1)
     await expect(sheet.getByRole("listitem")).toHaveText("后端 API 开发 · 支持")
     if (restricted) {
-      await expect(sheet).toContainText("受限内容：仅本人和所在部门经理可见")
+      await expect(sheet).toContainText(
+        "受限内容：仅本人和管辖该部门的经理可见",
+      )
       await expect(page.getByText(selfReport)).toHaveCount(0)
     } else await expect(sheet).toContainText(selfReport)
     await page.screenshot({

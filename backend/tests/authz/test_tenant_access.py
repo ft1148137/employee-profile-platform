@@ -208,7 +208,7 @@ def test_employee_api(tenant_data: tuple, client: TestClient) -> None:
             response = client.get(f"{url}/{path}", headers=headers(users[index]))
             assert (
                 response.status_code == 404
-                and response.json()["detail"] == "Organization not found"
+                and response.json()["detail"] == "未找到该企业或你没有权限访问"
             )
     auth = headers(users[0])
     detail = client.get(f"{url}/employees/{employees[0].id}", headers=auth).json()

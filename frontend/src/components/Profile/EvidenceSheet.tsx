@@ -20,7 +20,7 @@ function EvidenceContent({ evidence }: { evidence: EvidenceDetail }) {
     return (
       <p className="flex gap-2 rounded-lg border bg-muted/30 p-4 text-sm">
         <LockKeyhole className="size-5 shrink-0" />
-        受限内容：仅本人和所在部门经理可见
+        受限内容：仅本人和管辖该部门的经理可见
       </p>
     )
   if (evidence.kind === "work_record") {
