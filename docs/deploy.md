@@ -62,6 +62,51 @@ EPP_ADDRESS=192.168.1.10 EPP_HTTP_PORT=8080 ./install.sh --non-interactive
 docker compose up -d
 ```
 
+## 本机演示
+
+仅在另一个全新克隆目录复制演示配置，8000 端口需空闲：
+
+```bash
+cp .env.example .env
+docker compose up -d --wait
+```
+
+打开 <http://localhost:8000>。此方式有固定测试密码和开发接口，只供本机合成数据演示。已有部署不要覆盖 `.env`。
+
+也可在独立目录运行 `EPP_HTTP_PORT=18080 COMPOSE_PROJECT_NAME=epp-demo ./install.sh --demo --non-interactive`，由安装器生成随机演示密码；下表前四个身份不变，密码以安装器打印值为准；这种方式不创建平台超管，`superadmin` 仅由下面的 `.env.example` 演示配置提供。
+
+### 演示账号
+
+前四个账号密码均为 **`demo-password-2026`**，来自 `.env.example` 的 `DEMO_USER_PASSWORD`。账号和样例以 [示例数据说明](../examples/demo-org/README.md) 为准，所有公司、员工和证据均为虚构。
+
+| 登录名 | 身份 | 登录后可见内容 |
+| --- | --- | --- |
+| `admin` | 企业管理员 | 全部 12 名员工及画像；自述和经理评价显示为受限，不能读正文 |
+| `E01` | 平台研发部经理，E01 林澈 | 平台研发部 3 名员工及其自述、经理评价 |
+| `E02` | 员工 E02 张伟 | 仅本人画像；有两个已发布版本，可对比历史 |
+| `E05` | 员工 E05 张伟 | 仅本人画像；与 E02 同名，但身份独立 |
+| `superadmin` | 平台超管，同时获授演示组织企业管理员 | 平台账号管理和演示组织全部画像；受限证据仍不能读正文 |
+
+也可以用账号邮箱登录，工号与邮箱均忽略大小写。最后一个账号的登录名由 `FIRST_SUPERUSER_USERNAME` 配置（默认 `superadmin`），邮箱和密码使用 `FIRST_SUPERUSER` / `FIRST_SUPERUSER_PASSWORD`，默认密码 **`changethis`**。平台超管本身不绕过组织权限，演示初始化显式授予了企业管理员角色。更改 `.env` 不会修改已导入账号的密码。
+
+### 演示停止、重置与冒烟测试
+
+在仓库根目录执行 `docker compose down` 停止服务并保留数据库。
+
+**警告：下面的命令会删除此 Compose 项目的数据库卷，包括你保存的数据。** 仅用于重置本机演示，下次启动会重新导入示例数据：
+
+```bash
+docker compose down -v
+```
+
+已启动的演示栈可用冒烟测试检查服务、画像完整性及角色隔离（额外需要 bash、curl、python3 和 docker compose）：
+
+```bash
+bash tests/smoke/compose_smoke.sh
+```
+
+默认检查 `http://localhost:8000`；可通过 `BASE_URL` 指定入口。密码优先取环境变量 `DEMO_USER_PASSWORD`，否则读取仓库根目录 `.env`；脚本沿用调用方的 `COMPOSE_PROJECT_NAME`。同一台机器运行多个克隆时，请给各自设置不同项目名和 `API_PORT`，避免资源或端口冲突。
+
 ## 备份
 
 自动备份按 `.env` 的 `TZ=Asia/Shanghai`、`BACKUP_TIME=02:00` 每天运行，`BACKUP_KEEP=14` 保留最近 14 份，**手动备份也占份数**。修改时间或份数后执行 `docker compose up -d`，使 backup 容器重建。
