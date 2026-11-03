@@ -591,8 +591,9 @@ def test_issue_duplicate_username_in_batch(
     accounts: tuple, client: TestClient, db: Session
 ) -> None:
     url, auth, _, _, employees, _ = accounts
+    employees[0].employee_code = f"duplicate-{uuid4().hex}"
     employees[3].employee_code = employees[0].employee_code.upper()
-    db.add(employees[3])
+    db.add_all([employees[0], employees[3]])
     db.commit()
     response = client.post(
         f"{url}/accounts/issue",
