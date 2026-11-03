@@ -95,6 +95,7 @@ def load_demo(
                 employee_id=employee.id,
                 display_name=employee_row.display_name,
                 linked_by="seed",
+                linked_at=datetime.now(UTC),
             )
         accounts = {a.email: a for a in data.org.accounts}
         users = {}
@@ -215,7 +216,7 @@ def load_demo(
                     ExternalIdentity.external_id == fields.assignee.accountId,
                 )
             ).one_or_none()
-            if identity is None:
+            if identity is None or identity.employee_id is None:
                 skipped.append(issue.key)
                 continue
             employee = session.exec(
