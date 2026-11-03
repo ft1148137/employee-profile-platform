@@ -1518,6 +1518,10 @@ export type Message = {
  */
 export type ModelSettingPublic = {
     /**
+     * Local Codex
+     */
+    local_codex?: boolean;
+    /**
      * Enabled
      */
     enabled?: boolean;

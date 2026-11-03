@@ -193,6 +193,15 @@ def test_login(
     setting.chatgpt_login_expires_at = datetime.now(UTC) - timedelta(seconds=1)
     db.commit()
     assert client.get(url + "/chatgpt/login", headers=h).json()["status"] == "expired"
+    setting.enabled = True
+    setting.chatgpt_account = {"needs_relogin": True}
+    db.add(setting)
+    db.commit()
+    disabled = client.put(
+        url, headers=h, json={"enabled": False, "kind": "chatgpt_subscription"}
+    )
+    assert disabled.status_code == 200 and not disabled.json()["enabled"]
+    assert disabled.json()["model"] == saved.json()["model"]
     events = db.exec(select(AuditEvent).where(AuditEvent.org_id == orgs[0].id)).all()
     assert any(
         e.action == "model_setting.chatgpt_connected"
