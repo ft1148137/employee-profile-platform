@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
+from functools import partial
 from types import ModuleType
 from typing import Any
 from uuid import UUID
@@ -151,37 +152,30 @@ def chat_json[T: BaseModel](
             )
             response_format = (
                 {"response_format": output}
-                if not config.model.startswith("chatgpt/")
+                if provider != "chatgpt"
                 and sdk.supports_response_schema(model=config.model)
                 else {}
             )
 
-            def invoke(
-                provider: str = provider,
-                response_format: dict[str, Any] = response_format,
-            ) -> Any:
-                return sdk.completion(
-                    model=config.model,
-                    messages=conversation,
-                    api_base=config.base_url,
-                    # OpenAI's SDK requires a nonempty key even for unauthenticated servers.
-                    api_key=config.api_key
-                    or (
-                        "not-needed"
-                        if config.base_url and provider == "openai"
-                        else None
-                    ),
-                    temperature=0,
-                    timeout=120,
-                    num_retries=0,
-                    drop_params=True,
-                    **(
-                        {"reasoning_effort": config.reasoning_effort}
-                        if config.reasoning_effort
-                        else {}
-                    ),
-                    **response_format,
-                )
+            invoke = partial(
+                sdk.completion,
+                model=config.model,
+                messages=conversation,
+                api_base=config.base_url,
+                # OpenAI's SDK requires a nonempty key even for unauthenticated servers.
+                api_key=config.api_key
+                or ("not-needed" if config.base_url and provider == "openai" else None),
+                temperature=0,
+                timeout=120,
+                num_retries=0,
+                drop_params=True,
+                **(
+                    {"reasoning_effort": config.reasoning_effort}
+                    if config.reasoning_effort
+                    else {}
+                ),
+                **response_format,
+            )
 
             response = (
                 chatgpt.completion(config.org_id, invoke)
@@ -206,9 +200,7 @@ def chat_json[T: BaseModel](
                 raise ModelUnavailable("地址或模型名不对") from None
             if isinstance(error, sdk.RateLimitError):
                 retry_at, reason = rate_limit(error)
-                if provider == "chatgpt":
-                    raise ModelRateLimited(retry_at, reason) from None
-                if attempt == attempts:
+                if provider == "chatgpt" or attempt == attempts:
                     raise ModelRateLimited(retry_at, reason) from None
                 delay = (
                     (retry_at - datetime.now(UTC)).total_seconds() if retry_at else 1

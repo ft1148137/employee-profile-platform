@@ -66,9 +66,7 @@ class JiraClient:
         self._owns_http = http is None
         self._http = http if http is not None else httpx.Client()
         self._auth = (
-            httpx.BasicAuth(config.username or "", secret)
-            if config.auth_type != "pat"
-            else None
+            (config.username or "", secret) if config.auth_type != "pat" else None
         )
         self._headers = (
             {"Authorization": f"Bearer {secret}"} if self._auth is None else {}
@@ -92,7 +90,7 @@ class JiraClient:
                 auth=self._auth,
                 headers=self._headers,
                 follow_redirects=False,
-                timeout=httpx.Timeout(30, connect=10),
+                timeout=(10, 30, 30, 30),
                 **kwargs,
             )
         except httpx.ReadTimeout:
