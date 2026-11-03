@@ -7,6 +7,7 @@ from sqlmodel import Session, col, select
 
 from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
+from app.domains.change_request.service import review_statuses
 from app.domains.org.models import Department, Employee
 from app.domains.org.schemas import (
     DepartmentSummary,
@@ -15,7 +16,11 @@ from app.domains.org.schemas import (
     ProgressPublic,
     PublishedSummary,
 )
-from app.domains.profile.models import ProfileProgress, ProfileVersion
+from app.domains.profile.models import (
+    ProfileProgress,
+    ProfileVersion,
+    ProgressReviewStatus,
+)
 
 
 class EmployeeNotFound(HTTPException):
@@ -37,28 +42,37 @@ def visible_employee(
 
 
 def employee_summary(session: Session, employee: Employee) -> EmployeeSummary:
-    department = session.exec(
-        select(Department).where(
-            Department.org_id == employee.org_id,
-            Department.id == employee.department_id,
+    department, progress, version = session.exec(
+        select(Department, ProfileProgress, ProfileVersion)
+        .select_from(Employee)
+        .outerjoin(
+            Department,
+            (col(Department.org_id) == Employee.org_id)
+            & (col(Department.id) == Employee.department_id),
         )
-    ).first()
-    progress = session.exec(
-        select(ProfileProgress).where(
-            ProfileProgress.org_id == employee.org_id,
-            ProfileProgress.employee_id == employee.id,
+        .outerjoin(
+            ProfileProgress,
+            (col(ProfileProgress.org_id) == Employee.org_id)
+            & (col(ProfileProgress.employee_id) == Employee.id),
         )
-    ).first()
-    version = session.exec(
-        select(ProfileVersion)
-        .where(
-            ProfileVersion.org_id == employee.org_id,
-            ProfileVersion.subject_employee_id == employee.id,
+        .outerjoin(
+            ProfileVersion,
+            (col(ProfileVersion.org_id) == Employee.org_id)
+            & (col(ProfileVersion.subject_employee_id) == Employee.id),
         )
+        .where(Employee.org_id == employee.org_id, Employee.id == employee.id)
         .order_by(col(ProfileVersion.revision).desc())
         .limit(1)
-    ).first()
-    return _employee_summary(employee, department, progress, version)
+    ).one()
+    return _employee_summary(
+        employee,
+        department,
+        progress,
+        version,
+        review_statuses(
+            session, employee.org_id, [employee.id], {employee.id} if version else set()
+        )[employee.id],
+    )
 
 
 def _employee_summary(
@@ -66,13 +80,20 @@ def _employee_summary(
     department: Department | None,
     progress: ProfileProgress | None,
     version: ProfileVersion | None,
+    review_status: ProgressReviewStatus,
 ) -> EmployeeSummary:
     return EmployeeSummary(
         **employee.model_dump(
             include={"id", "display_name", "title", "employment_status"}
         ),
         department=DepartmentSummary.model_validate(department) if department else None,
-        progress=ProgressPublic.model_validate(progress) if progress else None,
+        progress=ProgressPublic(
+            **(
+                progress
+                or ProfileProgress(org_id=employee.org_id, employee_id=employee.id)
+            ).model_dump(),
+            review_status=review_status,
+        ),
         latest_published=PublishedSummary.model_validate(version) if version else None,
     )
 
@@ -126,4 +147,12 @@ def list_employees(
         .offset(skip)
         .limit(limit)
     ).all()
-    return EmployeesPublic(data=[_employee_summary(*row) for row in rows], count=count)
+    statuses = review_statuses(
+        session,
+        principal.org_id,
+        [e.id for e, *_ in rows],
+        {e.id for e, _, _, version in rows if version},
+    )
+    return EmployeesPublic(
+        data=[_employee_summary(*row, statuses[row[0].id]) for row in rows], count=count
+    )

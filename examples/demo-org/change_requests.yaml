@@ -1,0 +1,103 @@
+- id: C07
+  employee_code: E07
+  origin: manual
+  status: pending_review
+  items:
+  - op: add
+    capability_key: rknn_deployment
+    after:
+      statement: 有RKNN 边缘部署的任务记录，当前判断为待验证的示例。
+      level: routine
+      assessment_status: tentative
+      confidence: medium
+    explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
+    evidence:
+    - ref: jira:EDGE-101
+      relation: context
+    - ref: self_report:SR07
+      relation: supports
+    - ref: manager_review:MR07
+      relation: supports
+- id: C08
+  employee_code: E08
+  origin: manual
+  status: pending_review
+  items:
+  - op: add
+    capability_key: rknn_deployment
+    after:
+      statement: 复杂部署能力存在不同意见，需进一步确认。
+      level: null
+      assessment_status: disputed
+      confidence: low
+    explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
+    evidence:
+    - ref: jira:EDGE-104
+      relation: context
+    - ref: self_report:SR08
+      relation: supports
+    - ref: manager_review:MR08
+      relation: contradicts
+- id: C09
+  employee_code: E09
+  origin: manual
+  status: pending_review
+  items:
+  - op: add
+    capability_key: automated_testing
+    after:
+      statement: 有自动化测试的任务记录，当前判断为待验证的示例。
+      level: routine
+      assessment_status: tentative
+      confidence: medium
+    explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
+    evidence:
+    - ref: jira:EDGE-107
+      relation: context
+    - ref: self_report:SR09
+      relation: supports
+- id: C11
+  employee_code: E11
+  origin: manual
+  status: pending_review
+  items:
+  - op: add
+    capability_key: incident_support
+    after:
+      statement: 有问题诊断与支持的任务记录，当前判断为待验证的示例。
+      level: null
+      assessment_status: unknown
+      confidence: low
+    explanation: 综合任务元数据与审核状态形成示例判断，未覆盖的场景保持未知。
+    evidence:
+    - ref: jira:DELIV-104
+      relation: context
+- id: E02-initial
+  employee_code: E02
+  origin: initial_sync
+  status: pending_owner
+  items:
+  - op: add
+    capability_key: automated_testing
+    after:
+      statement: 分页接口工作记录可能涉及接口测试。
+      level: null
+      assessment_status: tentative
+      confidence: null
+    explanation: 按任务记录起草，尚未经本人和经理确认。
+    uncertainty: 任务关联不等于已独立完成，需本人补充具体贡献。
+    evidence:
+    - ref: jira:PLAT-104
+      relation: context
+  - op: add
+    capability_key: incident_support
+    after:
+      statement: 接口冲突处理记录可能涉及问题诊断。
+      level: null
+      assessment_status: tentative
+      confidence: null
+    explanation: 按任务记录起草，尚未经本人和经理确认。
+    uncertainty: 任务关联不等于已独立完成，需本人补充具体贡献。
+    evidence:
+    - ref: jira:PLAT-104
+      relation: context

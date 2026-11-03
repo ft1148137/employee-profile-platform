@@ -276,7 +276,12 @@ def test_employee_list_query_bound(tenant_data: tuple, db: Session) -> None:
         assert by_id[summary.id] == summary
     assert by_id[employees[0].id].latest_published.revision == 2
     assert by_id[employees[1].id].department is None
-    assert by_id[employees[1].id].progress is None
+    assert by_id[employees[1].id].progress.model_dump() == {
+        "fill_status": "not_started",
+        "inference_status": "pending",
+        "review_status": "none",
+        "evidence_quality": "unknown",
+    }
     assert by_id[employees[1].id].latest_published is None
     tail = list_employees(
         db, principal, department_id=None, q="Shared", skip=100, limit=100

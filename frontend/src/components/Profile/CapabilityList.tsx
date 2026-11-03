@@ -95,15 +95,6 @@ function ClaimCard({
               </div>
             )}
             <div>
-              <dt className="mb-1 text-muted-foreground">审核状态</dt>
-              <dd>
-                <StatusBadge
-                  kind="claim_review_status"
-                  value={claim.review_status}
-                />
-              </dd>
-            </div>
-            <div>
               <dt className="mb-1 text-muted-foreground">信心</dt>
               <dd>
                 <Tooltip>

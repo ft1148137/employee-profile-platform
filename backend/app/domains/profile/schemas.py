@@ -9,7 +9,6 @@ from app.domains.evidence.models import EvidenceKind
 from app.domains.org.schemas import EmployeeSummary, PublishedSummary
 from app.domains.profile.models import (
     AssessmentStatus,
-    ClaimReviewStatus,
     Confidence,
     EvidenceRelation,
 )
@@ -35,7 +34,6 @@ class ClaimPublic(SQLModel):
     statement: str
     level: str | None
     assessment_status: AssessmentStatus
-    review_status: ClaimReviewStatus
     confidence: Confidence | None
     explanation: str | None
     generated_by: GeneratedBy

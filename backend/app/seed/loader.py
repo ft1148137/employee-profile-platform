@@ -13,6 +13,11 @@ from app.domains.capability.models import (
     CapabilitySchemaVersion,
     SchemaStatus,
 )
+from app.domains.change_request.models import (
+    ChangeItem,
+    ChangeItemEvidence,
+    ProfileChangeRequest,
+)
 from app.domains.evidence.models import EvidenceKind, Visibility
 from app.domains.evidence.service import append_evidence
 from app.domains.org.models import (
@@ -349,6 +354,50 @@ def load_demo(
                 ),
             )
             versions[(version_row.employee_code, version_row.revision)] = version
+        for request_row in data.change_requests:
+            request = session.exec(
+                select(ProfileChangeRequest).where(
+                    ProfileChangeRequest.org_id == org.id,
+                    ProfileChangeRequest.origin == request_row.origin,
+                    col(ProfileChangeRequest.generated_by)["seed_ref"].astext
+                    == request_row.id,
+                )
+            ).one_or_none()
+            counts["profile_change_request"]["existing" if request else "added"] += 1
+            if request is None:
+                request = ProfileChangeRequest(
+                    org_id=org.id,
+                    subject_employee_id=employees[request_row.employee_code].id,
+                    origin=request_row.origin,
+                    status=request_row.status,
+                    author={"actor_type": "seed"},
+                    generated_by={"actor_type": "seed", "seed_ref": request_row.id},
+                )
+                session.add(request)
+                session.flush()
+            for position, item_row in enumerate(request_row.items):
+                item = ensure(
+                    ChangeItem,
+                    lookup={**tenant, "request_id": request.id, "position": position},
+                    capability_definition_id=capabilities[item_row.capability_key].id,
+                    target_claim_id=claims[item_row.target_claim].id
+                    if item_row.target_claim
+                    else None,
+                    **item_row.model_dump(
+                        mode="json",
+                        exclude={"capability_key", "target_claim", "evidence"},
+                    ),
+                )
+                for ref in item_row.evidence:
+                    ensure(
+                        ChangeItemEvidence,
+                        lookup={
+                            **tenant,
+                            "item_id": item.id,
+                            "evidence_id": evidence_by_ref[ref.ref].id,
+                        },
+                        relation=ref.relation,
+                    )
         for progress_row in data.progress:
             ensure(
                 ProfileProgress,

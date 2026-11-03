@@ -1,60 +1,48 @@
 - employee_code: E01
   fill_status: submitted
   inference_status: generated
-  review_status: published
   evidence_quality: sufficient
 - employee_code: E02
   fill_status: submitted
   inference_status: generated
-  review_status: published
   evidence_quality: sufficient
 - employee_code: E03
   fill_status: submitted
   inference_status: generated
-  review_status: published
   evidence_quality: sufficient
 - employee_code: E04
   fill_status: submitted
   inference_status: generated
-  review_status: published
   evidence_quality: weak
 - employee_code: E05
   fill_status: submitted
   inference_status: generated
-  review_status: published
   evidence_quality: sufficient
 - employee_code: E06
   fill_status: submitted
   inference_status: generated
-  review_status: pending_manager
   evidence_quality: sufficient
 - employee_code: E07
   fill_status: submitted
   inference_status: generated
-  review_status: pending_manager
   evidence_quality: sufficient
 - employee_code: E08
   fill_status: submitted
   inference_status: generated
-  review_status: disputed
   evidence_quality: conflicting
 - employee_code: E09
   fill_status: submitted
   inference_status: generated
-  review_status: pending_employee
   evidence_quality: sufficient
 - employee_code: E10
   fill_status: submitted
   inference_status: running
-  review_status: pending_manager
   evidence_quality: sufficient
 - employee_code: E11
   fill_status: in_progress
   inference_status: failed
-  review_status: pending_manager
   evidence_quality: weak
 - employee_code: E12
   fill_status: not_started
   inference_status: pending
-  review_status: none
   evidence_quality: unknown

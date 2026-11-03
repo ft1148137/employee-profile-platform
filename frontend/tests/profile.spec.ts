@@ -27,6 +27,7 @@ test("employee reads capability, Jira evidence and earlier published snapshot", 
   await openE02(page, "employee.platform@demo.example.com")
   const api = page.getByRole("article", { name: "后端 API 开发", exact: true })
   await expect(api.getByText("已确认", { exact: true })).toBeVisible()
+  await expect(api.getByText("审核状态", { exact: true })).toHaveCount(0)
   await expect(
     page.getByRole("article").filter({ hasText: "未知：暂无足够证据" }),
   ).toHaveCount(11)

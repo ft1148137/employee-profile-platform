@@ -366,7 +366,6 @@ export type ClaimPublic = {
      */
     level: string | null;
     assessment_status: AssessmentStatus;
-    review_status: ClaimReviewStatus;
     confidence: Confidence | null;
     /**
      * Explanation
@@ -382,11 +381,6 @@ export type ClaimPublic = {
      */
     evidence?: Array<ClaimEvidencePublic>;
 };
-
-/**
- * ClaimReviewStatus
- */
-export type ClaimReviewStatus = 'candidate' | 'pending_employee' | 'pending_manager' | 'accepted' | 'rejected';
 
 /**
  * Confidence
@@ -556,7 +550,7 @@ export type EmployeeSummary = {
     title: string | null;
     employment_status: EmploymentStatus;
     department: DepartmentSummary | null;
-    progress: ProgressPublic | null;
+    progress: ProgressPublic;
     latest_published: PublishedSummary | null;
 };
 

@@ -11,16 +11,16 @@ from pydantic import (
     ValidationError,
 )
 
+from app.domains.change_request.models import ChangeOp, RequestOrigin, RequestStatus
+from app.domains.change_request.schemas import ClaimAfter
 from app.domains.org.models import Role
 from app.domains.profile.models import (
     AssessmentStatus,
-    ClaimReviewStatus,
     Confidence,
     EvidenceQuality,
     EvidenceRelation,
     FillStatus,
     InferenceStatus,
-    ProgressReviewStatus,
 )
 
 
@@ -138,11 +138,28 @@ class Claim(Row):
     statement: str
     level: Level | None = None
     assessment_status: AssessmentStatus
-    review_status: ClaimReviewStatus
     confidence: Confidence
     explanation: str
     supersedes: str | None = None
     evidence: list[EvidenceRef]
+
+
+class ChangeItemRow(Row):
+    op: ChangeOp
+    capability_key: str
+    target_claim: str | None = None
+    after: ClaimAfter | None = None
+    explanation: str | None = None
+    uncertainty: str | None = None
+    evidence: list[EvidenceRef]
+
+
+class ChangeRequestRow(Row):
+    id: str
+    employee_code: str
+    origin: RequestOrigin
+    status: RequestStatus
+    items: list[ChangeItemRow]
 
 
 class Version(Row):
@@ -157,7 +174,6 @@ class Progress(Row):
     employee_code: str
     fill_status: FillStatus
     inference_status: InferenceStatus
-    review_status: ProgressReviewStatus
     evidence_quality: EvidenceQuality
 
 
@@ -168,6 +184,7 @@ class Bundle(Row):
     self_reports: list[SelfReport]
     manager_reviews: list[ManagerReview]
     claims: list[Claim]
+    change_requests: list[ChangeRequestRow]
     profile_versions: list[Version]
     progress: list[Progress]
 
@@ -190,6 +207,9 @@ def read_bundle(path: Path) -> Bundle:
         self_reports=read_file(path / "self_reports.yaml", list[SelfReport]),
         manager_reviews=read_file(path / "manager_reviews.yaml", list[ManagerReview]),
         claims=read_file(path / "claims.yaml", list[Claim]),
+        change_requests=read_file(
+            path / "change_requests.yaml", list[ChangeRequestRow]
+        ),
         profile_versions=read_file(path / "profile_versions.yaml", list[Version]),
         progress=read_file(path / "progress.yaml", list[Progress]),
     )
@@ -296,6 +316,53 @@ def read_bundle(path: Path) -> Bundle:
             f"claims.yaml.{claim.id}.supersedes",
         )
         claims[claim.id] = claim
+    unique(
+        [r.id for r in data.change_requests] + list(claims), "change_requests.yaml.id"
+    )
+    initial_employees: set[str] = set()
+    for request in data.change_requests:
+        location = f"change_requests.yaml.{request.id}"
+        require(request.employee_code in employees, f"{location}.employee_code")
+        if request.origin == RequestOrigin.INITIAL_SYNC:
+            require(
+                request.employee_code not in initial_employees, f"{location}.origin"
+            )
+            initial_employees.add(request.employee_code)
+        for item in request.items:
+            require(item.capability_key in capabilities, f"{location}.capability_key")
+            require(
+                all(refs.get(e.ref) == request.employee_code for e in item.evidence),
+                f"{location}.evidence",
+            )
+            target = claims.get(item.target_claim or "")
+            require(
+                (item.op == ChangeOp.ADD and item.target_claim is None)
+                or (
+                    item.op != ChangeOp.ADD
+                    and target is not None
+                    and target.employee_code == request.employee_code
+                    and target.capability_key == item.capability_key
+                ),
+                f"{location}.target_claim",
+            )
+            require(
+                (item.op == ChangeOp.RETRACT and item.after is None)
+                or (
+                    item.op in {ChangeOp.ADD, ChangeOp.MODIFY}
+                    and item.after is not None
+                )
+                or item.op == ChangeOp.ATTACH_EVIDENCE,
+                f"{location}.after",
+            )
+            require(
+                item.after is None
+                or item.after.level is None
+                or item.after.level
+                in {
+                    v.key for v in capabilities[item.capability_key].level_rubric.levels
+                },
+                f"{location}.level",
+            )
     versions: set[tuple[str, int]] = set()
     for version in data.profile_versions:
         key = (version.employee_code, version.revision)

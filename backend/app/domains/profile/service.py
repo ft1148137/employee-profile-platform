@@ -15,7 +15,6 @@ from app.domains.org.service import employee_summary, visible_employee
 from app.domains.profile.models import (
     AssessmentStatus,
     ClaimEvidence,
-    ClaimReviewStatus,
     ProfileClaim,
     ProfileVersion,
 )
@@ -102,7 +101,6 @@ def read_profile(
         c.capability_definition_id: SnapshotClaim.model_validate(c)
         for c in rows
         if (c.capability_definition_id, c.id) not in superseded
-        and c.review_status != ClaimReviewStatus.REJECTED
     }
     by_id = {claim.id: claim for claim in current.values()}
     for link, evidence in session.exec(
@@ -260,7 +258,6 @@ def build_profile_snapshot(
                 "statement",
                 "level",
                 "assessment_status",
-                "review_status",
                 "confidence",
                 "explanation",
                 "generated_by",
