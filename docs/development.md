@@ -85,10 +85,10 @@ uv run pytest -m migration
 uv run pytest -m "not migration" -n auto
 ```
 
-需要按测试查看覆盖情况时再开启上下文，默认不记录以减少开销：
+需要按测试查看覆盖情况时再开启上下文，默认不记录以减少开销。Python 3.14 默认使用的 sysmon 核心对动态上下文支持不完整，这次运行临时选择 ctrace：
 
 ```bash
-uv run pytest --cov --cov-context=test
+COVERAGE_CORE=ctrace uv run pytest --cov --cov-context=test
 uv run coverage html --show-contexts
 ```
 
