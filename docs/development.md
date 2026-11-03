@@ -52,6 +52,48 @@ bun run build
 
 The build is written to `backend/app/frontend` and served by FastAPI at <http://localhost:8000>. Rebuild the frontend after making frontend changes.
 
+## 后端测试
+
+只需要 PostgreSQL 的 `db` 服务在跑。以下命令在 `backend/` 中执行，先在仓库根目录准备 `.env` 并启动 `db`，再运行 `uv sync`。数据库账号需要建库权限。测试不需要先跑 prestart：每个进程从空的迁移模板库复制自己的数据库，再初始化账号和演示数据，不会改动本地 `app` 库。数据库名包含 worker 名和随机后缀；单进程使用 `main`。会话结束自动强制删除测试库和模板库。xdist 主控进程不导入应用、不连接数据库。
+
+改代码时只跑相关文件，单进程通常更快；也可以只重跑上次失败的测试：
+
+```bash
+uv run pytest tests/api/routes/test_profiles.py -x
+uv run pytest --lf
+```
+
+push 之前和 CI 一样，全量运行（包括迁移测试），默认 `-n auto` 并行，pytest-cov 自动合并各 worker 的覆盖率。`--dist loadgroup` 将标为 `xdist_group("litellm")` 的模型测试放在同一 worker，避免重复导入 SDK：
+
+```bash
+uv run bash scripts/tests-start.sh
+uv run coverage report --fail-under=90
+```
+
+几个任务同时在本机跑时，可以限制为 4 个 worker：
+
+```bash
+PYTEST_XDIST_AUTO_NUM_WORKERS=4 uv run bash scripts/tests-start.sh
+# 或直接指定 worker 数
+uv run pytest tests/ -n 4 --dist loadgroup --cov --durations=25
+```
+
+单独运行迁移测试或临时跳过它们（CI 每次仍跑全量）：
+
+```bash
+uv run pytest -m migration
+uv run pytest -m "not migration" -n auto
+```
+
+需要按测试查看覆盖情况时再开启上下文，默认不记录以减少开销。Python 3.14 默认使用的 sysmon 核心对动态上下文支持不完整，这次运行临时选择 ctrace：
+
+```bash
+COVERAGE_CORE=ctrace uv run pytest --cov --cov-context=test
+uv run coverage html --show-contexts
+```
+
+新测试中，只读演示数据使用会话级 `shared_demo`（结束时检查未被修改），写数据使用函数级 `demo`。迁移测试使用 `migration_engine` 和 `tests.utils.migrations.migrate(engine, "upgrade" / "downgrade", revision)`，不要启动 alembic 子进程；使用该 fixture 会自动加上 `migration` 标记。应用 fixture 放在 `tests/fixtures.py`，由 `tests/conftest.py` 配置独立库后加载，避免导入时绑定到共享库。
+
 ## Full Stack with Docker Compose
 
 To run the backend and built frontend in Docker Compose:

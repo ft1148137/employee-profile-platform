@@ -38,6 +38,8 @@ from tests.api.routes.test_model_setting import (
 from tests.authz.test_tenant_access import tenant_data  # noqa: F401
 from tests.domains.test_ingest import ingest, person, record, rows
 
+pytestmark = pytest.mark.xdist_group("litellm")
+
 
 def answer(**changes: object) -> str:
     return json.dumps(
