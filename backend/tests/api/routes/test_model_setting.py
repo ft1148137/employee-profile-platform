@@ -26,6 +26,13 @@ from app.domains.model.client import (
 from app.domains.model.models import ModelSetting
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
 
+CLOUD_SETTING = {
+    "enabled": True,
+    "kind": "cloud_api",
+    "model": "openai/gpt-4o-mini",
+    "api_key": "synthetic-key",
+}
+
 
 @pytest.fixture
 def completions(
@@ -61,6 +68,10 @@ def test_settings(
     orgs, _, _, users = request.getfixturevalue("tenant_data")
     url = f"/api/v1/orgs/{orgs[0].id}/model-setting"
     auth = headers(users[0])
+    assert (
+        client.get(f"/api/v1/orgs/{orgs[1].id}/model-setting", headers=auth).status_code
+        == 404
+    )
     assert client.get(url, headers=auth).json() == {
         "enabled": False,
         "kind": None,
@@ -70,10 +81,7 @@ def test_settings(
         "updated_at": None,
     }
     body = {
-        "enabled": True,
-        "kind": "cloud_api",
-        "model": "openai/gpt-4o-mini",
-        "api_key": "synthetic-key",
+        **CLOUD_SETTING,
         "base_url": "https://example.com/v1?query=private",
     }
     result = client.put(url, headers=auth, json=body)
@@ -149,16 +157,10 @@ def test_validation(
     update: dict, request: pytest.FixtureRequest, client: TestClient
 ) -> None:
     orgs, _, _, users = request.getfixturevalue("tenant_data")
-    body = {
-        "enabled": True,
-        "kind": "cloud_api",
-        "model": "openai/gpt-4o-mini",
-        "api_key": "synthetic-key",
-    }
     response = client.put(
         f"/api/v1/orgs/{orgs[0].id}/model-setting",
         headers=headers(users[0]),
-        json={**body, **update},
+        json={**CLOUD_SETTING, **update},
     )
     assert response.status_code == 422
     assert (
@@ -183,12 +185,7 @@ def test_connection(
         client.put(
             url,
             headers=auth,
-            json={
-                "enabled": True,
-                "kind": "cloud_api",
-                "model": "openai/gpt-4o-mini",
-                "api_key": "synthetic-key",
-            },
+            json=CLOUD_SETTING,
         ).status_code
         == 200
     )
