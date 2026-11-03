@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { accountsDisableAccountData, accountsDisableAccountErrors, accountsDisableAccountResponses, accountsEnableAccountData, accountsEnableAccountErrors, accountsEnableAccountResponses, accountsIssueAccountsData, accountsIssueAccountsErrors, accountsIssueAccountsResponses, accountsReadAccountsData, accountsReadAccountsErrors, accountsReadAccountsResponses, accountsResetPasswordData, accountsResetPasswordErrors, accountsResetPasswordResponses, auditReadAuditEventsData, auditReadAuditEventsErrors, auditReadAuditEventsResponses, capabilitiesReadCapabilitiesData, capabilitiesReadCapabilitiesErrors, capabilitiesReadCapabilitiesResponses, capabilityTemplatesActivateCapabilitySchemaData, capabilityTemplatesActivateCapabilitySchemaErrors, capabilityTemplatesActivateCapabilitySchemaResponses, capabilityTemplatesPreviewTemplateData, capabilityTemplatesPreviewTemplateErrors, capabilityTemplatesPreviewTemplateResponses, capabilityTemplatesReadTemplatesData, capabilityTemplatesReadTemplatesResponses, changeRequestsReadChangeRequestsData, changeRequestsReadChangeRequestsErrors, changeRequestsReadChangeRequestsResponses, employeesReadEmployeeData, employeesReadEmployeeErrors, employeesReadEmployeeResponses, employeesReadEmployeesData, employeesReadEmployeesErrors, employeesReadEmployeesResponses, evidenceReadEmployeeEvidenceData, evidenceReadEmployeeEvidenceErrors, evidenceReadEmployeeEvidenceResponses, evidenceReadEvidenceData, evidenceReadEvidenceErrors, evidenceReadEvidenceResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginTestTokenData, loginTestTokenResponses, meReadMembershipsData, meReadMembershipsResponses, modelSettingDisconnectChatgptData, modelSettingDisconnectChatgptErrors, modelSettingDisconnectChatgptResponses, modelSettingGetModelSettingData, modelSettingGetModelSettingErrors, modelSettingGetModelSettingResponses, modelSettingPollChatgptLoginData, modelSettingPollChatgptLoginErrors, modelSettingPollChatgptLoginResponses, modelSettingPutModelSettingData, modelSettingPutModelSettingErrors, modelSettingPutModelSettingResponses, modelSettingStartChatgptLoginData, modelSettingStartChatgptLoginErrors, modelSettingStartChatgptLoginResponses, modelSettingTestModelSettingData, modelSettingTestModelSettingErrors, modelSettingTestModelSettingResponses, orgsReadDepartmentsData, orgsReadDepartmentsErrors, orgsReadDepartmentsResponses, orgsRenameOrganizationData, orgsRenameOrganizationErrors, orgsRenameOrganizationResponses, privateCreateSetupTokenData, privateCreateSetupTokenErrors, privateCreateSetupTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesReadProfileData, profilesReadProfileErrors, profilesReadProfileResponses, profilesReadProfileVersionData, profilesReadProfileVersionErrors, profilesReadProfileVersionResponses, profilesReadProfileVersionsData, profilesReadProfileVersionsErrors, profilesReadProfileVersionsResponses, rolesGrantRoleData, rolesGrantRoleErrors, rolesGrantRoleResponses, rolesReadRolesData, rolesReadRolesErrors, rolesReadRolesResponses, rolesRevokeRoleData, rolesRevokeRoleErrors, rolesRevokeRoleResponses, rosterApplyImportData, rosterApplyImportErrors, rosterApplyImportResponses, rosterDownloadTemplateData, rosterDownloadTemplateErrors, rosterDownloadTemplateResponses, rosterReadImportsData, rosterReadImportsErrors, rosterReadImportsResponses, rosterUploadImportData, rosterUploadImportErrors, rosterUploadImportResponses, setupCompleteStepData, setupCompleteStepErrors, setupCompleteStepResponses, setupInitializeOrganizationData, setupInitializeOrganizationErrors, setupInitializeOrganizationResponses, setupReadSetupData, setupReadSetupErrors, setupReadSetupResponses, setupReadStatusData, setupReadStatusResponses, setupSkipStepData, setupSkipStepErrors, setupSkipStepResponses, usersReadUserMeData, usersReadUserMeResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, utilsHealthCheckData, utilsHealthCheckResponses } from './types.gen';
+import type { accountsDisableAccountData, accountsDisableAccountErrors, accountsDisableAccountResponses, accountsEnableAccountData, accountsEnableAccountErrors, accountsEnableAccountResponses, accountsIssueAccountsData, accountsIssueAccountsErrors, accountsIssueAccountsResponses, accountsReadAccountsData, accountsReadAccountsErrors, accountsReadAccountsResponses, accountsResetPasswordData, accountsResetPasswordErrors, accountsResetPasswordResponses, auditReadAuditEventsData, auditReadAuditEventsErrors, auditReadAuditEventsResponses, capabilitiesReadCapabilitiesData, capabilitiesReadCapabilitiesErrors, capabilitiesReadCapabilitiesResponses, capabilityTemplatesActivateCapabilitySchemaData, capabilityTemplatesActivateCapabilitySchemaErrors, capabilityTemplatesActivateCapabilitySchemaResponses, capabilityTemplatesPreviewTemplateData, capabilityTemplatesPreviewTemplateErrors, capabilityTemplatesPreviewTemplateResponses, capabilityTemplatesReadTemplatesData, capabilityTemplatesReadTemplatesResponses, changeRequestsReadChangeRequestsData, changeRequestsReadChangeRequestsErrors, changeRequestsReadChangeRequestsResponses, employeesReadEmployeeData, employeesReadEmployeeErrors, employeesReadEmployeeResponses, employeesReadEmployeesData, employeesReadEmployeesErrors, employeesReadEmployeesResponses, evidenceReadEmployeeEvidenceData, evidenceReadEmployeeEvidenceErrors, evidenceReadEmployeeEvidenceResponses, evidenceReadEvidenceData, evidenceReadEvidenceErrors, evidenceReadEvidenceResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginTestTokenData, loginTestTokenResponses, meReadMembershipsData, meReadMembershipsResponses, modelSettingDisconnectChatgptData, modelSettingDisconnectChatgptErrors, modelSettingDisconnectChatgptResponses, modelSettingGetModelSettingData, modelSettingGetModelSettingErrors, modelSettingGetModelSettingResponses, modelSettingPollChatgptLoginData, modelSettingPollChatgptLoginErrors, modelSettingPollChatgptLoginResponses, modelSettingPutModelSettingData, modelSettingPutModelSettingErrors, modelSettingPutModelSettingResponses, modelSettingStartChatgptLoginData, modelSettingStartChatgptLoginErrors, modelSettingStartChatgptLoginResponses, modelSettingTestModelSettingData, modelSettingTestModelSettingErrors, modelSettingTestModelSettingResponses, orgsReadDepartmentsData, orgsReadDepartmentsErrors, orgsReadDepartmentsResponses, orgsRenameOrganizationData, orgsRenameOrganizationErrors, orgsRenameOrganizationResponses, privateCreateSetupTokenData, privateCreateSetupTokenErrors, privateCreateSetupTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesReadProfileData, profilesReadProfileErrors, profilesReadProfileResponses, profilesReadProfileVersionData, profilesReadProfileVersionErrors, profilesReadProfileVersionResponses, profilesReadProfileVersionsData, profilesReadProfileVersionsErrors, profilesReadProfileVersionsResponses, rolesGrantRoleData, rolesGrantRoleErrors, rolesGrantRoleResponses, rolesReadRolesData, rolesReadRolesErrors, rolesReadRolesResponses, rolesRevokeRoleData, rolesRevokeRoleErrors, rolesRevokeRoleResponses, rosterApplyImportData, rosterApplyImportErrors, rosterApplyImportResponses, rosterDownloadTemplateData, rosterDownloadTemplateErrors, rosterDownloadTemplateResponses, rosterReadImportsData, rosterReadImportsErrors, rosterReadImportsResponses, rosterUploadImportData, rosterUploadImportErrors, rosterUploadImportResponses, setupCompleteStepData, setupCompleteStepErrors, setupCompleteStepResponses, setupInitializeOrganizationData, setupInitializeOrganizationErrors, setupInitializeOrganizationResponses, setupReadSetupData, setupReadSetupErrors, setupReadSetupResponses, setupReadStatusData, setupReadStatusResponses, setupSkipStepData, setupSkipStepErrors, setupSkipStepResponses, sourcesGetJiraData, sourcesGetJiraErrors, sourcesGetJiraResponses, sourcesPutJiraData, sourcesPutJiraErrors, sourcesPutJiraResponses, sourcesTestJiraData, sourcesTestJiraErrors, sourcesTestJiraResponses, usersReadUserMeData, usersReadUserMeResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, utilsHealthCheckData, utilsHealthCheckResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -153,7 +153,7 @@ export class ModelSettingService {
             ...options
         });
     }
-
+    
     /**
      * Poll Chatgpt Login
      */
@@ -165,7 +165,7 @@ export class ModelSettingService {
             ...options
         });
     }
-
+    
     /**
      * Start Chatgpt Login
      */
@@ -177,7 +177,7 @@ export class ModelSettingService {
             ...options
         });
     }
-
+    
     /**
      * Disconnect Chatgpt
      */
@@ -186,6 +186,48 @@ export class ModelSettingService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/orgs/{org_id}/model-setting/chatgpt',
+            ...options
+        });
+    }
+}
+
+export class SourcesService {
+    /**
+     * Get Jira
+     */
+    public static getJira<ThrowOnError extends boolean = true>(options: Options<sourcesGetJiraData, ThrowOnError>) {
+        return (options.client ?? client).get<sourcesGetJiraResponses, sourcesGetJiraErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/sources/jira',
+            ...options
+        });
+    }
+    
+    /**
+     * Put Jira
+     */
+    public static putJira<ThrowOnError extends boolean = true>(options: Options<sourcesPutJiraData, ThrowOnError>) {
+        return (options.client ?? client).put<sourcesPutJiraResponses, sourcesPutJiraErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/sources/jira',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Test Jira
+     */
+    public static testJira<ThrowOnError extends boolean = true>(options: Options<sourcesTestJiraData, ThrowOnError>) {
+        return (options.client ?? client).post<sourcesTestJiraResponses, sourcesTestJiraErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/sources/jira/test',
             ...options
         });
     }
