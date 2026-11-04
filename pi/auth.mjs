@@ -30,7 +30,7 @@ export function authLogins(login = loginOpenAICodex, lifetime = 900000) {
       return Promise.race([slot.done, slot.result]);
     }
     const slot = active;
-    if (!slot || slot.id !== id || slot.consumed) return { code: 'login_not_found' };
+    if (!slot || slot.id !== id || (slot.consumed && method !== 'DELETE')) return { code: 'login_not_found' };
     slot.consumed = true;
     if (method === 'DELETE') slot.cancel(new Error('cancelled'));
     else if (method === 'POST' && typeof body?.input === 'string') slot.submit(body.input);

@@ -12,6 +12,7 @@ import { createInterface } from 'node:readline';
 import { test } from 'node:test';
 import { createAssistantMessageEventStream } from '@mariozechner/pi-ai';
 import { createPiServer, quota } from './server.mjs';
+import { egress } from './egress.mjs';
 
 const token = 'synthetic-service-secret';
 const auth = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -319,10 +320,15 @@ test('fatal backend results abort before another model invocation', async t => {
 });
 
 test('OAuth helpers authenticate, serialize logins, cancel, expire and redact failures', async t => {
+  let exchange; const exchanging = new Promise(resolve => { exchange = resolve; });
   const login = async ({ onAuth, onManualCodeInput }) => {
     onAuth({ url: 'https://auth.openai.com/oauth/authorize?state=synthetic-state' });
     const input = await onManualCodeInput();
     if (input === 'failure') throw new Error('synthetic-refresh private upstream');
+    if (input === 'slow') return new Promise((_, reject) => {
+      egress.getStore().signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
+      exchange();
+    });
     return { access: 'synthetic-access', refresh: 'synthetic-refresh', expires: Date.now() + 7200000, accountId: 'synthetic-account' };
   };
   const { request, logs } = await setup(t, { login, loginLifetime: 1000 });
@@ -341,6 +347,11 @@ test('OAuth helpers authenticate, serialize logins, cancel, expire and redact fa
   start = await begin();
   result = await request(path + '/' + start.login_id, 'POST', { input: 'failure' });
   assert.deepEqual(await result.json(), { code: 'login_failed' });
+  start = await begin();
+  const pending = request(path + '/' + start.login_id, 'POST', { input: 'slow' });
+  await exchanging;
+  assert.equal((await request(path + '/' + start.login_id, 'DELETE')).status, 200);
+  assert.deepEqual(await (await pending).json(), { code: 'login_failed' });
   start = await begin();
   await new Promise(resolve => setTimeout(resolve, 1100));
   assert.equal((await (await request(path + '/' + start.login_id, 'POST', { input: 'late' })).json()).code, 'login_not_found');
