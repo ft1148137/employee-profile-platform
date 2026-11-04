@@ -14,7 +14,7 @@ from app.domains.change_request.models import (
 )
 from app.domains.drafting.models import DraftingSetting
 from app.domains.evidence.models import Evidence
-from app.domains.inbox.models import InboxItem
+from app.domains.inbox.models import InboxItem, PendingQuestion
 from app.domains.model.models import ModelSetting
 from app.domains.org.models import (
     Department,
@@ -50,6 +50,7 @@ ORG_MODELS = (
     SourceConnection,
     AuditEvent,
     InboxItem,
+    PendingQuestion,
     ChangeItemEvidence,
     ChangeItem,
     ProfileChangeRequest,

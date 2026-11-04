@@ -394,17 +394,18 @@ def test_dictionary_notification_migration(migration_engine: Engine) -> None:
         assert connection.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalars().all() == ["a91e001bc001"]
-    from app.core.config import settings
-    from app.core.db import init_db
     from app.domains.inbox.models import InboxItem, InboxKind
-    from app.domains.org.models import Employee
-    from app.seed.loader import load_demo
+    from app.domains.org.models import Employee, Organization
 
     with Session(migration_engine) as session:
-        init_db(session)
-        session.rollback()
-        load_demo(session, settings.DEMO_DATA_DIR)
-        employee = session.exec(select(Employee)).first()
+        org = Organization(
+            slug="notification-migration", name="Synthetic migration tenant"
+        )
+        session.add(org)
+        session.flush()
+        employee = Employee(org_id=org.id, display_name="Synthetic employee")
+        session.add(employee)
+        session.flush()
         for kind in (InboxKind.DICTIONARY_CHANGED, InboxKind.SUBMITTED):
             session.add(
                 InboxItem(

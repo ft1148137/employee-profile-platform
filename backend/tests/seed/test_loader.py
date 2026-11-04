@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.db import engine
 from app.domains.capability.models import CapabilityDefinition, CapabilitySchemaVersion
 from app.domains.evidence.models import Evidence, EvidenceKind, Visibility
+from app.domains.inbox.models import PendingQuestion
 from app.domains.org.models import (
     Employee,
     ExternalIdentity,
@@ -65,6 +66,15 @@ def test_import(seed_path: Path) -> None:
         employees = session.exec(
             select(Employee).where(Employee.org_id == org.id)
         ).all()
+        questions = session.exec(
+            select(PendingQuestion).where(PendingQuestion.org_id == org.id)
+        ).all()
+        assert len(questions) == 2
+        assert {question.target_employee_id for question in questions} == {
+            employee.id
+            for employee in employees
+            if employee.employee_code in {"E02", "E05"}
+        }
         assert (
             session.exec(
                 select(CapabilitySchemaVersion).where(

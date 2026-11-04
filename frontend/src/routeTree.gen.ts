@@ -14,6 +14,7 @@ import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
+import { Route as LayoutInboxRouteImport } from './routes/_layout/inbox'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutSetupWizardRouteImport } from './routes/_layout/setup-wizard'
 import { Route as LayoutAdminAccountsRouteImport } from './routes/_layout/admin.accounts'
@@ -51,6 +52,11 @@ const SetupRoute = SetupRouteImport.update({
 const LayoutIndexRoute = LayoutIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutInboxRoute = LayoutInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/inbox': typeof LayoutInboxRoute
   '/settings': typeof LayoutSettingsRoute
   '/setup-wizard': typeof LayoutSetupWizardRoute
   '/admin/accounts': typeof LayoutAdminAccountsRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByTo {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/inbox': typeof LayoutInboxRoute
   '/settings': typeof LayoutSettingsRoute
   '/setup-wizard': typeof LayoutSetupWizardRoute
   '/': typeof LayoutIndexRoute
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/_layout/inbox': typeof LayoutInboxRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/setup-wizard': typeof LayoutSetupWizardRoute
   '/_layout/': typeof LayoutIndexRoute
@@ -194,6 +203,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/login'
     | '/setup'
+    | '/inbox'
     | '/settings'
     | '/setup-wizard'
     | '/admin/accounts'
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/login'
     | '/setup'
+    | '/inbox'
     | '/settings'
     | '/setup-wizard'
     | '/'
@@ -234,6 +245,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/login'
     | '/setup'
+    | '/_layout/inbox'
     | '/_layout/settings'
     | '/_layout/setup-wizard'
     | '/_layout/'
@@ -293,6 +305,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof LayoutIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/inbox': {
+      id: '/_layout/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof LayoutInboxRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/settings': {
@@ -397,6 +416,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface LayoutRouteChildren {
+  LayoutInboxRoute: typeof LayoutInboxRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutSetupWizardRoute: typeof LayoutSetupWizardRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
@@ -415,6 +435,7 @@ interface LayoutRouteChildren {
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
+  LayoutInboxRoute: LayoutInboxRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutSetupWizardRoute: LayoutSetupWizardRoute,
   LayoutIndexRoute: LayoutIndexRoute,

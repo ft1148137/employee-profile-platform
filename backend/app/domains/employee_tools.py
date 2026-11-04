@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 from app.domains.change_request import employee
 from app.domains.change_request.schemas import DraftInput, ToolInput
 from app.domains.evidence.models import EvidenceKind
+from app.domains.inbox import service as inbox
+from app.domains.inbox.schemas import AnswerQuestionInput, QuestionsInput
 
 
 class EvidenceInput(ToolInput):
@@ -45,6 +47,19 @@ class EmployeeTool:
 
 # Adapters inject Principal, Session and trusted via/client_name; never model input.
 EMPLOYEE_TOOLS = (
+    EmployeeTool(
+        "get_pending_questions",
+        "查看我的待确认问题",
+        QuestionsInput,
+        inbox.get_pending_questions,
+    ),
+    EmployeeTool(
+        "answer_question",
+        "确认回答并存为受限自述证据，不修改画像",
+        AnswerQuestionInput,
+        inbox.answer_question,
+        True,
+    ),
     EmployeeTool("get_my_profile", "查看我的正式画像", ToolInput, employee.my_profile),
     EmployeeTool(
         "list_my_evidence", "查看我的证据", EvidenceInput, employee.my_evidence

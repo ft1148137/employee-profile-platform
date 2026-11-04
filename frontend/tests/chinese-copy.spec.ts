@@ -35,6 +35,11 @@ for (const account of ["admin", "manager.platform", "employee.platform"]) {
   }) => {
     await logInUser(page, `${account}@demo.example.com`, password)
     await expect(page.getByRole("heading").first()).toBeVisible()
+    if (account === "employee.platform") {
+      await expect(page).toHaveURL("/inbox")
+      await expectChineseCopy(page)
+      await page.getByRole("link", { name: "我的画像", exact: true }).click()
+    }
     if (account !== "employee.platform") {
       await page.goto("/employees")
       await expect(page.getByText("共", { exact: false }).first()).toBeVisible()
@@ -101,6 +106,10 @@ for (const [account, own] of [
       })
     })
     await logInUser(page, `${account}@demo.example.com`, password)
+    if (own) {
+      await expect(page).toHaveURL("/inbox")
+      await page.getByRole("link", { name: "我的画像", exact: true }).click()
+    }
     if (!own) await page.goto("/employees")
     if (!own)
       await page

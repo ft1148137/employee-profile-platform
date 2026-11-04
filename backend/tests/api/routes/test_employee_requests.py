@@ -37,7 +37,14 @@ def principal_for(db: Session, org_id: UUID) -> employee.Principal:
 
 def test_my_reads(shared_demo: tuple, client: TestClient) -> None:
     url, employees, auth = shared_demo
-    for path in ("profile", "evidence", "requests", "capabilities", "inbox"):
+    for path in (
+        "profile",
+        "evidence",
+        "requests",
+        "capabilities",
+        "inbox",
+        "questions",
+    ):
         response = client.get(f"{url}/me/{path}", headers=auth["employee"])
         assert response.status_code == 200
         if path == "profile":
@@ -55,6 +62,12 @@ def test_my_reads(shared_demo: tuple, client: TestClient) -> None:
         )
         assert (
             client.get(f"{url}/me/inbox?{query}", headers=auth["employee"]).status_code
+            == 422
+        )
+        assert (
+            client.get(
+                f"{url}/me/questions?{query}", headers=auth["employee"]
+            ).status_code
             == 422
         )
 
@@ -177,7 +190,12 @@ def test_draft_preview_submit_and_withdraw(
     )
     assert client.get(f"{url}/me/profile", headers=headers).json() == original_profile
     inbox = client.get(f"{url}/me/inbox", headers=headers).json()
-    assert {i["kind"] for i in inbox["data"]} == {"submitted", "status_changed"}
+    assert {i["kind"] for i in inbox["data"]} == {
+        "submitted",
+        "status_changed",
+        "question",
+        "initial_review",
+    }
     inbox_id = inbox["data"][0]["id"]
     first = client.post(f"{url}/me/inbox/{inbox_id}/read", headers=headers).json()
     second = client.post(f"{url}/me/inbox/{inbox_id}/read", headers=headers).json()
@@ -222,6 +240,13 @@ def test_initial_request_confirmation(
     )
     assert result.status_code == 200, result.text
     assert result.json()["status"] == "pending_review"
+    inbox = client.get(f"{url}/me/inbox", headers=headers).json()
+    initial_notification = next(
+        row
+        for row in inbox["data"]
+        if row["kind"] == "initial_review" and row["request_id"] == initial["id"]
+    )
+    assert initial_notification["done_at"] and initial_notification["read_at"]
     if edit:
         assert any(
             e["relation"] == "contradicts"
@@ -448,7 +473,7 @@ def test_submit_rolls_back_with_notifications(
 
 
 def test_tools_exclude_identity_and_bot_submission() -> None:
-    assert len(EMPLOYEE_TOOLS) == 8
+    assert len(EMPLOYEE_TOOLS) == 10
     for tool in EMPLOYEE_TOOLS:
         properties = tool.input_model.model_json_schema()["properties"]
         assert not {"employee_id", "org_id", "via", "client_name"} & properties.keys()
@@ -457,7 +482,13 @@ def test_tools_exclude_identity_and_bot_submission() -> None:
             tool.name not in ("submit_request", "withdraw_request")
         )
         assert tool.writes == (
-            tool.name in ("draft_update_request", "submit_request", "withdraw_request")
+            tool.name
+            in (
+                "draft_update_request",
+                "submit_request",
+                "withdraw_request",
+                "answer_question",
+            )
         )
 
 

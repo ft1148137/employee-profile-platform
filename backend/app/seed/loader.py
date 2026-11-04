@@ -21,6 +21,7 @@ from app.domains.change_request.models import (
 )
 from app.domains.evidence.models import EvidenceKind, Visibility
 from app.domains.evidence.service import append_evidence
+from app.domains.inbox.models import InboxItem, InboxKind, PendingQuestion
 from app.domains.org.models import (
     Department,
     Employee,
@@ -377,6 +378,17 @@ def load_demo(
                 )
                 session.add(request)
                 session.flush()
+            if request.status == "pending_owner":
+                ensure(
+                    InboxItem,
+                    lookup={
+                        **tenant,
+                        "request_id": request.id,
+                        "kind": InboxKind.INITIAL_REVIEW,
+                    },
+                    recipient_employee_id=request.subject_employee_id,
+                    message="初始画像已起草，请过目后提交",
+                )
             for position, item_row in enumerate(request_row.items):
                 item = ensure(
                     ChangeItem,
@@ -400,6 +412,37 @@ def load_demo(
                         },
                         relation=ref.relation,
                     )
+        for employee_code, question_text, reason in (
+            (
+                "E02",
+                "请描述一次你独立排查线上故障的经历。",
+                "补充你在故障排查中的实际职责与处理过程",
+            ),
+            (
+                "E05",
+                "最近的项目中，你如何验证交付结果？",
+                "补充测试与验收方面的本人经历",
+            ),
+        ):
+            question = ensure(
+                PendingQuestion,
+                lookup={
+                    **tenant,
+                    "target_employee_id": employees[employee_code].id,
+                    "question": question_text,
+                },
+                reason=reason,
+            )
+            ensure(
+                InboxItem,
+                lookup={
+                    **tenant,
+                    "question_id": question.id,
+                    "kind": InboxKind.QUESTION,
+                },
+                recipient_employee_id=question.target_employee_id,
+                message=question.question,
+            )
         for progress_row in data.progress:
             ensure(
                 ProfileProgress,

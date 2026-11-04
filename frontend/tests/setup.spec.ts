@@ -164,6 +164,8 @@ test("complete setup with 30 employees, download accounts and first employee log
     .getByLabel("确认新密码", { exact: true })
     .fill("synthetic-new-password-2026")
   await page.getByRole("button", { name: "保存密码" }).click()
+  await expect(page).toHaveURL("/inbox")
+  await page.getByRole("link", { name: "我的画像", exact: true }).click()
   await expect(page).toHaveURL(/\/employees\//)
   await expect(page.getByText("你的画像还没有内容")).toBeVisible()
 })

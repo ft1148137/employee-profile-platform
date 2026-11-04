@@ -1,6 +1,7 @@
 import type { AuditEventPublic } from "@/client"
 
 export const auditLabels: Record<string, string> = {
+  "question.answered": "回答待确认问题",
   "access_token.created": "生成个人令牌",
   "access_token.revoked": "吊销个人令牌",
   "mcp_setting.updated": "修改外部 AI 助手设置",
@@ -44,6 +45,7 @@ export const actorLabels: Record<string, string> = {
   cli: "命令行",
 }
 export const targetLabels: Record<string, string> = {
+  pending_question: "待确认问题",
   personal_access_token: "个人令牌",
   mcp_setting: "外部 AI 助手设置",
   sync_run: "同步记录",

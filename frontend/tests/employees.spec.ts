@@ -73,6 +73,8 @@ test("employee lands on own profile and cannot read a colleague", async ({
   })
   const [manager] = await memberships.json()
   await logInUser(page, "employee.platform@demo.example.com", password)
+  await expect(page).toHaveURL("/inbox")
+  await page.getByRole("link", { name: "我的画像", exact: true }).click()
   await expect(page).toHaveURL(/\/employees\/[^/]+$/)
   await expect(
     page.getByRole("heading", { name: "张伟", exact: true }),
@@ -134,6 +136,11 @@ test("organization switch updates navigation and scopes requests", async ({
   )
   await page.route("**/api/v1/orgs/*/employees?*", (route) =>
     route.fulfill({ json: { data: [], count: 0 } }),
+  )
+  await page.route(`**/api/v1/orgs/${orgs[1]}/me/inbox?*`, (route) =>
+    route.fulfill({
+      json: { data: [], count: 0, unread_count: 0, pending_count: 0 },
+    }),
   )
   await page.route("**/api/v1/orgs/*/employees/own-employee/profile", (route) =>
     route.fulfill({ status: 404, json: { detail: "Employee not found" } }),

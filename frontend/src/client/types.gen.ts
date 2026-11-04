@@ -86,6 +86,16 @@ export type ActiveSchemaPublic = {
 export type ActorKind = 'user' | 'system_worker' | 'agent' | 'seed' | 'cli';
 
 /**
+ * AnswerInput
+ */
+export type AnswerInput = {
+    /**
+     * Answer
+     */
+    answer: string;
+};
+
+/**
  * ApplyImport
  */
 export type ApplyImport = {
@@ -1445,6 +1455,14 @@ export type InboxList = {
      * Count
      */
     count: number;
+    /**
+     * Unread Count
+     */
+    unread_count: number;
+    /**
+     * Pending Count
+     */
+    pending_count: number;
 };
 
 /**
@@ -2134,6 +2152,60 @@ export type PublisherPublic = {
      * Display Name
      */
     display_name: string | null;
+};
+
+/**
+ * QuestionPublic
+ */
+export type QuestionPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Capability Definition Id
+     */
+    capability_definition_id: string | null;
+    /**
+     * Question
+     */
+    question: string;
+    /**
+     * Reason
+     */
+    reason: string;
+    status: QuestionStatus;
+    /**
+     * Answer Evidence Id
+     */
+    answer_evidence_id: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Answered At
+     */
+    answered_at: string | null;
+};
+
+/**
+ * QuestionStatus
+ */
+export type QuestionStatus = 'open' | 'answered' | 'dismissed';
+
+/**
+ * QuestionsList
+ */
+export type QuestionsList = {
+    /**
+     * Data
+     */
+    data: Array<QuestionPublic>;
+    /**
+     * Count
+     */
+    count: number;
 };
 
 /**
@@ -3281,6 +3353,113 @@ export type meReadMembershipsResponses = {
 };
 
 export type meReadMembershipsResponse = meReadMembershipsResponses[keyof meReadMembershipsResponses];
+
+export type employeeRequestsReadQuestionsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/orgs/{org_id}/me/questions';
+};
+
+export type employeeRequestsReadQuestionsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeeRequestsReadQuestionsError = employeeRequestsReadQuestionsErrors[keyof employeeRequestsReadQuestionsErrors];
+
+export type employeeRequestsReadQuestionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: QuestionsList;
+};
+
+export type employeeRequestsReadQuestionsResponse = employeeRequestsReadQuestionsResponses[keyof employeeRequestsReadQuestionsResponses];
+
+export type employeeRequestsReadQuestionData = {
+    body?: never;
+    path: {
+        /**
+         * Question Id
+         */
+        question_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/questions/{question_id}';
+};
+
+export type employeeRequestsReadQuestionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeeRequestsReadQuestionError = employeeRequestsReadQuestionErrors[keyof employeeRequestsReadQuestionErrors];
+
+export type employeeRequestsReadQuestionResponses = {
+    /**
+     * Successful Response
+     */
+    200: QuestionPublic;
+};
+
+export type employeeRequestsReadQuestionResponse = employeeRequestsReadQuestionResponses[keyof employeeRequestsReadQuestionResponses];
+
+export type employeeRequestsAnswerQuestionData = {
+    body: AnswerInput;
+    path: {
+        /**
+         * Question Id
+         */
+        question_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/questions/{question_id}/answer';
+};
+
+export type employeeRequestsAnswerQuestionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeeRequestsAnswerQuestionError = employeeRequestsAnswerQuestionErrors[keyof employeeRequestsAnswerQuestionErrors];
+
+export type employeeRequestsAnswerQuestionResponses = {
+    /**
+     * Successful Response
+     */
+    200: QuestionPublic;
+};
+
+export type employeeRequestsAnswerQuestionResponse = employeeRequestsAnswerQuestionResponses[keyof employeeRequestsAnswerQuestionResponses];
 
 export type employeeRequestsReadMyProfileData = {
     body?: never;
