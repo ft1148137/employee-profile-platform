@@ -315,6 +315,12 @@ def test_files_and_chinese_validation(shared_demo: tuple, client: TestClient) ->
         DictionaryDefinition.model_validate(d)
         for d in exported(client, url, auth["admin"])
     ]
+    response = client.post(
+        f"{url}/capabilities/preview",
+        headers=auth["admin"],
+        files={"file": ("custom.xlsx", dictionary_xlsx(definitions))},
+    )
+    assert response.status_code == 200 and not response.json()["errors"]
     parsed, errors = parse_dictionary(dictionary_xlsx(definitions), "custom.xlsx")
     assert parsed == definitions and not errors
     raw = definitions[0].model_dump()
@@ -366,9 +372,9 @@ def test_dictionary_notification_migration(migration_engine: Engine) -> None:
         ).scalars().all() == ["a91e001bc001"]
     from app.core.config import settings
     from app.core.db import init_db
-    from app.seed.loader import load_demo
     from app.domains.inbox.models import InboxItem, InboxKind
     from app.domains.org.models import Employee
+    from app.seed.loader import load_demo
 
     with Session(migration_engine) as session:
         init_db(session)
@@ -404,11 +410,11 @@ def test_dictionary_notification_migration(migration_engine: Engine) -> None:
 def test_redraft_only_queues_pending_owner_and_matches_published_key(
     demo: tuple, client: TestClient, db: Session
 ) -> None:
+    from app.domains.capability.models import CapabilityDefinition
     from app.domains.change_request.claim import ClaimAfter
     from app.domains.drafting.model import DraftItem
     from app.domains.drafting.service import write_initial_request
     from app.domains.profile.models import AssessmentStatus
-    from app.domains.capability.models import CapabilityDefinition
 
     url, employees, auth = demo
     org_id = employees["E02"].org_id
