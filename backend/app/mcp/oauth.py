@@ -372,8 +372,35 @@ class OAuthEndpoint:
             registration_ip.reset(context)
 
 
+async def https_required(_request: Request) -> JSONResponse:
+    return JSONResponse(
+        {
+            "error": "temporarily_unavailable",
+            "error_description": "OAuth 授权需要 HTTPS，请配置 HTTPS 访问地址",
+        },
+        status_code=503,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 def oauth_routes() -> list[Route]:
     issuer = AnyHttpUrl(settings.FRONTEND_HOST.rstrip("/") + "/oauth")
+    if issuer.scheme != "https" and issuer.host not in {
+        "localhost",
+        "127.0.0.1",
+        "[::1]",
+    }:
+        # HTTP installation remains usable; OAuth credentials require a secure issuer.
+        return [
+            Route(path, https_required, methods=["GET", "POST", "OPTIONS"])
+            for path in (
+                "/oauth/{path:path}",
+                "/.well-known/oauth-authorization-server",
+                "/.well-known/oauth-authorization-server/oauth",
+                "/.well-known/oauth-protected-resource",
+                "/.well-known/oauth-protected-resource/mcp",
+            )
+        ]
     registration = ClientRegistrationOptions(
         enabled=True, valid_scopes=["employee"], default_scopes=["employee"]
     )

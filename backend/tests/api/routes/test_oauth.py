@@ -8,6 +8,7 @@ from uuid import UUID
 
 import jwt
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx2 import Response
 from sqlalchemy import Engine, inspect
@@ -31,7 +32,7 @@ from app.domains.change_request.models import (
     RequestStatus,
 )
 from app.domains.org.models import Employee, OrgMembership
-from app.mcp.oauth import resource_url
+from app.mcp.oauth import oauth_routes, resource_url
 from app.models import User
 from tests.api.routes.test_mcp import call, initialize
 from tests.utils.migrations import migrate
@@ -793,3 +794,32 @@ def test_mcp_uses_authorized_client_name(
         client, headers(pair["access_token"]), name="Different transport library"
     )
     assert not call(client, active, "get_my_profile", {})["isError"]
+
+
+@pytest.mark.parametrize(
+    "origin, status",
+    [("http://192.0.2.10:8080", 503), ("https://profiles.example", 200)],
+)
+def test_http_installation_does_not_crash_oauth_startup(
+    monkeypatch: pytest.MonkeyPatch, origin: str, status: int
+) -> None:
+    monkeypatch.setattr(settings, "FRONTEND_HOST", origin)
+    app = FastAPI()
+    app.router.routes.extend(oauth_routes())
+    with TestClient(app) as local:
+        response = local.get("/.well-known/oauth-authorization-server")
+        assert response.status_code == status
+        if status == 503:
+            assert "HTTPS" in response.json()["error_description"]
+            for path in (
+                "/oauth/token",
+                "/oauth/register",
+                "/oauth/authorize",
+                "/oauth/revoke",
+            ):
+                denied = local.post(path, data={"client_secret": "synthetic-secret"})
+                assert (
+                    denied.status_code == 503 and "synthetic-secret" not in denied.text
+                )
+        else:
+            assert response.json()["issuer"] == origin + "/oauth"
