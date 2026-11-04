@@ -87,6 +87,7 @@ def _error(event: dict[str, JsonValue]) -> None:
         "deadline": "模型调用超时",
         "limit_exceeded": "模型调用次数达到上限",
         "cancelled": "模型调用已取消",
+        "local_auth_unavailable": "本机 Codex 授权不可用或有效期不足一小时，请在本机正常运行一次 codex 刷新",
     }
     raise ModelUnavailable(messages.get(str(code), "模型服务暂时不可用"))
 

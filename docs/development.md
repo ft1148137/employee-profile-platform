@@ -124,6 +124,21 @@ Stop a locally running FastAPI server before starting the Compose backend becaus
 
 Compose passes only explicitly listed settings to application containers. `FASTAPI_ENV` is passed through from `.env` when present and omitted otherwise. Development mode permits example secrets and exposes development-only endpoints, so remove it and replace all example secrets before public deployment.
 
+### 本机 ChatGPT 订阅测试
+
+仅开发模式可叠加 `compose.chatgpt-local.yml`，例如本任务使用：
+
+```bash
+LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) COMPOSE_PROJECT_NAME=nere104 API_PORT=18104 docker compose \
+  -f compose.yml -f compose.chatgpt-local.yml up -d --wait
+```
+
+`.env` 必须设置 `FASTAPI_ENV=development`。Pi 使用宿主用户的 UID/GID，以读取原本权限为 0600 的授权文件；专用 tmpfs 也归该用户。该覆盖文件只把 `${HOME}/.codex/auth.json` 单个文件只读挂给 Pi，不挂载 HOME，不接触 `~/.claude`，后端和 Worker 没有授权文件。开发设置页选择 ChatGPT 订阅并启用、保存即可测试，不需要企业登录；本机模式会用于该部署内全部企业的 ChatGPT 调用，因此只用于合成数据。移除此覆盖文件并重建容器即可恢复企业连接。
+
+Pi 每轮只提取 access token、账号和 JWT 到期时间，临时文件在独立 tmpfs 中，权限 0600，不含 refresh token，调用结束后删除；不写回、不刷新、不存企业数据库。有效期不足一小时会中文提示：请在本机正常运行一次 codex 刷新，然后重新测试。开发者自己在本机正常登录；自动化测试只创建合成 JWT，不能读取真实授权文件。
+
+若同时使用 `compose.dev.yml`，先按任务分配数据库端口并使用仓库外覆盖文件，禁止连接其他任务的数据库。验证后对同一组 Compose 文件执行 `down -v --remove-orphans` 并清理本任务镜像。
+
 After changing variables, make sure you restart the stack:
 
 ```bash
