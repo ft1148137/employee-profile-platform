@@ -30,7 +30,7 @@ export class BotSettingsService {
             ...options
         });
     }
-
+    
     /**
      * Put Bot Settings
      */
@@ -66,7 +66,7 @@ export class LoginService {
             }
         });
     }
-
+    
     /**
      * Test Token
      *
@@ -100,7 +100,7 @@ export class UsersService {
             }
         });
     }
-
+    
     /**
      * Read User Me
      *
@@ -155,7 +155,7 @@ export class EmployeeRequestsService {
             ...options
         });
     }
-
+    
     /**
      * Read My Evidence
      */
@@ -167,7 +167,7 @@ export class EmployeeRequestsService {
             ...options
         });
     }
-
+    
     /**
      * Read My Requests
      */
@@ -179,7 +179,7 @@ export class EmployeeRequestsService {
             ...options
         });
     }
-
+    
     /**
      * Create Draft
      */
@@ -195,7 +195,7 @@ export class EmployeeRequestsService {
             }
         });
     }
-
+    
     /**
      * Read My Capabilities
      */
@@ -207,7 +207,7 @@ export class EmployeeRequestsService {
             ...options
         });
     }
-
+    
     /**
      * Update Items
      */
@@ -223,7 +223,7 @@ export class EmployeeRequestsService {
             }
         });
     }
-
+    
     /**
      * Preview Request
      */
@@ -235,7 +235,7 @@ export class EmployeeRequestsService {
             ...options
         });
     }
-
+    
     /**
      * Submit Request
      */
@@ -251,7 +251,7 @@ export class EmployeeRequestsService {
             }
         });
     }
-
+    
     /**
      * Withdraw Request
      */
@@ -263,7 +263,7 @@ export class EmployeeRequestsService {
             ...options
         });
     }
-
+    
     /**
      * Read Inbox
      */
@@ -275,7 +275,7 @@ export class EmployeeRequestsService {
             ...options
         });
     }
-
+    
     /**
      * Read Inbox Item
      */
@@ -301,7 +301,7 @@ export class ModelSettingService {
             ...options
         });
     }
-
+    
     /**
      * Put Model Setting
      */
@@ -317,7 +317,7 @@ export class ModelSettingService {
             }
         });
     }
-
+    
     /**
      * Test Model Setting
      */
@@ -329,7 +329,7 @@ export class ModelSettingService {
             ...options
         });
     }
-
+    
     /**
      * Poll Chatgpt Login
      */
@@ -341,7 +341,7 @@ export class ModelSettingService {
             ...options
         });
     }
-
+    
     /**
      * Start Chatgpt Login
      */
@@ -353,7 +353,7 @@ export class ModelSettingService {
             ...options
         });
     }
-
+    
     /**
      * Disconnect Chatgpt
      */
@@ -379,7 +379,7 @@ export class SourcesService {
             ...options
         });
     }
-
+    
     /**
      * Work Records Template
      */
@@ -390,7 +390,7 @@ export class SourcesService {
             ...options
         });
     }
-
+    
     /**
      * Import Work Records
      */
@@ -407,7 +407,7 @@ export class SourcesService {
             }
         });
     }
-
+    
     /**
      * Get Jira
      */
@@ -419,7 +419,7 @@ export class SourcesService {
             ...options
         });
     }
-
+    
     /**
      * Put Jira
      */
@@ -435,7 +435,7 @@ export class SourcesService {
             }
         });
     }
-
+    
     /**
      * Test Jira
      */
@@ -447,7 +447,7 @@ export class SourcesService {
             ...options
         });
     }
-
+    
     /**
      * List Sync Runs
      */
@@ -459,7 +459,7 @@ export class SourcesService {
             ...options
         });
     }
-
+    
     /**
      * Retry Sync
      */
@@ -485,7 +485,7 @@ export class ExternalIdentitiesService {
             ...options
         });
     }
-
+    
     /**
      * Post Links
      */
@@ -501,7 +501,7 @@ export class ExternalIdentitiesService {
             }
         });
     }
-
+    
     /**
      * Post Unlink
      */
@@ -531,7 +531,7 @@ export class OrgsService {
             }
         });
     }
-
+    
     /**
      * Read Departments
      */
@@ -557,7 +557,7 @@ export class SetupService {
             ...options
         });
     }
-
+    
     /**
      * Complete Step
      */
@@ -569,7 +569,7 @@ export class SetupService {
             ...options
         });
     }
-
+    
     /**
      * Skip Step
      */
@@ -581,7 +581,7 @@ export class SetupService {
             ...options
         });
     }
-
+    
     /**
      * Read Status
      */
@@ -592,7 +592,7 @@ export class SetupService {
             ...options
         });
     }
-
+    
     /**
      * Initialize Organization
      */
@@ -621,7 +621,7 @@ export class DraftingSettingsService {
             ...options
         });
     }
-
+    
     /**
      * Put Drafting Settings
      */
@@ -637,7 +637,7 @@ export class DraftingSettingsService {
             }
         });
     }
-
+    
     /**
      * Get Auto Draft
      */
@@ -649,7 +649,7 @@ export class DraftingSettingsService {
             ...options
         });
     }
-
+    
     /**
      * Put Auto Draft
      */
@@ -679,7 +679,7 @@ export class EmployeesService {
             ...options
         });
     }
-
+    
     /**
      * Read Employee
      */
@@ -705,7 +705,7 @@ export class CapabilitiesService {
             ...options
         });
     }
-
+    
     /**
      * Update Dictionary
      */
@@ -721,7 +721,7 @@ export class CapabilitiesService {
             }
         });
     }
-
+    
     /**
      * Export Dictionary
      */
@@ -732,7 +732,7 @@ export class CapabilitiesService {
             ...options
         });
     }
-
+    
     /**
      * Dictionary Template
      */
@@ -743,7 +743,7 @@ export class CapabilitiesService {
             ...options
         });
     }
-
+    
     /**
      * Preview Dictionary
      */
@@ -760,7 +760,7 @@ export class CapabilitiesService {
             }
         });
     }
-
+    
     /**
      * Save Dictionary
      */
@@ -776,7 +776,7 @@ export class CapabilitiesService {
             }
         });
     }
-
+    
     /**
      * Read Dictionary Editor
      */
@@ -788,7 +788,7 @@ export class CapabilitiesService {
             ...options
         });
     }
-
+    
     /**
      * Preview Dictionary Editor
      */
@@ -818,7 +818,7 @@ export class CapabilityTemplatesService {
             ...options
         });
     }
-
+    
     /**
      * Preview Template
      */
@@ -830,7 +830,7 @@ export class CapabilityTemplatesService {
             ...options
         });
     }
-
+    
     /**
      * Activate Capability Schema
      */
@@ -860,7 +860,7 @@ export class ProfilesService {
             ...options
         });
     }
-
+    
     /**
      * Read Profile Versions
      */
@@ -872,7 +872,7 @@ export class ProfilesService {
             ...options
         });
     }
-
+    
     /**
      * Read Profile Version
      */
@@ -912,7 +912,7 @@ export class EvidenceService {
             ...options
         });
     }
-
+    
     /**
      * Read Evidence
      */
@@ -942,7 +942,7 @@ export class InitialProfilesService {
             }
         });
     }
-
+    
     /**
      * Progress
      */
@@ -968,7 +968,7 @@ export class AccountsService {
             ...options
         });
     }
-
+    
     /**
      * Issue Accounts
      */
@@ -984,7 +984,7 @@ export class AccountsService {
             }
         });
     }
-
+    
     /**
      * Reset Password
      */
@@ -996,7 +996,7 @@ export class AccountsService {
             ...options
         });
     }
-
+    
     /**
      * Disable Account
      */
@@ -1008,7 +1008,7 @@ export class AccountsService {
             ...options
         });
     }
-
+    
     /**
      * Enable Account
      */
@@ -1048,7 +1048,7 @@ export class RolesService {
             ...options
         });
     }
-
+    
     /**
      * Grant Role
      */
@@ -1064,7 +1064,7 @@ export class RolesService {
             }
         });
     }
-
+    
     /**
      * Revoke Role
      */
@@ -1089,7 +1089,7 @@ export class RosterService {
             ...options
         });
     }
-
+    
     /**
      * Read Imports
      */
@@ -1101,7 +1101,7 @@ export class RosterService {
             ...options
         });
     }
-
+    
     /**
      * Upload Import
      */
@@ -1118,7 +1118,7 @@ export class RosterService {
             }
         });
     }
-
+    
     /**
      * Apply Import
      */
@@ -1151,7 +1151,7 @@ export class PrivateService {
             }
         });
     }
-
+    
     /**
      * Create User
      *
