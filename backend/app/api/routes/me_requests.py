@@ -16,11 +16,47 @@ from app.domains.change_request.schemas import (
 )
 from app.domains.evidence.models import EvidenceKind
 from app.domains.evidence.schemas import EvidenceList
-from app.domains.inbox.schemas import InboxList, InboxPublic
+from app.domains.inbox import service as inbox
+from app.domains.inbox.schemas import (
+    AnswerInput,
+    InboxList,
+    InboxPublic,
+    QuestionPublic,
+    QuestionsList,
+)
 from app.domains.inbox.service import mark_read, my_inbox
 from app.domains.profile.schemas import ProfileView
 
 router = APIRouter(prefix="/orgs/{org_id}/me", tags=["employee_requests"])
+
+
+@router.get("/questions")
+def read_questions(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> QuestionsList:
+    return inbox.get_pending_questions(principal, session, skip, limit)
+
+
+@router.get("/questions/{question_id}")
+def read_question(
+    principal: OrgPrincipalDep, session: SessionDep, question_id: UUID
+) -> QuestionPublic:
+    return inbox.read_question(principal, session, question_id)
+
+
+@router.post("/questions/{question_id}/answer")
+def answer_question(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    question_id: UUID,
+    body: AnswerInput,
+) -> QuestionPublic:
+    result = inbox.answer_question(principal, session, question_id, body.answer)
+    session.commit()
+    return result
 
 
 @router.get("/profile")
