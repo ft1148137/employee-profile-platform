@@ -1,0 +1,26 @@
+name: Test Pi research sample
+on:
+  pull_request:
+  push:
+    branches: [master]
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  test-pi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: pi
+      - run: npm test && npm run demo
+        working-directory: pi
+      - run: docker compose -p nere85 -f pi/compose.yml build
+      - run: docker compose -p nere85 -f pi/compose.yml run --rm sample
+      - if: always()
+        run: docker compose -p nere85 -f pi/compose.yml down -v --rmi local --remove-orphans

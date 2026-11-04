@@ -1,0 +1,11 @@
+services:
+  sample:
+    build: .
+    environment:
+      PI_CONTAINER_TEST: "1"
+    read_only: true
+    network_mode: none
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 512m
