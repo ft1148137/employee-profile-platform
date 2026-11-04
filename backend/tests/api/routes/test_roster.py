@@ -16,10 +16,12 @@ from app.core.db import engine
 from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
 from app.domains.capability.models import CapabilitySchemaVersion
+from app.domains.evidence.models import Evidence
 from app.domains.org.models import (
     Department,
     Employee,
     EmploymentStatus,
+    ExternalIdentity,
     Organization,
     OrgMembership,
     ReportingLine,
@@ -31,12 +33,56 @@ from app.domains.profile.models import ProfileVersion
 from app.domains.setup.steps import check_roster
 from app.main import app
 from app.models import User
+from tests.api.routes.test_external_identities import ingest
 from tests.api.routes.test_setup_steps import SetupTenant
 from tests.api.routes.test_setup_steps import tenant as roster_tenant
 
 tenant = roster_tenant
 
 SAMPLE = Path(__file__).resolve().parents[4] / "examples/roster/sample-30.csv"
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_roster_auto_links_existing_records(
+    tenant: SetupTenant, client: TestClient, db: Session, existing: bool
+) -> None:
+    identity = ExternalIdentity(
+        org_id=tenant.org_id, source="jira", external_id="roster-account"
+    )
+    blocked = ExternalIdentity(
+        org_id=tenant.org_id,
+        source="jira",
+        external_id="blocked-account",
+        email="new@example.com",
+        auto_link_blocked=True,
+    )
+    if existing:
+        db.add(
+            Employee(
+                org_id=tenant.org_id,
+                employee_code="E1",
+                display_name="合成员工",
+                work_email="old@example.com",
+            )
+        )
+    db.add_all([identity, blocked])
+    db.commit()
+    from types import SimpleNamespace
+
+    ingest(db, SimpleNamespace(id=tenant.org_id), identity)
+    identity.email = " NEW@example.COM "
+    db.add(identity)
+    db.commit()
+    content = "工号,姓名,部门,邮箱\nE1,合成员工,测试部门,new@example.com\n".encode()
+    preview = upload(client, tenant, content)
+    response = apply(client, tenant, preview)
+    assert response.status_code == 200, response.text
+    db.refresh(identity)
+    db.refresh(blocked)
+    assert identity.employee_id is not None and blocked.employee_id is None
+    evidence = db.exec(select(Evidence).where(Evidence.org_id == tenant.org_id)).one()
+    assert evidence.subject_employee_id == identity.employee_id
+    assert identity.linked_by == "system_worker:email_match"
 
 
 @pytest.fixture

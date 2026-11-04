@@ -89,6 +89,7 @@ class ExternalIdentity(SQLModel, table=True):
     email: str | None = None
     linked_by: str | None = None
     linked_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    auto_link_blocked: bool = False
 
 
 class OrgMembership(TenantRecord, table=True):

@@ -32,6 +32,7 @@ class ExternalIdentityPublic(BaseModel):
     email: str | None
     record_count: int
     linked_at: datetime | None
+    linked_by: str | None
     employee: IdentityEmployee | None
     candidate: IdentityCandidate | None
 
