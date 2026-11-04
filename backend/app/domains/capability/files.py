@@ -122,6 +122,7 @@ def parse_dictionary(
         IndexError,
         ValueError,
         OSError,
+        RecursionError,
     ):
         errors.append("第 1 行：文件无法读取，请检查格式或重新下载模板")
     return definitions, errors

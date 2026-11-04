@@ -345,6 +345,7 @@ def test_files_and_chinese_validation(shared_demo: tuple, client: TestClient) ->
         (b"[", "bad.yaml"),
         (b"{}", "bad.yaml"),
         (b"[]", "bad.yaml"),
+        (("[" * 1000 + "0" + "]" * 1000).encode(), "nested.yaml"),
     ):
         assert parse_dictionary(content, filename)[1]
     assert (
