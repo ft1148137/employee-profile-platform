@@ -120,6 +120,7 @@ def list_tokens(session: Session, principal: Principal) -> list[TokenPublic]:
             .where(
                 PersonalAccessToken.org_id == principal.org_id,
                 PersonalAccessToken.user_id == principal.user_id,
+                PersonalAccessToken.client_kind == "pat",
             )
             .order_by(
                 col(PersonalAccessToken.created_at).desc(),

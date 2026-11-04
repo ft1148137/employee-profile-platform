@@ -20,6 +20,8 @@ import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
 
+import { safeNext } from "@/utils"
+
 const formSchema = z.object({
   username: z.string().trim().min(1, { message: "请输入邮箱" }),
   password: z
@@ -32,10 +34,13 @@ type FormData = z.infer<typeof formSchema>
 
 export const Route = createFileRoute("/login")({
   component: Login,
-  beforeLoad: async () => {
+  validateSearch: (search: Record<string, unknown>): { next?: string } => ({
+    next: search.next === undefined ? undefined : safeNext(search.next),
+  }),
+  beforeLoad: async ({ search }) => {
     if (isLoggedIn()) {
       throw redirect({
-        to: "/",
+        href: safeNext(search.next),
       })
     }
   },
@@ -53,7 +58,8 @@ function Login() {
     queryKey: ["setup-status"],
     queryFn: async () => (await SetupService.readStatus()).data,
   })
-  const { loginMutation } = useAuth()
+  const { next } = Route.useSearch()
+  const { loginMutation } = useAuth(next)
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: "onBlur",
