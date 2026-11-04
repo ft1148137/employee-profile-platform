@@ -190,4 +190,6 @@ Python 在企业行锁内保存加密的 login_id、URL、state 和管理员 ID�
 
 API、Worker 和对话继续共用 `chatgpt.access_token`：独立事务取得企业模型设置行锁、重读密文，剩余不足 5 分钟才刷新；整组轮换令牌校验后加密提交，释放锁后才推理。保存设置复用登录/断开的锁函数，禁用、断开不能与刷新交错写回。已发出但超时、断线、结果无效或明确拒绝均持久化 `needs_relogin`，后续调用不再发送旧 refresh token；管理员轮询状态本身不会把临期令牌标为失效。
 
+为覆盖刷新结果返回后、提交前进程退出的情况，在发送刷新前先提交 `needs_relogin=true`。取令牌过程另外持有以企业为键的 PostgreSQL session advisory lock，固定租用同一连接，跨这次短提交仍串行；其他取令牌调用等待它，成功后拿到新令牌。标记提交后重新取得同一模型设置行锁并检查启用状态、类型及原密文，期间若断开、禁用或换过登录，就不再刷新，也不覆盖新状态。请求和令牌提交期间继续持行锁，断开/禁用等待该锁；最终解锁后才推理。会话在退出时显式解 advisory lock，进程退出则由 PostgreSQL 释放；异常退出留下的标记会阻止下一进程重用旧 refresh token。这样使用既有字段及 PostgreSQL 即可安全中断，不增加迁移或刷新任务队列。
+
 开发覆盖文件 `compose.chatgpt-local.yml` 仅把单个授权文件只读挂载给 Pi，另建 Pi 独立 tmpfs；后端/Worker 只接收 `CHATGPT_LOCAL_AUTH=true` 开关，不接收文件或凭据。Python 和 Pi 都检查 development 模式。此模式下 ChatGPT 调用使用本机授权，企业启用/禁用仍生效，不读写企业订阅凭据。Pi 每轮读取 access JWT 的账号与过期时间，拒绝有效期不足一小时；只把 `{access, accountId, expires}` 写入 0600 临时文件，按轮隔离，完成、异常或取消后删除。推理仍直接传 access，不经过 OAuth 自动刷新。没有新增依赖、迁移、证据或权限协议改动。

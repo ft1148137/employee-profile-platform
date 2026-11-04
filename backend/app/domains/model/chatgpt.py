@@ -1,4 +1,6 @@
 import json
+from collections.abc import Generator
+from contextlib import contextmanager
 from datetime import timedelta
 from typing import Any
 from urllib.parse import parse_qs, quote, urlsplit
@@ -6,6 +8,7 @@ from uuid import UUID
 
 import httpx
 from pydantic import BaseModel, Field, ValidationError
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.authz.principal import Principal
@@ -236,11 +239,29 @@ def local_auth() -> bool:
     return settings.FASTAPI_ENV == "development" and settings.CHATGPT_LOCAL_AUTH
 
 
+@contextmanager
+def refresh_session(org_id: UUID) -> Generator[Session]:
+    # Keep the connection leased: this lock must survive the durable intent commit.
+    with engine.connect() as connection, Session(connection) as session:
+        key = func.hashtextextended(f"chatgpt-refresh:{org_id}", 0)
+        try:
+            session.exec(select(func.pg_advisory_lock(key)))
+            yield session
+        finally:
+            session.rollback()
+            session.exec(select(func.pg_advisory_unlock(key)))
+            session.commit()
+
+
 def access_token(org_id: UUID) -> str:
-    with Session(engine) as session:
-        setting = session.exec(
-            select(ModelSetting).where(ModelSetting.org_id == org_id).with_for_update()
-        ).one_or_none()
+    with refresh_session(org_id) as session:
+        query = (
+            select(ModelSetting)
+            .where(ModelSetting.org_id == org_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        setting = session.exec(query).one_or_none()
         if (
             setting is None
             or not setting.enabled
@@ -249,6 +270,7 @@ def access_token(org_id: UUID) -> str:
             raise ModelUnavailable("ChatGPT 订阅已关闭")
         if local_auth():
             return "local-codex"
+        ciphertext = setting.chatgpt_auth_ciphertext
         try:
             tokens = OAuthTokens.model_validate_json(
                 decrypt_secret(setting.chatgpt_auth_ciphertext or "")
@@ -256,6 +278,16 @@ def access_token(org_id: UUID) -> str:
             if (setting.chatgpt_account or {}).get("needs_relogin"):
                 raise ValueError("Reconnect required")
             if tokens.expires <= (utc_now().timestamp() + 300) * 1000:
+                needs_relogin(setting)
+                session.commit()
+                setting = session.exec(query).one_or_none()
+                if (
+                    setting is None
+                    or not setting.enabled
+                    or setting.kind != "chatgpt_subscription"
+                    or setting.chatgpt_auth_ciphertext != ciphertext
+                ):
+                    raise ModelUnavailable(RELOGIN)
                 tokens = OAuthTokens.model_validate(
                     auth_request("POST", refresh=tokens.refresh)
                 )
@@ -271,8 +303,9 @@ def access_token(org_id: UUID) -> str:
                 session.commit()
             return tokens.access
         except SecretUnavailable, ValidationError, ValueError, ModelUnavailable:
-            needs_relogin(setting)
-            session.commit()
+            if setting is not None and setting.chatgpt_auth_ciphertext == ciphertext:
+                needs_relogin(setting)
+                session.commit()
             raise ModelUnavailable(RELOGIN) from None
 
 

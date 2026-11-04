@@ -334,6 +334,69 @@ def test_concurrent_refresh(
     )
 
 
+def test_interrupted_refresh_never_reuses_token(
+    connected: ModelSetting,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expire(connected, db)
+    calls = []
+    original = chatgpt.auth_request
+
+    def interrupted(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        calls.append(kwargs)
+        original(*args, **kwargs)
+        raise SystemExit("synthetic process interruption after sending refresh")
+
+    monkeypatch.setattr(chatgpt, "auth_request", interrupted)
+    with pytest.raises(SystemExit):
+        chatgpt.access_token(connected.org_id)
+    with pytest.raises(ModelUnavailable, match="重新连接"):
+        chatgpt.access_token(connected.org_id)
+    assert len(calls) == 1
+    db.refresh(connected)
+    assert connected.chatgpt_account["needs_relogin"]
+
+
+def test_disconnect_between_intent_and_refresh(
+    connected: ModelSetting,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    client: TestClient,
+    request: pytest.FixtureRequest,
+    auth_pi: PiHarness,
+) -> None:
+    _, _, _, users = request.getfixturevalue("tenant_data")
+    auth = headers(users[0])
+    expire(connected, db)
+    org_id = connected.org_id
+    stopped = False
+
+    class DisconnectAfterIntent(Session):
+        def commit(self) -> None:
+            nonlocal stopped
+            super().commit()
+            if not stopped:
+                stopped = True
+                assert (
+                    client.delete(
+                        f"/api/v1/orgs/{org_id}/model-setting/chatgpt", headers=auth
+                    ).status_code
+                    == 200
+                )
+
+    monkeypatch.setattr(chatgpt, "Session", DisconnectAfterIntent)
+    with pytest.raises(ModelUnavailable):
+        chatgpt.access_token(org_id)
+    db.refresh(connected)
+    assert connected.chatgpt_auth_ciphertext is connected.chatgpt_account is None
+    assert not connected.enabled
+    assert not any(
+        json.loads(line).get("route") == "refresh"
+        for line in auth_pi.logs.read_text().splitlines()
+    )
+
+
 @pytest.mark.parametrize("failure", ["lost", "rejected", "invalid"])
 def test_refresh_failure_never_retries(
     failure: str,
