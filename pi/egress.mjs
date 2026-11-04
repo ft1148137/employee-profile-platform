@@ -46,12 +46,18 @@ setGlobalDispatcher({ dispatch(options, handler) {
       });
     } } });
     return agent.dispatch(options, new class extends DecoratorHandler {
+      onRequestStart(controller, ...args) {
+        this.abort = () => controller.abort(new Error('Request cancelled'));
+        policy.signal?.addEventListener('abort', this.abort, { once: true });
+        if (policy.signal?.aborted) this.abort();
+        return super.onRequestStart(controller, ...args);
+      }
       onResponseStart(controller, status, ...args) {
         if (status >= 300 && status < 400) return controller.abort(new Error('Model redirect refused'));
         return super.onResponseStart(controller, status, ...args);
       }
-      onResponseEnd(...args) { super.onResponseEnd(...args); void agent.close(); }
-      onResponseError(...args) { super.onResponseError(...args); void agent.destroy(); }
+      onResponseEnd(...args) { policy.signal?.removeEventListener('abort', this.abort); super.onResponseEnd(...args); void agent.close(); }
+      onResponseError(...args) { policy.signal?.removeEventListener('abort', this.abort); super.onResponseError(...args); void agent.destroy(); }
     }(handler));
   } catch (error) { handler.onError(error); return false; }
 } });

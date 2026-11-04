@@ -1,7 +1,4 @@
-from typing import Literal
-
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 
 from app.api.deps import SessionDep
 from app.api.secret_safe import SecretSafeRoute
@@ -12,10 +9,10 @@ from app.domains.model.client import (
     ModelOutputInvalid,
     ModelRateLimited,
     ModelUnavailable,
-    chat_json,
 )
-from app.domains.model.pi_client import PiModelConfig, run_turn
+from app.domains.model.pi_client import run_turn
 from app.domains.model.schemas import (
+    ChatGPTCallback,
     ChatGPTLogin,
     ConnectionTest,
     ModelSettingPublic,
@@ -54,32 +51,19 @@ def put_model_setting(
         raise HTTPException(422, str(error)) from None
 
 
-class ModelTestOutput(BaseModel):
-    ok: Literal[True]
-
-
 @router.post("/test", response_model=ConnectionTest)
 def test_model_setting(session: SessionDep, principal: OrgAdminDep) -> ConnectionTest:
     try:
         setting = read_setting(session, principal.org_id)
         config = model_config(setting)
-        if isinstance(config, PiModelConfig):
-            validate_capabilities(config.provider, config.id, config.thinkingLevel)
-            run_turn(
-                config,
-                system_prompt="请简短回复连接成功。",
-                input="连接测试",
-                tools=[],
-                on_tool_call=lambda _name, _args: None,
-            )
-        else:
-            # shortcut: ChatGPT subscriptions use LiteLLM until S7b (NERE-92).
-            chat_json(
-                config,
-                [{"role": "user", "content": '只返回 {"ok": true}'}],
-                ModelTestOutput,
-                attempts=1,
-            )
+        validate_capabilities(config.provider, config.id, config.thinkingLevel)
+        run_turn(
+            config,
+            system_prompt="请简短回复连接成功。",
+            input="连接测试",
+            tools=[],
+            on_tool_call=lambda _name, _args: None,
+        )
     except (
         SecretUnavailable,
         ModelUnavailable,
@@ -107,3 +91,16 @@ def disconnect_chatgpt(session: SessionDep, principal: OrgAdminDep) -> Connectio
         ok=True,
         message="已断开连接。令牌在 OpenAI 仍有效；如需立即作废，请在 ChatGPT 安全设置里退出这个会话。",
     )
+
+
+@router.post("/chatgpt/callback", response_model=ChatGPTLogin)
+def complete_chatgpt_login(
+    body: ChatGPTCallback, session: SessionDep, principal: OrgAdminDep
+) -> ChatGPTLogin:
+    return chatgpt.login(session, principal, input=body.input.get_secret_value())
+
+
+@router.delete("/chatgpt/login", response_model=ChatGPTLogin)
+def cancel_chatgpt_login(session: SessionDep, principal: OrgAdminDep) -> ChatGPTLogin:
+    chatgpt.disconnect(session, principal)
+    return ChatGPTLogin(status="none")

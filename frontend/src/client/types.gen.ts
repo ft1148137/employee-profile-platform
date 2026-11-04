@@ -472,6 +472,10 @@ export type ChangeRequestsPublic = {
  */
 export type ChatGPTAccount = {
     /**
+     * Account Id
+     */
+    account_id?: string | null;
+    /**
      * Email
      */
     email?: string | null;
@@ -483,6 +487,16 @@ export type ChatGPTAccount = {
      * Needs Relogin
      */
     needs_relogin?: boolean;
+};
+
+/**
+ * ChatGPTCallback
+ */
+export type ChatGPTCallback = {
+    /**
+     * Input
+     */
+    input: string;
 };
 
 /**
@@ -498,10 +512,6 @@ export type ChatGPTLogin = {
      */
     verification_url?: string | null;
     /**
-     * User Code
-     */
-    user_code?: string | null;
-    /**
      * Expires At
      */
     expires_at?: string | null;
@@ -516,6 +526,10 @@ export type ChatGPTLogin = {
  * ChatGPTStatus
  */
 export type ChatGPTStatus = {
+    /**
+     * Account Id
+     */
+    account_id?: string | null;
     /**
      * Email
      */
@@ -1796,10 +1810,6 @@ export type Message = {
  * ModelSettingPublic
  */
 export type ModelSettingPublic = {
-    /**
-     * Local Codex
-     */
-    local_codex?: boolean;
     /**
      * Enabled
      */
@@ -3659,6 +3669,36 @@ export type modelSettingTestModelSettingResponses = {
 
 export type modelSettingTestModelSettingResponse = modelSettingTestModelSettingResponses[keyof modelSettingTestModelSettingResponses];
 
+export type modelSettingCancelChatgptLoginData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/model-setting/chatgpt/login';
+};
+
+export type modelSettingCancelChatgptLoginErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type modelSettingCancelChatgptLoginError = modelSettingCancelChatgptLoginErrors[keyof modelSettingCancelChatgptLoginErrors];
+
+export type modelSettingCancelChatgptLoginResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChatGPTLogin;
+};
+
+export type modelSettingCancelChatgptLoginResponse = modelSettingCancelChatgptLoginResponses[keyof modelSettingCancelChatgptLoginResponses];
+
 export type modelSettingPollChatgptLoginData = {
     body?: never;
     path: {
@@ -3748,6 +3788,36 @@ export type modelSettingDisconnectChatgptResponses = {
 };
 
 export type modelSettingDisconnectChatgptResponse = modelSettingDisconnectChatgptResponses[keyof modelSettingDisconnectChatgptResponses];
+
+export type modelSettingCompleteChatgptLoginData = {
+    body: ChatGPTCallback;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/model-setting/chatgpt/callback';
+};
+
+export type modelSettingCompleteChatgptLoginErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type modelSettingCompleteChatgptLoginError = modelSettingCompleteChatgptLoginErrors[keyof modelSettingCompleteChatgptLoginErrors];
+
+export type modelSettingCompleteChatgptLoginResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChatGPTLogin;
+};
+
+export type modelSettingCompleteChatgptLoginResponse = modelSettingCompleteChatgptLoginResponses[keyof modelSettingCompleteChatgptLoginResponses];
 
 export type sourcesStartJiraSyncData = {
     body?: never;
