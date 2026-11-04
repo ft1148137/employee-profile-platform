@@ -34,6 +34,9 @@ test("drafting settings and personal choice persist with role boundaries", async
     storageState: { cookies: [], origins: [] },
   })
   await logInUser(employeePage, "employee.platform@demo.example.com", password)
+  await employeePage
+    .getByRole("link", { name: "我的画像", exact: true })
+    .click()
   const employeeToken = await employeePage.evaluate(() =>
     localStorage.getItem("access_token"),
   )

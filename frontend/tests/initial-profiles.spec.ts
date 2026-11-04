@@ -221,6 +221,8 @@ test("new enterprise imports Jira, drafts in setup and shows the employee their 
     .getByLabel("确认新密码", { exact: true })
     .fill("synthetic-new-password-2026")
   await page.getByRole("button", { name: "保存密码" }).click()
+  await expect(page).toHaveURL("/inbox")
+  await page.getByRole("link", { name: "我的画像", exact: true }).click()
   await expect(
     page.getByRole("heading", { name: "待你过目：系统起草的初始画像" }),
   ).toBeVisible()

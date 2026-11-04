@@ -73,6 +73,8 @@ test("employee lands on own profile and cannot read a colleague", async ({
   })
   const [manager] = await memberships.json()
   await logInUser(page, "employee.platform@demo.example.com", password)
+  await expect(page).toHaveURL("/inbox")
+  await page.getByRole("link", { name: "我的画像", exact: true }).click()
   await expect(page).toHaveURL(/\/employees\/[^/]+$/)
   await expect(
     page.getByRole("heading", { name: "张伟", exact: true }),
