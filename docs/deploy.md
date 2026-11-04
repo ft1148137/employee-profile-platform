@@ -215,15 +215,11 @@ docker compose up -d --wait # 用原目录、.env 和项目名重新启动
 
 升级前照常备份数据库与 `.env`，执行仓库升级脚本，让 prestart 跑完 Alembic。M1 已完成设置的企业升级后会回到向导，需补完必需的第 9 步「生成初始画像」；新增的数据来源、账号对应和模型步骤可以按界面说明完成或跳过。模型现在分四种类型，原配置如需调整请在「模型」页重新选择并保存。M2 不提供批准或发布入口。
 
-LiteLLM SDK **精确锁定为 1.106.6**，`uv.lock` 锁定包哈希，Dependabot 不自动升级。只用 SDK、不部署代理；本地成本表和 Anthropic beta headers 配置由代码设置，内网离线部署无需再配置远程表开关（调用云端模型仍需要联网，本地模型应预先准备好）。升级 LiteLLM 必须人工核对：
-
-- 上游安全公告与目标 wheel/依赖内容，特别是 `.pth`、`sitecustomize` 和启动时代码；不要使用已知异常版本 1.82.7、1.82.8、1.107.0。
-- `LITELLM_LOCAL_MODEL_COST_MAP=True`、`LITELLM_LOCAL_ANTHROPIC_BETA_HEADERS=True` 仍阻止远程配置下载，日志与回调关闭；重新做无网络导入和模拟 completion 验证。
-- `app/domains/model/chatgpt.py` 的 `sdk_auth` 所依赖的内部方法和常量签名；设备码申请/兑换、令牌文件、刷新、限流错误解析均需回归，不能只改版本号。
+模型调用已迁移为精确锁定的 Pi，升级需单独审查工具边界、认证、网络出口和额度映射，见 [ADR-0014](adr/0014-pi-agent.md)。旧订阅令牌格式不迁移，升级后请在模型页重新连接 ChatGPT。
 
 Jira、API key 和订阅凭据均由 `SECRET_KEY` 派生密钥加密。更换它后，需要在网页重新填写 Jira/模型密钥并重新连接 ChatGPT；不要通过复制明文数据库字段恢复。开发演示包含模拟 Jira，正式部署不需要它；离线镜像准备和生产配置仍遵循上文部署流程。
 
-开发者验证本机订阅只允许 `compose.chatgpt-local.yml`：只读挂载本机登录到 backend/worker，转为不含 refresh_token 的临时文件，不刷新、不写回；运行前后核对原文件哈希。不要将本机登录复制到镜像、仓库或生产环境。业务操作说明见 [管理员指南](admin-guide.md)，实测边界见 [M2 验收](m2-acceptance.md)。
+本机订阅挂载暂时不可用，原 `compose.chatgpt-local.yml` 已删除，由 NERE-104 改为 Pi 的只读开发路径。目前订阅 access token 距离过期不足 5 分钟时提示管理员重新连接；生产登录从网页完成。
 
 ## M1 验证范围
 
@@ -236,4 +232,4 @@ Pi 使用锁定的 `undici@7.30.1` 全局 dispatcher，每次请求建立新连�
 
 生产环境不要设置 `PI_EGRESS_ALLOW_LOOPBACK=1`；它只用于目录提供方的本地假服务测试，仅放开回环地址。Compose 和安装配置均不设置此变量。
 
-部署者仍需用防火墙或出口代理约束其他进程、容器和按域名的白名单。根据选用提供方放行 HTTPS 443：`api.openai.com`、`api.anthropic.com`、`api.deepseek.com`、`dashscope.aliyuncs.com` / `dashscope-intl.aliyuncs.com` / `dashscope-us.aliyuncs.com`、`api.moonshot.ai` / `api.moonshot.cn`、`api.kimi.com`、`openrouter.ai`。自定义服务仅放行管理员配置的地址和端口；Pi 没有为其他进程提供网络隔离。
+部署者仍需用防火墙或出口代理约束其他进程、容器和按域名的白名单。根据选用提供方放行 HTTPS 443：`api.openai.com`、`auth.openai.com`、`chatgpt.com`、`api.anthropic.com`、`api.deepseek.com`、`dashscope.aliyuncs.com` / `dashscope-intl.aliyuncs.com` / `dashscope-us.aliyuncs.com`、`api.moonshot.ai` / `api.moonshot.cn`、`api.kimi.com`、`openrouter.ai`。自定义服务仅放行管理员配置的地址和端口；Pi 没有为其他进程提供网络隔离。

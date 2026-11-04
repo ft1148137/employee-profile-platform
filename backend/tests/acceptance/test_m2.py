@@ -38,7 +38,7 @@ from app.models import User
 from tests.api.routes.test_initial_profiles import work_queue
 from tests.utils.pi import PiHarness
 
-pytestmark = pytest.mark.xdist_group("litellm")
+pytestmark = pytest.mark.xdist_group("model")
 
 ROOT = Path(__file__).resolve().parents[3]
 evaluation = runpy.run_path(str(ROOT / "examples/test-enterprises/evaluate_drafts.py"))

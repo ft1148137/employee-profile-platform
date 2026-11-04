@@ -6,3 +6,4 @@
 !sample.test.mjs
 !server.mjs
 !egress.mjs
+!auth.mjs

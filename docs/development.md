@@ -63,7 +63,7 @@ uv run pytest tests/api/routes/test_profiles.py -x
 uv run pytest --lf
 ```
 
-push 之前和 CI 一样，全量运行（包括迁移测试），默认 `-n auto` 并行，pytest-cov 自动合并各 worker 的覆盖率。`--dist loadgroup` 将标为 `xdist_group("litellm")` 的模型测试放在同一 worker，避免重复导入 SDK：
+push 之前和 CI 一样，全量运行（包括迁移测试），默认 `-n auto` 并行，pytest-cov 自动合并各 worker 的覆盖率。`--dist loadgroup` 将标为 `xdist_group("model")` 的模型测试放在同一 worker：
 
 ```bash
 uv run bash scripts/tests-start.sh

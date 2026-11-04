@@ -4,21 +4,15 @@ import { ModelSettingService } from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 
-export function ChatGptConnect({
-  orgId,
-  localCodex,
-}: {
-  orgId: string
-  localCodex: boolean
-}) {
+export function ChatGptConnect({ orgId }: { orgId: string }) {
   const client = useQueryClient()
   const path = { org_id: orgId }
+  const [redirect, setRedirect] = useState("")
   const [now, setNow] = useState(Date.now())
   const status = useQuery({
     queryKey: ["chatgpt", orgId],
     queryFn: async () =>
       (await ModelSettingService.settingPollChatgptLogin({ path })).data,
-    enabled: !localCodex,
     refetchInterval: (q) => (q.state.data?.status === "pending" ? 5000 : false),
   })
   useEffect(() => {
@@ -29,6 +23,25 @@ export function ChatGptConnect({
   const start = useMutation({
     mutationFn: () => ModelSettingService.settingStartChatgptLogin({ path }),
     onSuccess: ({ data }) => client.setQueryData(["chatgpt", orgId], data),
+  })
+  const complete = useMutation({
+    mutationFn: () =>
+      ModelSettingService.settingCompleteChatgptLogin({
+        path,
+        body: { input: redirect },
+      }),
+    onSuccess: ({ data }) => {
+      client.setQueryData(["chatgpt", orgId], data)
+      setRedirect("")
+      client.invalidateQueries({ queryKey: ["model-setting", orgId] })
+    },
+  })
+  const cancel = useMutation({
+    mutationFn: () => ModelSettingService.settingCancelChatgptLogin({ path }),
+    onSuccess: ({ data }) => {
+      client.setQueryData(["chatgpt", orgId], data)
+      setRedirect("")
+    },
   })
   const disconnect = useMutation({
     mutationFn: () => ModelSettingService.settingDisconnectChatgpt({ path }),
@@ -46,79 +59,93 @@ export function ChatGptConnect({
       className="space-y-4 rounded-lg border bg-muted/20 p-4"
       aria-label="ChatGPT 连接"
     >
-      {localCodex ? (
-        <p role="status">正在使用本机 Codex 登录（开发模式）</p>
+      <SetupError
+        error={
+          status.error ??
+          start.error ??
+          complete.error ??
+          cancel.error ??
+          disconnect.error
+        }
+      />
+      {data?.account?.needs_relogin && (
+        <p role="alert">登录已失效，请重新连接</p>
+      )}
+      {data?.status === "connected" && !data.account?.needs_relogin ? (
+        <>
+          <p role="status">
+            已连接 ChatGPT：{data.account?.email ?? data.account?.account_id}{" "}
+            {data.account?.plan_type}
+          </p>
+          <p>
+            断开后令牌在 OpenAI 那边不会失效；要立即作废，请在 ChatGPT
+            的安全设置里退出这个会话。
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={disconnect.isPending}
+            onClick={() => disconnect.mutate()}
+          >
+            断开连接
+          </Button>
+        </>
+      ) : data?.status === "pending" && remaining > 0 ? (
+        <>
+          <p>
+            打开授权链接并登录，将浏览器最后跳转的完整网址粘贴到下方。无法打开
+            localhost 页面是正常现象。
+          </p>
+          <a
+            className="break-all underline"
+            href={data.verification_url ?? undefined}
+            target="_blank"
+            rel="noreferrer"
+          >
+            打开 ChatGPT 授权页面
+          </a>
+          <label className="block">
+            重定向网址
+            <input
+              className="w-full rounded border p-2"
+              value={redirect}
+              onChange={(e) => setRedirect(e.target.value)}
+              autoComplete="off"
+            />
+          </label>
+          <Button
+            type="button"
+            disabled={!redirect || complete.isPending}
+            onClick={() => complete.mutate()}
+          >
+            完成连接
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={cancel.isPending || complete.isPending}
+            onClick={() => cancel.mutate()}
+          >
+            取消连接
+          </Button>
+          <p role="status">剩余 {Math.ceil(remaining / 60)} 分钟</p>
+        </>
       ) : (
         <>
-          <SetupError error={status.error ?? start.error ?? disconnect.error} />
-          {data?.account?.needs_relogin && (
-            <p role="alert">登录已失效，请重新连接</p>
+          {data?.message && <p role="alert">{data.message}</p>}
+          {(data?.status === "expired" || data?.status === "pending") && (
+            <p>授权链接已过期，请重新开始。</p>
           )}
-          {data?.status === "connected" && !data.account?.needs_relogin ? (
-            <>
-              <p role="status">
-                已连接：{data.account?.email} · {data.account?.plan_type}
-              </p>
-              <p>
-                断开后令牌在 OpenAI 那边不会失效；要立即作废，请在 ChatGPT
-                的安全设置里退出这个会话。
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={disconnect.isPending}
-                onClick={() => disconnect.mutate()}
-              >
-                断开连接
-              </Button>
-            </>
-          ) : data?.status === "pending" && remaining > 0 ? (
-            <>
-              <p>在 ChatGPT 里打开这个网址，登录后输入验证码</p>
-              <a
-                className="break-all underline"
-                href={data.verification_url ?? undefined}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {data.verification_url}
-              </a>
-              <p className="font-mono text-2xl tracking-widest">
-                {data.user_code}
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  navigator.clipboard.writeText(data.user_code ?? "")
-                }
-              >
-                复制验证码
-              </Button>
-              <p role="status">剩余 {Math.ceil(remaining / 60)} 分钟</p>
-              <p>
-                个人套餐要先在 ChatGPT
-                的安全设置里允许设备码登录；Business/Enterprise
-                工作区要由工作区管理员允许。
-              </p>
-            </>
-          ) : (
-            <>
-              {data?.message && <p role="alert">{data.message}</p>}
-              {(data?.status === "expired" || data?.status === "pending") && (
-                <p>验证码已过期，请重新开始。</p>
-              )}
-              <Button
-                type="button"
-                disabled={start.isPending}
-                onClick={() => start.mutate()}
-              >
-                连接 ChatGPT
-              </Button>
-            </>
-          )}
+          <Button
+            type="button"
+            disabled={start.isPending}
+            onClick={() => start.mutate()}
+          >
+            连接 ChatGPT
+          </Button>
         </>
       )}
+
       <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
         <li>
           这种方式走的是 ChatGPT 的 Codex 后端，不是 OpenAI
@@ -126,7 +153,7 @@ export function ChatGptConnect({
         </li>
         <li>
           订阅有 5
-          小时和每周两种用量上限。到上限时起草会暂停，额度恢复后自动继续。
+          小时和每周两种用量上限。只配订阅时，全企业员工和内置机器人的对话共用这一个账号的额度。到上限时起草会暂停，额度恢复后自动继续。
         </li>
         <li>
           个人 Plus/Pro 适用 ChatGPT 个人版的数据设置，内容可能被用于训练，请在

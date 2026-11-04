@@ -4,21 +4,31 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Literal
 from urllib.parse import quote
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, SecretStr
 
 from app.core.config import settings
-from app.domains.model.client import ModelRateLimited, ModelUnavailable
+from app.domains.model.client import (
+    ModelAuthenticationError,
+    ModelRateLimited,
+    ModelUnavailable,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class PiModelConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    org_id: UUID | None = Field(default=None, exclude=True)
     provider: str
-    api: Literal["openai-responses", "anthropic-messages", "openai-completions"]
+    api: Literal[
+        "openai-responses",
+        "anthropic-messages",
+        "openai-completions",
+        "openai-codex-responses",
+    ]
     id: str
     baseUrl: str
     api_key: SecretStr = Field(default=SecretStr(""), repr=False)
@@ -45,6 +55,8 @@ class TurnResult(BaseModel):
 
 def _error(event: dict[str, JsonValue]) -> None:
     code = event.get("code")
+    if code == "model_unauthorized":
+        raise ModelAuthenticationError()
     if code == "rate_limited":
         retry_at = datetime.fromisoformat(str(event["retry_at"]))
         if retry_at.tzinfo is None:
@@ -56,6 +68,8 @@ def _error(event: dict[str, JsonValue]) -> None:
     if code in ("unauthorized", "bad_request"):
         logger.error("Pi protocol failure: %s", code)
     messages = {
+        "model_forbidden": "密钥不对或没有权限",
+        "model_not_found": "地址或模型名不对",
         "busy": "模型服务繁忙，请稍后再试",
         "deadline": "模型调用超时",
         "limit_exceeded": "模型调用次数达到上限",
@@ -163,5 +177,12 @@ def run_turn(
                                 raise ModelUnavailable("模型服务连接中断")
                         else:
                             cancelled.raise_for_status()
+    except ModelAuthenticationError:
+        if config.org_id is not None:
+            from app.domains.model.chatgpt import RELOGIN, invalidate
+
+            invalidate(config.org_id, config.api_key.get_secret_value())
+            raise ModelUnavailable(RELOGIN) from None
+        raise
     except httpx.HTTPError, ValueError, KeyError, TypeError:
         raise ModelUnavailable("模型服务连接失败或协议错误") from None
