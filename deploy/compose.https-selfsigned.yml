@@ -37,6 +37,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.services.backend.loadbalancer.server.port=8000
+      - traefik.http.services.backend.loadbalancer.responseforwarding.flushinterval=-1ms
       # Route HTTPS traffic for this domain
       - traefik.http.routers.backend-https.rule=PathPrefix(`/`)
       - traefik.http.routers.backend-https.entrypoints=https
