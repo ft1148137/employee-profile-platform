@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import HTTPException
-from pydantic import EmailStr, Field, ValidationError
+from pydantic import EmailStr, Field, RootModel, ValidationError
 from sqlmodel import Session
 
 from app.authz.principal import Principal
@@ -27,22 +27,32 @@ class ImportItem(ToolInput):
     uncertainty: Text | None = None
 
 
-class ProfileImport(ToolInput):
+class ImportPerson(ToolInput):
     schema_version: Literal["1"]
     employee_email: Annotated[EmailStr, Field(max_length=254)]
     capability_schema_version: Annotated[int, Field(strict=True, ge=1)]
     items: Annotated[list[ImportItem], Field(min_length=1, max_length=200)]
 
 
+class ProfileImport(
+    RootModel[
+        ImportPerson
+        | Annotated[list[ImportPerson], Field(min_length=1, max_length=200)]
+    ]
+):
+    pass
+
+
 class InvalidImport(HTTPException):
     def __init__(self, messages: list[str], status_code: int = 422) -> None:
+        self.messages = messages
         super().__init__(
             status_code,
             {"message": "画像导入失败，请修改文件后重试", "blockers": messages},
         )
 
 
-def parse_import(content: bytes) -> ProfileImport:
+def decode_import(content: bytes) -> object:
     if len(content) > MAX_FILE_SIZE:
         raise InvalidImport(["文件：大小不能超过 1 MB"], 413)
     try:
@@ -55,10 +65,12 @@ def parse_import(content: bytes) -> ProfileImport:
         raise InvalidImport(["文件：JSON 数字超出支持范围"]) from None
     except RecursionError:
         raise InvalidImport(["文件：JSON 嵌套过深"]) from None
-    if isinstance(data, list):
-        raise InvalidImport(["文件：员工导入只能包含本人的一份画像"])
+    return data
+
+
+def validate_person(data: object) -> ImportPerson:
     try:
-        return ProfileImport.model_validate(data)
+        return ImportPerson.model_validate(data)
     except ValidationError as error:
         messages = []
         translations = {
@@ -83,6 +95,13 @@ def parse_import(content: bytes) -> ProfileImport:
                 f"{label}：{translations.get(item['type'], '字段类型或取值不正确')}"
             )
         raise InvalidImport(messages) from None
+
+
+def parse_import(content: bytes) -> ImportPerson:
+    data = decode_import(content)
+    if isinstance(data, list):
+        raise InvalidImport(["文件：员工导入只能包含本人的一份画像"])
+    return validate_person(data)
 
 
 def import_profile(

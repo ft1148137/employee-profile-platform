@@ -57,42 +57,58 @@
       ],
       "title": "ImportItem",
       "type": "object"
+    },
+    "ImportPerson": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": "1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "employee_email": {
+          "format": "email",
+          "maxLength": 254,
+          "title": "Employee Email",
+          "type": "string"
+        },
+        "capability_schema_version": {
+          "minimum": 1,
+          "title": "Capability Schema Version",
+          "type": "integer"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ImportItem"
+          },
+          "maxItems": 200,
+          "minItems": 1,
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "employee_email",
+        "capability_schema_version",
+        "items"
+      ],
+      "title": "ImportPerson",
+      "type": "object"
     }
   },
-  "additionalProperties": false,
-  "properties": {
-    "schema_version": {
-      "const": "1",
-      "title": "Schema Version",
-      "type": "string"
+  "anyOf": [
+    {
+      "$ref": "#/$defs/ImportPerson"
     },
-    "employee_email": {
-      "format": "email",
-      "maxLength": 254,
-      "title": "Employee Email",
-      "type": "string"
-    },
-    "capability_schema_version": {
-      "minimum": 1,
-      "title": "Capability Schema Version",
-      "type": "integer"
-    },
-    "items": {
+    {
       "items": {
-        "$ref": "#/$defs/ImportItem"
+        "$ref": "#/$defs/ImportPerson"
       },
       "maxItems": 200,
       "minItems": 1,
-      "title": "Items",
       "type": "array"
     }
-  },
-  "required": [
-    "schema_version",
-    "employee_email",
-    "capability_schema_version",
-    "items"
   ],
-  "title": "ProfileImport",
-  "type": "object"
+  "title": "ProfileImport"
 }
