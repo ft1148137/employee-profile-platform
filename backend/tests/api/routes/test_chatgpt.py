@@ -78,13 +78,43 @@ def test_login(
         == "error"
     )
     saved = client.put(
-        url, headers=h, json={"enabled": True, "kind": "chatgpt_subscription"}
+        url,
+        headers=h,
+        json={
+            "enabled": True,
+            "kind": "chatgpt_subscription",
+            "model": "chatgpt/gpt-6.1-sol",
+        },
     )
     assert (
-        saved.json()["model"] == "chatgpt/gpt-5.4"
+        saved.json()["model"] == "chatgpt/gpt-6.1-sol"
         and saved.json()["reasoning_effort"] == "high"
     )
     assert client.post(url + "/test", headers=h).json()["ok"]
+    assert client.get(url, headers=h).json()["model"] == "chatgpt/gpt-6.1-sol"
+    unsupported = client.put(
+        url,
+        headers=h,
+        json={
+            "enabled": True,
+            "kind": "chatgpt_subscription",
+            "reasoning_effort": "xhigh",
+        },
+    )
+    assert unsupported.status_code == 422
+    assert "推理强度 xhigh 不适用于该模型" in unsupported.text
+    for model in [
+        "chatgpt/",
+        "chatgpt/bad/model",
+        "chatgpt/bad model",
+        "chatgpt/" + "x" * 101,
+    ]:
+        invalid = client.put(
+            url,
+            headers=h,
+            json={"enabled": True, "kind": "chatgpt_subscription", "model": model},
+        )
+        assert invalid.status_code == 422 and "模型 ID" in invalid.text
     db.refresh(setting)
     assert (
         json.loads(decrypt_secret(setting.chatgpt_auth_ciphertext))["refresh"]

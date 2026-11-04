@@ -25,3 +25,4 @@
 - [ADR-0017：员工 MCP 传输与个人令牌认证](0017-mcp-transport-and-token-auth.md)
 
 - [ADR-0019：MCP OAuth 授权服务器](0019-mcp-oauth-authorization.md)
+- [ADR-0021：ChatGPT 订阅支持目录外模型 ID](0021-codex-model-ids.md)

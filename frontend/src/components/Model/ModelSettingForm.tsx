@@ -121,7 +121,8 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                   : kind === "openai_compatible"
                     ? "openai-compatible"
                     : null,
-              model: kind === "chatgpt_subscription" ? "chatgpt/gpt-5.4" : "",
+              model:
+                kind === "chatgpt_subscription" ? "chatgpt/gpt-6.1-sol" : "",
               base_url: null,
               reasoning_effort: kind === "chatgpt_subscription" ? "high" : null,
             })
@@ -145,11 +146,18 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
               required={current.enabled}
               value={current.model ?? ""}
               placeholder={
-                chatgpt ? "chatgpt/gpt-5.4" : "模型 ID，不带提供方前缀"
+                chatgpt ? "chatgpt/gpt-6.1-sol" : "模型 ID，不带提供方前缀"
               }
               onChange={(e) => change({ model: e.target.value })}
             />
           </label>
+          {chatgpt && (
+            <p className="text-sm text-muted-foreground">
+              可以填写 Pi 目录中的模型，也可以手填新的模型 ID，保留 chatgpt/
+              前缀。目录外模型支持 minimal、low、medium、high，不支持
+              xhigh；是否可用以你的订阅为准。
+            </p>
+          )}
           <label className="block space-y-2">
             <span>推理强度</span>
             <select

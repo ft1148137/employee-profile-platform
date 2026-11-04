@@ -1,5 +1,6 @@
 from datetime import datetime
 from ipaddress import ip_address
+from re import fullmatch
 from typing import Literal, Self
 
 from pydantic import (
@@ -57,7 +58,7 @@ class ModelSettingUpdate(BaseModel):
     @model_validator(mode="after")
     def validate_setting(self) -> Self:
         if self.kind == "chatgpt_subscription":
-            self.model = self.model or "chatgpt/gpt-5.4"
+            self.model = self.model or "chatgpt/gpt-6.1-sol"
             self.reasoning_effort = self.reasoning_effort or "high"
             if (
                 not self.model.startswith("chatgpt/")
@@ -66,6 +67,12 @@ class ModelSettingUpdate(BaseModel):
                 or self.provider
             ):
                 raise ValueError("ChatGPT 订阅必须使用 chatgpt/ 模型，不配置地址或密钥")
+            if not fullmatch(
+                r"[A-Za-z0-9._-]{1,100}", self.model.removeprefix("chatgpt/")
+            ):
+                raise ValueError(
+                    "ChatGPT 模型 ID 只能包含字母、数字、点、下划线和连字符，长度为 1–100"
+                )
         if self.model:
             if (
                 self.model.startswith("chatgpt/")
