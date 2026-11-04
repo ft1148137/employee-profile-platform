@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, inspect, text
+from sqlalchemy import Engine, event, inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
@@ -325,6 +325,32 @@ def test_expired_lease_successor_and_failure_release(
     assert all(
         m.payload != "未完成，不应保存" for m in store.list_messages(db, p, row.id)
     )
+
+
+def test_takeover_immediately_after_admission_commit(
+    demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, people, _ = demo
+    p = principal_for(db, people["E02"].org_id)
+    row = store.create_session(db, p)
+    now = utc_now()
+    with Session(engine) as first, Session(engine) as second:
+        successor = begin_turn(second, p, row, "接管轮次")
+
+        def pause_after_commit(_db: Session) -> None:
+            monkeypatch.setattr(
+                admission, "utc_now", lambda: now + timedelta(seconds=80)
+            )
+            successor.__enter__()
+
+        event.listen(first, "after_commit", pause_after_commit, once=True)
+        try:
+            with begin_turn(first, p, row, "进程在提交后暂停"):
+                pass
+            second.expire_all()
+            assert store.get_session(second, p, row.id).lease_until is not None
+        finally:
+            successor.__exit__(None, None, None)
 
 
 def test_quota_pause_and_drafting_priority(demo: tuple, db: Session) -> None:

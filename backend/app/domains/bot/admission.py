@@ -99,11 +99,12 @@ def begin_turn(
         ).all()
         if len(times) == HOURLY_TURNS:
             raise BotRateLimited(times[0] + timedelta(hours=1))
-        row.lease_until = now + timedelta(seconds=LEASE_SECONDS)
+        new_lease = now + timedelta(seconds=LEASE_SECONDS)
+        row.lease_until = new_lease
         row.turn_count += 1
         append_message(db, row, "user", user_payload)
         db.commit()
-        lease = row.lease_until
+        lease = new_lease
         yield row
         db.commit()
     except ModelRateLimited as error:
