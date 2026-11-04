@@ -49,7 +49,7 @@ test("grant and revoke a department manager, preserve the last administrator", a
     page.getByRole("heading", { name: "角色", exact: true }),
   ).toBeVisible()
   await expect(
-    page.getByRole("cell", { name: "admin", exact: true }),
+    page.getByRole("cell", { name: "admin@demo.example.com", exact: true }),
   ).toBeVisible()
   await expectChineseCopy(page, ["admin", "superadmin"])
   await page.screenshot({
@@ -61,7 +61,9 @@ test("grant and revoke a department manager, preserve the last administrator", a
   await expect(dialog.getByRole("button", { name: "确认授予" })).toBeDisabled()
   await dialog.getByRole("textbox", { name: "搜索姓名或工号" }).fill("E10")
   await dialog.getByRole("combobox", { name: "账号", exact: true }).click()
-  await page.getByRole("option", { name: /E10/i }).click()
+  await page
+    .getByRole("option", { name: /employee10@demo.example.com/i })
+    .click()
   await expect(dialog.getByRole("button", { name: "确认授予" })).toBeDisabled()
   await dialog.getByRole("combobox", { name: "部门", exact: true }).click()
   await page.getByRole("option", { name: "平台研发部", exact: true }).click()
@@ -81,7 +83,12 @@ test("grant and revoke a department manager, preserve the last administrator", a
     .click()
   const row = page
     .getByRole("row")
-    .filter({ has: page.getByRole("cell", { name: "E10", exact: true }) })
+    .filter({
+      has: page.getByRole("cell", {
+        name: "employee10@demo.example.com",
+        exact: true,
+      }),
+    })
   await expect(row).toContainText("部门经理")
   await expect(row).toContainText("平台研发部")
   await row.getByRole("button", { name: "撤销", exact: true }).click()
@@ -101,7 +108,12 @@ test("grant and revoke a department manager, preserve the last administrator", a
   )
   const admin = page
     .getByRole("row")
-    .filter({ has: page.getByRole("cell", { name: "admin", exact: true }) })
+    .filter({
+      has: page.getByRole("cell", {
+        name: "admin@demo.example.com",
+        exact: true,
+      }),
+    })
   await admin.getByRole("button", { name: "撤销", exact: true }).click()
   await dialog.getByRole("button", { name: "确认撤销" }).click()
   await expect(dialog.getByRole("alert")).toContainText(
