@@ -12,7 +12,7 @@ from app.domains.capability.schemas import (
     CapabilitiesPublic,
     CapabilityPublic,
 )
-from app.domains.capability.service import get_schema, list_capabilities
+from app.domains.capability.service import get_schema, level_exists, list_capabilities
 from app.domains.change_request.claim import ClaimAfter
 from app.domains.change_request.models import (
     ChangeItem,
@@ -295,6 +295,10 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
             PreviewItem(
                 before=claims.get(i.target_claim_id) if i.target_claim_id else None,
                 after=i,
+                warning="等级已调整，请重新选择或清空"
+                if i.after
+                and not level_exists(i.capability.level_rubric, i.after.level)
+                else None,
             )
             for i in public.items
         ],
@@ -323,6 +327,21 @@ def submit(
     ).all()
     if not items:
         raise InvalidItems([{"index": 0, "message": "至少需要一项改动"}])
+    public = _public(principal, session, request.id)
+    _validate(
+        principal,
+        session,
+        [
+            ItemInput(
+                op=i.op,
+                capability_key=i.capability.key,
+                statement=i.after.statement if i.after else "撤回或补充依据",
+                level=i.after.level if i.after else None,
+                evidence_ids=[e.evidence_id for e in i.evidence],
+            )
+            for i in public.items
+        ],
+    )
     transition(request, RequestStatus.PENDING_REVIEW)
     request.submitted_via, request.client_name, request.submitted_at = (
         SubmissionVia(via),

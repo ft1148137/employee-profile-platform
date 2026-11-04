@@ -20,7 +20,9 @@ export function CapabilityList({
 }) {
   const groups = new Map<string, ProfileItem[]>()
   for (const item of items) {
-    const category = item.capability.category ?? "其他能力"
+    const category = item.retired
+      ? "已不在当前词典中的能力"
+      : (item.capability.category ?? "其他能力")
     groups.set(category, [...(groups.get(category) ?? []), item])
   }
   return (
@@ -64,7 +66,13 @@ export function CapabilityList({
 }
 
 function ClaimCard({
-  item: { capability, status, claim },
+  item: {
+    capability,
+    status,
+    claim,
+    level_adjusted,
+    original_level_description,
+  },
   onEvidence,
   pending,
 }: {
@@ -101,7 +109,16 @@ function ClaimCard({
             {claim.level && (
               <div>
                 <dt className="text-muted-foreground">等级</dt>
-                <dd>{levelLabel(capability.level_rubric, claim.level)}</dd>
+                <dd>
+                  {level_adjusted
+                    ? original_level_description
+                    : levelLabel(capability.level_rubric, claim.level)}
+                  {level_adjusted && (
+                    <span className="ml-2 text-muted-foreground">
+                      等级已调整
+                    </span>
+                  )}
+                </dd>
               </div>
             )}
             <div>

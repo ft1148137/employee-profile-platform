@@ -1,13 +1,31 @@
-from fastapi import APIRouter
+from typing import Literal
+
+from fastapi import APIRouter, HTTPException, Response, UploadFile
 
 from app.api.deps import SessionDep
-from app.authz.deps import OrgPrincipalDep
+from app.authz.deps import OrgAdminDep, OrgPrincipalDep
+from app.domains.capability.files import (
+    dictionary_xlsx,
+    dictionary_yaml,
+    parse_dictionary,
+)
 from app.domains.capability.schemas import (
     ActiveSchemaPublic,
     CapabilitiesPublic,
     CapabilityPublic,
+    DictionaryDefinition,
+    DictionaryPreview,
+    SaveDictionary,
 )
-from app.domains.capability.service import get_schema, list_capabilities
+from app.domains.capability.service import (
+    get_schema,
+    list_capabilities,
+    preview_version,
+    save_version,
+)
+from app.domains.capability.templates import get_template
+from app.domains.drafting.models import DraftingSetting
+from app.domains.drafting.service import queue_drafting
 
 router = APIRouter(prefix="/orgs/{org_id}/capabilities", tags=["capabilities"])
 
@@ -24,3 +42,89 @@ def read_capabilities(
             for c in list_capabilities(session, principal.org_id, schema.id)
         ],
     )
+
+
+def _definitions(
+    session: SessionDep, principal: OrgPrincipalDep
+) -> list[DictionaryDefinition]:
+    schema = get_schema(session, principal.org_id)
+    setting = session.get(DraftingSetting, principal.org_id)
+    excluded = set(setting.excluded_capability_keys if setting else [])
+    return [
+        DictionaryDefinition.model_validate(
+            {
+                **c.model_dump(
+                    exclude={
+                        "id",
+                        "org_id",
+                        "created_at",
+                        "schema_version_id",
+                        "position",
+                    }
+                ),
+                "ai_inference": c.key not in excluded,
+            }
+        )
+        for c in list_capabilities(session, principal.org_id, schema.id)
+    ]
+
+
+@router.get("/export", response_class=Response)
+def export_dictionary(session: SessionDep, principal: OrgPrincipalDep) -> Response:
+    return Response(
+        dictionary_yaml(_definitions(session, principal)),
+        media_type="application/yaml",
+        headers={"Content-Disposition": 'attachment; filename="capabilities.yaml"'},
+    )
+
+
+@router.get("/template", response_class=Response)
+def dictionary_template(
+    _principal: OrgAdminDep, format: Literal["yaml", "xlsx"] = "yaml"
+) -> Response:
+    definitions = [
+        DictionaryDefinition.model_validate(c.model_dump())
+        for c in get_template("tech-rnd").capabilities[:1]
+    ]
+    return Response(
+        dictionary_yaml(definitions)
+        if format == "yaml"
+        else dictionary_xlsx(definitions),
+        media_type="application/yaml"
+        if format == "yaml"
+        else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="capabilities-template.{format}"'
+        },
+    )
+
+
+@router.post("/preview", response_model=DictionaryPreview)
+def preview_dictionary(
+    file: UploadFile, session: SessionDep, principal: OrgAdminDep
+) -> DictionaryPreview:
+    content = file.file.read(2 * 1024 * 1024 + 1)
+    if len(content) > 2 * 1024 * 1024:
+        raise DictionaryTooLarge()
+    definitions, errors = parse_dictionary(content, file.filename or "")
+    return preview_version(session, principal, definitions, errors)
+
+
+@router.post("/versions", response_model=ActiveSchemaPublic)
+def save_dictionary(
+    body: SaveDictionary, session: SessionDep, principal: OrgAdminDep
+) -> ActiveSchemaPublic:
+    schema = save_version(
+        session, principal, body.definitions, expected_version=body.expected_version
+    )
+    result = ActiveSchemaPublic.model_validate(schema)
+    if body.redraft:
+        queue_drafting(session, principal.org_id, "all", pending_owner_only=True)
+    else:
+        session.commit()
+    return result
+
+
+class DictionaryTooLarge(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(413, "文件超过 2 MB，请缩小后上传")
