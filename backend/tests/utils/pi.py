@@ -172,13 +172,32 @@ def pi_service(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[PiH
     try:
         with harness.logs.open("w") as logs:
             with subprocess.Popen(
-                ["node", "pi/server.mjs"],
+                [
+                    "node",
+                    "--input-type=module",
+                    "-e",
+                    """
+import { createPiServer } from './pi/server.mjs';
+import { streamSimple } from './pi/node_modules/@mariozechner/pi-ai/dist/index.js';
+const login = async ({ onAuth, onManualCodeInput }) => {
+  onAuth({ url: 'https://auth.openai.com/oauth/authorize?state=synthetic-state' });
+  const input = await onManualCodeInput();
+  if (input.includes('failure')) throw new Error('synthetic-refresh sensitive upstream');
+  return { access: 'synthetic-access', refresh: 'synthetic-refresh', expires: Date.now() + 7200000, accountId: 'synthetic-account' };
+};
+createPiServer({ token: process.env.PI_SERVICE_TOKEN, login,
+  streamFn: (model, context, options) => streamSimple(model.provider === 'openai-codex'
+    ? { ...model, provider: 'openai-compatible', api: 'openai-completions', baseUrl: process.env.TEST_MODEL_URL } : model, context, options)
+}).listen(Number(process.env.PORT), '127.0.0.1');
+""",
+                ],
                 cwd=root,
                 stdout=logs,
                 stderr=logs,
                 env={
                     **os.environ,
                     "PI_SERVICE_TOKEN": "synthetic-service-token",
+                    "TEST_MODEL_URL": harness.config.baseUrl,
                     "PORT": str(port),
                     "PI_HOST": "127.0.0.1",
                     "PI_EGRESS_ALLOW_LOOPBACK": "1",

@@ -20,7 +20,6 @@ dependencies = [
     "pyyaml>=6.0.3,<7",
     "openpyxl>=3.1.5,<4",
     "cryptography>=46,<47",
-    "litellm[mcp]==1.106.6",
 ]
 
 [dependency-groups]
@@ -73,10 +72,11 @@ ignore = [
 keep-runtime-typing = true
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
-"litellm" = { msg = "Use app.domains.model.client instead." }
+"openai" = { msg = "Use app.domains.model.pi_client instead." }
+"anthropic" = { msg = "Use app.domains.model.pi_client instead." }
 
 [tool.ruff.lint.per-file-ignores]
-"app/domains/model/*.py" = ["TID251"]
+"app/domains/model/pi_client.py" = ["TID251"]
 
 [tool.coverage.run]
 source = ["app"]

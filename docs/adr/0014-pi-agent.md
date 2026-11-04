@@ -173,3 +173,13 @@ S14a 只交付运行底座；员工工具、提示词、卡片、确认动作和
 Pi 请求允许 `mode="chat"` 及可选 `history=[{role,text}]`；历史只允许 user/assistant、最多 20 条和 24000 字，draft 携带 history 一律拒绝。每轮仍是全新 Agent，完成后清空，不跨 run 缓存。对话服务期限 60 秒（含后端工具等待），`PI_CHAT_DEADLINE_MS` 只可调短；Python 读取超时为 70 秒，draft 仍为 130 秒。Node 每进程总上限 4 轮，chat 上限 3 轮，超出立即 busy，始终留一个名额给起草。
 
 合成延迟负载验证（本机 Mac，不能据此推算生产吞吐）：Node 8 批、工具等待 30ms，接受 32 轮（24 聊天、8 起草），拒绝 16 轮，耗时 318ms；真实 PostgreSQL 连接 8 批、两名员工各占一轮并等待 30ms，接受 16 轮、拒绝 16 次重复或超额请求，耗时 604ms。小时限制另测 30 轮成功、第 31 轮拒绝，以及剩一轮额度时两个连接争抢只通过一个。并发反序工具回传不串历史；伪造命令和文件工具无法执行；缩短期限后超时释放名额。保留 4 / 2 / 30 默认值，不增加配置项。
+
+## 实现（S7b，NERE-92）
+
+认证辅助路径与 turn 使用同一个内部 Bearer 密钥，封闭为 `/v1/auth/openai-codex/logins` 的 POST 开始、`/{login_id}` 的 POST 回传和 DELETE 取消。Pi 进程只有一个登录槽，15 分钟到期拒绝等待的手工输入；请求只记录固定路由名、状态和耗时，错误只返回 `login_busy/login_not_found/login_failed`。登录使用锁定包的 `loginOpenAICodex`，授权请求出网限定 `https://auth.openai.com`，取消信号中止正在交换令牌的请求。1455 仅监听容器内部回环，不发布。
+
+Python 在企业行锁内保存加密的 login_id、URL、state 和管理员 ID；回传只收完整的 `http://localhost:1455/auth/callback` URL，code 和 state 必须各一份，state 必须相同。平台只在 Python 校验一次，Pi 原样转交上游库。其他管理员不能读取链接或消费该流程，其他企业拿不到记录。本人回传无论成功失败都消费记录。Pi 重启后回传提示重新开始。
+
+凭据保存为加密的 `{access, refresh, expires, accountId}`，expires 为 Pi 的 Unix 毫秒；旧格式和密钥更换不迁移，提示重新连接。API/Worker 经 `chatgpt.access_token` 的独立短事务取 access，释放锁后才运行 turn；模型配置带仅供 Python 使用的企业 ID，不序列化给 Pi。401 标记需要重新连接，推理只给 access token、固定 SSE，不调用 OAuth 自动刷新接口。新配置默认选择锁定目录支持的 `gpt-5.4`，保留已有模型字段不做迁移。
+
+刷新和本机只读挂载另由 NERE-104 交付；在它合并前，距离过期不足 5 分钟即要求重新连接，开发用挂载文件已删除，不能使用本机登录。原模型 SDK、设备码和临时令牌文件路径已删除，无新增依赖。额度沿用 Pi 的统一映射与起草续跑。

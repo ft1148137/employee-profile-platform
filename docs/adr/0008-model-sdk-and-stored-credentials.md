@@ -1,6 +1,8 @@
 # ADR-0008：模型 SDK 与已保存凭据
 
-状态：采用（NERE-55，D5 11-03 修订）。
+状态：已被 [ADR-0014](0014-pi-agent.md) 取代（订阅登录迁移见 NERE-92）。
+
+原决策：NERE-55，D5 11-03 修订；以下保留用于追溯。
 
 模型调用统一经过 `app.domains.model.client.chat_json`，使用 LiteLLM SDK
 1.106.6；不启用代理、回调和消息日志。SDK 延迟导入，远程价格表和 Anthropic
