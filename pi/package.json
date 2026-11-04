@@ -1,0 +1,13 @@
+{
+  "name": "employee-profile-pi-research",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test sample.test.mjs",
+    "demo": "python3 demo.py"
+  },
+  "dependencies": {
+    "@mariozechner/pi-agent-core": "0.73.1",
+    "@mariozechner/pi-ai": "0.73.1"
+  }
+}

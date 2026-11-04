@@ -1,5 +1,14 @@
 version: 2
 updates:
+  # Pi upgrades require an explicit review, including transitive dependencies.
+  - package-ecosystem: npm
+    directory: /pi
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: "*"
   # GitHub Actions
   - package-ecosystem: github-actions
     directory: /
