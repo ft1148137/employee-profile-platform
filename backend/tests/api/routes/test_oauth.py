@@ -772,3 +772,24 @@ def test_basic_client_auth_without_form_client_id(
         client.post("/mcp", headers=headers(pair["access_token"]), json={}).status_code
         == 401
     )
+
+
+def test_mcp_uses_authorized_client_name(
+    registered: dict, demo: tuple, client: TestClient
+) -> None:
+    assert (
+        client.put(
+            demo[0] + "/mcp-setting",
+            headers=demo[2]["admin"],
+            json={"enabled": True, "allowed_clients": [registered["client_name"]]},
+        ).status_code
+        == 200
+    )
+    pair = token(
+        client, registered, approve(client, registered, demo[2]["employee"])
+    ).json()
+    # OAuth registration names can differ from the transport library's clientInfo.
+    active = initialize(
+        client, headers(pair["access_token"]), name="Different transport library"
+    )
+    assert not call(client, active, "get_my_profile", {})["isError"]

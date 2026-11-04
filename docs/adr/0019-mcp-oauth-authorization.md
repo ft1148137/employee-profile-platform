@@ -8,7 +8,7 @@
 
 `oauth_client` 是部署级技术元数据，和 `user` 一样不带 `org_id`。动态注册发生在员工登录、选择企业前，不能相信客户端提供的企业标识。这张表没有员工数据。客户端密钥通过既有 `encrypt_secret` 加密保存：SDK 的 `ClientAuthenticator` 需要解密后用 `compare_digest` 比较，不能直接换成哈希。
 
-员工允许后创建租户内 `oauth_grant`，授权码哈希放在授权行；刷新令牌独立保存哈希，以复合外键关联授权。访问令牌复用 `personal_access_token`，通过检查约束要求 `client_kind=oauth` 与关联授权同时存在。授权的企业、账号和员工只从服务端校验后的 Principal 写入，请求体拒绝 `org_id/user_id/employee_id`。网页登录员工用 `?org_id=` 选择当前企业，沿用 `OrgPrincipalDep` 校验成员身份，非成员返回 404；外部客户端的注册、授权和换令牌不选择企业。MCP 和 OAuth 共用账号、改密、员工关联、可见范围、企业开关检查；OAuth 还按注册名称检查企业客户端允许列表。客户端名称由客户端自报，不构成安全边界。
+员工允许后创建租户内 `oauth_grant`，授权码哈希放在授权行；刷新令牌独立保存哈希，以复合外键关联授权。访问令牌复用 `personal_access_token`，通过检查约束要求 `client_kind=oauth` 与关联授权同时存在。授权的企业、账号和员工只从服务端校验后的 Principal 写入，请求体拒绝 `org_id/user_id/employee_id`。网页登录员工用 `?org_id=` 选择当前企业，沿用 `OrgPrincipalDep` 校验成员身份，非成员返回 404；外部客户端的注册、授权和换令牌不选择企业。MCP 和 OAuth 共用账号、改密、员工关联、可见范围、企业开关检查；OAuth 还按注册名称检查企业客户端允许列表。OAuth 的 MCP 会话、来源与允许列表使用授权时的注册名称，避免传输库的 `clientInfo.name` 不同导致合法客户端被拒绝；个人令牌继续用原有初始化名称。注册名称仍由客户端自报，不构成安全边界。
 
 授权请求用 `aud=oauth-consent`、十分钟有效的签名 JWT 传给前端，无待授权请求表。JWT 不是访问令牌，不能兑换或调用 MCP；同意接口仍要求网页登录身份、员工身份和企业准入。
 

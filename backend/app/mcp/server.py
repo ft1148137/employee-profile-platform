@@ -17,7 +17,7 @@ from mcp.server.transport_security import (
     TransportSecuritySettings,
 )
 from pydantic import ValidationError
-from sqlmodel import Session
+from sqlmodel import Session, select
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -28,6 +28,7 @@ from app.core.config import settings
 from app.core.db import engine
 from app.core.security import ALGORITHM
 from app.domains.access_token.auth import token_principal
+from app.domains.access_token.models import PersonalAccessToken
 from app.domains.access_token.service import get_setting
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
@@ -136,13 +137,28 @@ class McpEndpoint:
                 plaintext = ""
             ip = request.client.host if request.client else "unknown"
 
-            def authenticate() -> tuple[Principal, list[str]]:
+            fingerprint = hashlib.sha256(plaintext.encode()).hexdigest()
+
+            def authenticate() -> tuple[Principal, list[str], str | None]:
                 with Session(engine) as session:
                     principal = token_principal(session, plaintext, ip)
-                    return principal, get_setting(session, principal).allowed_clients
+                    oauth_name = session.exec(
+                        select(PersonalAccessToken.name).where(
+                            PersonalAccessToken.org_id == principal.org_id,
+                            PersonalAccessToken.user_id == principal.user_id,
+                            PersonalAccessToken.token_hash == fingerprint,
+                            PersonalAccessToken.client_kind == "oauth",
+                        )
+                    ).one_or_none()
+                    return (
+                        principal,
+                        get_setting(session, principal).allowed_clients,
+                        oauth_name,
+                    )
 
-            principal, allowed_clients = await run_in_threadpool(authenticate)
-            fingerprint = hashlib.sha256(plaintext.encode()).hexdigest()
+            principal, allowed_clients, oauth_name = await run_in_threadpool(
+                authenticate
+            )
             session_id = request.headers.get("mcp-session-id")
             if session_id:
                 try:
@@ -171,7 +187,7 @@ class McpEndpoint:
                     params = types.InitializeRequestParams.model_validate(
                         message.get("params")
                     )
-                    client_name = params.client_info.name
+                    client_name = oauth_name or params.client_info.name
                     if not 1 <= len(client_name) <= 100:
                         raise ValueError
                 except ValueError, ValidationError:
