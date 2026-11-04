@@ -1,6 +1,6 @@
 # 架构与扩展位置
 
-M2 支持管理员接 Jira/CSV、确认账号对应，再用已启用的 AI 模型起草待本人过目的请求；没有启用模型时不起草。FastAPI 提供 Web/API，React 构建产物由同一进程托管；所有业务数据和任务队列共用 PostgreSQL。演示企业仍由合成种子建立；正式判断只经批准发布，M2 尚无审批或发布入口。
+M3 支持管理员接 Jira/CSV、确认账号对应，再用已启用的 Pi 模型起草待本人过目的请求；没有启用模型时不起草。员工通过表单、JSON、MCP 和内置机器人提交候选。FastAPI 提供 Web/API，React 构建产物由同一进程托管；所有业务数据和任务队列共用 PostgreSQL。演示企业仍由合成种子建立；经理审批与正式发布入口在 M4。
 
 ## 进程与模块
 
@@ -20,7 +20,7 @@ flowchart LR
     db --- queue[Procrastinate 队列表 · 不列入业务 ER 图]
 ```
 
-`compose.yml` 定义 db、prestart、backend、worker。db 健康后 prestart 执行 Alembic、初始化账号和演示导入，成功退出后才启动 backend / worker。两者复用后端镜像；默认只有 Web/API 的 `127.0.0.1:8000` 发布到宿主机。开发服务在 `compose.dev.yml` 中显式选择，HTTPS 部署见 [deploy/README.md](../deploy/README.md)。
+`compose.yml` 定义 db、prestart、backend、worker、pi。Pi 健康后 backend / worker 才启动；Pi 仅在内部网络接受带服务令牌的请求。db 健康后 prestart 执行 Alembic、初始化账号和演示导入，成功退出后才启动 backend / worker。两者复用后端镜像；默认只有 Web/API 的 `127.0.0.1:8000` 发布到宿主机。开发服务在 `compose.dev.yml` 中显式选择，HTTPS 部署见 [deploy/README.md](../deploy/README.md)。
 
 路由负责 HTTP 参数和响应，`app/authz` 负责服务端租户身份解析与权限策略，`app/domains/*` 放模型、响应 Schema 和领域服务。`app/seed` 校验并幂等导入合成数据。Worker 执行 `system.ping`、`sources.sync_run` 和 `profiles.draft_initial`；业务任务经 `tenant_task(org_id, body)` 校验租户，查询仍显式限定租户。队列迁移和健康检查限制见 [ADR-0002](adr/0002-worker-and-compose-layout.md)。
 
@@ -291,9 +291,10 @@ flowchart LR
     C --> D[提交计数与游标，失败按断点重试]
     D --> E[管理员确认对应，追加本人 Evidence]
     E --> F[drafting_scope 过滤部门/员工/能力]
-    F --> G[经验编号合并，规则或 LiteLLM 起草]
+    F --> G[经验编号合并，Pi 模型起草]
     G --> H[输出校验，支持证据重算统计]
-    H --> I[pending_owner 请求，员工只读过目]
+    H --> I[pending_owner 请求，员工过目与编辑]
+    I --> K[pending_review 请求，批准前可撤回]
     G --> J[用量上限：记录恢复时间，排队续跑]
     J --> F
 ```
@@ -301,6 +302,12 @@ flowchart LR
 同步每页事务提交，同一来源连接的同步串行；起草每人事务提交，同企业起草串行，一人失败不影响其他人。ChatGPT 令牌按企业加锁，API 与 worker 共用数据库加密凭据。输入只含白名单 standard 工作记录，模型不直接写 Claim。详见 [ADR-0012](adr/0012-resumable-source-sync.md)、[ADR-0013](adr/0013-model-initial-drafting.md)。权限仍沿用下表。
 
 ## 租户与权限
+
+M3 的表单、JSON、MCP 和机器人统一调用 `domains/change_request/employee.py`，员工工具定义在 `domains/employee_tools.py`。MCP 由 OAuth / 个人令牌解析本人 Principal，每次请求重新检查企业开关、账号和授权；不接收客户端传入的员工或企业身份。提交写入来源、客户端与收件箱通知，自述经证据服务追加，撤回追加撤销记录。
+
+机器人分网页入口（`api/routes/bot.py`）和对话核心（`domains/bot`）。核心负责身份、会话、限频、工具和带 revision 的预览确认卡片，供后续 IM 入口复用。Pi 通过受认证的内部流式协议调用平台提供的工具，不装载执行命令或文件工具；模型不能调用提交工具。只有员工对已保存且未过期的预览卡片执行确认，核心才提交。原文默认不保存，保留开关最多 30 天，Worker 清理过期原文。
+
+Pi SDK 固定 0.73.1（MIT），模型输入和工具输出经过投影校验；起草与对话共用企业模型、加密凭据及额度暂停状态。生产订阅刷新在企业锁内完成，本机授权仅通过开发覆盖文件挂载给 Pi，access token 用后删除，不刷新、不写回。协议与权限设计见 [ADR-0014](adr/0014-pi-agent.md)、[OAuth ADR](adr/0019-mcp-oauth-authorization.md)。
 
 `/api/v1/orgs/{org_id}/...` 的 Principal 由服务端通过当前用户、成员资格和角色授予解析，客户端不能指定自己的角色。员工不是登录账号；平台 `is_superuser` 也不自动授予任何组织权限。
 
@@ -318,10 +325,10 @@ flowchart LR
 | Slot | 代码位置与边界 | 当前状态 |
 | --- | --- | --- |
 | Source Slot | `backend/app/connectors/` 接来源；`app/domains/work` 承接 Task/WorkEvent，证据服务追加 Evidence | Cloud/DC 两个适配器和 CSV/Excel，共用同步与身份推导；seed 仅导入合成样例 |
-| Profile Slot | `app/domains/drafting` 使用 Evidence 与版本化 capability 产生请求，批准后冻结 ProfileVersion | M2 生成 pending_owner 初始请求；员工提交和经理审批在 M3/M4 |
-| Interaction Slot | 后续连接待确认问题、人类回答及统一 Review 流程，回答回到证据/候选判断 | 未实现，没有问题表或交互协议 |
+| Profile Slot | `app/domains/drafting` 使用 Evidence 与版本化 capability 产生请求，批准后冻结 ProfileVersion | 起草生成 pending_owner；M3 员工提交 pending_review；经理审批在 M4 |
+| Interaction Slot | 后续连接待确认问题、人类回答及统一 Review 流程，回答回到证据/候选判断 | M3 已有 PendingQuestion、InboxItem 与员工回答；自动提问在 M4 |
 
-来源插件只提交事实和证据，不直接发布画像；模型只产生候选改动项。LiteLLM 层可替换、可完全关闭，使用输入白名单并记录提供方、模型、提示词及 Schema 版本。
+来源插件只提交事实和证据，不直接发布画像；模型只产生候选改动项。Pi 模型层可替换、可完全关闭，使用输入白名单并记录提供方、模型、提示词及 Schema 版本。
 
 ## P1–P6 扩展位置（尚未实现）
 

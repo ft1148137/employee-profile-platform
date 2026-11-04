@@ -193,8 +193,8 @@ test("admin imports three candidates, skips existing requests, employee edits an
   ).json()
   expect(submitted.data[0].origin).toBe("import")
   expect(submitted.data[0].status).toBe("pending_review")
-  expect(submitted.data[0].items[0].uncertainty).toBe("长期稳定性待验证")
-  expect(submitted.data[0].items[0].after?.statement).toBe(
+  expect(submitted.data[0].items?.[0].uncertainty).toBe("长期稳定性待验证")
+  expect(submitted.data[0].items?.[0].after?.statement).toBe(
     "本人核对：完成模型部署和验证",
   )
 })
