@@ -22,6 +22,7 @@ class InboxItem(TenantRecord, table=True):
         UniqueConstraint("org_id", "id"),
         tenant_fk("recipient_employee_id", "employee"),
         tenant_fk("request_id", "profile_change_request"),
+        tenant_fk("question_id", "pending_question"),
         Index("ix_inbox_recipient", "org_id", "recipient_employee_id", "created_at"),
     )
     recipient_employee_id: UUID
@@ -31,3 +32,29 @@ class InboxItem(TenantRecord, table=True):
     message: str
     read_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     done_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+
+
+class QuestionStatus(StrEnum):
+    OPEN = "open"
+    ANSWERED = "answered"
+    DISMISSED = "dismissed"
+
+
+class PendingQuestion(TenantRecord, table=True):
+    __tablename__ = "pending_question"
+    __table_args__ = (
+        UniqueConstraint("org_id", "id"),
+        tenant_fk("target_employee_id", "employee"),
+        tenant_fk("capability_definition_id", "capability_definition"),
+        tenant_fk("answer_evidence_id", "evidence"),
+        Index("ix_question_target", "org_id", "target_employee_id", "created_at"),
+    )
+    target_employee_id: UUID
+    capability_definition_id: UUID | None = None
+    question: str
+    reason: str
+    status: QuestionStatus = Field(
+        default=QuestionStatus.OPEN, sa_type=enum_type(QuestionStatus)
+    )
+    answer_evidence_id: UUID | None = None
+    answered_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
