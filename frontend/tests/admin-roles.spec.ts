@@ -81,14 +81,12 @@ test("grant and revoke a department manager, preserve the last administrator", a
     .getByRole("button", { name: "关闭", exact: true })
     .first()
     .click()
-  const row = page
-    .getByRole("row")
-    .filter({
-      has: page.getByRole("cell", {
-        name: "employee10@demo.example.com",
-        exact: true,
-      }),
-    })
+  const row = page.getByRole("row").filter({
+    has: page.getByRole("cell", {
+      name: "employee10@demo.example.com",
+      exact: true,
+    }),
+  })
   await expect(row).toContainText("部门经理")
   await expect(row).toContainText("平台研发部")
   await row.getByRole("button", { name: "撤销", exact: true }).click()
@@ -106,14 +104,12 @@ test("grant and revoke a department manager, preserve the last administrator", a
         })
       : route.continue(),
   )
-  const admin = page
-    .getByRole("row")
-    .filter({
-      has: page.getByRole("cell", {
-        name: "admin@demo.example.com",
-        exact: true,
-      }),
-    })
+  const admin = page.getByRole("row").filter({
+    has: page.getByRole("cell", {
+      name: "admin@demo.example.com",
+      exact: true,
+    }),
+  })
   await admin.getByRole("button", { name: "撤销", exact: true }).click()
   await dialog.getByRole("button", { name: "确认撤销" }).click()
   await expect(dialog.getByRole("alert")).toContainText(
