@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from procrastinate.exceptions import JobRetry
+from procrastinate.job_context import JobContext
 from procrastinate.jobs import Job
 from procrastinate.retry import BaseRetryStrategy
 
@@ -20,6 +21,17 @@ class SyncRetry(BaseRetryStrategy):
 @app.task(name="system.ping")
 async def ping() -> None:
     """Verify queue execution without accessing tenant data or external services."""
+
+
+@app.periodic(cron="*/5 * * * *")
+@app.task(
+    name="system.retry_stalled_jobs",
+    queueing_lock="retry_stalled_jobs",
+    pass_context=True,
+)
+async def retry_stalled_jobs(context: JobContext, timestamp: int) -> None:  # noqa: ARG001
+    for job in await app.job_manager.get_stalled_jobs():
+        await app.job_manager.retry_job(job)
 
 
 @app.task(name="profiles.draft_initial")

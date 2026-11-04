@@ -338,7 +338,7 @@ def execute_sync(
                 SyncRun.id == run_id,
             )
         ).one_or_none()
-        if run is None or run.status != "queued":
+        if run is None or run.status not in {"queued", "running"}:
             return
         key = str(run.connection_id)
         locked = (
@@ -353,7 +353,7 @@ def execute_sync(
             raise JobRetry(RetryDecision(retry_in={"seconds": 30}))
         try:
             session.refresh(run)
-            if run.status != "queued":
+            if run.status not in {"queued", "running"}:
                 return
             connection = session.exec(
                 select(SourceConnection).where(
