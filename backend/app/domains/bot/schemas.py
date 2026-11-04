@@ -1,9 +1,11 @@
+from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.domains.change_request.schemas import ToolInput
+from app.domains.profile.models import AssessmentStatus
 
 
 class Projection(BaseModel):
@@ -38,7 +40,7 @@ class Dictionary(Projection):
 class Claim(Projection):
     statement: str
     level: str | None
-    assessment_status: str
+    assessment_status: AssessmentStatus
 
 
 class ProfileItem(Projection):
@@ -161,3 +163,10 @@ class TurnInput(ToolInput):
 
 class SessionCreated(BaseModel):
     session_id: UUID
+
+
+class SessionMessage(BaseModel):
+    id: UUID
+    role: Literal["user", "assistant"]
+    payload: TurnInput | TurnResponse
+    created_at: datetime
