@@ -7,17 +7,27 @@ export { expect } from "@playwright/test"
 // The worker calls this local transport; no external model is used in E2E.
 export const test = base.extend<{ modelUrl: string }>({
   modelUrl: async ({ baseURL }, use) => {
+    let botRequestId: string | undefined
     const server = createServer(async (req, res) => {
       let raw = ""
       for await (const chunk of req) raw += chunk
       const request = JSON.parse(raw)
+      const chat = request.tools?.some(
+        (tool: { function: { name: string } }) =>
+          tool.function.name === "get_my_requests",
+      )
+      const last = request.messages.at(-1)
+      if (chat && last?.role === "tool") {
+        const result = JSON.parse(last.content)
+        botRequestId = result.data?.[0]?.id ?? botRequestId
+      }
       const toolResult =
         request.messages.at(-1)?.role === "tool" || !request.tools?.length
       const content = request.messages.find(
         (m: { role: string }) => m.role === "user",
       ).content
       const body = (
-        request.tools?.length
+        request.tools?.length && !chat
           ? JSON.parse(typeof content === "string" ? content : content[0].text)
           : { capabilities: [], records: [] }
       ) as {
@@ -47,7 +57,7 @@ export const test = base.extend<{ modelUrl: string }>({
           {
             index: 0,
             delta: toolResult
-              ? { role: "assistant", content: "已完成" }
+              ? { role: "assistant", content: chat ? "已提交" : "已完成" }
               : {
                   role: "assistant",
                   tool_calls: [
@@ -56,8 +66,31 @@ export const test = base.extend<{ modelUrl: string }>({
                       id: "synthetic-draft",
                       type: "function",
                       function: {
-                        name: "submit_draft",
-                        arguments: JSON.stringify({ items }),
+                        name: chat
+                          ? botRequestId &&
+                            JSON.stringify(last).includes("补充")
+                            ? "draft_update_request"
+                            : "get_my_requests"
+                          : "submit_draft",
+                        arguments: JSON.stringify(
+                          chat
+                            ? botRequestId &&
+                              JSON.stringify(last).includes("补充")
+                              ? {
+                                  request_id: botRequestId,
+                                  items: [
+                                    {
+                                      op: "add",
+                                      capability_key: "automated_testing",
+                                      statement: "我补充了一段合成项目经历",
+                                      owner_statement:
+                                        "本人完成了合成项目的验证",
+                                    },
+                                  ],
+                                }
+                              : {}
+                            : { items },
+                        ),
                       },
                     },
                   ],
