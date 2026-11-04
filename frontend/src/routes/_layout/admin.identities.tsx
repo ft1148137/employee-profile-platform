@@ -20,6 +20,9 @@ function IdentitiesPage() {
           管理 · 外部账号
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">账号对应</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          邮箱与本企业唯一在职员工一致时自动关联。解除后不会再次自动关联，仍可手动选择员工。
+        </p>
       </header>
       <IdentityTable key={org.id} orgId={org.id} />
     </div>

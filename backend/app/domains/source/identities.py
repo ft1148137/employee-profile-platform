@@ -7,8 +7,6 @@ from sqlalchemy import func, or_
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
-from app.domains.audit.service import record_audit
-from app.domains.base import utc_now
 from app.domains.evidence.models import Evidence, EvidenceStatus
 from app.domains.evidence.service import retract_evidence
 from app.domains.org.models import (
@@ -18,6 +16,7 @@ from app.domains.org.models import (
     ExternalIdentity,
 )
 from app.domains.org.schemas import DepartmentSummary
+from app.domains.source.linking import assign_identity, identity_audit
 from app.domains.source.schemas import (
     ExternalIdentitiesPublic,
     ExternalIdentityPublic,
@@ -27,7 +26,7 @@ from app.domains.source.schemas import (
     IdentityLinks,
     IdentityUnlinkResult,
 )
-from app.domains.work.ingest import IdentityNotFound, IngestCounts, rederive_identity
+from app.domains.work.ingest import IdentityNotFound, rederive_identities
 from app.domains.work.models import Task
 
 
@@ -156,25 +155,6 @@ def list_identities(
     return ExternalIdentitiesPublic(data=data, count=count)
 
 
-def identity_audit(
-    session: Session, principal: Principal, identity: ExternalIdentity, action: str
-) -> None:
-    record_audit(
-        session,
-        org_id=principal.org_id,
-        actor_type=principal.actor_type,
-        actor_id=str(principal.user_id),
-        action=f"external_identity.{action}",
-        target_type="external_identity",
-        target_id=str(identity.id),
-        details={
-            "identity_id": str(identity.id),
-            "employee_id": str(identity.employee_id),
-            "source": identity.source,
-        },
-    )
-
-
 def link_identities(
     session: Session, principal: Principal, body: IdentityLinks
 ) -> IdentityLinkResult:
@@ -210,24 +190,16 @@ def link_identities(
         if current is not None and current != link.employee_id:
             raise IdentityConflict("账号已关联到其他员工，请先解除")
         pending[link.identity_id] = link.employee_id
-    linked, counts = 0, IngestCounts()
+    linked = []
     for identity_id, employee_id in pending.items():
         identity = identities[identity_id]
         if identity.employee_id == employee_id:
             continue
-        identity.employee_id, identity.linked_by, identity.linked_at = (
-            employee_id,
-            f"user:{principal.user_id}",
-            utc_now(),
-        )
-        session.flush()
-        result = rederive_identity(session, org_id=principal.org_id, identity=identity)
-        for field in IngestCounts.model_fields:
-            setattr(counts, field, getattr(counts, field) + getattr(result, field))
-        identity_audit(session, principal, identity, "linked")
-        linked += 1
+        assign_identity(session, principal, identity, employee_id)
+        linked.append(identity)
+    counts = rederive_identities(session, org_id=principal.org_id, identities=linked)
     session.commit()
-    return IdentityLinkResult(linked=linked, counts=counts)
+    return IdentityLinkResult(linked=len(linked), counts=counts)
 
 
 def unlink_identity(
@@ -292,5 +264,6 @@ def unlink_identity(
         )
     identity_audit(session, principal, identity, "unlinked")
     identity.employee_id = identity.linked_by = identity.linked_at = None
+    identity.auto_link_blocked = True
     session.commit()
     return IdentityUnlinkResult(evidence_retracted=len(evidence))

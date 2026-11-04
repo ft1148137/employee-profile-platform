@@ -1,5 +1,6 @@
 """Shared Jira/CSV ingestion; the caller owns the transaction and source-run lock."""
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID
@@ -13,6 +14,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from sqlalchemy import or_, tuple_
 from sqlmodel import Session, col, select
 
 from app.domains.audit.models import ActorKind
@@ -28,6 +30,7 @@ from app.domains.evidence.service import (
     supersede_evidence,
 )
 from app.domains.org.models import ExternalIdentity
+from app.domains.source.linking import auto_link_identities
 from app.domains.work.models import Task, WorkEvent
 
 
@@ -249,28 +252,50 @@ def _derive(
     session.flush()
 
 
+def prepare_identities(
+    session: Session, org_id: UUID, records: Sequence[SourceRecord]
+) -> IngestCounts:
+    identities = {
+        (identity.source, identity.external_id): identity
+        for identity in session.exec(
+            select(ExternalIdentity)
+            .where(
+                ExternalIdentity.org_id == org_id,
+                tuple_(
+                    col(ExternalIdentity.source), col(ExternalIdentity.external_id)
+                ).in_({(r.source, p.external_id) for r in records for p in r.people}),
+            )
+            .order_by(col(ExternalIdentity.id))
+            .with_for_update()
+        )
+    }
+    for record in records:
+        for person in record.people:
+            key = record.source, person.external_id
+            if key not in identities:
+                identities[key] = ExternalIdentity(
+                    org_id=org_id, source=record.source, external_id=person.external_id
+                )
+                session.add(identities[key])
+            identity = identities[key]
+            identity.display_name, identity.email = person.display_name, person.email
+    linked = auto_link_identities(session, org_id, list(identities.values()))
+    return rederive_identities(session, org_id=org_id, identities=linked)
+
+
 def ingest_record(
     session: Session,
     *,
     org_id: UUID,
     record: SourceRecord,
     provenance: dict[str, JsonValue],
+    identities_prepared: bool = False,
 ) -> IngestCounts:
-    counts = IngestCounts()
-    for person in record.people:
-        identity = session.exec(
-            select(ExternalIdentity).where(
-                ExternalIdentity.org_id == org_id,
-                ExternalIdentity.source == record.source,
-                ExternalIdentity.external_id == person.external_id,
-            )
-        ).one_or_none()
-        if identity is None:
-            identity = ExternalIdentity(
-                org_id=org_id, source=record.source, external_id=person.external_id
-            )
-            session.add(identity)
-        identity.display_name, identity.email = person.display_name, person.email
+    counts = (
+        IngestCounts()
+        if identities_prepared
+        else prepare_identities(session, org_id, [record])
+    )
     data = record.model_dump(mode="json")
     attributes = {
         key: data[key]
@@ -353,13 +378,29 @@ def rederive_identity(
     ).one_or_none()
     if stored is None:
         raise IdentityNotFound("External identity not found in organization")
+    return rederive_identities(session, org_id=org_id, identities=[stored])
+
+
+def rederive_identities(
+    session: Session, *, org_id: UUID, identities: Sequence[ExternalIdentity]
+) -> IngestCounts:
     counts = IngestCounts()
+    identities = [identity for identity in identities if identity.org_id == org_id]
+    if not identities:
+        return counts
     tasks = session.exec(
         select(Task)
         .where(
             Task.org_id == org_id,
-            Task.source == stored.source,
-            col(Task.attributes).contains({"people": [{"id": stored.external_id}]}),
+            or_(
+                *(
+                    (col(Task.source) == identity.source)
+                    & col(Task.attributes).contains(
+                        {"people": [{"id": identity.external_id}]}
+                    )
+                    for identity in identities
+                )
+            ),
         )
         .order_by(col(Task.id))
         .with_for_update()

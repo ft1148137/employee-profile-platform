@@ -13,6 +13,7 @@ from app.domains.org.models import (
     Department,
     Employee,
     EmploymentStatus,
+    ExternalIdentity,
     OrgMembership,
     ReportingLine,
     RosterImport,
@@ -30,6 +31,8 @@ from app.domains.org.roster.schemas import (
     RosterImportsPublic,
     RosterIssue,
 )
+from app.domains.source.linking import auto_link_identities
+from app.domains.work.ingest import rederive_identities
 from app.models import User, uses_email_login
 
 
@@ -266,6 +269,18 @@ def apply_import(
                     roster_import_id=record.id,
                 )
             )
+    identities = session.exec(
+        select(ExternalIdentity)
+        .where(
+            ExternalIdentity.org_id == principal.org_id,
+            col(ExternalIdentity.employee_id).is_(None),
+            ~col(ExternalIdentity.auto_link_blocked),
+        )
+        .order_by(col(ExternalIdentity.id))
+        .with_for_update()
+    ).all()
+    linked = auto_link_identities(session, principal.org_id, identities)
+    rederive_identities(session, org_id=principal.org_id, identities=linked)
     org.roster_revision += 1
     record.status = "applied"
     record.applied_at = now
