@@ -87,8 +87,14 @@ def save_setting(
                 raise InvalidModelSetting(
                     "不支持 Claude 订阅登录，请使用 Anthropic API key"
                 )
-    if body.enabled and body.kind != "chatgpt_subscription":
-        validate_capabilities(body.provider, body.model, body.reasoning_effort)
+    if body.enabled:
+        validate_capabilities(
+            "openai-codex" if body.kind == "chatgpt_subscription" else body.provider,
+            body.model.removeprefix("chatgpt/")
+            if body.kind == "chatgpt_subscription" and body.model
+            else body.model,
+            body.reasoning_effort,
+        )
     setting.sqlmodel_update(body.model_dump(exclude={"api_key"}))
     setting.api_key_ciphertext = token
     setting.updated_by_user_id = principal.user_id

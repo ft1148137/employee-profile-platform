@@ -13,11 +13,16 @@ import { localCredentials } from './local-auth.mjs';
 const customProviders = new Set(['qwen', 'openai-compatible', 'ollama']);
 const thinkingLevels = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
 function catalogModel(provider, id) {
+  if (provider === 'openai-codex' && !/^[A-Za-z0-9._-]{1,100}$/.test(id)) throw new Error('bad_request');
   if (!getProviders().includes(provider)) {
     if (!customProviders.has(provider)) throw new Error('bad_request');
     return undefined;
   }
   const model = getModel(provider, id);
+  if (!model && provider === 'openai-codex') {
+    const template = getModel(provider, 'gpt-5.4');
+    return { ...template, id, reasoning: true, thinkingLevelMap: { ...template.thinkingLevelMap, xhigh: null } };
+  }
   if (!model) throw new Error('bad_request');
   return model;
 }
@@ -29,7 +34,8 @@ function levels(model) {
 function resolveModel(m) {
   const catalog = catalogModel(m.provider, m.id);
   if (catalog) {
-    if (m.api !== catalog.api || ['reasoning', 'thinkingLevelMap', 'contextWindow', 'maxTokens', 'compat']
+    if ((m.provider === 'openai-codex' && m.baseUrl !== catalog.baseUrl) ||
+      m.api !== catalog.api || ['reasoning', 'thinkingLevelMap', 'contextWindow', 'maxTokens', 'compat']
       .some(key => Object.hasOwn(m, key)) || !levels(catalog).includes(m.thinkingLevel ?? 'off')) throw new Error('bad_request');
     return { ...catalog, baseUrl: m.baseUrl };
   }
@@ -175,8 +181,9 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
       const capability = path.match(/^\/v1\/models\/([^/]+)\/(.+)$/);
       if (capability && req.method === 'GET') {
         route = 'model';
-        const model = catalogModel(decodeURIComponent(capability[1]), decodeURIComponent(capability[2]));
-        return json(res, 200, { in_catalog: !!model, api: model?.api ?? 'openai-completions', thinking_levels: levels(model) });
+        const provider = decodeURIComponent(capability[1]), id = decodeURIComponent(capability[2]);
+        const model = catalogModel(provider, id);
+        return json(res, 200, { in_catalog: !!getModel(provider, id), api: model?.api ?? 'openai-completions', thinking_levels: levels(model) });
       }
       const match = path.match(/^\/v1\/turns\/([^/]+)(?:\/results\/([^/]+))?$/);
       if (match && uuid.test(match[1])) {
