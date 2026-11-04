@@ -248,12 +248,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         json_response=True,
         security_settings=TransportSecuritySettings(
             allowed_hosts=[
-                urlsplit(settings.FRONTEND_HOST).netloc,
+                urlsplit(resource_url()).netloc,
                 "localhost:*",
                 "127.0.0.1:*",
                 "testserver",
             ],
-            allowed_origins=[settings.FRONTEND_HOST],
+            allowed_origins=[resource_url().removesuffix("/mcp")],
         ),
     )
     app.state.mcp = RequestBodyLimitMiddleware(McpEndpoint(manager), 4 * 1024 * 1024)

@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from httpx2 import Response
 from sqlalchemy import Engine, inspect
 from sqlmodel import Session, col, delete, func, select
+from starlette.routing import Route
 
 from app.core.config import settings
 from app.core.security import ALGORITHM
@@ -33,6 +34,7 @@ from app.domains.change_request.models import (
 )
 from app.domains.org.models import Employee, OrgMembership
 from app.mcp.oauth import oauth_routes, resource_url
+from app.mcp.server import endpoint, lifespan
 from app.models import User
 from tests.api.routes.test_mcp import call, initialize
 from tests.utils.migrations import migrate
@@ -825,3 +827,23 @@ def test_http_installation_does_not_crash_oauth_startup(
                 )
         else:
             assert response.json()["issuer"] == origin + "/oauth"
+
+
+def test_resource_matches_canonical_metadata(
+    monkeypatch: pytest.MonkeyPatch, registered: dict, demo: tuple, client: TestClient
+) -> None:
+    monkeypatch.setattr(settings, "FRONTEND_HOST", "https://Profiles.Example:443/")
+    app = FastAPI(lifespan=lifespan)
+    app.router.routes.extend(oauth_routes())
+    app.router.routes.append(Route("/mcp", endpoint, methods=["POST", "GET", "DELETE"]))
+    pair = token(
+        client, registered, approve(client, registered, demo[2]["employee"])
+    ).json()
+    with TestClient(app, base_url="https://profiles.example") as local:
+        metadata = local.get("/.well-known/oauth-protected-resource").json()
+        assert metadata["resource"] == resource_url() == "https://profiles.example/mcp"
+        active = initialize(
+            local,
+            {**headers(pair["access_token"]), "Origin": "https://profiles.example"},
+        )
+        assert not call(local, active, "get_my_profile", {})["isError"]

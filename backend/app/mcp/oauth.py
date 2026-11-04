@@ -51,7 +51,7 @@ registration_ip: ContextVar[str] = ContextVar("oauth_registration_ip")
 
 
 def resource_url() -> str:
-    return settings.FRONTEND_HOST.rstrip("/") + "/mcp"
+    return str(AnyHttpUrl(settings.FRONTEND_HOST.rstrip("/") + "/mcp"))
 
 
 def database_call[T, **P](
