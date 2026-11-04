@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router"
+import { useLocation, useNavigate } from "@tanstack/react-router"
 import {
   Inbox,
   ListChecks,
@@ -38,6 +38,7 @@ export function AppSidebar() {
   const setup = useSetup()
   const inbox = useInbox()
   const navigate = useNavigate()
+  const location = useLocation()
   const items: Item[] = []
   if (employeeId)
     items.push({
@@ -68,7 +69,8 @@ export function AppSidebar() {
               value={org?.id}
               onValueChange={(id) => {
                 setOrg(id)
-                navigate({ to: "/" })
+                if (location.pathname !== "/oauth/consent")
+                  navigate({ to: "/" })
               }}
             >
               <SelectTrigger aria-label="当前组织">

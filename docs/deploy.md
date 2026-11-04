@@ -228,7 +228,7 @@ M1 部署流程使用 macOS 26.4.1 / Docker Desktop，全新克隆测试 HTTP、
 
 ### 外部 AI 助手的 MCP 地址
 
-外部员工助手的 MCP 地址为 `https://企业平台域名/mcp`（无尾部斜杠）。企业开关默认关闭，员工本人在网页生成个人令牌。外部客户端需要能访问该地址且信任证书；云端客户端通常无法访问内网或接受自签证书，本机客户端也需配置证书信任。不要关闭证书校验来连接生产服务。OAuth 网页授权另行实现。
+外部员工助手的 MCP 地址为 `https://企业平台域名/mcp`（无尾部斜杠）。企业开关默认关闭，员工本人在网页生成个人令牌。外部客户端需要能访问该地址且信任证书；云端客户端通常无法访问内网或接受自签证书，本机客户端也需配置证书信任。不要关闭证书校验来连接生产服务。ChatGPT、Claude 支持 OAuth 网页授权：员工只填 MCP 地址，再用员工邮箱登录并确认，不需手工生成令牌。客户端的 OAuth 配置选择动态注册（DCR）。外部客户端须同时能访问同一 HTTPS 域名下的 `/mcp`、`/.well-known/`、`/oauth/`、`/api/` 和前端静态资源路径；`/oauth/consent` 是前端授权页，其余 OAuth 协议端点交给后端处理。反向代理须保留查询参数。`FRONTEND_HOST` 必须是员工和外部客户端实际可访问的 HTTPS 地址；本机开发允许 localhost HTTP。详见[员工授权步骤](employee-guide.md#在-chatgpt-中连接)。
 
 安装脚本的自签、域名证书两套 Traefik 配置都将 `/mcp` 直接送到 backend，并设置立即刷新响应、未启用 buffering 中间件。后端在前端兜底之前处理 `/mcp`，无需单独启动服务或开放额外端口。自建反向代理也须保留 `Authorization`、`Mcp-Session-Id` 和 `MCP-Protocol-Version` 请求头、返回会话头，并关闭流式响应缓冲。更换域名时同步更新 `FRONTEND_HOST`（MCP 校验 Host 和 Origin）。
 

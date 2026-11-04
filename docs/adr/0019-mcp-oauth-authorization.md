@@ -21,3 +21,5 @@ SDK 2.3.0 的 token handler 不把授权码/刷新请求的 `resource` 传给 pr
 ## 限制
 
 只处理注册、授权、兑换和撤销，不实现 RFC 7592 客户端管理、未使用客户端清理或授权的绝对寿命上限。刷新后令牌指纹发生变化，客户端须重新初始化 MCP 会话。OAuth 的生产入口要求 HTTPS，本机回环 HTTP 可用于开发。安装脚本仍允许通过服务器 IP 使用普通 HTTP 网页；这种模式不能启用 OAuth 协议，发现与授权入口返回 503 并提示配置 HTTPS，不能因为 SDK 校验 issuer 而使整个网站无法启动。浏览器入口未在本 PR 提供，端到端员工使用要等 NERE-111。
+
+浏览器客户端的公开 OAuth 发现、注册、令牌和撤销端点由 MCP SDK 自带 CORS 处理；应用层 CORS 不提前拦截这些端点的预检。`/api/v1/oauth/consent` 和 `/api/v1/oauth/grants` 仍使用业务 API 的同源限制和当前用户认证。

@@ -1,5 +1,23 @@
 import { AxiosError } from "axios"
 
+export function safeNext(value: unknown): string {
+  if (
+    typeof value !== "string" ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\") ||
+    Array.from(value).some((char) => char.charCodeAt(0) <= 32)
+  )
+    return "/"
+  const url = new URL(value, "https://platform.invalid")
+  if (
+    url.origin !== "https://platform.invalid" ||
+    url.pathname.startsWith("//")
+  )
+    return "/"
+  return url.pathname + url.search + url.hash
+}
+
 export function redirectToPasswordChange(err: unknown): boolean {
   if (
     err instanceof AxiosError &&
@@ -7,7 +25,7 @@ export function redirectToPasswordChange(err: unknown): boolean {
     err.response.data?.detail?.code === "password_change_required"
   ) {
     if (window.location.pathname !== "/change-password") {
-      window.location.href = "/change-password"
+      window.location.href = `/change-password${window.location.pathname === "/oauth/consent" ? `?next=${encodeURIComponent(window.location.pathname + window.location.search)}` : ""}`
     }
     return true
   }

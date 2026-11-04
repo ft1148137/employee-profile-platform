@@ -24,7 +24,7 @@ const handleApiError = (error: Error) => {
   if (redirectToPasswordChange(error)) return
   if (error instanceof AxiosError && error.response?.status === 401) {
     localStorage.removeItem("access_token")
-    window.location.href = "/login"
+    window.location.href = `/login${window.location.pathname === "/oauth/consent" ? `?next=${encodeURIComponent(window.location.pathname + window.location.search)}` : ""}`
   }
 }
 client.instance.interceptors.response.use(undefined, (error: unknown) => {

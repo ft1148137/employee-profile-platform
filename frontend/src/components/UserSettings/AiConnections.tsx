@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useOrg } from "@/hooks/useOrg"
 import { handleError } from "@/utils"
+import { AuthorizedClients } from "./AuthorizedClients"
 
 export function AiConnections() {
   const { org, employeeId } = useOrg()
@@ -108,6 +109,7 @@ function Tokens({
         </p>
       )}
       {!hasEmployee && <p>当前账号没有员工身份，不能生成令牌。</p>}
+      <AuthorizedClients orgId={orgId} />
       <form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(event) => {

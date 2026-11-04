@@ -758,6 +758,28 @@ export type ConsentBody = {
 };
 
 /**
+ * ConsentInfo
+ */
+export type ConsentInfo = {
+    /**
+     * Client Name
+     */
+    client_name: string;
+    /**
+     * Org Name
+     */
+    org_name: string;
+    /**
+     * Callback Host
+     */
+    callback_host: string;
+    /**
+     * Reason
+     */
+    reason: string | null;
+};
+
+/**
  * ConsentResult
  */
 export type ConsentResult = {
@@ -1403,6 +1425,28 @@ export type GeneratedBy = {
      * Model Version
      */
     model_version?: string | null;
+};
+
+/**
+ * GrantPublic
+ */
+export type GrantPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Client Name
+     */
+    client_name: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Last Used At
+     */
+    last_used_at: string | null;
 };
 
 /**
@@ -3619,6 +3663,40 @@ export type accessTokensRevokeAccessTokenResponses = {
 
 export type accessTokensRevokeAccessTokenResponse = accessTokensRevokeAccessTokenResponses[keyof accessTokensRevokeAccessTokenResponses];
 
+export type oauthReadConsentData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Request
+         */
+        request: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/oauth/consent';
+};
+
+export type oauthReadConsentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type oauthReadConsentError = oauthReadConsentErrors[keyof oauthReadConsentErrors];
+
+export type oauthReadConsentResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConsentInfo;
+};
+
+export type oauthReadConsentResponse = oauthReadConsentResponses[keyof oauthReadConsentResponses];
+
 export type oauthConsentData = {
     body: ConsentBody;
     path?: never;
@@ -3648,6 +3726,73 @@ export type oauthConsentResponses = {
 };
 
 export type oauthConsentResponse = oauthConsentResponses[keyof oauthConsentResponses];
+
+export type oauthReadGrantsData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/oauth/grants';
+};
+
+export type oauthReadGrantsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type oauthReadGrantsError = oauthReadGrantsErrors[keyof oauthReadGrantsErrors];
+
+export type oauthReadGrantsResponses = {
+    /**
+     * Response Oauth-Read Grants
+     *
+     * Successful Response
+     */
+    200: Array<GrantPublic>;
+};
+
+export type oauthReadGrantsResponse = oauthReadGrantsResponses[keyof oauthReadGrantsResponses];
+
+export type oauthRevokeAuthorizationData = {
+    body?: never;
+    path: {
+        /**
+         * Grant Id
+         */
+        grant_id: string;
+    };
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/oauth/grants/{grant_id}';
+};
+
+export type oauthRevokeAuthorizationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type oauthRevokeAuthorizationError = oauthRevokeAuthorizationErrors[keyof oauthRevokeAuthorizationErrors];
+
+export type oauthRevokeAuthorizationResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type oauthRevokeAuthorizationResponse = oauthRevokeAuthorizationResponses[keyof oauthRevokeAuthorizationResponses];
 
 export type botSettingsGetBotSettingsData = {
     body?: never;
