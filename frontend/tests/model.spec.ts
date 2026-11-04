@@ -82,10 +82,20 @@ test("model kinds, saved secret, destination changes and disabling preserve conf
   await expect(page.getByLabel("base URL（填到 /v1）")).toBeVisible()
   await page.getByLabel("模型类型").selectOption("chatgpt_subscription")
   await expect(page.getByLabel("模型名", { exact: true })).toHaveValue(
-    "chatgpt/gpt-5.4",
+    "chatgpt/gpt-6.1-sol",
   )
   await expect(page.getByLabel("推理强度")).toHaveValue("high")
   await expect(page.getByLabel(/密钥/)).toHaveCount(0)
+  await page
+    .getByLabel("模型名", { exact: true })
+    .fill("chatgpt/gpt-6.1-sol-custom")
+  await page.getByRole("button", { name: "保存", exact: true }).click()
+  await expect(page.getByText("模型设置已保存。")).toBeVisible()
+  await page.reload()
+  await expect(page.getByLabel("模型名", { exact: true })).toHaveValue(
+    "chatgpt/gpt-6.1-sol-custom",
+  )
+  await expect(page.getByLabel("推理强度")).toHaveValue("high")
 })
 
 test("ChatGPT authorization callback, connection and disconnect", async ({

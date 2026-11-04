@@ -347,6 +347,25 @@ test('catalog capabilities, model identity, API and reasoning cannot be overridd
   }
 });
 
+test('uncataloged Codex models inherit transport and conservative reasoning, with validated IDs', async t => {
+  const { request } = await setup(t);
+  const model = { provider: 'openai-codex', api: 'openai-codex-responses', id: 'gpt-6.1-sol',
+    baseUrl: 'https://chatgpt.com/backend-api', thinkingLevel: 'high' };
+  assert.deepEqual(await (await request('/v1/models/openai-codex/gpt-6.1-sol')).json(),
+    { in_catalog: false, api: 'openai-codex-responses', thinking_levels: ['off', 'minimal', 'low', 'medium', 'high'] });
+  for (const id of ['a'.repeat(100), 'Model_1.2-test'])
+    assert.equal((await request('/v1/models/openai-codex/' + id)).status, 200);
+  for (const id of ['a'.repeat(101), 'bad/model', 'bad?model', 'bad model', '模型']) {
+    assert.deepEqual(await (await request('/v1/models/openai-codex/' + encodeURIComponent(id))).json(),
+      { type: 'error', code: 'bad_request' });
+    assert.deepEqual(await (await request('/v1/turns', 'POST', { ...body(), model: { ...model, id } })).json(),
+      { type: 'error', code: 'bad_request' });
+  }
+  for (const patch of [{ id: '' }, { thinkingLevel: 'xhigh' }, { reasoning: false },
+    { baseUrl: 'https://example.com/backend-api' }, { api: 'openai-responses' }])
+    assert.equal((await request('/v1/turns', 'POST', { ...body(), model: { ...model, ...patch } })).status, 400);
+});
+
 test('egress rejects redirects without contacting their target', async t => {
   let requests = 0;
   const upstream = createServer((_req, res) => {
@@ -545,7 +564,7 @@ test('Codex turns use only responses with an access token and fixed SSE', async 
   const seen = [];
   t.mock.method(globalThis, 'fetch', async (url, options) => {
     if (String(url).startsWith('http://127.0.0.1:')) return original(url, options);
-    seen.push(String(url));
+    seen.push(JSON.parse(options.body));
     assert.equal(String(url), 'https://chatgpt.com/backend-api/codex/responses');
     assert.equal(options.headers.get('Authorization'), `Bearer ${access}`);
     return new Response('sensitive synthetic-refresh', { status: 401 });
@@ -554,11 +573,16 @@ test('Codex turns use only responses with an access token and fixed SSE', async 
   const data = body();
   data.model = { provider: 'openai-codex', api: 'openai-codex-responses', id: 'gpt-5.4',
     baseUrl: 'https://chatgpt.com/backend-api', api_key: access };
-  for (const mode of ['draft', 'chat']) {
-    const run = await start({ ...data, mode, ...(mode === 'chat' ? { history: [{ role: 'user', text: 'synthetic history' }] } : {}) });
-    assert.deepEqual(await run.next(), { type: 'error', code: 'model_unauthorized' });
+  for (const id of ['gpt-5.4', 'gpt-6.1-sol']) {
+    for (const mode of ['draft', 'chat']) {
+      const run = await start({ ...data, model: { ...data.model, id, thinkingLevel: 'high' }, mode,
+        ...(mode === 'chat' ? { history: [{ role: 'user', text: 'synthetic history' }] } : {}) });
+      assert.deepEqual(await run.next(), { type: 'error', code: 'model_unauthorized' });
+      assert.equal(seen.at(-1).model, id);
+      assert.equal(seen.at(-1).reasoning.effort, 'high');
+    }
   }
-  assert.equal(seen.length, 2);
+  assert.equal(seen.length, 4);
   assert.ok(!JSON.stringify(logs).includes(access));
 });
 
