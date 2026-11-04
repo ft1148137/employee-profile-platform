@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Appearance } from "@/components/Common/Appearance"
 import { CapabilityDictionary } from "@/components/Setup/CapabilityDictionary"
+import { AiConnections } from "@/components/UserSettings/AiConnections"
 import ChangePassword from "@/components/UserSettings/ChangePassword"
 import UserInformation from "@/components/UserSettings/UserInformation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -10,6 +11,7 @@ const tabsConfig = [
   { value: "my-profile", title: "个人信息", component: UserInformation },
   { value: "password", title: "修改密码", component: ChangePassword },
   { value: "appearance", title: "外观", component: Appearance },
+  { value: "assistants", title: "连接 AI 助手", component: AiConnections },
   { value: "dictionary", title: "能力词典", component: CapabilityDictionary },
 ]
 
@@ -41,7 +43,7 @@ function UserSettings() {
       </div>
 
       <Tabs defaultValue="my-profile">
-        <TabsList>
+        <TabsList className="h-auto flex-wrap justify-start">
           {tabsConfig.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value}>
               {tab.title}

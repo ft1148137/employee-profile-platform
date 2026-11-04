@@ -1,6 +1,9 @@
 import type { AuditEventPublic } from "@/client"
 
 export const auditLabels: Record<string, string> = {
+  "access_token.created": "生成个人令牌",
+  "access_token.revoked": "吊销个人令牌",
+  "mcp_setting.updated": "修改外部 AI 助手设置",
   "initial_profiles.handed_over": "初始画像批量送审（员工未过目）",
   "initial_profiles.drafted": "生成初始画像",
   "change_request.dictionary_changed": "词典调整后更新请求",
@@ -41,6 +44,8 @@ export const actorLabels: Record<string, string> = {
   cli: "命令行",
 }
 export const targetLabels: Record<string, string> = {
+  personal_access_token: "个人令牌",
+  mcp_setting: "外部 AI 助手设置",
   sync_run: "同步记录",
   profile_change_request: "画像变更请求",
   source_connection: "数据来源",

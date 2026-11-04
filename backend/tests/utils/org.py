@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlalchemy import text
 from sqlmodel import Session, col, delete, select
 
+from app.domains.access_token.models import McpSetting, PersonalAccessToken
 from app.domains.audit.models import AuditEvent
 from app.domains.bot.models import BotMessage, BotSession, BotSetting
 from app.domains.capability.models import CapabilityDefinition, CapabilitySchemaVersion
@@ -37,6 +38,8 @@ from app.domains.work.models import Task, WorkEvent
 from app.models import User
 
 ORG_MODELS = (
+    PersonalAccessToken,
+    McpSetting,
     BotMessage,
     BotSession,
     BotSetting,
