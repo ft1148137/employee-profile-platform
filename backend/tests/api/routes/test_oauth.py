@@ -520,6 +520,8 @@ def test_registration_limits_and_public_client(
     for overrides in (
         {"redirect_uris": ["javascript:alert(1)"]},
         {"client_name": ""},
+        {"client_name": "A" + " " * 100},
+        {"client_name": "A" * 101},
         {"scope": "admin"},
         {"grant_types": ["authorization_code", "password"]},
     ):

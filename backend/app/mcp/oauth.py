@@ -79,7 +79,8 @@ def register(session: Session, client: OAuthClientInformationFull, ip: str) -> N
         raise RegistrationLimited()
     if (
         not client.client_name
-        or not 1 <= len(client.client_name.strip()) <= 100
+        or not client.client_name.strip()
+        or len(client.client_name) > 100
         or set(client.grant_types) - {"authorization_code", "refresh_token"}
         or client.response_types != ["code"]
         or client.scope != "employee"
