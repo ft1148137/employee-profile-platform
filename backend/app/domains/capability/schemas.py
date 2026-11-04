@@ -111,4 +111,6 @@ class DictionaryPreview(BaseModel):
     added: list[str]
     modified: list[str]
     removed: list[str]
+    removed_claim_counts: dict[str, int]
+    removed_item_counts: dict[str, int]
     errors: list[str]

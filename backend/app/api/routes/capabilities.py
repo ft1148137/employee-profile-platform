@@ -9,6 +9,7 @@ from app.domains.capability.files import (
     dictionary_yaml,
     parse_dictionary,
 )
+from app.domains.capability.models import CapabilitySchemaVersion
 from app.domains.capability.schemas import (
     ActiveSchemaPublic,
     CapabilitiesPublic,
@@ -18,6 +19,8 @@ from app.domains.capability.schemas import (
     SaveDictionary,
 )
 from app.domains.capability.service import (
+    DictionaryConflict,
+    SchemaNotFound,
     get_schema,
     list_capabilities,
     preview_version,
@@ -45,9 +48,11 @@ def read_capabilities(
 
 
 def _definitions(
-    session: SessionDep, principal: OrgPrincipalDep
+    session: SessionDep,
+    principal: OrgPrincipalDep,
+    schema: CapabilitySchemaVersion | None = None,
 ) -> list[DictionaryDefinition]:
-    schema = get_schema(session, principal.org_id)
+    schema = schema or get_schema(session, principal.org_id)
     setting = session.get(DraftingSetting, principal.org_id)
     excluded = set(setting.excluded_capability_keys if setting else [])
     return [
@@ -114,8 +119,61 @@ def preview_dictionary(
 def save_dictionary(
     body: SaveDictionary, session: SessionDep, principal: OrgAdminDep
 ) -> ActiveSchemaPublic:
+    return _save_dictionary(body, session, principal, sync_ai_inference=False)
+
+
+@router.get("/editor", response_model=DictionaryPreview)
+def read_dictionary_editor(
+    session: SessionDep, principal: OrgAdminDep
+) -> DictionaryPreview:
+    try:
+        schema = get_schema(session, principal.org_id)
+    except SchemaNotFound:
+        return preview_version(session, principal, [], [])
+    return DictionaryPreview(
+        definitions=_definitions(session, principal, schema),
+        expected_version=schema.version,
+        added=[],
+        modified=[],
+        removed=[],
+        removed_claim_counts={},
+        removed_item_counts={},
+        errors=[],
+    )
+
+
+@router.post("/editor/preview", response_model=DictionaryPreview)
+def preview_dictionary_editor(
+    body: SaveDictionary, session: SessionDep, principal: OrgAdminDep
+) -> DictionaryPreview:
+    preview = preview_version(
+        session, principal, body.definitions, [], sync_ai_inference=True
+    )
+    if preview.expected_version != body.expected_version:
+        raise DictionaryConflict()
+    return preview
+
+
+@router.put("", response_model=ActiveSchemaPublic)
+def update_dictionary(
+    body: SaveDictionary, session: SessionDep, principal: OrgAdminDep
+) -> ActiveSchemaPublic:
+    return _save_dictionary(body, session, principal, sync_ai_inference=True)
+
+
+def _save_dictionary(
+    body: SaveDictionary,
+    session: SessionDep,
+    principal: OrgAdminDep,
+    *,
+    sync_ai_inference: bool,
+) -> ActiveSchemaPublic:
     schema = save_version(
-        session, principal, body.definitions, expected_version=body.expected_version
+        session,
+        principal,
+        body.definitions,
+        expected_version=body.expected_version,
+        sync_ai_inference=sync_ai_inference,
     )
     result = ActiveSchemaPublic.model_validate(schema)
     if body.redraft:
