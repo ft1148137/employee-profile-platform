@@ -316,10 +316,11 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                     )
                 ).one()
                 schema = get_schema(session, org_id)
+                current_scope = drafting_scope(session, org_id)
                 capabilities = [
                     c
                     for c in list_capabilities(session, org_id, schema.id)
-                    if c.key not in scope.excluded_capability_keys
+                    if c.key not in current_scope.excluded_capability_keys
                 ]
                 records = collect(session, org_id, employee)
                 setting = read_setting(session, org_id)

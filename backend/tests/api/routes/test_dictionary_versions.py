@@ -408,7 +408,7 @@ def test_dictionary_notification_migration(migration_engine: Engine) -> None:
 
 
 def test_redraft_only_queues_pending_owner_and_matches_published_key(
-    demo: tuple, client: TestClient, db: Session
+    demo: tuple, client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from app.domains.capability.models import CapabilityDefinition
     from app.domains.change_request.claim import ClaimAfter
@@ -502,6 +502,36 @@ def test_redraft_only_queues_pending_owner_and_matches_published_key(
     ).one()
     assert row.op == "modify" and row.target_claim_id == claim.id
     db.commit()
+    from app.authz.principal import Principal
+    from app.domains.drafting import service as drafting
+
+    seen: list[list[str]] = []
+
+    def draft(_records: object, capabilities: list, _config: object) -> tuple:
+        seen.append([c.key for c in capabilities])
+        if len(seen) == 1:
+            for definition in definitions:
+                if definition["key"] == "automated_testing":
+                    definition["ai_inference"] = False
+            assert (
+                save(
+                    client,
+                    url,
+                    auth["admin"],
+                    upload(client, url, auth["admin"], definitions),
+                ).status_code
+                == 200
+            )
+        return [], {"actor_type": "agent"}
+
+    monkeypatch.setattr(drafting.model, "draft", draft)
+    db.rollback()
+    drafting.run_drafting(
+        Principal.system_worker(org_id),
+        [str(employees[code].id) for code in ("E01", "E02")],
+    )
+    assert len(seen) == 2
+    assert "automated_testing" in seen[0] and "automated_testing" not in seen[1]
     from app.domains.drafting.service import InvalidDraft
 
     with pytest.raises(InvalidDraft, match="词典已更新"):
