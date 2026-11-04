@@ -23,7 +23,7 @@ from app.domains.drafting import service
 from app.domains.drafting.collect import CollectedRecord
 from app.domains.drafting.model import DraftItem
 from app.domains.evidence.service import retract_evidence
-from app.domains.model.client import ModelConfig
+from app.domains.model.pi_client import PiModelConfig
 from app.domains.org.models import Employee, EmploymentStatus, ExternalIdentity
 from app.domains.profile.models import ProfileProgress
 from app.worker.app import app
@@ -33,7 +33,7 @@ from tests.domains.test_ingest import ingest, person, record, rows
 from tests.test_worker import recover_stalled_jobs
 from tests.utils.migrations import migrate
 
-pytestmark = pytest.mark.xdist_group("litellm")
+pytestmark = pytest.mark.xdist_group("model")
 
 
 def work_queue() -> None:
@@ -155,7 +155,7 @@ def test_queue_progress_retry(
     def update_source(
         records: list[CollectedRecord],
         capabilities: list[CapabilityDefinition],
-        config: ModelConfig,
+        config: PiModelConfig,
     ) -> tuple[list[DraftItem], dict[str, JsonValue]]:
         items, generated_by = original_draft(records, capabilities, config)
         if items and len(records) > 1:

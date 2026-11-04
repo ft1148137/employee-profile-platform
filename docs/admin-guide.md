@@ -136,7 +136,7 @@
 | 云端 API | 选择 OpenAI、Anthropic、DeepSeek、通义千问、Kimi（国际/中国/Coding）或 OpenRouter；填写模型 ID（如 `gpt-4o-mini`）和 API key。目录内提供方地址固定；通义千问选择百炼区域 |
 | 本地模型 | 选择本地模型，填写 Ollama 模型 ID（如 `qwen3`）、服务器可访问的 base URL（如 `http://ollama:11434`），按服务要求填写密钥 |
 | 通用 OpenAI 兼容接口 | 部署模型 ID（不加 `openai/`）、兼容接口的 base URL（通常含 `/v1`）、该接口密钥 |
-| ChatGPT 订阅 | 如 `chatgpt/gpt-6.1-sol`、推理强度；不填 base URL 或 API key，按下文连接 |
+| ChatGPT 订阅 | 如 `chatgpt/gpt-5.4`、推理强度；不填 base URL 或 API key，按下文连接 |
 
 推理强度可选 `off/minimal/low/medium/high/xhigh`。目录模型不支持的档位会在保存时报错；自定义服务由管理员确认支持，保存后务必测试连接。Pi 服务不可用时无法保存启用的配置，请稍后重试。升级时不能识别的旧模型会关闭，页面提示「请重新选择提供方」，原密钥保留。
 
@@ -144,9 +144,9 @@
 
 本平台不支持 Claude 订阅登录。按项目 D5，Claude 使用 Anthropic API key，订阅 OAuth 不用于本平台的第三方调用，参阅 [Anthropic 条款说明](https://code.claude.com/docs/en/legal-and-compliance) 和 [消费者条款](https://www.anthropic.com/legal/consumer-terms)。
 
-ChatGPT：先在个人 ChatGPT 安全设置允许设备码登录（企业工作区可能要管理员允许），在本平台点「连接 ChatGPT」，打开页面给出的链接、输入验证码并确认；等待显示已连接，再启用并保存。[官方设备码说明](https://learn.chatgpt.com/docs/auth)。断开时先点「断开连接」，再到 ChatGPT 安全设置退出相关会话。它通过 LiteLLM 使用 Codex 后端，并非官方第三方集成计划，服务限制可能变化。
+ChatGPT：在本平台点「连接 ChatGPT」，打开授权链接并登录，将浏览器最后跳转的完整网址（包含 code 和 state）粘贴回来，点「完成连接」，显示已连接后再启用并保存。浏览器无法打开 localhost 回调页面是正常现象，复制地址栏网址即可。授权链接 15 分钟有效，只能由发起的管理员使用一次；可点「取消连接」重新开始。断开后请到 ChatGPT 安全设置退出相关会话。它通过 Pi 的 Codex 后端使用订阅，服务限制可能变化。
 
-遇到 5 小时或每周用量上限时起草会暂停，在进度页显示原因和预计恢复时间，之后自动续跑；取不到恢复时间时约 30 分钟重试，实际配额以账号页面为准。个人套餐请在 ChatGPT 数据控制中核对用于改进模型的数据选项；真实员工数据建议用 Business/Enterprise 或 API，并由企业确认数据政策。本机 Codex 只读挂载仅供开发验证，不能作为生产连接方式。
+遇到 5 小时或每周用量上限时起草会暂停，在进度页显示原因和预计恢复时间，之后自动续跑；取不到恢复时间时约 30 分钟重试，实际配额以账号页面为准。个人套餐请在 ChatGPT 数据控制中核对用于改进模型的数据选项；真实员工数据建议用 Business/Enterprise 或 API，并由企业确认数据政策。只配订阅时，全企业员工和内置机器人共用一个账号的额度。目前令牌临近过期会提示重新连接，自动刷新与本机开发验证将在 NERE-104 恢复。
 
 ## 生成初始画像与进度
 

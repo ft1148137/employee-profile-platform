@@ -82,43 +82,46 @@ test("model kinds, saved secret, destination changes and disabling preserve conf
   await expect(page.getByLabel("base URL（填到 /v1）")).toBeVisible()
   await page.getByLabel("模型类型").selectOption("chatgpt_subscription")
   await expect(page.getByLabel("模型名", { exact: true })).toHaveValue(
-    "chatgpt/gpt-6.1-sol",
+    "chatgpt/gpt-5.4",
   )
   await expect(page.getByLabel("推理强度")).toHaveValue("high")
   await expect(page.getByLabel(/密钥/)).toHaveCount(0)
 })
 
-test("ChatGPT device login, connection and disconnect", async ({ page }) => {
+test("ChatGPT authorization callback, connection and disconnect", async ({
+  page,
+}) => {
   await logInUser(
     page,
     "admin@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
-  let polls = 0
   let started = false
   let disconnected = false
   await page.route("**/model-setting/chatgpt/login", async (route) => {
     if (route.request().method() === "POST") started = true
     const pending = {
       status: "pending",
-      user_code: "TEST-CODE",
-      verification_url: "https://auth.openai.com/device",
+      verification_url: "https://auth.openai.com/oauth/authorize?state=test",
       expires_at: new Date(Date.now() + 900000).toISOString(),
     }
-    const json =
-      !started || disconnected
-        ? { status: "none" }
-        : polls++ < 1
-          ? pending
-          : {
-              status: "connected",
-              account: {
-                email: "synthetic@example.com",
-                plan_type: "business",
-                needs_relogin: false,
-              },
-            }
+    const json = !started || disconnected ? { status: "none" } : pending
     await route.fulfill({ json })
+  })
+  await page.route("**/model-setting/chatgpt/callback", async (route) => {
+    expect(route.request().postDataJSON()).toEqual({
+      input: "http://localhost:1455/auth/callback?code=test&state=test",
+    })
+    await route.fulfill({
+      json: {
+        status: "connected",
+        account: {
+          email: "synthetic@example.com",
+          plan_type: "business",
+          needs_relogin: false,
+        },
+      },
+    })
   })
   await page.route("**/model-setting/chatgpt", async (route) => {
     disconnected = true
@@ -134,11 +137,16 @@ test("ChatGPT device login, connection and disconnect", async ({ page }) => {
   ])
     await expect(page.getByText(text, { exact: false })).toBeVisible()
   await page.getByRole("button", { name: "连接 ChatGPT", exact: true }).click()
-  await expect(page.getByText("TEST-CODE", { exact: true })).toBeVisible()
   await expect(
-    page.getByRole("link", { name: "https://auth.openai.com/device" }),
+    page.getByRole("link", { name: "打开 ChatGPT 授权页面" }),
   ).toBeVisible()
-  await expect(page.getByText(/已连接：synthetic@example.com/)).toBeVisible({
+  await page
+    .getByLabel("重定向网址")
+    .fill("http://localhost:1455/auth/callback?code=test&state=test")
+  await page.getByRole("button", { name: "完成连接" }).click()
+  await expect(
+    page.getByText(/已连接 ChatGPT：synthetic@example.com/),
+  ).toBeVisible({
     timeout: 15000,
   })
   await expect(page.getByText(/令牌在 OpenAI 那边不会失效/)).toBeVisible()
@@ -162,36 +170,3 @@ for (const role of ["manager", "employee"])
     await expect(page.getByRole("alert")).toHaveText("需要企业管理员权限")
     await expect(page.getByLabel("模型类型")).toHaveCount(0)
   })
-
-test("local Codex mode shows its status without device login", async ({
-  page,
-}) => {
-  await logInUser(
-    page,
-    "admin@demo.example.com",
-    process.env.DEMO_USER_PASSWORD!,
-  )
-  await page.route("**/model-setting", async (route) => {
-    const response = await route.fetch()
-    await route.fulfill({
-      json: {
-        ...(await response.json()),
-        kind: "chatgpt_subscription",
-        model: "chatgpt/gpt-6.1-sol",
-        local_codex: true,
-      },
-    })
-  })
-  let loginCalls = 0
-  page.on("request", (request) => {
-    if (request.url().endsWith("/chatgpt/login")) loginCalls++
-  })
-  await page.goto("/admin/model")
-  await expect(
-    page.getByText("正在使用本机 Codex 登录（开发模式）"),
-  ).toBeVisible()
-  await expect(
-    page.getByRole("button", { name: "连接 ChatGPT", exact: true }),
-  ).toHaveCount(0)
-  expect(loginCalls).toBe(0)
-})

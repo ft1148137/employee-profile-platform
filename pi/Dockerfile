@@ -6,5 +6,5 @@ RUN npm ci --ignore-scripts --omit=dev --no-audit --no-fund
 FROM gcr.io/distroless/nodejs22-debian12:nonroot@sha256:13593b7570658e8477de39e2f4a1dd25db2f836d68a0ba771251572d23bb4f8e
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
-COPY package.json package-lock.json sample.mjs sample.test.mjs server.mjs egress.mjs ./
+COPY package.json package-lock.json sample.mjs sample.test.mjs server.mjs egress.mjs auth.mjs ./
 CMD ["server.mjs"]
