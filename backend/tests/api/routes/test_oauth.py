@@ -847,3 +847,160 @@ def test_resource_matches_canonical_metadata(
             {**headers(pair["access_token"]), "Origin": "https://profiles.example"},
         )
         assert not call(local, active, "get_my_profile", {})["isError"]
+
+
+@pytest.mark.parametrize(
+    ("policy", "reason"),
+    [
+        (None, None),
+        ("disabled", "企业已关闭"),
+        ("allowlist", "允许列表"),
+        ("admin", "没有员工身份"),
+    ],
+)
+def test_consent_preview(
+    registered: dict,
+    demo: tuple,
+    client: TestClient,
+    policy: str | None,
+    reason: str | None,
+) -> None:
+    url, _, auth = demo
+    if policy in ("disabled", "allowlist"):
+        client.put(
+            url + "/mcp-setting",
+            headers=auth["admin"],
+            json={
+                "enabled": policy != "disabled",
+                "allowed_clients": ["Other client"] if policy == "allowlist" else [],
+            },
+        )
+    endpoint = "/api/v1/oauth/consent"
+    request = request_for(client, registered)
+    params = {"org_id": registered["consent_org_id"], "request": request}
+    result = client.get(
+        endpoint,
+        params=params,
+        headers=auth["admin" if policy == "admin" else "employee"],
+    )
+    assert result.status_code == 200, result.text
+    assert result.headers["cache-control"] == "no-store"
+    data = result.json()
+    assert (
+        data["client_name"] == "Synthetic client"
+        and data["callback_host"] == "client.example"
+    )
+    assert data["org_name"]
+    assert reason in data["reason"] if reason else data["reason"] is None
+    assert "client_secret" not in result.text and request not in result.text
+    assert client.get(endpoint, params=params).status_code == 401
+    assert (
+        client.get(endpoint, params=params, headers=auth["foreign"]).status_code == 404
+    )
+    assert (
+        client.get(
+            endpoint,
+            params={**params, "request": request + "tampered"},
+            headers=auth["employee"],
+        ).status_code
+        == 400
+    )
+
+
+def test_grants_owner_tenant_revocation(
+    registered: dict, demo: tuple, db: Session, client: TestClient
+) -> None:
+    url, _, auth = demo
+    pair = token(
+        client, registered, approve(client, registered, auth["employee"])
+    ).json()
+    endpoint = "/api/v1/oauth/grants"
+    params = {"org_id": registered["consent_org_id"]}
+    result = client.get(endpoint, params=params, headers=auth["employee"])
+    assert result.status_code == 200 and result.headers["cache-control"] == "no-store"
+    grant = result.json()[0]
+    assert set(grant) == {"id", "client_name", "created_at", "last_used_at"}
+    assert grant["client_name"] == "Synthetic client" and grant["last_used_at"] is None
+    assert client.get(endpoint, params=params, headers=auth["admin"]).json() == []
+    assert client.get(endpoint, params=params, headers=auth["manager"]).json() == []
+    assert (
+        client.get(endpoint, params=params, headers=auth["foreign"]).status_code == 404
+    )
+    active = initialize(client, headers(pair["access_token"]), name="Synthetic client")
+    assert not call(client, active, "get_my_profile", {})["isError"]
+    assert client.get(endpoint, params=params, headers=auth["employee"]).json()[0][
+        "last_used_at"
+    ]
+    used_at = client.get(endpoint, params=params, headers=auth["employee"]).json()[0][
+        "last_used_at"
+    ]
+    row = db.exec(
+        select(PersonalAccessToken).where(
+            PersonalAccessToken.token_hash == digest(pair["access_token"])
+        )
+    ).one()
+    row.expires_at = utc_now() - timedelta(seconds=1)
+    db.add(row)
+    db.commit()
+    rotated = refresh(client, registered, pair["refresh_token"])
+    assert rotated.status_code == 200
+    pair = rotated.json()
+    active = headers(pair["access_token"])
+    assert (
+        client.get(endpoint, params=params, headers=auth["employee"]).json()[0][
+            "last_used_at"
+        ]
+        == used_at
+    )
+    assert client.get(url + "/me/access-tokens", headers=auth["employee"]).json() == []
+    for role in ("admin", "manager", "foreign"):
+        assert (
+            client.delete(
+                endpoint + "/" + grant["id"], params=params, headers=auth[role]
+            ).status_code
+            == 404
+        )
+    # Same user cannot use a different tenant to revoke this grant.
+    grant_row = db.get(OAuthGrant, UUID(grant["id"]))
+    assert grant_row is not None
+    foreign_org = db.exec(
+        select(OrgMembership.org_id).where(
+            OrgMembership.user_id == grant_row.user_id,
+            OrgMembership.org_id != grant_row.org_id,
+        )
+    ).first()
+    assert foreign_org is not None
+    assert (
+        client.delete(
+            endpoint + "/" + grant["id"],
+            params={"org_id": str(foreign_org)},
+            headers=auth["employee"],
+        ).status_code
+        == 404
+    )
+    assert (
+        client.delete(
+            endpoint + "/" + grant["id"], params=params, headers=auth["employee"]
+        ).status_code
+        == 204
+    )
+    assert client.get(endpoint, params=params, headers=auth["employee"]).json() == []
+    assert client.post("/mcp", headers=active, json={}).status_code == 401
+    assert refresh(client, registered, pair["refresh_token"]).status_code == 400
+    assert (
+        client.delete(
+            endpoint + "/" + grant["id"], params=params, headers=auth["employee"]
+        ).status_code
+        == 204
+    )
+    assert (
+        len(
+            db.exec(
+                select(AuditEvent).where(
+                    AuditEvent.org_id == UUID(params["org_id"]),
+                    AuditEvent.action == "oauth.revoked",
+                )
+            ).all()
+        )
+        == 1
+    )

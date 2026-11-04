@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from mcp.server.auth.provider import TokenError
 from mcp.shared.auth import OAuthToken
-from sqlmodel import Session, col, delete, select, update
+from sqlmodel import Session, col, delete, func, select, update
 
 from app.domains.access_token.auth import credential_principal
 from app.domains.access_token.models import (
@@ -142,6 +142,13 @@ def exchange(
         ).one_or_none()
     if consumed is None:
         raise TokenError("invalid_grant")
+    # Carry grant activity across expiry cleanup and refresh-token rotation.
+    last_used_at = session.exec(
+        select(func.max(PersonalAccessToken.last_used_at)).where(
+            PersonalAccessToken.org_id == grant.org_id,
+            PersonalAccessToken.oauth_grant_id == grant.id,
+        )
+    ).one()
     session.exec(
         delete(PersonalAccessToken).where(
             col(PersonalAccessToken.org_id) == grant.org_id,
@@ -156,6 +163,7 @@ def exchange(
             user_id=grant.user_id,
             employee_id=grant.employee_id,
             oauth_grant_id=grant.id,
+            last_used_at=last_used_at,
             name=client.client_metadata["client_name"],
             client_kind="oauth",
             token_hash=digest(access),

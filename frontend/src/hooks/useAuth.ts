@@ -8,13 +8,13 @@ import {
   type UserPublic,
   UsersService,
 } from "@/client"
-import { handleError } from "@/utils"
+import { handleError, safeNext } from "@/utils"
 
 const isLoggedIn = () => {
   return localStorage.getItem("access_token") !== null
 }
 
-const useAuth = () => {
+const useAuth = (next?: string) => {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -35,7 +35,7 @@ const useAuth = () => {
   const loginMutation = useMutation({
     mutationFn: login,
     onSuccess: () => {
-      navigate({ to: "/" })
+      navigate({ href: safeNext(next) })
     },
     onError: handleError.bind((description: string) =>
       toast.error("登录失败", { description }),

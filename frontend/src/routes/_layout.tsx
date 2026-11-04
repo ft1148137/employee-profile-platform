@@ -12,17 +12,22 @@ import { isLoggedIn } from "@/hooks/useAuth"
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
+    const search =
+      location.pathname === "/oauth/consent"
+        ? { next: location.href }
+        : undefined
     if (!isLoggedIn()) {
       throw redirect({
         to: "/login",
+        search,
       })
     }
     try {
       // The route guard handles auth errors without the global reload interceptor.
       const { data: user } = await UsersService.readUserMe({ axios })
       if (user.must_change_password) {
-        throw redirect({ to: "/change-password" })
+        throw redirect({ to: "/change-password", search })
       }
     } catch (error) {
       if (
@@ -30,10 +35,10 @@ export const Route = createFileRoute("/_layout")({
         [401, 403].includes(error.response?.status ?? 0)
       ) {
         if (error.response?.data?.detail?.code === "password_change_required") {
-          throw redirect({ to: "/change-password" })
+          throw redirect({ to: "/change-password", search })
         }
         localStorage.removeItem("access_token")
-        throw redirect({ to: "/login" })
+        throw redirect({ to: "/login", search })
       }
       throw error
     }

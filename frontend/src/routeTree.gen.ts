@@ -29,6 +29,7 @@ import { Route as LayoutAdminRosterRouteImport } from './routes/_layout/admin.ro
 import { Route as LayoutAdminSourcesRouteImport } from './routes/_layout/admin.sources'
 import { Route as LayoutEmployeesIndexRouteImport } from './routes/_layout/employees.index'
 import { Route as LayoutEmployeesEmployeeIdRouteImport } from './routes/_layout/employees.$employeeId'
+import { Route as LayoutOauthConsentRouteImport } from './routes/_layout/oauth/consent'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -130,6 +131,11 @@ const LayoutEmployeesEmployeeIdRoute =
     path: '/employees/$employeeId',
     getParentRoute: () => LayoutRoute,
   } as any)
+const LayoutOauthConsentRoute = LayoutOauthConsentRouteImport.update({
+  id: '/oauth/consent',
+  path: '/oauth/consent',
+  getParentRoute: () => LayoutRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -150,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/admin/roster': typeof LayoutAdminRosterRoute
   '/admin/sources': typeof LayoutAdminSourcesRoute
   '/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
+  '/oauth/consent': typeof LayoutOauthConsentRoute
   '/employees/': typeof LayoutEmployeesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -171,6 +178,7 @@ export interface FileRoutesByTo {
   '/admin/roster': typeof LayoutAdminRosterRoute
   '/admin/sources': typeof LayoutAdminSourcesRoute
   '/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
+  '/oauth/consent': typeof LayoutOauthConsentRoute
   '/employees': typeof LayoutEmployeesIndexRoute
 }
 export interface FileRoutesById {
@@ -194,6 +202,7 @@ export interface FileRoutesById {
   '/_layout/admin/roster': typeof LayoutAdminRosterRoute
   '/_layout/admin/sources': typeof LayoutAdminSourcesRoute
   '/_layout/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
+  '/_layout/oauth/consent': typeof LayoutOauthConsentRoute
   '/_layout/employees/': typeof LayoutEmployeesIndexRoute
 }
 export interface FileRouteTypes {
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/admin/roster'
     | '/admin/sources'
     | '/employees/$employeeId'
+    | '/oauth/consent'
     | '/employees/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -238,6 +248,7 @@ export interface FileRouteTypes {
     | '/admin/roster'
     | '/admin/sources'
     | '/employees/$employeeId'
+    | '/oauth/consent'
     | '/employees'
   id:
     | '__root__'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/_layout/admin/roster'
     | '/_layout/admin/sources'
     | '/_layout/employees/$employeeId'
+    | '/_layout/oauth/consent'
     | '/_layout/employees/'
   fileRoutesById: FileRoutesById
 }
@@ -412,6 +424,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutEmployeesEmployeeIdRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/oauth/consent': {
+      id: '/_layout/oauth/consent'
+      path: '/oauth/consent'
+      fullPath: '/oauth/consent'
+      preLoaderRoute: typeof LayoutOauthConsentRouteImport
+      parentRoute: typeof LayoutRoute
+    }
   }
 }
 
@@ -431,6 +450,7 @@ interface LayoutRouteChildren {
   LayoutAdminRosterRoute: typeof LayoutAdminRosterRoute
   LayoutAdminSourcesRoute: typeof LayoutAdminSourcesRoute
   LayoutEmployeesEmployeeIdRoute: typeof LayoutEmployeesEmployeeIdRoute
+  LayoutOauthConsentRoute: typeof LayoutOauthConsentRoute
   LayoutEmployeesIndexRoute: typeof LayoutEmployeesIndexRoute
 }
 
@@ -450,6 +470,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRosterRoute: LayoutAdminRosterRoute,
   LayoutAdminSourcesRoute: LayoutAdminSourcesRoute,
   LayoutEmployeesEmployeeIdRoute: LayoutEmployeesEmployeeIdRoute,
+  LayoutOauthConsentRoute: LayoutOauthConsentRoute,
   LayoutEmployeesIndexRoute: LayoutEmployeesIndexRoute,
 }
 
