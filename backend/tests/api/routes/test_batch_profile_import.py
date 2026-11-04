@@ -381,3 +381,15 @@ def test_concurrent_import_creates_once(
         )
         == 1
     )
+
+
+def test_unicode_email_uses_same_case_folding(
+    demo: tuple, client: TestClient, db: Session
+) -> None:
+    subject = demo[1]["E03"]
+    subject.work_email = "straße@example.com"
+    db.add(subject)
+    db.commit()
+    response = upload(client, demo, [("unicode.json", person(subject))])
+    assert response.status_code == 200, response.text
+    assert response.json()[0]["status"] == "created"

@@ -1,7 +1,6 @@
 from typing import Literal
 
 from pydantic import BaseModel
-from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.authz.deps import OrgAdminRequired
@@ -79,6 +78,17 @@ def import_profiles(
     schema = get_schema(session, org_id)
     capabilities = {c.key: c for c in list_capabilities(session, org_id, schema.id)}
     emails = {p.employee_email.casefold() for _, _, p in people}
+    # SQL lower() does not implement the roster's Unicode casefold rules.
+    employee_ids = {
+        id_
+        for id_, email in session.exec(
+            select(Employee.id, Employee.work_email).where(
+                Employee.org_id == org_id,
+                Employee.employment_status == EmploymentStatus.ACTIVE,
+            )
+        ).all()
+        if email and email.casefold() in emails
+    }
     subjects = {
         e.work_email.casefold(): e
         for e in session.exec(
@@ -86,7 +96,7 @@ def import_profiles(
             .where(
                 Employee.org_id == org_id,
                 Employee.employment_status == EmploymentStatus.ACTIVE,
-                func.lower(Employee.work_email).in_(emails),
+                col(Employee.id).in_(employee_ids),
             )
             .order_by(col(Employee.id))
             .with_for_update()
