@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     LOGIN_LOCK_MINUTES: int = Field(default=15, gt=0, le=1440)
     FRONTEND_HOST: str = "http://localhost:5173"
     FASTAPI_ENV: Literal["development"] | None = None
-    CHATGPT_CODEX_AUTH_FILE: Path | None = None
+    CHATGPT_LOCAL_AUTH: bool = False
     PI_URL: str = "http://pi:8081"
     PI_SERVICE_TOKEN: SecretStr = Field(default=SecretStr("changethis"), repr=False)
     SEED_DEMO_DATA: bool = False
@@ -84,8 +84,8 @@ class Settings(BaseSettings):
             "FIRST_SUPERUSER_PASSWORD", self.FIRST_SUPERUSER_PASSWORD
         )
 
-        if self.CHATGPT_CODEX_AUTH_FILE and self.FASTAPI_ENV != "development":
-            raise ValueError("CHATGPT_CODEX_AUTH_FILE 只允许在开发模式使用")
+        if self.CHATGPT_LOCAL_AUTH and self.FASTAPI_ENV != "development":
+            raise ValueError("CHATGPT_LOCAL_AUTH 只允许在开发模式使用")
         return self
 
 

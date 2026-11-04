@@ -185,7 +185,11 @@ const login = async ({ onAuth, onManualCodeInput }) => {
   if (input.includes('failure')) throw new Error('synthetic-refresh sensitive upstream');
   return { access: 'synthetic-access', refresh: 'synthetic-refresh', expires: Date.now() + 7200000, accountId: 'synthetic-account' };
 };
-createPiServer({ token: process.env.PI_SERVICE_TOKEN, login,
+const refresh = async value => {
+  if (value === 'synthetic-rejected-refresh') throw new Error('synthetic-access synthetic-rejected-refresh upstream');
+  return { access: 'rotated-access', refresh: 'rotated-refresh', expires: Date.now() + 7200000, accountId: 'synthetic-account' };
+};
+createPiServer({ token: process.env.PI_SERVICE_TOKEN, login, refresh,
   streamFn: (model, context, options) => streamSimple(model.provider === 'openai-codex'
     ? { ...model, provider: 'openai-compatible', api: 'openai-completions', baseUrl: process.env.TEST_MODEL_URL } : model, context, options)
 }).listen(Number(process.env.PORT), '127.0.0.1');

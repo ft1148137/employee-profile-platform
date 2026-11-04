@@ -6,13 +6,112 @@ import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { createInterface } from 'node:readline';
 import { test } from 'node:test';
 import { createAssistantMessageEventStream } from '@mariozechner/pi-ai';
 import { createPiServer, quota } from './server.mjs';
 import { egress } from './egress.mjs';
+
+const jwt = seconds => `synthetic.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + seconds,
+  'https://api.openai.com/auth': { chatgpt_account_id: 'synthetic-account' } })).toString('base64url')}.synthetic`;
+
+test('refresh is internal, accepts only refresh, rotates once and redacts upstream failures', async t => {
+  let calls = 0;
+  const { request, logs } = await setup(t, { refresh: async value => {
+    calls++;
+    assert.equal(egress.getStore().origin, 'https://auth.openai.com');
+    if (value === 'rejected-refresh') throw new Error('secret-access rejected-refresh upstream');
+    return { access: 'rotated-access', refresh: 'rotated-refresh', expires: Date.now() + 7200000, accountId: 'synthetic-account' };
+  } });
+  const path = '/v1/auth/openai-codex/refresh';
+  assert.equal((await request(path, 'POST', { refresh: 'secret-refresh' }, {})).status, 401);
+  for (const data of [{}, { refresh: '' }, { refresh: 'secret-refresh', org_id: 'x' }])
+    assert.equal((await request(path, 'POST', data)).status, 400);
+  const rotated = await (await request(path, 'POST', { refresh: 'secret-refresh' })).json();
+  assert.equal(rotated.refresh, 'rotated-refresh');
+  const failed = await (await request(path, 'POST', { refresh: 'rejected-refresh' })).text();
+  assert.equal(JSON.parse(failed).code, 'refresh_failed');
+  assert.equal(calls, 2);
+  assert.doesNotMatch(failed + JSON.stringify(logs), /secret-|rejected-refresh|rotated-|upstream/);
+});
+
+test('locked SDK refresh sends a single request, including when its response is lost', async t => {
+  const original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  let calls = 0;
+  globalThis.fetch = async (url, options) => {
+    if (new URL(url).origin !== 'https://auth.openai.com') return original(url, options);
+    calls++;
+    assert.equal(new URL(url).origin, 'https://auth.openai.com');
+    assert.equal(options.body.get('refresh_token'), 'secret-refresh');
+    throw new Error('secret-refresh upstream');
+  };
+  const { request, logs } = await setup(t);
+  const failed = await (await request('/v1/auth/openai-codex/refresh', 'POST', { refresh: 'secret-refresh' })).text();
+  assert.equal(JSON.parse(failed).code, 'refresh_failed');
+  assert.equal(calls, 1);
+  assert.doesNotMatch(failed + JSON.stringify(logs), /secret-refresh|upstream/);
+});
+
+test('local auth uses only access in a private temporary file, removes it after done/cancel, never refreshes', async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'pi-local-test-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const source = join(directory, 'auth.json');
+  const access = jwt(7200);
+  const original = JSON.stringify({ tokens: { access_token: access, refresh_token: 'local-refresh', account_id: 'synthetic-account' } });
+  await writeFile(source, original, { mode: 0o400 });
+  let calls = 0;
+  const { start, logs } = await setup(t, { environment: 'development', localAuthFile: source, localAuthDirectory: directory,
+    refresh: () => { throw new Error('must never refresh'); },
+    streamFn: fake(undefined, (_context, options) => {
+      calls++;
+      assert.equal(options.apiKey, access);
+      const files = readdirSync(directory).filter(n => n.startsWith('codex-'));
+      assert.equal(files.length, 1);
+      const path = join(directory, files[0], 'access.json');
+      assert.equal(statSync(path).mode & 0o777, 0o600);
+      assert.deepEqual(JSON.parse(readFileSync(path, 'utf8')), {
+        access, accountId: 'synthetic-account', expires: JSON.parse(Buffer.from(access.split('.')[1], 'base64url')).exp * 1000,
+      });
+    }) });
+  for (const cancel of [false, true]) {
+    const data = body();
+    data.model = { provider: 'openai-codex', api: 'openai-codex-responses', id: 'gpt-5.4',
+      baseUrl: 'https://chatgpt.com/backend-api', api_key: 'local-codex', thinkingLevel: 'high' };
+    const run = await start(data);
+    const event = await run.next();
+    if (cancel) await run.cancel();
+    else await run.result(event.call_id);
+    assert.equal((await run.next()).type, cancel ? 'error' : 'done');
+    await run.finished();
+    assert.deepEqual(readdirSync(directory), ['auth.json']);
+  }
+  assert.ok(calls >= 2);
+  assert.equal(readFileSync(source, 'utf8'), original);
+  assert.doesNotMatch(JSON.stringify(logs), new RegExp(`${access}|local-refresh`));
+});
+
+test('local auth requires development and at least an hour remaining', async t => {
+  assert.throws(() => createPiServer({ token, localAuthFile: '/unused' }), /development/);
+  const directory = await mkdtemp(join(tmpdir(), 'pi-expiry-test-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const source = join(directory, 'auth.json');
+  const { request } = await setup(t, { environment: 'development', localAuthFile: source, localAuthDirectory: directory,
+    refresh: () => { throw new Error('must never refresh'); } });
+  const data = body();
+  data.model = { provider: 'openai-codex', api: 'openai-codex-responses', id: 'gpt-5.4',
+    baseUrl: 'https://chatgpt.com/backend-api', api_key: 'local-codex', thinkingLevel: 'high' };
+  for (const tokens of [{ access_token: jwt(3599), refresh_token: 'local-refresh' }, { access_token: 'invalid' }]) {
+    await writeFile(source, JSON.stringify({ tokens }));
+    assert.equal((await (await request('/v1/turns', 'POST', data)).json()).code, 'local_auth_unavailable');
+    assert.deepEqual(readdirSync(directory), ['auth.json']);
+  }
+});
 
 const token = 'synthetic-service-secret';
 const auth = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -53,6 +152,7 @@ async function setup(t, options = {}) {
     assert.equal(response.status, 200);
     const lines = createInterface({ input: Readable.fromWeb(response.body), crlfDelay: Infinity })[Symbol.asyncIterator]();
     return { data, next: async () => JSON.parse((await lines.next()).value),
+      finished: () => lines.next(),
       result: (id, result = {}, is_error = false) => request(`/v1/turns/${data.run_id}/results/${id}`, 'POST', { result, is_error }),
       cancel: () => request(`/v1/turns/${data.run_id}`, 'DELETE'), response };
   }

@@ -20,7 +20,6 @@ from app.domains.model.schemas import (
     ModelSettingPublic,
     ModelSettingUpdate,
 )
-from app.domains.org.models import Organization
 
 
 class InvalidModelSetting(Exception):
@@ -40,7 +39,7 @@ def public_setting(setting: ModelSetting | None) -> ModelSettingPublic:
         **setting.model_dump(exclude={"api_key_ciphertext"}),
         has_api_key=bool(setting.api_key_ciphertext),
         chatgpt=ChatGPTStatus(
-            connected=bool(setting.chatgpt_auth_ciphertext),
+            connected=bool(setting.chatgpt_auth_ciphertext) or chatgpt.local_auth(),
             **(setting.chatgpt_account or {}),
         ),
     )
@@ -50,20 +49,11 @@ def save_setting(
     session: Session, principal: Principal, body: ModelSettingUpdate
 ) -> ModelSettingPublic:
     assert principal.user_id is not None
-    # Lock the organization too: concurrent first saves must serialize.
-    session.exec(
-        select(Organization)
-        .where(Organization.id == principal.org_id)
-        .with_for_update()
-    ).one()
-    setting = read_setting(session, principal.org_id)
-    if setting is None:
-        setting = ModelSetting(
-            org_id=principal.org_id, updated_by_user_id=principal.user_id
-        )
+    setting = chatgpt.locked_setting(session, principal)
     if (
         body.enabled
         and body.kind == "chatgpt_subscription"
+        and not chatgpt.local_auth()
         and not (
             setting.chatgpt_auth_ciphertext
             and not (setting.chatgpt_account or {}).get("needs_relogin")
