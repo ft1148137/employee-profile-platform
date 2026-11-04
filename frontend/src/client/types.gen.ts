@@ -795,6 +795,18 @@ export type DictionaryPreview = {
      */
     removed: Array<string>;
     /**
+     * Removed Claim Counts
+     */
+    removed_claim_counts: {
+        [key: string]: number;
+    };
+    /**
+     * Removed Item Counts
+     */
+    removed_item_counts: {
+        [key: string]: number;
+    };
+    /**
      * Errors
      */
     errors: Array<string>;
@@ -4221,6 +4233,36 @@ export type capabilitiesReadCapabilitiesResponses = {
 
 export type capabilitiesReadCapabilitiesResponse = capabilitiesReadCapabilitiesResponses[keyof capabilitiesReadCapabilitiesResponses];
 
+export type capabilitiesUpdateDictionaryData = {
+    body: SaveDictionary;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/capabilities';
+};
+
+export type capabilitiesUpdateDictionaryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilitiesUpdateDictionaryError = capabilitiesUpdateDictionaryErrors[keyof capabilitiesUpdateDictionaryErrors];
+
+export type capabilitiesUpdateDictionaryResponses = {
+    /**
+     * Successful Response
+     */
+    200: ActiveSchemaPublic;
+};
+
+export type capabilitiesUpdateDictionaryResponse = capabilitiesUpdateDictionaryResponses[keyof capabilitiesUpdateDictionaryResponses];
+
 export type capabilitiesExportDictionaryData = {
     body?: never;
     path: {
@@ -4341,6 +4383,66 @@ export type capabilitiesSaveDictionaryResponses = {
 };
 
 export type capabilitiesSaveDictionaryResponse = capabilitiesSaveDictionaryResponses[keyof capabilitiesSaveDictionaryResponses];
+
+export type capabilitiesReadDictionaryEditorData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/capabilities/editor';
+};
+
+export type capabilitiesReadDictionaryEditorErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilitiesReadDictionaryEditorError = capabilitiesReadDictionaryEditorErrors[keyof capabilitiesReadDictionaryEditorErrors];
+
+export type capabilitiesReadDictionaryEditorResponses = {
+    /**
+     * Successful Response
+     */
+    200: DictionaryPreview;
+};
+
+export type capabilitiesReadDictionaryEditorResponse = capabilitiesReadDictionaryEditorResponses[keyof capabilitiesReadDictionaryEditorResponses];
+
+export type capabilitiesPreviewDictionaryEditorData = {
+    body: SaveDictionary;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/capabilities/editor/preview';
+};
+
+export type capabilitiesPreviewDictionaryEditorErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilitiesPreviewDictionaryEditorError = capabilitiesPreviewDictionaryEditorErrors[keyof capabilitiesPreviewDictionaryEditorErrors];
+
+export type capabilitiesPreviewDictionaryEditorResponses = {
+    /**
+     * Successful Response
+     */
+    200: DictionaryPreview;
+};
+
+export type capabilitiesPreviewDictionaryEditorResponse = capabilitiesPreviewDictionaryEditorResponses[keyof capabilitiesPreviewDictionaryEditorResponses];
 
 export type capabilityTemplatesReadTemplatesData = {
     body?: never;

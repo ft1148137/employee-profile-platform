@@ -4,9 +4,10 @@ import { CapabilitiesService, type DictionaryPreview } from "@/client"
 import { OrgState } from "@/components/Profile/OrgState"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { useOrg } from "@/hooks/useOrg"
+import { DictionaryEditor } from "./DictionaryEditor"
+import { DictionaryPreviewPanel } from "./DictionaryPreviewPanel"
 
 export function CapabilityDictionary() {
   const { org, roles } = useOrg()
@@ -23,6 +24,7 @@ export function CapabilityDictionary() {
 function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
   const client = useQueryClient()
   const fileInput = useRef<HTMLInputElement>(null)
+  const [editing, setEditing] = useState(false)
   const [filename, setFilename] = useState("")
   const [preview, setPreview] = useState<DictionaryPreview | null>(null)
   const [redraft, setRedraft] = useState(false)
@@ -145,7 +147,10 @@ function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
             disabled={busy}
             onChange={(event) => {
               const file = event.target.files?.[0]
-              if (file) upload.mutate(file)
+              if (file) {
+                setEditing(false)
+                upload.mutate(file)
+              }
               event.target.value = ""
             }}
           />
@@ -156,6 +161,18 @@ function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
           >
             选择词典文件
           </Button>
+          <Button
+            variant="outline"
+            disabled={busy || current.isPending}
+            onClick={() => {
+              setEditing(true)
+              setPreview(null)
+              setError(null)
+              setSaved(false)
+            }}
+          >
+            在网页上编辑
+          </Button>
           {filename && (
             <p className="break-all text-sm text-muted-foreground">
               {filename}
@@ -163,56 +180,26 @@ function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
           )}
           {upload.isPending && <p role="status">正在分析词典…</p>}
           {preview && (
-            <section className="space-y-4" aria-label="词典改动预览">
-              <h3 className="font-semibold">
-                保存为第 {preview.expected_version + 1} 版
-              </h3>
-              {(
-                [
-                  ["新增", preview.added],
-                  ["修改", preview.modified],
-                  ["删除", preview.removed],
-                ] as const
-              ).map(([label, keys]) => (
-                <p key={label}>
-                  {label} {keys.length} 项：{keys.join("、") || "无"}
-                </p>
-              ))}
-              {preview.errors.length > 0 && (
-                <ul role="alert" className="space-y-2 text-destructive">
-                  {preview.errors.map((message, index) => (
-                    <li key={`${index}:${message}`}>{message}</li>
-                  ))}
-                </ul>
-              )}
-              <p className="text-sm text-muted-foreground">
-                删除的能力会移至画像的「已不在当前词典中的能力」。未提交请求会更新，被删除的项会移除；等级失效时员工需重新选择或清空。
-              </p>
-              <label
-                className="flex items-start gap-3"
-                htmlFor="dictionary-redraft"
-              >
-                <Checkbox
-                  id="dictionary-redraft"
-                  checked={redraft}
-                  disabled={busy}
-                  onCheckedChange={(value) => setRedraft(value === true)}
-                />
-                <span>按新词典重新起草还没过目的初始画像</span>
-              </label>
-              <Button
-                disabled={
-                  busy ||
-                  preview.errors.length > 0 ||
-                  !preview.definitions.length
-                }
-                onClick={() => save.mutate()}
-              >
-                {save.isPending ? "正在保存…" : "确认保存新版本"}
-              </Button>
-            </section>
+            <DictionaryPreviewPanel
+              preview={preview}
+              busy={busy}
+              redraft={redraft}
+              onRedraft={setRedraft}
+              onSave={() => save.mutate()}
+            />
           )}
         </section>
+      )}
+      {admin && editing && (
+        <DictionaryEditor
+          orgId={orgId}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false)
+            setSaved(true)
+            client.invalidateQueries()
+          }}
+        />
       )}
       <SetupError error={error} />
       {saved && <p role="status">新词典已启用。</p>}
