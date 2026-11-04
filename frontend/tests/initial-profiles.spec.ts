@@ -280,7 +280,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
         .fill("系统判断的工作范围需要本人补充")
     await editor.getByLabel("新增能力").selectOption(newCapability.key)
     await editor
-      .getByLabel("陈述", { exact: true })
+      .getByRole("textbox", { name: "陈述", exact: true })
       .last()
       .fill("我补充了一段合成项目经历")
     await editor.getByLabel("依据说明").last().fill("本人完成了合成项目的验证")
@@ -289,9 +289,9 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     await editor.getByRole("button", { name: "关闭", exact: true }).click()
     await page.getByRole("button", { name: "继续修改", exact: true }).click()
     editor = page.getByRole("dialog")
-    await expect(editor.getByLabel("陈述", { exact: true }).last()).toHaveValue(
-      "我补充了一段合成项目经历",
-    )
+    await expect(
+      editor.getByRole("textbox", { name: "陈述", exact: true }).last(),
+    ).toHaveValue("我补充了一段合成项目经历")
     await editor
       .getByRole("button", { name: "预览并提交", exact: true })
       .click()
@@ -314,7 +314,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     await other.getByRole("button", { name: "继续修改", exact: true }).click()
     await other
       .getByRole("dialog")
-      .getByLabel("陈述", { exact: true })
+      .getByRole("textbox", { name: "陈述", exact: true })
       .last()
       .fill("另一标签页补充的最新经历")
     await other.getByRole("button", { name: "保存草稿", exact: true }).click()
