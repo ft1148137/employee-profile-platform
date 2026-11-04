@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test sample.test.mjs",
+    "test": "node --test sample.test.mjs server.test.mjs",
     "demo": "python3 demo.py"
   },
   "dependencies": {

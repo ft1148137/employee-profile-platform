@@ -7,6 +7,7 @@ from pydantic import (
     Field,
     HttpUrl,
     PostgresDsn,
+    SecretStr,
     field_validator,
     model_validator,
 )
@@ -30,6 +31,8 @@ class Settings(BaseSettings):
     FRONTEND_HOST: str = "http://localhost:5173"
     FASTAPI_ENV: Literal["development"] | None = None
     CHATGPT_CODEX_AUTH_FILE: Path | None = None
+    PI_URL: str = "http://pi:8081"
+    PI_SERVICE_TOKEN: SecretStr = Field(default=SecretStr("changethis"), repr=False)
     SEED_DEMO_DATA: bool = False
     DEMO_USER_PASSWORD: str | None = Field(default=None, min_length=8, max_length=128)
     DEMO_DATA_DIR: Path = Path(__file__).resolve().parents[3] / "examples/demo-org"
@@ -72,6 +75,9 @@ class Settings(BaseSettings):
                 "Configure both FIRST_SUPERUSER and FIRST_SUPERUSER_PASSWORD, or neither"
             )
         self._check_default_secret("SECRET_KEY", self.SECRET_KEY)
+        self._check_default_secret(
+            "PI_SERVICE_TOKEN", self.PI_SERVICE_TOKEN.get_secret_value()
+        )
         for host in self.DATABASE_URL.hosts():
             self._check_default_secret("DATABASE_URL password", host["password"])
         self._check_default_secret(

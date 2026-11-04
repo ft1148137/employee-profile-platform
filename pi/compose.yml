@@ -1,6 +1,7 @@
 services:
   sample:
     build: .
+    command: ["--test", "sample.test.mjs"]
     environment:
       PI_CONTAINER_TEST: "1"
     read_only: true

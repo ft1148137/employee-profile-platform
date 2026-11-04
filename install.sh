@@ -28,13 +28,6 @@ if (( major < 2 || (major == 2 && minor < 24) || (major == 2 && minor == 24 && p
 fi
 docker info >/dev/null
 
-random_secret() {
-    if command -v openssl >/dev/null; then
-        openssl rand -hex 32
-    else
-        od -An -N32 -tx1 /dev/urandom | tr -d ' \n'
-    fi
-}
 default_address() {
     if command -v ipconfig >/dev/null; then
         ipconfig getifaddr en0 || ipconfig getifaddr en1 || echo localhost
@@ -102,9 +95,11 @@ if [[ ! -e .env ]]; then
     trap 'rm -f "$env_temp"' EXIT
     secret_key=$(random_secret)
     database_password=$(random_secret)
+    pi_service_token=$(random_secret)
     cat > "$env_temp" <<ENV
 PROJECT_NAME="Employee Profile Platform"
 SECRET_KEY=$secret_key
+PI_SERVICE_TOKEN=$pi_service_token
 # 登录限流：NAT、Docker Desktop、反向代理后面的所有人可能共用一个 IP，按人数调整 LOGIN_MAX_FAILURES_PER_IP
 LOGIN_MAX_FAILURES=5
 LOGIN_MAX_FAILURES_PER_IP=300
@@ -133,6 +128,7 @@ ENV
 else
     echo '保留已有 .env 和密钥，使用现有配置启动。'
 fi
+ensure_pi_token
 mkdir -p backups
 chmod 700 backups
 docker compose build

@@ -381,6 +381,7 @@ def test_local_auth(
             FASTAPI_ENV=None,
             CHATGPT_CODEX_AUTH_FILE=path,
             SECRET_KEY="synthetic-secure",
+            PI_SERVICE_TOKEN="synthetic-valid-token",
             DATABASE_URL="postgresql://postgres:synthetic@localhost/app",
             FIRST_SUPERUSER_PASSWORD="synthetic-password",
         )

@@ -15,6 +15,7 @@ def test_install_without_superuser(monkeypatch: pytest.MonkeyPatch) -> None:
         _env_file=None,  # type: ignore[call-arg]
         PROJECT_NAME="test",
         SECRET_KEY="random-test-secret",
+        PI_SERVICE_TOKEN="synthetic-valid-token",
         DATABASE_URL="postgresql://postgres:test-password@localhost/app",
     )
     assert config.FIRST_SUPERUSER is None
@@ -32,6 +33,7 @@ def test_install_without_superuser(monkeypatch: pytest.MonkeyPatch) -> None:
         {"FIRST_SUPERUSER": "admin@example.com"},
         {"FIRST_SUPERUSER_PASSWORD": "valid-password"},
         {"SECRET_KEY": "changethis"},
+        {"PI_SERVICE_TOKEN": "changethis"},
         {"DATABASE_URL": "postgresql://postgres:changethis@localhost/app"},
     ],
 )
@@ -43,6 +45,7 @@ def test_install_rejects_invalid_config(
     config = {
         "PROJECT_NAME": "test",
         "SECRET_KEY": "random-test-secret",
+        "PI_SERVICE_TOKEN": "synthetic-valid-token",
         "DATABASE_URL": "postgresql://postgres:test-password@localhost/app",
         **values,
     }
@@ -89,6 +92,10 @@ esac
         text=True,
     )
     config = (tmp_path / ".env").read_text()
+    token_line = next(
+        line for line in config.splitlines() if line.startswith("PI_SERVICE_TOKEN=")
+    )
+    assert len(token_line.removeprefix("PI_SERVICE_TOKEN=")) == 64
     files = next(
         line for line in config.splitlines() if line.startswith("COMPOSE_FILE=")
     )
