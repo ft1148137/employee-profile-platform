@@ -129,6 +129,8 @@ Node 测试覆盖未知工具拒绝、schema 拒绝、取消、合成 access tok
 
 真实 429 集成测试发现，此固定版本 OpenAI/Anthropic SDK 在非 2xx 时抛异常，Pi 的 `onResponse` 不会触发。为保留 Retry-After，服务用 Node 内置 diagnostics_channel 观察原生 fetch 响应：AsyncLocalStorage 绑定本次调用的 onResponse，WeakMap 按 HTTP request 绑定 observer，只取状态和允许的头，调用同一回调；不替换全局 fetch、不读取错误响应正文、不修改锁定包。并发测试验证各 run 的额度头互不串用。
 
+诊断订阅只在模块加载时注册；没有本轮 observer 的请求忽略，有多个响应时以最后一个为准。此机制依赖 Node 22 内置 undici 通道，与本文件记录的锁定运行镜像 digest 一起验证；升级 Node、运行镜像或 Pi 时必须重跑并发 429、无额度头回退和网络等待超时测试。
+
 S7a 不切换 `chat_json`，不改数据库、画像和权限。S7c 接起草、封闭提供方、出网限制和设置页；S7b 接订阅；S14 加 chat 和调度。本 PR 保留研究样例、锁文件和原有 CI 步骤，无新增 npm/Python 依赖；新增服务由 Compose 内部认证健康检查。生产集成 pytest 启动真实 Node 服务与本地流式 OpenAI 兼容假服务，fixture 为 `tests/utils/pi.py`，后续任务复用。
 
 ## 上游核对来源

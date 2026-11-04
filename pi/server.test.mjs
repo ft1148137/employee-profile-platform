@@ -157,23 +157,38 @@ test('quota time uses Retry-After, reset header, estimated minutes, then 30 minu
 
 test('real SDK error responses retain quota headers without mixing concurrent runs', async t => {
   const upstream = createServer((req, res) => {
-    res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': req.headers.authorization.endsWith('one') ? '60' : '120' });
+    res.writeHead(429, { 'Content-Type': 'application/json', ...(req.headers.authorization.endsWith('none')
+      ? {} : { 'Retry-After': req.headers.authorization.endsWith('one') ? '60' : '120' }) });
     res.end('{"error":{"message":"sensitive error body"}}');
   });
   upstream.listen(0, '127.0.0.1'); await once(upstream, 'listening');
   t.after(async () => { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); });
   const { request } = await setup(t, { streamFn: undefined });
   const now = Date.now();
-  const events = await Promise.all(['one', 'two'].map(async api_key => {
+  const events = await Promise.all(['one', 'two', 'none'].map(async api_key => {
     const data = body(); data.model.baseUrl = `http://127.0.0.1:${upstream.address().port}/v1`; data.model.api_key = api_key;
     const response = await request('/v1/turns', 'POST', data);
     return JSON.parse((await response.text()).trim());
   }));
   for (const [i, event] of events.entries()) {
-    assert.equal(event.code, 'rate_limited'); assert.equal(event.estimated, false);
-    assert.ok(Math.abs(Date.parse(event.retry_at) - now - (i + 1) * 60000) < 3000);
+    assert.equal(event.code, 'rate_limited'); assert.equal(event.estimated, i === 2);
+    assert.ok(Math.abs(Date.parse(event.retry_at) - now - [60, 120, 1800][i] * 1000) < 3000);
     assert.equal(JSON.stringify(event).includes('sensitive'), false);
   }
+});
+
+test('deadline interrupts real SDK network waiting, not only platform tools', async t => {
+  let closed;
+  const disconnected = new Promise(resolve => { closed = resolve; });
+  const upstream = createServer((_req, res) => res.on('close', closed));
+  upstream.listen(0, '127.0.0.1'); await once(upstream, 'listening');
+  t.after(async () => { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); });
+  const { request } = await setup(t, { streamFn: undefined, deadlineMs: 500 });
+  const data = body(); data.model.baseUrl = `http://127.0.0.1:${upstream.address().port}/v1`;
+  const response = await request('/v1/turns', 'POST', data);
+  assert.equal(JSON.parse((await response.text()).trim()).code, 'deadline');
+  await disconnected;
+  assert.equal((await request('/health')).status, 200);
 });
 
 test('upstream failures and logs contain no body, authorization, API key or raw errors', async t => {
