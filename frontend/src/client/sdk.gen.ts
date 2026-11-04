@@ -675,7 +675,7 @@ export class CapabilitiesService {
             ...options
         });
     }
-
+    
     /**
      * Export Dictionary
      */
@@ -686,7 +686,7 @@ export class CapabilitiesService {
             ...options
         });
     }
-
+    
     /**
      * Dictionary Template
      */
@@ -697,7 +697,7 @@ export class CapabilitiesService {
             ...options
         });
     }
-
+    
     /**
      * Preview Dictionary
      */
@@ -714,7 +714,7 @@ export class CapabilitiesService {
             }
         });
     }
-
+    
     /**
      * Save Dictionary
      */
