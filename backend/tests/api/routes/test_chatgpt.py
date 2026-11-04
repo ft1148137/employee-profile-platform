@@ -1,9 +1,12 @@
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from threading import Barrier, Event
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
@@ -251,7 +254,11 @@ def test_reconnect(
             json.dumps(
                 {"access_token": "old"}
                 if invalid == "old"
-                else {**record(), "expires": time.time() * 1000 + 1000}
+                else {
+                    **record(),
+                    "expires": time.time() * 1000 + 1000,
+                    "refresh": "synthetic-rejected-refresh",
+                }
             )
         )
         db.commit()
@@ -291,3 +298,163 @@ def test_old_failure_cannot_invalidate_new_login(
     chatgpt.invalidate(connected.org_id, "synthetic-access")
     db.refresh(connected)
     assert not connected.chatgpt_account["needs_relogin"]
+
+
+def expire(connected: ModelSetting, db: Session) -> None:
+    connected.chatgpt_auth_ciphertext = encrypt_secret(
+        json.dumps({**record(), "expires": time.time() * 1000 + 1000})
+    )
+    db.commit()
+
+
+def test_concurrent_refresh(
+    connected: ModelSetting, db: Session, auth_pi: PiHarness
+) -> None:
+    expire(connected, db)
+    org_id = connected.org_id
+    db.rollback()
+    barrier = Barrier(2)
+
+    def get() -> str:
+        barrier.wait(timeout=5)
+        return chatgpt.access_token(org_id)
+
+    with ThreadPoolExecutor(2) as pool:
+        futures = [pool.submit(get) for _ in range(2)]
+        assert [f.result(timeout=10) for f in futures] == ["rotated-access"] * 2
+    db.refresh(connected)
+    tokens = json.loads(decrypt_secret(connected.chatgpt_auth_ciphertext))
+    assert tokens["refresh"] == "rotated-refresh"
+    assert (
+        sum(
+            json.loads(line).get("route") == "refresh"
+            for line in auth_pi.logs.read_text().splitlines()
+        )
+        == 1
+    )
+
+
+@pytest.mark.parametrize("failure", ["lost", "rejected", "invalid"])
+def test_refresh_failure_never_retries(
+    failure: str,
+    connected: ModelSetting,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    auth_pi: PiHarness,
+) -> None:
+    expire(connected, db)
+    original = httpx.request
+    calls = []
+
+    def request(*args: Any, **kwargs: Any) -> httpx.Response:
+        calls.append(kwargs["json"])
+        if failure == "rejected":
+            kwargs["json"] = {"refresh": "synthetic-rejected-refresh"}
+        response = original(*args, **kwargs)
+        if failure == "lost":
+            raise httpx.ReadTimeout("synthetic-access synthetic-refresh")
+        if failure == "invalid":
+            return httpx.Response(200, json={"access": "synthetic-access"})
+        return response
+
+    monkeypatch.setattr(httpx, "request", request)
+    for _ in range(2):
+        with pytest.raises(ModelUnavailable, match="重新连接") as error:
+            chatgpt.access_token(connected.org_id)
+        assert "synthetic" not in str(error.value)
+    assert len(calls) == 1
+    db.refresh(connected)
+    assert connected.chatgpt_account["needs_relogin"]
+    events = db.exec(
+        select(AuditEvent).where(AuditEvent.org_id == connected.org_id)
+    ).all()
+    for secret in (
+        "synthetic-access",
+        "synthetic-refresh",
+        "synthetic-rejected-refresh",
+        "rotated-access",
+        "rotated-refresh",
+    ):
+        assert secret not in caplog.text + auth_pi.logs.read_text() + str(
+            [e.details for e in events]
+        )
+
+
+@pytest.mark.parametrize("action", ["disconnect", "disable"])
+def test_refresh_and_disconnect_serialize(
+    action: str,
+    connected: ModelSetting,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    client: TestClient,
+    request: pytest.FixtureRequest,
+) -> None:
+    _, _, _, users = request.getfixturevalue("tenant_data")
+    h = headers(users[0])
+    expire(connected, db)
+    org_id = connected.org_id
+    db.rollback()
+    entered, release, stopped = Event(), Event(), Event()
+    original = chatgpt.auth_request
+
+    def refresh(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        entered.set()
+        assert release.wait(5)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(chatgpt, "auth_request", refresh)
+
+    def stop() -> None:
+        url = f"/api/v1/orgs/{org_id}/model-setting"
+        result = (
+            client.delete(url + "/chatgpt", headers=h)
+            if action == "disconnect"
+            else client.put(
+                url, headers=h, json={"enabled": False, "kind": "chatgpt_subscription"}
+            )
+        )
+        assert result.status_code == 200
+        stopped.set()
+
+    with ThreadPoolExecutor(2) as pool:
+        pending = pool.submit(chatgpt.access_token, org_id)
+        assert entered.wait(5)
+        stopping = pool.submit(stop)
+        try:
+            assert not stopped.wait(0.1)
+        finally:
+            release.set()
+        assert pending.result(timeout=10) == "rotated-access"
+        stopping.result(timeout=10)
+    db.refresh(connected)
+    assert not connected.enabled
+    if action == "disconnect":
+        assert connected.chatgpt_auth_ciphertext is None
+    with pytest.raises(ModelUnavailable, match="已关闭"):
+        chatgpt.access_token(org_id)
+
+
+def test_local_setting_has_no_credentials(
+    connected: ModelSetting,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    client: TestClient,
+    request: pytest.FixtureRequest,
+) -> None:
+    _, _, _, users = request.getfixturevalue("tenant_data")
+    connected.chatgpt_auth_ciphertext = connected.chatgpt_account = None
+    db.commit()
+    monkeypatch.setattr(settings, "CHATGPT_LOCAL_AUTH", True)
+    result = client.put(
+        f"/api/v1/orgs/{connected.org_id}/model-setting",
+        headers=headers(users[0]),
+        json={"enabled": True, "kind": "chatgpt_subscription"},
+    )
+    assert result.status_code == 200 and result.json()["chatgpt"]["connected"]
+    assert model_config(connected).api_key.get_secret_value() == "local-codex"
+    db.refresh(connected)
+    assert connected.chatgpt_auth_ciphertext is None
+    monkeypatch.setattr(settings, "FASTAPI_ENV", None)
+    with pytest.raises(ModelUnavailable, match="重新连接"):
+        model_config(connected)

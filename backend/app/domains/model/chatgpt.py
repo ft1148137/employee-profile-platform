@@ -30,12 +30,23 @@ class OAuthTokens(BaseModel):
     accountId: str = Field(min_length=1)
 
 
-def auth_request(method: str, path: str = "", **body: str) -> dict[str, Any]:
+def auth_request(
+    method: str, path: str = "", *, refresh: str | None = None, **body: str
+) -> dict[str, Any]:
     try:
         response = httpx.request(
             method,
-            settings.PI_URL + AUTH_PATH + path,
-            json=body if method == "POST" else None,
+            settings.PI_URL
+            + (
+                "/v1/auth/openai-codex/refresh"
+                if refresh is not None
+                else AUTH_PATH + path
+            ),
+            json={"refresh": refresh}
+            if refresh is not None
+            else body
+            if method == "POST"
+            else None,
             headers={
                 "Authorization": f"Bearer {settings.PI_SERVICE_TOKEN.get_secret_value()}"
             },
@@ -178,8 +189,6 @@ def login(
             tokens = OAuthTokens.model_validate_json(
                 decrypt_secret(setting.chatgpt_auth_ciphertext)
             )
-            if tokens.expires <= (utc_now().timestamp() + 300) * 1000:
-                needs_relogin(setting)
             return ChatGPTLogin(
                 status="connected",
                 account=ChatGPTAccount(**(setting.chatgpt_account or {})),
@@ -223,6 +232,10 @@ def disconnect(session: Session, principal: Principal) -> None:
     session.commit()
 
 
+def local_auth() -> bool:
+    return settings.FASTAPI_ENV == "development" and settings.CHATGPT_LOCAL_AUTH
+
+
 def access_token(org_id: UUID) -> str:
     with Session(engine) as session:
         setting = session.exec(
@@ -234,17 +247,30 @@ def access_token(org_id: UUID) -> str:
             or setting.kind != "chatgpt_subscription"
         ):
             raise ModelUnavailable("ChatGPT 订阅已关闭")
+        if local_auth():
+            return "local-codex"
         try:
             tokens = OAuthTokens.model_validate_json(
                 decrypt_secret(setting.chatgpt_auth_ciphertext or "")
             )
-            if (setting.chatgpt_account or {}).get(
-                "needs_relogin"
-            ) or tokens.expires <= (utc_now().timestamp() + 300) * 1000:
-                raise ValueError("Expired")
-            # shortcut: S7b2 (NERE-104) adds serialized refresh here; until then reconnect.
+            if (setting.chatgpt_account or {}).get("needs_relogin"):
+                raise ValueError("Reconnect required")
+            if tokens.expires <= (utc_now().timestamp() + 300) * 1000:
+                tokens = OAuthTokens.model_validate(
+                    auth_request("POST", refresh=tokens.refresh)
+                )
+                if tokens.expires <= (utc_now().timestamp() + 300) * 1000:
+                    raise ValueError("Expired refresh result")
+                setting.chatgpt_auth_ciphertext = encrypt_secret(
+                    tokens.model_dump_json()
+                )
+                setting.chatgpt_account = {
+                    "account_id": tokens.accountId,
+                    "needs_relogin": False,
+                }
+                session.commit()
             return tokens.access
-        except SecretUnavailable, ValidationError, ValueError:
+        except SecretUnavailable, ValidationError, ValueError, ModelUnavailable:
             needs_relogin(setting)
             session.commit()
             raise ModelUnavailable(RELOGIN) from None

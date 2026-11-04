@@ -7,3 +7,4 @@
 !server.mjs
 !egress.mjs
 !auth.mjs
+!local-auth.mjs

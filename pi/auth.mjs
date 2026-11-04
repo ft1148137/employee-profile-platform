@@ -1,6 +1,11 @@
-import { loginOpenAICodex } from '@mariozechner/pi-ai/oauth';
+import { loginOpenAICodex, refreshOpenAICodexToken } from '@mariozechner/pi-ai/oauth';
 import { randomUUID } from 'node:crypto';
 import { egress } from './egress.mjs';
+
+export async function authRefresh(refresh, refreshFn = refreshOpenAICodexToken) {
+  return egress.run({ catalog: false, origin: 'https://auth.openai.com', signal: AbortSignal.timeout(14000) },
+    () => refreshFn(refresh));
+}
 
 export function authLogins(login = loginOpenAICodex, lifetime = 900000) {
   let active;
