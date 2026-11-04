@@ -34,7 +34,7 @@ test("employee reads capability, Jira evidence and earlier published snapshot", 
   await expect(
     api.getByText("能独立完成复杂任务", { exact: true }),
   ).toBeVisible()
-  await api.getByRole("button").hover()
+  await api.getByRole("button").first().hover()
   await expect(page.getByRole("tooltip")).toContainText("不是经过校准的概率")
   await page.keyboard.press("Escape")
   await expect(page.getByRole("tooltip")).toHaveCount(0)
@@ -141,8 +141,15 @@ for (const [email, title] of [
       exact: true,
     })
     await expect(draft.getByRole("heading", { name: title })).toBeVisible()
-    await expect(draft).toContainText("草稿，还没有生效。目前只能查看")
+    await expect(draft).toContainText("草稿，还没有生效。本人可以直接提交")
     await expect(draft.getByRole("region")).toHaveCount(2)
+    if (email !== "employee.platform@demo.example.com") {
+      await expect(
+        page.getByRole("button", {
+          name: /^(修改|提异议|直接提交|新增能力|撤回这条判断)$/,
+        }),
+      ).toHaveCount(0)
+    }
     await expect(
       draft.getByText("等级：未给等级", { exact: true }),
     ).toHaveCount(2)
@@ -183,7 +190,7 @@ test("another employee cannot read the initial draft", async ({ page }) => {
   ).toHaveCount(0)
 })
 
-test("empty initial draft and other open requests remain read only", async ({
+test("empty initial draft cannot submit and pending requests can be withdrawn", async ({
   page,
 }) => {
   await page.route("**/employees/*/change-requests", async (route) => {
@@ -211,7 +218,12 @@ test("empty initial draft and other open requests remain read only", async ({
   ).toContainText("系统没有找到能对应到能力词典的工作记录。")
   const others = page.getByRole("region", { name: "其他待处理请求" })
   await expect(others).toContainText("待经理审批 · 2 项改动")
-  await expect(others.getByRole("button")).toHaveCount(0)
+  await expect(
+    others.getByRole("button", { name: "撤回", exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "直接提交", exact: true }),
+  ).toBeDisabled()
 })
 
 test("initial draft read failure can be retried", async ({ page }) => {

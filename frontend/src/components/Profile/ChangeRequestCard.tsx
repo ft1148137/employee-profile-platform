@@ -1,4 +1,12 @@
-import type { ChangeRequestPublic, RequestStatus } from "@/client"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import {
+  type ChangeRequestPublic,
+  EmployeeRequestsService,
+  type RequestStatus,
+} from "@/client"
+import { SetupError } from "@/components/Setup/SetupError"
+import { Button } from "@/components/ui/button"
+import type { EditorSelection } from "./ChangeRequestEditor"
 import { EvidenceRows } from "./EvidenceList"
 import { levelLabel } from "./fields"
 import { StatusBadge } from "./StatusBadge"
@@ -17,11 +25,27 @@ export function ChangeRequestCard({
   requests,
   isOwner,
   onEvidence,
+  orgId,
+  onEdit,
 }: {
   requests: ChangeRequestPublic[]
   isOwner: boolean
   onEvidence: (id: string) => void
+  orgId: string
+  onEdit: (selection: EditorSelection) => void
 }) {
+  const client = useQueryClient()
+  const withdraw = useMutation({
+    mutationFn: (id: string) =>
+      EmployeeRequestsService.withdrawRequest({
+        path: { org_id: orgId, request_id: id },
+      }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["change-requests", orgId] })
+      client.invalidateQueries({ queryKey: ["profile", orgId] })
+      client.invalidateQueries({ queryKey: ["inbox", orgId] })
+    },
+  })
   const initial = requests.find(
     (request) =>
       request.origin === "initial_sync" && request.status === "pending_owner",
@@ -29,6 +53,7 @@ export function ChangeRequestCard({
   const others = requests.filter((request) => request !== initial)
   return (
     <div className="mb-6 space-y-4">
+      <SetupError error={withdraw.error} />
       {initial && (
         <section
           aria-label="初始画像草稿"
@@ -41,7 +66,7 @@ export function ChangeRequestCard({
                 : "待本人过目：系统起草的初始画像"}
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              这是系统根据工作记录整理的草稿，还没有生效。目前只能查看，确认和补充将在后续版本提供。
+              这是系统根据工作记录整理的草稿，还没有生效。本人可以直接提交、修改后提交或提出异议。
             </p>
           </div>
           {!initial.items?.length && (
@@ -83,9 +108,44 @@ export function ChangeRequestCard({
                   }))}
                   onSelect={onEvidence}
                 />
+                {isOwner && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        onEdit({
+                          request: initial,
+                          capabilityKey: item.capability.key,
+                        })
+                      }
+                    >
+                      修改
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() =>
+                        onEdit({
+                          request: initial,
+                          capabilityKey: item.capability.key,
+                          objection: true,
+                        })
+                      }
+                    >
+                      提异议
+                    </Button>
+                  </div>
+                )}
               </section>
             ))}
           </div>
+          {isOwner && (
+            <Button
+              disabled={!initial.items?.length}
+              onClick={() => onEdit({ request: initial, preview: true })}
+            >
+              直接提交
+            </Button>
+          )}
         </section>
       )}
       {others.length > 0 && (
@@ -96,6 +156,35 @@ export function ChangeRequestCard({
               <li key={request.id}>
                 {statusLabels[request.status]} · {request.items?.length ?? 0}{" "}
                 项改动
+                {request.submitted_via === "admin_handover" && (
+                  <span> · 员工未过目</span>
+                )}
+                {isOwner && request.status === "draft" && (
+                  <Button
+                    className="ml-2"
+                    variant="outline"
+                    onClick={() => onEdit({ request })}
+                  >
+                    继续修改
+                  </Button>
+                )}
+                {isOwner && request.status === "pending_review" && (
+                  <Button
+                    className="ml-2"
+                    variant="outline"
+                    disabled={withdraw.isPending}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "确定撤回这个请求？经理将不再审批此请求。",
+                        )
+                      )
+                        withdraw.mutate(request.id)
+                    }}
+                  >
+                    撤回
+                  </Button>
+                )}
               </li>
             ))}
           </ul>

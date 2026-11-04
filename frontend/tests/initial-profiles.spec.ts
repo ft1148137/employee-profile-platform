@@ -1,18 +1,24 @@
 import { readFileSync } from "node:fs"
 import path from "node:path"
-import type { ExternalIdentitiesPublic, SetupPublic } from "../src/client"
+import type {
+  CapabilitiesPublic,
+  ChangeRequestsPublic,
+  ExternalIdentitiesPublic,
+  SetupPublic,
+} from "../src/client"
 import { expectChineseCopy } from "./utils/copy"
 import { expect, test } from "./utils/model"
 import { logInUser, logOutUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
-test("new enterprise imports Jira, drafts in setup and shows the employee their draft", async ({
+test("employee reviews initial profile and updates on desktop and mobile", async ({
   page,
   request,
   modelUrl,
 }, testInfo) => {
-  test.setTimeout(120000)
+  test.setTimeout(180000)
+  await page.setViewportSize({ width: 1440, height: 900 })
   const tokenResponse = await request.post("/api/v1/private/setup-tokens", {
     data: { purpose: "new_org" },
   })
@@ -227,6 +233,125 @@ test("new enterprise imports Jira, drafts in setup and shows the employee their 
   await expect(
     page.getByRole("region", { name: /^草稿改动：/ }).first(),
   ).toBeVisible()
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.getByRole("button", { name: "直接提交", exact: true }).click()
+    await expect(
+      page.getByRole("dialog").getByRole("heading", { name: "提交前预览" }),
+    ).toBeVisible()
+    await expect(
+      page
+        .getByRole("dialog")
+        .getByRole("button", { name: "确认提交", exact: true }),
+    ).toBeEnabled()
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "关闭", exact: true })
+      .click()
+  }
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    const employeeHeaders = {
+      Authorization: `Bearer ${await page.evaluate(() => localStorage.getItem("access_token"))}`,
+    }
+    const requests: ChangeRequestsPublic = await (
+      await request.get(`${base}/me/requests`, { headers: employeeHeaders })
+    ).json()
+    const initial = requests.data.find((r) => r.origin === "initial_sync")
+    const dictionary: CapabilitiesPublic = await (
+      await request.get(`${base}/me/capabilities`, { headers: employeeHeaders })
+    ).json()
+    const newCapability = dictionary.data.find(
+      (c) => !initial?.items?.some((i) => i.capability.key === c.key),
+    )!
+    if (initial) {
+      await page
+        .getByRole("region", { name: "初始画像草稿", exact: true })
+        .getByRole("button", { name: "提异议", exact: true })
+        .first()
+        .click()
+    } else
+      await page.getByRole("button", { name: "新增能力", exact: true }).click()
+    let editor = page.getByRole("dialog")
+    if (initial)
+      await editor
+        .getByLabel("异议原因")
+        .first()
+        .fill("系统判断的工作范围需要本人补充")
+    await editor.getByLabel("新增能力").selectOption(newCapability.key)
+    await editor
+      .getByLabel("陈述", { exact: true })
+      .last()
+      .fill("我补充了一段合成项目经历")
+    await editor.getByLabel("依据说明").last().fill("本人完成了合成项目的验证")
+    await editor.getByRole("button", { name: "保存草稿", exact: true }).click()
+    await expect(editor.getByRole("status")).toHaveText("草稿已保存")
+    await editor.getByRole("button", { name: "关闭", exact: true }).click()
+    await page.getByRole("button", { name: "继续修改", exact: true }).click()
+    editor = page.getByRole("dialog")
+    await expect(editor.getByLabel("陈述", { exact: true }).last()).toHaveValue(
+      "我补充了一段合成项目经历",
+    )
+    await editor
+      .getByRole("button", { name: "预览并提交", exact: true })
+      .click()
+    await expect(
+      editor.getByRole("heading", { name: "提交前预览" }),
+    ).toBeVisible()
+    await expect(editor).toContainText("本人完成了合成项目的验证")
+    await page.screenshot({
+      path: testInfo.outputPath(`profile-form-preview-${width}.png`),
+      fullPage: true,
+    })
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true)
+    // Another real tab edits the saved request after this tab has previewed it.
+    const other = await page.context().newPage()
+    await other.goto(page.url())
+    await other.getByRole("button", { name: "继续修改", exact: true }).click()
+    await other
+      .getByRole("dialog")
+      .getByLabel("陈述", { exact: true })
+      .last()
+      .fill("另一标签页补充的最新经历")
+    await other.getByRole("button", { name: "保存草稿", exact: true }).click()
+    await expect(other.getByRole("status")).toHaveText("草稿已保存")
+    await other.close()
+    await editor.getByRole("button", { name: "确认提交", exact: true }).click()
+    await expect(editor).toContainText("内容已变化，请重新预览")
+    await editor
+      .getByRole("button", { name: "重新预览最新内容", exact: true })
+      .click()
+    await expect(editor).toContainText("另一标签页补充的最新经历")
+    await editor.getByRole("button", { name: "确认提交", exact: true }).click()
+    await expect(editor).toHaveCount(0)
+    await expect(
+      page.getByRole("region", { name: "其他待处理请求" }),
+    ).toContainText("待经理审批")
+    const submitted: ChangeRequestsPublic = await (
+      await request.get(`${base}/me/requests`, { headers: employeeHeaders })
+    ).json()
+    const sent = submitted.data[0]
+    expect(sent.status).toBe("pending_review")
+    expect(sent.submitted_via).toBe("web")
+    if (initial) expect(sent.id).toBe(initial.id)
+    page.once("dialog", async (dialog) => {
+      await dialog.accept()
+    })
+    await page.getByRole("button", { name: "撤回", exact: true }).click()
+    await expect(
+      page.getByRole("region", { name: "其他待处理请求" }),
+    ).toHaveCount(0)
+    const history: ChangeRequestsPublic = await (
+      await request.get(`${base}/me/requests?status=all`, {
+        headers: employeeHeaders,
+      })
+    ).json()
+    expect(history.data.find((r) => r.id === sent.id)?.status).toBe("withdrawn")
+  }
 })
 
 test("progress shows pause, exclusions and failures; retries and confirmation use the right scope", async ({
@@ -379,4 +504,37 @@ test("no model shows configuration guidance and disables drafting", async ({
     progress.getByRole("button", { name: "重试失败的" }),
   ).toBeDisabled()
   await expectChineseCopy(page, ["JSON"])
+})
+
+test("administrator previews and confirms overdue initial handover", async ({
+  page,
+}) => {
+  let count = 2
+  await page.route("**/initial-profiles/hand-over", (route) => {
+    if (route.request().method() === "POST") {
+      count = 0
+      return route.fulfill({ json: { count: 2 } })
+    }
+    return route.fulfill({ json: { count } })
+  })
+  await logInUser(
+    page,
+    "admin@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  await page.goto("/admin/progress")
+  await expect(page.getByText("满 14 天未处理、可批量送审：2 人")).toBeVisible()
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toContain("2 名员工")
+    await dialog.accept()
+  })
+  const posted = page.waitForRequest(
+    (r) => r.url().endsWith("/hand-over") && r.method() === "POST",
+  )
+  await page.getByRole("button", { name: "批量送审", exact: true }).click()
+  await posted
+  await expect(page.getByText("已送审 2 人", { exact: true })).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "批量送审", exact: true }),
+  ).toBeDisabled()
 })

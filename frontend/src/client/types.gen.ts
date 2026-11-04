@@ -1290,6 +1290,16 @@ export type HTTPValidationError = {
 };
 
 /**
+ * HandoverPublic
+ */
+export type HandoverPublic = {
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * IdentityCandidate
  */
 export type IdentityCandidate = {
@@ -4699,6 +4709,66 @@ export type initialProfilesProgressResponses = {
 };
 
 export type initialProfilesProgressResponse = initialProfilesProgressResponses[keyof initialProfilesProgressResponses];
+
+export type initialProfilesPreviewHandoverData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/initial-profiles/hand-over';
+};
+
+export type initialProfilesPreviewHandoverErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type initialProfilesPreviewHandoverError = initialProfilesPreviewHandoverErrors[keyof initialProfilesPreviewHandoverErrors];
+
+export type initialProfilesPreviewHandoverResponses = {
+    /**
+     * Successful Response
+     */
+    200: HandoverPublic;
+};
+
+export type initialProfilesPreviewHandoverResponse = initialProfilesPreviewHandoverResponses[keyof initialProfilesPreviewHandoverResponses];
+
+export type initialProfilesConfirmHandoverData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/initial-profiles/hand-over';
+};
+
+export type initialProfilesConfirmHandoverErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type initialProfilesConfirmHandoverError = initialProfilesConfirmHandoverErrors[keyof initialProfilesConfirmHandoverErrors];
+
+export type initialProfilesConfirmHandoverResponses = {
+    /**
+     * Successful Response
+     */
+    200: HandoverPublic;
+};
+
+export type initialProfilesConfirmHandoverResponse = initialProfilesConfirmHandoverResponses[keyof initialProfilesConfirmHandoverResponses];
 
 export type accountsReadAccountsData = {
     body?: never;
