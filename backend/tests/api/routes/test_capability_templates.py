@@ -195,7 +195,7 @@ def test_missing_template(enterprise: tuple, client: TestClient) -> None:
     assert response.json()["detail"] == "没有这个词典模板"
 
 
-def test_claims_block_activation(
+def test_claims_survive_activation(
     db: Session, seed_path: Path, client: TestClient
 ) -> None:
     with Session(engine) as session:
@@ -204,15 +204,33 @@ def test_claims_block_activation(
         select(Organization).where(Organization.slug == read_bundle(seed_path).org.slug)
     ).one()
     admin = db.exec(select(User).where(User.email == "admin@demo.example.com")).one()
+    from app.domains.profile.models import ProfileClaim, ProfileVersion
+
+    before = {
+        model: [
+            r.model_dump(mode="json")
+            for r in db.exec(
+                select(model).where(model.org_id == org.id).order_by(model.id)
+            ).all()
+        ]
+        for model in (ProfileClaim, ProfileVersion)
+    }
     for template_id in ("tech-rnd", "hospital"):
         response = client.post(
             f"/api/v1/orgs/{org.id}/capability-schema",
             json={"template_id": template_id},
             headers=headers(admin.id),
         )
-        assert response.status_code == 409
-        assert response.json()["detail"] == "已经有画像判断，不能直接更换词典"
-    assert not db.exec(
+        assert response.status_code == 200
+        db.expire_all()
+        for model, original in before.items():
+            assert [
+                r.model_dump(mode="json")
+                for r in db.exec(
+                    select(model).where(model.org_id == org.id).order_by(model.id)
+                ).all()
+            ] == original
+    assert db.exec(
         select(AuditEvent).where(
             AuditEvent.org_id == org.id,
             AuditEvent.action == "capability_schema.activated",

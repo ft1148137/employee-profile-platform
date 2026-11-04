@@ -77,6 +77,7 @@ class SubmitInput(ToolInput):
 class PreviewItem(SQLModel):
     before: ClaimPublic | None
     after: ChangeItemPublic
+    warning: str | None = None
 
 
 class RequestPreview(SQLModel):

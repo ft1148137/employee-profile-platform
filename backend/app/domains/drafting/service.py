@@ -133,6 +133,13 @@ def write_initial_request(
 ) -> bool:
     if employee.org_id != org_id:
         raise InvalidDraft("员工不属于当前企业")
+    session.exec(
+        select(Organization).where(Organization.id == org_id).with_for_update()
+    ).one()
+    active = get_schema(session, org_id)
+    active_ids = {c.id for c in list_capabilities(session, org_id, active.id)}
+    if any(item.capability_id not in active_ids for item in items):
+        raise InvalidDraft("词典已更新，请按当前词典重新起草")
     request = session.exec(
         select(ProfileChangeRequest)
         .where(
@@ -183,24 +190,33 @@ def write_initial_request(
             col(ChangeItem.org_id) == org_id, col(ChangeItem.request_id) == request.id
         )
     )
-    claims = list(
-        session.exec(
-            select(ProfileClaim)
-            .where(
-                ProfileClaim.org_id == org_id,
-                ProfileClaim.subject_employee_id == employee.id,
-            )
-            .order_by(col(ProfileClaim.created_at), col(ProfileClaim.id))
+    claims = session.exec(
+        select(ProfileClaim, CapabilityDefinition.key)
+        .join(
+            CapabilityDefinition,
+            (col(CapabilityDefinition.id) == ProfileClaim.capability_definition_id)
+            & (col(CapabilityDefinition.org_id) == ProfileClaim.org_id),
         )
+        .where(
+            ProfileClaim.org_id == org_id,
+            ProfileClaim.subject_employee_id == employee.id,
+        )
+        .order_by(col(ProfileClaim.created_at), col(ProfileClaim.id))
+    ).all()
+    superseded = {c.supersedes_claim_id for c, _ in claims}
+    current = {key: c.id for c, key in claims if c.id not in superseded}
+    keys = dict(
+        session.exec(
+            select(CapabilityDefinition.id, CapabilityDefinition.key).where(
+                CapabilityDefinition.org_id == org_id,
+                col(CapabilityDefinition.id).in_({i.capability_id for i in items}),
+            )
+        ).all()
     )
-    superseded = {c.supersedes_claim_id for c in claims}
-    current = {
-        c.capability_definition_id: c.id for c in claims if c.id not in superseded
-    }
     request.generated_by, request.updated_at = generated_by, utc_now()
     session.add(request)
     for position, item in enumerate(items):
-        target = current.get(item.capability_id)
+        target = current.get(keys[item.capability_id])
         row = ChangeItem(
             org_id=org_id,
             request_id=request.id,
@@ -387,7 +403,11 @@ def pause_drafting(org_id: UUID, ids: list[UUID], error: ModelRateLimited) -> No
 
 
 def queue_drafting(
-    session: Session, org_id: UUID, scope: Literal["all", "failed"]
+    session: Session,
+    org_id: UUID,
+    scope: Literal["all", "failed"],
+    *,
+    pending_owner_only: bool = False,
 ) -> int:
     from app.worker.tasks import draft_initial
 
@@ -424,10 +444,25 @@ def queue_drafting(
         )
     )
     excluded = drafting_scope(session, org_id).excluded_employee_ids
+    pending = (
+        set(
+            session.exec(
+                select(ProfileChangeRequest.subject_employee_id).where(
+                    ProfileChangeRequest.org_id == org_id,
+                    ProfileChangeRequest.origin == RequestOrigin.INITIAL_SYNC,
+                    ProfileChangeRequest.status == RequestStatus.PENDING_OWNER,
+                )
+            ).all()
+        )
+        if pending_owner_only
+        else None
+    )
     ids = [
         e.id
         for e in active_employees(session, org_id)
-        if e.id not in excluded and (scope == "all" or e.id in failed)
+        if e.id not in excluded
+        and (scope == "all" or e.id in failed)
+        and (pending is None or e.id in pending)
     ]
     for id_ in ids:
         progress_row(session, org_id, id_, InferenceStatus.PENDING)
