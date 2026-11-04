@@ -2,6 +2,7 @@ import type { AuditEventPublic } from "@/client"
 
 export const auditLabels: Record<string, string> = {
   "initial_profiles.drafted": "生成初始画像",
+  "change_request.dictionary_changed": "词典调整后更新请求",
   "change_request.submitted": "提交画像请求",
   "change_request.withdrawn": "撤回画像请求",
   "sync_run.succeeded": "同步完成",

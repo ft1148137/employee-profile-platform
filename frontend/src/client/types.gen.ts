@@ -199,6 +199,16 @@ export type AutoDraftUpdate = {
 };
 
 /**
+ * Body_capabilities-preview_dictionary
+ */
+export type Body_capabilities_preview_dictionary = {
+    /**
+     * File
+     */
+    file: Blob | File;
+};
+
+/**
  * Body_login-login_access_token
  */
 export type Body_login_login_access_token = {
@@ -713,6 +723,91 @@ export type DepartmentsPublic = {
      * Count
      */
     count: number;
+};
+
+/**
+ * DictionaryDefinition
+ */
+export type DictionaryDefinition = {
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Category
+     */
+    category: string;
+    /**
+     * Description
+     */
+    description: string;
+    level_rubric: DictionaryRubric;
+    /**
+     * Ai Inference
+     */
+    ai_inference?: boolean;
+};
+
+/**
+ * DictionaryLevel
+ */
+export type DictionaryLevel = {
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Description
+     */
+    description: string;
+};
+
+/**
+ * DictionaryPreview
+ */
+export type DictionaryPreview = {
+    /**
+     * Expected Version
+     */
+    expected_version: number;
+    /**
+     * Definitions
+     */
+    definitions: Array<DictionaryDefinition>;
+    /**
+     * Added
+     */
+    added: Array<string>;
+    /**
+     * Modified
+     */
+    modified: Array<string>;
+    /**
+     * Removed
+     */
+    removed: Array<string>;
+    /**
+     * Errors
+     */
+    errors: Array<string>;
+};
+
+/**
+ * DictionaryRubric
+ */
+export type DictionaryRubric = {
+    /**
+     * Levels
+     */
+    levels: Array<DictionaryLevel>;
 };
 
 /**
@@ -1286,7 +1381,7 @@ export type IdentityUnlinkResult = {
 /**
  * InboxKind
  */
-export type InboxKind = 'initial_review' | 'submitted' | 'status_changed' | 'question';
+export type InboxKind = 'initial_review' | 'submitted' | 'status_changed' | 'question' | 'dictionary_changed';
 
 /**
  * InboxList
@@ -1768,6 +1863,10 @@ export type OrganizationUpdate = {
 export type PreviewItem = {
     before: ClaimPublic | null;
     after: ChangeItemPublic;
+    /**
+     * Warning
+     */
+    warning?: string | null;
 };
 
 /**
@@ -1833,6 +1932,18 @@ export type ProfileItem = {
     capability: CapabilityPublic;
     status: AssessmentStatus;
     claim: ClaimPublic | null;
+    /**
+     * Retired
+     */
+    retired?: boolean;
+    /**
+     * Level Adjusted
+     */
+    level_adjusted?: boolean;
+    /**
+     * Original Level Description
+     */
+    original_level_description?: string | null;
 };
 
 /**
@@ -2200,6 +2311,24 @@ export type RubricLevel = {
      * Description
      */
     description: string;
+};
+
+/**
+ * SaveDictionary
+ */
+export type SaveDictionary = {
+    /**
+     * Definitions
+     */
+    definitions: Array<DictionaryDefinition>;
+    /**
+     * Expected Version
+     */
+    expected_version: number;
+    /**
+     * Redraft
+     */
+    redraft?: boolean;
 };
 
 /**
@@ -4081,6 +4210,127 @@ export type capabilitiesReadCapabilitiesResponses = {
 };
 
 export type capabilitiesReadCapabilitiesResponse = capabilitiesReadCapabilitiesResponses[keyof capabilitiesReadCapabilitiesResponses];
+
+export type capabilitiesExportDictionaryData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/capabilities/export';
+};
+
+export type capabilitiesExportDictionaryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilitiesExportDictionaryError = capabilitiesExportDictionaryErrors[keyof capabilitiesExportDictionaryErrors];
+
+export type capabilitiesExportDictionaryResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type capabilitiesDictionaryTemplateData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Format
+         */
+        format?: 'yaml' | 'xlsx';
+    };
+    url: '/api/v1/orgs/{org_id}/capabilities/template';
+};
+
+export type capabilitiesDictionaryTemplateErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilitiesDictionaryTemplateError = capabilitiesDictionaryTemplateErrors[keyof capabilitiesDictionaryTemplateErrors];
+
+export type capabilitiesDictionaryTemplateResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type capabilitiesPreviewDictionaryData = {
+    body: Body_capabilities_preview_dictionary;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/capabilities/preview';
+};
+
+export type capabilitiesPreviewDictionaryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilitiesPreviewDictionaryError = capabilitiesPreviewDictionaryErrors[keyof capabilitiesPreviewDictionaryErrors];
+
+export type capabilitiesPreviewDictionaryResponses = {
+    /**
+     * Successful Response
+     */
+    200: DictionaryPreview;
+};
+
+export type capabilitiesPreviewDictionaryResponse = capabilitiesPreviewDictionaryResponses[keyof capabilitiesPreviewDictionaryResponses];
+
+export type capabilitiesSaveDictionaryData = {
+    body: SaveDictionary;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/capabilities/versions';
+};
+
+export type capabilitiesSaveDictionaryErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilitiesSaveDictionaryError = capabilitiesSaveDictionaryErrors[keyof capabilitiesSaveDictionaryErrors];
+
+export type capabilitiesSaveDictionaryResponses = {
+    /**
+     * Successful Response
+     */
+    200: ActiveSchemaPublic;
+};
+
+export type capabilitiesSaveDictionaryResponse = capabilitiesSaveDictionaryResponses[keyof capabilitiesSaveDictionaryResponses];
 
 export type capabilityTemplatesReadTemplatesData = {
     body?: never;

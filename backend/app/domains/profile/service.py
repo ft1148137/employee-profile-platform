@@ -5,9 +5,14 @@ from pydantic import JsonValue
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
-from app.domains.capability.models import CapabilitySchemaVersion
+from app.domains.capability.models import CapabilityDefinition, CapabilitySchemaVersion
 from app.domains.capability.schemas import CapabilityPublic, SchemaVersionPublic
-from app.domains.capability.service import SchemaNotFound, get_schema, list_capabilities
+from app.domains.capability.service import (
+    SchemaNotFound,
+    get_schema,
+    level_exists,
+    list_capabilities,
+)
 from app.domains.evidence.models import Evidence
 from app.domains.evidence.service import evidence_access, restricted_title
 from app.domains.org.models import Employee, OrgMembership
@@ -46,24 +51,64 @@ def profile_items(
         principal,
         {ref.evidence_id for claim in claims for ref in claim.evidence},
     )
-    for claim in claims:
-        for ref in claim.evidence:
+    for snapshot in claims:
+        for ref in snapshot.evidence:
             record = access.get(ref.evidence_id)
             ref.redacted = record is None or not record[1]
             ref.occurred_at = record[0].occurred_at if record else None
             if ref.redacted:
                 ref.title = restricted_title(ref.kind)
-    by_capability = {claim.capability_definition_id: claim for claim in claims}
-    items = [
-        ProfileItem(
-            capability=CapabilityPublic.model_validate(capability),
-            claim=by_capability.get(capability.id),
-            status=by_capability[capability.id].assessment_status
-            if capability.id in by_capability
-            else AssessmentStatus.UNKNOWN,
-        )
-        for capability in capabilities
+    originals = {
+        c.id: c
+        for c in session.exec(
+            select(CapabilityDefinition).where(
+                CapabilityDefinition.org_id == principal.org_id,
+                col(CapabilityDefinition.id).in_(
+                    {c.capability_definition_id for c in claims}
+                ),
+            )
+        ).all()
+    }
+    by_key = {
+        originals[c.capability_definition_id].key: c
+        for c in claims
+        if c.capability_definition_id in originals
+    }
+    active_keys = {c.key for c in capabilities}
+    removed = [
+        originals[c.capability_definition_id]
+        for k, c in by_key.items()
+        if k not in active_keys
     ]
+    items = []
+    for capability in [*capabilities, *removed]:
+        claim = by_key.get(capability.key)
+        adjusted = bool(
+            claim and not level_exists(capability.level_rubric, claim.level)
+        )
+        old_description = None
+        if claim and adjusted:
+            rubric = originals[claim.capability_definition_id].level_rubric or {}
+            levels = rubric.get("levels", [])
+            if isinstance(levels, list):
+                old_description = next(
+                    (
+                        str(v.get("description") or v.get("label") or claim.level)
+                        for v in levels
+                        if isinstance(v, dict) and v.get("key") == claim.level
+                    ),
+                    claim.level,
+                )
+        items.append(
+            ProfileItem(
+                capability=CapabilityPublic.model_validate(capability),
+                claim=claim,
+                status=claim.assessment_status if claim else AssessmentStatus.UNKNOWN,
+                retired=capability.key not in active_keys,
+                level_adjusted=adjusted,
+                original_level_description=old_description,
+            )
+        )
     return items, ProfileCounts(
         **{
             status.value: sum(item.status == status for item in items)
@@ -96,11 +141,9 @@ def read_profile(
         )
         .order_by(col(ProfileClaim.created_at), col(ProfileClaim.id))
     ).all()
-    superseded = {(c.capability_definition_id, c.supersedes_claim_id) for c in rows}
+    superseded = {c.supersedes_claim_id for c in rows}
     current = {
-        c.capability_definition_id: SnapshotClaim.model_validate(c)
-        for c in rows
-        if (c.capability_definition_id, c.id) not in superseded
+        c.id: SnapshotClaim.model_validate(c) for c in rows if c.id not in superseded
     }
     by_id = {claim.id: claim for claim in current.values()}
     for link, evidence in session.exec(

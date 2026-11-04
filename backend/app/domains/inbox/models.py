@@ -13,6 +13,7 @@ class InboxKind(StrEnum):
     SUBMITTED = "submitted"
     STATUS_CHANGED = "status_changed"
     QUESTION = "question"
+    DICTIONARY_CHANGED = "dictionary_changed"
 
 
 class InboxItem(TenantRecord, table=True):
