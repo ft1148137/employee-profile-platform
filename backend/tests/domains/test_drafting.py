@@ -27,7 +27,7 @@ from app.worker.tenant import TenantNotFound
 from tests.authz.test_tenant_access import tenant_data  # noqa: F401
 from tests.domains.test_ingest import ingest, person, record, rows
 
-pytestmark = pytest.mark.xdist_group("litellm")
+pytestmark = pytest.mark.xdist_group("model")
 
 
 def test_claim_after_timestamp() -> None:

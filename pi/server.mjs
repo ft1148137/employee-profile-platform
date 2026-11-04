@@ -7,6 +7,7 @@ import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
 
 import { egress } from './egress.mjs';
+import { authLogins } from './auth.mjs';
 
 const customProviders = new Set(['qwen', 'openai-compatible', 'ollama']);
 const thinkingLevels = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
@@ -68,7 +69,8 @@ function validate(body) {
   const m = body.model;
   if (!only(m, ['provider', 'api', 'id', 'baseUrl', 'api_key', 'thinkingLevel',
     'reasoning', 'contextWindow', 'maxTokens', 'compat']) ||
-    !['openai-responses', 'anthropic-messages', 'openai-completions'].includes(m.api) ||
+    !['openai-responses', 'anthropic-messages', 'openai-completions', 'openai-codex-responses'].includes(m.api) ||
+    (m.api === 'openai-codex-responses') !== (m.provider === 'openai-codex') ||
     !text(m.provider) || !text(m.id) || !text(m.baseUrl) ||
     (m.api_key !== undefined && typeof m.api_key !== 'string') ||
     (m.reasoning !== undefined && typeof m.reasoning !== 'boolean') ||
@@ -127,12 +129,13 @@ export function quota(headers = {}, message = '', now = Date.now()) {
 }
 
 export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSimple,
-  lookup, log = entry => console.log(JSON.stringify(entry)) } = {}) {
+  lookup, login, loginLifetime, log = entry => console.log(JSON.stringify(entry)) } = {}) {
   if (!text(token) || !Number.isFinite(deadlineMs) || deadlineMs <= 0 || deadlineMs > 120000)
     throw new Error('Invalid Pi service configuration');
   const digest = value => createHash('sha256').update(value).digest();
   const expected = digest(`Bearer ${token}`);
   const runs = new Map();
+  const authenticate = authLogins(login, loginLifetime);
   const json = (res, status, data) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(data)); };
   const server = createServer({ requestTimeout: 10000, headersTimeout: 10000 }, async (req, res) => {
     const start = Date.now();
@@ -146,6 +149,12 @@ export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSi
       if (path === '/health' && req.method === 'GET') {
         route = 'health';
         return json(res, 200, { ok: true });
+      }
+      const authPath = path.match(/^\/v1\/auth\/openai-codex\/logins(?:\/([a-z0-9-]+))?$/);
+      if (authPath && ['POST', 'DELETE'].includes(req.method)) {
+        route = 'auth';
+        const result = await authenticate(authPath[1], req.method, req.method === 'POST' ? await readBody(req) : undefined);
+        return json(res, result.code ? 409 : 200, result.tokens ?? result);
       }
       const capability = path.match(/^\/v1\/models\/([^/]+)\/(.+)$/);
       if (capability && req.method === 'GET') {
@@ -211,6 +220,9 @@ export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSi
             () => observers.run(options.onResponse, () => streamFn(model, context, { ...options, maxRetries: 0 })));
         },
         onResponse: r => {
+          if (r.status === 401) run.cancel('model_unauthorized');
+          if (r.status === 403) run.cancel('model_forbidden');
+          if (r.status === 404) run.cancel('model_not_found');
           response = { status: r.status, headers: Object.fromEntries(Object.entries(r.headers)
             .filter(([name]) => allowedHeader(name))
             .map(([name, value]) => [name.toLowerCase(), String(value).slice(0, 200)])) };
@@ -254,7 +266,8 @@ export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSi
         if (event.type === 'message_end' && event.message.role === 'assistant' && event.message.stopReason === 'error') {
           const message = event.message.errorMessage ?? '';
           run.error ??= response.status === 429 || /rate.?limit|usage limit|quota/i.test(message)
-            ? { code: 'rate_limited', ...quota(response.headers, message) } : { code: 'model_error' };
+            ? { code: 'rate_limited', ...quota(response.headers, message) }
+            : { code: response.status === 401 ? 'model_unauthorized' : 'model_error' };
         }
       });
       const timer = setTimeout(() => run.cancel('deadline'), deadlineMs);

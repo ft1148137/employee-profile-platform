@@ -1,42 +1,59 @@
 import json
-import os
-import tempfile
-import threading
-from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
-from pathlib import Path
-from typing import Any, Literal
+from typing import Any
+from urllib.parse import parse_qs, quote, urlsplit
 from uuid import UUID
 
 import httpx
+from pydantic import BaseModel, Field, ValidationError
 from sqlmodel import Session, select
 
 from app.authz.principal import Principal
 from app.core.config import settings
 from app.core.db import engine
-from app.core.secrets import decrypt_secret, encrypt_secret
+from app.core.secrets import SecretUnavailable, decrypt_secret, encrypt_secret
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
+from app.domains.model.client import ModelUnavailable
 from app.domains.model.models import ModelSetting
 from app.domains.model.schemas import ChatGPTAccount, ChatGPTLogin
 from app.domains.org.models import Organization
 
-TOKEN_DIR = Path(tempfile.mkdtemp(prefix="epp-chatgpt-"))
-TOKEN_FILE = TOKEN_DIR / "auth.json"
-CALL_LOCK = threading.Lock()
 RELOGIN = "ChatGPT 登录已失效，请在设置页重新连接"
+AUTH_PATH = "/v1/auth/openai-codex/logins"
 
 
-def sdk_auth() -> Any:
-    from app.domains.model.client import _sdk
+class OAuthTokens(BaseModel):
+    access: str = Field(min_length=1, repr=False)
+    refresh: str = Field(min_length=1, repr=False)
+    expires: float = Field(gt=0, allow_inf_nan=False)
+    accountId: str = Field(min_length=1)
 
-    _sdk()
-    # shortcut: LiteLLM 1.106.6 internals; verify signatures on every upgrade.
-    from litellm.llms.chatgpt import common_utils
-    from litellm.llms.chatgpt.authenticator import Authenticator
 
-    return Authenticator(), common_utils
+def auth_request(method: str, path: str = "", **body: str) -> dict[str, Any]:
+    try:
+        response = httpx.request(
+            method,
+            settings.PI_URL + AUTH_PATH + path,
+            json=body if method == "POST" else None,
+            headers={
+                "Authorization": f"Bearer {settings.PI_SERVICE_TOKEN.get_secret_value()}"
+            },
+            timeout=15,
+            trust_env=False,
+        )
+        data = response.json()
+        if response.is_success and isinstance(data, dict):
+            return data
+        messages = {
+            "login_busy": "已有连接流程，请稍后再试",
+            "login_not_found": "登录流程已失效，请重新开始",
+        }
+        raise ModelUnavailable(
+            messages.get(data.get("code"), "ChatGPT 登录失败，请重新开始")
+        )
+    except httpx.HTTPError, ValueError, TypeError, AttributeError:
+        raise ModelUnavailable("ChatGPT 登录服务暂时不可用，请重新开始") from None
 
 
 def locked_setting(session: Session, principal: Principal) -> ModelSetting:
@@ -60,115 +77,137 @@ def locked_setting(session: Session, principal: Principal) -> ModelSetting:
     return setting
 
 
+def clear_login(setting: ModelSetting) -> None:
+    setting.chatgpt_login_ciphertext = None
+    setting.chatgpt_login_expires_at = setting.chatgpt_login_polled_at = None
+
+
+def needs_relogin(setting: ModelSetting) -> None:
+    setting.chatgpt_account = {**(setting.chatgpt_account or {}), "needs_relogin": True}
+
+
 def login(
-    session: Session, principal: Principal, *, start: bool = False
+    session: Session,
+    principal: Principal,
+    *,
+    start: bool = False,
+    input: str | None = None,
 ) -> ChatGPTLogin:
     setting = locked_setting(session, principal)
-    auth, constants = sdk_auth()
-    now = utc_now()
-    active = (
-        setting.chatgpt_login_ciphertext
-        and setting.chatgpt_login_expires_at
-        and setting.chatgpt_login_expires_at > now
-    )
-    if not active and start:
-        try:
-            code = auth._request_device_code()
-            code["interval"] = str(max(5, int(code.get("interval", 5))))
-        except constants.GetDeviceCodeError, ValueError:
-            session.rollback()
-            return ChatGPTLogin(
-                status="error", message="无法开始 ChatGPT 登录，请稍后重试"
+    try:
+        active = None
+        if setting.chatgpt_login_ciphertext:
+            active = json.loads(decrypt_secret(setting.chatgpt_login_ciphertext))
+            if (
+                active["user_id"] != str(principal.user_id)
+                and setting.chatgpt_login_expires_at
+                and setting.chatgpt_login_expires_at > utc_now()
+            ):
+                return ChatGPTLogin(
+                    status="error", message="已有其他管理员发起的连接流程，请稍后再试"
+                )
+            if (
+                not setting.chatgpt_login_expires_at
+                or setting.chatgpt_login_expires_at <= utc_now()
+            ):
+                try:
+                    auth_request("DELETE", "/" + quote(active["login_id"], safe=""))
+                except ModelUnavailable:
+                    pass  # Pi may already have expired the same flow.
+                clear_login(setting)
+                active = None
+                if not start:
+                    return ChatGPTLogin(
+                        status="expired", message="登录已过期，请重新开始"
+                    )
+        if input is not None:
+            if active is None:
+                return ChatGPTLogin(
+                    status="error", message="登录流程已失效，请重新开始"
+                )
+            # Consume even invalid callbacks; another administrator cannot consume this flow.
+            clear_login(setting)
+            url = urlsplit(input)
+            params = parse_qs(url.query)
+            if (
+                url.scheme != "http"
+                or url.netloc != "localhost:1455"
+                or url.path != "/auth/callback"
+                or len(params.get("code", [])) != 1
+                or params.get("state") != [active["state"]]
+            ):
+                auth_request("DELETE", "/" + quote(active["login_id"], safe=""))
+                raise ModelUnavailable(
+                    "请粘贴本次登录的完整重定向网址（包含正确的 code 和 state），然后重新开始"
+                )
+            tokens = OAuthTokens.model_validate(
+                auth_request(
+                    "POST", "/" + quote(active["login_id"], safe=""), input=input
+                )
             )
-        setting.chatgpt_login_ciphertext = encrypt_secret(json.dumps(code))
-        setting.chatgpt_login_expires_at = now + timedelta(minutes=15)
-        setting.chatgpt_login_polled_at = None
-        active = True
-    if not active:
-        status: Literal["expired", "none", "connected"] = (
-            "expired" if setting.chatgpt_login_expires_at else "none"
+            setting.chatgpt_auth_ciphertext = encrypt_secret(tokens.model_dump_json())
+            setting.chatgpt_account = {
+                "account_id": tokens.accountId,
+                "needs_relogin": False,
+            }
+            record_audit(
+                session,
+                org_id=principal.org_id,
+                actor_type=principal.actor_type,
+                actor_id=str(principal.user_id),
+                action="model_setting.chatgpt_connected",
+                target_type="model_setting",
+                target_id=str(principal.org_id),
+                details={},
+            )
+        elif start and active is None:
+            result = auth_request("POST")
+            state = parse_qs(urlsplit(result["url"]).query)["state"]
+            if len(state) != 1 or not state[0]:
+                raise ValueError("Missing state")
+            active = {**result, "state": state[0], "user_id": str(principal.user_id)}
+            setting.chatgpt_login_ciphertext = encrypt_secret(json.dumps(active))
+            setting.chatgpt_login_expires_at = utc_now() + timedelta(minutes=15)
+        if active is not None and input is None:
+            return ChatGPTLogin(
+                status="pending",
+                verification_url=active["url"],
+                expires_at=setting.chatgpt_login_expires_at,
+            )
+        if setting.chatgpt_auth_ciphertext:
+            tokens = OAuthTokens.model_validate_json(
+                decrypt_secret(setting.chatgpt_auth_ciphertext)
+            )
+            if tokens.expires <= (utc_now().timestamp() + 300) * 1000:
+                needs_relogin(setting)
+            return ChatGPTLogin(
+                status="connected",
+                account=ChatGPTAccount(**(setting.chatgpt_account or {})),
+            )
+        return ChatGPTLogin(status="none")
+    except SecretUnavailable, ValidationError, ValueError, KeyError, TypeError:
+        clear_login(setting)
+        needs_relogin(setting)
+        return ChatGPTLogin(
+            status="error", message=RELOGIN, account=ChatGPTAccount(needs_relogin=True)
         )
-        if setting.chatgpt_auth_ciphertext and not setting.chatgpt_login_expires_at:
-            status = "connected"
-        result = ChatGPTLogin(
-            status=status,
-            account=ChatGPTAccount(**setting.chatgpt_account)
-            if setting.chatgpt_account
-            else None,
-        )
+    except ModelUnavailable as error:
+        clear_login(setting)
+        return ChatGPTLogin(status="error", message=str(error))
+    finally:
         session.commit()
-        return result
-    assert setting.chatgpt_login_ciphertext
-    code = json.loads(decrypt_secret(setting.chatgpt_login_ciphertext))
-    result = ChatGPTLogin(
-        status="pending",
-        verification_url=constants.CHATGPT_DEVICE_VERIFY_URL,
-        user_code=code["user_code"],
-        expires_at=setting.chatgpt_login_expires_at,
-    )
-    if not start and (
-        not setting.chatgpt_login_polled_at
-        or (now - setting.chatgpt_login_polled_at).total_seconds()
-        >= int(code["interval"])
-    ):
-        setting.chatgpt_login_polled_at = now
-        try:
-            # One bounded poll, never LiteLLM's blocking 15-minute loop.
-            with httpx.Client(timeout=10) as client:
-                response = client.post(
-                    constants.CHATGPT_DEVICE_TOKEN_URL,
-                    json={k: code[k] for k in ("device_auth_id", "user_code")},
-                )
-            if response.status_code not in (403, 404):
-                response.raise_for_status()
-                data = response.json()
-                if not all(
-                    isinstance(data.get(k), str) and data[k]
-                    for k in ("authorization_code", "code_challenge", "code_verifier")
-                ):
-                    raise ValueError("Invalid authorization response")
-                record = auth._build_auth_record(auth._exchange_code_for_tokens(data))
-                claims = auth._decode_jwt_claims(record["id_token"])
-                auth_claims = claims.get("https://api.openai.com/auth")
-                account = {
-                    "email": claims.get("email"),
-                    "plan_type": auth_claims.get("chatgpt_plan_type")
-                    if isinstance(auth_claims, dict)
-                    else None,
-                    "connected_at": now.isoformat(),
-                    "needs_relogin": False,
-                }
-                setting.chatgpt_auth_ciphertext = encrypt_secret(json.dumps(record))
-                setting.chatgpt_account = account
-                setting.chatgpt_login_ciphertext = None
-                setting.chatgpt_login_expires_at = setting.chatgpt_login_polled_at = (
-                    None
-                )
-                record_audit(
-                    session,
-                    org_id=principal.org_id,
-                    actor_type=principal.actor_type,
-                    actor_id=str(principal.user_id),
-                    action="model_setting.chatgpt_connected",
-                    target_type="model_setting",
-                    target_id=str(principal.org_id),
-                    details={"plan_type": account["plan_type"]},
-                )
-                result = ChatGPTLogin(
-                    status="connected", account=ChatGPTAccount(**account)
-                )
-        except httpx.HTTPError, ValueError, constants.GetAccessTokenError:
-            result.status = "error"
-            result.message = "ChatGPT 登录查询失败，请稍后重试"
-    session.commit()
-    return result
 
 
 def disconnect(session: Session, principal: Principal) -> None:
     setting = locked_setting(session, principal)
+    if setting.chatgpt_login_ciphertext:
+        try:
+            active = json.loads(decrypt_secret(setting.chatgpt_login_ciphertext))
+            auth_request("DELETE", "/" + quote(active["login_id"], safe=""))
+        except SecretUnavailable, ModelUnavailable, ValueError, KeyError, TypeError:
+            pass  # A lost Pi process or encryption key must not prevent local disconnect.
     setting.chatgpt_auth_ciphertext = setting.chatgpt_account = None
-    setting.chatgpt_login_ciphertext = None
-    setting.chatgpt_login_expires_at = setting.chatgpt_login_polled_at = None
+    clear_login(setting)
     if setting.kind == "chatgpt_subscription":
         setting.enabled = False
     record_audit(
@@ -177,41 +216,14 @@ def disconnect(session: Session, principal: Principal) -> None:
         actor_type=principal.actor_type,
         actor_id=str(principal.user_id),
         action="model_setting.chatgpt_disconnected",
-        details={},
         target_type="model_setting",
         target_id=str(principal.org_id),
+        details={},
     )
     session.commit()
 
 
-def local_auth() -> dict[str, Any]:
-    from app.domains.model.client import ModelUnavailable
-
-    assert settings.CHATGPT_CODEX_AUTH_FILE
-    try:
-        tokens = json.loads(settings.CHATGPT_CODEX_AUTH_FILE.read_text())["tokens"]
-        auth, _ = sdk_auth()
-        expires = auth._get_expires_at(tokens["access_token"])
-        if not expires or expires - utc_now().timestamp() < 3600:
-            raise ModelUnavailable(
-                "本机 Codex 登录即将过期：在本机运行一次 codex 让它刷新，然后执行 docker compose up -d --force-recreate backend worker"
-            )
-        return {
-            "access_token": tokens["access_token"],
-            "id_token": tokens["id_token"],
-            "account_id": tokens.get("account_id")
-            or auth._extract_account_id(tokens["id_token"]),
-            "expires_at": expires,
-        }
-    except OSError, KeyError, TypeError, ValueError:
-        raise ModelUnavailable("无法读取本机 Codex 登录，请在本机重新登录") from None
-
-
-def completion(org_id: UUID | None, call: Callable[[], Any]) -> Any:
-    from app.domains.model.client import ModelUnavailable
-
-    if org_id is None:
-        raise ModelUnavailable(RELOGIN)
+def access_token(org_id: UUID) -> str:
     with Session(engine) as session:
         setting = session.exec(
             select(ModelSetting).where(ModelSetting.org_id == org_id).with_for_update()
@@ -222,45 +234,38 @@ def completion(org_id: UUID | None, call: Callable[[], Any]) -> Any:
             or setting.kind != "chatgpt_subscription"
         ):
             raise ModelUnavailable("ChatGPT 订阅已关闭")
-        with CALL_LOCK:
-            local = settings.CHATGPT_CODEX_AUTH_FILE is not None
-            if local:
-                record = json.dumps(local_auth())
-            elif setting.chatgpt_auth_ciphertext and not (
-                setting.chatgpt_account or {}
-            ).get("needs_relogin"):
-                record = decrypt_secret(setting.chatgpt_auth_ciphertext)
-            else:
-                raise ModelUnavailable(RELOGIN)
-            auth, constants = sdk_auth()
-            try:
-                with open(
-                    TOKEN_FILE,
-                    "w",
-                    opener=lambda path, flags: os.open(path, flags, 0o600),
-                ) as file:
-                    file.write(record)
-                # Never let the SDK start interactive login, including CLI/main-thread callers.
-                with ThreadPoolExecutor(max_workers=1) as executor:
-                    return executor.submit(call).result()
-            except Exception as error:
-                if (
-                    isinstance(error, constants.GetAccessTokenError)
-                    or getattr(error, "status_code", None) == 401
-                ):
-                    if not local:
-                        setting.chatgpt_account = {
-                            **(setting.chatgpt_account or {}),
-                            "needs_relogin": True,
-                        }
-                    raise ModelUnavailable(RELOGIN) from None
-                raise
-            finally:
-                try:
-                    if not local and TOKEN_FILE.exists():
-                        updated = TOKEN_FILE.read_text()
-                        if updated != record:
-                            setting.chatgpt_auth_ciphertext = encrypt_secret(updated)
-                    session.commit()
-                finally:
-                    TOKEN_FILE.unlink(missing_ok=True)
+        try:
+            tokens = OAuthTokens.model_validate_json(
+                decrypt_secret(setting.chatgpt_auth_ciphertext or "")
+            )
+            if (setting.chatgpt_account or {}).get(
+                "needs_relogin"
+            ) or tokens.expires <= (utc_now().timestamp() + 300) * 1000:
+                raise ValueError("Expired")
+            # shortcut: S7b2 (NERE-104) adds serialized refresh here; until then reconnect.
+            return tokens.access
+        except SecretUnavailable, ValidationError, ValueError:
+            needs_relogin(setting)
+            session.commit()
+            raise ModelUnavailable(RELOGIN) from None
+
+
+def invalidate(org_id: UUID, access: str) -> None:
+    with Session(engine) as session:
+        setting = session.exec(
+            select(ModelSetting).where(ModelSetting.org_id == org_id).with_for_update()
+        ).one_or_none()
+        if setting is None:
+            return
+        try:
+            if (
+                OAuthTokens.model_validate_json(
+                    decrypt_secret(setting.chatgpt_auth_ciphertext or "")
+                ).access
+                != access
+            ):
+                return
+        except SecretUnavailable, ValidationError:
+            return
+        needs_relogin(setting)
+        session.commit()

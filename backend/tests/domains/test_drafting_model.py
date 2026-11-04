@@ -31,14 +31,9 @@ from app.domains.org.models import ExternalIdentity
 from app.domains.profile.models import ProfileProgress
 from app.worker.tasks import draft_initial
 from tests.api.routes.test_initial_profiles import work_queue
-from tests.api.routes.test_model_setting import (
-    completions as subscription_completions,  # noqa: F401
-)
 from tests.authz.test_tenant_access import tenant_data  # noqa: F401
 from tests.domains.test_ingest import ingest, person, record, rows
 from tests.utils.pi import PiHarness
-
-pytestmark = pytest.mark.xdist_group("litellm")
 
 
 @pytest.fixture
@@ -509,10 +504,10 @@ def test_chatgpt_separate_setting_lock(
     from tests.api.routes.test_chatgpt import record as synthetic_auth
 
     org, _, _, employees, _ = drafting
-    replies, _ = request.getfixturevalue("subscription_completions")
+    replies, _ = request.getfixturevalue("model_completions")
     replies.append(answer())
     setting = db.get(ModelSetting, org)
-    setting.kind, setting.model = "chatgpt_subscription", "chatgpt/gpt-6.1-sol"
+    setting.kind, setting.model = "chatgpt_subscription", "chatgpt/gpt-5.4"
     setting.chatgpt_auth_ciphertext = encrypt_secret(json.dumps(synthetic_auth()))
     setting.paused_until, setting.pause_reason = utc_now(), "previous limit"
     db.add(setting)
@@ -527,7 +522,7 @@ def test_chatgpt_separate_setting_lock(
         assert service.read_progress(db, org).counts["failed"] == 0
         generated = rows(db, ProfileChangeRequest, org)[0].generated_by
         assert (
-            generated["provider"] == "chatgpt" and generated["model"] == "gpt-6.1-sol"
+            generated["provider"] == "openai-codex" and generated["model"] == "gpt-5.4"
         )
     finally:
         isolated.dispose()

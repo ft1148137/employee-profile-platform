@@ -12,6 +12,7 @@ import { createInterface } from 'node:readline';
 import { test } from 'node:test';
 import { createAssistantMessageEventStream } from '@mariozechner/pi-ai';
 import { createPiServer, quota } from './server.mjs';
+import { egress } from './egress.mjs';
 
 const token = 'synthetic-service-secret';
 const auth = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -316,4 +317,71 @@ test('fatal backend results abort before another model invocation', async t => {
   assert.equal(event.code, 'cancelled');
   assert.equal(JSON.stringify(event).includes('sensitive-backend-error'), false);
   assert.equal(calls, 1);
+});
+
+test('OAuth helpers authenticate, serialize logins, cancel, expire and redact failures', async t => {
+  let exchange; const exchanging = new Promise(resolve => { exchange = resolve; });
+  const login = async ({ onAuth, onManualCodeInput }) => {
+    onAuth({ url: 'https://auth.openai.com/oauth/authorize?state=synthetic-state' });
+    const input = await onManualCodeInput();
+    if (input === 'failure') throw new Error('synthetic-refresh private upstream');
+    if (input === 'slow') return new Promise((_, reject) => {
+      egress.getStore().signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
+      exchange();
+    });
+    return { access: 'synthetic-access', refresh: 'synthetic-refresh', expires: Date.now() + 7200000, accountId: 'synthetic-account' };
+  };
+  const { request, logs } = await setup(t, { login, loginLifetime: 1000 });
+  const path = '/v1/auth/openai-codex/logins';
+  for (const [route, method] of [[path, 'POST'], [path + '/unknown', 'POST'], [path + '/unknown', 'DELETE']])
+    assert.equal((await request(route, method, {}, {})).status, 401);
+  const begin = async () => (await request(path, 'POST', {})).json();
+  let start = await begin();
+  assert.match(start.url, /state=synthetic-state/);
+  assert.equal((await begin()).code, 'login_busy');
+  let result = await request(path + '/' + start.login_id, 'POST', { input: 'redirect-url' });
+  assert.equal((await result.json()).refresh, 'synthetic-refresh');
+  assert.equal((await (await request(path + '/' + start.login_id, 'POST', { input: 'replay' })).json()).code, 'login_not_found');
+  start = await begin();
+  assert.equal((await request(path + '/' + start.login_id, 'DELETE')).status, 200);
+  start = await begin();
+  result = await request(path + '/' + start.login_id, 'POST', { input: 'failure' });
+  assert.deepEqual(await result.json(), { code: 'login_failed' });
+  start = await begin();
+  const pending = request(path + '/' + start.login_id, 'POST', { input: 'slow' });
+  await exchanging;
+  assert.equal((await request(path + '/' + start.login_id, 'DELETE')).status, 200);
+  assert.deepEqual(await (await pending).json(), { code: 'login_failed' });
+  start = await begin();
+  await new Promise(resolve => setTimeout(resolve, 1100));
+  assert.equal((await (await request(path + '/' + start.login_id, 'POST', { input: 'late' })).json()).code, 'login_not_found');
+  assert.ok((await begin()).login_id);
+  assert.ok(!JSON.stringify(logs).includes('synthetic-'));
+});
+
+test('Codex turns use only responses with an access token and fixed SSE', async t => {
+  const access = `e30.${Buffer.from(JSON.stringify({ 'https://api.openai.com/auth': { chatgpt_account_id: 'synthetic-account' } })).toString('base64url')}.synthetic`;
+  const original = globalThis.fetch;
+  const seen = [];
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    if (String(url).startsWith('http://127.0.0.1:')) return original(url, options);
+    seen.push(String(url));
+    assert.equal(String(url), 'https://chatgpt.com/backend-api/codex/responses');
+    assert.equal(options.headers.get('Authorization'), `Bearer ${access}`);
+    return new Response('sensitive synthetic-refresh', { status: 401 });
+  });
+  const { start, logs } = await setup(t, { streamFn: undefined });
+  const data = body();
+  data.model = { provider: 'openai-codex', api: 'openai-codex-responses', id: 'gpt-5.4',
+    baseUrl: 'https://chatgpt.com/backend-api', api_key: access };
+  const run = await start(data);
+  assert.deepEqual(await run.next(), { type: 'error', code: 'model_unauthorized' });
+  assert.equal(seen.length, 1);
+  assert.ok(!JSON.stringify(logs).includes(access));
+});
+
+test('a model cannot invoke the authentication helper as a tool', async t => {
+  const { start } = await setup(t, { streamFn: fake(() => [call('auth_openai_codex_login')]) });
+  const run = await start();
+  assert.equal((await run.next()).code, 'limit_exceeded');
 });
