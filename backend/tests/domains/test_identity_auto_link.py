@@ -293,7 +293,7 @@ def test_auto_link_marker_migration(migration_engine: Engine) -> None:
                 )
             )
         session.commit()
-    migrate(migration_engine, "downgrade", "a84e001bc001")
+    migrate(migration_engine, "downgrade", "a88e001bc001")
     assert "auto_link_blocked" not in {
         c["name"] for c in inspect(migration_engine).get_columns("external_identity")
     }

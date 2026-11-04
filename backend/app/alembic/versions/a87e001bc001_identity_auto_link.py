@@ -1,14 +1,14 @@
 """Remember administrator opt-outs from automatic identity linking.
 
 Revision ID: a87e001bc001
-Revises: a84e001bc001
+Revises: a88e001bc001
 """
 
 import sqlalchemy as sa
 from alembic import op
 
 revision = "a87e001bc001"
-down_revision = "a84e001bc001"
+down_revision = "a88e001bc001"
 branch_labels = None
 depends_on = None
 
