@@ -17,6 +17,7 @@ from app.api.routes import (
     me,
     me_requests,
     model_setting,
+    oauth,
     orgs,
     private,
     profiles,
@@ -32,6 +33,7 @@ from app.core.config import settings
 
 api_router = APIRouter()
 api_router.include_router(access_tokens.router)
+api_router.include_router(oauth.router)
 api_router.include_router(bot_settings.router)
 api_router.include_router(login.router)
 api_router.include_router(users.router)

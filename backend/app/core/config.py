@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     LOGIN_MAX_FAILURES: int = Field(default=5, gt=0)
     LOGIN_MAX_FAILURES_PER_IP: int = Field(default=300, gt=0)
     LOGIN_LOCK_MINUTES: int = Field(default=15, gt=0, le=1440)
+    OAUTH_REGISTER_MAX_PER_IP_HOUR: int = Field(default=10, gt=0)
     FRONTEND_HOST: str = "http://localhost:5173"
     FASTAPI_ENV: Literal["development"] | None = None
     CHATGPT_CODEX_AUTH_FILE: Path | None = None

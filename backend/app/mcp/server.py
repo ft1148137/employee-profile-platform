@@ -32,6 +32,7 @@ from app.domains.access_token.service import get_setting
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.employee_tools import EMPLOYEE_TOOLS
+from app.mcp.oauth import resource_url
 
 TOOLS = {tool.name: tool for tool in EMPLOYEE_TOOLS}
 
@@ -214,6 +215,10 @@ class McpEndpoint:
 
             await self.manager.handle_request(scope, replay_body, send_response)
         except HTTPException as exc:
+            if exc.status_code == 401:
+                exc.headers = {
+                    "WWW-Authenticate": f'Bearer resource_metadata="{resource_url().removesuffix("/mcp")}/.well-known/oauth-protected-resource"'
+                }
             await JSONResponse(
                 {"detail": exc.detail}, status_code=exc.status_code, headers=exc.headers
             )(scope, receive, send)

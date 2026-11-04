@@ -394,7 +394,8 @@ def test_invalid_tokens_rate_limit_and_origin(
         response = client.post("/mcp", headers=auth, json={})
         assert (
             response.status_code == 401
-            and response.headers["www-authenticate"] == "Bearer"
+            and response.headers["www-authenticate"]
+            == f'Bearer resource_metadata="{settings.FRONTEND_HOST.rstrip("/")}/.well-known/oauth-protected-resource"'
         )
     response = client.post("/mcp", json={})
     assert response.status_code == 429 and response.headers["Retry-After"]
