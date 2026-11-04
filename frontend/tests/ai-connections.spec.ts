@@ -86,7 +86,7 @@ test("enterprise switch and personal token lifecycle", async ({
       "headers",
       "Authorization",
       "Bearer",
-      data.prefix,
+      ...(await employee.getByRole("group").locator("code").allTextContents()),
     ])
     await employee.reload()
     await employee.getByRole("tab", { name: "连接 AI 助手" }).click()

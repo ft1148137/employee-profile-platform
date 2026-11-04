@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine, inspect
 from sqlmodel import Session, select
 
+from app.core.config import settings as app_settings
 from app.core.security import ALGORITHM
 from app.domains.access_token.models import PersonalAccessToken
 from app.domains.audit.models import AuditEvent
@@ -131,7 +132,7 @@ def test_tenant_and_employee_boundaries(
     foreign_user_id = UUID(
         jwt.decode(
             auth["foreign"]["Authorization"].split()[1],
-            settings.SECRET_KEY,
+            app_settings.SECRET_KEY,
             algorithms=[ALGORITHM],
         )["sub"]
     )
