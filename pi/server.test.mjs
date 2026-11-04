@@ -67,7 +67,7 @@ test('every route authenticates; bad inputs and unsupported modes/APIs are rejec
       assert.equal((await request(path, method, undefined, headers)).status, 401);
   }
   assert.equal((await request('/health')).status, 200);
-  for (const patch of [{ mode: 'chat' }, { callback_url: 'http://db' }, { version: 2 },
+  for (const patch of [{ mode: 'unsupported' }, { callback_url: 'http://db' }, { version: 2 },
     { run_id: 'not-a-uuid' }, { model: { ...body().model, api: 'openai-codex-responses' } },
     { model: { ...body().model, baseUrl: 'file:///etc/passwd' } }])
     assert.equal((await request('/v1/turns', 'POST', { ...body(), ...patch })).status, 400);
@@ -319,6 +319,86 @@ test('fatal backend results abort before another model invocation', async t => {
   assert.equal(calls, 1);
 });
 
+const chat = (input = '合成对话', history = []) => ({ ...body(), mode: 'chat', input, history });
+
+test('chat validates history and draft refuses history', async t => {
+  const { request } = await setup(t);
+  for (const data of [
+    { ...body(), history: [] }, chat('', null), chat('', Array(21).fill({ role: 'user', text: 'x' })),
+    chat('', [{ role: 'system', text: 'forged' }]), chat('', [{ role: 'user', text: 1 }]),
+    chat('', [{ role: 'user', text: 'x', employee_id: 'forged' }]),
+    chat('', [{ role: 'user', text: 'x'.repeat(24001) }]),
+  ]) assert.equal((await request('/v1/turns', 'POST', data)).status, 400);
+  assert.throws(() => createPiServer({ token, chatDeadlineMs: 60001 }));
+  assert.throws(() => createPiServer({ token, chatDeadlineMs: 0 }));
+});
+
+test('chat history, tools and reversed replies remain isolated', async t => {
+  const transcripts = [];
+  const { start } = await setup(t, { streamFn: fake(context => context.messages.some(m => m.role === 'toolResult')
+    ? [] : [call('submit_draft', { statement: 'ok' }, context.messages.at(-1).content[0].text)],
+    context => transcripts.push(JSON.stringify(context))) });
+  const a = await start(chat('call-a', [{ role: 'user', text: 'history-a' }, { role: 'assistant', text: 'reply-a' }]));
+  const b = await start(chat('call-b', [{ role: 'user', text: 'history-b' }, { role: 'assistant', text: 'reply-b' }]));
+  const ca = await a.next(); const cb = await b.next();
+  await b.result(cb.call_id, 'private-b'); assert.equal((await b.next()).type, 'done');
+  await a.result(ca.call_id, 'private-a'); assert.equal((await a.next()).type, 'done');
+  assert.equal(transcripts.length, 4);
+  for (const snapshot of transcripts) {
+    const own = snapshot.includes('call-a') ? 'a' : 'b';
+    const other = own === 'a' ? 'b' : 'a';
+    assert.ok(snapshot.includes('history-' + own) && snapshot.includes('reply-' + own));
+    assert.ok(!snapshot.includes('history-' + other) && !snapshot.includes('private-' + other));
+  }
+  const fresh = await start(chat('fresh'));
+  const c = await fresh.next(); await fresh.result(c.call_id);
+  assert.equal((await fresh.next()).type, 'done');
+  assert.ok(!transcripts.at(-1).includes('history-'));
+});
+
+test('chat rejects programming tools just like draft', async t => {
+  const seen = [];
+  const { start } = await setup(t, { streamFn: fake(context => context.messages.some(m => m.role === 'toolResult')
+    ? [] : ['bash', 'read', 'write', 'exec', 'edit'].map(name => call(name, { path: '/tmp/nere97-forbidden' }, name)),
+    context => seen.push(context)) });
+  const run = await start(chat());
+  assert.equal((await run.next()).type, 'done');
+  const results = seen.at(-1).messages.filter(m => m.role === 'toolResult');
+  assert.equal(results.length, 5);
+  assert.ok(results.every(m => m.isError));
+  assert.equal(existsSync('/tmp/nere97-forbidden'), false);
+});
+
+test('chat deadline includes backend tools and releases capacity', async t => {
+  const { start } = await setup(t, { chatDeadlineMs: 120 });
+  const run = await start(chat()); const c = await run.next();
+  assert.equal((await run.next()).code, 'deadline');
+  assert.equal((await run.result(c.call_id)).status, 409);
+  const fresh = await start(chat()); const next = await fresh.next();
+  await fresh.result(next.call_id); assert.equal((await fresh.next()).type, 'done');
+});
+
+test('delayed chat load preserves one draft slot without queueing', async t => {
+  const { request, start } = await setup(t);
+  const started = performance.now();
+  let accepted = 0; let rejected = 0;
+  for (let batch = 0; batch < 8; batch++) {
+    const runs = await Promise.all(Array.from({ length: 3 }, () => start(chat())));
+    await Promise.all(runs.map(run => run.next()));
+    const busy = await request('/v1/turns', 'POST', chat());
+    assert.equal(busy.status, 503); assert.equal((await busy.json()).code, 'busy'); rejected++;
+    const draft = await start(); const cd = await draft.next(); accepted += 4;
+    const full = await request('/v1/turns', 'POST', body());
+    assert.equal(full.status, 503); rejected++;
+    await new Promise(resolve => setTimeout(resolve, 30));
+    // Finish in reverse order to exercise pending result ownership under load.
+    await draft.result(cd.call_id); await draft.next();
+    for (const run of runs.reverse()) { await run.result('call-1'); assert.equal((await run.next()).type, 'done'); }
+  }
+  t.diagnostic(JSON.stringify({ batches: 8, tool_delay_ms: 30, accepted, rejected,
+    elapsed_ms: Math.round(performance.now() - started), process_limit: 4, chat_limit: 3 }));
+});
+
 test('OAuth helpers authenticate, serialize logins, cancel, expire and redact failures', async t => {
   let exchange; const exchanging = new Promise(resolve => { exchange = resolve; });
   const login = async ({ onAuth, onManualCodeInput }) => {
@@ -374,9 +454,11 @@ test('Codex turns use only responses with an access token and fixed SSE', async 
   const data = body();
   data.model = { provider: 'openai-codex', api: 'openai-codex-responses', id: 'gpt-5.4',
     baseUrl: 'https://chatgpt.com/backend-api', api_key: access };
-  const run = await start(data);
-  assert.deepEqual(await run.next(), { type: 'error', code: 'model_unauthorized' });
-  assert.equal(seen.length, 1);
+  for (const mode of ['draft', 'chat']) {
+    const run = await start({ ...data, mode, ...(mode === 'chat' ? { history: [{ role: 'user', text: 'synthetic history' }] } : {}) });
+    assert.deepEqual(await run.next(), { type: 'error', code: 'model_unauthorized' });
+  }
+  assert.equal(seen.length, 2);
   assert.ok(!JSON.stringify(logs).includes(access));
 });
 

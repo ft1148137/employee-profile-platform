@@ -1,12 +1,12 @@
 """Employee pending questions and tenant-safe inbox references.
 
 Revision ID: a95e001bc001
-Revises: b102001bc001
+Revises: b97e001bc001
 """
 from alembic import op
 
 revision = "a95e001bc001"
-down_revision = "b102001bc001"
+down_revision = "b97e001bc001"
 branch_labels = None
 depends_on = None
 

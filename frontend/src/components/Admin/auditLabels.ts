@@ -2,6 +2,7 @@ import type { AuditEventPublic } from "@/client"
 
 export const auditLabels: Record<string, string> = {
   "question.answered": "回答待确认问题",
+  "initial_profiles.handed_over": "初始画像批量送审（员工未过目）",
   "initial_profiles.drafted": "生成初始画像",
   "change_request.dictionary_changed": "词典调整后更新请求",
   "change_request.submitted": "提交画像请求",
@@ -29,6 +30,7 @@ export const auditLabels: Record<string, string> = {
   "capability_schema.activated": "启用能力词典",
   "seed.loaded": "导入演示数据",
   "drafting_settings.updated": "修改自动起草设置",
+  "bot_settings.updated": "修改机器人设置",
   "employee.auto_draft_changed": "修改本人自动起草选择",
   "account.email_changed": "修改账号邮箱",
   "roster.imported": "导入员工名单",
@@ -49,6 +51,7 @@ export const targetLabels: Record<string, string> = {
   evidence: "证据",
   employee: "员工",
   drafting_setting: "自动起草设置",
+  bot_setting: "机器人设置",
   user: "账号",
   role_grant: "角色",
   organization: "企业",

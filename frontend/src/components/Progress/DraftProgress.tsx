@@ -28,6 +28,20 @@ export function DraftProgress({
       (await InitialProfilesService.profilesProgress({ path })).data,
     refetchInterval: 5000,
   })
+  const handover = useQuery({
+    queryKey: ["handover", orgId],
+    queryFn: async () =>
+      (await InitialProfilesService.profilesPreviewHandover({ path })).data,
+    enabled: !wizard,
+    refetchInterval: 5000,
+  })
+  const send = useMutation({
+    mutationFn: () => InitialProfilesService.profilesConfirmHandover({ path }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["draft-progress", orgId] })
+      client.invalidateQueries({ queryKey: ["handover", orgId] })
+    },
+  })
   // Saved pending progress can outlive its job; the API rejects concurrent drafts.
   const draft = useMutation({
     mutationFn: (scope: "all" | "failed") =>
@@ -46,6 +60,35 @@ export function DraftProgress({
     <section className="space-y-5" aria-label="初始画像起草进度">
       <h2 className="text-xl font-semibold">初始画像</h2>
       <SetupError error={progress.error ?? draft.error} />
+      {!wizard && (
+        <div className="space-y-3 rounded-lg border p-4">
+          <p>满 14 天未处理、可批量送审：{handover.data?.count ?? "—"} 人</p>
+          <p className="text-sm text-muted-foreground">
+            送审后标为「员工未过目」，通知本人，批准前本人可以撤回。
+          </p>
+          <SetupError error={handover.error ?? send.error} />
+          <Button
+            variant="outline"
+            disabled={send.isPending || !handover.data?.count}
+            onClick={async () => {
+              const latest = await handover.refetch()
+              if (
+                latest.isSuccess &&
+                latest.data.count > 0 &&
+                window.confirm(
+                  `确认将 ${latest.data.count} 名员工的初始画像批量送审？这些员工尚未过目。`,
+                )
+              )
+                send.mutate()
+            }}
+          >
+            批量送审
+          </Button>
+          {send.isSuccess && (
+            <p role="status">已送审 {send.data.data.count} 人</p>
+          )}
+        </div>
+      )}
       {progress.isPending && <p role="status">正在读取起草进度…</p>}
       {progress.isError && (
         <Button onClick={() => progress.refetch()}>重新读取</Button>
