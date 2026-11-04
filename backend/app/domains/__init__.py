@@ -1,5 +1,6 @@
 """Register all domain tables with SQLModel metadata."""
 
+from app.domains.access_token import models as access_token
 from app.domains.account import models as account
 from app.domains.audit import models as audit
 from app.domains.capability import models as capability
@@ -15,6 +16,7 @@ from app.domains.source import models as source
 from app.domains.work import models as work
 
 __all__ = [
+    "access_token",
     "account",
     "audit",
     "capability",

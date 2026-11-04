@@ -100,6 +100,11 @@ export function AppSidebar() {
                 },
                 { icon: Settings, title: "数据来源", path: "/admin/sources" },
 
+                {
+                  icon: Settings,
+                  title: "外部 AI 助手",
+                  path: "/admin/assistants",
+                },
                 { icon: Settings, title: "模型", path: "/admin/model" },
                 { icon: ScrollText, title: "审计日志", path: "/admin/audit" },
                 {

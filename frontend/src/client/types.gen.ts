@@ -1716,6 +1716,42 @@ export type JiraConnectionUpdate = {
 export type JsonValue = unknown;
 
 /**
+ * McpSettingPublic
+ */
+export type McpSettingPublic = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Allowed Clients
+     */
+    allowed_clients?: Array<string>;
+    /**
+     * Updated By
+     */
+    updated_by?: string | null;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+};
+
+/**
+ * McpSettingUpdate
+ */
+export type McpSettingUpdate = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Allowed Clients
+     */
+    allowed_clients?: Array<string>;
+};
+
+/**
  * MembershipPublic
  */
 export type MembershipPublic = {
@@ -2572,6 +2608,104 @@ export type Token = {
 };
 
 /**
+ * TokenCreate
+ */
+export type TokenCreate = {
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * TokenCreated
+ */
+export type TokenCreated = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Prefix
+     */
+    prefix: string;
+    /**
+     * Scopes
+     */
+    scopes: 'employee';
+    /**
+     * Client Kind
+     */
+    client_kind: 'pat' | 'oauth';
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Expires At
+     */
+    expires_at: string;
+    /**
+     * Last Used At
+     */
+    last_used_at: string | null;
+    /**
+     * Revoked At
+     */
+    revoked_at: string | null;
+    /**
+     * Token
+     */
+    token: string;
+};
+
+/**
+ * TokenPublic
+ */
+export type TokenPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Prefix
+     */
+    prefix: string;
+    /**
+     * Scopes
+     */
+    scopes: 'employee';
+    /**
+     * Client Kind
+     */
+    client_kind: 'pat' | 'oauth';
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Expires At
+     */
+    expires_at: string;
+    /**
+     * Last Used At
+     */
+    last_used_at: string | null;
+    /**
+     * Revoked At
+     */
+    revoked_at: string | null;
+};
+
+/**
  * UpdatePassword
  */
 export type UpdatePassword = {
@@ -2767,6 +2901,162 @@ export type ModelSettingUpdateWritable = {
      */
     reasoning_effort?: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null;
 };
+
+export type accessTokensReadMcpSettingData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/mcp-setting';
+};
+
+export type accessTokensReadMcpSettingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type accessTokensReadMcpSettingError = accessTokensReadMcpSettingErrors[keyof accessTokensReadMcpSettingErrors];
+
+export type accessTokensReadMcpSettingResponses = {
+    /**
+     * Successful Response
+     */
+    200: McpSettingPublic;
+};
+
+export type accessTokensReadMcpSettingResponse = accessTokensReadMcpSettingResponses[keyof accessTokensReadMcpSettingResponses];
+
+export type accessTokensUpdateMcpSettingData = {
+    body: McpSettingUpdate;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/mcp-setting';
+};
+
+export type accessTokensUpdateMcpSettingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type accessTokensUpdateMcpSettingError = accessTokensUpdateMcpSettingErrors[keyof accessTokensUpdateMcpSettingErrors];
+
+export type accessTokensUpdateMcpSettingResponses = {
+    /**
+     * Successful Response
+     */
+    200: McpSettingPublic;
+};
+
+export type accessTokensUpdateMcpSettingResponse = accessTokensUpdateMcpSettingResponses[keyof accessTokensUpdateMcpSettingResponses];
+
+export type accessTokensReadAccessTokensData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/access-tokens';
+};
+
+export type accessTokensReadAccessTokensErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type accessTokensReadAccessTokensError = accessTokensReadAccessTokensErrors[keyof accessTokensReadAccessTokensErrors];
+
+export type accessTokensReadAccessTokensResponses = {
+    /**
+     * Response Access Tokens-Read Access Tokens
+     *
+     * Successful Response
+     */
+    200: Array<TokenPublic>;
+};
+
+export type accessTokensReadAccessTokensResponse = accessTokensReadAccessTokensResponses[keyof accessTokensReadAccessTokensResponses];
+
+export type accessTokensCreateAccessTokenData = {
+    body: TokenCreate;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/access-tokens';
+};
+
+export type accessTokensCreateAccessTokenErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type accessTokensCreateAccessTokenError = accessTokensCreateAccessTokenErrors[keyof accessTokensCreateAccessTokenErrors];
+
+export type accessTokensCreateAccessTokenResponses = {
+    /**
+     * Successful Response
+     */
+    201: TokenCreated;
+};
+
+export type accessTokensCreateAccessTokenResponse = accessTokensCreateAccessTokenResponses[keyof accessTokensCreateAccessTokenResponses];
+
+export type accessTokensRevokeAccessTokenData = {
+    body?: never;
+    path: {
+        /**
+         * Token Id
+         */
+        token_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/access-tokens/{token_id}';
+};
+
+export type accessTokensRevokeAccessTokenErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type accessTokensRevokeAccessTokenError = accessTokensRevokeAccessTokenErrors[keyof accessTokensRevokeAccessTokenErrors];
+
+export type accessTokensRevokeAccessTokenResponses = {
+    /**
+     * Successful Response
+     */
+    200: TokenPublic;
+};
+
+export type accessTokensRevokeAccessTokenResponse = accessTokensRevokeAccessTokenResponses[keyof accessTokensRevokeAccessTokenResponses];
 
 export type loginLoginAccessTokenData = {
     body: Body_login_login_access_token;
