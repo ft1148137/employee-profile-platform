@@ -3,7 +3,6 @@
 from collections.abc import Sequence
 from uuid import UUID
 
-from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.authz.principal import Principal
@@ -76,9 +75,6 @@ def auto_link_identities(
         select(Employee.id, Employee.work_email).where(
             Employee.org_id == org_id,
             Employee.employment_status == EmploymentStatus.ACTIVE,
-            func.lower(func.trim(Employee.work_email)).in_(
-                {(identity.email or "").strip().lower() for identity in pending}
-            ),
         )
     ):
         matches.setdefault((email or "").strip().lower(), []).append(employee_id)

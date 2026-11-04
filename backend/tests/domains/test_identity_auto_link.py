@@ -56,7 +56,7 @@ def test_page_links_backfills_and_respects_unlink(
 ) -> None:
     orgs, _, employees, users = tenant_data
     org, employee = orgs[0], employees[0]
-    employee.work_email = " Match@Example.com "
+    employee.work_email = "\t Match@Example.com\n\u3000"
     employees[-1].work_email = "match@example.com"
     connection = SourceConnection(
         org_id=org.id, kind="jira", updated_by_user_id=users[0].id
