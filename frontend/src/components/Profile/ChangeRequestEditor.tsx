@@ -250,6 +250,7 @@ export function ChangeRequestEditor({
                 {after.owner_statement && (
                   <p>依据说明：{after.owner_statement}</p>
                 )}
+                {after.uncertainty && <p>不确定之处：{after.uncertainty}</p>}
                 {after.objection && <p>异议原因：{after.objection}</p>}
                 <p className="text-sm">
                   相关证据：
@@ -375,24 +376,29 @@ export function ChangeRequestEditor({
                         }
                       />
                     </label>
-                    {selection.request?.origin === "initial_sync" && (
-                      <label className="block space-y-1">
-                        异议原因
-                        <textarea
-                          ref={
-                            item.capability_key === selection.capabilityKey &&
-                            selection.objection
-                              ? activeField
-                              : undefined
-                          }
-                          value={item.objection ?? ""}
-                          className="block min-h-20 w-full rounded-md border bg-background p-2"
-                          onChange={(e) =>
-                            update(index, { objection: e.target.value || null })
-                          }
-                        />
-                      </label>
-                    )}
+                    {selection.request &&
+                      ["initial_sync", "import"].includes(
+                        selection.request.origin,
+                      ) && (
+                        <label className="block space-y-1">
+                          异议原因
+                          <textarea
+                            ref={
+                              item.capability_key === selection.capabilityKey &&
+                              selection.objection
+                                ? activeField
+                                : undefined
+                            }
+                            value={item.objection ?? ""}
+                            className="block min-h-20 w-full rounded-md border bg-background p-2"
+                            onChange={(e) =>
+                              update(index, {
+                                objection: e.target.value || null,
+                              })
+                            }
+                          />
+                        </label>
+                      )}
                     <details>
                       <summary className="cursor-pointer">
                         选择相关证据（已选 {item.evidence_ids?.length ?? 0}）

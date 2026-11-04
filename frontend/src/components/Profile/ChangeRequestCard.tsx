@@ -46,27 +46,32 @@ export function ChangeRequestCard({
       client.invalidateQueries({ queryKey: ["inbox", orgId] })
     },
   })
-  const initial = requests.find(
+  const pending = requests.filter(
     (request) =>
-      request.origin === "initial_sync" && request.status === "pending_owner",
+      ["initial_sync", "import"].includes(request.origin) &&
+      request.status === "pending_owner",
   )
-  const others = requests.filter((request) => request !== initial)
+  const others = requests.filter((request) => !pending.includes(request))
   return (
     <div className="mb-6 space-y-4">
       <SetupError error={withdraw.error} />
-      {initial && (
+      {pending.map((initial) => (
         <section
-          aria-label="初始画像草稿"
+          key={initial.id}
+          aria-label={
+            initial.origin === "import" ? "导入画像草稿" : "初始画像草稿"
+          }
           className="rounded-xl border border-primary/30 bg-muted/20 p-6 space-y-5"
         >
           <div className="space-y-2">
             <h2 className="text-lg font-semibold">
-              {isOwner
-                ? "待你过目：系统起草的初始画像"
-                : "待本人过目：系统起草的初始画像"}
+              {isOwner ? "待你过目：" : "待本人过目："}
+              {initial.origin === "import"
+                ? "管理员导入的画像"
+                : "系统起草的初始画像"}
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              这是系统根据工作记录整理的草稿，还没有生效。本人可以直接提交、修改后提交或提出异议。
+              这是候选画像，还没有生效。本人可以直接提交、修改后提交或提出异议。
             </p>
           </div>
           {!initial.items?.length && (
@@ -106,7 +111,8 @@ export function ChangeRequestCard({
                     : "未给等级"}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  解释：{item.explanation ?? "暂无解释"}
+                  依据说明：
+                  {item.owner_statement ?? item.explanation ?? "暂无说明"}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   不确定之处：{item.uncertainty ?? "暂无说明"}
@@ -157,7 +163,7 @@ export function ChangeRequestCard({
             </Button>
           )}
         </section>
-      )}
+      ))}
       {others.length > 0 && (
         <section aria-label="其他待处理请求" className="rounded-lg border p-4">
           <h2 className="mb-2 font-semibold">其他待处理请求</h2>

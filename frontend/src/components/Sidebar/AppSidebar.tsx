@@ -97,6 +97,11 @@ export function AppSidebar() {
             <Main
               items={[
                 { icon: Users, title: "导入名单", path: "/admin/roster" },
+                {
+                  icon: Users,
+                  title: "批量导入画像",
+                  path: "/admin/profile-imports",
+                },
                 { icon: Users, title: "员工与账号", path: "/admin/accounts" },
                 { icon: Users, title: "角色", path: "/admin/roles" },
                 { icon: Users, title: "账号对应", path: "/admin/identities" },

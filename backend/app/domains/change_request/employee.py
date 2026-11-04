@@ -373,6 +373,13 @@ def submit(
                     "via": via,
                     "client_name": client_name,
                     "request_id": str(request.id),
+                    **(
+                        {"imported_by": request.author["user_id"]}
+                        if request.origin == RequestOrigin.IMPORT
+                        and request.author.get("user_id")
+                        and request.author["user_id"] != str(principal.user_id)
+                        else {}
+                    ),
                 },
             )
             session.add(

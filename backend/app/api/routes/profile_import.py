@@ -4,7 +4,8 @@ from fastapi import APIRouter, UploadFile
 from fastapi.responses import FileResponse
 
 from app.api.deps import CurrentUser, SessionDep
-from app.authz.deps import OrgPrincipalDep
+from app.authz.deps import OrgAdminDep, OrgPrincipalDep
+from app.domains.change_request.batch_import import ImportResult, import_profiles
 from app.domains.change_request.import_json import (
     FILES_DIR,
     MAX_FILE_SIZE,
@@ -13,6 +14,24 @@ from app.domains.change_request.import_json import (
 from app.domains.change_request.schemas import RequestPreview
 
 router = APIRouter(tags=["profile-import"])
+
+
+@router.post("/orgs/{org_id}/profile-imports")
+def upload_profile_imports(
+    files: list[UploadFile],
+    principal: OrgAdminDep,
+    session: SessionDep,
+    confirm: bool = False,
+) -> list[ImportResult]:
+    return import_profiles(
+        principal,
+        session,
+        [
+            (file.filename or "profile.json", file.file.read(MAX_FILE_SIZE + 1))
+            for file in files
+        ],
+        confirm=confirm,
+    )
 
 
 @router.get("/profile-import/files/{name}", response_class=FileResponse)

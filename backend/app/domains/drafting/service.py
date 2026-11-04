@@ -124,6 +124,26 @@ class InvalidDraft(ValueError):
     pass
 
 
+def current_claim_ids(
+    session: Session, org_id: UUID, employee_id: UUID
+) -> dict[str, UUID]:
+    claims = session.exec(
+        select(ProfileClaim, CapabilityDefinition.key)
+        .join(
+            CapabilityDefinition,
+            (col(CapabilityDefinition.id) == ProfileClaim.capability_definition_id)
+            & (col(CapabilityDefinition.org_id) == ProfileClaim.org_id),
+        )
+        .where(
+            ProfileClaim.org_id == org_id,
+            ProfileClaim.subject_employee_id == employee_id,
+        )
+        .order_by(col(ProfileClaim.created_at), col(ProfileClaim.id))
+    ).all()
+    superseded = {c.supersedes_claim_id for c, _ in claims}
+    return {key: c.id for c, key in claims if c.id not in superseded}
+
+
 def write_initial_request(
     session: Session,
     org_id: UUID,
@@ -190,21 +210,7 @@ def write_initial_request(
             col(ChangeItem.org_id) == org_id, col(ChangeItem.request_id) == request.id
         )
     )
-    claims = session.exec(
-        select(ProfileClaim, CapabilityDefinition.key)
-        .join(
-            CapabilityDefinition,
-            (col(CapabilityDefinition.id) == ProfileClaim.capability_definition_id)
-            & (col(CapabilityDefinition.org_id) == ProfileClaim.org_id),
-        )
-        .where(
-            ProfileClaim.org_id == org_id,
-            ProfileClaim.subject_employee_id == employee.id,
-        )
-        .order_by(col(ProfileClaim.created_at), col(ProfileClaim.id))
-    ).all()
-    superseded = {c.supersedes_claim_id for c, _ in claims}
-    current = {key: c.id for c, key in claims if c.id not in superseded}
+    current = current_claim_ids(session, org_id, employee.id)
     keys = dict(
         session.exec(
             select(CapabilityDefinition.id, CapabilityDefinition.key).where(
