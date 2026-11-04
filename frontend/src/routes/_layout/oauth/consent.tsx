@@ -73,7 +73,7 @@ function Consent({ orgId, request }: { orgId: string; request: string }) {
         <ul className="list-disc space-y-2 pl-5 text-sm">
           <li>查看你的画像、证据、能力词典和请求进度</li>
           <li>起草、提交和撤回你的画像变更请求</li>
-          <li>回答待确认问题、提出申诉</li>
+          <li>回答待确认问题</li>
         </ul>
       </div>
       <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
