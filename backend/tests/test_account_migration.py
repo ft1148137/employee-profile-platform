@@ -34,7 +34,10 @@ def test_account_migration_roundtrip(migration_engine: Engine) -> None:
     with migration_engine.begin() as connection:
         connection.execute(
             text('UPDATE "user" SET email = :email WHERE username = :username'),
-            {"email": "employee02@demo.example.com", "username": "employee02@demo.example.com"},
+            {
+                "email": "employee02@demo.example.com",
+                "username": "employee02@demo.example.com",
+            },
         )
     migrate(migration_engine, "downgrade", "7d3e0f1a5b92")
     migrate(migration_engine, "upgrade", "head")

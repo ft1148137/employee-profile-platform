@@ -438,7 +438,10 @@ def check(data: Loaded) -> list[str]:
     require(set(personas) == set(employees), "personas.yaml must list every employee")
     for code, employee in employees.items():
         require(employee.department in departments, f"{code} unknown department")
-        require(employee.work_email == f"{code.lower()}@{ent.slug}.example.com", f"{code} email login")
+        require(
+            employee.work_email == f"{code.lower()}@{ent.slug}.example.com",
+            f"{code} email login",
+        )
         require(roster[code].work_email == employee.work_email, f"{code} roster email")
         persona = personas.get(code)
         require(

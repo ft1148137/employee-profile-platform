@@ -39,9 +39,7 @@ def authentication_token_from_email(
     password = random_lower_string()
     user = crud.get_user_by_email(session=db, email=email)
     if not user:
-        user_in_create = UserCreate(
-            username=email, email=email, password=password
-        )
+        user_in_create = UserCreate(username=email, email=email, password=password)
         user = crud.create_user(session=db, user_create=user_in_create)
     else:
         user.hashed_password = get_password_hash(password)
