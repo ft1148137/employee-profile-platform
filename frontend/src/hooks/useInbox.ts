@@ -14,6 +14,7 @@ export function useInbox(skip = 0) {
         })
       ).data,
     enabled: !!org && !!employeeId,
+    retry: false,
     refetchInterval: 30000,
   })
 }

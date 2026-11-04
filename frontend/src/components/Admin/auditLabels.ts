@@ -1,6 +1,7 @@
 import type { AuditEventPublic } from "@/client"
 
 export const auditLabels: Record<string, string> = {
+  "question.answered": "回答待确认问题",
   "initial_profiles.drafted": "生成初始画像",
   "change_request.dictionary_changed": "词典调整后更新请求",
   "change_request.submitted": "提交画像请求",
@@ -39,6 +40,7 @@ export const actorLabels: Record<string, string> = {
   cli: "命令行",
 }
 export const targetLabels: Record<string, string> = {
+  pending_question: "待确认问题",
   sync_run: "同步记录",
   profile_change_request: "画像变更请求",
   source_connection: "数据来源",
