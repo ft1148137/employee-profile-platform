@@ -52,6 +52,7 @@ function JiraForm({
       include_description: false,
     },
   )
+  const [schedule, setSchedule] = useState(connection.sync_schedule ?? "off")
   const [secret, setSecret] = useState("")
   const [hasSecret, setHasSecret] = useState(connection.has_secret)
   const [dirty, setDirty] = useState(false)
@@ -62,7 +63,11 @@ function JiraForm({
     mutationFn: () =>
       SourcesService.putJira({
         path: { org_id: orgId },
-        body: { ...config, secret: secret || undefined },
+        body: {
+          ...config,
+          sync_schedule: schedule,
+          secret: secret || undefined,
+        },
       }),
     onSuccess: ({ data }) => {
       setSecret("")
@@ -204,6 +209,32 @@ function JiraForm({
               onChange={(e) => change({ start_date: e.target.value })}
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="jira-schedule">同步周期</Label>
+            <select
+              id="jira-schedule"
+              className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+              value={schedule}
+              onChange={(e) => {
+                const value = e.target.value
+                if (
+                  value === "off" ||
+                  value === "monthly" ||
+                  value === "quarterly" ||
+                  value === "yearly"
+                ) {
+                  setSchedule(value)
+                  setDirty(true)
+                  save.reset()
+                }
+              }}
+            >
+              <option value="off">关闭</option>
+              <option value="monthly">每月</option>
+              <option value="quarterly">每季度</option>
+              <option value="yearly">每年</option>
+            </select>
+          </div>
           <label className="flex items-start gap-2 text-sm">
             <input
               type="checkbox"
@@ -268,6 +299,12 @@ function JiraForm({
           )}
         </div>
       )}
+      <p className="text-sm text-muted-foreground">
+        下次同步时间：
+        {connection.next_sync_at
+          ? new Date(connection.next_sync_at).toLocaleString("zh-CN")
+          : "定时同步已关闭"}
+      </p>
       <LastSyncStatus run={latest} />
       <a href="/admin/progress" className="text-sm text-primary underline">
         查看同步与起草进度

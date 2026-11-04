@@ -159,3 +159,24 @@ for (const account of ["manager.platform", "employee.platform"]) {
     await expect(page.getByLabel("站点地址")).toHaveCount(0)
   })
 }
+
+test("Jira schedule persists after refresh and can be disabled", async ({
+  page,
+}) => {
+  await createSourcesOrg(page)
+  await saveCloud(page, base, "jira-admin@example.com", "mock-cloud-token")
+  await page.goto("/admin/sources")
+  await expect(page.getByLabel("同步周期")).toHaveValue("off")
+  for (const period of ["monthly", "quarterly", "yearly", "off"]) {
+    await page.getByLabel("同步周期").selectOption(period)
+    await page.getByRole("button", { name: "保存", exact: true }).click()
+    await expect(page.getByText("Jira 配置已保存。")).toBeVisible()
+    await page.reload()
+    await expect(page.getByLabel("同步周期")).toHaveValue(period)
+    const next = page.getByText(/下次同步时间：/)
+    await expect(next).toBeVisible()
+    if (period === "off") await expect(next).toContainText("定时同步已关闭")
+    else await expect(next).not.toContainText("定时同步已关闭")
+    await expect(page.getByRole("button", { name: "立即同步" })).toBeEnabled()
+  }
+})

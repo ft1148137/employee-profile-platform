@@ -1420,6 +1420,14 @@ export type JiraConfig = {
  */
 export type JiraConnectionPublic = {
     /**
+     * Sync Schedule
+     */
+    sync_schedule?: 'off' | 'monthly' | 'quarterly' | 'yearly';
+    /**
+     * Next Sync At
+     */
+    next_sync_at?: string | null;
+    /**
      * Configured
      */
     configured?: boolean;
@@ -1484,6 +1492,10 @@ export type JiraConnectionUpdate = {
      * Include Description
      */
     include_description?: boolean;
+    /**
+     * Sync Schedule
+     */
+    sync_schedule?: 'off' | 'monthly' | 'quarterly' | 'yearly';
     /**
      * Secret
      */
@@ -2160,7 +2172,7 @@ export type SyncRunPublic = {
     /**
      * Trigger
      */
-    trigger: 'manual' | 'retry';
+    trigger: 'manual' | 'retry' | 'schedule';
     /**
      * Attempts
      */
@@ -2418,6 +2430,10 @@ export type JiraConnectionUpdateWritable = {
      * Include Description
      */
     include_description?: boolean;
+    /**
+     * Sync Schedule
+     */
+    sync_schedule?: 'off' | 'monthly' | 'quarterly' | 'yearly';
     /**
      * Secret
      */

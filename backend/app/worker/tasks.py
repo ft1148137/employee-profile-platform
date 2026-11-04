@@ -4,8 +4,12 @@ from procrastinate.exceptions import JobRetry
 from procrastinate.job_context import JobContext
 from procrastinate.jobs import Job
 from procrastinate.retry import BaseRetryStrategy
+from sqlmodel import Session
 
+from app.core.db import engine
+from app.domains.base import utc_now
 from app.domains.drafting.service import run_drafting
+from app.domains.source.schedule import dispatch_due_syncs
 from app.domains.source.sync import execute_sync
 from app.worker.app import app
 from app.worker.tenant import tenant_task
@@ -45,3 +49,10 @@ def sync_run(org_id: str, run_id: str, initial_attempts: int = 0) -> None:
         UUID(org_id),
         lambda principal: execute_sync(principal, UUID(run_id), initial_attempts),
     )
+
+
+@app.periodic(cron="0 * * * *")
+@app.task(name="sources.dispatch_scheduled")
+def dispatch_scheduled(timestamp: int) -> None:  # noqa: ARG001
+    with Session(engine) as session:
+        dispatch_due_syncs(session, utc_now())
