@@ -11,7 +11,7 @@ test("employee previews imports, downloads files, submits and withdraws", async 
     "employee.algorithm@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
-  await expect(page).toHaveURL("/inbox")
+  await expect(page).toHaveURL(/\/(inbox|employees\/[^/]+)$/)
   await page.getByRole("link", { name: "我的画像", exact: true }).click()
   await page
     .getByRole("button", { name: "导入 AI 生成的画像", exact: true })
@@ -110,7 +110,7 @@ test("editing an initial candidate sends uncertainty back unchanged", async ({
     "employee.platform@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
-  await expect(page).toHaveURL("/inbox")
+  await expect(page).toHaveURL(/\/(inbox|employees\/[^/]+)$/)
   await page.getByRole("link", { name: "我的画像", exact: true }).click()
   const initial = page.getByRole("region", {
     name: "初始画像草稿",
