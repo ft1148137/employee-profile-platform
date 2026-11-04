@@ -10,7 +10,8 @@ from app.core.config import settings
 from app.core.secrets import decrypt_secret, encrypt_secret
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
-from app.domains.model.client import ModelConfig, ModelUnavailable
+from app.domains.model import chatgpt
+from app.domains.model.client import ModelUnavailable
 from app.domains.model.models import ModelSetting
 from app.domains.model.pi_client import PiModelConfig
 from app.domains.model.schemas import (
@@ -34,12 +35,9 @@ def read_setting(session: Session, org_id: UUID) -> ModelSetting | None:
 
 def public_setting(setting: ModelSetting | None) -> ModelSettingPublic:
     if setting is None:
-        return ModelSettingPublic(
-            local_codex=settings.CHATGPT_CODEX_AUTH_FILE is not None
-        )
+        return ModelSettingPublic()
     return ModelSettingPublic(
         **setting.model_dump(exclude={"api_key_ciphertext"}),
-        local_codex=settings.CHATGPT_CODEX_AUTH_FILE is not None,
         has_api_key=bool(setting.api_key_ciphertext),
         chatgpt=ChatGPTStatus(
             connected=bool(setting.chatgpt_auth_ciphertext),
@@ -69,7 +67,6 @@ def save_setting(
         and not (
             setting.chatgpt_auth_ciphertext
             and not (setting.chatgpt_account or {}).get("needs_relogin")
-            or settings.CHATGPT_CODEX_AUTH_FILE
         )
     ):
         raise InvalidModelSetting("请先在设置页连接 ChatGPT")
@@ -133,7 +130,7 @@ def save_setting(
     return public_setting(setting)
 
 
-def model_config(setting: ModelSetting | None) -> ModelConfig | PiModelConfig:
+def model_config(setting: ModelSetting | None) -> PiModelConfig:
     if setting is None or not setting.enabled or not setting.model:
         raise ModelUnavailable("模型已关闭，请先启用模型")
     if setting.kind != "chatgpt_subscription":
@@ -167,14 +164,16 @@ def model_config(setting: ModelSetting | None) -> ModelConfig | PiModelConfig:
             config.contextWindow, config.maxTokens = 128000, 4096
             config.compat = {"supportsReasoningEffort": True}
         return config
-    return ModelConfig(
-        model=setting.model,
-        org_id=setting.org_id,
-        reasoning_effort=setting.reasoning_effort,
-        base_url=setting.base_url,
-        api_key=decrypt_secret(setting.api_key_ciphertext)
-        if setting.api_key_ciphertext
-        else None,
+    return PiModelConfig.model_validate(
+        {
+            "provider": "openai-codex",
+            "api": "openai-codex-responses",
+            "id": setting.model.removeprefix("chatgpt/"),
+            "baseUrl": "https://chatgpt.com/backend-api",
+            "api_key": SecretStr(chatgpt.access_token(setting.org_id)),
+            "org_id": setting.org_id,
+            "thinkingLevel": setting.reasoning_effort or "high",
+        }
     )
 
 

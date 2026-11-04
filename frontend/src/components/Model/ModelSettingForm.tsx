@@ -121,8 +121,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                   : kind === "openai_compatible"
                     ? "openai-compatible"
                     : null,
-              model:
-                kind === "chatgpt_subscription" ? "chatgpt/gpt-6.1-sol" : "",
+              model: kind === "chatgpt_subscription" ? "chatgpt/gpt-5.4" : "",
               base_url: null,
               reasoning_effort: kind === "chatgpt_subscription" ? "high" : null,
             })
@@ -146,7 +145,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
               required={current.enabled}
               value={current.model ?? ""}
               placeholder={
-                chatgpt ? "chatgpt/gpt-6.1-sol" : "模型 ID，不带提供方前缀"
+                chatgpt ? "chatgpt/gpt-5.4" : "模型 ID，不带提供方前缀"
               }
               onChange={(e) => change({ model: e.target.value })}
             />
@@ -169,10 +168,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
             </select>
           </label>
           {chatgpt ? (
-            <ChatGptConnect
-              orgId={orgId}
-              localCodex={saved.local_codex ?? false}
-            />
+            <ChatGptConnect orgId={orgId} />
           ) : (
             <>
               {current.kind === "cloud_api" && (

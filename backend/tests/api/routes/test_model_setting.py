@@ -1,10 +1,7 @@
 import subprocess
 import sys
-from datetime import UTC, datetime, timedelta
-from email.utils import format_datetime
 from typing import Any
 
-import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
@@ -13,21 +10,14 @@ from app.api.routes import model_setting as route
 from app.core.config import settings
 from app.core.secrets import SecretUnavailable, decrypt_secret, encrypt_secret
 from app.domains.audit.models import AuditEvent
-from app.domains.model import client as model_client
 from app.domains.model.client import (
-    ModelConfig,
     ModelOutputInvalid,
     ModelRateLimited,
     ModelUnavailable,
-    _retry_at,
-    _sdk,
-    chat_json,
 )
 from app.domains.model.models import ModelSetting
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
 from tests.utils.pi import PiHarness
-
-pytestmark = pytest.mark.xdist_group("litellm")
 
 CLOUD_SETTING = {
     "enabled": True,
@@ -36,24 +26,6 @@ CLOUD_SETTING = {
     "model": "gpt-4o-mini",
     "api_key": "synthetic-key",
 }
-
-
-@pytest.fixture
-def completions(
-    monkeypatch: pytest.MonkeyPatch,
-) -> tuple[list[Any], list[dict[str, Any]]]:
-    sdk = _sdk()
-    real = sdk.completion
-    replies: list[Any] = []
-    calls: list[dict[str, Any]] = []
-
-    def completion(**kwargs: Any) -> Any:
-        calls.append({**kwargs, "messages": list(kwargs["messages"])})
-        return real(**kwargs, mock_response=replies.pop(0))
-
-    monkeypatch.setattr(sdk, "completion", completion)
-    monkeypatch.setattr(model_client.time, "sleep", lambda _: None)
-    return replies, calls
 
 
 @pytest.fixture(autouse=True)
@@ -88,9 +60,9 @@ def test_settings(
         "model": None,
         "base_url": None,
         "has_api_key": False,
-        "local_codex": False,
         "reasoning_effort": None,
         "chatgpt": {
+            "account_id": None,
             "connected": False,
             "email": None,
             "plan_type": None,
@@ -283,6 +255,7 @@ def test_saved_key_destination_updates(
         {"kind": "openai_compatible", "base_url": None},
         {"kind": "cloud_api", "base_url": "https://example.com/v1"},
         {"kind": "chatgpt_subscription"},
+        {"kind": "chatgpt_subscription", "provider": "anthropic"},
         {"model": "chatgpt/gpt-5"},
         {"model": "github_copilot/gpt-5"},
         {"provider": "anthropic", "model": "claude", "api_key": "sk-ant-oat-test"},
@@ -363,199 +336,24 @@ def test_connection(
     )
 
 
-def test_json_and_parameters(
-    completions: tuple, caplog: pytest.LogCaptureFixture, capsys: pytest.CaptureFixture
-) -> None:
-    replies, calls = completions
-    messages = [{"role": "user", "content": "synthetic-private-prompt"}]
-    for model, provider, schema in [
-        ("openai/gpt-4o-mini", "openai", True),
-        ("anthropic/claude-sonnet-4-5", "anthropic", True),
-        ("ollama_chat/llama3", "ollama_chat", False),
-    ]:
-        replies.extend(["bad", '```json\n{"ok":true}\n```'])
-        result = chat_json(
-            ModelConfig(model, api_key="synthetic-key"), messages, route.ModelTestOutput
-        )
-        assert (
-            result.value.ok
-            and result.provider == provider
-            and result.model
-            and result.attempts == 2
-        )
-        assert calls[-1]["temperature"] == 0 and calls[-1]["num_retries"] == 0
-        assert calls[-1]["drop_params"] and calls[-1]["timeout"] == 120
-        assert ("response_format" in calls[-1]) == schema
-        assert calls[-1]["messages"][-2]["content"] == "bad"
-    assert len(messages) == 1
-    replies.extend(['{"ok":false}'] * 3)
-    with pytest.raises(ModelOutputInvalid):
-        chat_json(ModelConfig("openai/gpt-4o-mini"), messages, route.ModelTestOutput)
-    with pytest.raises(ValueError):
-        chat_json(
-            ModelConfig("openai/gpt-4o-mini"), [], route.ModelTestOutput, attempts=0
-        )
-    captured = capsys.readouterr()
-    for secret in ("synthetic-private-prompt", "synthetic-key"):
-        assert secret not in caplog.text + captured.out + captured.err
-
-
-@pytest.mark.parametrize(
-    "name,reason,count",
-    [
-        ("AuthenticationError", "密钥不对或没有权限", 1),
-        ("PermissionDeniedError", "密钥不对或没有权限", 1),
-        ("NotFoundError", "地址或模型名不对", 1),
-        ("BadRequestError", "地址或模型名不对", 1),
-        ("APIConnectionError", "连不上模型服务", 3),
-        ("Timeout", "模型服务暂时不可用", 3),
-        ("InternalServerError", "模型服务暂时不可用", 3),
-        ("ServiceUnavailableError", "模型服务暂时不可用", 3),
-        ("BadGatewayError", "模型服务暂时不可用", 3),
-        ("ContextWindowExceededError", "ContextWindowExceededError", 1),
-    ],
-)
-def test_exceptions(name: str, reason: str, count: int, completions: tuple) -> None:
-    replies, calls = completions
-    error = getattr(_sdk(), name)(
-        message=("model not found" if name == "BadRequestError" else "error")
-        + " synthetic-key private-prompt",
-        llm_provider="openai",
-        model="gpt-4o-mini",
-        **(
-            {
-                "response": httpx.Response(
-                    403, request=httpx.Request("POST", "https://example.com")
-                )
-            }
-            if name == "PermissionDeniedError"
-            else {}
-        ),
-    )
-    replies.extend([error] * 3)
-    with pytest.raises(ModelUnavailable, match=reason) as raised:
-        chat_json(ModelConfig("openai/gpt-4o-mini"), [], route.ModelTestOutput)
-    assert "synthetic-key" not in str(raised.value) and len(calls) == count
-
-
-def test_compatible_without_key(completions: tuple) -> None:
-    replies, calls = completions
-    replies.append('{"ok":true}')
-    config = ModelConfig("openai/gpt-4o-mini", base_url="http://localhost:11434/v1")
-    assert chat_json(config, [], route.ModelTestOutput).value.ok
-    assert calls[-1]["api_key"] == "not-needed"
-    sdk = _sdk()
-    assert (
-        sdk.llms.openai.openai.OpenAIChatCompletion()._get_openai_client(
-            is_async=False, api_key=calls[-1]["api_key"], api_base=config.base_url
-        )
-        is not None
-    )
-
-
-def test_rate_limit(completions: tuple) -> None:
-    replies, calls = completions
-    error = _sdk().RateLimitError(
-        "limited",
-        "openai",
-        "gpt-4o-mini",
-        response=httpx.Response(
-            429,
-            headers={"Retry-After": "2"},
-            request=httpx.Request("POST", "https://example.com"),
-        ),
-    )
-    replies.extend([error, '{"ok":true}'])
-    assert (
-        chat_json(ModelConfig("openai/gpt-4o-mini"), [], route.ModelTestOutput).attempts
-        == 2
-    )
-    replies.extend([error] * 3)
-    with pytest.raises(ModelRateLimited) as raised:
-        chat_json(ModelConfig("openai/gpt-4o-mini"), [], route.ModelTestOutput)
-    assert raised.value.retry_at > datetime.now(UTC) and len(calls) == 5
-    for value, valid in [
-        (None, False),
-        ("invalid", False),
-        ("inf", False),
-        (format_datetime(datetime.now(UTC) + timedelta(seconds=30)), True),
-    ]:
-        error.response.headers = httpx.Headers({"retry-after": value} if value else {})
-        assert (_retry_at(error) is not None) == valid
-
-
-def test_offline_subprocess() -> None:
-    script = """
-import socket, sys
-connections = []
-def blocked(*args, **kwargs):
-    connections.append(True)
-    raise RuntimeError("Network access forbidden")
-socket.socket.connect = blocked
-socket.socket.connect_ex = blocked
-socket.create_connection = blocked
-from app.domains.model.client import _sdk, chat_json, ModelConfig
-from pydantic import BaseModel
-assert "litellm" not in sys.modules
-sdk = _sdk()
-real = sdk.completion
-sdk.completion = lambda **kw: real(**kw, mock_response='{"ok":true}')
-class Output(BaseModel):
-    ok: bool
-for model in ["openai/gpt-4o-mini", "anthropic/claude-sonnet-4-5", "ollama_chat/llama3"]:
-    assert chat_json(ModelConfig(model, api_key="synthetic-key"), [], Output).value.ok
-assert not connections, connections
-"""
-    result = subprocess.run(
-        [sys.executable, "-c", script], capture_output=True, text=True, timeout=30
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-
-
 def test_import_boundary() -> None:
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "ruff",
-            "check",
-            "--stdin-filename",
-            "app/api/routes/forbidden.py",
-            "-",
-        ],
-        input="import litellm\n",
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    assert "TID251" in result.stdout and result.returncode == 1
-
-
-def test_local_codex_flag(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.domains.model.service import public_setting
-
-    monkeypatch.setattr(
-        settings, "CHATGPT_CODEX_AUTH_FILE", "/does-not-exist/auth.json"
-    )
-    assert public_setting(None).local_codex
-    monkeypatch.setattr(settings, "CHATGPT_CODEX_AUTH_FILE", None)
-    assert not public_setting(None).local_codex
-
-
-def test_wrapped_connection_error(completions: tuple) -> None:
-    replies, _ = completions
-    replies.append(
-        _sdk().InternalServerError(
-            message="Connection error synthetic-key private-prompt",
-            model="gpt-4o-mini",
-            llm_provider="openai",
+    for sdk in ("openai", "anthropic"):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "ruff",
+                "check",
+                "--stdin-filename",
+                "app/api/routes/forbidden.py",
+                "-",
+            ],
+            input=f"import {sdk}\n",
+            capture_output=True,
+            text=True,
+            check=False,
         )
-    )
-    with pytest.raises(ModelUnavailable, match="连不上模型服务") as raised:
-        chat_json(
-            ModelConfig("openai/gpt-4o-mini"), [], route.ModelTestOutput, attempts=1
-        )
-    assert "synthetic-key" not in str(raised.value)
+        assert "TID251" in result.stdout and result.returncode == 1
 
 
 @pytest.mark.parametrize("initial_url,new_url", [(None, ""), ("", None)])
@@ -615,3 +413,65 @@ def test_unsupported_reasoning_save(
         url, headers=auth, json={**CLOUD_SETTING, "reasoning_effort": "high"}
     )
     assert result.status_code == 422 and "推理强度 high 不适用于该模型" in result.text
+
+
+@pytest.mark.parametrize(
+    "status,reason",
+    [
+        (401, "密钥不对或没有权限"),
+        (403, "密钥不对或没有权限"),
+        (404, "地址或模型名不对"),
+        (400, "模型服务暂时不可用"),
+        (500, "模型服务暂时不可用"),
+    ],
+)
+def test_exceptions(
+    status: int, reason: str, setting_pi: PiHarness, caplog: pytest.LogCaptureFixture
+) -> None:
+    from app.domains.model.pi_client import run_turn
+
+    setting_pi.replies.append({"status": status})
+    with pytest.raises(ModelUnavailable, match=reason) as error:
+        run_turn(
+            setting_pi.config,
+            system_prompt="private-prompt",
+            input="private-prompt",
+            tools=[],
+            on_tool_call=lambda *_: None,
+        )
+    assert (
+        "sensitive" not in str(error.value) + caplog.text + setting_pi.logs.read_text()
+    )
+    assert len(setting_pi.requests) == 1
+
+
+def test_compatible_without_key(setting_pi: PiHarness) -> None:
+    from pydantic import SecretStr
+
+    from app.domains.model.pi_client import run_turn
+
+    setting_pi.config.api_key = SecretStr("")
+    assert (
+        run_turn(
+            setting_pi.config,
+            system_prompt="",
+            input="",
+            tools=[],
+            on_tool_call=lambda *_: None,
+        ).stop_reason
+        == "stop"
+    )
+
+
+def test_offline_subprocess() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import socket; socket.socket.connect = lambda *a: (_ for _ in ()).throw(AssertionError('network')); import app.domains.model.service",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

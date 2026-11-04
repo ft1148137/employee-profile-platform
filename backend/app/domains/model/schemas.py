@@ -57,7 +57,7 @@ class ModelSettingUpdate(BaseModel):
     @model_validator(mode="after")
     def validate_setting(self) -> Self:
         if self.kind == "chatgpt_subscription":
-            self.model = self.model or "chatgpt/gpt-6.1-sol"
+            self.model = self.model or "chatgpt/gpt-5.4"
             self.reasoning_effort = self.reasoning_effort or "high"
             if (
                 not self.model.startswith("chatgpt/")
@@ -122,6 +122,7 @@ class ModelSettingUpdate(BaseModel):
 
 
 class ChatGPTAccount(BaseModel):
+    account_id: str | None = None
     email: str | None = None
     plan_type: str | None = None
     needs_relogin: bool = False
@@ -134,14 +135,16 @@ class ChatGPTStatus(ChatGPTAccount):
 class ChatGPTLogin(BaseModel):
     status: Literal["none", "pending", "connected", "expired", "error"]
     verification_url: str | None = None
-    user_code: str | None = None
     expires_at: datetime | None = None
     account: ChatGPTAccount | None = None
     message: str | None = None
 
 
+class ChatGPTCallback(BaseModel):
+    input: SecretStr = Field(max_length=4096)
+
+
 class ModelSettingPublic(BaseModel):
-    local_codex: bool = False
     enabled: bool = False
     kind: str | None = None
     provider: ModelProvider | None = None
