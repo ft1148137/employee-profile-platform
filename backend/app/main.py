@@ -8,6 +8,7 @@ from starlette.routing import Route
 
 from app.api.main import api_router
 from app.core.config import settings
+from app.mcp.oauth import oauth_routes
 from app.mcp.server import endpoint, lifespan
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
@@ -40,5 +41,6 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 app.router.routes.append(
     Route("/mcp", endpoint=endpoint, methods=["POST", "GET", "DELETE"])
 )
+app.router.routes.extend(oauth_routes())
 if FRONTEND_DIR.is_dir():
     app.frontend("/", directory=FRONTEND_DIR)

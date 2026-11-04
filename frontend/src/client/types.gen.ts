@@ -747,6 +747,30 @@ export type ConnectionTest = {
 };
 
 /**
+ * ConsentBody
+ */
+export type ConsentBody = {
+    /**
+     * Request
+     */
+    request: string;
+    /**
+     * Approve
+     */
+    approve: boolean;
+};
+
+/**
+ * ConsentResult
+ */
+export type ConsentResult = {
+    /**
+     * Redirect To
+     */
+    redirect_to: string;
+};
+
+/**
  * CsvImportPublic
  */
 export type CsvImportPublic = {
@@ -3594,6 +3618,36 @@ export type accessTokensRevokeAccessTokenResponses = {
 };
 
 export type accessTokensRevokeAccessTokenResponse = accessTokensRevokeAccessTokenResponses[keyof accessTokensRevokeAccessTokenResponses];
+
+export type oauthConsentData = {
+    body: ConsentBody;
+    path?: never;
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/oauth/consent';
+};
+
+export type oauthConsentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type oauthConsentError = oauthConsentErrors[keyof oauthConsentErrors];
+
+export type oauthConsentResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConsentResult;
+};
+
+export type oauthConsentResponse = oauthConsentResponses[keyof oauthConsentResponses];
 
 export type botSettingsGetBotSettingsData = {
     body?: never;

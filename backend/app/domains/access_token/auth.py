@@ -1,4 +1,6 @@
 import hashlib
+from datetime import datetime
+from uuid import UUID
 
 from fastapi import HTTPException
 from sqlmodel import Session, select
@@ -20,6 +22,38 @@ class InvalidAccessToken(HTTPException):
         )
 
 
+def credential_principal(
+    session: Session,
+    org_id: UUID,
+    user_id: UUID,
+    employee_id: UUID,
+    created_at: datetime,
+    client_name: str | None = None,
+) -> Principal:
+    user = session.get(User, user_id)
+    if (
+        user is None
+        or not user.is_active
+        or user.must_change_password
+        or (user.password_changed_at and created_at <= user.password_changed_at)
+    ):
+        raise InvalidAccessToken()
+    principal = get_org_principal(org_id, user, session)
+    if principal.employee_id != employee_id:
+        raise InvalidAccessToken()
+    visible_employee(session, principal, employee_id)
+    setting = get_setting(session, principal)
+    if not setting.enabled:
+        raise McpDisabled()
+    if (
+        client_name is not None
+        and setting.allowed_clients
+        and client_name not in setting.allowed_clients
+    ):
+        raise InvalidAccessToken()
+    return principal
+
+
 def token_principal(session: Session, plaintext: str, ip: str) -> Principal:
     check_login_limit(session, None, ip)
     token = session.exec(
@@ -28,25 +62,24 @@ def token_principal(session: Session, plaintext: str, ip: str) -> Principal:
             == hashlib.sha256(plaintext.encode()).hexdigest()
         )
     ).one_or_none()
-    user = session.get(User, token.user_id) if token else None
-    if (
-        token is None
-        or token.revoked_at is not None
-        or token.expires_at <= utc_now()
-        or user is None
-        or not user.is_active
-        or user.must_change_password
-        or (user.password_changed_at and token.created_at <= user.password_changed_at)
-    ):
+    try:
+        if (
+            token is None
+            or token.revoked_at is not None
+            or token.expires_at <= utc_now()
+        ):
+            raise InvalidAccessToken()
+        principal = credential_principal(
+            session,
+            token.org_id,
+            token.user_id,
+            token.employee_id,
+            token.created_at,
+            token.name if token.client_kind == "oauth" else None,
+        )
+    except InvalidAccessToken:
         record_login_attempt(session, "mcp", ip, False)
-        raise InvalidAccessToken()
-    principal = get_org_principal(token.org_id, user, session)
-    if principal.employee_id != token.employee_id:
-        record_login_attempt(session, "mcp", ip, False)
-        raise InvalidAccessToken()
-    visible_employee(session, principal, token.employee_id)
-    if not get_setting(session, principal).enabled:
-        raise McpDisabled()
+        raise
     token.last_used_at = utc_now()
     session.add(token)
     session.commit()

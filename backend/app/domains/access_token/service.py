@@ -130,18 +130,25 @@ def list_tokens(session: Session, principal: Principal) -> list[TokenPublic]:
 
 
 def revoke_token(session: Session, principal: Principal, token_id: UUID) -> TokenPublic:
-    row = session.exec(
-        select(PersonalAccessToken)
-        .where(
-            PersonalAccessToken.org_id == principal.org_id,
-            PersonalAccessToken.user_id == principal.user_id,
-            PersonalAccessToken.id == token_id,
-        )
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    ).one_or_none()
+    query = select(PersonalAccessToken).where(
+        PersonalAccessToken.org_id == principal.org_id,
+        PersonalAccessToken.user_id == principal.user_id,
+        PersonalAccessToken.id == token_id,
+    )
+    row = session.exec(query).one_or_none()
     if row is None:
         raise TokenNotFound()
+    if row.oauth_grant_id is not None:
+        from app.domains.access_token.oauth import revoke_by_id
+
+        # Match rotation's lock order: grant first, then its access tokens.
+        revoke_by_id(session, principal.org_id, row.oauth_grant_id)
+        return TokenPublic.model_validate(row).model_copy(
+            update={"revoked_at": row.revoked_at or utc_now()}
+        )
+    row = session.exec(
+        query.with_for_update().execution_options(populate_existing=True)
+    ).one()
     if row.revoked_at is None:
         row.revoked_at = utc_now()
         session.add(row)

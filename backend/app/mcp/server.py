@@ -17,7 +17,7 @@ from mcp.server.transport_security import (
     TransportSecuritySettings,
 )
 from pydantic import ValidationError
-from sqlmodel import Session
+from sqlmodel import Session, select
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -28,10 +28,12 @@ from app.core.config import settings
 from app.core.db import engine
 from app.core.security import ALGORITHM
 from app.domains.access_token.auth import token_principal
+from app.domains.access_token.models import PersonalAccessToken
 from app.domains.access_token.service import get_setting
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.employee_tools import EMPLOYEE_TOOLS
+from app.mcp.oauth import resource_url
 
 TOOLS = {tool.name: tool for tool in EMPLOYEE_TOOLS}
 
@@ -135,13 +137,28 @@ class McpEndpoint:
                 plaintext = ""
             ip = request.client.host if request.client else "unknown"
 
-            def authenticate() -> tuple[Principal, list[str]]:
+            fingerprint = hashlib.sha256(plaintext.encode()).hexdigest()
+
+            def authenticate() -> tuple[Principal, list[str], str | None]:
                 with Session(engine) as session:
                     principal = token_principal(session, plaintext, ip)
-                    return principal, get_setting(session, principal).allowed_clients
+                    oauth_name = session.exec(
+                        select(PersonalAccessToken.name).where(
+                            PersonalAccessToken.org_id == principal.org_id,
+                            PersonalAccessToken.user_id == principal.user_id,
+                            PersonalAccessToken.token_hash == fingerprint,
+                            PersonalAccessToken.client_kind == "oauth",
+                        )
+                    ).one_or_none()
+                    return (
+                        principal,
+                        get_setting(session, principal).allowed_clients,
+                        oauth_name,
+                    )
 
-            principal, allowed_clients = await run_in_threadpool(authenticate)
-            fingerprint = hashlib.sha256(plaintext.encode()).hexdigest()
+            principal, allowed_clients, oauth_name = await run_in_threadpool(
+                authenticate
+            )
             session_id = request.headers.get("mcp-session-id")
             if session_id:
                 try:
@@ -170,7 +187,7 @@ class McpEndpoint:
                     params = types.InitializeRequestParams.model_validate(
                         message.get("params")
                     )
-                    client_name = params.client_info.name
+                    client_name = oauth_name or params.client_info.name
                     if not 1 <= len(client_name) <= 100:
                         raise ValueError
                 except ValueError, ValidationError:
@@ -214,6 +231,10 @@ class McpEndpoint:
 
             await self.manager.handle_request(scope, replay_body, send_response)
         except HTTPException as exc:
+            if exc.status_code == 401:
+                exc.headers = {
+                    "WWW-Authenticate": f'Bearer resource_metadata="{resource_url().removesuffix("/mcp")}/.well-known/oauth-protected-resource"'
+                }
             await JSONResponse(
                 {"detail": exc.detail}, status_code=exc.status_code, headers=exc.headers
             )(scope, receive, send)
@@ -227,12 +248,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         json_response=True,
         security_settings=TransportSecuritySettings(
             allowed_hosts=[
-                urlsplit(settings.FRONTEND_HOST).netloc,
+                urlsplit(resource_url()).netloc,
                 "localhost:*",
                 "127.0.0.1:*",
                 "testserver",
             ],
-            allowed_origins=[settings.FRONTEND_HOST],
+            allowed_origins=[resource_url().removesuffix("/mcp")],
         ),
     )
     app.state.mcp = RequestBodyLimitMiddleware(McpEndpoint(manager), 4 * 1024 * 1024)

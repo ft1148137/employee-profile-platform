@@ -29,6 +29,7 @@ from app.domains.employee_tools import EMPLOYEE_TOOLS
 from app.domains.evidence.models import Evidence
 from app.domains.inbox.models import InboxItem
 from app.domains.org.models import Employee, Organization, OrgMembership
+from app.mcp.oauth import resource_url
 from app.mcp.server import endpoint, lifespan
 from app.models import User
 
@@ -394,7 +395,8 @@ def test_invalid_tokens_rate_limit_and_origin(
         response = client.post("/mcp", headers=auth, json={})
         assert (
             response.status_code == 401
-            and response.headers["www-authenticate"] == "Bearer"
+            and response.headers["www-authenticate"]
+            == f'Bearer resource_metadata="{resource_url().removesuffix("/mcp")}/.well-known/oauth-protected-resource"'
         )
     response = client.post("/mcp", json={})
     assert response.status_code == 429 and response.headers["Retry-After"]
