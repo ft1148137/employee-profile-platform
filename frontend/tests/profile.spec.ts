@@ -224,6 +224,15 @@ test("empty initial draft cannot submit and pending requests can be withdrawn", 
   await expect(
     page.getByRole("button", { name: "直接提交", exact: true }),
   ).toBeDisabled()
+  await page.getByRole("button", { name: "补充初始画像", exact: true }).click()
+  const editor = page.getByRole("dialog")
+  await editor.getByLabel("新增能力").selectOption("automated_testing")
+  await expect(
+    editor.getByRole("textbox", { name: "陈述", exact: true }),
+  ).toBeVisible()
+  await expect(
+    editor.getByRole("textbox", { name: "异议原因", exact: true }),
+  ).toBeVisible()
 })
 
 test("initial draft read failure can be retried", async ({ page }) => {

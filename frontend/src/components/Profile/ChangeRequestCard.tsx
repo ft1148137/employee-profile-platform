@@ -70,7 +70,17 @@ export function ChangeRequestCard({
             </p>
           </div>
           {!initial.items?.length && (
-            <p>系统没有找到能对应到能力词典的工作记录。</p>
+            <div className="space-y-3">
+              <p>系统没有找到能对应到能力词典的工作记录。</p>
+              {isOwner && (
+                <Button
+                  variant="outline"
+                  onClick={() => onEdit({ request: initial })}
+                >
+                  补充初始画像
+                </Button>
+              )}
+            </div>
           )}
           <div className="grid gap-4 xl:grid-cols-2">
             {(initial.items ?? []).map((item) => (
