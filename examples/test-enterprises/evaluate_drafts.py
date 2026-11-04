@@ -35,11 +35,11 @@ from app.domains.org.models import (
     Organization,
     OrgMembership,
 )
-from app.models import User
 from app.domains.source.models import SourceConnection
 from app.domains.source.sync import csv_record, jira_record
 from app.domains.work.ingest import ingest_record
 from app.domains.work.records import parse_work_records
+from app.models import User
 from tests.utils.org import delete_test_organization
 
 EXAMPLES = Path(__file__).resolve().parents[1]
