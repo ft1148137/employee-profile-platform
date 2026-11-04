@@ -98,17 +98,21 @@ def test_removed_routes(client: TestClient, path: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "identifier",
+    "identifier,expected_status",
     [
-        "MANAGER.PLATFORM@DEMO.EXAMPLE.COM",
-        "EMPLOYEE.PLATFORM@DEMO.EXAMPLE.COM",
-        "EMPLOYEE.ALGORITHM@DEMO.EXAMPLE.COM",
-        "ADMIN@DEMO.EXAMPLE.COM",
+        ("admin", 400),
+        ("E01", 400),
+        ("e02", 400),
+        ("E05", 400),
+        ("MANAGER.PLATFORM@DEMO.EXAMPLE.COM", 200),
+        ("EMPLOYEE.PLATFORM@DEMO.EXAMPLE.COM", 200),
+        ("EMPLOYEE.ALGORITHM@DEMO.EXAMPLE.COM", 200),
+        ("ADMIN@DEMO.EXAMPLE.COM", 200),
     ],
 )
-def test_demo_login(client: TestClient, identifier: str) -> None:
+def test_demo_login(client: TestClient, identifier: str, expected_status: int) -> None:
     response = client.post(
         f"{settings.API_V1_STR}/login/access-token",
         data={"username": identifier, "password": settings.DEMO_USER_PASSWORD},
     )
-    assert response.status_code == 200
+    assert response.status_code == expected_status
