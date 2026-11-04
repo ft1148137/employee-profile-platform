@@ -127,7 +127,6 @@ def test_model_request_and_privacy(
         "model": "gpt-4o-mini",
         "prompt_version": model.PROMPT_VERSION,
         "schema_version_id": str(schema.id),
-        "keywords_ref": None,
         "reasoning_effort": "low",
     }
     payload = json.dumps(calls[0]["messages"], ensure_ascii=False)
@@ -291,6 +290,18 @@ def test_scope_filters(
     db.commit()
     existing_progress = db.get(ProfileProgress, (org, employees[0].id)).inference_status
     replies.extend([answer(), '{"items":[]}', '{"items":[]}'])
+    if not enabled:
+        with pytest.raises(service.ModelRequired):
+            service.queue_drafting(db, org, "all")
+        db.rollback()
+        service.run_drafting(
+            Principal.system_worker(org), [str(e.id) for e in employees]
+        )
+        db.expire_all()
+        assert len(rows(db, ProfileChangeRequest, org)) == 1
+        assert service.read_progress(db, org).failed[0].error == "模型已关闭"
+        assert calls == []
+        return
     assert service.queue_drafting(db, org, "all") == 1
     # Explicit worker IDs must respect the same switches as queueing.
     service.run_drafting(Principal.system_worker(org), [str(e.id) for e in employees])
@@ -375,11 +386,17 @@ def test_pause_and_resume(
     work_queue()
     db.expire_all()
     progress = service.read_progress(db, org)
-    assert progress.counts["generated"] == 5 and progress.counts["pending"] == 0
-    assert progress.paused_until is None and progress.pause_reason is None
-    assert {r.generated_by["mode"] for r in rows(db, ProfileChangeRequest, org)} == (
-        {"rules", "model"} if disable else {"model"}
+    assert (
+        progress.counts["generated"] == (1 if disable else 5)
+        and progress.counts["pending"] == 0
     )
+    assert progress.counts["failed"] == (4 if disable else 0)
+    if disable:
+        assert all(p.error == "模型已关闭" for p in progress.failed)
+    assert progress.paused_until is None and progress.pause_reason is None
+    assert {r.generated_by["mode"] for r in rows(db, ProfileChangeRequest, org)} == {
+        "model"
+    }
 
 
 @pytest.mark.parametrize(
@@ -437,6 +454,46 @@ def test_pause_without_retry_time(drafting: tuple, db: Session) -> None:
     work_queue()
 
 
+def test_disable_during_batch(
+    drafting: tuple,
+    db: Session,
+    request: pytest.FixtureRequest,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    org, _, _, employees, _ = drafting
+    replies, calls = request.getfixturevalue("model_completions")
+    replies.append('{"items":[]}')
+    original = service.model.draft
+
+    def disable(*args: object) -> object:
+        result = original(*args)
+        with Session(service.engine) as session:
+            setting = session.get(ModelSetting, org)
+            setting.enabled = False
+            session.add(setting)
+            session.commit()
+        return result
+
+    monkeypatch.setattr(service.model, "draft", disable)
+    assert service.queue_drafting(db, org, "all") == 5
+    work_queue()
+    db.expire_all()
+    progress = service.read_progress(db, org)
+    assert len(calls) == 1 and progress.counts["generated"] == 1
+    assert progress.counts["failed"] == 4 and progress.counts["pending"] == 0
+    assert all(p.error == "模型已关闭" for p in progress.failed)
+    setting = db.get(ModelSetting, org)
+    setting.enabled = True
+    db.add(setting)
+    db.commit()
+    replies.extend(['{"items":[]}'] * 4)
+    monkeypatch.setattr(service.model, "draft", original)
+    assert service.queue_drafting(db, org, "failed") == 4
+    work_queue()
+    db.expire_all()
+    assert service.read_progress(db, org).counts["generated"] == 5
+
+
 def test_chatgpt_separate_setting_lock(
     drafting: tuple,
     db: Session,
@@ -486,6 +543,13 @@ def test_opt_out_after_queue_does_not_block_next_batch(
     setting.enabled = enabled
     db.add(setting)
     db.commit()
+    if not enabled:
+        with pytest.raises(service.ModelRequired):
+            service.queue_drafting(db, org, "all")
+        db.rollback()
+        setting.enabled = True
+        db.add(setting)
+        db.commit()
     draft_initial.configure(
         connection=db.connection().connection.driver_connection,
         lock=f"initial-profiles:{employees[-1].org_id}",

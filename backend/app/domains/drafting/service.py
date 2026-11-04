@@ -16,7 +16,6 @@ from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.capability.models import CapabilityDefinition
 from app.domains.capability.service import SchemaNotFound, get_schema, list_capabilities
-from app.domains.capability.templates import InvalidTemplate
 from app.domains.change_request.models import (
     ChangeItem,
     ChangeItemEvidence,
@@ -25,9 +24,10 @@ from app.domains.change_request.models import (
     RequestOrigin,
     RequestStatus,
 )
-from app.domains.drafting import model, rules
+from app.domains.drafting import model
 from app.domains.drafting.collect import collect, evidence_stats
-from app.domains.drafting.rules import DraftItem
+from app.domains.drafting.collect import relation as record_relation
+from app.domains.drafting.model import DraftItem
 from app.domains.drafting.settings import drafting_scope
 from app.domains.model.client import (
     ModelOutputInvalid,
@@ -71,7 +71,7 @@ def postprocess(
             if id_ in records
             and (
                 relation != EvidenceRelation.SUPPORTS
-                or rules.relation(records[id_]) == EvidenceRelation.SUPPORTS
+                or record_relation(records[id_]) == EvidenceRelation.SUPPORTS
             )
         }
         supports = [
@@ -103,6 +103,19 @@ def postprocess(
         )
         result.append(item)
     return result
+
+
+MODEL_REQUIRED = "还没有配置模型，请先在设置页配置模型，或者让员工用 JSON 导入画像"
+
+
+class ModelRequired(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(409, MODEL_REQUIRED)
+
+
+class ModelDisabled(Exception):
+    def __init__(self) -> None:
+        super().__init__("模型已关闭")
 
 
 class InvalidDraft(ValueError):
@@ -243,7 +256,6 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
             and (employee_ids is None or str(e.id) in employee_ids)
         ]
         setting = read_setting(session, org_id)
-        mode = "model" if setting and setting.enabled else "rules"
         if setting:
             setting.paused_until, setting.pause_reason = None, None
             session.add(setting)
@@ -286,25 +298,13 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                     if c.key not in scope.excluded_capability_keys
                 ]
                 records = collect(session, org_id, employee)
-                generated_by: dict[str, JsonValue]
-                if mode == "model":
-                    items, generated_by = model.draft(
-                        records, capabilities, model_config(setting)
-                    )
-                else:
-                    keywords, ref = rules.load_keywords(schema.template_ref)
-                    items = rules.draft(records, capabilities, keywords)
-                    generated_by = {
-                        "mode": "rules",
-                        "keywords_ref": ref,
-                        "model": None,
-                        "prompt_version": None,
-                    }
+                setting = read_setting(session, org_id)
+                if setting is None or not setting.enabled:
+                    raise ModelDisabled()
+                items, generated_by = model.draft(
+                    records, capabilities, model_config(setting)
+                )
                 items = postprocess(session, org_id, employee, items, capabilities)
-                if mode == "rules":
-                    names = {c.id: c.name for c in capabilities}
-                    for item in items:
-                        item.after.statement = f"有 {item.after.evidence_count} 项与「{names[item.capability_id]}」相关的工作记录"
                 generated_by["schema_version_id"] = str(schema.id)
                 written = write_initial_request(
                     session, org_id, employee, items, generated_by
@@ -320,7 +320,7 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                 # Never expose record contents or database error parameters in progress.
                 session.rollback()
                 message = "起草失败，请重试；若仍失败请联系管理员"
-                if isinstance(error, (InvalidDraft, InvalidTemplate)):
+                if isinstance(error, (InvalidDraft, ModelDisabled)):
                     message = str(error)
                 elif isinstance(error, SecretUnavailable):
                     message = "保存的模型密钥已失效，请重新填写"
@@ -346,7 +346,7 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
             action="initial_profiles.drafted",
             target_type="organization",
             target_id=str(org_id),
-            details={"mode": mode, **counts},
+            details={"mode": "model", **counts},
         )
         session.commit()
 
@@ -386,6 +386,9 @@ def queue_drafting(
     session.exec(
         select(Organization).where(Organization.id == org_id).with_for_update()
     ).one()
+    setting = read_setting(session, org_id)
+    if setting is None or not setting.enabled:
+        raise ModelRequired()
     try:
         get_schema(session, org_id)
     except SchemaNotFound:
@@ -437,7 +440,7 @@ class FailedEmployee(BaseModel):
 
 
 class DraftProgress(BaseModel):
-    mode: Literal["rules", "model"]
+    mode: Literal["none", "model"]
     counts: dict[str, int]
     failed: list[FailedEmployee]
     requests: dict[str, int]
@@ -476,7 +479,7 @@ def read_progress(session: Session, org_id: UUID) -> DraftProgress:
     pending = sum(r.status == RequestStatus.PENDING_OWNER for r in requests)
     setting = read_setting(session, org_id)
     return DraftProgress(
-        mode="model" if setting and setting.enabled else "rules",
+        mode="model" if setting and setting.enabled else "none",
         paused_until=setting.paused_until if setting else None,
         pause_reason=setting.pause_reason if setting else None,
         counts=counts,

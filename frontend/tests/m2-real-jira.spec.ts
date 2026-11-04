@@ -1,6 +1,6 @@
 import path from "node:path"
-import { expect, test } from "@playwright/test"
 import type { ExternalIdentitiesPublic } from "../src/client"
+import { configureModel, expect, test } from "./utils/model"
 import { createSourcesOrg, saveCloud, syncJira } from "./utils/sources"
 
 test.use({
@@ -12,6 +12,7 @@ test.use({
 
 test("M2 real Cloud: roster, manual identity, initial request and evidence", async ({
   page,
+  modelUrl,
 }) => {
   test.skip(
     !process.env.JIRA_BASE_URL ||
@@ -58,7 +59,8 @@ test("M2 real Cloud: roster, manual identity, initial request and evidence", asy
   }))
   await page.goto("/setup-wizard")
   await steps.getByRole("button", { name: /配置模型/ }).click()
-  await page.getByRole("button", { name: "跳过，用关键词规则起草" }).click()
+  await configureModel(page, modelUrl)
+  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
   await page.getByRole("button", { name: "生成初始画像", exact: true }).click()
   await expect(
     page.getByText(

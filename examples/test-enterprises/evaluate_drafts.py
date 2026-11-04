@@ -1,6 +1,7 @@
 """Evaluate synthetic drafts against held-out personas; never import ground truth."""
 
 import argparse
+import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
@@ -23,12 +24,22 @@ from app.core.secrets import encrypt_secret
 from app.domains.capability.models import CapabilityDefinition
 from app.domains.capability.service import activate_template
 from app.domains.change_request.models import ChangeItem, ProfileChangeRequest
-from app.domains.drafting.service import run_drafting
-from app.domains.org.models import Department, Employee, ExternalIdentity, Organization
+from app.domains.drafting.service import read_progress, run_drafting
+from app.domains.model.client import ModelUnavailable
+from app.domains.model.models import ModelSetting
+from app.domains.model.schemas import ModelSettingUpdate
+from app.domains.org.models import (
+    Department,
+    Employee,
+    ExternalIdentity,
+    Organization,
+    OrgMembership,
+)
 from app.domains.source.models import SourceConnection
 from app.domains.source.sync import csv_record, jira_record
 from app.domains.work.ingest import ingest_record
 from app.domains.work.records import parse_work_records
+from app.models import User
 from tests.utils.org import delete_test_organization
 
 EXAMPLES = Path(__file__).resolve().parents[1]
@@ -37,6 +48,7 @@ EXAMPLES = Path(__file__).resolve().parents[1]
 @contextmanager
 def enterprise(
     slug: str,
+    model: ModelSettingUpdate | None = None,
 ) -> Generator[tuple[Session, Organization, dict[str, Employee]]]:
     path = EXAMPLES / ("demo-org" if slug == "demo-org" else f"test-enterprises/{slug}")
     org_data = yaml.safe_load((path / "org.yaml").read_text())
@@ -52,7 +64,25 @@ def enterprise(
         org = Organization(slug=f"eval-{slug}-{uuid4().hex[:8]}", name=org_data["name"])
         db.add(org)
         db.commit()
+        user = None
         try:
+            if model is not None:
+                user = User(
+                    username=f"{org.slug}@example.com", hashed_password="unused"
+                )
+                db.add(user)
+                db.flush()
+                db.add(OrgMembership(org_id=org.id, user_id=user.id))
+                db.flush()
+                key = model.api_key.get_secret_value() if model.api_key else None
+                db.add(
+                    ModelSetting(
+                        org_id=org.id,
+                        updated_by_user_id=user.id,
+                        **model.model_dump(exclude={"api_key"}),
+                        api_key_ciphertext=encrypt_secret(key) if key else None,
+                    )
+                )
             departments = {}
             for name in org_data["departments"]:
                 department = Department(org_id=org.id, name=name)
@@ -90,6 +120,9 @@ def enterprise(
         finally:
             db.rollback()
             delete_test_organization(db, org.id)
+            if user is not None:
+                db.delete(user)
+                db.commit()
 
 
 def ingest_dataset(
@@ -149,10 +182,13 @@ def ingest_dataset(
     db.commit()
 
 
-def evaluate(slug: str) -> str:
-    with enterprise(slug) as (db, org, employees):
+def evaluate(slug: str, model: ModelSettingUpdate) -> str:
+    with enterprise(slug, model) as (db, org, employees):
         ingest_dataset(db, org, employees, slug)
         run_drafting(Principal.system_worker(org.id), None)
+        progress = read_progress(db, org.id)
+        if progress.counts["failed"] or progress.counts["pending"]:
+            raise ModelUnavailable("模型起草未完成，请检查配置或额度后重试")
         caps = {
             c.id: c.key
             for c in db.exec(
@@ -215,4 +251,19 @@ def evaluate(slug: str) -> str:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("slug", choices=["qiguang-aiot"])
-    print(evaluate(parser.parse_args().slug))
+    parser.add_argument("--model", required=True, help="带提供方前缀的模型名")
+    parser.add_argument(
+        "--kind",
+        choices=["cloud_api", "local", "openai_compatible"],
+        default="cloud_api",
+    )
+    parser.add_argument("--base-url")
+    args = parser.parse_args()
+    config = ModelSettingUpdate(
+        enabled=True,
+        kind=args.kind,
+        model=args.model,
+        base_url=args.base_url,
+        api_key=os.environ.get("MODEL_API_KEY"),
+    )
+    print(evaluate(args.slug, config))

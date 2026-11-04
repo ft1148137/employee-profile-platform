@@ -7,6 +7,7 @@ from sqlmodel import Session, col, select
 
 from app.domains.evidence.models import Evidence, EvidenceKind, EvidenceStatus
 from app.domains.org.models import Employee
+from app.domains.profile.models import EvidenceRelation
 from app.domains.work.models import Task
 
 type RecordKey = tuple[str, str]
@@ -99,4 +100,13 @@ def evidence_stats(
         len(sources),
         max((e.occurred_at for e in evidence if e.occurred_at), default=None),
         sources,
+    )
+
+
+def relation(record: CollectedRecord) -> EvidenceRelation:
+    roles = record.evidence.content.get("roles")
+    return (
+        EvidenceRelation.CONTEXT
+        if record.evidence.source == "jira" and roles == ["reporter"]
+        else EvidenceRelation.SUPPORTS
     )

@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs"
 import path from "node:path"
-import { expect, test } from "@playwright/test"
 import type { ExternalIdentitiesPublic, SetupPublic } from "../src/client"
 import { expectChineseCopy } from "./utils/copy"
+import { expect, test } from "./utils/model"
 import { logInUser, logOutUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -10,6 +10,7 @@ test.use({ storageState: { cookies: [], origins: [] } })
 test("new enterprise imports Jira, drafts in setup and shows the employee their draft", async ({
   page,
   request,
+  modelUrl,
 }, testInfo) => {
   test.setTimeout(120000)
   const tokenResponse = await request.post("/api/v1/private/setup-tokens", {
@@ -113,13 +114,27 @@ test("new enterprise imports Jira, drafts in setup and shows the employee their 
   })
   expect(linked.ok()).toBeTruthy()
   expect((await linked.json()).linked).toBe(links.length)
+  expect(
+    (
+      await request.put(`${base}/model-setting`, {
+        headers,
+        data: {
+          enabled: true,
+          kind: "openai_compatible",
+          model: "openai/synthetic",
+          base_url: modelUrl,
+          api_key: "synthetic-key",
+        },
+      })
+    ).ok(),
+  ).toBeTruthy()
   const setup: SetupPublic = await (
     await request.get(`${base}/setup`, { headers })
   ).json()
   for (const step of setup.steps.filter(
     (step) => step.status === "pending" && step.key !== "initial_profiles",
   )) {
-    const action = step.key === "model" ? "skip" : "complete"
+    const action = "complete"
     expect(
       (
         await request.post(`${base}/setup/steps/${step.key}/${action}`, {
@@ -321,3 +336,38 @@ for (const username of [
     ).toHaveCount(0)
   })
 }
+
+test("no model shows configuration guidance and disables drafting", async ({
+  page,
+}) => {
+  await page.route("**/initial-profiles/progress", (route) =>
+    route.fulfill({
+      json: {
+        mode: "none",
+        counts: { failed: 1, not_started: 2 },
+        failed: [],
+        requests: { pending_owner: 0, handed_over: 0 },
+      },
+    }),
+  )
+  await logInUser(
+    page,
+    "admin@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  await page.goto("/admin/progress")
+  const progress = page.getByRole("region", { name: "初始画像起草进度" })
+  await expect(progress.getByRole("alert")).toContainText(
+    "还没有配置模型，请先在设置页配置模型，或者让员工用 JSON 导入画像",
+  )
+  await expect(
+    progress.getByRole("link", { name: "去配置模型" }),
+  ).toHaveAttribute("href", "/admin/model")
+  await expect(
+    progress.getByRole("button", { name: "重新起草全部" }),
+  ).toBeDisabled()
+  await expect(
+    progress.getByRole("button", { name: "重试失败的" }),
+  ).toBeDisabled()
+  await expectChineseCopy(page, ["JSON"])
+})

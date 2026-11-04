@@ -83,7 +83,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
         启用模型
       </label>
       <p className="text-sm text-muted-foreground">
-        不使用模型时，系统按能力词典里的关键词起草，只给「暂定」，不给等级。
+        起草必须启用模型；关闭后不再生成初始画像，可以让员工用 JSON 导入画像。
       </p>
       <label className="block space-y-2">
         <span>模型类型</span>

@@ -1,11 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { useState } from "react"
-import {
-  ModelSettingService,
-  type ModelSettingUpdateWritable,
-  SetupService,
-} from "@/client"
+import { SetupService } from "@/client"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { useSetup } from "@/hooks/useSetup"
@@ -27,23 +23,6 @@ export function WizardFrame({ orgId }: { orgId: string }) {
     setup.data?.completed && !setup.data.next_step_key && !selected
   const update = useMutation({
     mutationFn: async ({ key, skip }: { key: string; skip?: boolean }) => {
-      if (skip && key === "model") {
-        const path = { org_id: orgId }
-        const { data } = await ModelSettingService.settingGetModelSetting({
-          path,
-        })
-        if (data.enabled)
-          await ModelSettingService.settingPutModelSetting({
-            path,
-            body: {
-              enabled: false,
-              kind: data.kind as ModelSettingUpdateWritable["kind"],
-              model: data.model,
-              base_url: data.base_url,
-              reasoning_effort: data.reasoning_effort,
-            },
-          })
-      }
       return (skip ? SetupService.skipStep : SetupService.completeStep)({
         path: { org_id: orgId, key },
       })
@@ -184,11 +163,7 @@ export function WizardFrame({ orgId }: { orgId: string }) {
                         update.mutate({ key: step.key, skip: true })
                       }
                     >
-                      {step.key === "model"
-                        ? "跳过，用关键词规则起草"
-                        : step.key === "sources"
-                          ? "跳过，以后再接"
-                          : "跳过"}
+                      {step.key === "sources" ? "跳过，以后再接" : "跳过"}
                     </Button>
                   )}
                 </div>

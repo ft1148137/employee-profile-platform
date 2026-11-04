@@ -1,8 +1,7 @@
 """M2 acceptance across real domain services and in-process Jira transports."""
 
-import json
 import runpy
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -17,6 +16,7 @@ from sqlmodel import Session, select
 from app.authz.principal import Principal
 from app.connectors.jira.client import jira_client_for
 from app.connectors.jira.mock import create_mock_app
+from app.core.config import settings
 from app.core.security import create_access_token
 from app.domains.base import utc_now
 from app.domains.capability.models import CapabilityDefinition
@@ -28,7 +28,7 @@ from app.domains.change_request.models import (
 from app.domains.drafting import service
 from app.domains.drafting.collect import evidence_stats
 from app.domains.evidence.models import Evidence
-from app.domains.model.client import ModelRateLimited, _sdk
+from app.domains.model.client import ModelRateLimited
 from app.domains.model.models import ModelSetting
 from app.domains.org.models import Department, OrgMembership, RoleGrant
 from app.domains.profile.models import ProfileClaim
@@ -36,6 +36,8 @@ from app.domains.source import sync
 from app.domains.work.models import Task, WorkEvent
 from app.models import User
 from tests.api.routes.test_initial_profiles import work_queue
+
+pytestmark = pytest.mark.xdist_group("litellm")
 
 ROOT = Path(__file__).resolve().parents[3]
 evaluation = runpy.run_path(str(ROOT / "examples/test-enterprises/evaluate_drafts.py"))
@@ -46,9 +48,12 @@ def enterprise(
     db: Session,
     superuser_token_headers: dict[str, str],
     monkeypatch: pytest.MonkeyPatch,
+    mock_drafting: Callable[[UUID, UUID], None],
 ) -> Generator[tuple]:
     with evaluation["enterprise"]("demo-org") as (session, org, employees):
-        admin = db.exec(select(User).where(User.is_superuser)).first()
+        admin = db.exec(
+            select(User).where(User.email == settings.FIRST_SUPERUSER)
+        ).first()
         assert admin
         membership = OrgMembership(org_id=org.id, user_id=admin.id)
         session.add(membership)
@@ -57,6 +62,7 @@ def enterprise(
             RoleGrant(org_id=org.id, membership_id=membership.id, role="org_admin")
         )
         session.commit()
+        mock_drafting(org.id, admin.id)
         http = TestClient(create_mock_app(ROOT / "examples"))
         monkeypatch.setattr(sync, "jira_client_for", lambda c: jira_client_for(c, http))
         yield (
@@ -254,39 +260,21 @@ def test_switches_pause_resume(
     db, org, employees, base, auth, admin = enterprise
     assert synchronize(enterprise, client, "cloud")["status"] == "succeeded"
     link_candidates(enterprise, client)
-    # Mock only the transport; LiteLLM still builds and parses its normal response.
-    sdk, real = _sdk(), _sdk().completion
-
-    def completion(**kwargs: Any) -> Any:
-        body = json.loads(kwargs["messages"][-1]["content"])
-        return real(
-            **kwargs,
-            mock_response=json.dumps(
-                {
-                    "items": [
-                        {
-                            "capability_key": body["capabilities"][0]["key"],
-                            "statement": "合成能力建议",
-                            "level": None,
-                            "evidence": [r["ref"] for r in body["records"]],
-                            "explanation": "合成工作记录",
-                            "uncertainty": "需要本人确认",
-                        }
-                    ]
-                }
-            ),
+    setting = db.get(ModelSetting, org.id)
+    setting.enabled = model
+    db.add(setting)
+    db.commit()
+    if not model:
+        blocked = client.post(
+            base + "/initial-profiles/draft", headers=auth, json={"scope": "all"}
         )
-
-    monkeypatch.setattr(sdk, "completion", completion)
-    db.add(
-        ModelSetting(
-            org_id=org.id,
-            updated_by_user_id=admin.id,
-            enabled=model,
-            kind="cloud_api",
-            model="openai/gpt-4o-mini",
+        assert (
+            blocked.status_code == 409
+            and blocked.json()["detail"] == service.MODEL_REQUIRED
         )
-    )
+        setting.enabled = True
+        db.add(setting)
+        db.commit()
     departments = rows(db, Department, org.id)
     departments[1].parent_department_id = departments[0].id
     db.add(departments[1])
@@ -433,3 +421,31 @@ def test_csv_participants_and_explicit_cross_source_reference() -> None:
         assert len(pair) == 2
         stats = evidence_stats(db, org.id, [r.evidence.id for r in pair])
         assert stats.evidence_count == 1 and stats.source_count == 2
+
+
+@pytest.mark.usefixtures("mock_drafting")
+def test_model_baseline_smoke() -> None:
+    from app.domains.model.schemas import ModelSettingUpdate
+
+    report = evaluation["evaluate"](
+        "qiguang-aiot",
+        ModelSettingUpdate(enabled=True, kind="cloud_api", model="openai/gpt-4o-mini"),
+    )
+    assert "精确率" in report and "召回率" in report and "documented" in report
+
+
+def test_baseline_rejects_incomplete_drafts(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.domains.model.client import ModelUnavailable
+    from app.domains.model.schemas import ModelSettingUpdate
+
+    def unavailable(*_args: Any) -> Any:
+        raise ModelUnavailable("Synthetic unavailable model")
+
+    monkeypatch.setattr(service.model, "draft", unavailable)
+    with pytest.raises(ModelUnavailable, match="模型起草未完成"):
+        evaluation["evaluate"](
+            "qiguang-aiot",
+            ModelSettingUpdate(
+                enabled=True, kind="cloud_api", model="openai/gpt-4o-mini"
+            ),
+        )
