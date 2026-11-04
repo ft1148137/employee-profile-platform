@@ -98,6 +98,9 @@ def test_review_priority_and_query_count(seed_path: Path) -> None:
         assert status() == "pending_employee"
         request.status = RequestStatus.DRAFT
         session.add(request)
+        assert status() == "pending_employee"
+        request.status = RequestStatus.WITHDRAWN
+        session.add(request)
         assert status() == "pending_manager"
         other.status = RequestStatus.APPROVED
         session.add(other)

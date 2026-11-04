@@ -29,6 +29,8 @@ from app.domains.drafting.collect import collect, evidence_stats
 from app.domains.drafting.collect import relation as record_relation
 from app.domains.drafting.model import DraftItem
 from app.domains.drafting.settings import drafting_scope
+from app.domains.inbox.models import InboxKind
+from app.domains.inbox.service import notify
 from app.domains.model.client import (
     ModelOutputInvalid,
     ModelRateLimited,
@@ -139,6 +141,7 @@ def write_initial_request(
             ProfileChangeRequest.origin == RequestOrigin.INITIAL_SYNC,
         )
         .with_for_update()
+        .execution_options(populate_existing=True)
     ).one_or_none()
     if request and request.status != RequestStatus.PENDING_OWNER:
         return False
@@ -161,6 +164,11 @@ def write_initial_request(
         )
         session.add(request)
         session.flush()
+        notify(
+            session, request, InboxKind.INITIAL_REVIEW, "初始画像已起草，请过目后提交"
+        )
+    else:
+        request.revision += 1
     old_items = select(ChangeItem.id).where(
         ChangeItem.org_id == org_id, ChangeItem.request_id == request.id
     )

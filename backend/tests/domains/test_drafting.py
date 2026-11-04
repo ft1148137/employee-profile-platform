@@ -135,6 +135,12 @@ def test_model_and_statistics(
     assert service.write_initial_request(db, org, employee, items, generated_by)
     change_request = rows(db, ProfileChangeRequest, org)[0]
     first_id = change_request.id
+    assert change_request.revision == 1
+    from app.domains.inbox.models import InboxItem
+
+    notifications = rows(db, InboxItem, org)
+    assert len(notifications) == 1 and notifications[0].kind == "initial_review"
+    assert notifications[0].recipient_employee_id == employee.id
     assert change_request.base_version_id is not None and change_request.author == {
         "actor_type": "system_worker"
     }
@@ -150,6 +156,8 @@ def test_model_and_statistics(
     db.flush()
     assert service.write_initial_request(db, org, employee, items, generated_by)
     assert rows(db, ProfileChangeRequest, org)[0].id == first_id
+    assert change_request.revision == 2
+    assert len(rows(db, InboxItem, org)) == 1
     stored = rows(db, ChangeItem, org)
     assert (
         len(stored) == 1

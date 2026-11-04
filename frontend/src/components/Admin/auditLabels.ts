@@ -2,6 +2,8 @@ import type { AuditEventPublic } from "@/client"
 
 export const auditLabels: Record<string, string> = {
   "initial_profiles.drafted": "生成初始画像",
+  "change_request.submitted": "提交画像请求",
+  "change_request.withdrawn": "撤回画像请求",
   "sync_run.succeeded": "同步完成",
   "sync_run.failed": "同步失败",
   "source.jira_updated": "修改 Jira 连接",
@@ -37,6 +39,7 @@ export const actorLabels: Record<string, string> = {
 }
 export const targetLabels: Record<string, string> = {
   sync_run: "同步记录",
+  profile_change_request: "画像变更请求",
   source_connection: "数据来源",
   external_identity: "外部账号",
   model_setting: "模型设置",
