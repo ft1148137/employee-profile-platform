@@ -321,6 +321,11 @@ export function IdentityTable({
                             minute: "2-digit",
                           })
                         : "未记录"}
+                      {row.linked_by === "system_worker:email_match" && (
+                        <p className="text-xs text-muted-foreground">
+                          按邮箱自动关联
+                        </p>
+                      )}
                     </TableCell>
                   </>
                 )}

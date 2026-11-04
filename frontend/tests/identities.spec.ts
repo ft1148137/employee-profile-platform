@@ -74,6 +74,43 @@ test("confirm candidates in bulk, select employee, unlink and save optional setu
       { timeout: 30000 },
     )
     .toBe("succeeded")
+  const automatic: ExternalIdentitiesPublic = await (
+    await request.get(`${base}/external-identities?status=linked`, { headers })
+  ).json()
+  expect(automatic.count).toBeGreaterThanOrEqual(3)
+  await page.goto("/admin/identities")
+  await page.getByRole("tab", { name: `已关联（${automatic.count}）` }).click()
+  await expect(
+    page.getByText("按邮箱自动关联", { exact: true }).first(),
+  ).toBeVisible()
+  for (const row of automatic.data) {
+    expect(row.linked_by).toBe("system_worker:email_match")
+    const unlinked = await request.post(
+      `${base}/external-identities/${row.id}/unlink`,
+      { headers },
+    )
+    expect(unlinked.ok()).toBeTruthy()
+  }
+  // Administrator opt-outs survive another synchronization; candidates stay usable.
+  const repeated = await request.post(`${base}/sources/jira/sync`, { headers })
+  expect(repeated.ok()).toBeTruthy()
+  const repeatedId = (await repeated.json()).id
+  await expect
+    .poll(
+      async () => {
+        const runs = await (
+          await request.get(`${base}/sync-runs`, { headers })
+        ).json()
+        return runs.data.find((run: { id: string }) => run.id === repeatedId)
+          ?.status
+      },
+      { timeout: 30000 },
+    )
+    .toBe("succeeded")
+  const afterRepeat = await (
+    await request.get(`${base}/external-identities?status=linked`, { headers })
+  ).json()
+  expect(afterRepeat.count).toBe(0)
   const data: ExternalIdentitiesPublic = await (
     await request.get(`${base}/external-identities`, { headers })
   ).json()

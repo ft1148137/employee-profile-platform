@@ -1102,6 +1102,10 @@ export type ExternalIdentityPublic = {
      * Linked At
      */
     linked_at: string | null;
+    /**
+     * Linked By
+     */
+    linked_by: string | null;
     employee: IdentityEmployee | null;
     candidate: IdentityCandidate | null;
 };

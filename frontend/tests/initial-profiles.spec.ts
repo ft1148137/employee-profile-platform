@@ -99,21 +99,29 @@ test("new enterprise imports Jira, drafts in setup and shows the employee their 
     )
     .toBe("succeeded")
   const identities: ExternalIdentitiesPublic = await (
-    await request.get(`${base}/external-identities?limit=200`, { headers })
+    await request.get(`${base}/external-identities?status=all&limit=200`, {
+      headers,
+    })
   ).json()
   expect(identities.count).toBeGreaterThan(0)
   const candidates = identities.data.filter((identity) => identity.candidate)
-  expect(candidates.length).toBeGreaterThan(0)
+  expect(
+    identities.data.filter(
+      (identity) => identity.linked_by === "system_worker:email_match",
+    ).length,
+  ).toBeGreaterThan(0)
   const links = candidates.map((identity) => ({
     identity_id: identity.id,
     employee_id: identity.candidate!.id,
   }))
-  const linked = await request.post(`${base}/external-identities/link`, {
-    headers,
-    data: { links },
-  })
-  expect(linked.ok()).toBeTruthy()
-  expect((await linked.json()).linked).toBe(links.length)
+  if (links.length) {
+    const linked = await request.post(`${base}/external-identities/link`, {
+      headers,
+      data: { links },
+    })
+    expect(linked.ok()).toBeTruthy()
+    expect((await linked.json()).linked).toBe(links.length)
+  }
   expect(
     (
       await request.put(`${base}/model-setting`, {
@@ -184,9 +192,9 @@ test("new enterprise imports Jira, drafts in setup and shows the employee their 
     path: testInfo.outputPath("initial-profiles-progress.png"),
     fullPage: true,
   })
-  const employee = identities.data.find(
-    (identity) => identity.candidate?.employee_code === "QL003",
-  )!.candidate!
+  const employee = identities.data
+    .map((identity) => identity.employee ?? identity.candidate)
+    .find((employee) => employee?.employee_code === "QL003")!
   const account = accounts.data.find(
     (row: { id: string }) => row.id === employee.id,
   ).account
