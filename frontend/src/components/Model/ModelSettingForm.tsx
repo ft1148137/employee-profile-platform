@@ -180,6 +180,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                   <label className="block space-y-2">
                     <span>提供方</span>
                     <select
+                      aria-label="提供方"
                       className={selectClass}
                       required={current.enabled}
                       value={current.provider ?? ""}

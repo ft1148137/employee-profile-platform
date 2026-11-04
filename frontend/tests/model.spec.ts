@@ -39,7 +39,9 @@ test("model kinds, saved secret, destination changes and disabling preserve conf
   await expect(page.getByLabel(/base URL/)).toHaveCount(0)
   await page.getByLabel("模型类型").selectOption("openai_compatible")
   await page.getByLabel("模型名", { exact: true }).fill("synthetic")
-  await page.getByLabel("密钥", { exact: true }).fill("synthetic-model-key")
+  await page
+    .getByLabel("密钥（可选）", { exact: true })
+    .fill("synthetic-model-key")
   await page.getByLabel(/base URL/).fill(modelUrl)
   const response = page.waitForResponse(
     (r) => r.url().endsWith("/model-setting") && r.request().method() === "PUT",
