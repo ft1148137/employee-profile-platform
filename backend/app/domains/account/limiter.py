@@ -18,9 +18,12 @@ class LoginLimited(HTTPException):
         )
 
 
-def check_login_limit(session: Session, identifier: str, ip: str) -> None:
+def check_login_limit(session: Session, identifier: str | None, ip: str) -> None:
     # Serialize checks and recording across all API workers, without Redis.
-    for key in (f"login-ip:{ip}", f"login-name:{identifier}"):
+    keys = [f"login-ip:{ip}"]
+    if identifier is not None:
+        keys.append(f"login-name:{identifier}")
+    for key in keys:
         session.exec(select(func.pg_advisory_xact_lock(func.hashtext(key)))).all()
     cutoff = datetime.now(UTC) - timedelta(minutes=settings.LOGIN_LOCK_MINUTES)
     failures = (
@@ -47,7 +50,10 @@ def check_login_limit(session: Session, identifier: str, ip: str) -> None:
         )
     )
     if (
-        session.exec(failures.where(LoginAttempt.identifier_norm == identifier)).one()
+        identifier is not None
+        and session.exec(
+            failures.where(LoginAttempt.identifier_norm == identifier)
+        ).one()
         >= settings.LOGIN_MAX_FAILURES
         or session.exec(failures.where(LoginAttempt.ip == ip)).one()
         >= settings.LOGIN_MAX_FAILURES_PER_IP

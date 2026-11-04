@@ -4,9 +4,11 @@ import sentry_sdk
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from starlette.middleware.cors import CORSMiddleware
+from starlette.routing import Route
 
 from app.api.main import api_router
 from app.core.config import settings
+from app.mcp.server import endpoint, lifespan
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 
@@ -19,6 +21,7 @@ if settings.SENTRY_DSN and settings.FASTAPI_ENV != "development":
     sentry_sdk.init(dsn=str(settings.SENTRY_DSN), enable_tracing=True)
 
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     generate_unique_id_function=custom_generate_unique_id,
@@ -34,5 +37,8 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+app.router.routes.append(
+    Route("/mcp", endpoint=endpoint, methods=["POST", "GET", "DELETE"])
+)
 if FRONTEND_DIR.is_dir():
     app.frontend("/", directory=FRONTEND_DIR)

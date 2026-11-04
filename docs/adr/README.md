@@ -22,3 +22,4 @@
 
 - [ADR-0015：邮箱登录和旧账号迁移](0015-email-login.md)
 - [ADR-0016：能力词典换版与历史判断](0016-capability-dictionary-versions.md)
+- [ADR-0017：员工 MCP 传输与个人令牌认证](0017-mcp-transport-and-token-auth.md)

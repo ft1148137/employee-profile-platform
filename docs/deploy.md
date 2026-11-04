@@ -226,6 +226,12 @@ Jira、API key 和订阅凭据均由 `SECRET_KEY` 派生密钥加密。更换它
 M1 部署流程使用 macOS 26.4.1 / Docker Desktop，全新克隆测试 HTTP、浏览器向导、改密、备份恢复、升级及自签 HTTPS；具体结果和截图见 [M1 验收记录](m1-acceptance.md)。Linux 安装由 PR 的 Ubuntu `test-production-install` job 验证，不能把本机通过当作 Linux 已通过。Safari 和 Let's Encrypt 公网签发没有实测，也没有验证真实企业网络或生产数据恢复。
 
 
+### 外部 AI 助手的 MCP 地址
+
+外部员工助手的 MCP 地址为 `https://企业平台域名/mcp`（无尾部斜杠）。企业开关默认关闭，员工本人在网页生成个人令牌。外部客户端需要能访问该地址且信任证书；云端客户端通常无法访问内网或接受自签证书，本机客户端也需配置证书信任。不要关闭证书校验来连接生产服务。OAuth 网页授权另行实现。
+
+安装脚本的自签、域名证书两套 Traefik 配置都将 `/mcp` 直接送到 backend，并设置立即刷新响应、未启用 buffering 中间件。后端在前端兜底之前处理 `/mcp`，无需单独启动服务或开放额外端口。自建反向代理也须保留 `Authorization`、`Mcp-Session-Id` 和 `MCP-Protocol-Version` 请求头、返回会话头，并关闭流式响应缓冲。更换域名时同步更新 `FRONTEND_HOST`（MCP 校验 Host 和 Origin）。
+
 ### Pi 模型出口限制（S7c）
 
 Pi 使用锁定的 `undici@7.30.1` 全局 dispatcher，每次请求建立新连接并检查全部 DNS 解析结果；3xx 直接报错，不跟随重定向。云元数据地址（含 `169.254.169.254`、`fd00:ec2::254`）和 link-local 地址一律拒绝。目录内提供方只允许公网；自定义通义千问、OpenAI 兼容服务和 Ollama 只允许该轮配置的主机与端口，可以访问配置的内网服务。没有本轮策略的请求拒绝。此限制只覆盖 Pi 进程的模型 HTTP 请求。
