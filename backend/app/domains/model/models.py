@@ -20,6 +20,7 @@ class ModelSetting(SQLModel, table=True):
     org_id: UUID = Field(primary_key=True, foreign_key="organization.id")
     enabled: bool = False
     kind: str | None = Field(default=None, max_length=40)
+    provider: str | None = Field(default=None, max_length=40)
     model: str | None = Field(default=None, max_length=200)
     base_url: str | None = Field(default=None, max_length=500)
     api_key_ciphertext: str | None = Field(default=None, repr=False)

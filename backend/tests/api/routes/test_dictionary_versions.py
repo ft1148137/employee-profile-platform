@@ -19,6 +19,7 @@ from app.domains.model.models import ModelSetting
 from app.domains.org.models import OrgMembership
 from app.domains.profile.models import ProfileClaim, ProfileVersion
 from tests.utils.migrations import migrate
+from tests.utils.pi import PiHarness
 
 
 def exported(client: TestClient, url: str, headers: dict) -> list[dict]:
@@ -409,7 +410,11 @@ def test_dictionary_notification_migration(migration_engine: Engine) -> None:
 
 
 def test_redraft_only_queues_pending_owner_and_matches_published_key(
-    demo: tuple, client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+    demo: tuple,
+    client: TestClient,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    pi_service: PiHarness,
 ) -> None:
     from app.domains.capability.models import CapabilityDefinition
     from app.domains.change_request.claim import ClaimAfter
@@ -427,8 +432,10 @@ def test_redraft_only_queues_pending_owner_and_matches_published_key(
             org_id=org_id,
             updated_by_user_id=user_id,
             enabled=True,
-            kind="cloud_api",
-            model="openai/gpt-4o-mini",
+            kind="openai_compatible",
+            provider="openai-compatible",
+            model="synthetic",
+            base_url=pi_service.config.baseUrl,
         )
     )
     db.commit()

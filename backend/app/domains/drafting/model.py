@@ -3,13 +3,26 @@ from datetime import UTC, datetime
 from typing import Self
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    ValidationError,
+    model_validator,
+)
 
 from app.domains.capability.models import CapabilityDefinition
 from app.domains.change_request.claim import ClaimAfter
 from app.domains.drafting.collect import CollectedRecord, relation
 from app.domains.evidence.models import Visibility
-from app.domains.model.client import ModelConfig, chat_json
+from app.domains.model.client import (
+    ModelConfig,
+    ModelOutputInvalid,
+    ModelUnavailable,
+    chat_json,
+)
+from app.domains.model.pi_client import PiModelConfig, ToolDefinition, run_turn
 from app.domains.profile.models import AssessmentStatus, EvidenceRelation
 
 
@@ -81,7 +94,7 @@ class ModelItem(BaseModel):
 def draft(
     records: list[CollectedRecord],
     capabilities: list[CapabilityDefinition],
-    config: ModelConfig,
+    config: ModelConfig | PiModelConfig,
 ) -> tuple[list[DraftItem], dict[str, JsonValue]]:
     # shortcut: Send only the latest 80 records; batch by token budget when larger histories are needed.
     records = sorted(
@@ -155,14 +168,67 @@ def draft(
                     raise ValueError("等级不在该能力的给定等级中")
             return self
 
-    result = chat_json(
-        config,
-        [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": body.model_dump_json()},
-        ],
-        DraftOutput,
-    )
+    if isinstance(config, ModelConfig):
+        # shortcut: ChatGPT subscriptions use LiteLLM until S7b (NERE-92).
+        result = chat_json(
+            config,
+            [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": body.model_dump_json()},
+            ],
+            DraftOutput,
+        )
+        output, provider, model_id, effort = (
+            result.value,
+            result.provider,
+            result.model,
+            config.reasoning_effort,
+        )
+    else:
+        output = None
+        failures = 0
+
+        def submit(_name: str, arguments: dict[str, JsonValue]) -> JsonValue:
+            nonlocal output, failures
+            if output is not None:
+                return {"accepted": True, "message": "已提交"}
+            try:
+                output = DraftOutput.model_validate(arguments)
+            except ValidationError:
+                failures += 1
+                if failures >= 3:
+                    raise ModelOutputInvalid() from None
+                return {
+                    "accepted": False,
+                    "error": "提交不符合要求，请只用给定的能力、等级和 R 编号重新提交",
+                }
+            return {"accepted": True}
+
+        while output is None and failures < 3:
+            try:
+                run_turn(
+                    config,
+                    system_prompt=SYSTEM_PROMPT + "使用 submit_draft 提交结果。",
+                    input=body.model_dump_json(),
+                    tools=[
+                        ToolDefinition(
+                            name="submit_draft",
+                            description="提交初始画像候选",
+                            parameters=DraftOutput.model_json_schema(),
+                        )
+                    ],
+                    on_tool_call=submit,
+                )
+            except ModelUnavailable:
+                if failures >= 3:
+                    raise ModelOutputInvalid() from None
+                raise
+            if output is None:
+                failures += 1
+        if output is None:
+            raise ModelOutputInvalid()
+        provider, model_id, effort = config.provider, config.id, config.thinkingLevel
+    assert output is not None
     return [
         DraftItem(
             definitions[item.capability_key].id,
@@ -175,11 +241,11 @@ def draft(
             item.uncertainty,
             {refs[ref].evidence.id: relation(refs[ref]) for ref in item.evidence},
         )
-        for item in result.value.items
+        for item in output.items
     ], {
         "mode": "model",
-        "provider": result.provider,
-        "model": result.model,
+        "provider": provider,
+        "model": model_id,
         "prompt_version": PROMPT_VERSION,
-        "reasoning_effort": config.reasoning_effort,
+        "reasoning_effort": effort,
     }

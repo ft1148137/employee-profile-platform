@@ -1,10 +1,40 @@
 import { Agent } from '@mariozechner/pi-agent-core';
-import { streamSimple } from '@mariozechner/pi-ai';
+import { getModel, getProviders, getSupportedThinkingLevels, streamSimple } from '@mariozechner/pi-ai';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { channel } from 'node:diagnostics_channel';
 import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
+
+import { egress } from './egress.mjs';
+
+const customProviders = new Set(['qwen', 'openai-compatible', 'ollama']);
+const thinkingLevels = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'];
+function catalogModel(provider, id) {
+  if (!getProviders().includes(provider)) {
+    if (!customProviders.has(provider)) throw new Error('bad_request');
+    return undefined;
+  }
+  const model = getModel(provider, id);
+  if (!model) throw new Error('bad_request');
+  return model;
+}
+function levels(model) {
+  if (!model) return thinkingLevels;
+  if (model.compat?.supportsReasoningEffort === false) return ['off'];
+  return getSupportedThinkingLevels(model);
+}
+function resolveModel(m) {
+  const catalog = catalogModel(m.provider, m.id);
+  if (catalog) {
+    if (m.api !== catalog.api || ['reasoning', 'thinkingLevelMap', 'contextWindow', 'maxTokens', 'compat']
+      .some(key => Object.hasOwn(m, key)) || !levels(catalog).includes(m.thinkingLevel ?? 'off')) throw new Error('bad_request');
+    return { ...catalog, baseUrl: m.baseUrl };
+  }
+  return { id: m.id, name: m.id, api: m.api, provider: m.provider, baseUrl: m.baseUrl,
+    reasoning: m.reasoning ?? false, thinkingLevelMap: { xhigh: 'xhigh' }, input: ['text'], contextWindow: m.contextWindow ?? 128000,
+    maxTokens: m.maxTokens ?? 4096, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, compat: m.compat };
+}
 
 const TOOL_ERROR = '平台工具调用失败，请检查参数后重试。';
 const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
@@ -97,7 +127,7 @@ export function quota(headers = {}, message = '', now = Date.now()) {
 }
 
 export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSimple,
-  log = entry => console.log(JSON.stringify(entry)) } = {}) {
+  lookup, log = entry => console.log(JSON.stringify(entry)) } = {}) {
   if (!text(token) || !Number.isFinite(deadlineMs) || deadlineMs <= 0 || deadlineMs > 120000)
     throw new Error('Invalid Pi service configuration');
   const digest = value => createHash('sha256').update(value).digest();
@@ -116,6 +146,12 @@ export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSi
       if (path === '/health' && req.method === 'GET') {
         route = 'health';
         return json(res, 200, { ok: true });
+      }
+      const capability = path.match(/^\/v1\/models\/([^/]+)\/(.+)$/);
+      if (capability && req.method === 'GET') {
+        route = 'model';
+        const model = catalogModel(decodeURIComponent(capability[1]), decodeURIComponent(capability[2]));
+        return json(res, 200, { in_catalog: !!model, api: model?.api ?? 'openai-completions', thinking_levels: levels(model) });
       }
       const match = path.match(/^\/v1\/turns\/([^/]+)(?:\/results\/([^/]+))?$/);
       if (match && uuid.test(match[1])) {
@@ -137,6 +173,8 @@ export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSi
               !Object.hasOwn(body, 'result')) return json(res, 409, { type: 'error', code: 'bad_request' });
           const pending = run.pending;
           run.pending = undefined;
+          // Callback exceptions are fatal; abort before acknowledging to avoid a DELETE race.
+          if (body.is_error) run.cancel('cancelled');
           pending.resolve(body);
           return json(res, 200, { ok: true });
         }
@@ -146,6 +184,7 @@ export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSi
       route = 'turn';
       const body = await readBody(req);
       if (!validate(body) || runs.has(body.run_id)) return json(res, 400, { type: 'error', code: 'bad_request' });
+      const model = resolveModel(body.model);
       runId = body.run_id;
       if (runs.size >= 4) return json(res, 503, { type: 'error', code: 'busy' });
       res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store' });
@@ -161,16 +200,15 @@ export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSi
       let response = {};
       const usedCalls = new Set();
       const m = body.model;
-      const model = { id: m.id, name: m.id, api: m.api, provider: m.provider, baseUrl: m.baseUrl,
-        reasoning: m.reasoning ?? false, input: ['text'], contextWindow: m.contextWindow ?? 128000,
-        maxTokens: m.maxTokens ?? 4096, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, compat: m.compat };
       const agent = new Agent({
         getApiKey: () => m.api_key || 'not-needed', transport: 'sse', toolExecution: 'sequential',
         streamFn: (model, context, options) => {
           if (run.error || run.calls >= 8) { run.cancel('limit_exceeded'); throw new Error('limit_exceeded'); }
           run.calls++;
           response = {};
-          return observers.run(options.onResponse, () => streamFn(model, context, { ...options, maxRetries: 0 }));
+          run.signal = options.signal;
+          return egress.run({ catalog: getProviders().includes(m.provider), origin: new URL(m.baseUrl).origin, lookup },
+            () => observers.run(options.onResponse, () => streamFn(model, context, { ...options, maxRetries: 0 })));
         },
         onResponse: r => {
           response = { status: r.status, headers: Object.fromEntries(Object.entries(r.headers)
@@ -178,8 +216,19 @@ export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSi
             .map(([name, value]) => [name.toLowerCase(), String(value).slice(0, 200)])) };
         },
         // Validation/unknown-tool errors from agent-core can contain raw arguments.
-        transformContext: async messages => messages.map(message => message.role === 'toolResult' && message.isError
-          ? { ...message, content: [{ type: 'text', text: TOOL_ERROR }], details: {} } : message),
+        transformContext: async messages => {
+          // Count known submissions rejected by the SDK schema at the same Python validation boundary.
+          for (const message of messages) {
+            if (message.role !== 'toolResult' || !message.isError || usedCalls.has(message.toolCallId)) continue;
+            const tool = agent.state.tools.find(t => t.name === message.toolName);
+            const call = messages.flatMap(m => m.role === 'assistant' ? m.content : [])
+              .find(c => c.type === 'toolCall' && c.id === message.toolCallId);
+            if (tool && call)
+              await tool.execute(call.id, object(call.arguments) ? call.arguments : {}, run.signal);
+          }
+          return messages.map(message => message.role === 'toolResult' && message.isError
+            ? { ...message, content: [{ type: 'text', text: TOOL_ERROR }], details: {} } : message);
+        },
         initialState: { model, systemPrompt: body.system_prompt, thinkingLevel: m.thinkingLevel ?? 'off',
           tools: body.tools.map(t => ({ name: t.name, label: t.name, description: t.description, parameters: t.parameters,
             execute: async (id, args, signal) => {

@@ -1,3 +1,6 @@
+import { Agent as HttpAgent } from 'undici';
+const controlDispatcher = new HttpAgent();
+const fetch = (url, options = {}) => globalThis.fetch(url, { ...options, dispatcher: controlDispatcher });
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
@@ -15,7 +18,7 @@ const auth = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/js
 const call = (name = 'submit_draft', args = { statement: '合成建议' }, id = 'call-1') =>
   ({ type: 'toolCall', id, name, arguments: args });
 const body = () => ({ version: 1, run_id: randomUUID(), mode: 'draft',
-  model: { provider: 'synthetic', api: 'openai-completions', id: 'test', baseUrl: 'http://127.0.0.1:1/v1', api_key: 'synthetic-api-key' },
+  model: { provider: 'openai-compatible', api: 'openai-completions', id: 'test', baseUrl: 'http://127.0.0.1:1/v1', api_key: 'synthetic-api-key' },
   system_prompt: 'synthetic-system-prompt', input: 'synthetic-private-evidence',
   tools: [{ name: 'submit_draft', description: 'draft', parameters: { type: 'object',
     additionalProperties: false, properties: { statement: { type: 'string' } }, required: ['statement'] } }] });
@@ -129,19 +132,22 @@ test('eight model calls and sixteen tool executions are hard limits', async t =>
   assert.equal((await b.next()).code, 'limit_exceeded');
 });
 
-test('injected tools never execute; validation and backend errors are fixed before model reentry', async t => {
+test('injected tools never execute; rejected arguments are fixed before model reentry', async t => {
   const seen = [];
   const { start } = await setup(t, { streamFn: fake(context => context.messages.some(m => m.role === 'toolResult') ? [] :
     ['bash', 'read', 'write'].map(name => call(name, { path: '/tmp/nere90-forbidden', secret: 'sensitive-argument' }, name))
       .concat([call('submit_draft', { secret: 'sensitive-argument' }, 'invalid'), call('submit_draft')]),
     context => seen.push(context)) });
-  const run = await start(); const c = await run.next();
+  const run = await start(); let c = await run.next();
   assert.equal(c.name, 'submit_draft');
-  await run.result(c.call_id, 'sensitive-backend-exception', true);
+  await run.result(c.call_id, { accepted: false, error: '提交不符合要求' });
+  c = await run.next(); assert.equal(c.name, 'submit_draft');
+  await run.result(c.call_id, { accepted: false });
   assert.equal((await run.next()).type, 'done');
   const results = seen.at(-1).messages.filter(m => m.role === 'toolResult');
   assert.equal(results.length, 5);
-  assert.ok(results.every(m => m.isError && m.content[0].text === '平台工具调用失败，请检查参数后重试。'));
+  assert.ok(results.slice(0, 4).every(m => m.isError && m.content[0].text === '平台工具调用失败，请检查参数后重试。'));
+  assert.deepEqual(JSON.parse(results[4].content[0].text), { accepted: false, error: '提交不符合要求' });
   assert.equal(existsSync('/tmp/nere90-forbidden'), false);
 });
 
@@ -219,4 +225,95 @@ test('upstream failures and logs contain no body, authorization, API key or raw 
   assert.match(captured, /"route":"turn"/);
   for (const secret of [token, 'synthetic-api-key', 'synthetic-private-evidence', 'synthetic-system-prompt', 'sensitive', 'Authorization'])
     assert.equal(captured.includes(secret), false, secret);
+});
+
+
+test('catalog capabilities, model identity, API and reasoning cannot be overridden', async t => {
+  const { request } = await setup(t);
+  assert.equal((await request('/v1/models/openai/gpt-4o-mini', 'GET', undefined, {})).status, 401);
+  assert.deepEqual(await (await request('/v1/models/openai/gpt-4o-mini')).json(),
+    { in_catalog: true, api: 'openai-responses', thinking_levels: ['off'] });
+  assert.equal((await request('/v1/models/openai/not-in-catalog')).status, 400);
+  assert.equal((await request('/v1/models/unknown/model')).status, 400);
+  const supported = await (await request('/v1/models/openai-compatible/local%2Fmodel')).json();
+  assert.equal(supported.in_catalog, false);
+  assert.ok(supported.thinking_levels.includes('xhigh'));
+  for (const patch of [{ api: 'openai-completions' }, { reasoning: false }, { maxTokens: 1 },
+    { contextWindow: 1 }, { compat: {} }, { thinkingLevel: 'high' }]) {
+    const data = body();
+    data.model = { ...data.model, provider: 'openai', id: 'gpt-4o-mini', api: 'openai-responses', ...patch };
+    assert.equal((await request('/v1/turns', 'POST', data)).status, 400);
+  }
+});
+
+test('egress rejects redirects without contacting their target', async t => {
+  let requests = 0;
+  const upstream = createServer((_req, res) => {
+    requests++;
+    res.writeHead(302, { Location: '/target' }); res.end();
+  });
+  upstream.listen(0, '127.0.0.1'); await once(upstream, 'listening');
+  t.after(() => new Promise(resolve => { upstream.closeAllConnections(); upstream.close(resolve); }));
+  const { request } = await setup(t, { streamFn: undefined });
+  const data = body(); data.model.baseUrl = `http://127.0.0.1:${upstream.address().port}/v1`;
+  const response = await request('/v1/turns', 'POST', data);
+  assert.equal(JSON.parse((await response.text()).trim()).code, 'model_error');
+  assert.equal(requests, 1);
+});
+
+test('DNS results, literals and origin policies are checked at each connection', async t => {
+  const { egress, checkAddress } = await import('./egress.mjs');
+  for (const ip of ['169.254.169.254', '169.254.1.1', 'fe80::1', 'fd00:ec2::254', '::ffff:169.254.169.254'])
+    assert.throws(() => checkAddress(ip, { catalog: false }));
+  for (const ip of ['127.0.0.1', '10.0.0.1', '172.16.0.1', '192.168.1.1', '::1', 'fd00::1', 'fec0::1', '::ffff:127.0.0.1'])
+    assert.throws(() => checkAddress(ip, { catalog: true }));
+  const { request } = await setup(t, { streamFn: undefined,
+    lookup: (_host, _options, callback) => callback(null, [{ address: '192.168.1.1', family: 4 }]) });
+  const data = body(); data.model = { ...data.model, provider: 'openai', api: 'openai-responses', id: 'gpt-4o-mini', baseUrl: 'http://synthetic.invalid/v1' };
+  const response = await request('/v1/turns', 'POST', data);
+  assert.equal(JSON.parse((await response.text()).trim()).code, 'model_error');
+  await assert.rejects(egress.run({ catalog: false, origin: 'http://allowed.invalid:123' },
+    () => globalThis.fetch('http://other.invalid:123')));
+  await assert.rejects(egress.run({ catalog: false, origin: 'http://allowed.invalid:123' },
+    () => globalThis.fetch('http://allowed.invalid:124')));
+  await assert.rejects(globalThis.fetch('http://no-policy.invalid'));
+});
+
+
+test('a second connection rechecks DNS instead of reusing an allowed socket', async t => {
+  let resolutions = 0; let received = 0;
+  const upstream = createServer((_req, res) => { received++; res.writeHead(429, { 'Retry-After': '60' }); res.end('{}'); });
+  upstream.listen(0, '127.0.0.1'); await once(upstream, 'listening');
+  t.after(() => new Promise(resolve => { upstream.closeAllConnections(); upstream.close(resolve); }));
+  const { request } = await setup(t, { streamFn: undefined,
+    lookup: (_host, _opts, callback) => callback(null, [{ address: ++resolutions === 1 ? '127.0.0.1' : '169.254.169.254', family: 4 }]) });
+  for (const code of ['rate_limited', 'model_error']) {
+    const data = body(); data.model.baseUrl = `http://synthetic.invalid:${upstream.address().port}/v1`;
+    const response = await request('/v1/turns', 'POST', data);
+    assert.equal(JSON.parse((await response.text()).trim()).code, code);
+  }
+  assert.equal(resolutions, 2); assert.equal(received, 1);
+  const { checkAddress } = await import('./egress.mjs');
+  const previous = process.env.PI_EGRESS_ALLOW_LOOPBACK;
+  try {
+    process.env.PI_EGRESS_ALLOW_LOOPBACK = '1';
+    checkAddress('127.0.0.1', { catalog: true }); checkAddress('::1', { catalog: true });
+    assert.throws(() => checkAddress('169.254.169.254', { catalog: true }));
+    assert.throws(() => checkAddress('10.0.0.1', { catalog: true }));
+  } finally {
+    if (previous === undefined) delete process.env.PI_EGRESS_ALLOW_LOOPBACK;
+    else process.env.PI_EGRESS_ALLOW_LOOPBACK = previous;
+  }
+});
+
+
+test('fatal backend results abort before another model invocation', async t => {
+  let calls = 0;
+  const { start } = await setup(t, { streamFn: fake(() => [call()], () => calls++) });
+  const run = await start(); const c = await run.next();
+  assert.equal((await run.result(c.call_id, 'sensitive-backend-error', true)).status, 200);
+  const event = await run.next();
+  assert.equal(event.code, 'cancelled');
+  assert.equal(JSON.stringify(event).includes('sensitive-backend-error'), false);
+  assert.equal(calls, 1);
 });

@@ -6,6 +6,22 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ChatGptConnect } from "./ChatGptConnect"
 
+const providers = [
+  ["openai", "OpenAI"],
+  ["anthropic", "Anthropic"],
+  ["deepseek", "DeepSeek"],
+  ["qwen", "通义千问"],
+  ["moonshotai", "Kimi 国际"],
+  ["moonshotai-cn", "Kimi 中国"],
+  ["kimi-coding", "Kimi Coding"],
+  ["openrouter", "OpenRouter"],
+] as const
+const qwenUrls = [
+  "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  "https://dashscope-us.aliyuncs.com/compatible-mode/v1",
+]
+
 export function ModelSettingForm({ orgId }: { orgId: string }) {
   const client = useQueryClient()
   const path = { org_id: orgId }
@@ -45,6 +61,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
   const current: ModelSettingUpdateWritable = changes ?? {
     enabled: saved.enabled ?? false,
     kind: saved.kind as ModelSettingUpdateWritable["kind"],
+    provider: saved.provider,
     model: saved.model,
     base_url: saved.base_url,
     reasoning_effort: saved.reasoning_effort,
@@ -54,7 +71,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
     saved.has_api_key &&
     !chatgpt &&
     (current.kind !== saved.kind ||
-      current.model?.split("/")[0] !== saved.model?.split("/")[0] ||
+      current.provider !== saved.provider ||
       (current.base_url ?? "").replace(/\/$/, "") !==
         (saved.base_url ?? "").replace(/\/$/, ""))
   function change(values: Partial<ModelSettingUpdateWritable>) {
@@ -85,6 +102,9 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
       <p className="text-sm text-muted-foreground">
         起草必须启用模型；关闭后不再生成初始画像，可以让员工用 JSON 导入画像。
       </p>
+      {saved.kind &&
+        saved.kind !== "chatgpt_subscription" &&
+        !saved.provider && <p role="status">请重新选择提供方</p>}
       <label className="block space-y-2">
         <span>模型类型</span>
         <select
@@ -95,6 +115,12 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
             const kind = e.target.value as ModelSettingUpdateWritable["kind"]
             change({
               kind,
+              provider:
+                kind === "local"
+                  ? "ollama"
+                  : kind === "openai_compatible"
+                    ? "openai-compatible"
+                    : null,
               model:
                 kind === "chatgpt_subscription" ? "chatgpt/gpt-6.1-sol" : "",
               base_url: null,
@@ -120,63 +146,84 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
               required={current.enabled}
               value={current.model ?? ""}
               placeholder={
-                chatgpt
-                  ? "chatgpt/gpt-6.1-sol"
-                  : current.kind === "local"
-                    ? "ollama_chat/模型名 或 hosted_vllm/模型名"
-                    : "openai/模型名"
+                chatgpt ? "chatgpt/gpt-6.1-sol" : "模型 ID，不带提供方前缀"
               }
               onChange={(e) => change({ model: e.target.value })}
             />
           </label>
+          <label className="block space-y-2">
+            <span>推理强度</span>
+            <select
+              className={selectClass}
+              value={current.reasoning_effort ?? "off"}
+              onChange={(e) =>
+                change({
+                  reasoning_effort: e.target
+                    .value as ModelSettingUpdateWritable["reasoning_effort"],
+                })
+              }
+            >
+              {["off", "minimal", "low", "medium", "high", "xhigh"].map((v) => (
+                <option key={v}>{v}</option>
+              ))}
+            </select>
+          </label>
           {chatgpt ? (
-            <>
-              <label className="block space-y-2">
-                <span>推理强度</span>
-                <select
-                  className={selectClass}
-                  value={current.reasoning_effort ?? "high"}
-                  onChange={(e) =>
-                    change({
-                      reasoning_effort: e.target
-                        .value as ModelSettingUpdateWritable["reasoning_effort"],
-                    })
-                  }
-                >
-                  {["low", "medium", "high", "xhigh"].map((v) => (
-                    <option key={v}>{v}</option>
-                  ))}
-                </select>
-              </label>
-              <ChatGptConnect
-                orgId={orgId}
-                localCodex={saved.local_codex ?? false}
-              />
-            </>
+            <ChatGptConnect
+              orgId={orgId}
+              localCodex={saved.local_codex ?? false}
+            />
           ) : (
             <>
               {current.kind === "cloud_api" && (
-                <p className="text-sm">
-                  Claude 需要 Anthropic API key，不支持用 Claude
-                  订阅登录。也支持 openai/、deepseek/、dashscope/ 模型。
-                </p>
-              )}
-              {current.kind === "cloud_api" ? (
-                <details>
-                  <summary>高级</summary>
-                  <label htmlFor="model-url" className="block space-y-2">
-                    <span>base URL（可选）</span>
-                    <Input
-                      id="model-url"
-                      type="url"
-                      value={current.base_url ?? ""}
-                      onChange={(e) =>
-                        change({ base_url: e.target.value || null })
-                      }
-                    />
+                <>
+                  <label className="block space-y-2">
+                    <span>提供方</span>
+                    <select
+                      aria-label="提供方"
+                      className={selectClass}
+                      required={current.enabled}
+                      value={current.provider ?? ""}
+                      onChange={(e) => {
+                        const provider = e.target
+                          .value as ModelSettingUpdateWritable["provider"]
+                        change({
+                          provider,
+                          base_url: provider === "qwen" ? qwenUrls[0] : null,
+                        })
+                        setApiKey("")
+                      }}
+                    >
+                      <option value="">请重新选择提供方</option>
+                      {providers.map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
                   </label>
-                </details>
-              ) : (
+                  <p className="text-sm">
+                    Claude 需要 Anthropic API key，不支持用 Claude 订阅登录。
+                  </p>
+                  {current.provider === "qwen" && (
+                    <label className="block space-y-2">
+                      <span>百炼区域</span>
+                      <select
+                        className={selectClass}
+                        value={current.base_url ?? qwenUrls[0]}
+                        onChange={(e) => change({ base_url: e.target.value })}
+                      >
+                        {qwenUrls.map((url, i) => (
+                          <option key={url} value={url}>
+                            {["中国内地", "新加坡", "美国"][i]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </>
+              )}
+              {current.kind !== "cloud_api" && (
                 <label htmlFor="model-url" className="block space-y-2">
                   <span>
                     base URL

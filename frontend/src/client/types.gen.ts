@@ -1761,6 +1761,10 @@ export type ModelSettingPublic = {
      */
     kind?: string | null;
     /**
+     * Provider
+     */
+    provider?: 'openai' | 'anthropic' | 'deepseek' | 'qwen' | 'moonshotai' | 'moonshotai-cn' | 'kimi-coding' | 'openrouter' | 'openai-compatible' | 'ollama' | null;
+    /**
      * Model
      */
     model?: string | null;
@@ -1775,7 +1779,7 @@ export type ModelSettingPublic = {
     /**
      * Reasoning Effort
      */
-    reasoning_effort?: 'low' | 'medium' | 'high' | 'xhigh' | null;
+    reasoning_effort?: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null;
     chatgpt?: ChatGPTStatus;
     /**
      * Paused Until
@@ -1804,6 +1808,10 @@ export type ModelSettingUpdate = {
      */
     kind?: 'cloud_api' | 'local' | 'openai_compatible' | 'chatgpt_subscription' | null;
     /**
+     * Provider
+     */
+    provider?: 'openai' | 'anthropic' | 'deepseek' | 'qwen' | 'moonshotai' | 'moonshotai-cn' | 'kimi-coding' | 'openrouter' | 'openai-compatible' | 'ollama' | null;
+    /**
      * Model
      */
     model?: string | null;
@@ -1818,7 +1826,7 @@ export type ModelSettingUpdate = {
     /**
      * Reasoning Effort
      */
-    reasoning_effort?: 'low' | 'medium' | 'high' | 'xhigh' | null;
+    reasoning_effort?: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null;
 };
 
 /**
@@ -2739,6 +2747,10 @@ export type ModelSettingUpdateWritable = {
      */
     kind?: 'cloud_api' | 'local' | 'openai_compatible' | 'chatgpt_subscription' | null;
     /**
+     * Provider
+     */
+    provider?: 'openai' | 'anthropic' | 'deepseek' | 'qwen' | 'moonshotai' | 'moonshotai-cn' | 'kimi-coding' | 'openrouter' | 'openai-compatible' | 'ollama' | null;
+    /**
      * Model
      */
     model?: string | null;
@@ -2753,7 +2765,7 @@ export type ModelSettingUpdateWritable = {
     /**
      * Reasoning Effort
      */
-    reasoning_effort?: 'low' | 'medium' | 'high' | 'xhigh' | null;
+    reasoning_effort?: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null;
 };
 
 export type loginLoginAccessTokenData = {

@@ -129,7 +129,8 @@ test("new enterprise imports Jira, drafts in setup and shows the employee their 
         data: {
           enabled: true,
           kind: "openai_compatible",
-          model: "openai/synthetic",
+          model: "synthetic",
+          provider: "openai-compatible",
           base_url: modelUrl,
           api_key: "synthetic-key",
         },

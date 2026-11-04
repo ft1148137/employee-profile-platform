@@ -18,7 +18,8 @@ from app.domains.drafting import model, service
 from app.domains.drafting.collect import collect, evidence_stats, relation
 from app.domains.evidence.models import Evidence
 from app.domains.evidence.service import retract_evidence
-from app.domains.model.client import ModelConfig
+from app.domains.model.models import ModelSetting
+from app.domains.model.service import model_config
 from app.domains.org.models import ExternalIdentity
 from app.domains.profile.models import AssessmentStatus, EvidenceRelation, ProfileClaim
 from app.worker.tasks import draft_initial
@@ -104,7 +105,7 @@ def test_model_and_statistics(
     items, generated_by = model.draft(
         [r for r in records if r.evidence.source_ref != "PUR-205"],
         capabilities,
-        ModelConfig("openai/gpt-4o-mini"),
+        model_config(db.get(ModelSetting, org)),
     )
     assert len(items) == 1
     items = service.postprocess(db, org, employee, items, capabilities)
@@ -234,12 +235,13 @@ def test_record_reference_boundaries(
 def test_seed_fallback_and_transitive_groups(
     request: pytest.FixtureRequest,
     db: Session,
+    mock_drafting: Callable[[UUID, UUID], None],
 ) -> None:
     from app.domains.evidence.models import EvidenceKind, Visibility
     from app.domains.evidence.service import append_evidence
     from app.domains.work.models import Task
 
-    orgs, _, employees, _ = request.getfixturevalue("tenant_data")
+    orgs, _, employees, users = request.getfixturevalue("tenant_data")
     org, employee = orgs[0].id, employees[0]
     for source, key, title in [
         ("jira", "A-1", "API"),
@@ -260,6 +262,7 @@ def test_seed_fallback_and_transitive_groups(
             provenance={},
         )
     db.flush()
+    mock_drafting(org, users[0].id)
     records = collect(db, org, employee)
     assert len({r.experience_id for r in records}) == 1
     assert all(relation(r) == EvidenceRelation.SUPPORTS for r in records)
@@ -267,7 +270,7 @@ def test_seed_fallback_and_transitive_groups(
     assert stats.evidence_count == 1 and stats.latest_evidence_at is None
     schema = activate_template(db, Principal.system_worker(org), "tech-rnd")
     caps = list_capabilities(db, org, schema.id)
-    items, _ = model.draft(records, caps, ModelConfig("openai/gpt-4o-mini"))
+    items, _ = model.draft(records, caps, model_config(db.get(ModelSetting, org)))
     items = service.postprocess(db, org, employee, items, caps)
     assert "最近一次的时间未知" in items[0].explanation
     assert records[0].task is not None

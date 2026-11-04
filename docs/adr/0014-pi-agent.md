@@ -133,6 +133,16 @@ Node 测试覆盖未知工具拒绝、schema 拒绝、取消、合成 access tok
 
 S7a 不切换 `chat_json`，不改数据库、画像和权限。S7c 接起草、封闭提供方、出网限制和设置页；S7b 接订阅；S14 加 chat 和调度。本 PR 保留研究样例、锁文件和原有 CI 步骤，无新增 npm/Python 依赖；新增服务由 Compose 内部认证健康检查。生产集成 pytest 启动真实 Node 服务与本地流式 OpenAI 兼容假服务，fixture 为 `tests/utils/pi.py`，后续任务复用。
 
+## 实现（S7c，NERE-102）
+
+API key 起草和连接测试使用 `run_turn`，订阅保留原路径至 S7b。设置的 `provider` 独立存储，`model` 只存模型 ID；未知旧前缀禁用并保留密钥，降级恢复前缀（Ollama 统一为旧版支持的 `ollama_chat/`）。封闭选项与上表一致，不开放目录提供方的地址编辑。
+
+目录内模型用锁定包的 `getModel`，不允许请求覆盖能力字段；能力路由 `GET /v1/models/{provider}/{model_id}` 同样认证且不接收凭据。保存、连接测试和每批起草各查一次能力；不支持的推理档位不静默降级。显式禁用 reasoning effort 的目录模型只开放 off。自定义提供方显式设置 reasoning，xhigh 保持原值。Python 序列化用 `exclude_unset=True`，避免默认能力字段覆盖目录。
+
+已知工具的 schema 拒绝仍保留 Pi 的固定错误，并在下一次模型调用前回传 Python 校验边界计数；未知工具永不回传执行。Python 对不合格提交返回固定拒绝值，第三次取消并转 `ModelOutputInvalid`，有合格提交后忽略重复提交；没有提交的结束轮次也计入三次上限。结果只进入 pending_owner。后端工具结果标记 `is_error=true` 表示回调异常，Pi 在确认该结果之前立即 abort，防止客户端随后 DELETE 之前抢跑下一次模型调用；普通校验拒绝仍以 `is_error=false` 的固定 JSON 返回并允许同轮重交。
+
+`undici@7.30.1` 从现有锁文件提升为直接依赖（MIT），没有新增安装包。全局 dispatcher 与替换全局 fetch 不同：用 AsyncLocalStorage 绑定每轮策略，每次 dispatch 独立连接防止复用连接跳过 DNS 检查，连接 lookup 校验全部解析结果，拦截器把 3xx 转错误。目录模型拒绝私网，自定义模型限定配置 origin，所有模型拒绝 link-local 和元数据地址，无策略时拒绝。测试变量仅放开回环，不进入 Compose。此机制与 429 观察器依赖 Node/undici 接口，升级 Node 或 Pi 必须重跑并发额度、DNS、重定向和出口隔离测试；系统层出口限制见部署文档。
+
 ## 上游核对来源
 
 - [agent-core 文档与独立 Agent 用法](https://github.com/badlogic/pi-mono/blob/v0.73.1/packages/agent/README.md)，[工具执行与校验源码](https://github.com/badlogic/pi-mono/blob/v0.73.1/packages/agent/src/agent-loop.ts)。

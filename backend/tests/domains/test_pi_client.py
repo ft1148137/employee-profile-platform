@@ -45,7 +45,7 @@ def test_real_pi_round_trip(pi_service: PiHarness) -> None:
     assert len(pi_service.requests) == 2
     assert any(
         m.get("role") == "tool" and json.loads(m["content"]) == {"accepted": True}
-        for m in pi_service.requests[-1]["messages"]
+        for m in pi_service.requests[-1]["body"]["messages"]
     )
     for secret in [
         "synthetic-api-key",
@@ -79,7 +79,8 @@ def test_callback_exception_cancels_and_redacts(
             on_tool_call=fail,
         )
     logs = pi_service.logs.read_text()
-    assert any(r.request.method == "DELETE" and r.status_code == 200 for r in responses)
+    assert any(r.request.method == "DELETE" and r.status_code == 404 for r in responses)
+    assert len(pi_service.requests) == 1
     assert "sensitive" not in logs
 
 

@@ -11,7 +11,16 @@ export const test = base.extend<{ modelUrl: string }>({
       let raw = ""
       for await (const chunk of req) raw += chunk
       const request = JSON.parse(raw)
-      const body = JSON.parse(request.messages.at(-1).content) as {
+      const toolResult =
+        request.messages.at(-1)?.role === "tool" || !request.tools?.length
+      const content = request.messages.find(
+        (m: { role: string }) => m.role === "user",
+      ).content
+      const body = (
+        request.tools?.length
+          ? JSON.parse(typeof content === "string" ? content : content[0].text)
+          : { capabilities: [], records: [] }
+      ) as {
         capabilities: { key: string }[]
         records: { ref: string }[]
       }
@@ -28,26 +37,47 @@ export const test = base.extend<{ modelUrl: string }>({
               },
             ]
           : []
-      res.writeHead(200, { "Content-Type": "application/json" })
-      res.end(
-        JSON.stringify({
-          id: "synthetic-completion",
-          object: "chat.completion",
-          created: 1,
-          model: request.model,
-          choices: [
-            {
-              index: 0,
-              finish_reason: "stop",
-              message: {
-                role: "assistant",
-                content: JSON.stringify({ items }),
-              },
-            },
-          ],
-          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-        }),
-      )
+      res.writeHead(200, { "Content-Type": "text/event-stream" })
+      const chunk = {
+        id: "synthetic-completion",
+        object: "chat.completion.chunk",
+        created: 1,
+        model: request.model,
+        choices: [
+          {
+            index: 0,
+            delta: toolResult
+              ? { role: "assistant", content: "已完成" }
+              : {
+                  role: "assistant",
+                  tool_calls: [
+                    {
+                      index: 0,
+                      id: "synthetic-draft",
+                      type: "function",
+                      function: {
+                        name: "submit_draft",
+                        arguments: JSON.stringify({ items }),
+                      },
+                    },
+                  ],
+                },
+            finish_reason: null as string | null,
+          },
+        ],
+      }
+      res.write(`data: ${JSON.stringify(chunk)}\n\n`)
+      const finished = {
+        ...chunk,
+        choices: [
+          {
+            index: 0,
+            delta: {},
+            finish_reason: toolResult ? "stop" : "tool_calls",
+          },
+        ],
+      }
+      res.end(`data: ${JSON.stringify(finished)}\n\ndata: [DONE]\n\n`)
     })
     await new Promise<void>((resolve) => server.listen(0, "0.0.0.0", resolve))
     const address = server.address()
@@ -72,7 +102,7 @@ export const test = base.extend<{ modelUrl: string }>({
 export async function configureModel(page: Page, modelUrl: string) {
   await page.getByLabel("模型类型").selectOption("openai_compatible")
   await page.getByLabel("启用模型").check()
-  await page.getByLabel("模型名", { exact: true }).fill("openai/synthetic")
+  await page.getByLabel("模型名", { exact: true }).fill("synthetic")
   await page.getByLabel(/base URL/).fill(modelUrl)
   await page.getByLabel("密钥", { exact: false }).first().fill("synthetic-key")
   await page.getByRole("button", { name: "保存", exact: true }).click()

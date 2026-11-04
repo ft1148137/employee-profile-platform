@@ -14,6 +14,7 @@ from app.domains.model.client import (
     ModelUnavailable,
     chat_json,
 )
+from app.domains.model.pi_client import PiModelConfig, run_turn
 from app.domains.model.schemas import (
     ChatGPTLogin,
     ConnectionTest,
@@ -26,6 +27,7 @@ from app.domains.model.service import (
     public_setting,
     read_setting,
     save_setting,
+    validate_capabilities,
 )
 
 router = APIRouter(
@@ -48,7 +50,7 @@ def put_model_setting(
 ) -> ModelSettingPublic:
     try:
         return save_setting(session, principal, body)
-    except (InvalidModelSetting, SecretUnavailable) as error:
+    except (InvalidModelSetting, SecretUnavailable, ModelUnavailable) as error:
         raise HTTPException(422, str(error)) from None
 
 
@@ -59,13 +61,25 @@ class ModelTestOutput(BaseModel):
 @router.post("/test", response_model=ConnectionTest)
 def test_model_setting(session: SessionDep, principal: OrgAdminDep) -> ConnectionTest:
     try:
-        config = model_config(read_setting(session, principal.org_id))
-        chat_json(
-            config,
-            [{"role": "user", "content": '只返回 {"ok": true}'}],
-            ModelTestOutput,
-            attempts=1,
-        )
+        setting = read_setting(session, principal.org_id)
+        config = model_config(setting)
+        if isinstance(config, PiModelConfig):
+            validate_capabilities(config.provider, config.id, config.thinkingLevel)
+            run_turn(
+                config,
+                system_prompt="请简短回复连接成功。",
+                input="连接测试",
+                tools=[],
+                on_tool_call=lambda _name, _args: None,
+            )
+        else:
+            # shortcut: ChatGPT subscriptions use LiteLLM until S7b (NERE-92).
+            chat_json(
+                config,
+                [{"role": "user", "content": '只返回 {"ok": true}'}],
+                ModelTestOutput,
+                attempts=1,
+            )
     except (
         SecretUnavailable,
         ModelUnavailable,

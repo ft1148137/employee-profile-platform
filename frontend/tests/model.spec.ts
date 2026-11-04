@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, test } from "./utils/model"
 import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -6,6 +6,7 @@ test.use({ storageState: { cookies: [], origins: [] } })
 test("model kinds, saved secret, destination changes and disabling preserve configuration", async ({
   page,
   request,
+  modelUrl,
 }) => {
   test.setTimeout(60000)
   await page.setViewportSize({ width: 375, height: 812 })
@@ -34,10 +35,14 @@ test("model kinds, saved secret, destination changes and disabling preserve conf
   await expect(
     page.getByRole("option", { name: "Claude 订阅", exact: true }),
   ).toHaveCount(0)
-  await page.getByLabel("模型名", { exact: true }).fill("openai/synthetic")
-  await page.getByLabel("密钥", { exact: true }).fill("synthetic-model-key")
-  await page.getByText("高级", { exact: true }).click()
-  await page.getByLabel("base URL（可选）").fill("http://127.0.0.1:1/v1")
+  await page.getByLabel("提供方", { exact: true }).selectOption("openai")
+  await expect(page.getByLabel(/base URL/)).toHaveCount(0)
+  await page.getByLabel("模型类型").selectOption("openai_compatible")
+  await page.getByLabel("模型名", { exact: true }).fill("synthetic")
+  await page
+    .getByLabel("密钥（可选）", { exact: true })
+    .fill("synthetic-model-key")
+  await page.getByLabel(/base URL/).fill(modelUrl)
   const response = page.waitForResponse(
     (r) => r.url().endsWith("/model-setting") && r.request().method() === "PUT",
   )
@@ -52,7 +57,7 @@ test("model kinds, saved secret, destination changes and disabling preserve conf
     fullPage: true,
   })
   await page.getByRole("button", { name: "测试连接" }).click()
-  await expect(page.getByRole("alert")).toContainText("连不上", {
+  await expect(page.getByText("模型连接成功", { exact: true })).toBeVisible({
     timeout: 45000,
   })
   await page.getByLabel("启用模型").uncheck()
@@ -63,9 +68,10 @@ test("model kinds, saved secret, destination changes and disabling preserve conf
   })
   expect(await saved.json()).toMatchObject({
     enabled: false,
-    kind: "cloud_api",
-    model: "openai/synthetic",
-    base_url: "http://127.0.0.1:1/v1",
+    kind: "openai_compatible",
+    provider: "openai-compatible",
+    model: "synthetic",
+    base_url: modelUrl,
     has_api_key: true,
   })
   await page.getByLabel("模型类型").selectOption("local")
