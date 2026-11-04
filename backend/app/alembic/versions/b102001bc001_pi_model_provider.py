@@ -28,10 +28,14 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    table = sa.table("model_setting", sa.column("org_id"), sa.column("model"), sa.column("provider"))
+    table = sa.table("model_setting", sa.column("org_id"), sa.column("model"), sa.column("provider"), sa.column("enabled"))
     connection = op.get_bind()
     for row in connection.execute(sa.select(table)).mappings().all():
         if row["provider"] and row["model"]:
             prefix = {"openai-compatible": "openai", "ollama": "ollama_chat"}.get(row["provider"], row["provider"])
-            connection.execute(table.update().where(table.c.org_id == row["org_id"]).values(model=f"{prefix}/{row['model']}"))
+            model = f"{prefix}/{row['model']}"
+            if len(model) > 200 and row["provider"] == "ollama":
+                model = f"ollama/{row['model']}"
+            values = {"model": model} if len(model) <= 200 else {"model": row["model"], "enabled": False}
+            connection.execute(table.update().where(table.c.org_id == row["org_id"]).values(**values))
     op.drop_column("model_setting", "provider")
