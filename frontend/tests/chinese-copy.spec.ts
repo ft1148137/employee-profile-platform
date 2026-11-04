@@ -106,8 +106,10 @@ for (const [account, own] of [
       })
     })
     await logInUser(page, `${account}@demo.example.com`, password)
-    if (own)
+    if (own) {
+      await expect(page).toHaveURL("/inbox")
       await page.getByRole("link", { name: "我的画像", exact: true }).click()
+    }
     if (!own) await page.goto("/employees")
     if (!own)
       await page

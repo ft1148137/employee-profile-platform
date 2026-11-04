@@ -412,18 +412,23 @@ def load_demo(
                         },
                         relation=ref.relation,
                     )
-        for question_text, reason in (
+        for employee_code, question_text, reason in (
             (
+                "E02",
                 "请描述一次你独立排查线上故障的经历。",
                 "补充你在故障排查中的实际职责与处理过程",
             ),
-            ("最近的项目中，你如何验证交付结果？", "补充测试与验收方面的本人经历"),
+            (
+                "E05",
+                "最近的项目中，你如何验证交付结果？",
+                "补充测试与验收方面的本人经历",
+            ),
         ):
             question = ensure(
                 PendingQuestion,
                 lookup={
                     **tenant,
-                    "target_employee_id": employees["E02"].id,
+                    "target_employee_id": employees[employee_code].id,
                     "question": question_text,
                 },
                 reason=reason,

@@ -61,6 +61,8 @@ test("Log in with email regardless of case", async ({ page }) => {
     process.env.DEMO_USER_PASSWORD!,
   )
   await page.getByRole("button", { name: "登录" }).click()
+  await expect(page).toHaveURL("/inbox")
+  await page.getByRole("link", { name: "我的画像", exact: true }).click()
   await page.waitForURL(/\/employees\/[0-9a-f-]+$/)
   await expect(page.getByTestId("user-menu")).toBeVisible()
 })

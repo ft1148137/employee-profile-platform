@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test"
 import { expectChineseCopy } from "./utils/copy"
-import { logInUser } from "./utils/user"
+import { logInUser, logOutUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
-const username = "employee.platform@demo.example.com"
+const username = "employee.algorithm@demo.example.com"
 const password = process.env.DEMO_USER_PASSWORD!
 
 test("employee answers a real question on mobile and updates unread count", async ({
@@ -24,6 +24,10 @@ test("employee answers a real question on mobile and updates unread count", asyn
   expect(question).toBeTruthy()
   const inbox = await request.get(`${base}/inbox`, { headers })
   const before = await inbox.json()
+  await logInUser(page, "employee.platform@demo.example.com", password)
+  await expect(page).toHaveURL("/inbox")
+  await expect(page.getByText("初始画像待过目", { exact: true })).toBeVisible()
+  await logOutUser(page)
   await logInUser(page, username, password)
   await expect(page).toHaveURL("/inbox")
   await expect(
@@ -32,7 +36,6 @@ test("employee answers a real question on mobile and updates unread count", asyn
       exact: true,
     }),
   ).toBeVisible()
-  await expect(page.getByText("初始画像待过目", { exact: true })).toBeVisible()
   await page.setViewportSize({ width: 390, height: 844 })
   const row = page.getByRole("listitem").filter({ hasText: question.question })
   await row.getByRole("button", { name: "回答问题", exact: true }).click()
@@ -71,7 +74,10 @@ test("employee answers a real question on mobile and updates unread count", asyn
   await page.setViewportSize({ width: 1280, height: 900 })
   await expect(
     page.getByRole("link", {
-      name: `收件箱 ${before.unread_count - 1}`,
+      name:
+        before.unread_count > 1
+          ? `收件箱 ${before.unread_count - 1}`
+          : "收件箱",
       exact: true,
     }),
   ).toBeVisible()

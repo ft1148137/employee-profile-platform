@@ -10,13 +10,36 @@ from sqlmodel import Session, select
 from app.core.db import engine
 from app.domains.evidence.models import Evidence
 from app.domains.inbox import service
-from app.domains.inbox.models import InboxItem, PendingQuestion, QuestionStatus
+from app.domains.inbox.models import (
+    InboxItem,
+    InboxKind,
+    PendingQuestion,
+    QuestionStatus,
+)
 from app.domains.org.models import Employee, OrgMembership
 from tests.api.routes.test_employee_requests import principal_for
 
 
 def test_answer_is_evidence_only(demo: tuple, client: TestClient, db: Session) -> None:
     url, employees, auth = demo
+    extra = PendingQuestion(
+        org_id=employees["E02"].org_id,
+        target_employee_id=employees["E02"].id,
+        question="仅属于本用例的补充问题",
+        reason="验证分页和只读待办",
+    )
+    db.add(extra)
+    db.flush()
+    db.add(
+        InboxItem(
+            org_id=extra.org_id,
+            recipient_employee_id=extra.target_employee_id,
+            question_id=extra.id,
+            kind=InboxKind.QUESTION,
+            message=extra.question,
+        )
+    )
+    db.commit()
     headers = auth["employee"]
     base = f"{url}/me"
     before_profile = client.get(f"{base}/profile", headers=headers).json()
@@ -253,6 +276,6 @@ def test_question_and_inbox_queries_are_fixed(shared_demo: tuple, db: Session) -
             queries.clear()
             result = service.my_inbox(principal, db, limit=limit)
             assert len(queries) == 2
-            assert result.count >= 3 and result.pending_count >= 3
+            assert result.count == 2 and result.pending_count == 2
     finally:
         event.remove(engine, "before_cursor_execute", count)

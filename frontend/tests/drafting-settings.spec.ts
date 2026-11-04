@@ -34,6 +34,7 @@ test("drafting settings and personal choice persist with role boundaries", async
     storageState: { cookies: [], origins: [] },
   })
   await logInUser(employeePage, "employee.platform@demo.example.com", password)
+  await expect(employeePage).toHaveURL("/inbox")
   await employeePage
     .getByRole("link", { name: "我的画像", exact: true })
     .click()
