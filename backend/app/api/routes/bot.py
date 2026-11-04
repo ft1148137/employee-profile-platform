@@ -5,8 +5,13 @@ from fastapi import APIRouter
 from app.api.deps import SessionDep
 from app.authz.deps import OrgPrincipalDep
 from app.domains.bot import core, store
-from app.domains.bot.schemas import Action, SessionCreated, TurnInput, TurnResponse
-from app.domains.bot.store import MessagePublic
+from app.domains.bot.schemas import (
+    Action,
+    SessionCreated,
+    SessionMessage,
+    TurnInput,
+    TurnResponse,
+)
 
 router = APIRouter(prefix="/bot/sessions", tags=["bot"])
 
@@ -19,8 +24,11 @@ def create_session(principal: OrgPrincipalDep, session: SessionDep) -> SessionCr
 @router.get("/{session_id}/messages")
 def list_messages(
     principal: OrgPrincipalDep, session: SessionDep, session_id: UUID
-) -> list[MessagePublic]:
-    return store.list_messages(session, principal, session_id)
+) -> list[SessionMessage]:
+    return [
+        SessionMessage.model_validate(message.model_dump())
+        for message in store.list_messages(session, principal, session_id)
+    ]
 
 
 @router.post("/{session_id}/turns")
