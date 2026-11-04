@@ -4,6 +4,7 @@ services:
     environment:
       FASTAPI_ENV: ${FASTAPI_ENV:?Local auth requires development}
       CHATGPT_CODEX_AUTH_FILE: /run/codex/auth.json
+      PI_EGRESS_ALLOW_FAKE_IP: '1'
     volumes:
       - type: bind
         source: ${HOME}/.codex/auth.json

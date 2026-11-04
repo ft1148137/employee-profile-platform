@@ -400,6 +400,47 @@ test('DNS results, literals and origin policies are checked at each connection',
 });
 
 
+test('development fake IP opt-in permits only the proxy range', async t => {
+  const { checkAddress } = await import('./egress.mjs');
+  const previous = process.env.PI_EGRESS_ALLOW_FAKE_IP;
+  try {
+    process.env.PI_EGRESS_ALLOW_FAKE_IP = '1';
+    await setup(t, { environment: 'development' });
+    for (const ip of ['198.18.0.1', '198.19.255.254', '::ffff:198.18.0.36'])
+      assert.doesNotThrow(() => checkAddress(ip, { catalog: true }));
+    for (const ip of ['10.0.0.1', '127.0.0.1', '172.16.0.1', '192.168.0.1',
+      '169.254.169.254', 'fd00::1', 'fe80::1'])
+      assert.throws(() => checkAddress(ip, { catalog: true }));
+  } finally {
+    if (previous === undefined) delete process.env.PI_EGRESS_ALLOW_FAKE_IP;
+    else process.env.PI_EGRESS_ALLOW_FAKE_IP = previous;
+  }
+});
+
+test('fake IP destinations remain blocked without opt-in', async () => {
+  const { checkAddress } = await import('./egress.mjs');
+  const previous = process.env.PI_EGRESS_ALLOW_FAKE_IP;
+  try {
+    delete process.env.PI_EGRESS_ALLOW_FAKE_IP;
+    for (const ip of ['198.18.0.36', '198.19.1.1', '::ffff:198.18.0.36'])
+      assert.throws(() => checkAddress(ip, { catalog: true }));
+  } finally {
+    if (previous !== undefined) process.env.PI_EGRESS_ALLOW_FAKE_IP = previous;
+  }
+});
+
+test('fake IP opt-in prevents production or unspecified startup', () => {
+  const previous = process.env.PI_EGRESS_ALLOW_FAKE_IP;
+  try {
+    process.env.PI_EGRESS_ALLOW_FAKE_IP = '1';
+    for (const environment of [undefined, 'production'])
+      assert.throws(() => createPiServer({ token, environment }), /requires development/);
+  } finally {
+    if (previous === undefined) delete process.env.PI_EGRESS_ALLOW_FAKE_IP;
+    else process.env.PI_EGRESS_ALLOW_FAKE_IP = previous;
+  }
+});
+
 test('a second connection rechecks DNS instead of reusing an allowed socket', async t => {
   let resolutions = 0; let received = 0;
   const upstream = createServer((_req, res) => { received++; res.writeHead(429, { 'Retry-After': '60' }); res.end('{}'); });
