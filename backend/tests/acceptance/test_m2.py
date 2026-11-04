@@ -112,20 +112,21 @@ def synchronize(context: tuple, client: TestClient, deployment: str) -> dict:
 def link_candidates(context: tuple, client: TestClient) -> None:
     _, _, _, base, auth, _ = context
     identities = client.get(
-        base + "/external-identities?limit=200", headers=auth
+        base + "/external-identities?status=all&limit=200", headers=auth
     ).json()["data"]
     links = [
         {"identity_id": i["id"], "employee_id": i["candidate"]["id"]}
         for i in identities
         if i["candidate"]
     ]
-    assert links
-    assert (
-        client.post(
-            base + "/external-identities/link", headers=auth, json={"links": links}
-        ).status_code
-        == 200
-    )
+    assert links or any(i["employee"] for i in identities)
+    if links:
+        assert (
+            client.post(
+                base + "/external-identities/link", headers=auth, json={"links": links}
+            ).status_code
+            == 200
+        )
 
 
 @pytest.mark.parametrize("deployment", ["cloud", "data_center"])

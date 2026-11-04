@@ -6,7 +6,7 @@ from uuid import UUID
 from procrastinate import RetryDecision
 from procrastinate.exceptions import JobRetry
 from pydantic import JsonValue
-from sqlalchemy import text, tuple_
+from sqlalchemy import text
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
@@ -22,7 +22,7 @@ from app.core.secrets import SecretUnavailable
 from app.domains.audit.models import ActorKind
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
-from app.domains.org.models import ExternalIdentity, Organization
+from app.domains.org.models import Organization
 from app.domains.source.models import SourceConnection, SyncRun
 from app.domains.source.schemas import JiraConfig, SyncRunPublic
 from app.domains.work.ingest import (
@@ -30,6 +30,7 @@ from app.domains.work.ingest import (
     SourcePerson,
     SourceRecord,
     ingest_record,
+    prepare_identities,
 )
 from app.domains.work.records import WorkRecordRow
 from app.worker.app import app
@@ -219,25 +220,17 @@ def _batch(
     records: list[SourceRecord],
     cursor: dict[str, JsonValue],
 ) -> None:
-    # Match account linking's lock order so a concurrent link sees the committed page.
-    session.exec(
-        select(ExternalIdentity)
-        .where(
-            ExternalIdentity.org_id == run.org_id,
-            tuple_(col(ExternalIdentity.source), col(ExternalIdentity.external_id)).in_(
-                {(r.source, p.external_id) for r in records for p in r.people}
-            ),
-        )
-        .order_by(col(ExternalIdentity.id))
-        .with_for_update()
-    ).all()
+    added = prepare_identities(session, run.org_id, records)
     counts = dict(run.counts)
+    for key, value in added.model_dump().items():
+        counts[key] = counts.get(key, 0) + value
     for record in records:
         added = ingest_record(
             session,
             org_id=run.org_id,
             record=record,
             provenance={"sync_run_id": str(run.id)},
+            identities_prepared=True,
         )
         for key, value in added.model_dump().items():
             counts[key] = counts.get(key, 0) + value
