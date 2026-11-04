@@ -183,3 +183,13 @@ Python 在企业行锁内保存加密的 login_id、URL、state 和管理员 ID�
 凭据保存为加密的 `{access, refresh, expires, accountId}`，expires 为 Pi 的 Unix 毫秒；旧格式和密钥更换不迁移，提示重新连接。API/Worker 经 `chatgpt.access_token` 的独立短事务取 access，释放锁后才运行 turn；模型配置带仅供 Python 使用的企业 ID，不序列化给 Pi。401 标记需要重新连接，推理只给 access token、固定 SSE，不调用 OAuth 自动刷新接口。新配置默认选择锁定目录支持的 `gpt-5.4`，保留已有模型字段不做迁移。
 
 刷新和本机只读挂载另由 NERE-104 交付；在它合并前，距离过期不足 5 分钟即要求重新连接，开发用挂载文件已删除，不能使用本机登录。原模型 SDK、设备码和临时令牌文件路径已删除，无新增依赖。额度沿用 Pi 的统一映射与起草续跑。
+
+## 实现（S7b2，NERE-104）
+
+`POST /v1/auth/openai-codex/refresh` 只收 `{refresh}`，使用内部 Bearer 密钥，不是模型工具。Pi 调用锁定版本的 `refreshOpenAICodexToken` 一次，出口只允许授权站点，14 秒中止网络请求；错误统一为 `refresh_failed`，不返回上游正文。Python 保留 15 秒请求超时。
+
+API、Worker 和对话继续共用 `chatgpt.access_token`：独立事务取得企业模型设置行锁、重读密文，剩余不足 5 分钟才刷新；整组轮换令牌校验后加密提交，释放锁后才推理。保存设置复用登录/断开的锁函数，禁用、断开不能与刷新交错写回。已发出但超时、断线、结果无效或明确拒绝均持久化 `needs_relogin`，后续调用不再发送旧 refresh token；管理员轮询状态本身不会把临期令牌标为失效。
+
+为覆盖刷新结果返回后、提交前进程退出的情况，在发送刷新前先提交 `needs_relogin=true`。取令牌过程另外持有以企业为键的 PostgreSQL session advisory lock，固定租用同一连接，跨这次短提交仍串行；其他取令牌调用等待它，成功后拿到新令牌。标记提交后重新取得同一模型设置行锁并检查启用状态、类型及原密文，期间若断开、禁用或换过登录，就不再刷新，也不覆盖新状态。请求和令牌提交期间继续持行锁，断开/禁用等待该锁；最终解锁后才推理。会话在退出时显式解 advisory lock，进程退出则由 PostgreSQL 释放；异常退出留下的标记会阻止下一进程重用旧 refresh token。这样使用既有字段及 PostgreSQL 即可安全中断，不增加迁移或刷新任务队列。
+
+开发覆盖文件 `compose.chatgpt-local.yml` 仅把单个授权文件只读挂载给 Pi，另建 Pi 独立 tmpfs；后端/Worker 只接收 `CHATGPT_LOCAL_AUTH=true` 开关，不接收文件或凭据。Python 和 Pi 都检查 development 模式。此模式下 ChatGPT 调用使用本机授权，企业启用/禁用仍生效，不读写企业订阅凭据。Pi 每轮读取 access JWT 的账号与过期时间，拒绝有效期不足一小时；只把 `{access, accountId, expires}` 写入 0600 临时文件，按轮隔离，完成、异常或取消后删除。推理仍直接传 access，不经过 OAuth 自动刷新。没有新增依赖、迁移、证据或权限协议改动。

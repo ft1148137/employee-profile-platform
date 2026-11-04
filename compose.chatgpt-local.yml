@@ -1,0 +1,21 @@
+services:
+  pi:
+    user: "${LOCAL_UID:?Set LOCAL_UID to id -u}:${LOCAL_GID:?Set LOCAL_GID to id -g}"
+    environment:
+      FASTAPI_ENV: ${FASTAPI_ENV:?Local auth requires development}
+      CHATGPT_CODEX_AUTH_FILE: /run/codex/auth.json
+    volumes:
+      - type: bind
+        source: ${HOME}/.codex/auth.json
+        target: /run/codex/auth.json
+        read_only: true
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /run/pi-auth:mode=0700,uid=${LOCAL_UID:?Set LOCAL_UID to id -u},gid=${LOCAL_GID:?Set LOCAL_GID to id -g}
+  backend:
+    environment:
+      CHATGPT_LOCAL_AUTH: 'true'
+  worker:
+    environment:
+      CHATGPT_LOCAL_AUTH: 'true'
