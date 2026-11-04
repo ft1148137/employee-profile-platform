@@ -70,17 +70,163 @@ test("admin uploads, previews and confirms a dictionary version", async ({
   })
 })
 
-test("employee can export but cannot upload", async ({ page }) => {
-  await logInUser(
-    page,
-    "employee.platform@demo.example.com",
-    process.env.DEMO_USER_PASSWORD!,
-  )
+for (const email of [
+  "employee.platform@demo.example.com",
+  "manager.platform@demo.example.com",
+]) {
+  test(`${email} can export but cannot edit`, async ({ page }) => {
+    await logInUser(page, email, process.env.DEMO_USER_PASSWORD!)
+    await page.goto("/settings")
+    await page.getByRole("tab", { name: "能力词典", exact: true }).click()
+    await expect(
+      page.getByRole("button", { name: "导出当前词典" }),
+    ).toBeEnabled()
+    await expect(
+      page.getByRole("region", { name: "上传能力词典" }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole("button", { name: "在网页上编辑" }),
+    ).toHaveCount(0)
+    await expectChineseCopy(page)
+  })
+}
+
+test("web editor saves additions, levels and removals in a new enterprise at 375px", async ({
+  page,
+  request,
+}, testInfo) => {
+  test.setTimeout(90000)
+  await page.addInitScript(() => {
+    Object.defineProperty(window.crypto, "randomUUID", { value: undefined })
+  })
+  const email = `dictionary-editor-${crypto.randomUUID()}@example.com`
+  const token = await request.post("/api/v1/private/setup-tokens", {
+    data: { purpose: "new_org" },
+  })
+  const initialized = await request.post("/api/v1/setup/initialize", {
+    data: {
+      token: (await token.json()).token,
+      org_name: "网页词典合成企业",
+      admin_username: email,
+      admin_password: "synthetic-password-2026",
+    },
+  })
+  expect(initialized.ok()).toBeTruthy()
+  const { access_token, org_id } = await initialized.json()
+  const headers = { Authorization: `Bearer ${access_token}` }
+  const base = `/api/v1/orgs/${org_id}`
+  const definitions = ["retained", "removed"].map((key, index) => ({
+    key,
+    name: index ? "将删除的能力" : "保留的能力",
+    category: "工程",
+    description: "合成说明",
+    ai_inference: true,
+    level_rubric: {
+      levels: [{ key: "basic", label: "基础", description: "旧等级说明" }],
+    },
+  }))
+  expect(
+    (
+      await request.put(`${base}/capabilities`, {
+        headers,
+        data: { definitions, expected_version: 0 },
+      })
+    ).ok(),
+  ).toBeTruthy()
+  const roster = await request.post(`${base}/roster/imports`, {
+    headers,
+    multipart: {
+      file: {
+        name: "名单.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(
+          "工号,姓名,部门,职位,上级工号,邮箱\n001,合成员工,工程部,,,synthetic@example.com\n",
+        ),
+      },
+    },
+  })
+  const imported = await roster.json()
+  expect(
+    (
+      await request.post(`${base}/roster/imports/${imported.id}/apply`, {
+        headers,
+        data: { base_revision: imported.base_revision },
+      })
+    ).ok(),
+  ).toBeTruthy()
+  const employees = await request.get(`${base}/employees`, { headers })
+  const employeeId = (await employees.json()).data[0].id
+  await logInUser(page, email, "synthetic-password-2026")
+  await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/settings")
   await page.getByRole("tab", { name: "能力词典", exact: true }).click()
-  await expect(page.getByRole("button", { name: "导出当前词典" })).toBeEnabled()
-  await expect(page.getByRole("region", { name: "上传能力词典" })).toHaveCount(
-    0,
+  await page.getByRole("button", { name: "在网页上编辑" }).click()
+  const editor = page.getByRole("region", { name: "网页编辑能力词典" })
+  const retained = editor.getByRole("article", {
+    name: "保留的能力",
+    exact: true,
+  })
+  await expect(retained.getByLabel("能力标识")).toBeDisabled()
+  await retained.getByLabel("等级描述").fill("可以独立完成合成任务")
+  await editor
+    .getByRole("article", { name: "将删除的能力" })
+    .getByRole("button", { name: "删除能力" })
+    .click()
+  await editor.getByRole("button", { name: "新增能力", exact: true }).click()
+  const added = editor.getByRole("article").last()
+  await added.getByLabel("能力名称").fill("新合成能力")
+  await added.getByLabel("能力说明").fill("用于验证未知状态")
+  await added.getByLabel("等级描述").fill("能在指导下完成")
+  await added.getByRole("checkbox", { name: "不由 AI 推断" }).check()
+  await editor.getByRole("button", { name: "预览改动" }).click()
+  const preview = editor.getByRole("region", { name: "词典改动预览" })
+  for (const text of [
+    "新增 1 项",
+    "修改 1 项",
+    "删除 1 项",
+    "0 条判断保留",
+    "0 条待提交改动项将移除",
+  ])
+    await expect(preview).toContainText(text)
+  await expectChineseCopy(page, [
+    "YAML",
+    "AI",
+    "retained",
+    "removed",
+    "capability",
+  ])
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBeTruthy()
+  await page.screenshot({
+    path: testInfo.outputPath("dictionary-editor-mobile.png"),
+    fullPage: true,
+  })
+  await preview.getByRole("button", { name: "确认保存新版本" }).click()
+  await expect(
+    page.getByRole("status").filter({ hasText: "新词典已启用" }),
+  ).toBeVisible()
+  await page.reload()
+  await page.getByRole("tab", { name: "能力词典", exact: true }).click()
+  await expect(page.getByText("当前第 2 版 · 2 项能力")).toBeVisible()
+  await page.getByRole("button", { name: "在网页上编辑" }).click()
+  await expect(retained.getByLabel("等级描述")).toHaveValue(
+    "可以独立完成合成任务",
   )
-  await expectChineseCopy(page)
+  await expect(
+    editor.getByRole("article", { name: "将删除的能力" }),
+  ).toHaveCount(0)
+  await expect(
+    editor.getByRole("article", { name: "新合成能力" }).getByRole("checkbox"),
+  ).toBeChecked()
+  await page.goto("/admin/drafting")
+  await expect(
+    page.getByRole("checkbox", { name: "新合成能力", exact: true }),
+  ).toBeChecked()
+  await page.goto(`/employees/${employeeId}`)
+  await expect(
+    page.getByRole("article", { name: "新合成能力", exact: true }),
+  ).toContainText("未知")
 })
