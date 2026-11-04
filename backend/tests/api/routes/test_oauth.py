@@ -1004,3 +1004,36 @@ def test_grants_owner_tenant_revocation(
         )
         == 1
     )
+
+
+@pytest.mark.parametrize(
+    "path,method",
+    [
+        ("/.well-known/oauth-protected-resource/mcp", "GET"),
+        ("/.well-known/oauth-authorization-server/oauth", "GET"),
+        ("/oauth/register", "POST"),
+        ("/oauth/token", "POST"),
+        ("/oauth/revoke", "POST"),
+    ],
+)
+def test_browser_oauth_cors(client: TestClient, path: str, method: str) -> None:
+    response = client.options(
+        path,
+        headers={
+            "Origin": "https://inspector.example",
+            "Access-Control-Request-Method": method,
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "*"
+    assert "access-control-allow-credentials" not in response.headers
+    private = client.options(
+        "/api/v1/oauth/consent",
+        headers={
+            "Origin": "https://inspector.example",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert private.status_code == 400
+    assert "access-control-allow-origin" not in private.headers

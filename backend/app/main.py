@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from starlette.middleware.cors import CORSMiddleware
 from starlette.routing import Route
+from starlette.types import Receive, Scope, Send
 
 from app.api.main import api_router
 from app.core.config import settings
@@ -28,8 +29,22 @@ app = FastAPI(
     generate_unique_id_function=custom_generate_unique_id,
 )
 
+
+class ApplicationCors(CORSMiddleware):
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        path = scope.get("path", "")
+        if scope["type"] == "http" and (
+            path in {"/oauth/register", "/oauth/token", "/oauth/revoke"}
+            or path.startswith("/.well-known/oauth-")
+        ):
+            # Public OAuth endpoints already carry the SDK's client-facing CORS policy.
+            await self.app(scope, receive, send)
+        else:
+            await super().__call__(scope, receive, send)
+
+
 app.add_middleware(
-    CORSMiddleware,
+    ApplicationCors,
     allow_origins=[settings.FRONTEND_HOST],
     allow_credentials=True,
     allow_methods=["*"],
