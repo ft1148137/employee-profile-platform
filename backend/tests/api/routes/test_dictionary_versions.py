@@ -46,9 +46,12 @@ def upload(
     return response.json()
 
 
-def save(client: TestClient, url: str, headers: dict, preview: dict) -> object:
-    return client.post(
-        f"{url}/capabilities/versions",
+def save(
+    client: TestClient, url: str, headers: dict, preview: dict, method: str = "post"
+) -> object:
+    return client.request(
+        method,
+        f"{url}/capabilities/versions" if method == "post" else f"{url}/capabilities",
         headers=headers,
         json={
             "definitions": preview["definitions"],
@@ -57,8 +60,9 @@ def save(client: TestClient, url: str, headers: dict, preview: dict) -> object:
     )
 
 
+@pytest.mark.parametrize("method", ["post", "put"])
 def test_versions_preserve_records_remap_requests_and_block_stale_levels(
-    demo: tuple, client: TestClient, db: Session
+    demo: tuple, client: TestClient, db: Session, method: str
 ) -> None:
     url, employees, auth = demo
     org_id = employees["E02"].org_id
@@ -121,9 +125,11 @@ def test_versions_preserve_records_remap_requests_and_block_stale_levels(
     key = old_claim["capability"]["key"]
     definitions = [d for d in definitions if d["key"] != key]
     preview = upload(client, url, auth["admin"], definitions)
+    assert preview["removed_claim_counts"][key] >= 1
+    assert preview["removed_item_counts"]["incident_support"] >= 1
     assert "incident_support" in preview["removed"]
     assert "automated_testing" in preview["modified"]
-    response = save(client, url, auth["admin"], preview)
+    response = save(client, url, auth["admin"], preview, method)
     assert response.status_code == 200, response.text
     assert response.json()["version"] == preview["expected_version"] + 1
     db.expire_all()
@@ -207,7 +213,7 @@ def test_versions_preserve_records_remap_requests_and_block_stale_levels(
         )["ai_inference"]
         is False
     )
-    assert save(client, url, auth["admin"], preview).status_code == 409
+    assert save(client, url, auth["admin"], preview, method).status_code == 409
 
 
 def test_profile_matches_keys_and_original_level_description(
@@ -257,6 +263,17 @@ def test_dictionary_permissions(
             ).status_code
             == status
         )
+    for method, endpoint in (
+        ("get", "/editor"),
+        ("post", "/editor/preview"),
+        ("put", ""),
+    ):
+        assert (
+            client.request(
+                method, f"{url}/capabilities{endpoint}", headers=auth[role]
+            ).status_code
+            == status
+        )
     assert (
         client.get(f"{url}/capabilities/export", headers=auth["foreign"]).status_code
         == 404
@@ -267,8 +284,13 @@ def test_dictionary_permissions(
     )
 
 
+@pytest.mark.parametrize("method", ["post", "put"])
 def test_concurrent_versions_and_atomic_rollback(
-    demo: tuple, client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+    demo: tuple,
+    client: TestClient,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
 ) -> None:
     url, employees, auth = demo
     definitions = exported(client, url, auth["admin"])
@@ -276,7 +298,7 @@ def test_concurrent_versions_and_atomic_rollback(
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(
             pool.map(
-                lambda _: save(client, url, auth["admin"], preview).status_code,
+                lambda _: save(client, url, auth["admin"], preview, method).status_code,
                 range(2),
             )
         )
@@ -294,7 +316,7 @@ def test_concurrent_versions_and_atomic_rollback(
 
     monkeypatch.setattr(service, "notify", fail)
     with pytest.raises(RuntimeError, match="Synthetic"):
-        save(client, url, auth["admin"], preview)
+        save(client, url, auth["admin"], preview, method)
     assert (
         client.get(f"{url}/capabilities", headers=auth["admin"]).json()[
             "schema_version"
@@ -608,3 +630,56 @@ def test_removing_all_items_keeps_request_and_failed_redraft_rolls_back(
     )
     assert empty["items"] == [] and empty["status"] == "pending_owner"
     assert empty["revision"] == initial["revision"] + 1
+
+
+def test_web_editor_exclusions_and_conflicts(demo: tuple, client: TestClient) -> None:
+    url, _, auth = demo
+    endpoint = f"{url}/capabilities"
+    current = client.get(f"{endpoint}/editor", headers=auth["admin"]).json()
+    body = {
+        "definitions": current["definitions"],
+        "expected_version": current["expected_version"],
+    }
+    definition = body["definitions"][0]
+    key = definition["key"]
+    definition["ai_inference"] = False
+    preview = client.post(
+        f"{endpoint}/editor/preview", headers=auth["admin"], json=body
+    )
+    assert preview.status_code == 200 and key in preview.json()["modified"]
+    assert client.put(endpoint, headers=auth["admin"], json=body).status_code == 200
+    settings = client.get(f"{url}/drafting-settings", headers=auth["admin"]).json()
+    assert key in settings["excluded_capability_keys"]
+    conflict = client.post(
+        f"{endpoint}/editor/preview", headers=auth["admin"], json=body
+    )
+    assert conflict.status_code == 409
+    assert conflict.json()["detail"] == "词典已被别人修改，请刷新"
+    body["expected_version"] += 1
+    definition["ai_inference"] = True
+    preview = client.post(
+        f"{endpoint}/editor/preview", headers=auth["admin"], json=body
+    )
+    assert key in preview.json()["modified"]
+    assert client.put(endpoint, headers=auth["admin"], json=body).status_code == 200
+    settings = client.get(f"{url}/drafting-settings", headers=auth["admin"]).json()
+    assert key not in settings["excluded_capability_keys"]
+    # The existing settings page and the editor read the same exclusions.
+    assert (
+        client.put(
+            f"{url}/drafting-settings",
+            headers=auth["admin"],
+            json={
+                "excluded_capability_keys": [key],
+                "disabled_department_ids": settings["disabled_department_ids"],
+            },
+        ).status_code
+        == 200
+    )
+    current = client.get(f"{endpoint}/editor", headers=auth["admin"]).json()
+    assert current["definitions"][0]["ai_inference"] is False
+    body = {
+        "definitions": current["definitions"] * 2,
+        "expected_version": current["expected_version"],
+    }
+    assert client.put(endpoint, headers=auth["admin"], json=body).status_code == 422

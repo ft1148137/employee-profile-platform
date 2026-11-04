@@ -13,3 +13,6 @@ Claim 和 ProfileVersion 不迁移、不改写。读取当前画像时按能力 
 `ai_inference: false` 并入既有 excluded_capability_keys，保留原排除项与暂时不在词典中的排除 key；上传 true 不重新开启既有敏感能力。恢复推断由原自动起草设置页完成。导出反映当前有效排除设置。勾选重新起草仅排队已有 pending_owner 初始请求，继续遵守部门关闭、员工退出与模型必填规则，不调用真实模型验证。
 
 不增加依赖。Excel 复用名单解析器；文件限制 2 MB、1000 项能力、每项 20 个等级，Excel 解压上限 20 MB。YAML 与 Excel 使用同一输入模型及校验。通知迁移将 kind 从 varchar(14) 扩为 varchar(18)，替换 CHECK；降级先删除 dictionary_changed 通知，再恢复旧列宽与约束，其他通知保留。
+
+
+NERE-93 补充：网页编辑通过管理员专用读取和预览接口，再 `PUT /capabilities` 整份保存，复用同一 `save_version` 和行锁内版本检查。网页开关是管理员的明确设置，可双向修改当前 key 的排除状态；暂时不在当前词典中的排除 key 仍保留。上传与行业模板继续只合并排除项，避免上传隐式重新开启敏感推断。两种入口共用预览与删除影响计数，已有判断按 key 跨历史版本统计，待提交项只统计本企业 draft、pending_owner 请求。
