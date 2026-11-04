@@ -68,7 +68,7 @@ docker compose up -d
 
 `install.sh` 随机生成部署密钥 `PI_SERVICE_TOKEN` 写入权限为 600 的 `.env`；`upgrade.sh` 为缺少该变量的旧配置补齐，重复升级保留原值。生产禁止示例值 `changethis`。所有 Pi 路由（包括 `/health`）都要求此密钥，不要将它放进前端或公开日志。密钥轮换后重新运行 `docker compose up -d`，同时更新服务与调用方。模型 API key 每轮经请求体传入内存，Pi 不持久保存。
 
-S7a 仅部署服务与 Python 客户端，现有起草和连接测试仍通过 LiteLLM；S7c 接入后才开始使用 Pi。服务目前只接受 `draft`，默认期限 120 秒，单轮最多 8 次模型、16 次工具执行，进程最多 4 轮，不排队。Pi 只转发后端给出的工具，无命令或文件工具。
+API key 类提供方的起草和连接测试通过 Pi；ChatGPT 订阅暂时仍通过 LiteLLM，S7b 迁移。服务目前只接受 `draft`，默认期限 120 秒，单轮最多 8 次模型、16 次工具执行，进程最多 4 轮，不排队。Pi 只转发后端给出的工具，无命令或文件工具。
 
 Pi 需要模型出口，普通 Compose 网络不提供域名白名单。S7c 负责提供方及地址、DNS、重定向与内部 Ollama 目标校验；本次仅限制模型协议与 HTTP(S) 地址格式，不能视为网络隔离。部署者应使用防火墙或出口代理限制可访问的模型地址，不向不受信任的容器开放 Compose 网络或服务密钥。
 
@@ -228,3 +228,12 @@ Jira、API key 和订阅凭据均由 `SECRET_KEY` 派生密钥加密。更换它
 ## M1 验证范围
 
 M1 部署流程使用 macOS 26.4.1 / Docker Desktop，全新克隆测试 HTTP、浏览器向导、改密、备份恢复、升级及自签 HTTPS；具体结果和截图见 [M1 验收记录](m1-acceptance.md)。Linux 安装由 PR 的 Ubuntu `test-production-install` job 验证，不能把本机通过当作 Linux 已通过。Safari 和 Let's Encrypt 公网签发没有实测，也没有验证真实企业网络或生产数据恢复。
+
+
+### Pi 模型出口限制（S7c）
+
+Pi 使用锁定的 `undici@7.30.1` 全局 dispatcher，每次请求建立新连接并检查全部 DNS 解析结果；3xx 直接报错，不跟随重定向。云元数据地址（含 `169.254.169.254`、`fd00:ec2::254`）和 link-local 地址一律拒绝。目录内提供方只允许公网；自定义通义千问、OpenAI 兼容服务和 Ollama 只允许该轮配置的主机与端口，可以访问配置的内网服务。没有本轮策略的请求拒绝。此限制只覆盖 Pi 进程的模型 HTTP 请求。
+
+生产环境不要设置 `PI_EGRESS_ALLOW_LOOPBACK=1`；它只用于目录提供方的本地假服务测试，仅放开回环地址。Compose 和安装配置均不设置此变量。
+
+部署者仍需用防火墙或出口代理约束其他进程、容器和按域名的白名单。根据选用提供方放行 HTTPS 443：`api.openai.com`、`api.anthropic.com`、`api.deepseek.com`、`dashscope.aliyuncs.com` / `dashscope-intl.aliyuncs.com` / `dashscope-us.aliyuncs.com`、`api.moonshot.ai` / `api.moonshot.cn`、`api.kimi.com`、`openrouter.ai`。自定义服务仅放行管理员配置的地址和端口；Pi 没有为其他进程提供网络隔离。

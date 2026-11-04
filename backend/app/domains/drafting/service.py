@@ -36,7 +36,7 @@ from app.domains.model.client import (
     ModelRateLimited,
     ModelUnavailable,
 )
-from app.domains.model.service import model_config, read_setting
+from app.domains.model.service import model_config, read_setting, validate_capabilities
 from app.domains.org.models import Employee, EmploymentStatus, Organization
 from app.domains.profile.models import (
     AssessmentStatus,
@@ -270,6 +270,14 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
             session.commit()
             # Release the setting row before ChatGPT opens its own locking session.
             session.expunge(setting)
+    capability_error = None
+    if setting and setting.enabled and setting.kind != "chatgpt_subscription":
+        try:
+            validate_capabilities(
+                setting.provider, setting.model, setting.reasoning_effort
+            )
+        except ModelUnavailable as error:
+            capability_error = error
     counts = {"generated": 0, "failed": 0, "handed_over": 0}
     if employee_ids is not None and not ids:
         return
@@ -309,6 +317,8 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                 setting = read_setting(session, org_id)
                 if setting is None or not setting.enabled:
                     raise ModelDisabled()
+                if capability_error:
+                    raise capability_error
                 items, generated_by = model.draft(
                     records, capabilities, model_config(setting)
                 )

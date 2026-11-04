@@ -133,14 +133,16 @@
 
 | 类型 | 配置示例 |
 | --- | --- |
-| 云端 API | LiteLLM 模型名（如 `openai/gpt-4o-mini`、`anthropic/claude-sonnet-4-5`）和对应 API key |
-| 本地模型 | 如 `ollama_chat/qwen3`、服务器可访问的 base URL（如 `http://ollama:11434`），按服务要求填写密钥 |
-| 通用 OpenAI 兼容接口 | `openai/部署模型名`、兼容接口的 base URL（通常含 `/v1`）、该接口密钥 |
+| 云端 API | 选择 OpenAI、Anthropic、DeepSeek、通义千问、Kimi（国际/中国/Coding）或 OpenRouter；填写模型 ID（如 `gpt-4o-mini`）和 API key。目录内提供方地址固定；通义千问选择百炼区域 |
+| 本地模型 | 选择本地模型，填写 Ollama 模型 ID（如 `qwen3`）、服务器可访问的 base URL（如 `http://ollama:11434`），按服务要求填写密钥 |
+| 通用 OpenAI 兼容接口 | 部署模型 ID（不加 `openai/`）、兼容接口的 base URL（通常含 `/v1`）、该接口密钥 |
 | ChatGPT 订阅 | 如 `chatgpt/gpt-6.1-sol`、推理强度；不填 base URL 或 API key，按下文连接 |
+
+推理强度可选 `off/minimal/low/medium/high/xhigh`。目录模型不支持的档位会在保存时报错；自定义服务由管理员确认支持，保存后务必测试连接。Pi 服务不可用时无法保存启用的配置，请稍后重试。升级时不能识别的旧模型会关闭，页面提示「请重新选择提供方」，原密钥保留。
 
 发送给模型的是能力词典和最多最近 80 条 standard 工作记录的类型、标题、状态、标签、组件、项目、日期、角色及截断说明，不主动发送姓名、工号、邮箱、外部账号、部门或 restricted 自述。标题/说明本身仍可能包含身份或业务秘密，接入前应核对企业的数据外发要求。所有模型输入经白名单、输出经格式校验，但建议仍需本人核对，不能直接发布画像。
 
-本平台不支持 Claude 订阅登录。按项目 D5，Claude 使用 Anthropic API key，或通过 Bedrock、Vertex 等受支持服务接入；订阅 OAuth 不用于本平台的第三方调用，参阅 [Anthropic 条款说明](https://code.claude.com/docs/en/legal-and-compliance) 和 [消费者条款](https://www.anthropic.com/legal/consumer-terms)。
+本平台不支持 Claude 订阅登录。按项目 D5，Claude 使用 Anthropic API key，订阅 OAuth 不用于本平台的第三方调用，参阅 [Anthropic 条款说明](https://code.claude.com/docs/en/legal-and-compliance) 和 [消费者条款](https://www.anthropic.com/legal/consumer-terms)。
 
 ChatGPT：先在个人 ChatGPT 安全设置允许设备码登录（企业工作区可能要管理员允许），在本平台点「连接 ChatGPT」，打开页面给出的链接、输入验证码并确认；等待显示已连接，再启用并保存。[官方设备码说明](https://learn.chatgpt.com/docs/auth)。断开时先点「断开连接」，再到 ChatGPT 安全设置退出相关会话。它通过 LiteLLM 使用 Codex 后端，并非官方第三方集成计划，服务限制可能变化。
 

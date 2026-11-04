@@ -251,18 +251,20 @@ def evaluate(slug: str, model: ModelSettingUpdate) -> str:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("slug", choices=["qiguang-aiot"])
-    parser.add_argument("--model", required=True, help="带提供方前缀的模型名")
+    parser.add_argument("--model", required=True, help="模型 ID，不带提供方前缀")
     parser.add_argument(
         "--kind",
         choices=["cloud_api", "local", "openai_compatible"],
         default="cloud_api",
     )
+    parser.add_argument("--provider", required=True)
     parser.add_argument("--base-url")
     args = parser.parse_args()
     config = ModelSettingUpdate(
         enabled=True,
         kind=args.kind,
         model=args.model,
+        provider=args.provider,
         base_url=args.base_url,
         api_key=os.environ.get("MODEL_API_KEY"),
     )

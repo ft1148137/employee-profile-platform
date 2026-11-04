@@ -45,7 +45,7 @@ def test_real_pi_round_trip(pi_service: PiHarness) -> None:
     assert len(pi_service.requests) == 2
     assert any(
         m.get("role") == "tool" and json.loads(m["content"]) == {"accepted": True}
-        for m in pi_service.requests[-1]["messages"]
+        for m in pi_service.requests[-1]["body"]["messages"]
     )
     for secret in [
         "synthetic-api-key",

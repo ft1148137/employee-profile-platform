@@ -75,7 +75,7 @@ def run_turn(
 ) -> TurnResult:
     run_id = str(uuid4())
     path = f"/v1/turns/{run_id}"
-    model = config.model_dump(mode="json", exclude={"api_key"})
+    model = config.model_dump(mode="json", exclude={"api_key"}, exclude_unset=True)
     model["api_key"] = config.api_key.get_secret_value()
     body = {
         "version": 1,

@@ -1,6 +1,8 @@
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from uuid import UUID
 
+import httpx
+from pydantic import SecretStr
 from sqlmodel import Session, select
 
 from app.authz.principal import Principal
@@ -10,7 +12,9 @@ from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.model.client import ModelConfig, ModelUnavailable
 from app.domains.model.models import ModelSetting
+from app.domains.model.pi_client import PiModelConfig
 from app.domains.model.schemas import (
+    CLOUD_PROVIDERS,
     ChatGPTStatus,
     ModelSettingPublic,
     ModelSettingUpdate,
@@ -77,8 +81,7 @@ def save_setting(
         and body.kind != "chatgpt_subscription"
         and (
             body.kind != setting.kind
-            or (body.model or "").partition("/")[0]
-            != (setting.model or "").partition("/")[0]
+            or body.provider != setting.provider
             or (body.base_url or "").rstrip("/") != (setting.base_url or "").rstrip("/")
         )
     ):
@@ -92,11 +95,13 @@ def save_setting(
     if body.enabled:
         if body.kind == "cloud_api" and not token:
             raise InvalidModelSetting("请填写模型 API 密钥")
-        if body.model and body.model.startswith("anthropic/") and token:
+        if body.provider == "anthropic" and token:
             if decrypt_secret(token).startswith("sk-ant-oat"):
                 raise InvalidModelSetting(
                     "不支持 Claude 订阅登录，请使用 Anthropic API key"
                 )
+    if body.enabled and body.kind != "chatgpt_subscription":
+        validate_capabilities(body.provider, body.model, body.reasoning_effort)
     setting.sqlmodel_update(body.model_dump(exclude={"api_key"}))
     setting.api_key_ciphertext = token
     setting.updated_by_user_id = principal.user_id
@@ -118,6 +123,7 @@ def save_setting(
             "enabled": body.enabled,
             "kind": body.kind,
             "model": body.model,
+            "provider": body.provider,
             "base_url": hostname,
             "api_key_changed": changed,
         },
@@ -127,9 +133,40 @@ def save_setting(
     return public_setting(setting)
 
 
-def model_config(setting: ModelSetting | None) -> ModelConfig:
+def model_config(setting: ModelSetting | None) -> ModelConfig | PiModelConfig:
     if setting is None or not setting.enabled or not setting.model:
         raise ModelUnavailable("模型已关闭，请先启用模型")
+    if setting.kind != "chatgpt_subscription":
+        if not setting.provider:
+            raise ModelUnavailable("请重新选择提供方")
+        api, base_url = CLOUD_PROVIDERS.get(
+            setting.provider, ("openai-completions", setting.base_url)
+        )
+        if setting.provider == "qwen":
+            base_url = setting.base_url
+        if not base_url:
+            raise ModelUnavailable("请填写模型服务地址")
+        if setting.provider == "ollama":
+            base_url = base_url.rstrip("/").removesuffix("/v1") + "/v1"
+        config = PiModelConfig.model_validate(
+            {
+                "provider": setting.provider,
+                "api": api,
+                "id": setting.model,
+                "baseUrl": base_url,
+                "api_key": SecretStr(
+                    decrypt_secret(setting.api_key_ciphertext)
+                    if setting.api_key_ciphertext
+                    else ""
+                ),
+                "thinkingLevel": setting.reasoning_effort or "off",
+            }
+        )
+        if setting.provider in ("qwen", "openai-compatible", "ollama"):
+            config.reasoning = config.thinkingLevel != "off"
+            config.contextWindow, config.maxTokens = 128000, 4096
+            config.compat = {"supportsReasoningEffort": True}
+        return config
     return ModelConfig(
         model=setting.model,
         org_id=setting.org_id,
@@ -139,3 +176,29 @@ def model_config(setting: ModelSetting | None) -> ModelConfig:
         if setting.api_key_ciphertext
         else None,
     )
+
+
+def validate_capabilities(
+    provider: str | None, model: str | None, effort: str | None
+) -> None:
+    if not provider or not model:
+        raise ModelUnavailable("请重新选择提供方")
+    try:
+        response = httpx.get(
+            f"{settings.PI_URL}/v1/models/{quote(provider, safe='')}/{quote(model, safe='')}",
+            headers={
+                "Authorization": f"Bearer {settings.PI_SERVICE_TOKEN.get_secret_value()}"
+            },
+            timeout=5,
+            trust_env=False,
+        )
+        if response.status_code == 400:
+            raise ModelUnavailable("该模型不在支持的列表里")
+        response.raise_for_status()
+        capabilities = response.json()
+        if (effort or "off") not in capabilities["thinking_levels"]:
+            raise ModelUnavailable(
+                f"推理强度 {effort} 不适用于该模型，请在模型设置里修改"
+            )
+    except httpx.HTTPError, ValueError, KeyError, TypeError:
+        raise ModelUnavailable("模型服务暂时不可用，请稍后再试") from None

@@ -36,6 +36,7 @@ from app.domains.source import sync
 from app.domains.work.models import Task, WorkEvent
 from app.models import User
 from tests.api.routes.test_initial_profiles import work_queue
+from tests.utils.pi import PiHarness
 
 pytestmark = pytest.mark.xdist_group("litellm")
 
@@ -374,8 +375,8 @@ def test_switches_pause_resume(
     }
     if model:
         assert all(
-            r.generated_by["provider"] == "openai"
-            and r.generated_by["model"] == "gpt-4o-mini"
+            r.generated_by["provider"] == "openai-compatible"
+            and r.generated_by["model"] == "synthetic"
             for r in rows(db, ProfileChangeRequest, org.id)
         )
 
@@ -425,17 +426,25 @@ def test_csv_participants_and_explicit_cross_source_reference() -> None:
 
 
 @pytest.mark.usefixtures("mock_drafting")
-def test_model_baseline_smoke() -> None:
+def test_model_baseline_smoke(pi_service: PiHarness) -> None:
     from app.domains.model.schemas import ModelSettingUpdate
 
     report = evaluation["evaluate"](
         "qiguang-aiot",
-        ModelSettingUpdate(enabled=True, kind="cloud_api", model="openai/gpt-4o-mini"),
+        ModelSettingUpdate(
+            enabled=True,
+            kind="openai_compatible",
+            provider="openai-compatible",
+            model="synthetic",
+            base_url=pi_service.config.baseUrl,
+        ),
     )
     assert "精确率" in report and "召回率" in report and "documented" in report
 
 
-def test_baseline_rejects_incomplete_drafts(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_baseline_rejects_incomplete_drafts(
+    monkeypatch: pytest.MonkeyPatch, pi_service
+) -> None:
     from app.domains.model.client import ModelUnavailable
     from app.domains.model.schemas import ModelSettingUpdate
 
@@ -447,6 +456,10 @@ def test_baseline_rejects_incomplete_drafts(monkeypatch: pytest.MonkeyPatch) -> 
         evaluation["evaluate"](
             "qiguang-aiot",
             ModelSettingUpdate(
-                enabled=True, kind="cloud_api", model="openai/gpt-4o-mini"
+                enabled=True,
+                kind="openai_compatible",
+                provider="openai-compatible",
+                model="synthetic",
+                base_url=pi_service.config.baseUrl,
             ),
         )
