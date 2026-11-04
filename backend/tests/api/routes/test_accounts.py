@@ -34,9 +34,9 @@ def accounts(request: pytest.FixtureRequest, db: Session) -> tuple:
     orgs, depts, employees, users = request.getfixturevalue("tenant_data")
     for i, employee in enumerate(employees):
         employee.employee_code = f"{uuid4().hex[:8]}-{i}"
+        employee.work_email = f"{uuid4()}@example.com"
         db.add(employee)
     employees[0].display_name, employees[3].display_name = ("=1+1", "@SUM(A1)")
-    employees[0].work_email = str(users[0].email).upper()
     db.commit()
     return (
         f"/api/v1/orgs/{orgs[0].id}",
@@ -62,11 +62,11 @@ def test_issue_and_reset(accounts: tuple, client: TestClient, db: Session) -> No
     sheet = load_workbook(BytesIO(response.content)).active
     assert sheet is not None and sheet.max_row == 4
     rows = list(sheet.values)
-    assert rows[0] == ("工号", "姓名", "部门", "登录地址", "初始密码", "备注")
+    assert rows[0] == ("登录名", "姓名", "部门", "登录地址", "初始密码", "备注")
     assert all(cell.data_type == "s" for row in sheet for cell in row if cell.value)
     assert {row[1] for row in rows[1:]} >= {"=1+1", "@SUM(A1)"}
-    first = next(row for row in rows if row[0] == employees[0].employee_code)
-    assert "邮箱已被其他账号使用" in first[5]
+    first = next(row for row in rows if row[0] == employees[0].work_email)
+    assert not first[5]
 
     def login(password: str) -> Response:
         return post(
@@ -89,7 +89,9 @@ def test_issue_and_reset(accounts: tuple, client: TestClient, db: Session) -> No
     assert restricted.json()["detail"]["code"] == "password_change_required"
     user = db.exec(select(User).where(User.username == first[0])).one()
     assert (
-        user.must_change_password and user.password_changed_at and (user.email is None)
+        user.must_change_password
+        and user.password_changed_at
+        and (user.email == user.username)
     )
     assert post(f"{url}/accounts/issue", json={}).status_code == 422
     selected = {"employee_ids": [str(employees[0].id)], "regenerate_pending": True}
@@ -153,7 +155,7 @@ def test_conflicts_and_permissions(
     url, auth, _, _, employees, users = accounts
     post = partial(client.post, headers=auth)
     get = partial(client.get, headers=auth)
-    employees[0].employee_code = users[0].username.upper()
+    employees[0].work_email = str(users[0].email).upper()
     employees[4].employment_status = EmploymentStatus.INACTIVE
     db.add_all(employees)
     db.commit()
@@ -179,7 +181,7 @@ def test_conflicts_and_permissions(
             post(f"{url}/accounts/issue", json={"employee_ids": ids}).status_code
             == expected
         )
-    employees[0].employee_code = None
+    employees[0].work_email = None
     db.add(employees[0])
     db.commit()
     assert (
@@ -188,6 +190,9 @@ def test_conflicts_and_permissions(
         ).status_code
         == 409
     )
+    employees[0].employee_code = None
+    db.add(employees[0])
+    db.commit()
     issued = post(f"{url}/accounts/issue", json={})
     assert issued.status_code == 200 and issued.headers["x-issued-count"] == "1"
     for path in ("accounts", "role-grants"):
@@ -433,7 +438,7 @@ def test_issue_query_bound(accounts: tuple, db: Session) -> None:
             org_id=orgs[0].id,
             employee_code=f"batch-{uuid4()}",
             display_name=f"Synthetic {i}",
-            work_email="shared@example.com",
+            work_email=f"{uuid4()}@example.com",
         )
         for i in range(20)
     ]
@@ -463,7 +468,7 @@ def test_issue_query_bound(accounts: tuple, db: Session) -> None:
             counts.append(len(statements))
             assert len(rows) == size
             assert rows[0][5] == ""
-            assert all("邮箱已被其他账号使用" in row[5] for row in rows[1:])
+            assert all(not row[5] for row in rows)
             assert (
                 len(
                     session.exec(
@@ -507,6 +512,7 @@ def test_passwords_prepared_before_lock_and_growth(
                     org_id=orgs[0].id,
                     employee_code=str(uuid4()),
                     display_name="Arrived after count",
+                    work_email=f"{uuid4()}@example.com",
                 )
             )
             session.flush()
@@ -571,11 +577,11 @@ def test_export_full_department_paths(
 
 
 @pytest.mark.parametrize("code", ["", "bad@code", "x" * 256])
-def test_issue_invalid_code(
+def test_issue_invalid_email(
     accounts: tuple, client: TestClient, db: Session, code: str
 ) -> None:
     url, auth, _, _, employees, _ = accounts
-    employees[0].employee_code = code
+    employees[0].work_email = code
     db.add(employees[0])
     db.commit()
     response = client.post(
@@ -584,15 +590,18 @@ def test_issue_invalid_code(
         json={"employee_ids": [str(employees[0].id)]},
     )
     assert response.status_code == 409
-    assert response.json()["detail"][0]["reason"] == "工号为空或不能作为登录名"
+    assert (
+        response.json()["detail"][0]["reason"]
+        == "邮箱缺失或格式不正确，请在名单里补上邮箱"
+    )
 
 
 def test_issue_duplicate_username_in_batch(
     accounts: tuple, client: TestClient, db: Session
 ) -> None:
     url, auth, _, _, employees, _ = accounts
-    employees[0].employee_code = f"duplicate-{uuid4().hex}"
-    employees[3].employee_code = employees[0].employee_code.upper()
+    employees[0].work_email = f"duplicate-{uuid4().hex}@example.com"
+    employees[3].work_email = employees[0].work_email.upper()
     db.add_all([employees[0], employees[3]])
     db.commit()
     response = client.post(
@@ -605,6 +614,6 @@ def test_issue_duplicate_username_in_batch(
         {
             "employee_code": employees[3].employee_code,
             "display_name": employees[3].display_name,
-            "reason": "登录名已被占用",
+            "reason": "邮箱已被占用",
         }
     ]

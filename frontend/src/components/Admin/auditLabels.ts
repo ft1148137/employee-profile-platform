@@ -26,6 +26,7 @@ export const auditLabels: Record<string, string> = {
   "seed.loaded": "导入演示数据",
   "drafting_settings.updated": "修改自动起草设置",
   "employee.auto_draft_changed": "修改本人自动起草选择",
+  "account.email_changed": "修改账号邮箱",
   "roster.imported": "导入员工名单",
 }
 export const actorLabels: Record<string, string> = {

@@ -22,7 +22,7 @@ from app.domains.org.roster.schemas import (
     RosterDiff,
     RosterIssue,
 )
-from app.models import User
+from app.models import User, uses_email_login
 
 
 def compute_roster_diff(
@@ -47,7 +47,13 @@ def compute_roster_diff(
         ).all()
         # User emails are deployment-wide unique; inspect only incoming emails or this tenant's accounts.
         accounts = session.exec(
-            select(User, OrgMembership)
+            select(
+                User,
+                OrgMembership,
+                col(User.id).in_(
+                    select(OrgMembership.user_id).where(OrgMembership.org_id != org_id)
+                ),
+            )
             .outerjoin(
                 OrgMembership,
                 (col(OrgMembership.user_id) == User.id)
@@ -57,6 +63,9 @@ def compute_roster_diff(
                 or_(
                     col(OrgMembership.org_id) == org_id,
                     func.lower(User.email).in_(
+                        [row.email.lower() for row in roster.rows if row.email]
+                    ),
+                    func.lower(User.username).in_(
                         [row.email.lower() for row in roster.rows if row.email]
                     ),
                 )
@@ -118,10 +127,15 @@ def compute_roster_diff(
     }
     linked = {
         membership.employee_id: user
-        for user, membership in accounts
+        for user, membership, _ in accounts
         if membership is not None
     }
-    owners = {user.email.casefold(): user.id for user, _ in accounts if user.email}
+    owners: dict[str, set[UUID]] = defaultdict(set)
+    for user, _, _ in accounts:
+        for identifier in (user.email, user.username):
+            if identifier:
+                owners[identifier.strip().lower()].add(user.id)
+    shared_accounts = {u.id for u, _, shared in accounts if shared or u.is_superuser}
     columns = set(roster.column_mapping.values())
     used: set[tuple[str, ...]] = set()
     counts: Counter[tuple[str, ...]] = Counter()
@@ -145,6 +159,22 @@ def compute_roster_diff(
             display_name=row.display_name,
             row_number=row.row_number,
         )
+        account = linked.get(matched.id) if matched else None
+        if row.email and owners.get(row.email.lower(), set()) - (
+            {account.id} if account else set()
+        ):
+            blockers.append(
+                f"第 {row.row_number} 行「邮箱」：已被其他账号使用，请补上未被占用的邮箱"
+            )
+        if (
+            account
+            and row.email
+            and (not uses_email_login(account) or account.username != row.email)
+        ):
+            if account.id in shared_accounts:
+                blockers.append(
+                    f"第 {row.row_number} 行「邮箱」：账号同时属于其他企业，只能由部署人员处理"
+                )
         if matched is None:
             changes.append(base)
             continue
@@ -219,22 +249,6 @@ def compute_roster_diff(
             )
         if matched.employment_status == EmploymentStatus.INACTIVE:
             changes.append(base.model_copy(update={"kind": "reactivated"}))
-        user = linked.get(matched.id)
-        if (
-            "邮箱" in columns
-            and user
-            and row.email
-            and (user.email or "").casefold() != row.email.casefold()
-            and owners.get(row.email.casefold(), user.id) != user.id
-        ):
-            warnings.append(
-                RosterIssue(
-                    severity="warning",
-                    row_number=row.row_number,
-                    column="邮箱",
-                    message=f"第 {row.row_number} 行「邮箱」：{row.email} 已被其他账号使用，账号的邮箱不会同步",
-                )
-            )
     for employee in employees:
         if (
             employee.employee_code

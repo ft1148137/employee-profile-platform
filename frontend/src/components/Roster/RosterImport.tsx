@@ -102,7 +102,7 @@ export function RosterImport({ orgId }: { orgId: string }) {
   return (
     <div className="min-w-0 space-y-6">
       <p className="text-sm text-muted-foreground">
-        请上传全量名单。名单里没有的在职员工会被停用，画像和证据保留。支持
+        请上传全量名单，邮箱必填并作为登录名。名单里没有的在职员工会被停用，画像和证据保留。支持
         Excel、CSV，文件不超过 5 MB。
       </p>
       <div className="flex flex-wrap gap-2">

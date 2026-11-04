@@ -21,7 +21,7 @@ import { PasswordInput } from "@/components/ui/password-input"
 import useAuth, { isLoggedIn } from "@/hooks/useAuth"
 
 const formSchema = z.object({
-  username: z.string().trim().min(1, { message: "请输入工号或邮箱" }),
+  username: z.string().trim().min(1, { message: "请输入邮箱" }),
   password: z
     .string()
     .min(1, { message: "请输入密码" })
@@ -91,11 +91,11 @@ function Login() {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>工号或邮箱</FormLabel>
+                  <FormLabel>邮箱</FormLabel>
                   <FormControl>
                     <Input
                       data-testid="email-input"
-                      placeholder="请输入工号或邮箱"
+                      placeholder="请输入邮箱"
                       type="text"
                       {...field}
                     />

@@ -1,26 +1,26 @@
 ﻿工号,姓名,部门,职位,上级工号,邮箱
-YH001,司徒明昭,战略与组织咨询部,合伙人、战略与组织咨询部负责人,,situ.mingzhao@yuanheng-consulting.example.com
-YH002,陆维桢,战略与组织咨询部,高级经理,YH001,lu.weizhen@yuanheng-consulting.example.com
-YH003,高韵之,战略与组织咨询部,项目经理（Engagement Manager）,YH001,gao.yunzhi@yuanheng-consulting.example.com
-YH004,邵予初,战略与组织咨询部,资深顾问,YH001,shao.yuchu@yuanheng-consulting.example.com
-YH005,文嘉树,战略与组织咨询部,顾问,YH001,wen.jiashu@yuanheng-consulting.example.com
-YH006,郗嘉禾,战略与组织咨询部,实习顾问,YH001,xi.jiahe@yuanheng-consulting.example.com
-YH007,裴云澍,运营与供应链咨询部,合伙人、运营与供应链咨询部负责人,,pei.yunshu@yuanheng-consulting.example.com
-YH008,曾翊,运营与供应链咨询部,项目经理（Engagement Manager）,YH007,zeng.yi@yuanheng-consulting.example.com
-YH009,蒋柏延,运营与供应链咨询部,资深顾问,YH007,jiang.boyan@yuanheng-consulting.example.com
-YH010,莫映秋,运营与供应链咨询部,顾问,YH007,mo.yingqiu@yuanheng-consulting.example.com
-YH011,洪砚,运营与供应链咨询部,分析师,YH007,hong.yan@yuanheng-consulting.example.com
-YH012,梁书彦,数字化咨询部,高级经理、数字化咨询部负责人,,liang.shuyan@yuanheng-consulting.example.com
-YH013,段佳霖,数字化咨询部,项目经理（Engagement Manager）,YH012,duan.jialin@yuanheng-consulting.example.com
-YH014,童屿,数字化咨询部,资深顾问,YH012,tong.yu@yuanheng-consulting.example.com
-YH015,柯宜宁,数字化咨询部,顾问,YH012,ke.yining@yuanheng-consulting.example.com
-YH016,池宥,数字化咨询部,顾问,YH012,chi.you@yuanheng-consulting.example.com
-YH017,邬泽宇,数字化咨询部,分析师,YH012,wu.zeyu@yuanheng-consulting.example.com
-YH018,屈砚秋,知识与研究中心,研究总监、知识与研究中心负责人,,qu.yanqiu@yuanheng-consulting.example.com
-YH019,欧阳清和,知识与研究中心,资深研究员,YH018,ouyang.qinghe@yuanheng-consulting.example.com
-YH020,班以珩,知识与研究中心,研究员,YH018,ban.yiheng@yuanheng-consulting.example.com
-YH021,殷淼,知识与研究中心,信息分析师,YH018,yin.miao@yuanheng-consulting.example.com
-YH022,卞秋澄,人力与运营支持部,运营总监、人力与运营支持部负责人,,bian.qiucheng@yuanheng-consulting.example.com
-YH023,娄知微,人力与运营支持部,人力与系统管理专员,YH022,lou.zhiwei@yuanheng-consulting.example.com
-YH024,甘棠,人力与运营支持部,项目运营专员（Staffing）,YH022,gan.tang@yuanheng-consulting.example.com
-YH025,郝听澜,人力与运营支持部,合约与财务专员,YH022,hao.tinglan@yuanheng-consulting.example.com
+YH001,司徒明昭,战略与组织咨询部,合伙人、战略与组织咨询部负责人,,yh001@yuanheng-consulting.example.com
+YH002,陆维桢,战略与组织咨询部,高级经理,YH001,yh002@yuanheng-consulting.example.com
+YH003,高韵之,战略与组织咨询部,项目经理（Engagement Manager）,YH001,yh003@yuanheng-consulting.example.com
+YH004,邵予初,战略与组织咨询部,资深顾问,YH001,yh004@yuanheng-consulting.example.com
+YH005,文嘉树,战略与组织咨询部,顾问,YH001,yh005@yuanheng-consulting.example.com
+YH006,郗嘉禾,战略与组织咨询部,实习顾问,YH001,yh006@yuanheng-consulting.example.com
+YH007,裴云澍,运营与供应链咨询部,合伙人、运营与供应链咨询部负责人,,yh007@yuanheng-consulting.example.com
+YH008,曾翊,运营与供应链咨询部,项目经理（Engagement Manager）,YH007,yh008@yuanheng-consulting.example.com
+YH009,蒋柏延,运营与供应链咨询部,资深顾问,YH007,yh009@yuanheng-consulting.example.com
+YH010,莫映秋,运营与供应链咨询部,顾问,YH007,yh010@yuanheng-consulting.example.com
+YH011,洪砚,运营与供应链咨询部,分析师,YH007,yh011@yuanheng-consulting.example.com
+YH012,梁书彦,数字化咨询部,高级经理、数字化咨询部负责人,,yh012@yuanheng-consulting.example.com
+YH013,段佳霖,数字化咨询部,项目经理（Engagement Manager）,YH012,yh013@yuanheng-consulting.example.com
+YH014,童屿,数字化咨询部,资深顾问,YH012,yh014@yuanheng-consulting.example.com
+YH015,柯宜宁,数字化咨询部,顾问,YH012,yh015@yuanheng-consulting.example.com
+YH016,池宥,数字化咨询部,顾问,YH012,yh016@yuanheng-consulting.example.com
+YH017,邬泽宇,数字化咨询部,分析师,YH012,yh017@yuanheng-consulting.example.com
+YH018,屈砚秋,知识与研究中心,研究总监、知识与研究中心负责人,,yh018@yuanheng-consulting.example.com
+YH019,欧阳清和,知识与研究中心,资深研究员,YH018,yh019@yuanheng-consulting.example.com
+YH020,班以珩,知识与研究中心,研究员,YH018,yh020@yuanheng-consulting.example.com
+YH021,殷淼,知识与研究中心,信息分析师,YH018,yh021@yuanheng-consulting.example.com
+YH022,卞秋澄,人力与运营支持部,运营总监、人力与运营支持部负责人,,yh022@yuanheng-consulting.example.com
+YH023,娄知微,人力与运营支持部,人力与系统管理专员,YH022,yh023@yuanheng-consulting.example.com
+YH024,甘棠,人力与运营支持部,项目运营专员（Staffing）,YH022,yh024@yuanheng-consulting.example.com
+YH025,郝听澜,人力与运营支持部,合约与财务专员,YH022,yh025@yuanheng-consulting.example.com

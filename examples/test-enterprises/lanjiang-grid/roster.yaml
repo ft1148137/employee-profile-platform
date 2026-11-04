@@ -1,4 +1,5 @@
 - employee_code: LJ001
+  work_email: lj001@lanjiang-grid.example.com
   grade: 管理岗四级
   hired_on: '2004-08-02'
   reports_to: null
@@ -24,6 +25,7 @@
     valid_until: null
     note: ''
 - employee_code: LJ002
+  work_email: lj002@lanjiang-grid.example.com
   grade: 技能岗高级技师
   hired_on: '2006-07-10'
   reports_to: LJ001
@@ -57,6 +59,7 @@
     valid_until: null
     note: ''
 - employee_code: LJ003
+  work_email: lj003@lanjiang-grid.example.com
   grade: 技能岗高级工
   hired_on: '2013-07-15'
   reports_to: LJ002
@@ -82,6 +85,7 @@
     valid_until: null
     note: ''
 - employee_code: LJ004
+  work_email: lj004@lanjiang-grid.example.com
   grade: 技能岗中级工
   hired_on: '2024-03-11'
   reports_to: LJ002
@@ -103,6 +107,7 @@
     valid_until: '2026-12-31'
     note: 2026 年下半年补充考评取得，限第二种工作票
 - employee_code: LJ005
+  work_email: lj005@lanjiang-grid.example.com
   grade: 技能岗高级技师
   hired_on: '2008-09-01'
   reports_to: LJ001
@@ -128,6 +133,7 @@
     valid_until: null
     note: ''
 - employee_code: LJ006
+  work_email: lj006@lanjiang-grid.example.com
   grade: 技能岗高级工
   hired_on: '2017-07-20'
   reports_to: LJ005
@@ -153,6 +159,7 @@
     valid_until: null
     note: ''
 - employee_code: LJ007
+  work_email: lj007@lanjiang-grid.example.com
   grade: 外协班组成员（不纳入公司职级序列）
   hired_on: '2025-09-01'
   reports_to: LJ002
@@ -174,6 +181,7 @@
     valid_until: '2027-01-13'
     note: 入场准入凭证，不等于可担任工作票三种人
 - employee_code: LJ008
+  work_email: lj008@lanjiang-grid.example.com
   grade: 管理岗四级
   hired_on: '2005-07-18'
   reports_to: null
@@ -199,6 +207,7 @@
     valid_until: null
     note: ''
 - employee_code: LJ009
+  work_email: lj009@lanjiang-grid.example.com
   grade: 技能岗技师
   hired_on: '2010-08-05'
   reports_to: LJ008
@@ -224,6 +233,7 @@
     valid_until: '2026-12-31'
     note: ''
 - employee_code: LJ010
+  work_email: lj010@lanjiang-grid.example.com
   grade: 技能岗中级工
   hired_on: '2007-04-09'
   reports_to: LJ009
@@ -245,6 +255,7 @@
     valid_until: null
     note: 2019 年起多次放弃高级工评定，原因是理论考试需要上机答题
 - employee_code: LJ011
+  work_email: lj011@lanjiang-grid.example.com
   grade: 技能岗高级技师
   hired_on: '2009-07-13'
   reports_to: LJ008
@@ -274,6 +285,7 @@
     valid_until: null
     note: ''
 - employee_code: LJ012
+  work_email: lj012@lanjiang-grid.example.com
   grade: 技能岗高级工
   hired_on: '2018-08-06'
   reports_to: LJ009
@@ -299,6 +311,7 @@
     valid_until: null
     note: ''
 - employee_code: LJ013
+  work_email: lj013@lanjiang-grid.example.com
   grade: 管理岗四级
   hired_on: '2003-07-21'
   reports_to: null
@@ -320,6 +333,7 @@
     valid_until: '2026-12-31'
     note: ''
 - employee_code: LJ014
+  work_email: lj014@lanjiang-grid.example.com
   grade: 专业技术岗七级
   hired_on: '2011-07-11'
   reports_to: LJ013
@@ -341,6 +355,7 @@
     valid_until: '2026-12-31'
     note: ''
 - employee_code: LJ015
+  work_email: lj015@lanjiang-grid.example.com
   grade: 专业技术岗九级
   hired_on: '2021-08-02'
   reports_to: LJ014
@@ -362,6 +377,7 @@
     valid_until: '2026-12-31'
     note: ''
 - employee_code: LJ016
+  work_email: lj016@lanjiang-grid.example.com
   grade: 专业技术岗九级
   hired_on: '2019-07-08'
   reports_to: LJ013
@@ -385,6 +401,7 @@
     valid_until: null
     note: ''
 - employee_code: LJ017
+  work_email: lj017@lanjiang-grid.example.com
   grade: 管理岗四级
   hired_on: '2006-09-04'
   reports_to: null
@@ -410,6 +427,7 @@
     valid_until: '2026-12-31'
     note: ''
 - employee_code: LJ018
+  work_email: lj018@lanjiang-grid.example.com
   grade: 专业技术岗八级
   hired_on: '2015-07-13'
   reports_to: LJ017
@@ -431,6 +449,7 @@
     valid_until: '2029-05-16'
     note: ''
 - employee_code: LJ019
+  work_email: lj019@lanjiang-grid.example.com
   grade: 专业技术岗九级
   hired_on: '2016-08-15'
   reports_to: LJ017
@@ -452,6 +471,7 @@
     valid_until: '2028-11-08'
     note: ''
 - employee_code: LJ020
+  work_email: lj020@lanjiang-grid.example.com
   grade: 专业技术岗九级
   hired_on: '2012-07-16'
   reports_to: LJ017
@@ -483,6 +503,7 @@
     valid_until: null
     note: ''
 - employee_code: LJ021
+  work_email: lj021@lanjiang-grid.example.com
   grade: 管理岗四级
   hired_on: '2008-07-14'
   reports_to: null
@@ -500,6 +521,7 @@
     valid_until: null
     note: ''
 - employee_code: LJ022
+  work_email: lj022@lanjiang-grid.example.com
   grade: 专业技术岗九级
   hired_on: '2020-07-06'
   reports_to: LJ021
@@ -517,6 +539,7 @@
     valid_until: null
     note: ''
 - employee_code: LJ023
+  work_email: lj023@lanjiang-grid.example.com
   grade: 专业技术岗九级
   hired_on: '2017-08-21'
   reports_to: LJ021
@@ -534,6 +557,7 @@
     valid_until: null
     note: ''
 - employee_code: LJ024
+  work_email: lj024@lanjiang-grid.example.com
   grade: 专业技术岗十级
   hired_on: '2022-07-11'
   reports_to: LJ021
@@ -547,6 +571,7 @@
   external_accounts: []
   certifications: []
 - employee_code: LJ025
+  work_email: lj025@lanjiang-grid.example.com
   grade: 技能岗高级工
   hired_on: '2009-09-07'
   reports_to: LJ002
@@ -568,6 +593,7 @@
     valid_until: null
     note: ''
 - employee_code: LJ026
+  work_email: lj026@lanjiang-grid.example.com
   grade: 专业技术岗九级
   hired_on: '2018-07-09'
   reports_to: LJ014

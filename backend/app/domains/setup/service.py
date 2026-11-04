@@ -28,11 +28,6 @@ class InvalidSetupToken(HTTPException):
         super().__init__(400, "初始化链接无效或已过期，请联系部署人员重新获取")
 
 
-class InvalidAdminUsername(HTTPException):
-    def __init__(self) -> None:
-        super().__init__(400, "管理员登录名不能包含 @，请用字母或数字，例如 admin")
-
-
 class UsernameTaken(HTTPException):
     def __init__(self) -> None:
         super().__init__(409, "这个登录名已经被使用，请换一个")
@@ -85,9 +80,9 @@ def initialize(session: Session, data: InitializeInput) -> InitializeResult:
         raise InvalidSetupToken()
     if token.purpose == SetupPurpose.INITIAL_SETUP and is_initialized(session):
         raise AlreadyInitialized()
-    if "@" in data.admin_username:
-        raise InvalidAdminUsername()
-    if crud.get_user_by_username(session=session, username=data.admin_username):
+    if crud.get_user_by_username(
+        session=session, username=data.admin_username
+    ) or crud.get_user_by_email(session=session, email=data.admin_username):
         raise UsernameTaken()
     while True:
         org = Organization(slug=f"org-{secrets.token_hex(8)}", name=data.org_name)
@@ -104,6 +99,7 @@ def initialize(session: Session, data: InitializeInput) -> InitializeResult:
                 raise
     user = User(
         username=data.admin_username,
+        email=data.admin_username,
         full_name=data.admin_full_name,
         hashed_password=get_password_hash(data.admin_password),
         must_change_password=False,
@@ -115,10 +111,10 @@ def initialize(session: Session, data: InitializeInput) -> InitializeResult:
             session.add(user)
             session.flush()
     except IntegrityError as exc:
-        if (
-            getattr(getattr(exc.orig, "diag", None), "constraint_name", None)
-            == "ix_user_username_lower"
-        ):
+        if getattr(getattr(exc.orig, "diag", None), "constraint_name", None) in {
+            "ix_user_username_lower",
+            "ix_user_email_lower",
+        }:
             raise UsernameTaken() from exc
         raise
     membership = OrgMembership(org_id=org.id, user_id=user.id)

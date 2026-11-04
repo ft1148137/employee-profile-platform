@@ -190,6 +190,7 @@ class Certification(Strict):
 
 class RosterEntry(Strict):
     employee_code: str
+    work_email: str
     grade: str
     hired_on: date
     reports_to: str | None
@@ -428,7 +429,7 @@ def check(data: Loaded) -> list[str]:
     employees = {e.employee_code: e for e in org.employees}
     dupes([e.employee_code for e in org.employees], "employee_code")
     dupes([e.account_id for e in org.employees], "account_id")
-    dupes([e.work_email for e in org.employees], "work_email")
+    dupes([e.work_email.strip().lower() for e in org.employees], "work_email")
     roster = {r.employee_code: r for r in data.roster}
     dupes([r.employee_code for r in data.roster], "roster employee_code")
     personas = {p.employee_code: p for p in data.personas.personas}
@@ -437,7 +438,8 @@ def check(data: Loaded) -> list[str]:
     require(set(personas) == set(employees), "personas.yaml must list every employee")
     for code, employee in employees.items():
         require(employee.department in departments, f"{code} unknown department")
-        require(employee.work_email.endswith(domain), f"{code} email domain")
+        require(employee.work_email == f"{code.lower()}@{ent.slug}.example.com", f"{code} email login")
+        require(roster[code].work_email == employee.work_email, f"{code} roster email")
         persona = personas.get(code)
         require(
             persona is None or persona.display_name == employee.display_name,

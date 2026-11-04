@@ -59,7 +59,9 @@ test("audit records show account and revoked role labels with filters", async ({
   )
   expect(revoked.ok()).toBeTruthy()
   await page.getByRole("link", { name: "审计日志" }).click()
-  const rows = page.getByRole("row").filter({ hasText: "（E11）" })
+  const rows = page
+    .getByRole("row")
+    .filter({ hasText: "（employee11@demo.example.com）" })
   await expect(rows.nth(5)).toBeVisible()
   for (const action of [
     "生成账号",
@@ -72,7 +74,9 @@ test("audit records show account and revoked role labels with filters", async ({
     const row = rows.filter({
       has: page.getByRole("cell", { name: action, exact: true }),
     })
-    await expect(row.first()).toContainText("企业管理员（admin）")
+    await expect(row.first()).toContainText(
+      "企业管理员（admin@demo.example.com）",
+    )
   }
   await expect(rows.first()).toContainText("撤销角色")
   await expect(rows.nth(1)).toContainText("授予角色")

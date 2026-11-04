@@ -92,7 +92,10 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
   await dialog.getByRole("button", { name: "取消", exact: true }).click()
   await filter("在职状态筛选", "在职")
   await expect(page.getByText("已选 0 人", { exact: false })).toBeVisible()
-  const credentials = { username: "e04", password: "conflict-password-2026" }
+  const credentials = {
+    username: "employee04@demo.example.com",
+    password: "conflict-password-2026",
+  }
   const existing = await request.post("/api/v1/login/access-token", {
     form: credentials,
   })
@@ -109,7 +112,7 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
     "有冲突时这一批都没有生成",
   )
   await expect(
-    dialog.getByRole("row").filter({ hasText: "登录名已被占用" }),
+    dialog.getByRole("row").filter({ hasText: "邮箱已被占用" }),
   ).toContainText("E04")
   await expectChineseCopy(page)
   await page.screenshot({

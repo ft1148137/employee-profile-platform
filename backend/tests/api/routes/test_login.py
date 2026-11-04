@@ -27,7 +27,7 @@ def test_get_access_token_incorrect_password(client: TestClient) -> None:
     }
     r = client.post(f"{settings.API_V1_STR}/login/access-token", data=login_data)
     assert r.status_code == 400
-    assert r.json()["detail"] == "工号/邮箱或密码错误"
+    assert r.json()["detail"] == "邮箱或密码错误"
 
 
 def test_use_access_token(
@@ -55,7 +55,7 @@ def test_login_with_bcrypt_password_upgrades_to_argon2(
     assert bcrypt_hash.startswith("$2")  # bcrypt hashes start with $2
 
     user = User(
-        username=email.split("@")[0],
+        username=email,
         email=email,
         hashed_password=bcrypt_hash,
         is_active=True,
@@ -94,7 +94,7 @@ def test_login_with_argon2_password_keeps_hash(client: TestClient, db: Session) 
 
     # Create user with argon2 hash
     user = User(
-        username=email.split("@")[0],
+        username=email,
         email=email,
         hashed_password=argon2_hash,
         is_active=True,

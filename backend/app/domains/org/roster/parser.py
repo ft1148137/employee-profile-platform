@@ -118,7 +118,7 @@ def _headers(result: ParsedRoster, values: list[str], number: int) -> dict[str, 
             columns[standard] = index
         elif header:
             ignored.append(header)
-    missing = [name for name in HEADERS[:3] if name not in columns]
+    missing = [name for name in (*HEADERS[:3], "邮箱") if name not in columns]
     if missing:
         _issue(result, f"缺少必需列：{'、'.join(missing)}，请下载名单模板填写", number)
     if ignored:
@@ -194,14 +194,14 @@ def _parse_rows(result: ParsedRoster, file_rows: Iterator[FileRow]) -> None:
                 department_path=department,
                 title=fields.get("职位") or None,
                 manager_code=fields.get("上级工号") or None,
-                email=fields.get("邮箱") or None,
+                email=fields.get("邮箱", "").lower() or None,
             )
         )
     if columns is None:
         _issue(result, "文件中没有名单，请下载名单模板填写")
 
 
-def _validate_roster(result: ParsedRoster) -> None:
+def validate_roster(result: ParsedRoster) -> None:
     employees: dict[str, RosterRow] = {}
     emails: dict[str, int] = {}
     for row in result.rows:
@@ -215,13 +215,15 @@ def _validate_roster(result: ParsedRoster) -> None:
                     "工号",
                 )
             employees.setdefault(code, row)
-        if row.email:
+        if not row.email:
+            _issue(result, "不能为空，请补上邮箱后重新上传", row.row_number, "邮箱")
+        else:
             try:
                 validate_email(row.email, check_deliverability=False)
             except EmailNotValidError:
                 _issue(
                     result,
-                    "邮箱格式不正确，请填写完整的邮箱地址或留空",
+                    "邮箱格式不正确，请补上完整的邮箱地址",
                     row.row_number,
                     "邮箱",
                 )
@@ -299,5 +301,5 @@ def parse_roster(content: bytes, filename: str) -> ParsedRoster:
         )
     finally:
         file_rows.close()
-    _validate_roster(result)
+    validate_roster(result)
     return result

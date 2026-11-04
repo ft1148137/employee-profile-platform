@@ -1,4 +1,5 @@
 - employee_code: HL001
+  work_email: hl001@helin-retail.example.com
   grade: M4
   hired_on: '2016-04-11'
   reports_to: null
@@ -16,6 +17,7 @@
     valid_until: '2028-03-17'
     note: ''
 - employee_code: HL002
+  work_email: hl002@helin-retail.example.com
   grade: M2
   hired_on: '2019-08-01'
   reports_to: HL001
@@ -35,6 +37,7 @@
     valid_until: '2027-11-04'
     note: ''
 - employee_code: HL003
+  work_email: hl003@helin-retail.example.com
   grade: M2
   hired_on: '2021-02-22'
   reports_to: HL001
@@ -54,6 +57,7 @@
     valid_until: '2028-06-09'
     note: ''
 - employee_code: HL004
+  work_email: hl004@helin-retail.example.com
   grade: P3
   hired_on: '2022-07-04'
   reports_to: HL001
@@ -67,6 +71,7 @@
   external_accounts: []
   certifications: []
 - employee_code: HL005
+  work_email: hl005@helin-retail.example.com
   grade: P4
   hired_on: '2018-09-17'
   reports_to: HL001
@@ -90,6 +95,7 @@
     valid_until: '2027-03-01'
     note: ''
 - employee_code: HL006
+  work_email: hl006@helin-retail.example.com
   grade: 店长 A 级
   hired_on: '2017-06-05'
   reports_to: HL001
@@ -113,6 +119,7 @@
     valid_until: '2027-02-08'
     note: ''
 - employee_code: HL007
+  work_email: hl007@helin-retail.example.com
   grade: 值班经理
   hired_on: '2019-03-25'
   reports_to: HL006
@@ -140,6 +147,7 @@
     valid_until: '2027-01-19'
     note: ''
 - employee_code: HL008
+  work_email: hl008@helin-retail.example.com
   grade: 店员三级
   hired_on: '2022-11-14'
   reports_to: HL007
@@ -159,6 +167,7 @@
     valid_until: '2027-04-14'
     note: ''
 - employee_code: HL009
+  work_email: hl009@helin-retail.example.com
   grade: 店员二级
   hired_on: '2023-05-08'
   reports_to: HL007
@@ -176,6 +185,7 @@
     valid_until: '2027-05-05'
     note: ''
 - employee_code: HL010
+  work_email: hl010@helin-retail.example.com
   grade: 店员三级
   hired_on: '2020-10-19'
   reports_to: HL007
@@ -197,6 +207,7 @@
     valid_until: '2027-08-10'
     note: ''
 - employee_code: HL011
+  work_email: hl011@helin-retail.example.com
   grade: 厂家派驻岗
   hired_on: '2024-09-02'
   reports_to: HL007
@@ -214,6 +225,7 @@
     valid_until: '2027-03-23'
     note: 由品牌厂家组织办理，门店留存复印件
 - employee_code: HL012
+  work_email: hl012@helin-retail.example.com
   grade: 实习生
   hired_on: '2026-07-01'
   reports_to: HL007
@@ -233,6 +245,7 @@
     valid_until: '2027-06-23'
     note: ''
 - employee_code: HL013
+  work_email: hl013@helin-retail.example.com
   grade: 店长 B 级
   hired_on: '2018-04-16'
   reports_to: HL001
@@ -256,6 +269,7 @@
     valid_until: '2027-02-26'
     note: ''
 - employee_code: HL014
+  work_email: hl014@helin-retail.example.com
   grade: 课组长
   hired_on: '2021-06-28'
   reports_to: HL013
@@ -275,6 +289,7 @@
     valid_until: '2027-03-11'
     note: ''
 - employee_code: HL015
+  work_email: hl015@helin-retail.example.com
   grade: 值班经理
   hired_on: '2019-11-11'
   reports_to: HL013
@@ -298,6 +313,7 @@
     valid_until: '2027-01-07'
     note: ''
 - employee_code: HL016
+  work_email: hl016@helin-retail.example.com
   grade: 课组长
   hired_on: '2020-03-09'
   reports_to: HL013
@@ -323,6 +339,7 @@
     valid_until: '2027-04-20'
     note: ''
 - employee_code: HL017
+  work_email: hl017@helin-retail.example.com
   grade: 店员二级
   hired_on: '2021-09-13'
   reports_to: HL015
@@ -340,6 +357,7 @@
     valid_until: '2027-06-02'
     note: ''
 - employee_code: HL018
+  work_email: hl018@helin-retail.example.com
   grade: 厂家派驻岗
   hired_on: '2025-04-07'
   reports_to: HL015
@@ -357,6 +375,7 @@
     valid_until: '2027-04-01'
     note: 由品牌厂家组织办理，门店留存复印件
 - employee_code: HL019
+  work_email: hl019@helin-retail.example.com
   grade: 店员一级
   hired_on: '2024-02-19'
   reports_to: HL013
@@ -376,6 +395,7 @@
     valid_until: '2026-07-14'
     note: 离职时未续办
 - employee_code: HL020
+  work_email: hl020@helin-retail.example.com
   grade: M3
   hired_on: '2017-11-20'
   reports_to: null
@@ -389,6 +409,7 @@
   external_accounts: []
   certifications: []
 - employee_code: HL021
+  work_email: hl021@helin-retail.example.com
   grade: P4
   hired_on: '2020-05-25'
   reports_to: HL020
@@ -406,6 +427,7 @@
     valid_until: '2028-08-11'
     note: ''
 - employee_code: HL022
+  work_email: hl022@helin-retail.example.com
   grade: P3
   hired_on: '2022-03-14'
   reports_to: HL020
@@ -423,6 +445,7 @@
     valid_until: '2028-08-11'
     note: ''
 - employee_code: HL023
+  work_email: hl023@helin-retail.example.com
   grade: P3
   hired_on: '2023-01-09'
   reports_to: HL020
@@ -436,6 +459,7 @@
   external_accounts: []
   certifications: []
 - employee_code: HL024
+  work_email: hl024@helin-retail.example.com
   grade: M3
   hired_on: '2018-08-13'
   reports_to: null
@@ -449,6 +473,7 @@
   external_accounts: []
   certifications: []
 - employee_code: HL025
+  work_email: hl025@helin-retail.example.com
   grade: P3
   hired_on: '2021-12-06'
   reports_to: HL024
@@ -462,6 +487,7 @@
   external_accounts: []
   certifications: []
 - employee_code: HL026
+  work_email: hl026@helin-retail.example.com
   grade: P2
   hired_on: '2023-09-18'
   reports_to: HL024
@@ -475,6 +501,7 @@
   external_accounts: []
   certifications: []
 - employee_code: HL027
+  work_email: hl027@helin-retail.example.com
   grade: P2
   hired_on: '2024-06-24'
   reports_to: HL024

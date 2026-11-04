@@ -38,6 +38,7 @@ class AccountPublic(BaseModel):
     user_id: UUID
     username: str
     email: str | None
+    email_login: bool
     status: AccountStatus
     last_login_at: datetime | None
 

@@ -66,13 +66,13 @@ UTF-8 无 BOM，逗号分隔，表头固定为 12 列：
 
 | 邮箱 | 系统角色 | 员工 | 说明 |
 | --- | --- | --- | --- |
-| `shao.yun@qiguang-aiot.example.com` | `org_admin` | QG025 邵昀 | 综合管理部 IT 管理员，不是部门负责人；全企业唯一的 org_admin |
-| `jiang.muchuan@qiguang-aiot.example.com` | `dept_manager` | QG001 蒋沐川 | 硬件研发部 |
-| `shao.yan@qiguang-aiot.example.com` | `dept_manager` | QG006 邵衍 | 嵌入式软件部 |
-| `nie.yunshu@qiguang-aiot.example.com` | `dept_manager` | QG011 聂云舒 | 端侧算法部 |
-| `fu.qi@qiguang-aiot.example.com` | `dept_manager` | QG016 傅岐 | 测试与认证部 |
-| `chu.mingye@qiguang-aiot.example.com` | `dept_manager` | QG020 褚明野 | 供应链与制造工程部 |
-| `wei.zhiyu@qiguang-aiot.example.com` | `dept_manager` | QG024 魏芝瑜 | 综合管理部 |
+| `qg025@qiguang-aiot.example.com` | `org_admin` | QG025 邵昀 | 综合管理部 IT 管理员，不是部门负责人；全企业唯一的 org_admin |
+| `qg001@qiguang-aiot.example.com` | `dept_manager` | QG001 蒋沐川 | 硬件研发部 |
+| `qg006@qiguang-aiot.example.com` | `dept_manager` | QG006 邵衍 | 嵌入式软件部 |
+| `qg011@qiguang-aiot.example.com` | `dept_manager` | QG011 聂云舒 | 端侧算法部 |
+| `qg016@qiguang-aiot.example.com` | `dept_manager` | QG016 傅岐 | 测试与认证部 |
+| `qg020@qiguang-aiot.example.com` | `dept_manager` | QG020 褚明野 | 供应链与制造工程部 |
+| `qg024@qiguang-aiot.example.com` | `dept_manager` | QG024 魏芝瑜 | 综合管理部 |
 | 其余 19 位在职员工 | 无 role | — | 普通员工账号 |
 
 ## 能力词典

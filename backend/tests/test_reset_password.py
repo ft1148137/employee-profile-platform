@@ -29,7 +29,7 @@ def test_reset_password(
 ) -> None:
     orgs, _, _, users = request.getfixturevalue("tenant_data")
     user = users[5]
-    user.username = f"Cli-{user.id}"
+    user.username = str(user.email).lower()
     old_password = "Old-password-123"
     user.hashed_password = get_password_hash(old_password)
     user.password_changed_at = utc_now() - timedelta(minutes=1)
@@ -98,6 +98,7 @@ def test_disabled_and_missing(
     request: pytest.FixtureRequest, db: Session, caplog: pytest.LogCaptureFixture
 ) -> None:
     user = request.getfixturevalue("tenant_data")[3][4]
+    user.username = str(user.email).lower()
     user.is_active = False
     db.add(user)
     db.commit()

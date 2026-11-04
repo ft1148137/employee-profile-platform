@@ -1,4 +1,5 @@
 - employee_code: LC001
+  work_email: lc001@lancheng-bank.example.com
   grade: 资深经理
   hired_on: '2012-03-05'
   reports_to: null
@@ -16,6 +17,7 @@
     valid_until: null
     note: ''
 - employee_code: LC002
+  work_email: lc002@lancheng-bank.example.com
   grade: 高级经理
   hired_on: '2017-04-10'
   reports_to: LC001
@@ -29,6 +31,7 @@
   external_accounts: []
   certifications: []
 - employee_code: LC003
+  work_email: lc003@lancheng-bank.example.com
   grade: 经理
   hired_on: '2019-08-19'
   reports_to: LC001
@@ -44,6 +47,7 @@
     account_id: cr.sys.haojun
   certifications: []
 - employee_code: LC004
+  work_email: lc004@lancheng-bank.example.com
   grade: 经理
   hired_on: '2021-02-22'
   reports_to: LC001
@@ -59,6 +63,7 @@
     account_id: tr.admin.wen
   certifications: []
 - employee_code: LC005
+  work_email: lc005@lancheng-bank.example.com
   grade: 资深经理
   hired_on: '2011-07-01'
   reports_to: null
@@ -78,6 +83,7 @@
     valid_until: null
     note: ''
 - employee_code: LC006
+  work_email: lc006@lancheng-bank.example.com
   grade: 高级经理
   hired_on: '2014-09-01'
   reports_to: LC005
@@ -97,6 +103,7 @@
     valid_until: null
     note: ''
 - employee_code: LC007
+  work_email: lc007@lancheng-bank.example.com
   grade: 经理
   hired_on: '2020-06-15'
   reports_to: LC005
@@ -116,6 +123,7 @@
     valid_until: null
     note: ''
 - employee_code: LC008
+  work_email: lc008@lancheng-bank.example.com
   grade: 经理
   hired_on: '2018-11-05'
   reports_to: LC005
@@ -131,6 +139,7 @@
     account_id: cr.yinch
   certifications: []
 - employee_code: LC009
+  work_email: lc009@lancheng-bank.example.com
   grade: 经理
   hired_on: '2026-09-14'
   reports_to: LC005
@@ -150,6 +159,7 @@
     valid_until: null
     note: 入职材料已登记，信贷系统账号已开立但尚未产生业务记录
 - employee_code: LC010
+  work_email: lc010@lancheng-bank.example.com
   grade: 资深经理
   hired_on: '2013-05-20'
   reports_to: null
@@ -169,6 +179,7 @@
     valid_until: null
     note: ''
 - employee_code: LC011
+  work_email: lc011@lancheng-bank.example.com
   grade: 高级经理
   hired_on: '2016-10-10'
   reports_to: LC010
@@ -184,6 +195,7 @@
     account_id: cr.ruanzw
   certifications: []
 - employee_code: LC012
+  work_email: lc012@lancheng-bank.example.com
   grade: 经理
   hired_on: '2019-03-11'
   reports_to: LC010
@@ -203,6 +215,7 @@
     valid_until: null
     note: ''
 - employee_code: LC013
+  work_email: lc013@lancheng-bank.example.com
   grade: 经理
   hired_on: '2021-07-01'
   reports_to: LC010
@@ -224,6 +237,7 @@
     valid_until: null
     note: ''
 - employee_code: LC014
+  work_email: lc014@lancheng-bank.example.com
   grade: 经理
   hired_on: '2017-08-01'
   reports_to: LC010
@@ -243,6 +257,7 @@
     valid_until: null
     note: ''
 - employee_code: LC015
+  work_email: lc015@lancheng-bank.example.com
   grade: 资深经理
   hired_on: '2010-04-12'
   reports_to: null
@@ -262,6 +277,7 @@
     valid_until: null
     note: ''
 - employee_code: LC016
+  work_email: lc016@lancheng-bank.example.com
   grade: 高级经理
   hired_on: '2015-09-01'
   reports_to: LC015
@@ -283,6 +299,7 @@
     valid_until: null
     note: ''
 - employee_code: LC017
+  work_email: lc017@lancheng-bank.example.com
   grade: 经理
   hired_on: '2018-03-19'
   reports_to: LC015
@@ -302,6 +319,7 @@
     valid_until: null
     note: ''
 - employee_code: LC018
+  work_email: lc018@lancheng-bank.example.com
   grade: 经理
   hired_on: '2020-09-07'
   reports_to: LC015
@@ -317,6 +335,7 @@
     account_id: cr.peily
   certifications: []
 - employee_code: LC019
+  work_email: lc019@lancheng-bank.example.com
   grade: 经理
   hired_on: '2022-04-06'
   reports_to: LC015
@@ -336,6 +355,7 @@
     valid_until: '2026-11-17'
     note: 年度必修培训合格记录，需每年复训
 - employee_code: LC020
+  work_email: lc020@lancheng-bank.example.com
   grade: 资深经理
   hired_on: '2012-11-01'
   reports_to: null
@@ -351,6 +371,7 @@
     account_id: ops.yuh
   certifications: []
 - employee_code: LC021
+  work_email: lc021@lancheng-bank.example.com
   grade: 经理
   hired_on: '2017-06-05'
   reports_to: LC020
@@ -366,6 +387,7 @@
     account_id: ops.xiz
   certifications: []
 - employee_code: LC022
+  work_email: lc022@lancheng-bank.example.com
   grade: 高级经理
   hired_on: '2014-02-17'
   reports_to: LC020
@@ -385,6 +407,7 @@
     valid_until: null
     note: ''
 - employee_code: LC023
+  work_email: lc023@lancheng-bank.example.com
   grade: 经理
   hired_on: '2019-10-21'
   reports_to: LC020
@@ -400,6 +423,7 @@
     account_id: ops.fangn
   certifications: []
 - employee_code: LC024
+  work_email: lc024@lancheng-bank.example.com
   grade: 资深经理
   hired_on: '2011-09-01'
   reports_to: null
@@ -421,6 +445,7 @@
     valid_until: null
     note: ''
 - employee_code: LC025
+  work_email: lc025@lancheng-bank.example.com
   grade: 经理
   hired_on: '2018-07-02'
   reports_to: LC024
@@ -436,6 +461,7 @@
     account_id: cr.qiaot
   certifications: []
 - employee_code: LC026
+  work_email: lc026@lancheng-bank.example.com
   grade: 经理
   hired_on: '2016-04-11'
   reports_to: LC024
@@ -461,6 +487,7 @@
     valid_until: null
     note: 转岗后考取
 - employee_code: LC027
+  work_email: lc027@lancheng-bank.example.com
   grade: 柜员A级
   hired_on: '2015-12-01'
   reports_to: LC024
@@ -480,6 +507,7 @@
     valid_until: null
     note: ''
 - employee_code: LC028
+  work_email: lc028@lancheng-bank.example.com
   grade: 柜员B级
   hired_on: '2022-08-15'
   reports_to: LC024
@@ -495,6 +523,7 @@
     account_id: T0245
   certifications: []
 - employee_code: LC029
+  work_email: lc029@lancheng-bank.example.com
   grade: 柜员C级
   hired_on: '2021-03-01'
   reports_to: LC024

@@ -63,12 +63,12 @@ UTF-8 无 BOM，逗号分隔，表头固定为 12 列：
 
 | 邮箱 | 系统角色 | 员工 | 说明 |
 | --- | --- | --- | --- |
-| `kan.ning@helin-retail.example.com` | org_admin | HL025 阚宁 | 人力与信息部信息专员，全企业唯一的企业管理员，不是部门负责人 |
-| `qiao.yanqiu@helin-retail.example.com` | dept_manager | HL001 乔砚秋 | 东城区域运营部负责人 |
-| `lu.simian@helin-retail.example.com` | dept_manager | HL006 鲁思勉 | 滨江店负责人 |
-| `meng.xiaoqu@helin-retail.example.com` | dept_manager | HL013 蒙晓渠 | 南湖店负责人 |
-| `dou.jianqing@helin-retail.example.com` | dept_manager | HL020 窦见青 | 商品采购部负责人 |
-| `xiang.hemiao@helin-retail.example.com` | dept_manager | HL024 项禾苗 | 人力与信息部负责人 |
+| `hl025@helin-retail.example.com` | org_admin | HL025 阚宁 | 人力与信息部信息专员，全企业唯一的企业管理员，不是部门负责人 |
+| `hl001@helin-retail.example.com` | dept_manager | HL001 乔砚秋 | 东城区域运营部负责人 |
+| `hl006@helin-retail.example.com` | dept_manager | HL006 鲁思勉 | 滨江店负责人 |
+| `hl013@helin-retail.example.com` | dept_manager | HL013 蒙晓渠 | 南湖店负责人 |
+| `hl020@helin-retail.example.com` | dept_manager | HL020 窦见青 | 商品采购部负责人 |
+| `hl024@helin-retail.example.com` | dept_manager | HL024 项禾苗 | 人力与信息部负责人 |
 | 其余 20 位在职员工 | 普通员工 | HL002–HL005、HL007–HL012、HL014–HL018、HL021–HL023、HL026–HL027 | 账号无 role 字段 |
 
 ## 本企业的边界情况清单

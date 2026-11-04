@@ -1,27 +1,27 @@
 ﻿工号,姓名,部门,职位,上级工号,邮箱
-QG001,蒋沐川,硬件研发部,硬件研发部负责人,,jiang.muchuan@qiguang-aiot.example.com
-QG002,乔砚之,硬件研发部,高级硬件工程师,QG001,qiao.yanzhi@qiguang-aiot.example.com
-QG003,苏棠,硬件研发部,硬件工程师（电源与防护）,QG001,su.tang@qiguang-aiot.example.com
-QG004,项澄宇,硬件研发部,结构工程师,QG001,xiang.chengyu@qiguang-aiot.example.com
-QG005,郗嘉禾,硬件研发部,硬件实习生,QG002,xi.jiahe@qiguang-aiot.example.com
-QG006,邵衍,嵌入式软件部,嵌入式软件部负责人,,shao.yan@qiguang-aiot.example.com
-QG007,唐知野,嵌入式软件部,固件工程师,QG006,tang.zhiye@qiguang-aiot.example.com
-QG008,冉苜,嵌入式软件部,BSP 与驱动工程师,QG006,ran.mu@qiguang-aiot.example.com
-QG009,文瀚,嵌入式软件部,固件工程师（相机与 ISP）,QG006,wen.han@qiguang-aiot.example.com
-QG011,聂云舒,端侧算法部,端侧算法部负责人,,nie.yunshu@qiguang-aiot.example.com
-QG012,阚屿,端侧算法部,算法工程师（模型部署）,QG011,kan.yu@qiguang-aiot.example.com
-QG013,花晓渝,端侧算法部,算法工程师（模型训练）,QG011,hua.xiaoyu@qiguang-aiot.example.com
-QG014,卞知吟,端侧算法部,算法工程师,QG011,bian.zhiyin@qiguang-aiot.example.com
-QG015,殷朗,端侧算法部,算法工程师（NPU 性能）,QG011,yin.lang@qiguang-aiot.example.com
-QG016,傅岐,测试与认证部,测试与认证部负责人,,fu.qi@qiguang-aiot.example.com
-QG017,晏清和,测试与认证部,EMC 工程师,QG016,yan.qinghe@qiguang-aiot.example.com
-QG018,席南,测试与认证部,可靠性测试工程师,QG016,xi.nan@qiguang-aiot.example.com
-QG019,邓寒,测试与认证部,软件测试工程师,QG016,deng.han@qiguang-aiot.example.com
-QG020,褚明野,供应链与制造工程部,供应链与制造工程部负责人,,chu.mingye@qiguang-aiot.example.com
-QG021,卓蔚,供应链与制造工程部,制造工程师（DFM）,QG020,zhuo.wei@qiguang-aiot.example.com
-QG022,单嘉宁,供应链与制造工程部,NPI 工程师,QG020,shan.jianing@qiguang-aiot.example.com
-QG023,翁沐,供应链与制造工程部,元器件与变更工程师,QG020,weng.mu@qiguang-aiot.example.com
-QG024,魏芝瑜,综合管理部,综合管理部负责人,,wei.zhiyu@qiguang-aiot.example.com
-QG025,邵昀,综合管理部,IT 管理员,QG024,shao.yun@qiguang-aiot.example.com
-QG026,费清禾,综合管理部,人力资源专员,QG024,fei.qinghe@qiguang-aiot.example.com
-QG027,罗歆,综合管理部,行政与采购专员,QG024,luo.xin@qiguang-aiot.example.com
+QG001,蒋沐川,硬件研发部,硬件研发部负责人,,qg001@qiguang-aiot.example.com
+QG002,乔砚之,硬件研发部,高级硬件工程师,QG001,qg002@qiguang-aiot.example.com
+QG003,苏棠,硬件研发部,硬件工程师（电源与防护）,QG001,qg003@qiguang-aiot.example.com
+QG004,项澄宇,硬件研发部,结构工程师,QG001,qg004@qiguang-aiot.example.com
+QG005,郗嘉禾,硬件研发部,硬件实习生,QG002,qg005@qiguang-aiot.example.com
+QG006,邵衍,嵌入式软件部,嵌入式软件部负责人,,qg006@qiguang-aiot.example.com
+QG007,唐知野,嵌入式软件部,固件工程师,QG006,qg007@qiguang-aiot.example.com
+QG008,冉苜,嵌入式软件部,BSP 与驱动工程师,QG006,qg008@qiguang-aiot.example.com
+QG009,文瀚,嵌入式软件部,固件工程师（相机与 ISP）,QG006,qg009@qiguang-aiot.example.com
+QG011,聂云舒,端侧算法部,端侧算法部负责人,,qg011@qiguang-aiot.example.com
+QG012,阚屿,端侧算法部,算法工程师（模型部署）,QG011,qg012@qiguang-aiot.example.com
+QG013,花晓渝,端侧算法部,算法工程师（模型训练）,QG011,qg013@qiguang-aiot.example.com
+QG014,卞知吟,端侧算法部,算法工程师,QG011,qg014@qiguang-aiot.example.com
+QG015,殷朗,端侧算法部,算法工程师（NPU 性能）,QG011,qg015@qiguang-aiot.example.com
+QG016,傅岐,测试与认证部,测试与认证部负责人,,qg016@qiguang-aiot.example.com
+QG017,晏清和,测试与认证部,EMC 工程师,QG016,qg017@qiguang-aiot.example.com
+QG018,席南,测试与认证部,可靠性测试工程师,QG016,qg018@qiguang-aiot.example.com
+QG019,邓寒,测试与认证部,软件测试工程师,QG016,qg019@qiguang-aiot.example.com
+QG020,褚明野,供应链与制造工程部,供应链与制造工程部负责人,,qg020@qiguang-aiot.example.com
+QG021,卓蔚,供应链与制造工程部,制造工程师（DFM）,QG020,qg021@qiguang-aiot.example.com
+QG022,单嘉宁,供应链与制造工程部,NPI 工程师,QG020,qg022@qiguang-aiot.example.com
+QG023,翁沐,供应链与制造工程部,元器件与变更工程师,QG020,qg023@qiguang-aiot.example.com
+QG024,魏芝瑜,综合管理部,综合管理部负责人,,qg024@qiguang-aiot.example.com
+QG025,邵昀,综合管理部,IT 管理员,QG024,qg025@qiguang-aiot.example.com
+QG026,费清禾,综合管理部,人力资源专员,QG024,qg026@qiguang-aiot.example.com
+QG027,罗歆,综合管理部,行政与采购专员,QG024,qg027@qiguang-aiot.example.com

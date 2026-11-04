@@ -21,6 +21,10 @@ export type AccountPublic = {
      */
     email: string | null;
     /**
+     * Email Login
+     */
+    email_login: boolean;
+    /**
      * Status
      */
     status: 'none' | 'pending_first_login' | 'active' | 'disabled';

@@ -16,7 +16,7 @@ router = APIRouter(tags=["login"])
 
 class InvalidCredentials(HTTPException):
     def __init__(self) -> None:
-        super().__init__(status_code=400, detail="工号/邮箱或密码错误")
+        super().__init__(status_code=400, detail="邮箱或密码错误")
 
 
 class InactiveAccount(HTTPException):

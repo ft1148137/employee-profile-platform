@@ -14,8 +14,8 @@ from tests.utils.utils import random_email, random_lower_string
 
 @pytest.mark.parametrize("with_email", [False, True])
 def test_login_identifiers(client: TestClient, db: Session, with_email: bool) -> None:
-    username = random_lower_string()
-    email = random_email() if with_email else None
+    username = random_email() if with_email else random_lower_string()
+    email = username if with_email else None
     password = random_lower_string()
     user = crud.create_user(
         session=db,
@@ -52,7 +52,7 @@ def test_failed_login_runs_dummy_verification(client: TestClient) -> None:
             data={"username": random_lower_string(), "password": "wrong-password"},
         )
         assert response.status_code == 400
-        assert response.json()["detail"] == "工号/邮箱或密码错误"
+        assert response.json()["detail"] == "邮箱或密码错误"
         assert verify.call_args.args[1] == crud.DUMMY_HASH
 
 
@@ -100,10 +100,6 @@ def test_removed_routes(client: TestClient, path: str) -> None:
 @pytest.mark.parametrize(
     "identifier",
     [
-        "admin",
-        "E01",
-        "e02",
-        "E05",
         "MANAGER.PLATFORM@DEMO.EXAMPLE.COM",
         "EMPLOYEE.PLATFORM@DEMO.EXAMPLE.COM",
         "EMPLOYEE.ALGORITHM@DEMO.EXAMPLE.COM",

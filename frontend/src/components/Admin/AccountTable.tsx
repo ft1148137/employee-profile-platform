@@ -88,7 +88,21 @@ export function AccountTable({
     {
       id: "username",
       header: "登录名",
-      cell: ({ row }) => row.original.account?.username ?? "—",
+      cell: ({ row }) => {
+        const account = row.original.account
+        return account ? (
+          <div>
+            {account.username}
+            {!account.email_login && (
+              <p className="text-xs text-muted-foreground">
+                缺少邮箱，补上后改为邮箱登录
+              </p>
+            )}
+          </div>
+        ) : (
+          "—"
+        )
+      },
     },
     {
       id: "last_login",

@@ -81,13 +81,15 @@ docker compose up -d --wait
 
 | 登录名 | 身份 | 登录后可见内容 |
 | --- | --- | --- |
-| `admin` | 企业管理员 | 全部 12 名员工及画像；自述和经理评价显示为受限，不能读正文 |
-| `E01` | 平台研发部经理，E01 林澈 | 平台研发部 3 名员工及其自述、经理评价 |
-| `E02` | 员工 E02 张伟 | 仅本人画像；有两个已发布版本，可对比历史 |
-| `E05` | 员工 E05 张伟 | 仅本人画像；与 E02 同名，但身份独立 |
-| `superadmin` | 平台超管，同时获授演示组织企业管理员 | 平台账号管理和演示组织全部画像；受限证据仍不能读正文 |
+| `admin@demo.example.com` | 企业管理员 | 全部 12 名员工及画像；自述和经理评价显示为受限，不能读正文 |
+| `manager.platform@demo.example.com` | 平台研发部经理，E01 林澈 | 平台研发部 3 名员工及其自述、经理评价 |
+| `employee.platform@demo.example.com` | 员工 E02 张伟 | 仅本人画像；有两个已发布版本，可对比历史 |
+| `employee.algorithm@demo.example.com` | 员工 E05 张伟 | 仅本人画像；与 E02 同名，但身份独立 |
+| `admin@example.com` | 平台超管，同时获授演示组织企业管理员 | 平台账号管理和演示组织全部画像；受限证据仍不能读正文 |
 
-也可以用账号邮箱登录，工号与邮箱均忽略大小写。最后一个账号的登录名由 `FIRST_SUPERUSER_USERNAME` 配置（默认 `superadmin`），邮箱和密码使用 `FIRST_SUPERUSER` / `FIRST_SUPERUSER_PASSWORD`，默认密码 **`changethis`**。平台超管本身不绕过组织权限，演示初始化显式授予了企业管理员角色。更改 `.env` 不会修改已导入账号的密码。
+登录名就是邮箱，比较时忽略首尾空格和大小写。最后一个账号的邮箱和密码使用 `FIRST_SUPERUSER` / `FIRST_SUPERUSER_PASSWORD`，默认密码 **`changethis`**。平台超管本身不绕过组织权限，演示初始化显式授予了企业管理员角色。更改 `.env` 不会修改已导入账号的密码。
+
+已有演示库升级时，关联员工的三个账号按员工原有工作邮箱迁移为 `employee01@demo.example.com`、`employee02@demo.example.com`、`employee05@demo.example.com`；没有员工关联的旧管理员保留原登录名。重新导入演示数据会复用这些账号，不改密码。上表适用于全新演示库。
 
 ### 演示停止、重置与冒烟测试
 
@@ -163,10 +165,10 @@ docker compose create backend worker prestart
 普通员工由企业管理员在网页重置。最后一名管理员忘记密码时，由部署者在安装目录执行：
 
 ```bash
-docker compose exec -T backend python -m app.cli reset-password admin
+docker compose exec -T backend python -m app.cli reset-password admin@example.com
 ```
 
-把 `admin` 换为实际登录名（不是邮箱）。命令仅打印这一次随机新密码，立即使旧会话失效并写审计，管理员下次登录必须改密。重置不会启用已停用账号。安全地单独转交新密码，不保留在共享日志里。
+把 `admin@example.com` 换为实际账号邮箱。命令仅打印这一次随机新密码，立即使旧会话失效并写审计，管理员下次登录必须改密。重置不会启用已停用账号。安全地单独转交新密码，不保留在共享日志里。
 
 默认一套部署服务一家企业。确需增加企业时：
 
@@ -174,7 +176,7 @@ docker compose exec -T backend python -m app.cli reset-password admin
 docker compose exec -T backend python -m app.cli setup-link --new-org
 ```
 
-用新链接建立独立企业。每家管理员登录名、所有员工工号和已填邮箱在整套部署中都必须唯一，不能给不同企业复用账号；保护规则会拒绝跨企业发放、重置或停用共享账号。不要靠更换工号绕过保护，应先核对人员身份。
+用新链接建立独立企业。每家管理员和员工的邮箱在整套部署中都必须唯一，工号只须在本企业内唯一，不能给不同企业复用账号；保护规则会拒绝跨企业发放、重置或停用共享账号。不要靠更换工号绕过保护，应先核对人员身份。
 
 ## 停止、重新启动与卸载
 

@@ -29,7 +29,7 @@ from tests.utils.migrations import migrate
 PREFIX = settings.API_V1_STR
 PAYLOAD = {
     "org_name": "  合成测试企业  ",
-    "admin_username": "  SetupAdmin  ",
+    "admin_username": "  SetupAdmin@Example.com  ",
     "admin_password": "synthetic-password-2026",
     "admin_full_name": "测试管理员",
 }
@@ -79,7 +79,7 @@ def test_initialize_and_authentication(setup_db: tuple[TestClient, Session]) -> 
     assert membership["employee_id"] is None
     assert membership["org"]["name"] == PAYLOAD["org_name"].strip()
     user = session.exec(select(User)).one()
-    assert user.username == "SetupAdmin"
+    assert user.username == user.email == "setupadmin@example.com"
     assert not user.is_superuser and not user.must_change_password
     assert user.password_changed_at is not None
     assert verify_password(PAYLOAD["admin_password"], user.hashed_password)[0]
@@ -158,24 +158,25 @@ def test_existing_org_and_new_org(setup_db: tuple[TestClient, Session]) -> None:
     assert (
         client.post(
             f"{PREFIX}/setup/initialize",
-            json={**PAYLOAD, "admin_username": "second", "token": next_token},
+            json={
+                **PAYLOAD,
+                "admin_username": "second@example.com",
+                "token": next_token,
+            },
         ).status_code
         == 200
     )
     assert len(session.exec(select(Organization)).all()) == 2
 
 
-def test_admin_username_cannot_contain_at(setup_db: tuple[TestClient, Session]) -> None:
+def test_admin_username_requires_email(setup_db: tuple[TestClient, Session]) -> None:
     client, session = setup_db
     token = issue(client)
     response = client.post(
         f"{PREFIX}/setup/initialize",
-        json={**PAYLOAD, "admin_username": "it@example.com", "token": token},
+        json={**PAYLOAD, "admin_username": "not-an-email", "token": token},
     )
-    assert response.status_code == 400
-    assert response.json() == {
-        "detail": "管理员登录名不能包含 @，请用字母或数字，例如 admin"
-    }
+    assert response.status_code == 422
     assert not session.exec(select(Organization)).all()
     assert not session.exec(select(User)).all()
     assert not session.exec(select(AuditEvent)).all()
@@ -190,7 +191,7 @@ def test_admin_username_cannot_contain_at(setup_db: tuple[TestClient, Session]) 
 
 def test_username_conflict_is_atomic(setup_db: tuple[TestClient, Session]) -> None:
     client, session = setup_db
-    session.add(User(username="setupadmin", hashed_password="unused"))
+    session.add(User(username="setupadmin@example.com", hashed_password="unused"))
     session.commit()
     token = issue(client)
     response = client.post(
@@ -204,7 +205,7 @@ def test_username_conflict_is_atomic(setup_db: tuple[TestClient, Session]) -> No
     assert (
         client.post(
             f"{PREFIX}/setup/initialize",
-            json={**PAYLOAD, "admin_username": "available", "token": token},
+            json={**PAYLOAD, "admin_username": "available@example.com", "token": token},
         ).status_code
         == 200
     )

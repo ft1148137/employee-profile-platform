@@ -1,4 +1,5 @@
 - employee_code: QG001
+  work_email: qg001@qiguang-aiot.example.com
   grade: M3
   hired_on: '2019-03-11'
   reports_to: null
@@ -18,6 +19,7 @@
     valid_until: null
     note: 长期有效
 - employee_code: QG002
+  work_email: qg002@qiguang-aiot.example.com
   grade: P7
   hired_on: '2020-07-06'
   reports_to: QG001
@@ -41,6 +43,7 @@
     valid_until: null
     note: 培训证书，不是执业资质
 - employee_code: QG003
+  work_email: qg003@qiguang-aiot.example.com
   grade: P6
   hired_on: '2021-09-13'
   reports_to: QG001
@@ -60,6 +63,7 @@
     valid_until: '2025-09-30'
     note: 已过有效期，未参加复训
 - employee_code: QG004
+  work_email: qg004@qiguang-aiot.example.com
   grade: P6
   hired_on: '2021-04-19'
   reports_to: QG001
@@ -79,6 +83,7 @@
     valid_until: null
     note: ''
 - employee_code: QG005
+  work_email: qg005@qiguang-aiot.example.com
   grade: 实习生
   hired_on: '2026-07-06'
   reports_to: QG002
@@ -95,6 +100,7 @@
     account_id: xi.jiahe
   certifications: []
 - employee_code: QG006
+  work_email: qg006@qiguang-aiot.example.com
   grade: M3
   hired_on: '2018-11-05'
   reports_to: null
@@ -114,6 +120,7 @@
     valid_until: null
     note: ''
 - employee_code: QG007
+  work_email: qg007@qiguang-aiot.example.com
   grade: P6
   hired_on: '2020-03-16'
   reports_to: QG006
@@ -133,6 +140,7 @@
     valid_until: null
     note: ''
 - employee_code: QG008
+  work_email: qg008@qiguang-aiot.example.com
   grade: P7
   hired_on: '2021-06-21'
   reports_to: QG006
@@ -152,6 +160,7 @@
     valid_until: null
     note: ''
 - employee_code: QG009
+  work_email: qg009@qiguang-aiot.example.com
   grade: P5
   hired_on: '2022-08-15'
   reports_to: QG006
@@ -167,6 +176,7 @@
     account_id: wen.han
   certifications: []
 - employee_code: QG010
+  work_email: qg010@qiguang-aiot.example.com
   grade: P6
   hired_on: '2019-09-02'
   reports_to: QG006
@@ -186,6 +196,7 @@
     valid_until: null
     note: ''
 - employee_code: QG011
+  work_email: qg011@qiguang-aiot.example.com
   grade: M3
   hired_on: '2019-05-20'
   reports_to: null
@@ -205,6 +216,7 @@
     valid_until: null
     note: ''
 - employee_code: QG012
+  work_email: qg012@qiguang-aiot.example.com
   grade: P6
   hired_on: '2021-02-22'
   reports_to: QG011
@@ -218,6 +230,7 @@
   external_accounts: []
   certifications: []
 - employee_code: QG013
+  work_email: qg013@qiguang-aiot.example.com
   grade: P5
   hired_on: '2022-03-07'
   reports_to: QG011
@@ -235,6 +248,7 @@
     valid_until: '2025-08-25'
     note: 已过有效期；培训证书不代表当前能力
 - employee_code: QG014
+  work_email: qg014@qiguang-aiot.example.com
   grade: P5
   hired_on: '2026-09-14'
   reports_to: QG011
@@ -252,6 +266,7 @@
     valid_until: null
     note: 入职材料已登记
 - employee_code: QG015
+  work_email: qg015@qiguang-aiot.example.com
   grade: P7
   hired_on: '2020-10-12'
   reports_to: QG011
@@ -265,6 +280,7 @@
   external_accounts: []
   certifications: []
 - employee_code: QG016
+  work_email: qg016@qiguang-aiot.example.com
   grade: M2
   hired_on: '2018-06-25'
   reports_to: null
@@ -284,6 +300,7 @@
     valid_until: null
     note: 培训证书；是否能独立判断认证路径需另行核实
 - employee_code: QG017
+  work_email: qg017@qiguang-aiot.example.com
   grade: P6
   hired_on: '2021-11-08'
   reports_to: QG016
@@ -303,6 +320,7 @@
     valid_until: '2027-03-24'
     note: ''
 - employee_code: QG018
+  work_email: qg018@qiguang-aiot.example.com
   grade: P5
   hired_on: '2022-05-16'
   reports_to: QG016
@@ -322,6 +340,7 @@
     valid_until: null
     note: ''
 - employee_code: QG019
+  work_email: qg019@qiguang-aiot.example.com
   grade: P6
   hired_on: '2021-07-12'
   reports_to: QG016
@@ -346,6 +365,7 @@
     valid_until: null
     note: ''
 - employee_code: QG020
+  work_email: qg020@qiguang-aiot.example.com
   grade: M2
   hired_on: '2019-01-07'
   reports_to: null
@@ -369,6 +389,7 @@
     valid_until: null
     note: ''
 - employee_code: QG021
+  work_email: qg021@qiguang-aiot.example.com
   grade: P6
   hired_on: '2020-09-14'
   reports_to: QG020
@@ -388,6 +409,7 @@
     valid_until: '2026-07-14'
     note: 已过有效期，复审材料在准备中
 - employee_code: QG022
+  work_email: qg022@qiguang-aiot.example.com
   grade: P6
   hired_on: '2021-03-29'
   reports_to: QG020
@@ -407,6 +429,7 @@
     valid_until: null
     note: ''
 - employee_code: QG023
+  work_email: qg023@qiguang-aiot.example.com
   grade: P5
   hired_on: '2022-11-21'
   reports_to: QG020
@@ -422,6 +445,7 @@
     account_id: weng.mu
   certifications: []
 - employee_code: QG024
+  work_email: qg024@qiguang-aiot.example.com
   grade: M2
   hired_on: '2019-06-17'
   reports_to: null
@@ -439,6 +463,7 @@
     valid_until: null
     note: ''
 - employee_code: QG025
+  work_email: qg025@qiguang-aiot.example.com
   grade: P6
   hired_on: '2020-12-07'
   reports_to: QG024
@@ -458,6 +483,7 @@
     valid_until: null
     note: ''
 - employee_code: QG026
+  work_email: qg026@qiguang-aiot.example.com
   grade: P5
   hired_on: '2023-03-13'
   reports_to: QG024
@@ -475,6 +501,7 @@
     valid_until: null
     note: ''
 - employee_code: QG027
+  work_email: qg027@qiguang-aiot.example.com
   grade: P5
   hired_on: '2022-06-06'
   reports_to: QG024

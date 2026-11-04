@@ -106,20 +106,23 @@ def load_demo(
             user = session.exec(select(User).where(User.email == email)).one_or_none()
             if user is None and email == settings.FIRST_SUPERUSER:
                 raise SeedError("Run initial_data.py before loading demo data")
-            counts["user"]["existing" if user else "added"] += 1
             account = accounts.get(email)
             account_employee = (
                 employees[account.employee_code]
                 if account and account.employee_code
                 else None
             )
-            username = (
-                settings.FIRST_SUPERUSER_USERNAME
-                if email == settings.FIRST_SUPERUSER
-                else account_employee.employee_code
-                if account_employee and account_employee.employee_code
-                else email.split("@")[0]
-            )
+            if user is None and account_employee is not None:
+                user = session.exec(
+                    select(User)
+                    .join(OrgMembership)
+                    .where(
+                        OrgMembership.org_id == org.id,
+                        OrgMembership.employee_id == account_employee.id,
+                    )
+                ).one_or_none()
+            counts["user"]["existing" if user else "added"] += 1
+            username = email.strip().lower()
             if user is None:
                 user = User(
                     username=username,
@@ -131,9 +134,6 @@ def load_demo(
                 )
                 session.add(user)
                 session.flush()
-            if user.username == email:
-                user.username = username
-                session.add(user)
             if not user.full_name:
                 user.full_name = (
                     account_employee.display_name if account_employee else "企业管理员"

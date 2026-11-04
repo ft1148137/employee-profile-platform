@@ -13,8 +13,8 @@ const invalidLink =
 async function fillSetup(page: Page) {
   await page.getByLabel("企业名称", { exact: true }).fill("合成测试医院")
   await page
-    .getByLabel("管理员登录名", { exact: true })
-    .fill(`setup-${crypto.randomUUID()}`)
+    .getByLabel("管理员邮箱", { exact: true })
+    .fill(`setup-${crypto.randomUUID()}@example.com`)
   await page.getByLabel("密码", { exact: true }).fill("synthetic-password-2026")
   await page
     .getByLabel("确认密码", { exact: true })
@@ -86,7 +86,7 @@ test("complete setup with 30 employees, download accounts and first employee log
   )
   expect(rows).toHaveLength(31)
   expect(rows[0]).toEqual([
-    "工号",
+    "登录名",
     "姓名",
     "部门",
     "登录地址",
@@ -94,7 +94,7 @@ test("complete setup with 30 employees, download accounts and first employee log
     "备注",
   ])
   expect(new Set(rows.slice(1).map((row) => row[0])).size).toBe(30)
-  const employee = rows.find((row) => row[0] === "XY002")!
+  const employee = rows.find((row) => row[0] === "qing@example.com")!
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "关闭", exact: true })
@@ -188,15 +188,15 @@ test("initialize, preview and replace dictionary, persist progress and reject re
   const { token } = await response.json()
   await page.goto(`/setup#token=${token}`)
   await expect(page).toHaveURL("/setup")
-  await expect(page.getByLabel("管理员登录名")).toHaveValue("admin")
+  await expect(page.getByLabel("管理员邮箱")).toHaveValue("")
   await fillSetup(page)
-  const username = page.getByLabel("管理员登录名", { exact: true })
+  const username = page.getByLabel("管理员邮箱", { exact: true })
   const validUsername = await username.inputValue()
-  await username.fill("it@example.com")
+  await username.fill("invalid-email")
   await page.getByRole("button", { name: "创建企业并继续" }).click()
-  await expect(page.getByRole("alert")).toHaveText(
-    "管理员登录名不能包含 @，请用字母或数字，例如 admin",
-  )
+  expect(
+    await username.evaluate((input: HTMLInputElement) => input.validity.valid),
+  ).toBe(false)
   await username.fill(validUsername)
   await expectChineseCopy(page, ["admin"])
   await page.screenshot({

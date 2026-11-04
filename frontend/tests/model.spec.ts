@@ -16,7 +16,7 @@ test("model kinds, saved secret, destination changes and disabling preserve conf
     data: {
       token: (await initialized.json()).token,
       org_name: "模型设置合成企业",
-      admin_username: `model-${Date.now()}`,
+      admin_username: `model-${Date.now()}@example.com`,
       admin_password: "synthetic-model-password",
     },
   })

@@ -11,228 +11,228 @@ employees:
   department: 机加工车间
   display_name: 周立安
   title: 车间主任
-  work_email: zhou.lian@hengchuan-auto.example.com
+  work_email: hc001@hengchuan-auto.example.com
   account_id: M1001
 - employee_code: HC002
   department: 机加工车间
   display_name: 郭长河
   title: 一班班长
-  work_email: guo.changhe@hengchuan-auto.example.com
+  work_email: hc002@hengchuan-auto.example.com
   account_id: M1012
 - employee_code: HC003
   department: 机加工车间
   display_name: 范大勇
   title: 二班班长
-  work_email: fan.dayong@hengchuan-auto.example.com
+  work_email: hc003@hengchuan-auto.example.com
   account_id: M1013
 - employee_code: HC004
   department: 机加工车间
   display_name: 葛敏
   title: 数控车操作工
-  work_email: ge.min@hengchuan-auto.example.com
+  work_email: hc004@hengchuan-auto.example.com
   account_id: M1024
 - employee_code: HC005
   department: 机加工车间
   display_name: 时建波
   title: 加工中心操作工
-  work_email: shi.jianbo@hengchuan-auto.example.com
+  work_email: hc005@hengchuan-auto.example.com
   account_id: M1025
 - employee_code: HC006
   department: 机加工车间
   display_name: 卜志刚
   title: 磨工
-  work_email: bu.zhigang@hengchuan-auto.example.com
+  work_email: hc006@hengchuan-auto.example.com
   account_id: M1026
 - employee_code: HC007
   department: 机加工车间
   display_name: 雷小娥
   title: 去毛刺与装配操作工
-  work_email: lei.xiaoe@hengchuan-auto.example.com
+  work_email: hc007@hengchuan-auto.example.com
   account_id: M1027
 - employee_code: HC008
   department: 机加工车间
   display_name: 汪树林
   title: 物料员兼叉车司机
-  work_email: wang.shulin@hengchuan-auto.example.com
+  work_email: hc008@hengchuan-auto.example.com
   account_id: M1028
 - employee_code: HC009
   department: 机加工车间
   display_name: 邱子涵
   title: 机加工实习生
-  work_email: qiu.zihan@hengchuan-auto.example.com
+  work_email: hc009@hengchuan-auto.example.com
   account_id: M1029
 - employee_code: HC010
   department: 机加工车间
   display_name: 王德茂
   title: 调机技师
-  work_email: wang.demao@hengchuan-auto.example.com
+  work_email: hc010@hengchuan-auto.example.com
   account_id: M1030
 - employee_code: HC011
   department: 机加工车间
   display_name: 隋明辉
   title: 数控车操作工
-  work_email: sui.minghui@hengchuan-auto.example.com
+  work_email: hc011@hengchuan-auto.example.com
   account_id: M1031
 - employee_code: HC012
   department: 质量部
   display_name: 乔砚文
   title: 质量部经理
-  work_email: qiao.yanwen@hengchuan-auto.example.com
+  work_email: hc012@hengchuan-auto.example.com
   account_id: M2001
 - employee_code: HC013
   department: 质量部
   display_name: 陈懿
   title: 客户质量工程师
-  work_email: chen.yi@hengchuan-auto.example.com
+  work_email: hc013@hengchuan-auto.example.com
   account_id: M2012
 - employee_code: HC014
   department: 质量部
   display_name: 柯慧兰
   title: 过程检验员
-  work_email: ke.huilan@hengchuan-auto.example.com
+  work_email: hc014@hengchuan-auto.example.com
   account_id: M2013
 - employee_code: HC015
   department: 质量部
   display_name: 滕佳
   title: 终检与入库检验员
-  work_email: teng.jia@hengchuan-auto.example.com
+  work_email: hc015@hengchuan-auto.example.com
   account_id: M2014
 - employee_code: HC016
   department: 质量部
   display_name: 芮承宇
   title: 计量与三坐标测量员
-  work_email: rui.chengyu@hengchuan-auto.example.com
+  work_email: hc016@hengchuan-auto.example.com
   account_id: M2015
 - employee_code: HC017
   department: 工艺技术部
   display_name: 邢文勉
   title: 工艺技术部经理
-  work_email: xing.wenmian@hengchuan-auto.example.com
+  work_email: hc017@hengchuan-auto.example.com
   account_id: M3001
 - employee_code: HC018
   department: 工艺技术部
   display_name: 丁书彤
   title: 工艺工程师（制动件）
-  work_email: ding.shutong@hengchuan-auto.example.com
+  work_email: hc018@hengchuan-auto.example.com
   account_id: M3012
 - employee_code: HC019
   department: 工艺技术部
   display_name: 姜知遥
   title: 工艺工程师兼 CAM 编程
-  work_email: jiang.zhiyao@hengchuan-auto.example.com
+  work_email: hc019@hengchuan-auto.example.com
   account_id: M3013
 - employee_code: HC020
   department: 工艺技术部
   display_name: 仲启明
   title: 夹具与刀具工程师
-  work_email: zhong.qiming@hengchuan-auto.example.com
+  work_email: hc020@hengchuan-auto.example.com
   account_id: M3014
 - employee_code: HC021
   department: 设备动力部
   display_name: 聂长庚
   title: 设备动力部经理
-  work_email: nie.changgeng@hengchuan-auto.example.com
+  work_email: hc021@hengchuan-auto.example.com
   account_id: M4001
 - employee_code: HC022
   department: 设备动力部
   display_name: 蒯建军
   title: 机械维修技师
-  work_email: kuai.jianjun@hengchuan-auto.example.com
+  work_email: hc022@hengchuan-auto.example.com
   account_id: M4012
 - employee_code: HC023
   department: 设备动力部
   display_name: 宓海涛
   title: 电气维修技师
-  work_email: mi.haitao@hengchuan-auto.example.com
+  work_email: hc023@hengchuan-auto.example.com
   account_id: M4013
 - employee_code: HC024
   department: 设备动力部
   display_name: 胥文博
   title: TPM 点检员
-  work_email: xu.wenbo@hengchuan-auto.example.com
+  work_email: hc024@hengchuan-auto.example.com
   account_id: M4014
 - employee_code: HC025
   department: 人力行政部
   display_name: 甘慧
   title: 人力行政部经理
-  work_email: gan.hui@hengchuan-auto.example.com
+  work_email: hc025@hengchuan-auto.example.com
   account_id: M5001
 - employee_code: HC026
   department: 人力行政部
   display_name: 骆青桐
   title: 人事专员
-  work_email: luo.qingtong@hengchuan-auto.example.com
+  work_email: hc026@hengchuan-auto.example.com
   account_id: M5012
 - employee_code: HC027
   department: 人力行政部
   display_name: 虞延
   title: IT 与系统管理员
-  work_email: yu.yan@hengchuan-auto.example.com
+  work_email: hc027@hengchuan-auto.example.com
   account_id: M5013
 - employee_code: HC028
   department: 人力行政部
   display_name: 温嘉树
   title: 薪酬与培训专员
-  work_email: wen.jiashu@hengchuan-auto.example.com
+  work_email: hc028@hengchuan-auto.example.com
   account_id: M5014
 accounts:
-- email: zhou.lian@hengchuan-auto.example.com
+- email: hc001@hengchuan-auto.example.com
   employee_code: HC001
   role: dept_manager
-- email: guo.changhe@hengchuan-auto.example.com
+- email: hc002@hengchuan-auto.example.com
   employee_code: HC002
-- email: fan.dayong@hengchuan-auto.example.com
+- email: hc003@hengchuan-auto.example.com
   employee_code: HC003
-- email: ge.min@hengchuan-auto.example.com
+- email: hc004@hengchuan-auto.example.com
   employee_code: HC004
-- email: shi.jianbo@hengchuan-auto.example.com
+- email: hc005@hengchuan-auto.example.com
   employee_code: HC005
-- email: bu.zhigang@hengchuan-auto.example.com
+- email: hc006@hengchuan-auto.example.com
   employee_code: HC006
-- email: lei.xiaoe@hengchuan-auto.example.com
+- email: hc007@hengchuan-auto.example.com
   employee_code: HC007
-- email: wang.shulin@hengchuan-auto.example.com
+- email: hc008@hengchuan-auto.example.com
   employee_code: HC008
-- email: qiu.zihan@hengchuan-auto.example.com
+- email: hc009@hengchuan-auto.example.com
   employee_code: HC009
-- email: wang.demao@hengchuan-auto.example.com
+- email: hc010@hengchuan-auto.example.com
   employee_code: HC010
-- email: qiao.yanwen@hengchuan-auto.example.com
+- email: hc012@hengchuan-auto.example.com
   employee_code: HC012
   role: dept_manager
-- email: chen.yi@hengchuan-auto.example.com
+- email: hc013@hengchuan-auto.example.com
   employee_code: HC013
-- email: ke.huilan@hengchuan-auto.example.com
+- email: hc014@hengchuan-auto.example.com
   employee_code: HC014
-- email: teng.jia@hengchuan-auto.example.com
+- email: hc015@hengchuan-auto.example.com
   employee_code: HC015
-- email: rui.chengyu@hengchuan-auto.example.com
+- email: hc016@hengchuan-auto.example.com
   employee_code: HC016
-- email: xing.wenmian@hengchuan-auto.example.com
+- email: hc017@hengchuan-auto.example.com
   employee_code: HC017
   role: dept_manager
-- email: ding.shutong@hengchuan-auto.example.com
+- email: hc018@hengchuan-auto.example.com
   employee_code: HC018
-- email: jiang.zhiyao@hengchuan-auto.example.com
+- email: hc019@hengchuan-auto.example.com
   employee_code: HC019
-- email: zhong.qiming@hengchuan-auto.example.com
+- email: hc020@hengchuan-auto.example.com
   employee_code: HC020
-- email: nie.changgeng@hengchuan-auto.example.com
+- email: hc021@hengchuan-auto.example.com
   employee_code: HC021
   role: dept_manager
-- email: kuai.jianjun@hengchuan-auto.example.com
+- email: hc022@hengchuan-auto.example.com
   employee_code: HC022
-- email: mi.haitao@hengchuan-auto.example.com
+- email: hc023@hengchuan-auto.example.com
   employee_code: HC023
-- email: xu.wenbo@hengchuan-auto.example.com
+- email: hc024@hengchuan-auto.example.com
   employee_code: HC024
-- email: gan.hui@hengchuan-auto.example.com
+- email: hc025@hengchuan-auto.example.com
   employee_code: HC025
   role: dept_manager
-- email: luo.qingtong@hengchuan-auto.example.com
+- email: hc026@hengchuan-auto.example.com
   employee_code: HC026
   role: org_admin
-- email: yu.yan@hengchuan-auto.example.com
+- email: hc027@hengchuan-auto.example.com
   employee_code: HC027
-- email: wen.jiashu@hengchuan-auto.example.com
+- email: hc028@hengchuan-auto.example.com
   employee_code: HC028

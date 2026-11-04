@@ -71,12 +71,12 @@ UTF-8 无 BOM，逗号分隔，首行表头固定为 12 列：
 
 | 邮箱 | 身份 | 员工 | 部门 |
 | --- | --- | --- | --- |
-| `ying.nian@tinglan-university.example.com` | org_admin | TL025 应念 | 信息化办公室 |
-| `ouyang.yun@tinglan-university.example.com` | dept_manager | TL001 欧阳昀 | 计算机科学与技术学院 |
-| `zhuge.yan@tinglan-university.example.com` | dept_manager | TL008 诸葛彦 | 机械工程学院 |
-| `bai.song@tinglan-university.example.com` | dept_manager | TL014 柏松 | 学生工作部 |
-| `shangguan.ning@tinglan-university.example.com` | dept_manager | TL019 上官宁 | 科研处 |
-| `lang.jin@tinglan-university.example.com` | dept_manager | TL024 郎津 | 信息化办公室 |
+| `tl025@tinglan-university.example.com` | org_admin | TL025 应念 | 信息化办公室 |
+| `tl001@tinglan-university.example.com` | dept_manager | TL001 欧阳昀 | 计算机科学与技术学院 |
+| `tl008@tinglan-university.example.com` | dept_manager | TL008 诸葛彦 | 机械工程学院 |
+| `tl014@tinglan-university.example.com` | dept_manager | TL014 柏松 | 学生工作部 |
+| `tl019@tinglan-university.example.com` | dept_manager | TL019 上官宁 | 科研处 |
+| `tl024@tinglan-university.example.com` | dept_manager | TL024 郎津 | 信息化办公室 |
 | 其余 21 个邮箱 | 普通员工（不写 role） | TL002–TL007、TL009–TL013、TL015–TL018、TL020–TL023、TL026、TL027 | 各部门 |
 
 邮箱用姓名拼音生成，外籍教师 TL004 用英文名 `david.whitlock@`，是拼音规则的例外。

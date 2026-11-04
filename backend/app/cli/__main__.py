@@ -11,10 +11,10 @@ def main() -> int:
     setup.add_argument("--base-url")
     setup.add_argument("--new-org", action="store_true")
     reset = commands.add_parser("reset-password")
-    reset.add_argument("username")
+    reset.add_argument("email")
     args = parser.parse_args()
     if args.command == "reset-password":
-        return reset_password(args.username)
+        return reset_password(args.email)
     return setup_link(base_url=args.base_url, new_org=args.new_org)
 
 

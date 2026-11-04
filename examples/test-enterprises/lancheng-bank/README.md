@@ -67,13 +67,13 @@ UTF-8 无 BOM，逗号分隔，首行表头固定为 12 列：
 
 | 邮箱 | 系统角色 | 员工 | 说明 |
 | --- | --- | --- | --- |
-| `lin.yi@lancheng-bank.example.com` | org_admin | LC002 林漪 | 综合管理部（人力+科技）普通员工，不是部门负责人 |
-| `jiang.yunping@lancheng-bank.example.com` | dept_manager | LC001 蒋允平 | 综合管理部负责人 |
-| `fu.chengyan@lancheng-bank.example.com` | dept_manager | LC005 傅承砚 | 公司金融部负责人 |
-| `wei.cen@lancheng-bank.example.com` | dept_manager | LC010 韦岑 | 零售金融部负责人 |
-| `shao.yanqiu@lancheng-bank.example.com` | dept_manager | LC015 邵砚秋 | 风险合规部负责人 |
-| `yu.hong@lancheng-bank.example.com` | dept_manager | LC020 郁泓 | 运营管理部负责人 |
-| `nie.xingyuan@lancheng-bank.example.com` | dept_manager | LC024 聂行远 | 云溪支行行长，兼网点转型项目负责人 |
+| `lc002@lancheng-bank.example.com` | org_admin | LC002 林漪 | 综合管理部（人力+科技）普通员工，不是部门负责人 |
+| `lc001@lancheng-bank.example.com` | dept_manager | LC001 蒋允平 | 综合管理部负责人 |
+| `lc005@lancheng-bank.example.com` | dept_manager | LC005 傅承砚 | 公司金融部负责人 |
+| `lc010@lancheng-bank.example.com` | dept_manager | LC010 韦岑 | 零售金融部负责人 |
+| `lc015@lancheng-bank.example.com` | dept_manager | LC015 邵砚秋 | 风险合规部负责人 |
+| `lc020@lancheng-bank.example.com` | dept_manager | LC020 郁泓 | 运营管理部负责人 |
+| `lc024@lancheng-bank.example.com` | dept_manager | LC024 聂行远 | 云溪支行行长，兼网点转型项目负责人 |
 
 其余 20 名在职员工是普通员工账号（不写 role）。
 

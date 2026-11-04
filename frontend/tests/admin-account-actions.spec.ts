@@ -96,7 +96,7 @@ test("reset password once, disable and enable employee accounts", async ({
       .click()
   }
   try {
-    await login("E08", newPassword)
+    await login("employee08@demo.example.com", newPassword)
     await expect(employeePage).toHaveURL(/\/change-password$/)
     await context.clearCookies()
     await employeePage.evaluate(() => localStorage.clear())
@@ -119,7 +119,7 @@ test("reset password once, disable and enable employee accounts", async ({
     })
     await dialog.getByRole("button", { name: "确认停用" }).click()
     await expect(row("E09")).toContainText("已停用")
-    await login("E09", secret)
+    await login("employee09@demo.example.com", secret)
     await expect(
       employeePage.getByText("账号已停用，请联系企业管理员", { exact: true }),
     ).toBeVisible()
@@ -127,7 +127,7 @@ test("reset password once, disable and enable employee accounts", async ({
     await expectChineseCopy(page)
     await dialog.getByRole("button", { name: "确认启用" }).click()
     await expect(row("E09")).toContainText("待首次登录")
-    await login("E09", secret)
+    await login("employee09@demo.example.com", secret)
     await expect(employeePage).toHaveURL(/\/change-password$/)
   } finally {
     await context.close()
@@ -180,7 +180,10 @@ test("reset password survives refresh when the employee leaves the active filter
   expect(initial.ok()).toBeTruthy()
   const initialPassword = (await initial.json()).initial_password
   const login = await request.post("/api/v1/login/access-token", {
-    form: { username: "E08", password: initialPassword },
+    form: {
+      username: "employee08@demo.example.com",
+      password: initialPassword,
+    },
   })
   expect(login.ok()).toBeTruthy()
   const changed = await request.patch("/api/v1/users/me/password", {
@@ -223,7 +226,9 @@ test("reset password survives refresh when the employee leaves the active filter
   await expect(dialog.getByRole("heading")).toHaveText(
     `重置密码 · ${employee.display_name}`,
   )
-  await expect(dialog.getByText("登录名：E08", { exact: true })).toBeVisible()
+  await expect(
+    dialog.getByText("登录名：employee08@demo.example.com", { exact: true }),
+  ).toBeVisible()
   await expect(
     dialog.getByText(`姓名：${employee.display_name}`, { exact: true }),
   ).toBeVisible()

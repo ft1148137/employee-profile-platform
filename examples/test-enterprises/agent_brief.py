@@ -144,7 +144,7 @@ def brief(data: Loaded) -> str:
         lines += [
             f"### {code} {row.display_name}（{row.department} · {row.title}）",
             "",
-            f"- 登录：`{row.work_email}`"
+            f"- 邮箱登录（工号仅为员工编号）：`{row.work_email}`"
             if roster[code].status == "active"
             else "- 已离职，没有登录账号，只在历史记录里出现",
             f"- 表达风格：{usage.expression_style}",

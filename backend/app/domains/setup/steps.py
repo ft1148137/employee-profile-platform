@@ -172,7 +172,7 @@ STEPS = [
     SetupStep(
         "accounts",
         "生成员工账号",
-        "为有工号的在职员工生成账号",
+        "为有邮箱的在职员工生成账号",
         40,
         True,
         False,

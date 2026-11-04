@@ -51,7 +51,6 @@ class Settings(BaseSettings):
         return database_url
 
     EMAIL_TEST_USER: EmailStr = "test@example.com"
-    FIRST_SUPERUSER_USERNAME: str = "superadmin"
     FIRST_SUPERUSER: EmailStr | None = None
     FIRST_SUPERUSER_PASSWORD: str | None = None
 

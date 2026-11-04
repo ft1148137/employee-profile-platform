@@ -22,7 +22,7 @@ test("new enterprise imports Jira, drafts in setup and shows the employee their 
     data: {
       token: (await tokenResponse.json()).token,
       org_name: "合成测试青砾软件",
-      admin_username: username,
+      admin_username: `${username}@example.com`,
       admin_password: password,
       admin_full_name: "测试管理员",
     },
@@ -129,7 +129,7 @@ test("new enterprise imports Jira, drafts in setup and shows the employee their 
       step.key,
     ).toBeTruthy()
   }
-  await logInUser(page, username, password)
+  await logInUser(page, `${username}@example.com`, password)
   await expect(page).toHaveURL("/setup-wizard")
   await expect(
     page.getByRole("heading", { name: "生成初始画像", exact: true }),

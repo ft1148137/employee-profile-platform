@@ -71,12 +71,12 @@ UTF-8 无 BOM，逗号分隔，表头固定 12 列：
 
 | 角色 | 员工 | 邮箱 | 说明 |
 | --- | --- | --- | --- |
-| org_admin | LJ022 柳芊 | `liu.qian@lanjiang-grid.example.com` | 人力资源部人力资源专责，普通员工，不是部门负责人 |
-| dept_manager | LJ001 岑启舟 | `cen.qizhou@lanjiang-grid.example.com` | 变电检修中心主任 |
-| dept_manager | LJ008 邬守诚 | `wu.shoucheng@lanjiang-grid.example.com` | 输电运检中心主任 |
-| dept_manager | LJ013 乔叙白 | `qiao.xubai@lanjiang-grid.example.com` | 电力调度控制中心主任 |
-| dept_manager | LJ017 卓振邦 | `zhuo.zhenbang@lanjiang-grid.example.com` | 安全监察部主任 |
-| dept_manager | LJ021 容书宁 | `rong.shuning@lanjiang-grid.example.com` | 人力资源部主任 |
+| org_admin | LJ022 柳芊 | `lj022@lanjiang-grid.example.com` | 人力资源部人力资源专责，普通员工，不是部门负责人 |
+| dept_manager | LJ001 岑启舟 | `lj001@lanjiang-grid.example.com` | 变电检修中心主任 |
+| dept_manager | LJ008 邬守诚 | `lj008@lanjiang-grid.example.com` | 输电运检中心主任 |
+| dept_manager | LJ013 乔叙白 | `lj013@lanjiang-grid.example.com` | 电力调度控制中心主任 |
+| dept_manager | LJ017 卓振邦 | `lj017@lanjiang-grid.example.com` | 安全监察部主任 |
+| dept_manager | LJ021 容书宁 | `lj021@lanjiang-grid.example.com` | 人力资源部主任 |
 | employee | 其余 18 名在职人员 | 见 `org.yaml` | 班长、专责、检修工、巡检工、调度员、外协队员 |
 
 ### 来源数据里的额外账号
