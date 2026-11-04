@@ -1,13 +1,13 @@
 """Store Pi provider separately from model ID.
 
 Revision ID: b102001bc001
-Revises: a89e001bc001
+Revises: a91e001bc001
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "b102001bc001"
-down_revision = "a89e001bc001"
+down_revision = "a91e001bc001"
 branch_labels = None
 depends_on = None
 

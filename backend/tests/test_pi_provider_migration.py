@@ -10,7 +10,7 @@ from tests.utils.migrations import migrate
 
 
 def test_provider_migration_roundtrip(migration_engine: Engine) -> None:
-    migrate(migration_engine, "downgrade", "a89e001bc001")
+    migrate(migration_engine, "downgrade", "a91e001bc001")
     cases = [
         ("cloud_api", "openai/gpt-4o-mini", "openai", "gpt-4o-mini"),
         ("cloud_api", "anthropic/claude", "anthropic", "claude"),
@@ -68,7 +68,7 @@ def test_provider_migration_roundtrip(migration_engine: Engine) -> None:
                 provider is not None or kind == "chatgpt_subscription"
             )
             assert row["api_key_ciphertext"] == "synthetic-ciphertext"
-    migrate(migration_engine, "downgrade", "a89e001bc001")
+    migrate(migration_engine, "downgrade", "a91e001bc001")
     with migration_engine.connect() as connection:
         table = sa.Table("model_setting", sa.MetaData(), autoload_with=connection)
         assert "provider" not in table.c

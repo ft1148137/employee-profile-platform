@@ -443,7 +443,7 @@ def test_model_baseline_smoke(pi_service: PiHarness) -> None:
 
 
 def test_baseline_rejects_incomplete_drafts(
-    monkeypatch: pytest.MonkeyPatch, pi_service
+    monkeypatch: pytest.MonkeyPatch, pi_service: PiHarness
 ) -> None:
     from app.domains.model.client import ModelUnavailable
     from app.domains.model.schemas import ModelSettingUpdate
