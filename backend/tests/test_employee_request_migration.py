@@ -8,7 +8,7 @@ from app.core.db import init_db
 from app.seed.loader import load_demo
 from tests.utils.migrations import migrate
 
-PREVIOUS = "a88e001bc001"
+PREVIOUS = "a87e001bc001"
 
 
 def test_employee_request_roundtrip(migration_engine: Engine) -> None:

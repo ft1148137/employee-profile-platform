@@ -1,12 +1,12 @@
 """Employee submissions, revisions and inbox.
 
 Revision ID: a89e001bc001
-Revises: a88e001bc001
+Revises: a87e001bc001
 """
 from alembic import op
 
 revision = "a89e001bc001"
-down_revision = "a88e001bc001"
+down_revision = "a87e001bc001"
 branch_labels = None
 depends_on = None
 
