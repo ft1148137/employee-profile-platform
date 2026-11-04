@@ -23,6 +23,7 @@ if [[ $# == 1 ]]; then
 else
     git pull --ff-only
 fi
+ensure_pi_token
 backup=$(./backup.sh)
 docker compose build
 docker compose up -d --wait

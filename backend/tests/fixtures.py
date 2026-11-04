@@ -29,6 +29,7 @@ from app.seed.schema import read_bundle
 from tests.utils.drafting import mock_drafting  # noqa: F401
 from tests.utils.migrations import MIGRATION_TEMPLATE, isolated_database
 from tests.utils.org import ORG_MODELS, cleanup_new_users, delete_test_organization
+from tests.utils.pi import pi_service  # noqa: F401
 from tests.utils.user import authentication_token_from_email
 from tests.utils.utils import get_superuser_token_headers
 

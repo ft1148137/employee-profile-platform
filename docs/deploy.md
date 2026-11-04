@@ -62,6 +62,16 @@ EPP_ADDRESS=192.168.1.10 EPP_HTTP_PORT=8080 ./install.sh --non-interactive
 docker compose up -d
 ```
 
+## Pi 内部服务
+
+安装同时构建 `pi` 服务，backend 和 worker 等它健康后启动。Pi 无宿主端口，非 root、只读根目录，只有 `/tmp` 使用 tmpfs；不挂载业务数据或 Docker socket。健康检查通过 Node 自身发送带认证的请求，不需要 shell 或 curl。
+
+`install.sh` 随机生成部署密钥 `PI_SERVICE_TOKEN` 写入权限为 600 的 `.env`；`upgrade.sh` 为缺少该变量的旧配置补齐，重复升级保留原值。生产禁止示例值 `changethis`。所有 Pi 路由（包括 `/health`）都要求此密钥，不要将它放进前端或公开日志。密钥轮换后重新运行 `docker compose up -d`，同时更新服务与调用方。模型 API key 每轮经请求体传入内存，Pi 不持久保存。
+
+S7a 仅部署服务与 Python 客户端，现有起草和连接测试仍通过 LiteLLM；S7c 接入后才开始使用 Pi。服务目前只接受 `draft`，默认期限 120 秒，单轮最多 8 次模型、16 次工具执行，进程最多 4 轮，不排队。Pi 只转发后端给出的工具，无命令或文件工具。
+
+Pi 需要模型出口，普通 Compose 网络不提供域名白名单。S7c 负责提供方及地址、DNS、重定向与内部 Ollama 目标校验；本次仅限制模型协议与 HTTP(S) 地址格式，不能视为网络隔离。部署者应使用防火墙或出口代理限制可访问的模型地址，不向不受信任的容器开放 Compose 网络或服务密钥。
+
 ## 本机演示
 
 仅在另一个全新克隆目录复制演示配置，8000 端口需空闲：

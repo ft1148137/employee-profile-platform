@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 # Shared by the root deployment scripts; never execute .env as shell code.
 fail() { echo "$*" >&2; exit 1; }
+random_secret() {
+    if command -v openssl >/dev/null; then
+        openssl rand -hex 32
+    else
+        od -An -N32 -tx1 /dev/urandom | tr -d ' \n'
+    fi
+}
+ensure_pi_token() {
+    if ! grep -q '^PI_SERVICE_TOKEN=' .env; then
+        (umask 077; printf '\nPI_SERVICE_TOKEN=%s\n' "$(random_secret)" >> .env)
+    fi
+}
 config_value() {
     docker compose config --environment | awk -v key="$1" 'index($0, key "=") == 1 {print substr($0, length(key) + 2)}'
 }

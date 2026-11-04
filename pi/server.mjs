@@ -1,0 +1,239 @@
+import { Agent } from '@mariozechner/pi-agent-core';
+import { streamSimple } from '@mariozechner/pi-ai';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { channel } from 'node:diagnostics_channel';
+import { createServer } from 'node:http';
+import { pathToFileURL } from 'node:url';
+
+const TOOL_ERROR = '平台工具调用失败，请检查参数后重试。';
+const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+const text = value => typeof value === 'string' && value.length > 0;
+const only = (value, keys) => object(value) && Object.keys(value).every(k => keys.includes(k));
+const allowedHeader = name => /^(retry-after|[a-z0-9-]*reset[a-z0-9-]*)$/i.test(name);
+// Pi 0.73.1 skips onResponse on SDK HTTP errors; bind native fetch metadata per request.
+const observers = new AsyncLocalStorage();
+const requests = new WeakMap();
+channel('undici:request:create').subscribe(({ request }) => {
+  if (observers.getStore()) requests.set(request, observers.getStore());
+});
+channel('undici:request:headers').subscribe(({ request, response }) => {
+  const observe = requests.get(request);
+  if (!observe) return;
+  requests.delete(request);
+  const headers = {};
+  for (let i = 0; i < response.headers.length; i += 2) {
+    const name = String(response.headers[i]).toLowerCase();
+    if (allowedHeader(name)) headers[name] = String(response.headers[i + 1]).slice(0, 200);
+  }
+  observe({ status: response.statusCode, headers });
+});
+
+function validate(body) {
+  if (!only(body, ['version', 'run_id', 'mode', 'model', 'system_prompt', 'input', 'tools']) ||
+      body.version !== 1 || !uuid.test(body.run_id) || body.mode !== 'draft' ||
+      typeof body.system_prompt !== 'string' || typeof body.input !== 'string' ||
+      !Array.isArray(body.tools) || body.tools.length > 16) return false;
+  const m = body.model;
+  if (!only(m, ['provider', 'api', 'id', 'baseUrl', 'api_key', 'thinkingLevel',
+    'reasoning', 'contextWindow', 'maxTokens', 'compat']) ||
+    !['openai-responses', 'anthropic-messages', 'openai-completions'].includes(m.api) ||
+    !text(m.provider) || !text(m.id) || !text(m.baseUrl) ||
+    (m.api_key !== undefined && typeof m.api_key !== 'string') ||
+    (m.reasoning !== undefined && typeof m.reasoning !== 'boolean') ||
+    (m.compat !== undefined && !object(m.compat)) ||
+    !['off', 'minimal', 'low', 'medium', 'high', 'xhigh'].includes(m.thinkingLevel ?? 'off') ||
+    ![m.contextWindow ?? 128000, m.maxTokens ?? 4096].every(n => Number.isSafeInteger(n) && n > 0)) return false;
+  try {
+    const url = new URL(m.baseUrl);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hash) return false;
+  } catch { return false; }
+  const names = new Set();
+  return body.tools.every(t => {
+    if (!only(t, ['name', 'description', 'parameters']) || !/^[a-zA-Z0-9_-]{1,64}$/.test(t.name) ||
+      typeof t.description !== 'string' || !object(t.parameters) || t.parameters.type !== 'object' ||
+      names.has(t.name)) return false;
+    names.add(t.name);
+    return true;
+  });
+}
+
+async function readBody(req) {
+  let size = 0;
+  const chunks = [];
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > 1024 * 1024) throw new Error('bad_request');
+    chunks.push(chunk);
+  }
+  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
+
+export function quota(headers = {}, message = '', now = Date.now()) {
+  const retry = headers['retry-after'];
+  let at;
+  if (retry) at = /^\d+(\.\d+)?$/.test(retry) ? now + Number(retry) * 1000 : Date.parse(retry);
+  if (!Number.isFinite(at)) {
+    for (const [name, value] of Object.entries(headers)) {
+      if (!/reset/i.test(name)) continue;
+      if (/^\d+(\.\d+)?$/.test(value)) {
+        const n = Number(value);
+        at = n > 1e12 ? n : n > 1e9 ? n * 1000 : now + n * 1000;
+      } else if (/^(?:\d+(?:\.\d+)?[hms])+$/.test(value)) {
+        at = now + [...value.matchAll(/([\d.]+)([hms])/g)]
+          .reduce((sum, [, n, unit]) => sum + Number(n) * { h: 3600000, m: 60000, s: 1000 }[unit], 0);
+      } else at = Date.parse(value);
+      if (Number.isFinite(at)) break;
+    }
+  }
+  let estimated = !Number.isFinite(at);
+  if (estimated) {
+    const minutes = message.match(/(?:try again in|retry (?:in|after))\s*(\d+(?:\.\d+)?)\s*(?:min|minute)/i);
+    at = now + (minutes ? Number(minutes[1]) : 30) * 60000;
+  }
+  if (!Number.isFinite(at) || Math.abs(at) > 8.64e15) { at = now + 1800000; estimated = true; }
+  return { retry_at: new Date(Math.max(now, at)).toISOString(), estimated };
+}
+
+export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSimple,
+  log = entry => console.log(JSON.stringify(entry)) } = {}) {
+  if (!text(token) || !Number.isFinite(deadlineMs) || deadlineMs <= 0 || deadlineMs > 120000)
+    throw new Error('Invalid Pi service configuration');
+  const digest = value => createHash('sha256').update(value).digest();
+  const expected = digest(`Bearer ${token}`);
+  const runs = new Map();
+  const json = (res, status, data) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(data)); };
+  const server = createServer({ requestTimeout: 10000, headersTimeout: 10000 }, async (req, res) => {
+    const start = Date.now();
+    let route = 'unknown';
+    let runId;
+    res.on('close', () => log({ route, status: res.statusCode, elapsed_ms: Date.now() - start, ...(runId ? { run_id: runId } : {}) }));
+    try {
+      if (!timingSafeEqual(expected, digest(req.headers.authorization ?? '')))
+        return json(res, 401, { type: 'error', code: 'unauthorized' });
+      const path = (req.url ?? '').split('?')[0];
+      if (path === '/health' && req.method === 'GET') {
+        route = 'health';
+        return json(res, 200, { ok: true });
+      }
+      const match = path.match(/^\/v1\/turns\/([^/]+)(?:\/results\/([^/]+))?$/);
+      if (match && uuid.test(match[1])) {
+        runId = match[1];
+        const run = runs.get(runId);
+        if (req.method === 'DELETE' && !match[2]) {
+          route = 'cancel';
+          if (!run) return json(res, 404, { type: 'error', code: 'bad_request' });
+          run.cancel('cancelled');
+          await run.finished;
+          return json(res, 200, { type: 'done', stopReason: 'aborted' });
+        }
+        if (req.method === 'POST' && match[2]) {
+          route = 'result';
+          const body = await readBody(req);
+          const callId = decodeURIComponent(match[2]);
+          if (!run || run.error || !run.pending || run.pending.id !== callId ||
+              !only(body, ['result', 'is_error']) || typeof body.is_error !== 'boolean' ||
+              !Object.hasOwn(body, 'result')) return json(res, 409, { type: 'error', code: 'bad_request' });
+          const pending = run.pending;
+          run.pending = undefined;
+          pending.resolve(body);
+          return json(res, 200, { ok: true });
+        }
+      }
+      if (path !== '/v1/turns' || req.method !== 'POST')
+        return json(res, 400, { type: 'error', code: 'bad_request' });
+      route = 'turn';
+      const body = await readBody(req);
+      if (!validate(body) || runs.has(body.run_id)) return json(res, 400, { type: 'error', code: 'bad_request' });
+      runId = body.run_id;
+      if (runs.size >= 4) return json(res, 503, { type: 'error', code: 'busy' });
+      res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store' });
+      res.flushHeaders();
+      const run = { error: undefined, pending: undefined, calls: 0, tools: 0 };
+      runs.set(runId, run);
+      const send = event => {
+        if (!res.destroyed && !res.writableEnded) {
+          if (res.writableLength > 1024 * 1024) run.cancel('cancelled');
+          else res.write(`${JSON.stringify(event)}\n`);
+        }
+      };
+      let response = {};
+      const usedCalls = new Set();
+      const m = body.model;
+      const model = { id: m.id, name: m.id, api: m.api, provider: m.provider, baseUrl: m.baseUrl,
+        reasoning: m.reasoning ?? false, input: ['text'], contextWindow: m.contextWindow ?? 128000,
+        maxTokens: m.maxTokens ?? 4096, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, compat: m.compat };
+      const agent = new Agent({
+        getApiKey: () => m.api_key || 'not-needed', transport: 'sse', toolExecution: 'sequential',
+        streamFn: (model, context, options) => {
+          if (run.error || run.calls >= 8) { run.cancel('limit_exceeded'); throw new Error('limit_exceeded'); }
+          run.calls++;
+          response = {};
+          return observers.run(options.onResponse, () => streamFn(model, context, { ...options, maxRetries: 0 }));
+        },
+        onResponse: r => {
+          response = { status: r.status, headers: Object.fromEntries(Object.entries(r.headers)
+            .filter(([name]) => allowedHeader(name))
+            .map(([name, value]) => [name.toLowerCase(), String(value).slice(0, 200)])) };
+        },
+        // Validation/unknown-tool errors from agent-core can contain raw arguments.
+        transformContext: async messages => messages.map(message => message.role === 'toolResult' && message.isError
+          ? { ...message, content: [{ type: 'text', text: TOOL_ERROR }], details: {} } : message),
+        initialState: { model, systemPrompt: body.system_prompt, thinkingLevel: m.thinkingLevel ?? 'off',
+          tools: body.tools.map(t => ({ name: t.name, label: t.name, description: t.description, parameters: t.parameters,
+            execute: async (id, args, signal) => {
+              if (run.error || run.tools >= 16) { run.cancel('limit_exceeded'); throw new Error(TOOL_ERROR); }
+              if (!text(id) || id.length > 200 || usedCalls.has(id)) throw new Error(TOOL_ERROR);
+              usedCalls.add(id);
+              run.tools++;
+              const result = await new Promise((resolve, reject) => {
+                const abort = () => { run.pending = undefined; reject(new Error(TOOL_ERROR)); };
+                run.pending = { id, resolve: result => { signal.removeEventListener('abort', abort); resolve(result); } };
+                signal.addEventListener('abort', abort, { once: true });
+                if (signal.aborted) return abort();
+                send({ type: 'tool_call', call_id: id, name: t.name, arguments: args });
+              });
+              if (result.is_error) throw new Error(TOOL_ERROR);
+              return { content: [{ type: 'text', text: JSON.stringify(result.result) }], details: {} };
+            } })) },
+      });
+      run.cancel = code => { run.error ??= { code }; agent.abort(); };
+      agent.subscribe(event => {
+        if (event.type === 'message_update' && event.assistantMessageEvent.type === 'text_delta')
+          send({ type: 'text', text: event.assistantMessageEvent.delta });
+        if (event.type === 'message_end' && event.message.role === 'assistant' && event.message.stopReason === 'error') {
+          const message = event.message.errorMessage ?? '';
+          run.error ??= response.status === 429 || /rate.?limit|usage limit|quota/i.test(message)
+            ? { code: 'rate_limited', ...quota(response.headers, message) } : { code: 'model_error' };
+        }
+      });
+      const timer = setTimeout(() => run.cancel('deadline'), deadlineMs);
+      res.on('close', () => { if (!res.writableEnded) run.cancel('cancelled'); });
+      run.finished = (async () => {
+        try {
+          await agent.prompt(body.input);
+          send(run.error ? { type: 'error', ...run.error } : { type: 'done', stopReason: agent.state.messages.at(-1)?.stopReason ?? 'stop',
+            model_calls: run.calls, tool_calls: run.tools });
+        } catch { send({ type: 'error', ...(run.error ?? { code: 'model_error' }) }); }
+        finally {
+          clearTimeout(timer);
+          run.pending = undefined;
+          runs.delete(runId);
+          agent.reset();
+          res.end();
+        }
+      })();
+      await run.finished;
+    } catch {
+      if (!res.headersSent) json(res, 400, { type: 'error', code: 'bad_request' });
+      else res.end();
+    }
+  });
+  return server;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  createPiServer({ token: process.env.PI_SERVICE_TOKEN, deadlineMs: Number(process.env.PI_DEADLINE_MS ?? 120000) })
+    .listen(Number(process.env.PORT ?? 8081), process.env.PI_HOST ?? '0.0.0.0');
+}
