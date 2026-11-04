@@ -1,12 +1,29 @@
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import Engine, inspect, text
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app import crud
+from app.core.config import settings
+from app.core.db import init_db
 from app.core.security import get_password_hash
 from app.domains.org.models import Employee, Organization, OrgMembership
+from app.models import User
 from tests.utils.migrations import migrate
+
+
+def test_bootstrap_email_normalization(
+    migration_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "FIRST_SUPERUSER", "Bootstrap@Example.com")
+    monkeypatch.setattr(settings, "FIRST_SUPERUSER_PASSWORD", "synthetic-password")
+    with Session(migration_engine) as session:
+        init_db(session)
+        init_db(session)
+        users = session.exec(select(User)).all()
+        assert len(users) == 1
+        assert users[0].username == users[0].email == "bootstrap@example.com"
 
 
 def test_email_login_migration_roundtrip(migration_engine: Engine) -> None:
