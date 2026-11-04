@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
-import { useState } from "react"
+import { useId, useRef, useState } from "react"
 import {
   CapabilitiesService,
   type DictionaryDefinition,
@@ -36,12 +36,14 @@ function Editor({
   onSaved,
   initial,
 }: Props & { initial: DictionaryPreview }) {
+  const prefix = useId()
+  const nextId = useRef(initial.definitions.length)
   const [baseVersion] = useState(initial.expected_version)
   const [rows, setRows] = useState(() =>
     [...initial.definitions]
       .sort((a, b) => a.category.localeCompare(b.category, "zh-CN"))
-      .map((definition) => ({
-        id: crypto.randomUUID(),
+      .map((definition, index) => ({
+        id: index,
         locked: true,
         definition,
       })),
@@ -75,7 +77,7 @@ function Editor({
     onError: setError,
   })
   const busy = check.isPending || save.isPending
-  function update(id: string, change: Partial<DictionaryDefinition>) {
+  function update(id: number, change: Partial<DictionaryDefinition>) {
     setPreview(null)
     setRows((values) =>
       values.map((row) =>
@@ -94,7 +96,7 @@ function Editor({
     setRows([
       ...rows,
       {
-        id: crypto.randomUUID(),
+        id: nextId.current++,
         locked: false,
         definition: {
           key: `capability_${sequence}`,
@@ -152,12 +154,12 @@ function Editor({
                   ).map(([field, label, maxLength]) => (
                     <label
                       key={field}
-                      htmlFor={`${id}-${field}`}
+                      htmlFor={`${prefix}-${id}-${field}`}
                       className="space-y-2 text-sm"
                     >
                       {label}
                       <Input
-                        id={`${id}-${field}`}
+                        id={`${prefix}-${id}-${field}`}
                         required={field === "name" || field === "key"}
                         maxLength={maxLength}
                         disabled={locked && field === "key"}
@@ -183,11 +185,11 @@ function Editor({
                   ))}
                 </div>
                 <label
-                  htmlFor={`${id}-ai`}
+                  htmlFor={`${prefix}-${id}-ai`}
                   className="flex items-center gap-3 text-sm"
                 >
                   <Checkbox
-                    id={`${id}-ai`}
+                    id={`${prefix}-${id}-ai`}
                     checked={d.ai_inference === false}
                     onCheckedChange={(value) =>
                       update(id, { ai_inference: value !== true })
@@ -211,12 +213,12 @@ function Editor({
                       ).map(([field, label, maxLength]) => (
                         <label
                           key={field}
-                          htmlFor={`${id}-${index}-${field}`}
+                          htmlFor={`${prefix}-${id}-${index}-${field}`}
                           className="space-y-2 text-sm"
                         >
                           {label}
                           <Input
-                            id={`${id}-${index}-${field}`}
+                            id={`${prefix}-${id}-${index}-${field}`}
                             required
                             maxLength={maxLength}
                             value={level[field]}

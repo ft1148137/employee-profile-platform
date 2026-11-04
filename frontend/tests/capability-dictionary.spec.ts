@@ -96,6 +96,9 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
   request,
 }, testInfo) => {
   test.setTimeout(90000)
+  await page.addInitScript(() => {
+    Object.defineProperty(window.crypto, "randomUUID", { value: undefined })
+  })
   const email = `dictionary-editor-${crypto.randomUUID()}@example.com`
   const token = await request.post("/api/v1/private/setup-tokens", {
     data: { purpose: "new_org" },
