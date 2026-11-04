@@ -21,3 +21,4 @@
 涉及新组件、协议或方案取舍时，随对应 PR 提交 ADR。文件名使用 `NNNN-短标题.md`，连续编号，不重复使用；记录背景、决策及其收益、代价与风险。
 
 - [ADR-0015：邮箱登录和旧账号迁移](0015-email-login.md)
+- [ADR-0016：能力词典换版与历史判断](0016-capability-dictionary-versions.md)
