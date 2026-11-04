@@ -304,6 +304,20 @@ export type CapabilitiesPublic = {
 };
 
 /**
+ * Capability
+ */
+export type Capability = {
+    /**
+     * Key
+     */
+    key: string;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
  * CapabilityPublic
  */
 export type CapabilityPublic = {
@@ -405,6 +419,34 @@ export type CapabilityTemplatePublic = {
      * Recommended
      */
     recommended: boolean;
+};
+
+/**
+ * ChangeItem
+ */
+export type ChangeItem = {
+    /**
+     * Op
+     */
+    op: string;
+    capability: Capability;
+    after: Claim | null;
+    /**
+     * Explanation
+     */
+    explanation: string | null;
+    /**
+     * Uncertainty
+     */
+    uncertainty: string | null;
+    /**
+     * Owner Statement
+     */
+    owner_statement: string | null;
+    /**
+     * Objection
+     */
+    objection: string | null;
 };
 
 /**
@@ -580,6 +622,24 @@ export type ChatGPTStatus = {
      * Connected
      */
     connected?: boolean;
+};
+
+/**
+ * Claim
+ */
+export type Claim = {
+    /**
+     * Statement
+     */
+    statement: string;
+    /**
+     * Level
+     */
+    level: string | null;
+    /**
+     * Assessment Status
+     */
+    assessment_status: string;
 };
 
 /**
@@ -1863,6 +1923,25 @@ export type Message = {
 };
 
 /**
+ * MessagePublic
+ */
+export type MessagePublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Role
+     */
+    role: 'user' | 'assistant';
+    payload: JsonValue;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
  * ModelSettingPublic
  */
 export type ModelSettingPublic = {
@@ -1972,15 +2051,29 @@ export type OrganizationUpdate = {
 };
 
 /**
- * PreviewItem
+ * PreviewCard
  */
-export type PreviewItem = {
-    before: ClaimPublic | null;
-    after: ChangeItemPublic;
+export type PreviewCard = {
     /**
-     * Warning
+     * Request Id
      */
-    warning?: string | null;
+    request_id: string;
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Items
+     */
+    items: Array<app__domains__bot__schemas__PreviewItem>;
+    /**
+     * Type
+     */
+    type?: 'preview_card';
+    /**
+     * Actions
+     */
+    actions: Array<RequestAction>;
 };
 
 /**
@@ -2169,6 +2262,54 @@ export type PublisherPublic = {
 };
 
 /**
+ * QuestionAction
+ */
+export type QuestionAction = {
+    /**
+     * Action
+     */
+    action: 'answer_question';
+    /**
+     * Question Id
+     */
+    question_id: string;
+    /**
+     * Answer
+     */
+    answer: string;
+};
+
+/**
+ * QuestionCard
+ */
+export type QuestionCard = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Question
+     */
+    question: string;
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Type
+     */
+    type?: 'question_card';
+    /**
+     * Actions
+     */
+    actions: Array<'answer_question'>;
+};
+
+/**
  * QuestionPublic
  */
 export type QuestionPublic = {
@@ -2223,6 +2364,24 @@ export type QuestionsList = {
 };
 
 /**
+ * RequestAction
+ */
+export type RequestAction = {
+    /**
+     * Action
+     */
+    action: 'confirm_submit' | 'continue_editing' | 'withdraw';
+    /**
+     * Request Id
+     */
+    request_id: string;
+    /**
+     * Revision
+     */
+    revision: number;
+};
+
+/**
  * RequestGeneratedBy
  */
 export type RequestGeneratedBy = {
@@ -2256,7 +2415,7 @@ export type RequestPreview = {
     /**
      * Items
      */
-    items: Array<PreviewItem>;
+    items: Array<app__domains__change_request__schemas__PreviewItem>;
 };
 
 /**
@@ -2518,6 +2677,16 @@ export type SchemaVersionPublic = {
 };
 
 /**
+ * SessionCreated
+ */
+export type SessionCreated = {
+    /**
+     * Session Id
+     */
+    session_id: string;
+};
+
+/**
  * SetupPublic
  */
 export type SetupPublic = {
@@ -2598,6 +2767,36 @@ export type SetupTokenResult = {
      * Token
      */
     token: string;
+};
+
+/**
+ * StatusCard
+ */
+export type StatusCard = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Items
+     */
+    items: Array<ChangeItem>;
+    /**
+     * Type
+     */
+    type?: 'status_card';
+    /**
+     * Actions
+     */
+    actions: Array<RequestAction>;
 };
 
 /**
@@ -2726,6 +2925,20 @@ export type TemplateCapabilityPublic = {
 };
 
 /**
+ * TextMessage
+ */
+export type TextMessage = {
+    /**
+     * Type
+     */
+    type?: 'text';
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
  * Token
  */
 export type Token = {
@@ -2835,6 +3048,34 @@ export type TokenPublic = {
      * Revoked At
      */
     revoked_at: string | null;
+};
+
+/**
+ * TurnInput
+ */
+export type TurnInput = {
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
+ * TurnResponse
+ */
+export type TurnResponse = {
+    /**
+     * Messages
+     */
+    messages: Array<({
+        type: 'text';
+    } & TextMessage) | ({
+        type: 'preview_card';
+    } & PreviewCard) | ({
+        type: 'status_card';
+    } & StatusCard) | ({
+        type: 'question_card';
+    } & QuestionCard)>;
 };
 
 /**
@@ -2963,6 +3204,30 @@ export type WorkRecordIssue = {
 };
 
 /**
+ * PreviewItem
+ */
+export type app__domains__bot__schemas__PreviewItem = {
+    before: Claim | null;
+    after: ChangeItem;
+    /**
+     * Warning
+     */
+    warning: string | null;
+};
+
+/**
+ * PreviewItem
+ */
+export type app__domains__change_request__schemas__PreviewItem = {
+    before: ClaimPublic | null;
+    after: ChangeItemPublic;
+    /**
+     * Warning
+     */
+    warning?: string | null;
+};
+
+/**
  * JiraConnectionUpdate
  */
 export type JiraConnectionUpdateWritable = {
@@ -3033,6 +3298,146 @@ export type ModelSettingUpdateWritable = {
      */
     reasoning_effort?: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null;
 };
+
+export type botCreateSessionData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/bot/sessions';
+};
+
+export type botCreateSessionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type botCreateSessionError = botCreateSessionErrors[keyof botCreateSessionErrors];
+
+export type botCreateSessionResponses = {
+    /**
+     * Successful Response
+     */
+    201: SessionCreated;
+};
+
+export type botCreateSessionResponse = botCreateSessionResponses[keyof botCreateSessionResponses];
+
+export type botListMessagesData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/bot/sessions/{session_id}/messages';
+};
+
+export type botListMessagesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type botListMessagesError = botListMessagesErrors[keyof botListMessagesErrors];
+
+export type botListMessagesResponses = {
+    /**
+     * Response Bot-List Messages
+     *
+     * Successful Response
+     */
+    200: Array<MessagePublic>;
+};
+
+export type botListMessagesResponse = botListMessagesResponses[keyof botListMessagesResponses];
+
+export type botTurnData = {
+    body: TurnInput;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/bot/sessions/{session_id}/turns';
+};
+
+export type botTurnErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type botTurnError = botTurnErrors[keyof botTurnErrors];
+
+export type botTurnResponses = {
+    /**
+     * Successful Response
+     */
+    200: TurnResponse;
+};
+
+export type botTurnResponse = botTurnResponses[keyof botTurnResponses];
+
+export type botActData = {
+    /**
+     * Body
+     */
+    body: RequestAction | QuestionAction;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/bot/sessions/{session_id}/actions';
+};
+
+export type botActErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type botActError = botActErrors[keyof botActErrors];
+
+export type botActResponses = {
+    /**
+     * Successful Response
+     */
+    200: TurnResponse;
+};
+
+export type botActResponse = botActResponses[keyof botActResponses];
 
 export type accessTokensReadMcpSettingData = {
     body?: never;

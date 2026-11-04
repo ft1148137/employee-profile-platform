@@ -4,6 +4,7 @@ from app.api.routes import (
     access_tokens,
     accounts,
     audit,
+    bot,
     bot_settings,
     capabilities,
     capability_templates,
@@ -32,6 +33,7 @@ from app.api.routes import (
 from app.core.config import settings
 
 api_router = APIRouter()
+api_router.include_router(bot.router)
 api_router.include_router(access_tokens.router)
 api_router.include_router(bot_settings.router)
 api_router.include_router(login.router)
