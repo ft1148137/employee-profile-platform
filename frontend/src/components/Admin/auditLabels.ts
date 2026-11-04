@@ -1,6 +1,7 @@
 import type { AuditEventPublic } from "@/client"
 
 export const auditLabels: Record<string, string> = {
+  "initial_profiles.handed_over": "初始画像批量送审（员工未过目）",
   "initial_profiles.drafted": "生成初始画像",
   "change_request.dictionary_changed": "词典调整后更新请求",
   "change_request.submitted": "提交画像请求",
