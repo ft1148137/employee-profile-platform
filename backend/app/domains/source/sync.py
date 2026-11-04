@@ -75,8 +75,6 @@ def _enqueue(session: Session, run: SyncRun) -> None:
         "sources.sync_run",
         connection=session.connection().connection.driver_connection,
     ).defer(org_id=str(run.org_id), run_id=str(run.id), initial_attempts=run.attempts)
-    session.commit()
-    session.refresh(run)
 
 
 def create_run(
@@ -88,10 +86,12 @@ def create_run(
     assert principal.user_id is not None
     _lock_org(session, principal.org_id)
     connection = session.exec(
-        select(SourceConnection).where(
+        select(SourceConnection)
+        .where(
             SourceConnection.org_id == principal.org_id,
             SourceConnection.kind == kind,
         )
+        .with_for_update()
     ).one_or_none()
     if connection is None:
         if kind == "jira":
@@ -112,6 +112,8 @@ def create_run(
     )
     session.add(run)
     _enqueue(session, run)
+    session.commit()
+    session.refresh(run)
     return public_run(run, kind)
 
 
@@ -128,10 +130,12 @@ def retry_run(session: Session, principal: Principal, run_id: UUID) -> SyncRunPu
     if run is None:
         raise SyncError(404, "同步记录不存在")
     connection = session.exec(
-        select(SourceConnection).where(
+        select(SourceConnection)
+        .where(
             SourceConnection.org_id == principal.org_id,
             SourceConnection.id == run.connection_id,
         )
+        .with_for_update()
     ).one()
     if not (
         run.status == "failed"
@@ -156,6 +160,8 @@ def retry_run(session: Session, principal: Principal, run_id: UUID) -> SyncRunPu
     run.finished_at, run.updated_at = None, utc_now()
     session.add(run)
     _enqueue(session, run)
+    session.commit()
+    session.refresh(run)
     return public_run(run, connection.kind)
 
 

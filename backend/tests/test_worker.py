@@ -13,8 +13,9 @@ from tests.utils.migrations import migrate
 def recover_stalled_jobs() -> None:
     async def run() -> None:
         async with app.open_async():
+            # Keep manual recovery independent of the cron job queued by workers.
             await retry_stalled_jobs.configure(
-                queue="recovery", queueing_lock=None
+                queue="recovery", queueing_lock="test_recovery"
             ).defer_async(timestamp=0)
             await asyncio.wait_for(
                 app.run_worker_async(wait=False, queues=["recovery"]), timeout=20

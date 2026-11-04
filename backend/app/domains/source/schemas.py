@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, HttpUrl, SecretStr, TypeAdapter, model_va
 
 from app.domains.org.models import EmploymentStatus
 from app.domains.org.schemas import DepartmentSummary
+from app.domains.source.models import SyncSchedule
 from app.domains.work.ingest import IngestCounts
 
 
@@ -97,10 +98,13 @@ class JiraConfig(BaseModel):
 
 
 class JiraConnectionUpdate(JiraConfig):
+    sync_schedule: SyncSchedule = "off"
     secret: SecretStr | None = Field(default=None, min_length=1)
 
 
 class JiraConnectionPublic(BaseModel):
+    sync_schedule: SyncSchedule = "off"
+    next_sync_at: datetime | None = None
     configured: bool = False
     config: JiraConfig | None = None
     has_secret: bool = False
@@ -118,7 +122,7 @@ class SyncRunPublic(BaseModel):
     id: UUID
     kind: Literal["jira", "csv"]
     status: Literal["queued", "running", "succeeded", "failed"]
-    trigger: Literal["manual", "retry"]
+    trigger: Literal["manual", "retry", "schedule"]
     attempts: int
     counts: dict[str, int]
     error: str | None
