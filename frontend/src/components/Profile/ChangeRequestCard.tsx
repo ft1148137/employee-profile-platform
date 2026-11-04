@@ -71,7 +71,10 @@ export function ChangeRequestCard({
                 : "系统起草的初始画像"}
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              这是候选画像，还没有生效。本人可以直接提交、修改后提交或提出异议。
+              {initial.origin === "import"
+                ? "这是管理员导入的画像草稿"
+                : "这是系统根据工作记录整理的草稿"}
+              ，还没有生效。本人可以直接提交、修改后提交或提出异议。
             </p>
           </div>
           {!initial.items?.length && (
