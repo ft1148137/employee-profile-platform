@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import JsonValue
@@ -7,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKeyConstraint,
     Index,
+    String,
     UniqueConstraint,
     text,
 )
@@ -14,6 +16,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field
 
 from app.domains.base import TenantRecord, utc_now
+
+SyncSchedule = Literal["off", "monthly", "quarterly", "yearly"]
 
 
 class SourceConnection(TenantRecord, table=True):
@@ -31,6 +35,8 @@ class SourceConnection(TenantRecord, table=True):
         default_factory=dict, sa_column=Column(JSONB, nullable=False)
     )
     secret_ciphertext: str | None = Field(default=None, repr=False)
+    sync_schedule: SyncSchedule = Field(default="off", sa_type=String)
+    next_sync_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     synced_until: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     updated_at: datetime = Field(
         default_factory=utc_now, sa_type=DateTime(timezone=True)

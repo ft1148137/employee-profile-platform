@@ -198,6 +198,7 @@ def test_settings(
         "hostname": "testserver",
         "auth_type": "api_token",
         "secret_changed": True,
+        "sync_schedule": "off",
     }
     public = client.get(url, headers=auth)
     assert public.json()["has_secret"] and "ciphertext" not in public.text
