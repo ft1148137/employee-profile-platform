@@ -94,6 +94,7 @@ async function prepare(request: APIRequestContext, enabled = true) {
     initialPassword,
     client,
     org_id,
+    resource: metadata.resource,
     consent: consent.pathname + consent.search,
   }
 }
@@ -164,6 +165,7 @@ for (const action of ["允许", "拒绝", "企业关闭"] as const) {
     const pair = await pairResponse.json()
     const mcpHeaders = {
       Authorization: `Bearer ${pair.access_token}`,
+      Host: new URL(info.resource).host,
       Accept: "application/json, text/event-stream",
     }
     expect(
