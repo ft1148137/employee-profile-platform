@@ -35,7 +35,7 @@ FW-205 与 PLM-0028 的重复经历没有互相写明编号，规则不会按标
 在仓库根目录的 `.env` 配好数据库，完成迁移后，从 `backend/` 运行（密钥从 `MODEL_API_KEY` 环境变量读取，不写入命令行）：
 
 ```bash
-PYTHONPATH=. uv run python ../examples/test-enterprises/evaluate_drafts.py qiguang-aiot --model openai/模型名
+PYTHONPATH=. uv run python ../examples/test-enterprises/evaluate_drafts.py qiguang-aiot --provider openai --model 模型名
 # 本地或通用兼容接口可加 --kind openai_compatible --base-url http://模型主机:端口/v1
 ```
 

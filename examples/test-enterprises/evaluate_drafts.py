@@ -12,6 +12,7 @@ from uuid import uuid4
 import yaml
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 from sqlmodel import Session, select
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
@@ -119,6 +120,10 @@ def enterprise(
             yield db, org, employees
         finally:
             db.rollback()
+            db.execute(
+                text("DELETE FROM procrastinate_jobs WHERE args->>'org_id' = :org_id"),
+                {"org_id": str(org.id)},
+            )
             delete_test_organization(db, org.id)
             if user is not None:
                 db.delete(user)
@@ -254,10 +259,14 @@ if __name__ == "__main__":
     parser.add_argument("--model", required=True, help="模型 ID，不带提供方前缀")
     parser.add_argument(
         "--kind",
-        choices=["cloud_api", "local", "openai_compatible"],
+        choices=["cloud_api", "local", "openai_compatible", "chatgpt_subscription"],
         default="cloud_api",
     )
-    parser.add_argument("--provider", required=True)
+    parser.add_argument("--provider")
+    parser.add_argument(
+        "--reasoning-effort",
+        choices=["off", "minimal", "low", "medium", "high", "xhigh"],
+    )
     parser.add_argument("--base-url")
     args = parser.parse_args()
     config = ModelSettingUpdate(
@@ -266,6 +275,7 @@ if __name__ == "__main__":
         model=args.model,
         provider=args.provider,
         base_url=args.base_url,
+        reasoning_effort=args.reasoning_effort,
         api_key=os.environ.get("MODEL_API_KEY"),
     )
     print(evaluate(args.slug, config))

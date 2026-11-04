@@ -19,7 +19,12 @@ export const test = base.extend<{ modelUrl: string }>({
       const last = request.messages.at(-1)
       if (chat && last?.role === "tool") {
         const result = JSON.parse(last.content)
-        botRequestId = result.data?.[0]?.id ?? botRequestId
+        if (result.data) {
+          botRequestId = result.data.find(
+            (row: { status: string }) =>
+              row.status === "draft" || row.status === "pending_owner",
+          )?.id
+        }
       }
       const toolResult =
         request.messages.at(-1)?.role === "tool" || !request.tools?.length
@@ -67,17 +72,17 @@ export const test = base.extend<{ modelUrl: string }>({
                       type: "function",
                       function: {
                         name: chat
-                          ? botRequestId &&
-                            JSON.stringify(last).includes("补充")
+                          ? JSON.stringify(last).includes("补充")
                             ? "draft_update_request"
                             : "get_my_requests"
                           : "submit_draft",
                         arguments: JSON.stringify(
                           chat
-                            ? botRequestId &&
-                              JSON.stringify(last).includes("补充")
+                            ? JSON.stringify(last).includes("补充")
                               ? {
-                                  request_id: botRequestId,
+                                  ...(botRequestId
+                                    ? { request_id: botRequestId }
+                                    : {}),
                                   items: [
                                     {
                                       op: "add",
@@ -125,6 +130,7 @@ export const test = base.extend<{ modelUrl: string }>({
     try {
       await use(`http://${host}:${address.port}/v1`)
     } finally {
+      server.closeAllConnections()
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
       )
