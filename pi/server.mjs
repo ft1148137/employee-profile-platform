@@ -173,6 +173,8 @@ export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSi
               !Object.hasOwn(body, 'result')) return json(res, 409, { type: 'error', code: 'bad_request' });
           const pending = run.pending;
           run.pending = undefined;
+          // Callback exceptions are fatal; abort before acknowledging to avoid a DELETE race.
+          if (body.is_error) run.cancel('cancelled');
           pending.resolve(body);
           return json(res, 200, { ok: true });
         }

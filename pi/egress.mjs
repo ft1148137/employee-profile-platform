@@ -13,7 +13,7 @@ for (const [ip, bits] of [['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10],
   ['127.0.0.0', 8], ['172.16.0.0', 12], ['192.168.0.0', 16], ['192.0.0.0', 24],
   ['198.18.0.0', 15], ['224.0.0.0', 4], ['240.0.0.0', 4]]) privateNet.addSubnet(ip, bits);
 for (const [ip, bits] of [['::', 128], ['::1', 128], ['fc00::', 7], ['ff00::', 8],
-  ['2001:db8::', 32]]) privateNet.addSubnet(ip, bits, 'ipv6');
+  ['2001:db8::', 32], ['fec0::', 10]]) privateNet.addSubnet(ip, bits, 'ipv6');
 const loopback = new BlockList();
 loopback.addSubnet('127.0.0.0', 8);
 loopback.addAddress('::1', 'ipv6');

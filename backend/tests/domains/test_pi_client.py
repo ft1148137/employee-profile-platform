@@ -79,7 +79,8 @@ def test_callback_exception_cancels_and_redacts(
             on_tool_call=fail,
         )
     logs = pi_service.logs.read_text()
-    assert any(r.request.method == "DELETE" and r.status_code == 200 for r in responses)
+    assert any(r.request.method == "DELETE" and r.status_code == 404 for r in responses)
+    assert len(pi_service.requests) == 1
     assert "sensitive" not in logs
 
 

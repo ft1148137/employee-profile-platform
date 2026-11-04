@@ -132,7 +132,7 @@ test('eight model calls and sixteen tool executions are hard limits', async t =>
   assert.equal((await b.next()).code, 'limit_exceeded');
 });
 
-test('injected tools never execute; validation and backend errors are fixed before model reentry', async t => {
+test('injected tools never execute; rejected arguments are fixed before model reentry', async t => {
   const seen = [];
   const { start } = await setup(t, { streamFn: fake(context => context.messages.some(m => m.role === 'toolResult') ? [] :
     ['bash', 'read', 'write'].map(name => call(name, { path: '/tmp/nere90-forbidden', secret: 'sensitive-argument' }, name))
@@ -140,13 +140,14 @@ test('injected tools never execute; validation and backend errors are fixed befo
     context => seen.push(context)) });
   const run = await start(); let c = await run.next();
   assert.equal(c.name, 'submit_draft');
-  await run.result(c.call_id, 'sensitive-backend-exception', true);
+  await run.result(c.call_id, { accepted: false, error: '提交不符合要求' });
   c = await run.next(); assert.equal(c.name, 'submit_draft');
   await run.result(c.call_id, { accepted: false });
   assert.equal((await run.next()).type, 'done');
   const results = seen.at(-1).messages.filter(m => m.role === 'toolResult');
   assert.equal(results.length, 5);
-  assert.ok(results.every(m => m.isError && m.content[0].text === '平台工具调用失败，请检查参数后重试。'));
+  assert.ok(results.slice(0, 4).every(m => m.isError && m.content[0].text === '平台工具调用失败，请检查参数后重试。'));
+  assert.deepEqual(JSON.parse(results[4].content[0].text), { accepted: false, error: '提交不符合要求' });
   assert.equal(existsSync('/tmp/nere90-forbidden'), false);
 });
 
@@ -264,7 +265,7 @@ test('DNS results, literals and origin policies are checked at each connection',
   const { egress, checkAddress } = await import('./egress.mjs');
   for (const ip of ['169.254.169.254', '169.254.1.1', 'fe80::1', 'fd00:ec2::254', '::ffff:169.254.169.254'])
     assert.throws(() => checkAddress(ip, { catalog: false }));
-  for (const ip of ['127.0.0.1', '10.0.0.1', '172.16.0.1', '192.168.1.1', '::1', 'fd00::1', '::ffff:127.0.0.1'])
+  for (const ip of ['127.0.0.1', '10.0.0.1', '172.16.0.1', '192.168.1.1', '::1', 'fd00::1', 'fec0::1', '::ffff:127.0.0.1'])
     assert.throws(() => checkAddress(ip, { catalog: true }));
   const { request } = await setup(t, { streamFn: undefined,
     lookup: (_host, _options, callback) => callback(null, [{ address: '192.168.1.1', family: 4 }]) });
@@ -303,4 +304,16 @@ test('a second connection rechecks DNS instead of reusing an allowed socket', as
     if (previous === undefined) delete process.env.PI_EGRESS_ALLOW_LOOPBACK;
     else process.env.PI_EGRESS_ALLOW_LOOPBACK = previous;
   }
+});
+
+
+test('fatal backend results abort before another model invocation', async t => {
+  let calls = 0;
+  const { start } = await setup(t, { streamFn: fake(() => [call()], () => calls++) });
+  const run = await start(); const c = await run.next();
+  assert.equal((await run.result(c.call_id, 'sensitive-backend-error', true)).status, 200);
+  const event = await run.next();
+  assert.equal(event.code, 'cancelled');
+  assert.equal(JSON.stringify(event).includes('sensitive-backend-error'), false);
+  assert.equal(calls, 1);
 });
