@@ -1,4 +1,6 @@
 services:
+  pi:
+    restart: unless-stopped
   db:
     restart: unless-stopped
   backend:

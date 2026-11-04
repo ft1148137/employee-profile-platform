@@ -16,8 +16,27 @@ x-backend: &backend
     LOGIN_MAX_FAILURES: ${LOGIN_MAX_FAILURES:-5}
     LOGIN_MAX_FAILURES_PER_IP: ${LOGIN_MAX_FAILURES_PER_IP:-300}
     LOGIN_LOCK_MINUTES: ${LOGIN_LOCK_MINUTES:-15}
+    PI_URL: http://pi:8081
+    PI_SERVICE_TOKEN: ${PI_SERVICE_TOKEN:?Variable not set}
 
 services:
+  pi:
+    image: ${COMPOSE_PROJECT_NAME:-employee-profile}-pi:latest
+    build: ./pi
+    environment:
+      PI_SERVICE_TOKEN: ${PI_SERVICE_TOKEN:?Variable not set}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "/nodejs/bin/node", "-e", "fetch('http://127.0.0.1:8081/health',{headers:{Authorization:'Bearer '+process.env.PI_SERVICE_TOKEN}}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   db:
     image: postgres:18
     healthcheck:
@@ -48,6 +67,8 @@ services:
       dockerfile: backend/Dockerfile
     command: ["fastapi", "run", "--workers", "4"]
     depends_on:
+      pi:
+        condition: service_healthy
       prestart:
         condition: service_completed_successfully
     ports:
@@ -62,6 +83,8 @@ services:
     <<: *backend
     command: ["procrastinate", "--app=app.worker.app.app", "worker"]
     depends_on:
+      pi:
+        condition: service_healthy
       prestart:
         condition: service_completed_successfully
     healthcheck:

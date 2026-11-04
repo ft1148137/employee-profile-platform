@@ -1,0 +1,268 @@
+import json
+from datetime import UTC, datetime
+
+import httpx
+import pytest
+from pydantic import JsonValue
+
+from app.domains.model import pi_client
+from app.domains.model.client import ModelRateLimited, ModelUnavailable
+from app.domains.model.pi_client import ToolDefinition, run_turn
+from tests.utils.pi import PiHarness
+
+TOOLS = [
+    ToolDefinition(
+        name="submit_draft",
+        description="提交候选",
+        parameters={
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"statement": {"type": "string"}},
+            "required": ["statement"],
+        },
+    )
+]
+
+
+def test_real_pi_round_trip(pi_service: PiHarness) -> None:
+    seen = []
+
+    def tool(name: str, args: dict[str, JsonValue]) -> JsonValue:
+        seen.append((name, args))
+        return {"accepted": True}
+
+    result = run_turn(
+        pi_service.config,
+        system_prompt="只用工具",
+        input="合成证据",
+        tools=TOOLS,
+        on_tool_call=tool,
+    )
+    assert seen == [("submit_draft", {"statement": "合成建议"})]
+    assert result.text == "已完成"
+    assert result.stop_reason == "stop"
+    assert result.model_calls == 2 and result.tool_calls == 1
+    assert len(pi_service.requests) == 2
+    assert any(
+        m.get("role") == "tool" and json.loads(m["content"]) == {"accepted": True}
+        for m in pi_service.requests[-1]["messages"]
+    )
+    for secret in [
+        "synthetic-api-key",
+        "synthetic-service-token",
+        "合成证据",
+        "Authorization",
+    ]:
+        assert secret not in pi_service.logs.read_text()
+
+
+def test_callback_exception_cancels_and_redacts(
+    pi_service: PiHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    responses = []
+    real = httpx.Client
+    monkeypatch.setattr(
+        pi_client.httpx,
+        "Client",
+        lambda **kwargs: real(**kwargs, event_hooks={"response": [responses.append]}),
+    )
+
+    def fail(_name: str, _args: dict[str, JsonValue]) -> JsonValue:
+        raise RuntimeError("sensitive callback exception")
+
+    with pytest.raises(ModelUnavailable, match="平台工具调用失败"):
+        run_turn(
+            pi_service.config,
+            system_prompt="",
+            input="合成证据",
+            tools=TOOLS,
+            on_tool_call=fail,
+        )
+    logs = pi_service.logs.read_text()
+    assert any(r.request.method == "DELETE" and r.status_code == 200 for r in responses)
+    assert "sensitive" not in logs
+
+
+def test_quota_response_preserves_retry_time(pi_service: PiHarness) -> None:
+    pi_service.rate_limited = True
+    before = datetime.now(UTC)
+    with pytest.raises(ModelRateLimited) as error:
+        run_turn(
+            pi_service.config,
+            system_prompt="",
+            input="",
+            tools=TOOLS,
+            on_tool_call=lambda *_: None,
+        )
+    assert error.value.retry_at is not None
+    assert 59 <= (error.value.retry_at - before).total_seconds() <= 65
+    assert "sensitive" not in str(error.value)
+    assert len(pi_service.requests) == 1
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "busy",
+        "deadline",
+        "limit_exceeded",
+        "cancelled",
+        "model_error",
+        "unauthorized",
+        "bad_request",
+    ],
+)
+def test_protocol_error_mapping(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, code: str
+) -> None:
+    real = httpx.Client
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            503, json={"type": "error", "code": code, "raw": "sensitive"}
+        )
+
+    monkeypatch.setattr(
+        pi_client.httpx,
+        "Client",
+        lambda **kwargs: real(**kwargs, transport=httpx.MockTransport(handler)),
+    )
+    from app.domains.model.pi_client import PiModelConfig
+
+    with pytest.raises(ModelUnavailable) as error:
+        run_turn(
+            PiModelConfig(
+                provider="test",
+                api="openai-completions",
+                id="test",
+                baseUrl="http://test",
+            ),
+            system_prompt="",
+            input="",
+            tools=[],
+            on_tool_call=lambda *_: None,
+        )
+    assert "sensitive" not in str(error.value) + caplog.text
+    assert ("Pi protocol failure" in caplog.text) is (
+        code in ("unauthorized", "bad_request")
+    )
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b'{"type":"wrong"}\n',
+        b"invalid\n",
+        b"",
+        b'{"type":"error","code":"rate_limited","retry_at":"invalid"}\n',
+    ],
+)
+def test_invalid_or_truncated_stream_is_cancelled(
+    monkeypatch: pytest.MonkeyPatch, payload: bytes
+) -> None:
+    real = httpx.Client
+    methods = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        methods.append(request.method)
+        return httpx.Response(
+            200, content=payload if request.method == "POST" else b"{}"
+        )
+
+    monkeypatch.setattr(
+        pi_client.httpx,
+        "Client",
+        lambda **kwargs: real(**kwargs, transport=httpx.MockTransport(handler)),
+    )
+    from app.domains.model.pi_client import PiModelConfig
+
+    with pytest.raises(ModelUnavailable):
+        run_turn(
+            PiModelConfig(
+                provider="test",
+                api="openai-completions",
+                id="test",
+                baseUrl="http://test",
+            ),
+            system_prompt="",
+            input="",
+            tools=[],
+            on_tool_call=lambda *_: None,
+        )
+    # A terminal error event needs no DELETE; malformed/truncated streams do.
+    assert methods == (["POST"] if b'"type":"error"' in payload else ["POST", "DELETE"])
+
+
+def test_unreachable_service_is_redacted(monkeypatch: pytest.MonkeyPatch) -> None:
+    real = httpx.Client
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("sensitive connection details")
+
+    monkeypatch.setattr(
+        pi_client.httpx,
+        "Client",
+        lambda **kwargs: real(**kwargs, transport=httpx.MockTransport(handler)),
+    )
+    from app.domains.model.pi_client import PiModelConfig
+
+    with pytest.raises(ModelUnavailable, match="模型服务连接失败或协议错误"):
+        run_turn(
+            PiModelConfig(
+                provider="test",
+                api="openai-completions",
+                id="test",
+                baseUrl="http://test",
+            ),
+            system_prompt="",
+            input="",
+            tools=[],
+            on_tool_call=lambda *_: None,
+        )
+
+
+@pytest.mark.parametrize("interrupted", [False, True])
+def test_callback_interrupt_and_finish_race(
+    monkeypatch: pytest.MonkeyPatch, interrupted: bool
+) -> None:
+    real = httpx.Client
+    methods = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        methods.append(request.method)
+        if request.method == "DELETE":
+            return httpx.Response(200 if interrupted else 404, json={})
+        payload = b'{"type":"tool_call","call_id":"1","name":"submit_draft","arguments":{}}\n{"type":"done"}\n'
+        return httpx.Response(
+            200, content=payload if request.url.path == "/v1/turns" else b"{}"
+        )
+
+    monkeypatch.setattr(
+        pi_client.httpx,
+        "Client",
+        lambda **kwargs: real(**kwargs, transport=httpx.MockTransport(handler)),
+    )
+
+    def fail(*_args: object) -> JsonValue:
+        if interrupted:
+            raise KeyboardInterrupt()
+        raise RuntimeError("sensitive")
+
+    from app.domains.model.pi_client import PiModelConfig
+
+    with pytest.raises(KeyboardInterrupt if interrupted else ModelUnavailable):
+        run_turn(
+            PiModelConfig(
+                provider="test",
+                api="openai-completions",
+                id="test",
+                baseUrl="http://test",
+            ),
+            system_prompt="",
+            input="",
+            tools=TOOLS,
+            on_tool_call=fail,
+        )
+    assert methods == (
+        ["POST", "DELETE"] if interrupted else ["POST", "POST", "DELETE"]
+    )

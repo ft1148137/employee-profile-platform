@@ -119,6 +119,18 @@ SampleDraft.model_json_schema()
 
 Node 测试覆盖未知工具拒绝、schema 拒绝、取消、合成 access token 无刷新及额度元数据丢失；Docker 另外证明非 root、根目录不可写与无 shell。并发 Python demo 是 CI 的独立步骤，不修改或跳过后端、前端既有检查。
 
+## 实现（S7a，NERE-90）
+
+`pi/server.mjs` 实现带 Bearer 认证的 HTTP/NDJSON 协议，健康检查为 `GET /health`。请求字段为 `version=1`、UUID `run_id`、`mode=draft`、`model`、`system_prompt`、字符串 `input`、工具数组 `tools`。`model` 使用 Pi 字段 `provider/api/id/baseUrl/contextWindow/maxTokens/compat/reasoning/thinkingLevel`，另带本次 `api_key`；工具使用 `name/description/parameters`（Python 的 JSON Schema）。不接受额外顶层或模型字段。
+
+`tool_call` 事件带 `call_id/name/arguments`；结果 POST 路径中的 call_id 需 URL 编码，正文为 `{result, is_error}`。NDJSON `done` 带 `stopReason/model_calls/tool_calls`；`error` 只带固定 `code`，额度额外带 `retry_at/estimated`。DELETE 在 agent 终止、释放名额后确认，断连与期限同样 abort；`PI_DEADLINE_MS` 只允许将默认 120000 毫秒调短。工具执行顺序固定，参数失败与未知工具的原始错误在模型下一轮读取前替换成固定文字。模型密钥与服务认证密钥不进入历史、事件或访问日志。
+
+`backend/app/domains/model/pi_client.py` 提供 `PiModelConfig`、`ToolDefinition` 和 `run_turn`，回调接收工具名和参数，返回 JSON 值。异常回传固定工具错误并 DELETE 等待终止；断流或客户端中断也取消，失联由服务期限兜底。客户端无代理环境继承、不跟重定向，读取期限 130 秒；服务每次模型调用关闭 SDK 自动重试，由调用层决定恢复策略。额度遵循前述四级优先级。
+
+真实 429 集成测试发现，此固定版本 OpenAI/Anthropic SDK 在非 2xx 时抛异常，Pi 的 `onResponse` 不会触发。为保留 Retry-After，服务用 Node 内置 diagnostics_channel 观察原生 fetch 响应：AsyncLocalStorage 绑定本次调用的 onResponse，WeakMap 按 HTTP request 绑定 observer，只取状态和允许的头，调用同一回调；不替换全局 fetch、不读取错误响应正文、不修改锁定包。并发测试验证各 run 的额度头互不串用。
+
+S7a 不切换 `chat_json`，不改数据库、画像和权限。S7c 接起草、封闭提供方、出网限制和设置页；S7b 接订阅；S14 加 chat 和调度。本 PR 保留研究样例、锁文件和原有 CI 步骤，无新增 npm/Python 依赖；新增服务由 Compose 内部认证健康检查。生产集成 pytest 启动真实 Node 服务与本地流式 OpenAI 兼容假服务，fixture 为 `tests/utils/pi.py`，后续任务复用。
+
 ## 上游核对来源
 
 - [agent-core 文档与独立 Agent 用法](https://github.com/badlogic/pi-mono/blob/v0.73.1/packages/agent/README.md)，[工具执行与校验源码](https://github.com/badlogic/pi-mono/blob/v0.73.1/packages/agent/src/agent-loop.ts)。
