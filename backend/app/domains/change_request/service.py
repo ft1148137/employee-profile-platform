@@ -1,10 +1,11 @@
 from typing import Literal
 from uuid import UUID
 
-from sqlalchemy import case, literal, union_all
+from sqlalchemy import and_, case, literal, or_, union_all
 from sqlalchemy.orm import aliased
 from sqlmodel import Session, col, select
 
+from app.authz.policies import can_view_evidence_content
 from app.authz.principal import Principal
 from app.domains.base import utc_now
 from app.domains.capability.models import CapabilityDefinition
@@ -13,6 +14,7 @@ from app.domains.change_request.models import (
     ChangeItem,
     ChangeItemEvidence,
     ProfileChangeRequest,
+    RequestOrigin,
     RequestStatus,
 )
 from app.domains.change_request.schemas import (
@@ -20,6 +22,7 @@ from app.domains.change_request.schemas import (
     ChangeRequestPublic,
     ChangeRequestsPublic,
 )
+from app.domains.evidence.models import Visibility
 from app.domains.profile.models import (
     AssessmentStatus,
     ProfileClaim,
@@ -33,16 +36,21 @@ def list_requests(
     principal: Principal,
     employee_id: UUID,
     status: Literal["open", "all"],
+    request_id: UUID | None = None,
 ) -> ChangeRequestsPublic:
     # Employee summaries also derive their review status from this module.
     from app.domains.evidence.service import evidence_access, restricted_title
     from app.domains.org.service import visible_employee
 
-    visible_employee(session, principal, employee_id)
+    employee = visible_employee(session, principal, employee_id)
     query = select(ProfileChangeRequest).where(
         ProfileChangeRequest.org_id == principal.org_id,
         ProfileChangeRequest.subject_employee_id == employee_id,
     )
+    if principal.employee_id != employee_id:
+        query = query.where(ProfileChangeRequest.status != RequestStatus.DRAFT)
+    if request_id is not None:
+        query = query.where(ProfileChangeRequest.id == request_id)
     if status == "open":
         query = query.where(
             col(ProfileChangeRequest.status).in_(
@@ -79,6 +87,10 @@ def list_requests(
         public = ChangeItemPublic.model_validate(
             item, update={"capability": CapabilityPublic.model_validate(capability)}
         )
+        if not can_view_evidence_content(
+            principal, subject_employee=employee, visibility=Visibility.RESTRICTED
+        ):
+            public.owner_statement = public.objection = None
         items[item.id] = public
         requests[item.request_id].items.append(public)
     links = session.exec(
@@ -129,6 +141,7 @@ def transition(request: ProfileChangeRequest, to: RequestStatus) -> None:
         raise InvalidTransition(f"Cannot transition {request.status} to {to}")
     request.status = to
     request.updated_at = utc_now()
+    request.revision += 1
 
 
 def review_statuses(
@@ -173,7 +186,9 @@ def review_statuses(
         ProfileChangeRequest.subject_employee_id,
         case(
             (
-                col(ProfileChangeRequest.status) == RequestStatus.PENDING_OWNER,
+                col(ProfileChangeRequest.status).in_(
+                    [RequestStatus.PENDING_OWNER, RequestStatus.DRAFT]
+                ),
                 "pending_employee",
             ),
             else_="pending_manager",
@@ -181,8 +196,14 @@ def review_statuses(
     ).where(
         ProfileChangeRequest.org_id == org_id,
         col(ProfileChangeRequest.subject_employee_id).in_(employee_ids),
-        col(ProfileChangeRequest.status).in_(
-            [RequestStatus.PENDING_OWNER, RequestStatus.PENDING_REVIEW]
+        or_(
+            col(ProfileChangeRequest.status).in_(
+                [RequestStatus.PENDING_OWNER, RequestStatus.PENDING_REVIEW]
+            ),
+            and_(
+                col(ProfileChangeRequest.status) == RequestStatus.DRAFT,
+                col(ProfileChangeRequest.origin) == RequestOrigin.INITIAL_SYNC,
+            ),
         ),
     )
     priority = {"disputed": 1, "pending_manager": 2, "pending_employee": 3}

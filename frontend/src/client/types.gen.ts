@@ -387,6 +387,14 @@ export type ChangeItemPublic = {
      */
     uncertainty: string | null;
     /**
+     * Owner Statement
+     */
+    owner_statement?: string | null;
+    /**
+     * Objection
+     */
+    objection?: string | null;
+    /**
      * Evidence
      */
     evidence?: Array<ClaimEvidencePublic>;
@@ -416,6 +424,19 @@ export type ChangeRequestPublic = {
      */
     updated_at: string;
     generated_by: RequestGeneratedBy;
+    /**
+     * Revision
+     */
+    revision: number;
+    submitted_via: SubmissionVia | null;
+    /**
+     * Client Name
+     */
+    client_name: string | null;
+    /**
+     * Submitted At
+     */
+    submitted_at: string | null;
     /**
      * Items
      */
@@ -702,6 +723,16 @@ export type DraftBody = {
      * Scope
      */
     scope: 'all' | 'failed';
+};
+
+/**
+ * DraftInput
+ */
+export type DraftInput = {
+    /**
+     * Items
+     */
+    items: Array<ItemInput>;
 };
 
 /**
@@ -1253,6 +1284,60 @@ export type IdentityUnlinkResult = {
 };
 
 /**
+ * InboxKind
+ */
+export type InboxKind = 'initial_review' | 'submitted' | 'status_changed' | 'question';
+
+/**
+ * InboxList
+ */
+export type InboxList = {
+    /**
+     * Data
+     */
+    data: Array<InboxPublic>;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
+ * InboxPublic
+ */
+export type InboxPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    kind: InboxKind;
+    /**
+     * Request Id
+     */
+    request_id: string | null;
+    /**
+     * Question Id
+     */
+    question_id: string | null;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Read At
+     */
+    read_at: string | null;
+    /**
+     * Done At
+     */
+    done_at: string | null;
+};
+
+/**
  * InferenceStatus
  */
 export type InferenceStatus = 'pending' | 'running' | 'generated' | 'failed';
@@ -1383,6 +1468,37 @@ export type IssueAccounts = {
      * Regenerate Pending
      */
     regenerate_pending?: boolean;
+};
+
+/**
+ * ItemInput
+ */
+export type ItemInput = {
+    op: ChangeOp;
+    /**
+     * Capability Key
+     */
+    capability_key: string;
+    /**
+     * Statement
+     */
+    statement: string;
+    /**
+     * Level
+     */
+    level?: string | null;
+    /**
+     * Owner Statement
+     */
+    owner_statement?: string | null;
+    /**
+     * Objection
+     */
+    objection?: string | null;
+    /**
+     * Evidence Ids
+     */
+    evidence_ids?: Array<string>;
 };
 
 /**
@@ -1639,6 +1755,14 @@ export type OrganizationUpdate = {
 };
 
 /**
+ * PreviewItem
+ */
+export type PreviewItem = {
+    before: ClaimPublic | null;
+    after: ChangeItemPublic;
+};
+
+/**
  * PrivateUserCreate
  */
 export type PrivateUserCreate = {
@@ -1828,7 +1952,25 @@ export type RequestGeneratedBy = {
 /**
  * RequestOrigin
  */
-export type RequestOrigin = 'initial_sync' | 'incremental_sync' | 'conversation' | 'manual' | 'correction';
+export type RequestOrigin = 'initial_sync' | 'incremental_sync' | 'conversation' | 'manual' | 'correction' | 'import';
+
+/**
+ * RequestPreview
+ */
+export type RequestPreview = {
+    /**
+     * Request Id
+     */
+    request_id: string;
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Items
+     */
+    items: Array<PreviewItem>;
+};
 
 /**
  * RequestStatus
@@ -2151,6 +2293,21 @@ export type SetupTokenResult = {
      * Token
      */
     token: string;
+};
+
+/**
+ * SubmissionVia
+ */
+export type SubmissionVia = 'web' | 'mcp' | 'import' | 'bot' | 'admin_handover';
+
+/**
+ * SubmitInput
+ */
+export type SubmitInput = {
+    /**
+     * Revision
+     */
+    revision: number;
 };
 
 /**
@@ -2587,6 +2744,387 @@ export type meReadMembershipsResponses = {
 };
 
 export type meReadMembershipsResponse = meReadMembershipsResponses[keyof meReadMembershipsResponses];
+
+export type employeeRequestsReadMyProfileData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/profile';
+};
+
+export type employeeRequestsReadMyProfileErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeeRequestsReadMyProfileError = employeeRequestsReadMyProfileErrors[keyof employeeRequestsReadMyProfileErrors];
+
+export type employeeRequestsReadMyProfileResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProfileView;
+};
+
+export type employeeRequestsReadMyProfileResponse = employeeRequestsReadMyProfileResponses[keyof employeeRequestsReadMyProfileResponses];
+
+export type employeeRequestsReadMyEvidenceData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Kind
+         */
+        kind?: EvidenceKind | null;
+        /**
+         * Include Inactive
+         */
+        include_inactive?: boolean;
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/orgs/{org_id}/me/evidence';
+};
+
+export type employeeRequestsReadMyEvidenceErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeeRequestsReadMyEvidenceError = employeeRequestsReadMyEvidenceErrors[keyof employeeRequestsReadMyEvidenceErrors];
+
+export type employeeRequestsReadMyEvidenceResponses = {
+    /**
+     * Successful Response
+     */
+    200: EvidenceList;
+};
+
+export type employeeRequestsReadMyEvidenceResponse = employeeRequestsReadMyEvidenceResponses[keyof employeeRequestsReadMyEvidenceResponses];
+
+export type employeeRequestsReadMyRequestsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Status
+         */
+        status?: 'open' | 'all';
+    };
+    url: '/api/v1/orgs/{org_id}/me/requests';
+};
+
+export type employeeRequestsReadMyRequestsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeeRequestsReadMyRequestsError = employeeRequestsReadMyRequestsErrors[keyof employeeRequestsReadMyRequestsErrors];
+
+export type employeeRequestsReadMyRequestsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChangeRequestsPublic;
+};
+
+export type employeeRequestsReadMyRequestsResponse = employeeRequestsReadMyRequestsResponses[keyof employeeRequestsReadMyRequestsResponses];
+
+export type employeeRequestsCreateDraftData = {
+    body: DraftInput;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/requests';
+};
+
+export type employeeRequestsCreateDraftErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeeRequestsCreateDraftError = employeeRequestsCreateDraftErrors[keyof employeeRequestsCreateDraftErrors];
+
+export type employeeRequestsCreateDraftResponses = {
+    /**
+     * Successful Response
+     */
+    201: ChangeRequestPublic;
+};
+
+export type employeeRequestsCreateDraftResponse = employeeRequestsCreateDraftResponses[keyof employeeRequestsCreateDraftResponses];
+
+export type employeeRequestsReadMyCapabilitiesData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/capabilities';
+};
+
+export type employeeRequestsReadMyCapabilitiesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeeRequestsReadMyCapabilitiesError = employeeRequestsReadMyCapabilitiesErrors[keyof employeeRequestsReadMyCapabilitiesErrors];
+
+export type employeeRequestsReadMyCapabilitiesResponses = {
+    /**
+     * Successful Response
+     */
+    200: CapabilitiesPublic;
+};
+
+export type employeeRequestsReadMyCapabilitiesResponse = employeeRequestsReadMyCapabilitiesResponses[keyof employeeRequestsReadMyCapabilitiesResponses];
+
+export type employeeRequestsUpdateItemsData = {
+    body: DraftInput;
+    path: {
+        /**
+         * Request Id
+         */
+        request_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/requests/{request_id}/items';
+};
+
+export type employeeRequestsUpdateItemsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeeRequestsUpdateItemsError = employeeRequestsUpdateItemsErrors[keyof employeeRequestsUpdateItemsErrors];
+
+export type employeeRequestsUpdateItemsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChangeRequestPublic;
+};
+
+export type employeeRequestsUpdateItemsResponse = employeeRequestsUpdateItemsResponses[keyof employeeRequestsUpdateItemsResponses];
+
+export type employeeRequestsPreviewRequestData = {
+    body?: never;
+    path: {
+        /**
+         * Request Id
+         */
+        request_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/requests/{request_id}/preview';
+};
+
+export type employeeRequestsPreviewRequestErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeeRequestsPreviewRequestError = employeeRequestsPreviewRequestErrors[keyof employeeRequestsPreviewRequestErrors];
+
+export type employeeRequestsPreviewRequestResponses = {
+    /**
+     * Successful Response
+     */
+    200: RequestPreview;
+};
+
+export type employeeRequestsPreviewRequestResponse = employeeRequestsPreviewRequestResponses[keyof employeeRequestsPreviewRequestResponses];
+
+export type employeeRequestsSubmitRequestData = {
+    body: SubmitInput;
+    path: {
+        /**
+         * Request Id
+         */
+        request_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/requests/{request_id}/submit';
+};
+
+export type employeeRequestsSubmitRequestErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeeRequestsSubmitRequestError = employeeRequestsSubmitRequestErrors[keyof employeeRequestsSubmitRequestErrors];
+
+export type employeeRequestsSubmitRequestResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChangeRequestPublic;
+};
+
+export type employeeRequestsSubmitRequestResponse = employeeRequestsSubmitRequestResponses[keyof employeeRequestsSubmitRequestResponses];
+
+export type employeeRequestsWithdrawRequestData = {
+    body?: never;
+    path: {
+        /**
+         * Request Id
+         */
+        request_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/requests/{request_id}/withdraw';
+};
+
+export type employeeRequestsWithdrawRequestErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeeRequestsWithdrawRequestError = employeeRequestsWithdrawRequestErrors[keyof employeeRequestsWithdrawRequestErrors];
+
+export type employeeRequestsWithdrawRequestResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChangeRequestPublic;
+};
+
+export type employeeRequestsWithdrawRequestResponse = employeeRequestsWithdrawRequestResponses[keyof employeeRequestsWithdrawRequestResponses];
+
+export type employeeRequestsReadInboxData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Skip
+         */
+        skip?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/orgs/{org_id}/me/inbox';
+};
+
+export type employeeRequestsReadInboxErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeeRequestsReadInboxError = employeeRequestsReadInboxErrors[keyof employeeRequestsReadInboxErrors];
+
+export type employeeRequestsReadInboxResponses = {
+    /**
+     * Successful Response
+     */
+    200: InboxList;
+};
+
+export type employeeRequestsReadInboxResponse = employeeRequestsReadInboxResponses[keyof employeeRequestsReadInboxResponses];
+
+export type employeeRequestsReadInboxItemData = {
+    body?: never;
+    path: {
+        /**
+         * Inbox Id
+         */
+        inbox_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/inbox/{inbox_id}/read';
+};
+
+export type employeeRequestsReadInboxItemErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type employeeRequestsReadInboxItemError = employeeRequestsReadInboxItemErrors[keyof employeeRequestsReadInboxItemErrors];
+
+export type employeeRequestsReadInboxItemResponses = {
+    /**
+     * Successful Response
+     */
+    200: InboxPublic;
+};
+
+export type employeeRequestsReadInboxItemResponse = employeeRequestsReadInboxItemResponses[keyof employeeRequestsReadInboxItemResponses];
 
 export type modelSettingGetModelSettingData = {
     body?: never;

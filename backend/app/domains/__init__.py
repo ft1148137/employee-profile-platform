@@ -6,6 +6,7 @@ from app.domains.capability import models as capability
 from app.domains.change_request import models as change_request
 from app.domains.drafting import models as drafting
 from app.domains.evidence import models as evidence
+from app.domains.inbox import models as inbox
 from app.domains.model import models as model
 from app.domains.org import models as org
 from app.domains.profile import models as profile
@@ -20,6 +21,7 @@ __all__ = [
     "change_request",
     "drafting",
     "evidence",
+    "inbox",
     "model",
     "org",
     "profile",

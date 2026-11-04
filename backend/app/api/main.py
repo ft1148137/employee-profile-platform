@@ -13,6 +13,7 @@ from app.api.routes import (
     initial_profiles,
     login,
     me,
+    me_requests,
     model_setting,
     orgs,
     private,
@@ -32,6 +33,7 @@ api_router.include_router(login.router)
 api_router.include_router(users.router)
 api_router.include_router(utils.router)
 api_router.include_router(me.router)
+api_router.include_router(me_requests.router)
 api_router.include_router(model_setting.router)
 api_router.include_router(sources.router)
 api_router.include_router(sources.sync_router)

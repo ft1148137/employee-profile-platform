@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { accountsDisableAccountData, accountsDisableAccountErrors, accountsDisableAccountResponses, accountsEnableAccountData, accountsEnableAccountErrors, accountsEnableAccountResponses, accountsIssueAccountsData, accountsIssueAccountsErrors, accountsIssueAccountsResponses, accountsReadAccountsData, accountsReadAccountsErrors, accountsReadAccountsResponses, accountsResetPasswordData, accountsResetPasswordErrors, accountsResetPasswordResponses, auditReadAuditEventsData, auditReadAuditEventsErrors, auditReadAuditEventsResponses, capabilitiesReadCapabilitiesData, capabilitiesReadCapabilitiesErrors, capabilitiesReadCapabilitiesResponses, capabilityTemplatesActivateCapabilitySchemaData, capabilityTemplatesActivateCapabilitySchemaErrors, capabilityTemplatesActivateCapabilitySchemaResponses, capabilityTemplatesPreviewTemplateData, capabilityTemplatesPreviewTemplateErrors, capabilityTemplatesPreviewTemplateResponses, capabilityTemplatesReadTemplatesData, capabilityTemplatesReadTemplatesResponses, changeRequestsReadChangeRequestsData, changeRequestsReadChangeRequestsErrors, changeRequestsReadChangeRequestsResponses, draftingSettingsGetAutoDraftData, draftingSettingsGetAutoDraftErrors, draftingSettingsGetAutoDraftResponses, draftingSettingsGetDraftingSettingsData, draftingSettingsGetDraftingSettingsErrors, draftingSettingsGetDraftingSettingsResponses, draftingSettingsPutAutoDraftData, draftingSettingsPutAutoDraftErrors, draftingSettingsPutAutoDraftResponses, draftingSettingsPutDraftingSettingsData, draftingSettingsPutDraftingSettingsErrors, draftingSettingsPutDraftingSettingsResponses, employeesReadEmployeeData, employeesReadEmployeeErrors, employeesReadEmployeeResponses, employeesReadEmployeesData, employeesReadEmployeesErrors, employeesReadEmployeesResponses, evidenceReadEmployeeEvidenceData, evidenceReadEmployeeEvidenceErrors, evidenceReadEmployeeEvidenceResponses, evidenceReadEvidenceData, evidenceReadEvidenceErrors, evidenceReadEvidenceResponses, externalIdentitiesGetIdentitiesData, externalIdentitiesGetIdentitiesErrors, externalIdentitiesGetIdentitiesResponses, externalIdentitiesPostLinksData, externalIdentitiesPostLinksErrors, externalIdentitiesPostLinksResponses, externalIdentitiesPostUnlinkData, externalIdentitiesPostUnlinkErrors, externalIdentitiesPostUnlinkResponses, initialProfilesDraftData, initialProfilesDraftErrors, initialProfilesDraftResponses, initialProfilesProgressData, initialProfilesProgressErrors, initialProfilesProgressResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginTestTokenData, loginTestTokenResponses, meReadMembershipsData, meReadMembershipsResponses, modelSettingDisconnectChatgptData, modelSettingDisconnectChatgptErrors, modelSettingDisconnectChatgptResponses, modelSettingGetModelSettingData, modelSettingGetModelSettingErrors, modelSettingGetModelSettingResponses, modelSettingPollChatgptLoginData, modelSettingPollChatgptLoginErrors, modelSettingPollChatgptLoginResponses, modelSettingPutModelSettingData, modelSettingPutModelSettingErrors, modelSettingPutModelSettingResponses, modelSettingStartChatgptLoginData, modelSettingStartChatgptLoginErrors, modelSettingStartChatgptLoginResponses, modelSettingTestModelSettingData, modelSettingTestModelSettingErrors, modelSettingTestModelSettingResponses, orgsReadDepartmentsData, orgsReadDepartmentsErrors, orgsReadDepartmentsResponses, orgsRenameOrganizationData, orgsRenameOrganizationErrors, orgsRenameOrganizationResponses, privateCreateSetupTokenData, privateCreateSetupTokenErrors, privateCreateSetupTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesReadProfileData, profilesReadProfileErrors, profilesReadProfileResponses, profilesReadProfileVersionData, profilesReadProfileVersionErrors, profilesReadProfileVersionResponses, profilesReadProfileVersionsData, profilesReadProfileVersionsErrors, profilesReadProfileVersionsResponses, rolesGrantRoleData, rolesGrantRoleErrors, rolesGrantRoleResponses, rolesReadRolesData, rolesReadRolesErrors, rolesReadRolesResponses, rolesRevokeRoleData, rolesRevokeRoleErrors, rolesRevokeRoleResponses, rosterApplyImportData, rosterApplyImportErrors, rosterApplyImportResponses, rosterDownloadTemplateData, rosterDownloadTemplateErrors, rosterDownloadTemplateResponses, rosterReadImportsData, rosterReadImportsErrors, rosterReadImportsResponses, rosterUploadImportData, rosterUploadImportErrors, rosterUploadImportResponses, setupCompleteStepData, setupCompleteStepErrors, setupCompleteStepResponses, setupInitializeOrganizationData, setupInitializeOrganizationErrors, setupInitializeOrganizationResponses, setupReadSetupData, setupReadSetupErrors, setupReadSetupResponses, setupReadStatusData, setupReadStatusResponses, setupSkipStepData, setupSkipStepErrors, setupSkipStepResponses, sourcesGetJiraData, sourcesGetJiraErrors, sourcesGetJiraResponses, sourcesImportWorkRecordsData, sourcesImportWorkRecordsErrors, sourcesImportWorkRecordsResponses, sourcesListSyncRunsData, sourcesListSyncRunsErrors, sourcesListSyncRunsResponses, sourcesPutJiraData, sourcesPutJiraErrors, sourcesPutJiraResponses, sourcesRetrySyncData, sourcesRetrySyncErrors, sourcesRetrySyncResponses, sourcesStartJiraSyncData, sourcesStartJiraSyncErrors, sourcesStartJiraSyncResponses, sourcesTestJiraData, sourcesTestJiraErrors, sourcesTestJiraResponses, sourcesWorkRecordsTemplateData, sourcesWorkRecordsTemplateErrors, sourcesWorkRecordsTemplateResponses, usersReadUserMeData, usersReadUserMeResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, utilsHealthCheckData, utilsHealthCheckResponses } from './types.gen';
+import type { accountsDisableAccountData, accountsDisableAccountErrors, accountsDisableAccountResponses, accountsEnableAccountData, accountsEnableAccountErrors, accountsEnableAccountResponses, accountsIssueAccountsData, accountsIssueAccountsErrors, accountsIssueAccountsResponses, accountsReadAccountsData, accountsReadAccountsErrors, accountsReadAccountsResponses, accountsResetPasswordData, accountsResetPasswordErrors, accountsResetPasswordResponses, auditReadAuditEventsData, auditReadAuditEventsErrors, auditReadAuditEventsResponses, capabilitiesReadCapabilitiesData, capabilitiesReadCapabilitiesErrors, capabilitiesReadCapabilitiesResponses, capabilityTemplatesActivateCapabilitySchemaData, capabilityTemplatesActivateCapabilitySchemaErrors, capabilityTemplatesActivateCapabilitySchemaResponses, capabilityTemplatesPreviewTemplateData, capabilityTemplatesPreviewTemplateErrors, capabilityTemplatesPreviewTemplateResponses, capabilityTemplatesReadTemplatesData, capabilityTemplatesReadTemplatesResponses, changeRequestsReadChangeRequestsData, changeRequestsReadChangeRequestsErrors, changeRequestsReadChangeRequestsResponses, draftingSettingsGetAutoDraftData, draftingSettingsGetAutoDraftErrors, draftingSettingsGetAutoDraftResponses, draftingSettingsGetDraftingSettingsData, draftingSettingsGetDraftingSettingsErrors, draftingSettingsGetDraftingSettingsResponses, draftingSettingsPutAutoDraftData, draftingSettingsPutAutoDraftErrors, draftingSettingsPutAutoDraftResponses, draftingSettingsPutDraftingSettingsData, draftingSettingsPutDraftingSettingsErrors, draftingSettingsPutDraftingSettingsResponses, employeeRequestsCreateDraftData, employeeRequestsCreateDraftErrors, employeeRequestsCreateDraftResponses, employeeRequestsPreviewRequestData, employeeRequestsPreviewRequestErrors, employeeRequestsPreviewRequestResponses, employeeRequestsReadInboxData, employeeRequestsReadInboxErrors, employeeRequestsReadInboxItemData, employeeRequestsReadInboxItemErrors, employeeRequestsReadInboxItemResponses, employeeRequestsReadInboxResponses, employeeRequestsReadMyCapabilitiesData, employeeRequestsReadMyCapabilitiesErrors, employeeRequestsReadMyCapabilitiesResponses, employeeRequestsReadMyEvidenceData, employeeRequestsReadMyEvidenceErrors, employeeRequestsReadMyEvidenceResponses, employeeRequestsReadMyProfileData, employeeRequestsReadMyProfileErrors, employeeRequestsReadMyProfileResponses, employeeRequestsReadMyRequestsData, employeeRequestsReadMyRequestsErrors, employeeRequestsReadMyRequestsResponses, employeeRequestsSubmitRequestData, employeeRequestsSubmitRequestErrors, employeeRequestsSubmitRequestResponses, employeeRequestsUpdateItemsData, employeeRequestsUpdateItemsErrors, employeeRequestsUpdateItemsResponses, employeeRequestsWithdrawRequestData, employeeRequestsWithdrawRequestErrors, employeeRequestsWithdrawRequestResponses, employeesReadEmployeeData, employeesReadEmployeeErrors, employeesReadEmployeeResponses, employeesReadEmployeesData, employeesReadEmployeesErrors, employeesReadEmployeesResponses, evidenceReadEmployeeEvidenceData, evidenceReadEmployeeEvidenceErrors, evidenceReadEmployeeEvidenceResponses, evidenceReadEvidenceData, evidenceReadEvidenceErrors, evidenceReadEvidenceResponses, externalIdentitiesGetIdentitiesData, externalIdentitiesGetIdentitiesErrors, externalIdentitiesGetIdentitiesResponses, externalIdentitiesPostLinksData, externalIdentitiesPostLinksErrors, externalIdentitiesPostLinksResponses, externalIdentitiesPostUnlinkData, externalIdentitiesPostUnlinkErrors, externalIdentitiesPostUnlinkResponses, initialProfilesDraftData, initialProfilesDraftErrors, initialProfilesDraftResponses, initialProfilesProgressData, initialProfilesProgressErrors, initialProfilesProgressResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginTestTokenData, loginTestTokenResponses, meReadMembershipsData, meReadMembershipsResponses, modelSettingDisconnectChatgptData, modelSettingDisconnectChatgptErrors, modelSettingDisconnectChatgptResponses, modelSettingGetModelSettingData, modelSettingGetModelSettingErrors, modelSettingGetModelSettingResponses, modelSettingPollChatgptLoginData, modelSettingPollChatgptLoginErrors, modelSettingPollChatgptLoginResponses, modelSettingPutModelSettingData, modelSettingPutModelSettingErrors, modelSettingPutModelSettingResponses, modelSettingStartChatgptLoginData, modelSettingStartChatgptLoginErrors, modelSettingStartChatgptLoginResponses, modelSettingTestModelSettingData, modelSettingTestModelSettingErrors, modelSettingTestModelSettingResponses, orgsReadDepartmentsData, orgsReadDepartmentsErrors, orgsReadDepartmentsResponses, orgsRenameOrganizationData, orgsRenameOrganizationErrors, orgsRenameOrganizationResponses, privateCreateSetupTokenData, privateCreateSetupTokenErrors, privateCreateSetupTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesReadProfileData, profilesReadProfileErrors, profilesReadProfileResponses, profilesReadProfileVersionData, profilesReadProfileVersionErrors, profilesReadProfileVersionResponses, profilesReadProfileVersionsData, profilesReadProfileVersionsErrors, profilesReadProfileVersionsResponses, rolesGrantRoleData, rolesGrantRoleErrors, rolesGrantRoleResponses, rolesReadRolesData, rolesReadRolesErrors, rolesReadRolesResponses, rolesRevokeRoleData, rolesRevokeRoleErrors, rolesRevokeRoleResponses, rosterApplyImportData, rosterApplyImportErrors, rosterApplyImportResponses, rosterDownloadTemplateData, rosterDownloadTemplateErrors, rosterDownloadTemplateResponses, rosterReadImportsData, rosterReadImportsErrors, rosterReadImportsResponses, rosterUploadImportData, rosterUploadImportErrors, rosterUploadImportResponses, setupCompleteStepData, setupCompleteStepErrors, setupCompleteStepResponses, setupInitializeOrganizationData, setupInitializeOrganizationErrors, setupInitializeOrganizationResponses, setupReadSetupData, setupReadSetupErrors, setupReadSetupResponses, setupReadStatusData, setupReadStatusResponses, setupSkipStepData, setupSkipStepErrors, setupSkipStepResponses, sourcesGetJiraData, sourcesGetJiraErrors, sourcesGetJiraResponses, sourcesImportWorkRecordsData, sourcesImportWorkRecordsErrors, sourcesImportWorkRecordsResponses, sourcesListSyncRunsData, sourcesListSyncRunsErrors, sourcesListSyncRunsResponses, sourcesPutJiraData, sourcesPutJiraErrors, sourcesPutJiraResponses, sourcesRetrySyncData, sourcesRetrySyncErrors, sourcesRetrySyncResponses, sourcesStartJiraSyncData, sourcesStartJiraSyncErrors, sourcesStartJiraSyncResponses, sourcesTestJiraData, sourcesTestJiraErrors, sourcesTestJiraResponses, sourcesWorkRecordsTemplateData, sourcesWorkRecordsTemplateErrors, sourcesWorkRecordsTemplateResponses, usersReadUserMeData, usersReadUserMeResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, utilsHealthCheckData, utilsHealthCheckResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -108,6 +108,152 @@ export class MeService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/me/memberships',
+            ...options
+        });
+    }
+}
+
+export class EmployeeRequestsService {
+    /**
+     * Read My Profile
+     */
+    public static readMyProfile<ThrowOnError extends boolean = true>(options: Options<employeeRequestsReadMyProfileData, ThrowOnError>) {
+        return (options.client ?? client).get<employeeRequestsReadMyProfileResponses, employeeRequestsReadMyProfileErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/me/profile',
+            ...options
+        });
+    }
+    
+    /**
+     * Read My Evidence
+     */
+    public static readMyEvidence<ThrowOnError extends boolean = true>(options: Options<employeeRequestsReadMyEvidenceData, ThrowOnError>) {
+        return (options.client ?? client).get<employeeRequestsReadMyEvidenceResponses, employeeRequestsReadMyEvidenceErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/me/evidence',
+            ...options
+        });
+    }
+    
+    /**
+     * Read My Requests
+     */
+    public static readMyRequests<ThrowOnError extends boolean = true>(options: Options<employeeRequestsReadMyRequestsData, ThrowOnError>) {
+        return (options.client ?? client).get<employeeRequestsReadMyRequestsResponses, employeeRequestsReadMyRequestsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/me/requests',
+            ...options
+        });
+    }
+    
+    /**
+     * Create Draft
+     */
+    public static createDraft<ThrowOnError extends boolean = true>(options: Options<employeeRequestsCreateDraftData, ThrowOnError>) {
+        return (options.client ?? client).post<employeeRequestsCreateDraftResponses, employeeRequestsCreateDraftErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/me/requests',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Read My Capabilities
+     */
+    public static readMyCapabilities<ThrowOnError extends boolean = true>(options: Options<employeeRequestsReadMyCapabilitiesData, ThrowOnError>) {
+        return (options.client ?? client).get<employeeRequestsReadMyCapabilitiesResponses, employeeRequestsReadMyCapabilitiesErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/me/capabilities',
+            ...options
+        });
+    }
+    
+    /**
+     * Update Items
+     */
+    public static updateItems<ThrowOnError extends boolean = true>(options: Options<employeeRequestsUpdateItemsData, ThrowOnError>) {
+        return (options.client ?? client).put<employeeRequestsUpdateItemsResponses, employeeRequestsUpdateItemsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/me/requests/{request_id}/items',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Preview Request
+     */
+    public static previewRequest<ThrowOnError extends boolean = true>(options: Options<employeeRequestsPreviewRequestData, ThrowOnError>) {
+        return (options.client ?? client).get<employeeRequestsPreviewRequestResponses, employeeRequestsPreviewRequestErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/me/requests/{request_id}/preview',
+            ...options
+        });
+    }
+    
+    /**
+     * Submit Request
+     */
+    public static submitRequest<ThrowOnError extends boolean = true>(options: Options<employeeRequestsSubmitRequestData, ThrowOnError>) {
+        return (options.client ?? client).post<employeeRequestsSubmitRequestResponses, employeeRequestsSubmitRequestErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/me/requests/{request_id}/submit',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Withdraw Request
+     */
+    public static withdrawRequest<ThrowOnError extends boolean = true>(options: Options<employeeRequestsWithdrawRequestData, ThrowOnError>) {
+        return (options.client ?? client).post<employeeRequestsWithdrawRequestResponses, employeeRequestsWithdrawRequestErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/me/requests/{request_id}/withdraw',
+            ...options
+        });
+    }
+    
+    /**
+     * Read Inbox
+     */
+    public static readInbox<ThrowOnError extends boolean = true>(options: Options<employeeRequestsReadInboxData, ThrowOnError>) {
+        return (options.client ?? client).get<employeeRequestsReadInboxResponses, employeeRequestsReadInboxErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/me/inbox',
+            ...options
+        });
+    }
+    
+    /**
+     * Read Inbox Item
+     */
+    public static readInboxItem<ThrowOnError extends boolean = true>(options: Options<employeeRequestsReadInboxItemData, ThrowOnError>) {
+        return (options.client ?? client).post<employeeRequestsReadInboxItemResponses, employeeRequestsReadInboxItemErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/me/inbox/{inbox_id}/read',
             ...options
         });
     }

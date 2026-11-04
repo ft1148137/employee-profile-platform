@@ -17,6 +17,15 @@ class RequestOrigin(StrEnum):
     CONVERSATION = "conversation"
     MANUAL = "manual"
     CORRECTION = "correction"
+    IMPORT = "import"
+
+
+class SubmissionVia(StrEnum):
+    WEB = "web"
+    MCP = "mcp"
+    IMPORT = "import"
+    BOT = "bot"
+    ADMIN_HANDOVER = "admin_handover"
 
 
 class RequestStatus(StrEnum):
@@ -59,6 +68,12 @@ class ProfileChangeRequest(TenantRecord, table=True):
     generated_by: dict[str, JsonValue] = Field(
         default_factory=dict, sa_column=Column(JSONB, nullable=False)
     )
+    revision: int = Field(default=1, sa_column_kwargs={"server_default": "1"})
+    submitted_via: SubmissionVia | None = Field(
+        default=None, sa_type=enum_type(SubmissionVia)
+    )
+    client_name: str | None = None
+    submitted_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     updated_at: datetime = Field(
         default_factory=utc_now, sa_type=DateTime(timezone=True)
     )
@@ -90,6 +105,8 @@ class ChangeItem(TenantRecord, table=True):
     )
     explanation: str | None = None
     uncertainty: str | None = None
+    owner_statement: str | None = None
+    objection: str | None = None
 
 
 class ChangeItemEvidence(SQLModel, table=True):
