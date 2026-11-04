@@ -11,226 +11,226 @@ employees:
   department: 平台研发部
   display_name: 姜柏然
   title: 平台研发部经理
-  work_email: jiang.boran@qingli-saas.example.com
+  work_email: ql001@qingli-saas.example.com
   account_id: ql-jira-01
 - employee_code: QL002
   department: 平台研发部
   display_name: 王浩
   title: 后端工程师
-  work_email: wang.hao@qingli-saas.example.com
+  work_email: ql002@qingli-saas.example.com
   account_id: ql-jira-02
 - employee_code: QL003
   department: 平台研发部
   display_name: 沈砚
   title: 资深后端工程师
-  work_email: shen.yan@qingli-saas.example.com
+  work_email: ql003@qingli-saas.example.com
   account_id: ql-jira-03
 - employee_code: QL004
   department: 平台研发部
   display_name: 赵清越
   title: 前端工程师
-  work_email: zhao.qingyue@qingli-saas.example.com
+  work_email: ql004@qingli-saas.example.com
   account_id: ql-jira-04
 - employee_code: QL005
   department: 平台研发部
   display_name: 温亦然
   title: 基础设施工程师
-  work_email: wen.yiran@qingli-saas.example.com
+  work_email: ql005@qingli-saas.example.com
   account_id: ql-jira-05
 - employee_code: QL006
   department: 平台研发部
   display_name: 傅京
   title: 后端工程师
-  work_email: fu.jing@qingli-saas.example.com
+  work_email: ql006@qingli-saas.example.com
   account_id: ql-jira-06
 - employee_code: QL007
   department: 平台研发部
   display_name: 柯屿
   title: 前端工程师
-  work_email: ke.yu@qingli-saas.example.com
+  work_email: ql007@qingli-saas.example.com
   account_id: ql-jira-07
 - employee_code: QL008
   department: 平台研发部
   display_name: 陶砚秋
   title: 资深后端工程师
-  work_email: tao.yanqiu@qingli-saas.example.com
+  work_email: ql008@qingli-saas.example.com
   account_id: ql-jira-08
 - employee_code: QL009
   department: 产品与设计部
   display_name: 宁致远
   title: 产品与设计部经理
-  work_email: ning.zhiyuan@qingli-saas.example.com
+  work_email: ql009@qingli-saas.example.com
   account_id: ql-jira-09
 - employee_code: QL010
   department: 产品与设计部
   display_name: 欧阳岑
   title: 高级产品经理
-  work_email: ouyang.cen@qingli-saas.example.com
+  work_email: ql010@qingli-saas.example.com
   account_id: ql-jira-10
 - employee_code: QL011
   department: 产品与设计部
   display_name: 苏晚
   title: 产品经理
-  work_email: su.wan@qingli-saas.example.com
+  work_email: ql011@qingli-saas.example.com
   account_id: ql-jira-11
 - employee_code: QL012
   department: 产品与设计部
   display_name: 卓一凡
   title: 交互设计师
-  work_email: zhuo.yifan@qingli-saas.example.com
+  work_email: ql012@qingli-saas.example.com
   account_id: ql-jira-12
 - employee_code: QL013
   department: 质量与运维部
   display_name: 郑亦舒
   title: 质量与运维部经理
-  work_email: zheng.yishu@qingli-saas.example.com
+  work_email: ql013@qingli-saas.example.com
   account_id: ql-jira-13
 - employee_code: QL014
   department: 质量与运维部
   display_name: 王浩
   title: 测试工程师
-  work_email: wang.hao2@qingli-saas.example.com
+  work_email: ql014@qingli-saas.example.com
   account_id: ql-jira-14
 - employee_code: QL015
   department: 质量与运维部
   display_name: 范清让
   title: 运维工程师
-  work_email: fan.qingrang@qingli-saas.example.com
+  work_email: ql015@qingli-saas.example.com
   account_id: ql-jira-15
 - employee_code: QL016
   department: 质量与运维部
   display_name: 莫晨
   title: 测试工程师（外包）
-  work_email: mo.chen@qingli-saas.example.com
+  work_email: ql016@qingli-saas.example.com
   account_id: ql-jira-16
 - employee_code: QL017
   department: 质量与运维部
   display_name: 简宁
   title: 测试开发工程师
-  work_email: jian.ning@qingli-saas.example.com
+  work_email: ql017@qingli-saas.example.com
   account_id: ql-jira-17
 - employee_code: QL018
   department: 客户成功部
   display_name: 骆程
   title: 客户成功部经理
-  work_email: luo.cheng@qingli-saas.example.com
+  work_email: ql018@qingli-saas.example.com
   account_id: ql-jira-18
 - employee_code: QL019
   department: 客户成功部
   display_name: 闵之桐
   title: 高级实施顾问
-  work_email: min.zhitong@qingli-saas.example.com
+  work_email: ql019@qingli-saas.example.com
   account_id: ql-jira-19
 - employee_code: QL020
   department: 客户成功部
   display_name: 乔羽
   title: 技术支持工程师
-  work_email: qiao.yu@qingli-saas.example.com
+  work_email: ql020@qingli-saas.example.com
   account_id: ql-jira-20
 - employee_code: QL021
   department: 客户成功部
   display_name: 樊知微
   title: 客户成功经理
-  work_email: fan.zhiwei@qingli-saas.example.com
+  work_email: ql021@qingli-saas.example.com
   account_id: ql-jira-21
 - employee_code: QL022
   department: 客户成功部
   display_name: 殷岚
   title: 技术支持工程师
-  work_email: yin.lan@qingli-saas.example.com
+  work_email: ql022@qingli-saas.example.com
   account_id: ql-jira-22
 - employee_code: QL023
   department: 客户成功部
   display_name: 施屿
   title: 实施顾问
-  work_email: shi.yu@qingli-saas.example.com
+  work_email: ql023@qingli-saas.example.com
   account_id: ql-jira-23
 - employee_code: QL024
   department: 人力与信息部
   display_name: 冯屹
   title: 人力与信息部经理
-  work_email: feng.yi@qingli-saas.example.com
+  work_email: ql024@qingli-saas.example.com
   account_id: ql-jira-24
 - employee_code: QL025
   department: 人力与信息部
   display_name: 蒋柚
   title: 信息系统管理员
-  work_email: jiang.you@qingli-saas.example.com
+  work_email: ql025@qingli-saas.example.com
   account_id: ql-jira-25
 - employee_code: QL026
   department: 人力与信息部
   display_name: 鹿念
   title: 人力资源业务伙伴
-  work_email: lu.nian@qingli-saas.example.com
+  work_email: ql026@qingli-saas.example.com
   account_id: ql-jira-26
 - employee_code: QL027
   department: 人力与信息部
   display_name: 邵聆
   title: 招聘专员
-  work_email: shao.ling@qingli-saas.example.com
+  work_email: ql027@qingli-saas.example.com
   account_id: ql-jira-27
 - employee_code: QL028
   department: 质量与运维部
   display_name: 聂小满
   title: 测试实习生
-  work_email: nie.xiaoman@qingli-saas.example.com
+  work_email: ql028@qingli-saas.example.com
   account_id: ql-jira-28
 accounts:
-- email: jiang.boran@qingli-saas.example.com
+- email: ql001@qingli-saas.example.com
   employee_code: QL001
   role: dept_manager
-- email: wang.hao@qingli-saas.example.com
+- email: ql002@qingli-saas.example.com
   employee_code: QL002
-- email: shen.yan@qingli-saas.example.com
+- email: ql003@qingli-saas.example.com
   employee_code: QL003
-- email: zhao.qingyue@qingli-saas.example.com
+- email: ql004@qingli-saas.example.com
   employee_code: QL004
-- email: wen.yiran@qingli-saas.example.com
+- email: ql005@qingli-saas.example.com
   employee_code: QL005
-- email: fu.jing@qingli-saas.example.com
+- email: ql006@qingli-saas.example.com
   employee_code: QL006
-- email: ke.yu@qingli-saas.example.com
+- email: ql007@qingli-saas.example.com
   employee_code: QL007
-- email: ning.zhiyuan@qingli-saas.example.com
+- email: ql009@qingli-saas.example.com
   employee_code: QL009
   role: dept_manager
-- email: ouyang.cen@qingli-saas.example.com
+- email: ql010@qingli-saas.example.com
   employee_code: QL010
-- email: su.wan@qingli-saas.example.com
+- email: ql011@qingli-saas.example.com
   employee_code: QL011
-- email: zhuo.yifan@qingli-saas.example.com
+- email: ql012@qingli-saas.example.com
   employee_code: QL012
-- email: zheng.yishu@qingli-saas.example.com
+- email: ql013@qingli-saas.example.com
   employee_code: QL013
   role: dept_manager
-- email: wang.hao2@qingli-saas.example.com
+- email: ql014@qingli-saas.example.com
   employee_code: QL014
-- email: fan.qingrang@qingli-saas.example.com
+- email: ql015@qingli-saas.example.com
   employee_code: QL015
-- email: mo.chen@qingli-saas.example.com
+- email: ql016@qingli-saas.example.com
   employee_code: QL016
-- email: jian.ning@qingli-saas.example.com
+- email: ql017@qingli-saas.example.com
   employee_code: QL017
-- email: luo.cheng@qingli-saas.example.com
+- email: ql018@qingli-saas.example.com
   employee_code: QL018
   role: dept_manager
-- email: min.zhitong@qingli-saas.example.com
+- email: ql019@qingli-saas.example.com
   employee_code: QL019
-- email: qiao.yu@qingli-saas.example.com
+- email: ql020@qingli-saas.example.com
   employee_code: QL020
-- email: fan.zhiwei@qingli-saas.example.com
+- email: ql021@qingli-saas.example.com
   employee_code: QL021
-- email: yin.lan@qingli-saas.example.com
+- email: ql022@qingli-saas.example.com
   employee_code: QL022
-- email: feng.yi@qingli-saas.example.com
+- email: ql024@qingli-saas.example.com
   employee_code: QL024
   role: dept_manager
-- email: jiang.you@qingli-saas.example.com
+- email: ql025@qingli-saas.example.com
   employee_code: QL025
   role: org_admin
-- email: lu.nian@qingli-saas.example.com
+- email: ql026@qingli-saas.example.com
   employee_code: QL026
-- email: shao.ling@qingli-saas.example.com
+- email: ql027@qingli-saas.example.com
   employee_code: QL027
-- email: nie.xiaoman@qingli-saas.example.com
+- email: ql028@qingli-saas.example.com
   employee_code: QL028

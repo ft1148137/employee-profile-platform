@@ -12,7 +12,7 @@ from tests.utils.utils import random_email, random_lower_string
 def test_create_user(db: Session) -> None:
     email = random_email()
     password = random_lower_string()
-    user_in = UserCreate(username=email.split("@")[0], email=email, password=password)
+    user_in = UserCreate(username=email, email=email, password=password)
     user = crud.create_user(session=db, user_create=user_in)
     assert user.email == email
     assert hasattr(user, "hashed_password")
@@ -21,7 +21,7 @@ def test_create_user(db: Session) -> None:
 def test_authenticate_user(db: Session) -> None:
     email = random_email()
     password = random_lower_string()
-    user_in = UserCreate(username=email.split("@")[0], email=email, password=password)
+    user_in = UserCreate(username=email, email=email, password=password)
     user = crud.create_user(session=db, user_create=user_in)
     authenticated_user = crud.authenticate(
         session=db, username=email, password=password
@@ -40,7 +40,7 @@ def test_not_authenticate_user(db: Session) -> None:
 def test_check_if_user_is_active(db: Session) -> None:
     email = random_email()
     password = random_lower_string()
-    user_in = UserCreate(username=email.split("@")[0], email=email, password=password)
+    user_in = UserCreate(username=email, email=email, password=password)
     user = crud.create_user(session=db, user_create=user_in)
     assert user.is_active is True
 
@@ -49,7 +49,7 @@ def test_check_if_user_is_active_inactive(db: Session) -> None:
     email = random_email()
     password = random_lower_string()
     user_in = UserCreate(
-        username=email.split("@")[0], email=email, password=password, is_active=False
+        username=email, email=email, password=password, is_active=False
     )
     user = crud.create_user(session=db, user_create=user_in)
     assert user.is_active is False
@@ -59,7 +59,7 @@ def test_check_if_user_is_superuser(db: Session) -> None:
     email = random_email()
     password = random_lower_string()
     user_in = UserCreate(
-        username=email.split("@")[0], email=email, password=password, is_superuser=True
+        username=email, email=email, password=password, is_superuser=True
     )
     user = crud.create_user(session=db, user_create=user_in)
     assert user.is_superuser is True
@@ -68,9 +68,7 @@ def test_check_if_user_is_superuser(db: Session) -> None:
 def test_check_if_user_is_superuser_normal_user(db: Session) -> None:
     username = random_email()
     password = random_lower_string()
-    user_in = UserCreate(
-        username=username.split("@")[0], email=username, password=password
-    )
+    user_in = UserCreate(username=username, email=username, password=password)
     user = crud.create_user(session=db, user_create=user_in)
     assert user.is_superuser is False
 
@@ -79,7 +77,7 @@ def test_get_user(db: Session) -> None:
     password = random_lower_string()
     username = random_email()
     user_in = UserCreate(
-        username=username.split("@")[0],
+        username=username,
         email=username,
         password=password,
         is_superuser=True,
@@ -102,7 +100,7 @@ def test_authenticate_user_with_bcrypt_upgrades_to_argon2(db: Session) -> None:
     assert bcrypt_hash.startswith("$2")  # bcrypt hashes start with $2
 
     # Create user with bcrypt hash directly in the database
-    user = User(username=email.split("@")[0], email=email, hashed_password=bcrypt_hash)
+    user = User(username=email, email=email, hashed_password=bcrypt_hash)
     db.add(user)
     db.commit()
     db.refresh(user)

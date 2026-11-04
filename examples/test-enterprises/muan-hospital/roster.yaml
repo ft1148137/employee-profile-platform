@@ -1,4 +1,5 @@
 - employee_code: MA001
+  work_email: ma001@muan-hospital.example.com
   grade: 主任医师
   hired_on: '2006-08-01'
   reports_to: null
@@ -26,6 +27,7 @@
     valid_until: null
     note: 院内四级手术（介入）授权有效
 - employee_code: MA002
+  work_email: ma002@muan-hospital.example.com
   grade: 副主任医师
   hired_on: '2012-07-16'
   reports_to: MA001
@@ -53,6 +55,7 @@
     valid_until: null
     note: 院内授权范围为三级介入手术，四级手术需上级在台
 - employee_code: MA003
+  work_email: ma003@muan-hospital.example.com
   grade: 主治医师
   hired_on: '2016-07-18'
   reports_to: MA001
@@ -82,6 +85,7 @@
     valid_until: '2024-12-31'
     note: 已过有效期，未重新认定；院内介入手术授权同时失效
 - employee_code: MA004
+  work_email: ma004@muan-hospital.example.com
   grade: 住院医师
   hired_on: '2023-08-07'
   reports_to: MA001
@@ -107,6 +111,7 @@
     valid_until: null
     note: 规培结业当年转为本院住院医师
 - employee_code: MA005
+  work_email: ma005@muan-hospital.example.com
   grade: 住院医师（规范化培训第二年）
   hired_on: '2025-08-04'
   reports_to: MA001
@@ -128,6 +133,7 @@
     valid_until: null
     note: 执业地点为规培基地，执业活动须在带教医师指导下开展
 - employee_code: MA006
+  work_email: ma006@muan-hospital.example.com
   grade: 主管护师
   hired_on: '2008-07-14'
   reports_to: MA001
@@ -149,6 +155,7 @@
     valid_until: null
     note: ''
 - employee_code: MA007
+  work_email: ma007@muan-hospital.example.com
   grade: 护士
   hired_on: '2026-09-07'
   reports_to: MA006
@@ -166,6 +173,7 @@
     valid_until: '2031-08-24'
     note: 入职前完成首次执业注册
 - employee_code: MA008
+  work_email: ma008@muan-hospital.example.com
   grade: 主任医师
   hired_on: '2007-07-20'
   reports_to: null
@@ -193,6 +201,7 @@
     valid_until: '2027-01-14'
     note: 三年一次复核
 - employee_code: MA009
+  work_email: ma009@muan-hospital.example.com
   grade: 主治医师
   hired_on: '2017-07-17'
   reports_to: MA008
@@ -224,6 +233,7 @@
     valid_until: '2027-01-14'
     note: 四级手术未获授权
 - employee_code: MA010
+  work_email: ma010@muan-hospital.example.com
   grade: 副主任医师
   hired_on: '2013-07-15'
   reports_to: MA008
@@ -255,6 +265,7 @@
     valid_until: null
     note: 兼任医务部病案质控医师的院内资格
 - employee_code: MA011
+  work_email: ma011@muan-hospital.example.com
   grade: 住院医师
   hired_on: '2024-08-05'
   reports_to: MA008
@@ -278,6 +289,7 @@
     valid_until: null
     note: ''
 - employee_code: MA012
+  work_email: ma012@muan-hospital.example.com
   grade: 主管护师
   hired_on: '2010-07-12'
   reports_to: MA008
@@ -299,6 +311,7 @@
     valid_until: null
     note: 本院手术配合护理由普通外科病区护士轮转承担
 - employee_code: MA013
+  work_email: ma013@muan-hospital.example.com
   grade: 护理实习生（在校第四年）
   hired_on: '2026-07-06'
   reports_to: MA012
@@ -312,6 +325,7 @@
   external_accounts: []
   certifications: []
 - employee_code: MA014
+  work_email: ma014@muan-hospital.example.com
   grade: 副主任医师
   hired_on: '2009-07-13'
   reports_to: null
@@ -337,6 +351,7 @@
     valid_until: null
     note: ''
 - employee_code: MA015
+  work_email: ma015@muan-hospital.example.com
   grade: 主治医师
   hired_on: '2018-07-16'
   reports_to: MA014
@@ -362,6 +377,7 @@
     valid_until: null
     note: ''
 - employee_code: MA016
+  work_email: ma016@muan-hospital.example.com
   grade: 住院医师
   hired_on: '2025-08-04'
   reports_to: MA014
@@ -383,6 +399,7 @@
     valid_until: null
     note: ''
 - employee_code: MA017
+  work_email: ma017@muan-hospital.example.com
   grade: 护师
   hired_on: '2019-07-15'
   reports_to: MA018
@@ -408,6 +425,7 @@
     valid_until: null
     note: 转岗后补修
 - employee_code: MA018
+  work_email: ma018@muan-hospital.example.com
   grade: 主管护师
   hired_on: '2011-07-18'
   reports_to: MA014
@@ -429,6 +447,7 @@
     valid_until: null
     note: ''
 - employee_code: MA019
+  work_email: ma019@muan-hospital.example.com
   grade: 主任医师
   hired_on: '2005-07-25'
   reports_to: null
@@ -454,6 +473,7 @@
     valid_until: null
     note: ''
 - employee_code: MA020
+  work_email: ma020@muan-hospital.example.com
   grade: 主治医师（病案质控岗）
   hired_on: '2015-07-20'
   reports_to: MA019
@@ -479,6 +499,7 @@
     valid_until: null
     note: ''
 - employee_code: MA021
+  work_email: ma021@muan-hospital.example.com
   grade: 主管技师（病案信息技术）
   hired_on: '2014-09-01'
   reports_to: MA019
@@ -500,6 +521,7 @@
     valid_until: null
     note: ''
 - employee_code: MA022
+  work_email: ma022@muan-hospital.example.com
   grade: 科员（管理九级）
   hired_on: '2019-09-02'
   reports_to: MA019
@@ -517,6 +539,7 @@
     valid_until: null
     note: ''
 - employee_code: MA023
+  work_email: ma023@muan-hospital.example.com
   grade: 高级工程师
   hired_on: '2011-03-01'
   reports_to: null
@@ -534,6 +557,7 @@
     valid_until: null
     note: ''
 - employee_code: MA024
+  work_email: ma024@muan-hospital.example.com
   grade: 工程师
   hired_on: '2018-04-09'
   reports_to: MA023
@@ -551,6 +575,7 @@
     valid_until: null
     note: ''
 - employee_code: MA025
+  work_email: ma025@muan-hospital.example.com
   grade: 工程师
   hired_on: '2017-06-05'
   reports_to: MA023
@@ -568,6 +593,7 @@
     valid_until: null
     note: ''
 - employee_code: MA026
+  work_email: ma026@muan-hospital.example.com
   grade: 助理工程师
   hired_on: '2026-08-17'
   reports_to: MA023
@@ -581,6 +607,7 @@
   external_accounts: []
   certifications: []
 - employee_code: MA027
+  work_email: ma027@muan-hospital.example.com
   grade: 主治医师
   hired_on: '2014-07-21'
   reports_to: MA001
@@ -608,6 +635,7 @@
     valid_until: null
     note: 在职期间持有院内四级手术（起搏器植入）授权
 - employee_code: MA028
+  work_email: ma028@muan-hospital.example.com
   grade: 护师
   hired_on: '2016-07-19'
   reports_to: MA012

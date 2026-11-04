@@ -11,218 +11,218 @@ employees:
   department: 战略与组织咨询部
   display_name: 司徒明昭
   title: 合伙人、战略与组织咨询部负责人
-  work_email: situ.mingzhao@yuanheng-consulting.example.com
+  work_email: yh001@yuanheng-consulting.example.com
   account_id: ts1001
 - employee_code: YH002
   department: 战略与组织咨询部
   display_name: 陆维桢
   title: 高级经理
-  work_email: lu.weizhen@yuanheng-consulting.example.com
+  work_email: yh002@yuanheng-consulting.example.com
   account_id: ts1002
 - employee_code: YH003
   department: 战略与组织咨询部
   display_name: 高韵之
   title: 项目经理（Engagement Manager）
-  work_email: gao.yunzhi@yuanheng-consulting.example.com
+  work_email: yh003@yuanheng-consulting.example.com
   account_id: ts1003
 - employee_code: YH004
   department: 战略与组织咨询部
   display_name: 邵予初
   title: 资深顾问
-  work_email: shao.yuchu@yuanheng-consulting.example.com
+  work_email: yh004@yuanheng-consulting.example.com
   account_id: ts1004
 - employee_code: YH005
   department: 战略与组织咨询部
   display_name: 文嘉树
   title: 顾问
-  work_email: wen.jiashu@yuanheng-consulting.example.com
+  work_email: yh005@yuanheng-consulting.example.com
   account_id: ts1005
 - employee_code: YH006
   department: 战略与组织咨询部
   display_name: 郗嘉禾
   title: 实习顾问
-  work_email: xi.jiahe@yuanheng-consulting.example.com
+  work_email: yh006@yuanheng-consulting.example.com
   account_id: ts1006
 - employee_code: YH007
   department: 运营与供应链咨询部
   display_name: 裴云澍
   title: 合伙人、运营与供应链咨询部负责人
-  work_email: pei.yunshu@yuanheng-consulting.example.com
+  work_email: yh007@yuanheng-consulting.example.com
   account_id: ts1007
 - employee_code: YH008
   department: 运营与供应链咨询部
   display_name: 曾翊
   title: 项目经理（Engagement Manager）
-  work_email: zeng.yi@yuanheng-consulting.example.com
+  work_email: yh008@yuanheng-consulting.example.com
   account_id: ts1008
 - employee_code: YH009
   department: 运营与供应链咨询部
   display_name: 蒋柏延
   title: 资深顾问
-  work_email: jiang.boyan@yuanheng-consulting.example.com
+  work_email: yh009@yuanheng-consulting.example.com
   account_id: ts1009
 - employee_code: YH010
   department: 运营与供应链咨询部
   display_name: 莫映秋
   title: 顾问
-  work_email: mo.yingqiu@yuanheng-consulting.example.com
+  work_email: yh010@yuanheng-consulting.example.com
   account_id: ts1010
 - employee_code: YH011
   department: 运营与供应链咨询部
   display_name: 洪砚
   title: 分析师
-  work_email: hong.yan@yuanheng-consulting.example.com
+  work_email: yh011@yuanheng-consulting.example.com
   account_id: ts1011
 - employee_code: YH012
   department: 数字化咨询部
   display_name: 梁书彦
   title: 高级经理、数字化咨询部负责人
-  work_email: liang.shuyan@yuanheng-consulting.example.com
+  work_email: yh012@yuanheng-consulting.example.com
   account_id: ts1012
 - employee_code: YH013
   department: 数字化咨询部
   display_name: 段佳霖
   title: 项目经理（Engagement Manager）
-  work_email: duan.jialin@yuanheng-consulting.example.com
+  work_email: yh013@yuanheng-consulting.example.com
   account_id: ts1013
 - employee_code: YH014
   department: 数字化咨询部
   display_name: 童屿
   title: 资深顾问
-  work_email: tong.yu@yuanheng-consulting.example.com
+  work_email: yh014@yuanheng-consulting.example.com
   account_id: ts1014
 - employee_code: YH015
   department: 数字化咨询部
   display_name: 柯宜宁
   title: 顾问
-  work_email: ke.yining@yuanheng-consulting.example.com
+  work_email: yh015@yuanheng-consulting.example.com
   account_id: ts1015
 - employee_code: YH016
   department: 数字化咨询部
   display_name: 池宥
   title: 顾问
-  work_email: chi.you@yuanheng-consulting.example.com
+  work_email: yh016@yuanheng-consulting.example.com
   account_id: ts1016
 - employee_code: YH017
   department: 数字化咨询部
   display_name: 邬泽宇
   title: 分析师
-  work_email: wu.zeyu@yuanheng-consulting.example.com
+  work_email: yh017@yuanheng-consulting.example.com
   account_id: ts1017
 - employee_code: YH018
   department: 知识与研究中心
   display_name: 屈砚秋
   title: 研究总监、知识与研究中心负责人
-  work_email: qu.yanqiu@yuanheng-consulting.example.com
+  work_email: yh018@yuanheng-consulting.example.com
   account_id: ts1018
 - employee_code: YH019
   department: 知识与研究中心
   display_name: 欧阳清和
   title: 资深研究员
-  work_email: ouyang.qinghe@yuanheng-consulting.example.com
+  work_email: yh019@yuanheng-consulting.example.com
   account_id: ts1019
 - employee_code: YH020
   department: 知识与研究中心
   display_name: 班以珩
   title: 研究员
-  work_email: ban.yiheng@yuanheng-consulting.example.com
+  work_email: yh020@yuanheng-consulting.example.com
   account_id: ts1020
 - employee_code: YH021
   department: 知识与研究中心
   display_name: 殷淼
   title: 信息分析师
-  work_email: yin.miao@yuanheng-consulting.example.com
+  work_email: yh021@yuanheng-consulting.example.com
   account_id: ts1021
 - employee_code: YH022
   department: 人力与运营支持部
   display_name: 卞秋澄
   title: 运营总监、人力与运营支持部负责人
-  work_email: bian.qiucheng@yuanheng-consulting.example.com
+  work_email: yh022@yuanheng-consulting.example.com
   account_id: ts1022
 - employee_code: YH023
   department: 人力与运营支持部
   display_name: 娄知微
   title: 人力与系统管理专员
-  work_email: lou.zhiwei@yuanheng-consulting.example.com
+  work_email: yh023@yuanheng-consulting.example.com
   account_id: ts1023
 - employee_code: YH024
   department: 人力与运营支持部
   display_name: 甘棠
   title: 项目运营专员（Staffing）
-  work_email: gan.tang@yuanheng-consulting.example.com
+  work_email: yh024@yuanheng-consulting.example.com
   account_id: ts1024
 - employee_code: YH025
   department: 人力与运营支持部
   display_name: 郝听澜
   title: 合约与财务专员
-  work_email: hao.tinglan@yuanheng-consulting.example.com
+  work_email: yh025@yuanheng-consulting.example.com
   account_id: ts1025
 - employee_code: YH026
   department: 数字化咨询部
   display_name: 卓亦衡
   title: 资深顾问
-  work_email: zhuo.yiheng@yuanheng-consulting.example.com
+  work_email: yh026@yuanheng-consulting.example.com
   account_id: ts1026
 - employee_code: YH027
   department: 运营与供应链咨询部
   display_name: 温语岑
   title: 顾问
-  work_email: wen.yucen@yuanheng-consulting.example.com
+  work_email: yh027@yuanheng-consulting.example.com
   account_id: ts1027
 accounts:
-- email: situ.mingzhao@yuanheng-consulting.example.com
+- email: yh001@yuanheng-consulting.example.com
   employee_code: YH001
   role: dept_manager
-- email: lu.weizhen@yuanheng-consulting.example.com
+- email: yh002@yuanheng-consulting.example.com
   employee_code: YH002
-- email: gao.yunzhi@yuanheng-consulting.example.com
+- email: yh003@yuanheng-consulting.example.com
   employee_code: YH003
-- email: shao.yuchu@yuanheng-consulting.example.com
+- email: yh004@yuanheng-consulting.example.com
   employee_code: YH004
-- email: wen.jiashu@yuanheng-consulting.example.com
+- email: yh005@yuanheng-consulting.example.com
   employee_code: YH005
-- email: xi.jiahe@yuanheng-consulting.example.com
+- email: yh006@yuanheng-consulting.example.com
   employee_code: YH006
-- email: pei.yunshu@yuanheng-consulting.example.com
+- email: yh007@yuanheng-consulting.example.com
   employee_code: YH007
   role: dept_manager
-- email: zeng.yi@yuanheng-consulting.example.com
+- email: yh008@yuanheng-consulting.example.com
   employee_code: YH008
-- email: jiang.boyan@yuanheng-consulting.example.com
+- email: yh009@yuanheng-consulting.example.com
   employee_code: YH009
-- email: mo.yingqiu@yuanheng-consulting.example.com
+- email: yh010@yuanheng-consulting.example.com
   employee_code: YH010
-- email: hong.yan@yuanheng-consulting.example.com
+- email: yh011@yuanheng-consulting.example.com
   employee_code: YH011
-- email: liang.shuyan@yuanheng-consulting.example.com
+- email: yh012@yuanheng-consulting.example.com
   employee_code: YH012
   role: dept_manager
-- email: duan.jialin@yuanheng-consulting.example.com
+- email: yh013@yuanheng-consulting.example.com
   employee_code: YH013
-- email: tong.yu@yuanheng-consulting.example.com
+- email: yh014@yuanheng-consulting.example.com
   employee_code: YH014
-- email: ke.yining@yuanheng-consulting.example.com
+- email: yh015@yuanheng-consulting.example.com
   employee_code: YH015
-- email: chi.you@yuanheng-consulting.example.com
+- email: yh016@yuanheng-consulting.example.com
   employee_code: YH016
-- email: wu.zeyu@yuanheng-consulting.example.com
+- email: yh017@yuanheng-consulting.example.com
   employee_code: YH017
-- email: qu.yanqiu@yuanheng-consulting.example.com
+- email: yh018@yuanheng-consulting.example.com
   employee_code: YH018
   role: dept_manager
-- email: ouyang.qinghe@yuanheng-consulting.example.com
+- email: yh019@yuanheng-consulting.example.com
   employee_code: YH019
-- email: ban.yiheng@yuanheng-consulting.example.com
+- email: yh020@yuanheng-consulting.example.com
   employee_code: YH020
-- email: yin.miao@yuanheng-consulting.example.com
+- email: yh021@yuanheng-consulting.example.com
   employee_code: YH021
-- email: bian.qiucheng@yuanheng-consulting.example.com
+- email: yh022@yuanheng-consulting.example.com
   employee_code: YH022
   role: dept_manager
-- email: lou.zhiwei@yuanheng-consulting.example.com
+- email: yh023@yuanheng-consulting.example.com
   employee_code: YH023
   role: org_admin
-- email: gan.tang@yuanheng-consulting.example.com
+- email: yh024@yuanheng-consulting.example.com
   employee_code: YH024
-- email: hao.tinglan@yuanheng-consulting.example.com
+- email: yh025@yuanheng-consulting.example.com
   employee_code: YH025

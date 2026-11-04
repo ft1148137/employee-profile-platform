@@ -47,6 +47,7 @@ class User(UserBase, table=True):
             postgresql_where=text("email IS NOT NULL"),
         ),
     )
+    legacy_username: str | None = Field(default=None, max_length=255)
     must_change_password: bool = False
     password_changed_at: datetime | None = Field(
         default=None, sa_type=DateTime(timezone=True)
@@ -57,6 +58,13 @@ class User(UserBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     hashed_password: str
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
+
+
+def uses_email_login(user: User) -> bool:
+    # shortcut: 旧账号可用原登录名登录，所有企业补完邮箱后删除
+    return bool(
+        user.email and user.username.strip().lower() == user.email.strip().lower()
+    )
 
 
 # Properties to return via API, id is always required

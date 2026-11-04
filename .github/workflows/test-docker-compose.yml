@@ -61,7 +61,7 @@ jobs:
           token=$(sed -n 's/.*\/setup#token=//p' install-output.txt)
           curl --noproxy '*' -fsS -X POST "http://$address:8080/api/v1/setup/initialize" \
             -H 'Content-Type: application/json' \
-            -d "{\"token\":\"$token\",\"org_name\":\"CI 测试企业\",\"admin_username\":\"admin\",\"admin_password\":\"synthetic-password-2026\"}" \
+            -d "{\"token\":\"$token\",\"org_name\":\"CI 测试企业\",\"admin_username\":\"admin@example.com\",\"admin_password\":\"synthetic-password-2026\"}" \
             | python3 -c 'import json,sys; result=json.load(sys.stdin); assert result["access_token"] and result["org_id"]'
           cp .env .env.before
           ./install.sh --non-interactive > reinstall-output.txt

@@ -74,12 +74,12 @@ record_id,source,record_type,occurred_at,actor_account,actor_name,actor_role,par
 
 | 邮箱 | 身份 | 员工 |
 | --- | --- | --- |
-| `luo.qingtong@hengchuan-auto.example.com` | 企业管理员（org_admin） | HC026 骆青桐，人力行政部人事专员，不是部门负责人 |
-| `zhou.lian@hengchuan-auto.example.com` | 部门负责人（dept_manager） | HC001 周立安，机加工车间 |
-| `qiao.yanwen@hengchuan-auto.example.com` | 部门负责人（dept_manager） | HC012 乔砚文，质量部 |
-| `xing.wenmian@hengchuan-auto.example.com` | 部门负责人（dept_manager） | HC017 邢文勉，工艺技术部 |
-| `nie.changgeng@hengchuan-auto.example.com` | 部门负责人（dept_manager） | HC021 聂长庚，设备动力部 |
-| `gan.hui@hengchuan-auto.example.com` | 部门负责人（dept_manager） | HC025 甘慧，人力行政部 |
+| `hc026@hengchuan-auto.example.com` | 企业管理员（org_admin） | HC026 骆青桐，人力行政部人事专员，不是部门负责人 |
+| `hc001@hengchuan-auto.example.com` | 部门负责人（dept_manager） | HC001 周立安，机加工车间 |
+| `hc012@hengchuan-auto.example.com` | 部门负责人（dept_manager） | HC012 乔砚文，质量部 |
+| `hc017@hengchuan-auto.example.com` | 部门负责人（dept_manager） | HC017 邢文勉，工艺技术部 |
+| `hc021@hengchuan-auto.example.com` | 部门负责人（dept_manager） | HC021 聂长庚，设备动力部 |
+| `hc025@hengchuan-auto.example.com` | 部门负责人（dept_manager） | HC025 甘慧，人力行政部 |
 | 其余 21 个邮箱 | 普通员工（不写 role） | HC002–HC010、HC013–HC016、HC018–HC020、HC022–HC024、HC027、HC028 |
 
 HC026 虽是企业管理员，但在组织上是人力行政部的普通员工，向 HC025 汇报。

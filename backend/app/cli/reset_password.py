@@ -12,7 +12,7 @@ from app.domains.org.models import OrgMembership
 
 def reset_password(username: str) -> int:
     with Session(engine) as session:
-        user = crud.get_user_by_username(session=session, username=username)
+        user = crud.get_user_by_email(session=session, email=username)
         if user is None:
             sys.stderr.write(f"找不到登录名 {username}\n")
             return 1

@@ -53,9 +53,13 @@ test("Log in with valid email and password ", async ({ page }) => {
   await expect(page.getByTestId("user-menu")).toBeVisible()
 })
 
-test("Log in with employee number regardless of case", async ({ page }) => {
+test("Log in with email regardless of case", async ({ page }) => {
   await page.goto("/login")
-  await fillForm(page, "e02", process.env.DEMO_USER_PASSWORD!)
+  await fillForm(
+    page,
+    "EMPLOYEE.PLATFORM@DEMO.EXAMPLE.COM",
+    process.env.DEMO_USER_PASSWORD!,
+  )
   await page.getByRole("button", { name: "登录" }).click()
   await page.waitForURL(/\/employees\/[0-9a-f-]+$/)
   await expect(page.getByTestId("user-menu")).toBeVisible()
@@ -67,7 +71,7 @@ test("Log in with invalid email", async ({ page }) => {
   await fillForm(page, "invalidemail", firstSuperuserPassword)
   await page.getByRole("button", { name: "登录" }).click()
 
-  await expect(page.getByText("工号/邮箱或密码错误")).toBeVisible()
+  await expect(page.getByText("邮箱或密码错误")).toBeVisible()
   await expect(page.getByText("登录失败", { exact: true })).toBeVisible()
   await expect(page.locator("body")).not.toContainText("Something went wrong")
 })
@@ -79,7 +83,7 @@ test("Log in with invalid password", async ({ page }) => {
   await fillForm(page, firstSuperuser, password)
   await page.getByRole("button", { name: "登录" }).click()
 
-  await expect(page.getByText("工号/邮箱或密码错误")).toBeVisible()
+  await expect(page.getByText("邮箱或密码错误")).toBeVisible()
   await expect(page.getByText("登录失败", { exact: true })).toBeVisible()
   await expect(page.locator("body")).not.toContainText("Something went wrong")
 })

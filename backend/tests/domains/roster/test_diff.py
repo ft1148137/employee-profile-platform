@@ -215,13 +215,10 @@ def test_all_changes_warnings_and_tenancy(context: Context) -> None:
         "departments_created": 2,
         "departments_unused": 2,
     }
-    assert not result.blockers and result.active_count == 29
-    assert len(result.warnings) == 3
+    assert len(result.blockers) == 1 and result.active_count == 29
+    assert len(result.warnings) == 2
     assert "1 名员工没有工号" in result.warnings[0].message
-    assert any(
-        w.row_number == 3 and w.column == "邮箱" and "TAKEN@example.com" in w.message
-        for w in result.warnings
-    )
+    assert "第 3 行" in result.blockers[0]
     assert "仍然停用" in result.warnings[-1].message
     multi = [c for c in result.changes if c.employee_code == "xy002"]
     assert {c.kind for c in multi} == {"updated", "transferred", "manager_changed"}
@@ -256,13 +253,16 @@ def test_optional_columns_case_and_manager_edges(context: Context) -> None:
     )
     employees = snapshot(session, org, initial)
     for text, expected in [
-        ("工号,姓名,部门\ne1,甲,A\ne2,乙,A", {}),
+        ("工号,姓名,部门,邮箱\ne1,甲,A,one@example.com\ne2,乙,A,two@example.com", {}),
         ("工号,姓名,部门,邮箱\ne1,甲,A,ONE@example.com\ne2,乙,A,TWO@example.com", {}),
         (
-            "工号,姓名,部门,职位,上级工号,邮箱\nE1,甲,A,,,\nE2,乙,A,,,",
+            "工号,姓名,部门,职位,上级工号,邮箱\nE1,甲,A,,,one@example.com\nE2,乙,A,,,two@example.com",
             {"updated": 2, "manager_changed": 1},
         ),
-        ("工号,姓名,部门,上级工号\nE1,甲,A,E2\nE2,乙,A,", {"manager_changed": 2}),
+        (
+            "工号,姓名,部门,上级工号,邮箱\nE1,甲,A,E2,one@example.com\nE2,乙,A,,two@example.com",
+            {"manager_changed": 2},
+        ),
     ]:
         result = compute_roster_diff(
             session, org.id, parse_roster(text.encode(), "a.csv")
@@ -285,7 +285,8 @@ def test_threshold(context: Context, active: int, removed: int, expected: bool) 
     session, org, *_ = context
     roster = parse_roster(
         (
-            "工号,姓名,部门\n" + "\n".join(f"E{i},员工{i},A" for i in range(active))
+            "工号,姓名,部门,邮箱\n"
+            + "\n".join(f"E{i},员工{i},A,e{i}@example.com" for i in range(active))
         ).encode(),
         "a.csv",
     )
@@ -299,7 +300,10 @@ def test_threshold(context: Context, active: int, removed: int, expected: bool) 
 
 def test_admin_and_code_blockers(context: Context) -> None:
     session, org, user, member = context
-    roster = parse_roster("工号,姓名,部门\nE1,甲,A\nE2,乙,A".encode(), "a.csv")
+    roster = parse_roster(
+        "工号,姓名,部门,邮箱\nE1,甲,A,one@example.com\nE2,乙,A,two@example.com".encode(),
+        "a.csv",
+    )
     employees = snapshot(session, org, roster)
     member.employee_id = employees["E1"].id
     session.add(member)
@@ -328,7 +332,8 @@ def test_admin_and_code_blockers(context: Context) -> None:
 def test_constraints(context: Context) -> None:
     session, org, user, _ = context
     roster = parse_roster(
-        "工号,姓名,部门,上级工号\nE1,甲,A,\nE2,乙,A/Team,E1".encode(), "a.csv"
+        "工号,姓名,部门,上级工号,邮箱\nE1,甲,A,,one@example.com\nE2,乙,A/Team,E1,two@example.com".encode(),
+        "a.csv",
     )
     employees = snapshot(session, org, roster)
     parent = Department(org_id=org.id, name="B")

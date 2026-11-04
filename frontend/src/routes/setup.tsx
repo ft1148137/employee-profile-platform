@@ -96,18 +96,19 @@ function Initialize() {
             <Input id="org_name" name="org_name" required maxLength={100} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="admin_username">管理员登录名</Label>
+            <Label htmlFor="admin_username">管理员邮箱</Label>
             <Input
               id="admin_username"
               name="admin_username"
-              defaultValue="admin"
+              type="email"
+              placeholder="admin@example.com"
               required
               maxLength={255}
               autoComplete="username"
               aria-describedby="admin-hint"
             />
             <p id="admin-hint" className="text-xs text-muted-foreground">
-              用来管理系统，和你本人的员工账号分开；不能包含 @
+              邮箱就是登录名；管理员可以不在员工名单中。
             </p>
           </div>
           <div className="space-y-2">

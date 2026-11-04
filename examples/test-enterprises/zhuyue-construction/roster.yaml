@@ -1,4 +1,5 @@
 - employee_code: ZY001
+  work_email: zy001@zhuyue-construction.example.com
   grade: M3（一级项目经理）
   hired_on: '2014-04-07'
   reports_to: null
@@ -22,6 +23,7 @@
     valid_until: '2026-06-30'
     note: 已过有效期，换证申请在人力行政部排队，现场仍按项目经理岗安排工作
 - employee_code: ZY002
+  work_email: zy002@zhuyue-construction.example.com
   grade: T5（项目总工）
   hired_on: '2016-08-15'
   reports_to: ZY001
@@ -45,6 +47,7 @@
     valid_until: null
     note: 中级职称
 - employee_code: ZY003
+  work_email: zy003@zhuyue-construction.example.com
   grade: T3（施工员）
   hired_on: '2019-07-01'
   reports_to: ZY002
@@ -64,6 +67,7 @@
     valid_until: null
     note: ''
 - employee_code: ZY004
+  work_email: zy004@zhuyue-construction.example.com
   grade: T3（施工员）
   hired_on: '2020-03-02'
   reports_to: ZY002
@@ -83,6 +87,7 @@
     valid_until: null
     note: ''
 - employee_code: ZY005
+  work_email: zy005@zhuyue-construction.example.com
   grade: T2（资料员）
   hired_on: '2021-04-12'
   reports_to: ZY002
@@ -102,6 +107,7 @@
     valid_until: null
     note: ''
 - employee_code: ZY006
+  work_email: zy006@zhuyue-construction.example.com
   grade: 劳务班组长（分包单位派驻）
   hired_on: '2024-09-02'
   reports_to: ZY003
@@ -119,6 +125,7 @@
     valid_until: '2023-08-14'
     note: 已过有效期、未换证；现场不再安排其从事架子作业，HR 台账尚未更新
 - employee_code: ZY007
+  work_email: zy007@zhuyue-construction.example.com
   grade: 劳务班组长（分包单位派驻）
   hired_on: '2025-03-10'
   reports_to: ZY003
@@ -132,6 +139,7 @@
   external_accounts: []
   certifications: []
 - employee_code: ZY008
+  work_email: zy008@zhuyue-construction.example.com
   grade: T2（测量员）
   hired_on: '2022-06-06'
   reports_to: ZY002
@@ -151,6 +159,7 @@
     valid_until: null
     note: ''
 - employee_code: ZY009
+  work_email: zy009@zhuyue-construction.example.com
   grade: M3（部门经理）
   hired_on: '2013-11-04'
   reports_to: null
@@ -174,6 +183,7 @@
     valid_until: '2027-02-28'
     note: ''
 - employee_code: ZY010
+  work_email: zy010@zhuyue-construction.example.com
   grade: T3（专职安全员）
   hired_on: '2020-11-16'
   reports_to: ZY009
@@ -197,6 +207,7 @@
     valid_until: '2027-05-07'
     note: ''
 - employee_code: ZY011
+  work_email: zy011@zhuyue-construction.example.com
   grade: T3（专职质量员）
   hired_on: '2021-02-22'
   reports_to: ZY009
@@ -220,6 +231,7 @@
     valid_until: '2033-06-14'
     note: 已取得但未担任过项目经理岗
 - employee_code: ZY012
+  work_email: zy012@zhuyue-construction.example.com
   grade: T2（专职安全员）
   hired_on: '2023-05-08'
   reports_to: ZY009
@@ -243,6 +255,7 @@
     valid_until: '2026-11-19'
     note: ''
 - employee_code: ZY013
+  work_email: zy013@zhuyue-construction.example.com
   grade: T2（试验检测）
   hired_on: '2022-09-05'
   reports_to: ZY009
@@ -266,6 +279,7 @@
     valid_until: null
     note: 转岗后考取
 - employee_code: ZY014
+  work_email: zy014@zhuyue-construction.example.com
   grade: M3（部门经理）
   hired_on: '2012-03-19'
   reports_to: null
@@ -289,6 +303,7 @@
     valid_until: null
     note: ''
 - employee_code: ZY015
+  work_email: zy015@zhuyue-construction.example.com
   grade: M2（生产经理）
   hired_on: '2018-05-21'
   reports_to: ZY014
@@ -314,6 +329,7 @@
     valid_until: '2027-08-14'
     note: ''
 - employee_code: ZY016
+  work_email: zy016@zhuyue-construction.example.com
   grade: T4（技术管理）
   hired_on: '2017-09-04'
   reports_to: ZY014
@@ -337,6 +353,7 @@
     valid_until: null
     note: ''
 - employee_code: ZY017
+  work_email: zy017@zhuyue-construction.example.com
   grade: T3（机电工程师）
   hired_on: '2021-08-16'
   reports_to: ZY014
@@ -364,6 +381,7 @@
     valid_until: null
     note: ''
 - employee_code: ZY018
+  work_email: zy018@zhuyue-construction.example.com
   grade: T2（技术员）
   hired_on: '2024-07-15'
   reports_to: ZY014
@@ -381,6 +399,7 @@
     valid_until: null
     note: ''
 - employee_code: ZY019
+  work_email: zy019@zhuyue-construction.example.com
   grade: M3（部门经理）
   hired_on: '2015-10-12'
   reports_to: null
@@ -398,6 +417,7 @@
     valid_until: '2027-08-29'
     note: ''
 - employee_code: ZY020
+  work_email: zy020@zhuyue-construction.example.com
   grade: T3（合约工程师）
   hired_on: '2022-02-14'
   reports_to: ZY019
@@ -415,6 +435,7 @@
     valid_until: null
     note: ''
 - employee_code: ZY021
+  work_email: zy021@zhuyue-construction.example.com
   grade: T4（造价工程师）
   hired_on: '2019-11-25'
   reports_to: ZY019
@@ -432,6 +453,7 @@
     valid_until: '2029-08-27'
     note: ''
 - employee_code: ZY022
+  work_email: zy022@zhuyue-construction.example.com
   grade: T1（商务助理）
   hired_on: '2026-09-07'
   reports_to: ZY019
@@ -445,6 +467,7 @@
   external_accounts: []
   certifications: []
 - employee_code: ZY023
+  work_email: zy023@zhuyue-construction.example.com
   grade: M2（部门经理）
   hired_on: '2018-01-08'
   reports_to: null
@@ -462,6 +485,7 @@
     valid_until: null
     note: ''
 - employee_code: ZY024
+  work_email: zy024@zhuyue-construction.example.com
   grade: T2（人事专员）
   hired_on: '2023-03-13'
   reports_to: ZY023
@@ -475,6 +499,7 @@
   external_accounts: []
   certifications: []
 - employee_code: ZY025
+  work_email: zy025@zhuyue-construction.example.com
   grade: T2（行政专员）
   hired_on: '2021-06-21'
   reports_to: ZY023
@@ -488,6 +513,7 @@
   external_accounts: []
   certifications: []
 - employee_code: ZY026
+  work_email: zy026@zhuyue-construction.example.com
   grade: 实习生
   hired_on: '2026-07-06'
   reports_to: ZY023
@@ -501,6 +527,7 @@
   external_accounts: []
   certifications: []
 - employee_code: ZY027
+  work_email: zy027@zhuyue-construction.example.com
   grade: T3（施工员）
   hired_on: '2023-03-06'
   reports_to: ZY002
@@ -520,6 +547,7 @@
     valid_until: null
     note: ''
 - employee_code: ZY028
+  work_email: zy028@zhuyue-construction.example.com
   grade: T2（专职安全员）
   hired_on: '2021-09-01'
   reports_to: ZY009

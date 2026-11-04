@@ -11,210 +11,210 @@ employees:
   department: 变电检修中心
   display_name: 岑启舟
   title: 变电检修中心主任
-  work_email: cen.qizhou@lanjiang-grid.example.com
+  work_email: lj001@lanjiang-grid.example.com
   account_id: '204118'
 - employee_code: LJ002
   department: 变电检修中心
   display_name: 邵同安
   title: 变电检修一班班长
-  work_email: shao.tongan@lanjiang-grid.example.com
+  work_email: lj002@lanjiang-grid.example.com
   account_id: '204235'
 - employee_code: LJ003
   department: 变电检修中心
   display_name: 傅延川
   title: 变电检修工
-  work_email: fu.yanchuan@lanjiang-grid.example.com
+  work_email: lj003@lanjiang-grid.example.com
   account_id: '206117'
 - employee_code: LJ004
   department: 变电检修中心
   display_name: 卞㵘
   title: 变电检修工
-  work_email: bian.man@lanjiang-grid.example.com
+  work_email: lj004@lanjiang-grid.example.com
   account_id: '206204'
 - employee_code: LJ005
   department: 变电检修中心
   display_name: 鞠承望
   title: 高压试验班班长
-  work_email: ju.chengwang@lanjiang-grid.example.com
+  work_email: lj005@lanjiang-grid.example.com
   account_id: '204390'
 - employee_code: LJ006
   department: 变电检修中心
   display_name: 应岚舒
   title: 高压试验工
-  work_email: ying.lanshu@lanjiang-grid.example.com
+  work_email: lj006@lanjiang-grid.example.com
   account_id: '206341'
 - employee_code: LJ007
   department: 变电检修中心
   display_name: 覃德茂
   title: 外协检修队员
-  work_email: qin.demao@lanjiang-grid.example.com
+  work_email: lj007@lanjiang-grid.example.com
   account_id: wb-jx-0217
 - employee_code: LJ008
   department: 输电运检中心
   display_name: 邬守诚
   title: 输电运检中心主任
-  work_email: wu.shoucheng@lanjiang-grid.example.com
+  work_email: lj008@lanjiang-grid.example.com
   account_id: '203177'
 - employee_code: LJ009
   department: 输电运检中心
   display_name: 蔺长河
   title: 线路运维班班长
-  work_email: lin.changhe@lanjiang-grid.example.com
+  work_email: lj009@lanjiang-grid.example.com
   account_id: '203264'
 - employee_code: LJ010
   department: 输电运检中心
   display_name: 柴满仓
   title: 线路巡检工
-  work_email: chai.mancang@lanjiang-grid.example.com
+  work_email: lj010@lanjiang-grid.example.com
   account_id: '205312'
 - employee_code: LJ011
   department: 输电运检中心
   display_name: 杜焕明
   title: 带电作业班班长
-  work_email: du.huanming@lanjiang-grid.example.com
+  work_email: lj011@lanjiang-grid.example.com
   account_id: '203428'
 - employee_code: LJ012
   department: 输电运检中心
   display_name: 艾尼瓦尔·托合提
   title: 线路巡检工
-  work_email: ainiwaer.tuoheti@lanjiang-grid.example.com
+  work_email: lj012@lanjiang-grid.example.com
   account_id: '205487'
 - employee_code: LJ013
   department: 电力调度控制中心
   display_name: 乔叙白
   title: 电力调度控制中心主任
-  work_email: qiao.xubai@lanjiang-grid.example.com
+  work_email: lj013@lanjiang-grid.example.com
   account_id: '201106'
 - employee_code: LJ014
   department: 电力调度控制中心
   display_name: 沈疏桐
   title: 值班调度员（正值）
-  work_email: shen.shutong@lanjiang-grid.example.com
+  work_email: lj014@lanjiang-grid.example.com
   account_id: '201253'
 - employee_code: LJ015
   department: 电力调度控制中心
   display_name: 郎亦川
   title: 值班调度员（副值）
-  work_email: lang.yichuan@lanjiang-grid.example.com
+  work_email: lj015@lanjiang-grid.example.com
   account_id: '201374'
 - employee_code: LJ016
   department: 电力调度控制中心
   display_name: 温嘉树
   title: 调度自动化运维员
-  work_email: wen.jiashu@lanjiang-grid.example.com
+  work_email: lj016@lanjiang-grid.example.com
   account_id: '201492'
 - employee_code: LJ017
   department: 安全监察部
   display_name: 卓振邦
   title: 安全监察部主任
-  work_email: zhuo.zhenbang@lanjiang-grid.example.com
+  work_email: lj017@lanjiang-grid.example.com
   account_id: '202115'
 - employee_code: LJ018
   department: 安全监察部
   display_name: 房楚瑜
   title: 安全监察专责
-  work_email: fang.chuyu@lanjiang-grid.example.com
+  work_email: lj018@lanjiang-grid.example.com
   account_id: '202273'
 - employee_code: LJ019
   department: 安全监察部
   display_name: 滕绍钧
   title: 安全培训专责
-  work_email: teng.shaojun@lanjiang-grid.example.com
+  work_email: lj019@lanjiang-grid.example.com
   account_id: '202334'
 - employee_code: LJ020
   department: 安全监察部
   display_name: 宓怀山
   title: 安全监察专责
-  work_email: mi.huaishan@lanjiang-grid.example.com
+  work_email: lj020@lanjiang-grid.example.com
   account_id: '206498'
 - employee_code: LJ021
   department: 人力资源部
   display_name: 容书宁
   title: 人力资源部主任
-  work_email: rong.shuning@lanjiang-grid.example.com
+  work_email: lj021@lanjiang-grid.example.com
   account_id: '207101'
 - employee_code: LJ022
   department: 人力资源部
   display_name: 柳芊
   title: 人力资源专责
-  work_email: liu.qian@lanjiang-grid.example.com
+  work_email: lj022@lanjiang-grid.example.com
   account_id: '207248'
 - employee_code: LJ023
   department: 人力资源部
   display_name: 莫维桓
   title: 培训管理专责
-  work_email: mo.weihuan@lanjiang-grid.example.com
+  work_email: lj023@lanjiang-grid.example.com
   account_id: '207316'
 - employee_code: LJ024
   department: 人力资源部
   display_name: 殷竹筠
   title: 劳资专责
-  work_email: yin.zhujun@lanjiang-grid.example.com
+  work_email: lj024@lanjiang-grid.example.com
   account_id: '207422'
 - employee_code: LJ025
   department: 变电检修中心
   display_name: 车宏业
   title: 变电检修工
-  work_email: che.hongye@lanjiang-grid.example.com
+  work_email: lj025@lanjiang-grid.example.com
   account_id: '206155'
 - employee_code: LJ026
   department: 电力调度控制中心
   display_name: 聂澜
   title: 值班调度员（副值）
-  work_email: nie.lan@lanjiang-grid.example.com
+  work_email: lj026@lanjiang-grid.example.com
   account_id: '201288'
 accounts:
-- email: cen.qizhou@lanjiang-grid.example.com
+- email: lj001@lanjiang-grid.example.com
   employee_code: LJ001
   role: dept_manager
-- email: shao.tongan@lanjiang-grid.example.com
+- email: lj002@lanjiang-grid.example.com
   employee_code: LJ002
-- email: fu.yanchuan@lanjiang-grid.example.com
+- email: lj003@lanjiang-grid.example.com
   employee_code: LJ003
-- email: bian.man@lanjiang-grid.example.com
+- email: lj004@lanjiang-grid.example.com
   employee_code: LJ004
-- email: ju.chengwang@lanjiang-grid.example.com
+- email: lj005@lanjiang-grid.example.com
   employee_code: LJ005
-- email: ying.lanshu@lanjiang-grid.example.com
+- email: lj006@lanjiang-grid.example.com
   employee_code: LJ006
-- email: qin.demao@lanjiang-grid.example.com
+- email: lj007@lanjiang-grid.example.com
   employee_code: LJ007
-- email: wu.shoucheng@lanjiang-grid.example.com
+- email: lj008@lanjiang-grid.example.com
   employee_code: LJ008
   role: dept_manager
-- email: lin.changhe@lanjiang-grid.example.com
+- email: lj009@lanjiang-grid.example.com
   employee_code: LJ009
-- email: chai.mancang@lanjiang-grid.example.com
+- email: lj010@lanjiang-grid.example.com
   employee_code: LJ010
-- email: du.huanming@lanjiang-grid.example.com
+- email: lj011@lanjiang-grid.example.com
   employee_code: LJ011
-- email: ainiwaer.tuoheti@lanjiang-grid.example.com
+- email: lj012@lanjiang-grid.example.com
   employee_code: LJ012
-- email: qiao.xubai@lanjiang-grid.example.com
+- email: lj013@lanjiang-grid.example.com
   employee_code: LJ013
   role: dept_manager
-- email: shen.shutong@lanjiang-grid.example.com
+- email: lj014@lanjiang-grid.example.com
   employee_code: LJ014
-- email: lang.yichuan@lanjiang-grid.example.com
+- email: lj015@lanjiang-grid.example.com
   employee_code: LJ015
-- email: wen.jiashu@lanjiang-grid.example.com
+- email: lj016@lanjiang-grid.example.com
   employee_code: LJ016
-- email: zhuo.zhenbang@lanjiang-grid.example.com
+- email: lj017@lanjiang-grid.example.com
   employee_code: LJ017
   role: dept_manager
-- email: fang.chuyu@lanjiang-grid.example.com
+- email: lj018@lanjiang-grid.example.com
   employee_code: LJ018
-- email: teng.shaojun@lanjiang-grid.example.com
+- email: lj019@lanjiang-grid.example.com
   employee_code: LJ019
-- email: mi.huaishan@lanjiang-grid.example.com
+- email: lj020@lanjiang-grid.example.com
   employee_code: LJ020
-- email: rong.shuning@lanjiang-grid.example.com
+- email: lj021@lanjiang-grid.example.com
   employee_code: LJ021
   role: dept_manager
-- email: liu.qian@lanjiang-grid.example.com
+- email: lj022@lanjiang-grid.example.com
   employee_code: LJ022
   role: org_admin
-- email: mo.weihuan@lanjiang-grid.example.com
+- email: lj023@lanjiang-grid.example.com
   employee_code: LJ023
-- email: yin.zhujun@lanjiang-grid.example.com
+- email: lj024@lanjiang-grid.example.com
   employee_code: LJ024

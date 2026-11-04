@@ -67,12 +67,12 @@ UTF-8 无 BOM，逗号分隔，表头固定为 12 列，顺序不可变：
 
 | 邮箱 | 身份 | 员工 | 部门 |
 | --- | --- | --- | --- |
-| `tang.yu@muan-hospital.example.com` | org_admin（企业管理员） | MA024 汤屿 | 信息中心 |
-| `yun.jiashu@muan-hospital.example.com` | dept_manager | MA001 云嘉树 | 心血管内科 |
-| `chu.heng@muan-hospital.example.com` | dept_manager | MA008 褚衡 | 普通外科 |
-| `gu.changfeng@muan-hospital.example.com` | dept_manager | MA014 顾长风 | 急诊医学科 |
-| `shao.lingyi@muan-hospital.example.com` | dept_manager | MA019 邵令仪 | 医务部 |
-| `nie.chuan@muan-hospital.example.com` | dept_manager | MA023 聂川 | 信息中心 |
+| `ma024@muan-hospital.example.com` | org_admin（企业管理员） | MA024 汤屿 | 信息中心 |
+| `ma001@muan-hospital.example.com` | dept_manager | MA001 云嘉树 | 心血管内科 |
+| `ma008@muan-hospital.example.com` | dept_manager | MA008 褚衡 | 普通外科 |
+| `ma014@muan-hospital.example.com` | dept_manager | MA014 顾长风 | 急诊医学科 |
+| `ma019@muan-hospital.example.com` | dept_manager | MA019 邵令仪 | 医务部 |
+| `ma023@muan-hospital.example.com` | dept_manager | MA023 聂川 | 信息中心 |
 
 org_admin 是信息中心的系统运维工程师，不是部门负责人；信息中心是本企业的 `hr_it_departments`。
 

@@ -324,7 +324,7 @@ def test_roster_preserves_preferences(
     tenant: SetupTenant, client: TestClient, db: Session
 ) -> None:
     client.headers.update(tenant.auth["admin"])
-    data = "工号,姓名,部门\nSYN,合成员工,测试部门\n".encode()
+    data = "工号,姓名,部门,邮箱\nSYN,合成员工,测试部门,syn@example.com\n".encode()
     assert apply(client, tenant, upload(client, tenant, data)).status_code == 200
     employee = db.exec(select(Employee).where(Employee.org_id == tenant.org_id)).one()
     department = db.get(Department, employee.department_id)

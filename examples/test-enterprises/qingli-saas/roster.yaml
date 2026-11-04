@@ -1,4 +1,5 @@
 - employee_code: QL001
+  work_email: ql001@qingli-saas.example.com
   grade: P8
   hired_on: '2019-03-04'
   reports_to: null
@@ -18,6 +19,7 @@
     valid_until: null
     note: ''
 - employee_code: QL002
+  work_email: ql002@qingli-saas.example.com
   grade: P6
   hired_on: '2023-05-08'
   reports_to: QL001
@@ -34,6 +36,7 @@
     account_id: wang.hao
   certifications: []
 - employee_code: QL003
+  work_email: ql003@qingli-saas.example.com
   grade: P7
   hired_on: '2021-02-22'
   reports_to: QL001
@@ -54,6 +57,7 @@
     valid_until: '2027-04-19'
     note: ''
 - employee_code: QL004
+  work_email: ql004@qingli-saas.example.com
   grade: P6
   hired_on: '2022-08-15'
   reports_to: QL001
@@ -70,6 +74,7 @@
     account_id: chloe.z
   certifications: []
 - employee_code: QL005
+  work_email: ql005@qingli-saas.example.com
   grade: P7
   hired_on: '2020-11-02'
   reports_to: QL001
@@ -90,6 +95,7 @@
     valid_until: '2025-08-31'
     note: 已过有效期，未复认证；HR 档案未更新
 - employee_code: QL006
+  work_email: ql006@qingli-saas.example.com
   grade: P5
   hired_on: '2024-07-01'
   reports_to: QL001
@@ -109,6 +115,7 @@
     account_id: fu.jing
   certifications: []
 - employee_code: QL007
+  work_email: ql007@qingli-saas.example.com
   grade: P5
   hired_on: '2026-09-14'
   reports_to: QL001
@@ -122,6 +129,7 @@
   external_accounts: []
   certifications: []
 - employee_code: QL008
+  work_email: ql008@qingli-saas.example.com
   grade: P7
   hired_on: '2020-04-13'
   reports_to: QL001
@@ -137,6 +145,7 @@
     account_id: tao.yanqiu
   certifications: []
 - employee_code: QL009
+  work_email: ql009@qingli-saas.example.com
   grade: P8
   hired_on: '2019-09-02'
   reports_to: null
@@ -150,6 +159,7 @@
   external_accounts: []
   certifications: []
 - employee_code: QL010
+  work_email: ql010@qingli-saas.example.com
   grade: P7
   hired_on: '2021-06-07'
   reports_to: QL009
@@ -167,6 +177,7 @@
     valid_until: '2028-11-25'
     note: ''
 - employee_code: QL011
+  work_email: ql011@qingli-saas.example.com
   grade: P6
   hired_on: '2022-03-14'
   reports_to: QL009
@@ -180,6 +191,7 @@
   external_accounts: []
   certifications: []
 - employee_code: QL012
+  work_email: ql012@qingli-saas.example.com
   grade: P6
   hired_on: '2023-09-04'
   reports_to: QL009
@@ -195,6 +207,7 @@
     account_id: zhuo.yifan
   certifications: []
 - employee_code: QL013
+  work_email: ql013@qingli-saas.example.com
   grade: P8
   hired_on: '2020-02-10'
   reports_to: null
@@ -212,6 +225,7 @@
     valid_until: null
     note: ''
 - employee_code: QL014
+  work_email: ql014@qingli-saas.example.com
   grade: P6
   hired_on: '2023-11-06'
   reports_to: QL013
@@ -232,6 +246,7 @@
     valid_until: null
     note: ''
 - employee_code: QL015
+  work_email: ql015@qingli-saas.example.com
   grade: P7
   hired_on: '2021-08-16'
   reports_to: QL013
@@ -247,6 +262,7 @@
     account_id: fan.qingrang
   certifications: []
 - employee_code: QL016
+  work_email: ql016@qingli-saas.example.com
   grade: 外包 T3
   hired_on: '2025-09-01'
   reports_to: QL013
@@ -260,6 +276,7 @@
   external_accounts: []
   certifications: []
 - employee_code: QL017
+  work_email: ql017@qingli-saas.example.com
   grade: P6
   hired_on: '2022-05-09'
   reports_to: QL013
@@ -276,6 +293,7 @@
     account_id: jian.ning
   certifications: []
 - employee_code: QL018
+  work_email: ql018@qingli-saas.example.com
   grade: P8
   hired_on: '2020-06-15'
   reports_to: null
@@ -289,6 +307,7 @@
   external_accounts: []
   certifications: []
 - employee_code: QL019
+  work_email: ql019@qingli-saas.example.com
   grade: P6
   hired_on: '2022-09-19'
   reports_to: QL018
@@ -305,6 +324,7 @@
     account_id: min.zhitong
   certifications: []
 - employee_code: QL020
+  work_email: ql020@qingli-saas.example.com
   grade: P5
   hired_on: '2024-03-11'
   reports_to: QL018
@@ -319,6 +339,7 @@
   external_accounts: []
   certifications: []
 - employee_code: QL021
+  work_email: ql021@qingli-saas.example.com
   grade: P6
   hired_on: '2021-11-08'
   reports_to: QL018
@@ -334,6 +355,7 @@
   external_accounts: []
   certifications: []
 - employee_code: QL022
+  work_email: ql022@qingli-saas.example.com
   grade: P5
   hired_on: '2024-10-21'
   reports_to: QL018
@@ -347,6 +369,7 @@
   external_accounts: []
   certifications: []
 - employee_code: QL023
+  work_email: ql023@qingli-saas.example.com
   grade: P6
   hired_on: '2021-03-15'
   reports_to: QL018
@@ -360,6 +383,7 @@
   external_accounts: []
   certifications: []
 - employee_code: QL024
+  work_email: ql024@qingli-saas.example.com
   grade: P8
   hired_on: '2019-05-20'
   reports_to: null
@@ -373,6 +397,7 @@
   external_accounts: []
   certifications: []
 - employee_code: QL025
+  work_email: ql025@qingli-saas.example.com
   grade: P6
   hired_on: '2021-10-11'
   reports_to: QL024
@@ -392,6 +417,7 @@
     valid_until: '2026-05-21'
     note: 已过有效期，复审课程排在 2026-12
 - employee_code: QL026
+  work_email: ql026@qingli-saas.example.com
   grade: P6
   hired_on: '2022-07-04'
   reports_to: QL024
@@ -405,6 +431,7 @@
   external_accounts: []
   certifications: []
 - employee_code: QL027
+  work_email: ql027@qingli-saas.example.com
   grade: P5
   hired_on: '2024-12-02'
   reports_to: QL024
@@ -418,6 +445,7 @@
   external_accounts: []
   certifications: []
 - employee_code: QL028
+  work_email: ql028@qingli-saas.example.com
   grade: 实习生
   hired_on: '2026-07-06'
   reports_to: QL017

@@ -11,220 +11,220 @@ employees:
   department: 东城区域运营部
   display_name: 乔砚秋
   title: 区域运营经理
-  work_email: qiao.yanqiu@helin-retail.example.com
+  work_email: hl001@helin-retail.example.com
   account_id: hl1001
 - employee_code: HL002
   department: 东城区域运营部
   display_name: 邵禾
   title: 区域督导
-  work_email: shao.he@helin-retail.example.com
+  work_email: hl002@helin-retail.example.com
   account_id: hl1002
 - employee_code: HL003
   department: 东城区域运营部
   display_name: 裴照
   title: 区域督导
-  work_email: pei.zhao@helin-retail.example.com
+  work_email: hl003@helin-retail.example.com
   account_id: hl1003
 - employee_code: HL004
   department: 东城区域运营部
   display_name: 温允
   title: 运营支持专员
-  work_email: wen.yun@helin-retail.example.com
+  work_email: hl004@helin-retail.example.com
   account_id: hl1004
 - employee_code: HL005
   department: 东城区域运营部
   display_name: 郝宜川
   title: 生鲜运营专员
-  work_email: hao.yichuan@helin-retail.example.com
+  work_email: hl005@helin-retail.example.com
   account_id: hl1005
 - employee_code: HL006
   department: 滨江店
   display_name: 鲁思勉
   title: 店长
-  work_email: lu.simian@helin-retail.example.com
+  work_email: hl006@helin-retail.example.com
   account_id: hl1006
 - employee_code: HL007
   department: 滨江店
   display_name: 闻星
   title: 值班经理
-  work_email: wen.xing@helin-retail.example.com
+  work_email: hl007@helin-retail.example.com
   account_id: hl1007
 - employee_code: HL008
   department: 滨江店
   display_name: 王静
   title: 收银员
-  work_email: wang.jing@helin-retail.example.com
+  work_email: hl008@helin-retail.example.com
   account_id: hl1008
 - employee_code: HL009
   department: 滨江店
   display_name: 阿依努尔·吐尔逊
   title: 生鲜加工员
-  work_email: ayinuer.tuerxun@helin-retail.example.com
+  work_email: hl009@helin-retail.example.com
   account_id: hl1009
 - employee_code: HL010
   department: 滨江店
   display_name: 石丰年
   title: 理货员
-  work_email: shi.fengnian@helin-retail.example.com
+  work_email: hl010@helin-retail.example.com
   account_id: hl1010
 - employee_code: HL011
   department: 滨江店
   display_name: 柴宇
   title: 促销员
-  work_email: chai.yu@helin-retail.example.com
+  work_email: hl011@helin-retail.example.com
   account_id: hl1011
 - employee_code: HL012
   department: 滨江店
   display_name: 俞棠
   title: 收银实习生
-  work_email: yu.tang@helin-retail.example.com
+  work_email: hl012@helin-retail.example.com
   account_id: hl1012
 - employee_code: HL013
   department: 南湖店
   display_name: 蒙晓渠
   title: 店长
-  work_email: meng.xiaoqu@helin-retail.example.com
+  work_email: hl013@helin-retail.example.com
   account_id: hl1013
 - employee_code: HL014
   department: 南湖店
   display_name: 王静
   title: 收银组长
-  work_email: wang.jing2@helin-retail.example.com
+  work_email: hl014@helin-retail.example.com
   account_id: hl1014
 - employee_code: HL015
   department: 南湖店
   display_name: 左双喜
   title: 值班经理
-  work_email: zuo.shuangxi@helin-retail.example.com
+  work_email: hl015@helin-retail.example.com
   account_id: hl1015
 - employee_code: HL016
   department: 南湖店
   display_name: 覃志波
   title: 生鲜课长
-  work_email: qin.zhibo@helin-retail.example.com
+  work_email: hl016@helin-retail.example.com
   account_id: hl1016
 - employee_code: HL017
   department: 南湖店
   display_name: 范秋池
   title: 生鲜理货员
-  work_email: fan.qiuchi@helin-retail.example.com
+  work_email: hl017@helin-retail.example.com
   account_id: hl1017
 - employee_code: HL018
   department: 南湖店
   display_name: 林嘉禾
   title: 促销员
-  work_email: lin.jiahe@helin-retail.example.com
+  work_email: hl018@helin-retail.example.com
   account_id: hl1018
 - employee_code: HL019
   department: 南湖店
   display_name: 曲文锦
   title: 收银员
-  work_email: qu.wenjin@helin-retail.example.com
+  work_email: hl019@helin-retail.example.com
   account_id: hl1019
 - employee_code: HL020
   department: 商品采购部
   display_name: 窦见青
   title: 采购经理
-  work_email: dou.jianqing@helin-retail.example.com
+  work_email: hl020@helin-retail.example.com
   account_id: hl1020
 - employee_code: HL021
   department: 商品采购部
   display_name: 纪朗
   title: 生鲜采购
-  work_email: ji.lang@helin-retail.example.com
+  work_email: hl021@helin-retail.example.com
   account_id: hl1021
 - employee_code: HL022
   department: 商品采购部
   display_name: 殷柚
   title: 食品采购
-  work_email: yin.you@helin-retail.example.com
+  work_email: hl022@helin-retail.example.com
   account_id: hl1022
 - employee_code: HL023
   department: 商品采购部
   display_name: 伍思南
   title: 非食采购与品控
-  work_email: wu.sinan@helin-retail.example.com
+  work_email: hl023@helin-retail.example.com
   account_id: hl1023
 - employee_code: HL024
   department: 人力与信息部
   display_name: 项禾苗
   title: 人力与信息部负责人
-  work_email: xiang.hemiao@helin-retail.example.com
+  work_email: hl024@helin-retail.example.com
   account_id: hl1024
 - employee_code: HL025
   department: 人力与信息部
   display_name: 阚宁
   title: 信息专员
-  work_email: kan.ning@helin-retail.example.com
+  work_email: hl025@helin-retail.example.com
   account_id: hl1025
 - employee_code: HL026
   department: 人力与信息部
   display_name: 陶蔚
   title: 人事专员
-  work_email: tao.wei@helin-retail.example.com
+  work_email: hl026@helin-retail.example.com
   account_id: hl1026
 - employee_code: HL027
   department: 人力与信息部
   display_name: 时予
   title: 培训专员
-  work_email: shi.yu@helin-retail.example.com
+  work_email: hl027@helin-retail.example.com
   account_id: hl1027
 accounts:
-- email: qiao.yanqiu@helin-retail.example.com
+- email: hl001@helin-retail.example.com
   employee_code: HL001
   role: dept_manager
-- email: shao.he@helin-retail.example.com
+- email: hl002@helin-retail.example.com
   employee_code: HL002
-- email: pei.zhao@helin-retail.example.com
+- email: hl003@helin-retail.example.com
   employee_code: HL003
-- email: wen.yun@helin-retail.example.com
+- email: hl004@helin-retail.example.com
   employee_code: HL004
-- email: hao.yichuan@helin-retail.example.com
+- email: hl005@helin-retail.example.com
   employee_code: HL005
-- email: lu.simian@helin-retail.example.com
+- email: hl006@helin-retail.example.com
   employee_code: HL006
   role: dept_manager
-- email: wen.xing@helin-retail.example.com
+- email: hl007@helin-retail.example.com
   employee_code: HL007
-- email: wang.jing@helin-retail.example.com
+- email: hl008@helin-retail.example.com
   employee_code: HL008
-- email: ayinuer.tuerxun@helin-retail.example.com
+- email: hl009@helin-retail.example.com
   employee_code: HL009
-- email: shi.fengnian@helin-retail.example.com
+- email: hl010@helin-retail.example.com
   employee_code: HL010
-- email: chai.yu@helin-retail.example.com
+- email: hl011@helin-retail.example.com
   employee_code: HL011
-- email: yu.tang@helin-retail.example.com
+- email: hl012@helin-retail.example.com
   employee_code: HL012
-- email: meng.xiaoqu@helin-retail.example.com
+- email: hl013@helin-retail.example.com
   employee_code: HL013
   role: dept_manager
-- email: wang.jing2@helin-retail.example.com
+- email: hl014@helin-retail.example.com
   employee_code: HL014
-- email: zuo.shuangxi@helin-retail.example.com
+- email: hl015@helin-retail.example.com
   employee_code: HL015
-- email: qin.zhibo@helin-retail.example.com
+- email: hl016@helin-retail.example.com
   employee_code: HL016
-- email: fan.qiuchi@helin-retail.example.com
+- email: hl017@helin-retail.example.com
   employee_code: HL017
-- email: lin.jiahe@helin-retail.example.com
+- email: hl018@helin-retail.example.com
   employee_code: HL018
-- email: dou.jianqing@helin-retail.example.com
+- email: hl020@helin-retail.example.com
   employee_code: HL020
   role: dept_manager
-- email: ji.lang@helin-retail.example.com
+- email: hl021@helin-retail.example.com
   employee_code: HL021
-- email: yin.you@helin-retail.example.com
+- email: hl022@helin-retail.example.com
   employee_code: HL022
-- email: wu.sinan@helin-retail.example.com
+- email: hl023@helin-retail.example.com
   employee_code: HL023
-- email: xiang.hemiao@helin-retail.example.com
+- email: hl024@helin-retail.example.com
   employee_code: HL024
   role: dept_manager
-- email: kan.ning@helin-retail.example.com
+- email: hl025@helin-retail.example.com
   employee_code: HL025
   role: org_admin
-- email: tao.wei@helin-retail.example.com
+- email: hl026@helin-retail.example.com
   employee_code: HL026
-- email: shi.yu@helin-retail.example.com
+- email: hl027@helin-retail.example.com
   employee_code: HL027

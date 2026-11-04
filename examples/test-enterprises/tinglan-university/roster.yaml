@@ -1,4 +1,5 @@
 - employee_code: TL001
+  work_email: tl001@tinglan-university.example.com
   grade: 教授三级
   hired_on: '2006-09-01'
   reports_to: null
@@ -18,6 +19,7 @@
     valid_until: null
     note: ''
 - employee_code: TL002
+  work_email: tl002@tinglan-university.example.com
   grade: 教授四级
   hired_on: '2008-08-20'
   reports_to: TL001
@@ -37,6 +39,7 @@
     valid_until: null
     note: ''
 - employee_code: TL003
+  work_email: tl003@tinglan-university.example.com
   grade: 副教授五级
   hired_on: '2014-09-01'
   reports_to: TL001
@@ -54,6 +57,7 @@
     valid_until: null
     note: ''
 - employee_code: TL004
+  work_email: tl004@tinglan-university.example.com
   grade: 讲师八级
   hired_on: '2021-09-01'
   reports_to: TL001
@@ -71,6 +75,7 @@
     valid_until: '2027-08-14'
     note: 人事处登记的在华工作与居留类证件，不涉及教学能力
 - employee_code: TL005
+  work_email: tl005@tinglan-university.example.com
   grade: 实验师（中级）
   hired_on: '2011-07-18'
   reports_to: TL001
@@ -88,6 +93,7 @@
     valid_until: '2024-12-31'
     note: 已过有效期，未复训；现行实验室准入以年度安全考试为准
 - employee_code: TL006
+  work_email: tl006@tinglan-university.example.com
   grade: 助教十二级
   hired_on: '2024-09-01'
   reports_to: TL001
@@ -105,6 +111,7 @@
     valid_until: null
     note: ''
 - employee_code: TL007
+  work_email: tl007@tinglan-university.example.com
   grade: 研究生助管（校内岗）
   hired_on: '2025-09-15'
   reports_to: TL003
@@ -118,6 +125,7 @@
   external_accounts: []
   certifications: []
 - employee_code: TL008
+  work_email: tl008@tinglan-university.example.com
   grade: 教授二级
   hired_on: '2002-08-26'
   reports_to: null
@@ -135,6 +143,7 @@
     valid_until: null
     note: ''
 - employee_code: TL009
+  work_email: tl009@tinglan-university.example.com
   grade: 副教授六级
   hired_on: '2013-09-02'
   reports_to: TL008
@@ -154,6 +163,7 @@
     valid_until: null
     note: ''
 - employee_code: TL010
+  work_email: tl010@tinglan-university.example.com
   grade: 讲师十级
   hired_on: '2018-09-03'
   reports_to: TL008
@@ -171,6 +181,7 @@
     valid_until: null
     note: ''
 - employee_code: TL011
+  work_email: tl011@tinglan-university.example.com
   grade: 高级实验师（副高）
   hired_on: '2009-07-20'
   reports_to: TL008
@@ -192,6 +203,7 @@
     valid_until: '2029-05-11'
     note: 工程训练中心用电设备维护需要
 - employee_code: TL012
+  work_email: tl012@tinglan-university.example.com
   grade: 讲师十级
   hired_on: '2019-03-04'
   reports_to: TL008
@@ -215,6 +227,7 @@
     valid_until: null
     note: 转任专任教师前取得
 - employee_code: TL013
+  work_email: tl013@tinglan-university.example.com
   grade: 助教十二级
   hired_on: '2024-09-01'
   reports_to: TL008
@@ -228,6 +241,7 @@
   external_accounts: []
   certifications: []
 - employee_code: TL014
+  work_email: tl014@tinglan-university.example.com
   grade: 管理七级
   hired_on: '2008-07-14'
   reports_to: null
@@ -245,6 +259,7 @@
     valid_until: null
     note: ''
 - employee_code: TL015
+  work_email: tl015@tinglan-university.example.com
   grade: 辅导员四级
   hired_on: '2017-08-21'
   reports_to: TL014
@@ -266,6 +281,7 @@
     valid_until: null
     note: ''
 - employee_code: TL016
+  work_email: tl016@tinglan-university.example.com
   grade: 辅导员三级
   hired_on: '2015-08-24'
   reports_to: TL014
@@ -283,6 +299,7 @@
     valid_until: null
     note: ''
 - employee_code: TL017
+  work_email: tl017@tinglan-university.example.com
   grade: 辅导员四级
   hired_on: '2019-08-19'
   reports_to: TL014
@@ -300,6 +317,7 @@
     valid_until: null
     note: ''
 - employee_code: TL018
+  work_email: tl018@tinglan-university.example.com
   grade: 管理九级
   hired_on: '2020-07-13'
   reports_to: TL014
@@ -313,6 +331,7 @@
   external_accounts: []
   certifications: []
 - employee_code: TL019
+  work_email: tl019@tinglan-university.example.com
   grade: 教授四级（兼管理六级）
   hired_on: '2005-09-01'
   reports_to: null
@@ -330,6 +349,7 @@
     valid_until: null
     note: ''
 - employee_code: TL020
+  work_email: tl020@tinglan-university.example.com
   grade: 管理八级
   hired_on: '2016-07-11'
   reports_to: TL019
@@ -343,6 +363,7 @@
   external_accounts: []
   certifications: []
 - employee_code: TL021
+  work_email: tl021@tinglan-university.example.com
   grade: 管理八级
   hired_on: '2014-07-15'
   reports_to: TL019
@@ -360,6 +381,7 @@
     valid_until: null
     note: 资格是办理专利事务的前提，不等于已具备权属争议处理能力
 - employee_code: TL022
+  work_email: tl022@tinglan-university.example.com
   grade: 管理九级
   hired_on: '2018-07-16'
   reports_to: TL019
@@ -377,6 +399,7 @@
     valid_until: null
     note: ''
 - employee_code: TL023
+  work_email: tl023@tinglan-university.example.com
   grade: 管理十级
   hired_on: '2026-09-07'
   reports_to: TL019
@@ -390,6 +413,7 @@
   external_accounts: []
   certifications: []
 - employee_code: TL024
+  work_email: tl024@tinglan-university.example.com
   grade: 管理七级
   hired_on: '2010-08-16'
   reports_to: null
@@ -403,6 +427,7 @@
   external_accounts: []
   certifications: []
 - employee_code: TL025
+  work_email: tl025@tinglan-university.example.com
   grade: 专业技术九级
   hired_on: '2017-07-10'
   reports_to: TL024
@@ -416,6 +441,7 @@
   external_accounts: []
   certifications: []
 - employee_code: TL026
+  work_email: tl026@tinglan-university.example.com
   grade: 专业技术十级
   hired_on: '2018-08-13'
   reports_to: TL024
@@ -429,6 +455,7 @@
   external_accounts: []
   certifications: []
 - employee_code: TL027
+  work_email: tl027@tinglan-university.example.com
   grade: 派遣岗（技术）
   hired_on: '2025-03-10'
   reports_to: TL024
@@ -442,6 +469,7 @@
   external_accounts: []
   certifications: []
 - employee_code: TL028
+  work_email: tl028@tinglan-university.example.com
   grade: 讲师十级
   hired_on: '2020-09-01'
   reports_to: TL001

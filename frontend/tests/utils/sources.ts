@@ -9,7 +9,7 @@ export async function createSourcesOrg(page: Page) {
     data: {
       token: (await response.json()).token,
       org_name: "合成数据来源测试企业",
-      admin_username: `sources-${crypto.randomUUID()}`,
+      admin_username: `sources-${crypto.randomUUID()}@example.com`,
       admin_password: "synthetic-password-2026",
     },
   })

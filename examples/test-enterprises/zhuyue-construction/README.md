@@ -62,12 +62,12 @@ UTF-8 无 BOM，逗号分隔，58 条记录（施工日志 26 条、安全检查
 
 | 邮箱 | 角色 | 员工 | 说明 |
 | --- | --- | --- | --- |
-| `fu.yaqi@zhuyue-construction.example.com` | org_admin | ZY024 傅雅琪 | 人力行政部人事专员，兼公司系统管理员，不是部门负责人 |
-| `feng.chengyue@zhuyue-construction.example.com` | dept_manager | ZY001 冯承岳 | 栖湖花园项目部负责人兼项目经理 |
-| `wei.liqun@zhuyue-construction.example.com` | dept_manager | ZY009 卫立群 | 安全质量部 |
-| `nie.zhikun@zhuyue-construction.example.com` | dept_manager | ZY014 聂志坤 | 工程管理部 |
-| `zhan.xiulan@zhuyue-construction.example.com` | dept_manager | ZY019 詹秀兰 | 商务合约部 |
-| `zhuo.lihua@zhuyue-construction.example.com` | dept_manager | ZY023 卓丽华 | 人力行政部 |
+| `zy024@zhuyue-construction.example.com` | org_admin | ZY024 傅雅琪 | 人力行政部人事专员，兼公司系统管理员，不是部门负责人 |
+| `zy001@zhuyue-construction.example.com` | dept_manager | ZY001 冯承岳 | 栖湖花园项目部负责人兼项目经理 |
+| `zy009@zhuyue-construction.example.com` | dept_manager | ZY009 卫立群 | 安全质量部 |
+| `zy014@zhuyue-construction.example.com` | dept_manager | ZY014 聂志坤 | 工程管理部 |
+| `zy019@zhuyue-construction.example.com` | dept_manager | ZY019 詹秀兰 | 商务合约部 |
+| `zy023@zhuyue-construction.example.com` | dept_manager | ZY023 卓丽华 | 人力行政部 |
 | 其余 20 名在职员工 | 普通员工（不写 role） | ZY002–ZY008、ZY010–ZY013、ZY015–ZY018、ZY020–ZY022、ZY024（已列）、ZY025、ZY026 | 邮箱同 `work_email` |
 
 ## 本企业的边界情况清单

@@ -21,7 +21,7 @@ export const createUser = async ({
   const response = await PrivateService.createUser({
     query: { with_empty_profile: withEmptyProfile },
     body: {
-      username: email.split("@")[0],
+      username: email,
       email,
       password,
       full_name: "测试员工",

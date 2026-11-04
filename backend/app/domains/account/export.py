@@ -10,7 +10,7 @@ def export_accounts(rows: list[list[str]]) -> bytes:
     assert sheet is not None
     sheet.title = "账号"
     for row_index, values in enumerate(
-        [["工号", "姓名", "部门", "登录地址", "初始密码", "备注"], *rows], start=1
+        [["登录名", "姓名", "部门", "登录地址", "初始密码", "备注"], *rows], start=1
     ):
         cells = []
         for column, value in enumerate(values, start=1):

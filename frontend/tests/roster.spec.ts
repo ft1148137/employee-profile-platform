@@ -15,7 +15,7 @@ test("roster errors, correction, transfer, mass deactivation and stale preview a
     data: {
       token: (await response.json()).token,
       org_name: "合成名单测试企业",
-      admin_username: `roster-${crypto.randomUUID()}`,
+      admin_username: `roster-${crypto.randomUUID()}@example.com`,
       admin_full_name: "名单管理员",
       admin_password: "synthetic-password-2026",
     },
@@ -52,11 +52,11 @@ test("roster errors, correction, transfer, mass deactivation and stale preview a
     path: testInfo.outputPath("roster-errors.png"),
     fullPage: true,
   })
-  const original = `${header}${Array.from({ length: 8 }, (_, index) => `00${index + 1},合成员工${index + 1},研发部,,,`).join("\n")}`
+  const original = `${header}${Array.from({ length: 8 }, (_, index) => `00${index + 1},合成员工${index + 1},研发部,,,e${index + 1}@example.com`).join("\n")}`
   await upload.setInputFiles(file(original))
   await page.getByRole("button", { name: "确认导入", exact: true }).click()
   await expect(page.getByText("导入成功，员工名单和部门已更新。")).toBeVisible()
-  const changed = `${header}001,合成员工1,支持部,,,\n002,合成员工2,研发部,,,`
+  const changed = `${header}001,合成员工1,支持部,,,e1@example.com\n002,合成员工2,研发部,,,e2@example.com`
   await upload.setInputFiles(file(changed))
   const preview = page.getByRole("region", { name: "名单预览" })
   await expect(preview.getByText("调岗 1 人", { exact: true })).toBeVisible()

@@ -1,4 +1,5 @@
 - employee_code: HC001
+  work_email: hc001@hengchuan-auto.example.com
   grade: M3
   hired_on: '2014-04-07'
   reports_to: null
@@ -22,6 +23,7 @@
     valid_until: null
     note: ''
 - employee_code: HC002
+  work_email: hc002@hengchuan-auto.example.com
   grade: 高级工
   hired_on: '2016-08-15'
   reports_to: HC001
@@ -41,6 +43,7 @@
     valid_until: null
     note: ''
 - employee_code: HC003
+  work_email: hc003@hengchuan-auto.example.com
   grade: 高级工
   hired_on: '2017-03-06'
   reports_to: HC001
@@ -58,6 +61,7 @@
     valid_until: null
     note: ''
 - employee_code: HC004
+  work_email: hc004@hengchuan-auto.example.com
   grade: 中级工
   hired_on: '2021-09-13'
   reports_to: HC002
@@ -75,6 +79,7 @@
     valid_until: null
     note: ''
 - employee_code: HC005
+  work_email: hc005@hengchuan-auto.example.com
   grade: 中级工
   hired_on: '2022-02-21'
   reports_to: HC003
@@ -88,6 +93,7 @@
   external_accounts: []
   certifications: []
 - employee_code: HC006
+  work_email: hc006@hengchuan-auto.example.com
   grade: 高级工
   hired_on: '2015-06-01'
   reports_to: HC002
@@ -109,6 +115,7 @@
     valid_until: '2023-09-10'
     note: 已过有效期，未复审；现不安排任何焊接切割作业
 - employee_code: HC007
+  work_email: hc007@hengchuan-auto.example.com
   grade: 初级工
   hired_on: '2023-04-10'
   reports_to: HC003
@@ -122,6 +129,7 @@
   external_accounts: []
   certifications: []
 - employee_code: HC008
+  work_email: hc008@hengchuan-auto.example.com
   grade: 中级工
   hired_on: '2019-05-06'
   reports_to: HC002
@@ -139,6 +147,7 @@
     valid_until: '2027-07-21'
     note: 2023 年已复审一次
 - employee_code: HC009
+  work_email: hc009@hengchuan-auto.example.com
   grade: 实习生
   hired_on: '2026-09-07'
   reports_to: HC002
@@ -152,6 +161,7 @@
   external_accounts: []
   certifications: []
 - employee_code: HC010
+  work_email: hc010@hengchuan-auto.example.com
   grade: 技师
   hired_on: '2008-09-01'
   reports_to: HC001
@@ -169,6 +179,7 @@
     valid_until: null
     note: ''
 - employee_code: HC011
+  work_email: hc011@hengchuan-auto.example.com
   grade: 中级工
   hired_on: '2021-03-15'
   reports_to: HC002
@@ -186,6 +197,7 @@
     valid_until: null
     note: ''
 - employee_code: HC012
+  work_email: hc012@hengchuan-auto.example.com
   grade: M3
   hired_on: '2017-11-20'
   reports_to: null
@@ -209,6 +221,7 @@
     valid_until: null
     note: ''
 - employee_code: HC013
+  work_email: hc013@hengchuan-auto.example.com
   grade: T3
   hired_on: '2020-07-01'
   reports_to: HC012
@@ -232,6 +245,7 @@
     valid_until: '2026-03-16'
     note: 资格已到期，2026 年复训名额未排上
 - employee_code: HC014
+  work_email: hc014@hengchuan-auto.example.com
   grade: 中级工
   hired_on: '2018-10-08'
   reports_to: HC012
@@ -247,6 +261,7 @@
     account_id: qms.ke
   certifications: []
 - employee_code: HC015
+  work_email: hc015@hengchuan-auto.example.com
   grade: 初级工
   hired_on: '2024-03-04'
   reports_to: HC012
@@ -262,6 +277,7 @@
     account_id: qms.teng
   certifications: []
 - employee_code: HC016
+  work_email: hc016@hengchuan-auto.example.com
   grade: T2
   hired_on: '2019-08-19'
   reports_to: HC012
@@ -281,6 +297,7 @@
     valid_until: '2027-04-14'
     note: ''
 - employee_code: HC017
+  work_email: hc017@hengchuan-auto.example.com
   grade: M3
   hired_on: '2013-09-02'
   reports_to: null
@@ -300,6 +317,7 @@
     valid_until: null
     note: ''
 - employee_code: HC018
+  work_email: hc018@hengchuan-auto.example.com
   grade: T2
   hired_on: '2019-02-25'
   reports_to: HC017
@@ -323,6 +341,7 @@
     valid_until: null
     note: 在质量部任检验员期间取得
 - employee_code: HC019
+  work_email: hc019@hengchuan-auto.example.com
   grade: T3
   hired_on: '2018-07-16'
   reports_to: HC017
@@ -338,6 +357,7 @@
     account_id: qms.jiang
   certifications: []
 - employee_code: HC020
+  work_email: hc020@hengchuan-auto.example.com
   grade: T2
   hired_on: '2021-11-08'
   reports_to: HC017
@@ -353,6 +373,7 @@
     account_id: qms.zhong
   certifications: []
 - employee_code: HC021
+  work_email: hc021@hengchuan-auto.example.com
   grade: M2
   hired_on: '2015-02-09'
   reports_to: null
@@ -372,6 +393,7 @@
     valid_until: '2027-10-25'
     note: ''
 - employee_code: HC022
+  work_email: hc022@hengchuan-auto.example.com
   grade: 技师
   hired_on: '2012-05-14'
   reports_to: HC021
@@ -389,6 +411,7 @@
     valid_until: null
     note: ''
 - employee_code: HC023
+  work_email: hc023@hengchuan-auto.example.com
   grade: 高级工
   hired_on: '2020-04-20'
   reports_to: HC021
@@ -410,6 +433,7 @@
     valid_until: '2029-05-10'
     note: ''
 - employee_code: HC024
+  work_email: hc024@hengchuan-auto.example.com
   grade: 中级工
   hired_on: '2019-10-28'
   reports_to: HC021
@@ -429,6 +453,7 @@
     account_id: qms.xu
   certifications: []
 - employee_code: HC025
+  work_email: hc025@hengchuan-auto.example.com
   grade: M3
   hired_on: '2016-01-11'
   reports_to: null
@@ -446,6 +471,7 @@
     valid_until: null
     note: ''
 - employee_code: HC026
+  work_email: hc026@hengchuan-auto.example.com
   grade: T2
   hired_on: '2021-06-07'
   reports_to: HC025
@@ -459,6 +485,7 @@
   external_accounts: []
   certifications: []
 - employee_code: HC027
+  work_email: hc027@hengchuan-auto.example.com
   grade: T2
   hired_on: '2022-09-19'
   reports_to: HC025
@@ -472,6 +499,7 @@
   external_accounts: []
   certifications: []
 - employee_code: HC028
+  work_email: hc028@hengchuan-auto.example.com
   grade: T1
   hired_on: '2025-07-14'
   reports_to: HC025

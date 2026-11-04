@@ -18,7 +18,7 @@ from app.domains.org.models import (
     RosterImport,
 )
 from app.domains.org.roster.diff import compute_roster_diff
-from app.domains.org.roster.parser import parse_roster
+from app.domains.org.roster.parser import parse_roster, validate_roster
 from app.domains.org.roster.schemas import (
     CHANGE_KINDS,
     ApplyImport,
@@ -30,7 +30,7 @@ from app.domains.org.roster.schemas import (
     RosterImportsPublic,
     RosterIssue,
 )
-from app.models import User
+from app.models import User, uses_email_login
 
 
 class RosterError(HTTPException):
@@ -118,6 +118,11 @@ def apply_import(
     roster = ParsedRoster.model_validate(
         {"rows": record.rows, "column_mapping": record.column_mapping}
     )
+    validate_roster(roster)
+    if roster.has_errors:
+        raise RosterError(
+            422, [issue.message for issue in roster.issues if issue.severity == "error"]
+        )
     errors = [
         issue["message"] for issue in record.issues if issue["severity"] == "error"
     ]
@@ -165,15 +170,6 @@ def apply_import(
             .with_for_update(of=User)
         ).all()
     )
-    owners = dict(
-        session.exec(
-            select(func.lower(User.email), User.id).where(
-                func.lower(User.email).in_(
-                    [row.email.lower() for row in roster.rows if row.email]
-                )
-            )
-        ).all()
-    )
     columns = set(roster.column_mapping.values())
     now = utc_now()
     for row in roster.rows:
@@ -197,10 +193,22 @@ def apply_import(
         account = accounts.get(employee.id)
         if account:
             account.full_name = row.display_name
-            if "邮箱" in columns:
-                owner = owners.get(row.email.lower()) if row.email else None
-                if owner is None or owner == account.id:
-                    account.email = row.email
+            if row.email and (
+                not uses_email_login(account) or account.username != row.email
+            ):
+                account.username = row.email.strip().lower()
+                account.email = account.username
+                record_audit(
+                    session,
+                    org_id=principal.org_id,
+                    actor_type=principal.actor_type,
+                    actor_id=str(principal.user_id),
+                    action="account.email_changed",
+                    target_type="user",
+                    target_id=str(account.id),
+                    details={"id": str(account.id)},
+                    flush=False,
+                )
             session.add(account)
     deactivated: set[UUID] = set()
     for change in diff.changes:

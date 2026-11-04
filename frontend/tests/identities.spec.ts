@@ -18,7 +18,7 @@ test("confirm candidates in bulk, select employee, unlink and save optional setu
     data: {
       token: (await response.json()).token,
       org_name: "合成账号对应测试企业",
-      admin_username: `identities-${crypto.randomUUID()}`,
+      admin_username: `identities-${crypto.randomUUID()}@example.com`,
       admin_password: "synthetic-password-2026",
     },
   })

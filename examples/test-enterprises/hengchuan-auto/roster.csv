@@ -1,28 +1,28 @@
 ﻿工号,姓名,部门,职位,上级工号,邮箱
-HC001,周立安,机加工车间,车间主任,,zhou.lian@hengchuan-auto.example.com
-HC002,郭长河,机加工车间,一班班长,HC001,guo.changhe@hengchuan-auto.example.com
-HC003,范大勇,机加工车间,二班班长,HC001,fan.dayong@hengchuan-auto.example.com
-HC004,葛敏,机加工车间,数控车操作工,HC002,ge.min@hengchuan-auto.example.com
-HC005,时建波,机加工车间,加工中心操作工,HC003,shi.jianbo@hengchuan-auto.example.com
-HC006,卜志刚,机加工车间,磨工,HC002,bu.zhigang@hengchuan-auto.example.com
-HC007,雷小娥,机加工车间,去毛刺与装配操作工,HC003,lei.xiaoe@hengchuan-auto.example.com
-HC008,汪树林,机加工车间,物料员兼叉车司机,HC002,wang.shulin@hengchuan-auto.example.com
-HC009,邱子涵,机加工车间,机加工实习生,HC002,qiu.zihan@hengchuan-auto.example.com
-HC010,王德茂,机加工车间,调机技师,HC001,wang.demao@hengchuan-auto.example.com
-HC012,乔砚文,质量部,质量部经理,,qiao.yanwen@hengchuan-auto.example.com
-HC013,陈懿,质量部,客户质量工程师,HC012,chen.yi@hengchuan-auto.example.com
-HC014,柯慧兰,质量部,过程检验员,HC012,ke.huilan@hengchuan-auto.example.com
-HC015,滕佳,质量部,终检与入库检验员,HC012,teng.jia@hengchuan-auto.example.com
-HC016,芮承宇,质量部,计量与三坐标测量员,HC012,rui.chengyu@hengchuan-auto.example.com
-HC017,邢文勉,工艺技术部,工艺技术部经理,,xing.wenmian@hengchuan-auto.example.com
-HC018,丁书彤,工艺技术部,工艺工程师（制动件）,HC017,ding.shutong@hengchuan-auto.example.com
-HC019,姜知遥,工艺技术部,工艺工程师兼 CAM 编程,HC017,jiang.zhiyao@hengchuan-auto.example.com
-HC020,仲启明,工艺技术部,夹具与刀具工程师,HC017,zhong.qiming@hengchuan-auto.example.com
-HC021,聂长庚,设备动力部,设备动力部经理,,nie.changgeng@hengchuan-auto.example.com
-HC022,蒯建军,设备动力部,机械维修技师,HC021,kuai.jianjun@hengchuan-auto.example.com
-HC023,宓海涛,设备动力部,电气维修技师,HC021,mi.haitao@hengchuan-auto.example.com
-HC024,胥文博,设备动力部,TPM 点检员,HC021,xu.wenbo@hengchuan-auto.example.com
-HC025,甘慧,人力行政部,人力行政部经理,,gan.hui@hengchuan-auto.example.com
-HC026,骆青桐,人力行政部,人事专员,HC025,luo.qingtong@hengchuan-auto.example.com
-HC027,虞延,人力行政部,IT 与系统管理员,HC025,yu.yan@hengchuan-auto.example.com
-HC028,温嘉树,人力行政部,薪酬与培训专员,HC025,wen.jiashu@hengchuan-auto.example.com
+HC001,周立安,机加工车间,车间主任,,hc001@hengchuan-auto.example.com
+HC002,郭长河,机加工车间,一班班长,HC001,hc002@hengchuan-auto.example.com
+HC003,范大勇,机加工车间,二班班长,HC001,hc003@hengchuan-auto.example.com
+HC004,葛敏,机加工车间,数控车操作工,HC002,hc004@hengchuan-auto.example.com
+HC005,时建波,机加工车间,加工中心操作工,HC003,hc005@hengchuan-auto.example.com
+HC006,卜志刚,机加工车间,磨工,HC002,hc006@hengchuan-auto.example.com
+HC007,雷小娥,机加工车间,去毛刺与装配操作工,HC003,hc007@hengchuan-auto.example.com
+HC008,汪树林,机加工车间,物料员兼叉车司机,HC002,hc008@hengchuan-auto.example.com
+HC009,邱子涵,机加工车间,机加工实习生,HC002,hc009@hengchuan-auto.example.com
+HC010,王德茂,机加工车间,调机技师,HC001,hc010@hengchuan-auto.example.com
+HC012,乔砚文,质量部,质量部经理,,hc012@hengchuan-auto.example.com
+HC013,陈懿,质量部,客户质量工程师,HC012,hc013@hengchuan-auto.example.com
+HC014,柯慧兰,质量部,过程检验员,HC012,hc014@hengchuan-auto.example.com
+HC015,滕佳,质量部,终检与入库检验员,HC012,hc015@hengchuan-auto.example.com
+HC016,芮承宇,质量部,计量与三坐标测量员,HC012,hc016@hengchuan-auto.example.com
+HC017,邢文勉,工艺技术部,工艺技术部经理,,hc017@hengchuan-auto.example.com
+HC018,丁书彤,工艺技术部,工艺工程师（制动件）,HC017,hc018@hengchuan-auto.example.com
+HC019,姜知遥,工艺技术部,工艺工程师兼 CAM 编程,HC017,hc019@hengchuan-auto.example.com
+HC020,仲启明,工艺技术部,夹具与刀具工程师,HC017,hc020@hengchuan-auto.example.com
+HC021,聂长庚,设备动力部,设备动力部经理,,hc021@hengchuan-auto.example.com
+HC022,蒯建军,设备动力部,机械维修技师,HC021,hc022@hengchuan-auto.example.com
+HC023,宓海涛,设备动力部,电气维修技师,HC021,hc023@hengchuan-auto.example.com
+HC024,胥文博,设备动力部,TPM 点检员,HC021,hc024@hengchuan-auto.example.com
+HC025,甘慧,人力行政部,人力行政部经理,,hc025@hengchuan-auto.example.com
+HC026,骆青桐,人力行政部,人事专员,HC025,hc026@hengchuan-auto.example.com
+HC027,虞延,人力行政部,IT 与系统管理员,HC025,hc027@hengchuan-auto.example.com
+HC028,温嘉树,人力行政部,薪酬与培训专员,HC025,hc028@hengchuan-auto.example.com

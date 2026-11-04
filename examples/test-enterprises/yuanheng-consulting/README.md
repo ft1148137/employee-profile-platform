@@ -77,12 +77,12 @@ UTF-8 无 BOM，逗号分隔，表头固定为 12 列：
 
 | 邮箱 | 角色 | 员工 |
 | --- | --- | --- |
-| `lou.zhiwei@yuanheng-consulting.example.com` | `org_admin` | YH023 娄知微（人力与运营支持部的普通员工，不是部门负责人） |
-| `situ.mingzhao@yuanheng-consulting.example.com` | `dept_manager` | YH001 司徒明昭（战略与组织咨询部） |
-| `pei.yunshu@yuanheng-consulting.example.com` | `dept_manager` | YH007 裴云澍（运营与供应链咨询部） |
-| `liang.shuyan@yuanheng-consulting.example.com` | `dept_manager` | YH012 梁书彦（数字化咨询部） |
-| `qu.yanqiu@yuanheng-consulting.example.com` | `dept_manager` | YH018 屈砚秋（知识与研究中心） |
-| `bian.qiucheng@yuanheng-consulting.example.com` | `dept_manager` | YH022 卞秋澄（人力与运营支持部） |
+| `yh023@yuanheng-consulting.example.com` | `org_admin` | YH023 娄知微（人力与运营支持部的普通员工，不是部门负责人） |
+| `yh001@yuanheng-consulting.example.com` | `dept_manager` | YH001 司徒明昭（战略与组织咨询部） |
+| `yh007@yuanheng-consulting.example.com` | `dept_manager` | YH007 裴云澍（运营与供应链咨询部） |
+| `yh012@yuanheng-consulting.example.com` | `dept_manager` | YH012 梁书彦（数字化咨询部） |
+| `yh018@yuanheng-consulting.example.com` | `dept_manager` | YH018 屈砚秋（知识与研究中心） |
+| `yh022@yuanheng-consulting.example.com` | `dept_manager` | YH022 卞秋澄（人力与运营支持部） |
 | 其余 19 位在职员工 | 普通员工（不写 role） | YH002–YH006、YH008–YH011、YH013–YH017、YH019–YH021、YH024、YH025 |
 
 ### 本企业的边界情况

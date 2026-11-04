@@ -1,7 +1,7 @@
 from sqlmodel import Session, func, select
 
 from app.core.security import get_password_hash, verify_password
-from app.models import User, UserCreate
+from app.models import User, UserCreate, uses_email_login
 
 
 def create_user(*, session: Session, user_create: UserCreate) -> User:
@@ -17,7 +17,7 @@ def create_user(*, session: Session, user_create: UserCreate) -> User:
 def get_user_by_email(*, session: Session, email: str | None) -> User | None:
     if email is None:
         return None
-    statement = select(User).where(func.lower(User.email) == email.lower())
+    statement = select(User).where(func.lower(User.email) == email.strip().lower())
     session_user = session.exec(statement).first()
     return session_user
 
@@ -34,12 +34,12 @@ DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$MjQyZWE1MzBjYjJlZTI0Yw$YTU4NGM5ZTZm
 
 
 def authenticate(*, session: Session, username: str, password: str) -> User | None:
-    username = username.strip()
+    username = username.strip().lower()
     db_user = (
-        get_user_by_email(session=session, email=username)
-        if "@" in username
-        else get_user_by_username(session=session, username=username)
+        get_user_by_email(session=session, email=username) if "@" in username else None
     )
+    if db_user is None or not uses_email_login(db_user):
+        db_user = get_user_by_username(session=session, username=username)
     if not db_user:
         # Prevent timing attacks by running password verification even when user doesn't exist
         # This ensures the response time is similar whether or not the email exists

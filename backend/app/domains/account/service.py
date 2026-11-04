@@ -1,6 +1,7 @@
 from typing import Literal
 from uuid import UUID
 
+from email_validator import EmailNotValidError, validate_email
 from fastapi import HTTPException
 from pydantic import JsonValue
 from sqlalchemy import case, func, or_
@@ -33,7 +34,7 @@ from app.domains.org.models import (
 )
 from app.domains.org.paths import department_paths
 from app.domains.org.schemas import DepartmentSummary
-from app.models import User
+from app.models import User, uses_email_login
 
 
 class AccountError(HTTPException):
@@ -243,7 +244,7 @@ def issue_accounts(
         session.exec(
             select(func.lower(User.username)).where(
                 func.lower(User.username).in_(
-                    [(e.employee_code or "").strip().lower() for e in employees]
+                    [(e.work_email or "").strip().lower() for e in employees]
                 )
             )
         ).all()
@@ -252,7 +253,7 @@ def issue_accounts(
         session.exec(
             select(func.lower(User.email)).where(
                 func.lower(User.email).in_(
-                    [e.work_email.lower() for e in employees if e.work_email]
+                    [e.work_email.strip().lower() for e in employees if e.work_email]
                 )
             )
         ).all()
@@ -262,11 +263,9 @@ def issue_accounts(
     usernames: set[str] = set()
     for employee in employees:
         linked = linked_accounts.get(employee.id)
-        code = (employee.employee_code or "").strip()
+        email = (employee.work_email or "").strip().lower()
         reason = None
-        if not code or "@" in code or len(code) > 255:
-            reason = "工号为空或不能作为登录名"
-        elif employee.employment_status != EmploymentStatus.ACTIVE:
+        if employee.employment_status != EmploymentStatus.ACTIVE:
             reason = "员工已离职"
         elif linked:
             if linked.is_superuser or linked.id in shared_accounts:
@@ -277,9 +276,17 @@ def issue_accounts(
                 and linked.must_change_password
             ):
                 reason = "账号已存在，且不允许重新生成"
-        elif code.lower() in occupied_usernames or code.lower() in usernames:
-            reason = "登录名已被占用"
-        usernames.add(code.lower())
+        elif (
+            email in occupied_usernames
+            or email in occupied_emails
+            or email in usernames
+        ):
+            reason = "邮箱已被占用"
+        try:
+            validate_email(email, check_deliverability=False)
+        except EmailNotValidError:
+            reason = "邮箱缺失或格式不正确，请在名单里补上邮箱"
+        usernames.add(email)
         if reason:
             conflicts.append(
                 {
@@ -300,13 +307,9 @@ def issue_accounts(
     for index, (employee, user) in enumerate(candidates):
         note = ""
         if user is None:
-            email = employee.work_email or None
-            if email and email.lower() in occupied_emails:
-                email, note = None, "邮箱已被其他账号使用，暂不能用邮箱登录"
-            if email:
-                occupied_emails.add(email.lower())
+            email = (employee.work_email or "").strip().lower()
             user = User(
-                username=(employee.employee_code or "").strip(),
+                username=email,
                 full_name=employee.display_name,
                 email=email,
                 hashed_password="",
@@ -512,6 +515,7 @@ def list_accounts(
                     user_id=u.id,
                     username=u.username,
                     email=u.email,
+                    email_login=uses_email_login(u),
                     last_login_at=u.last_login_at,
                     status="disabled"
                     if not u.is_active

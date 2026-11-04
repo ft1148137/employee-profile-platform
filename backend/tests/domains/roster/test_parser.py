@@ -44,7 +44,7 @@ def test_csv_encodings_aliases_and_cleaning(encoding: str) -> None:
                 "／ 公司 / / 研发 ／ 平台 ／",
                 "研发",
                 "",
-                "",
+                "one@example.com",
             ],
             [],
             ["002", "Alex", "公司/运营/质量组", "", "001", "alex@example.com"],
@@ -90,8 +90,16 @@ def test_file_and_header_errors(content: bytes, filename: str, message: str) -> 
         (["", "李宁", "研发"], "工号", "不能为空"),
         (["E1", "", "研发"], "姓名", "不能为空"),
         (["E1", "李宁", " ／ / "], "部门", "不能为空"),
-        (["E1", "李宁", "研发", "", "E099"], "上级工号", "名单里没有工号 E099"),
-        (["E1", "李宁", "研发", "", "e1"], "上级工号", "上级不能是自己"),
+        (
+            ["E1", "李宁", "研发", "", "E099", "one@example.com"],
+            "上级工号",
+            "名单里没有工号 E099",
+        ),
+        (
+            ["E1", "李宁", "研发", "", "e1", "one@example.com"],
+            "上级工号",
+            "上级不能是自己",
+        ),
         (["E1", "李宁", "研发", "", "", "bad@"], "邮箱", "邮箱格式不正确"),
     ],
 )
@@ -111,7 +119,7 @@ def test_case_insensitive_duplicates_and_manager_lookup() -> None:
                 list(HEADERS),
                 ["E1", "甲", "研发", "", "", "One@example.com"],
                 ["e1", "乙", "研发", "", "", "one@EXAMPLE.com"],
-                ["E2", "丙", "研发", "", "e1"],
+                ["E2", "丙", "研发", "", "e1", "two@example.com"],
             ]
         ),
         "名单.csv",
@@ -130,7 +138,16 @@ def test_long_chains_cycles_and_performance(
     rows: list[list[object]] = [list(HEADERS)]
     for index in range(size):
         manager = f"E{index + 1}" if index < size - 1 else ("e0" if cyclic else "")
-        rows.append([f"E{index}", "员工", "公司/研发/平台", "工程师", manager])
+        rows.append(
+            [
+                f"E{index}",
+                "员工",
+                "公司/研发/平台",
+                "工程师",
+                manager,
+                f"e{index}@example.com",
+            ]
+        )
     content = xlsx_bytes(rows) if xlsx else csv_bytes(rows)
     started = perf_counter()
     result = parse_roster(content, "名单.xlsx" if xlsx else "名单.csv")
@@ -149,11 +166,11 @@ def test_multiple_cycles_and_feeder_chain() -> None:
         csv_bytes(
             [
                 list(HEADERS),
-                ["A", "甲", "研发", "", "B"],
-                ["B", "乙", "研发", "", "C"],
-                ["C", "丙", "研发", "", "B"],
-                ["D", "丁", "研发", "", "E"],
-                ["E", "戊", "研发", "", "D"],
+                ["A", "甲", "研发", "", "B", "a@example.com"],
+                ["B", "乙", "研发", "", "C", "b@example.com"],
+                ["C", "丙", "研发", "", "B", "c@example.com"],
+                ["D", "丁", "研发", "", "E", "d@example.com"],
+                ["E", "戊", "研发", "", "D", "e@example.com"],
             ]
         ),
         "名单.csv",
@@ -165,7 +182,9 @@ def test_multiple_cycles_and_feeder_chain() -> None:
 
 def test_row_limit_counts_people_not_blank_rows() -> None:
     rows: list[list[object]] = [list(HEADERS), []]
-    rows.extend([[f"E{i}", "员工", "研发"] for i in range(5001)])
+    rows.extend(
+        [[f"E{i}", "员工", "研发", "", "", f"e{i}@example.com"] for i in range(5001)]
+    )
     result = parse_roster(csv_bytes(rows), "名单.csv")
     assert len(result.rows) == 5000
     assert result.issues[0].row_number == 5003
@@ -178,8 +197,8 @@ def test_xlsx_numeric_codes_and_unicode() -> None:
             [
                 [],
                 list(HEADERS),
-                [1001.0, "䶮㵘𤭢", "公司／研发/平台"],
-                ["001002", "Alex", "公司/运营/平台", "", 1001],
+                [1001.0, "䶮㵘𤭢", "公司／研发/平台", "", "", "one@example.com"],
+                ["001002", "Alex", "公司/运营/平台", "", 1001, "two@example.com"],
             ]
         ),
         "名单.xlsx",
@@ -198,7 +217,10 @@ def test_xlsx_numeric_codes_and_unicode() -> None:
     "rows, column",
     [
         ([["=1+1"]], "第 1 列"),
-        ([list(HEADERS), ["E1", "李宁", "研发", "=1+1"]], "职位"),
+        (
+            [list(HEADERS), ["E1", "李宁", "研发", "=1+1", "", "one@example.com"]],
+            "职位",
+        ),
         ([list(HEADERS), [None, None, None, "=1+1"]], "职位"),
     ],
 )
@@ -210,7 +232,9 @@ def test_formula_without_cached_value(rows: list[list[object]], column: str) -> 
 
 
 def test_formula_with_cached_value() -> None:
-    original = xlsx_bytes([list(HEADERS), ["E1", "李宁", "研发", "=1+1"]])
+    original = xlsx_bytes(
+        [list(HEADERS), ["E1", "李宁", "研发", "=1+1", "", "one@example.com"]]
+    )
     output = BytesIO()
     with (
         ZipFile(BytesIO(original)) as source,
@@ -272,7 +296,7 @@ def test_sample_roster() -> None:
     result = parse_roster(content, "sample-30.csv")
     assert len(result.rows) == 30
     assert not result.issues
-    assert sum(row.email is None for row in result.rows) == 3
+    assert sum(row.email is None for row in result.rows) == 0
     assert sum(row.manager_code is None for row in result.rows) == 1
     assert all(len(row.department_path) >= 3 for row in result.rows)
     assert any("𤭢" in row.display_name for row in result.rows)

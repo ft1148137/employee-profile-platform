@@ -125,7 +125,7 @@ def test_first_import_history_audit_and_setup(
     assert response.status_code == 200, response.text
     assert response.json()["summary"] == preview["summary"]
     people = employees(db, tenant)
-    assert len(people) == 30 and sum(e.work_email is None for e in people.values()) == 3
+    assert len(people) == 30 and sum(e.work_email is None for e in people.values()) == 0
     # The fixture contributes one unused department.
     assert count(db, tenant, Department) == 16
     departments = records(db, tenant, Department)
@@ -148,6 +148,35 @@ def test_first_import_history_audit_and_setup(
     unchanged = upload(client, tenant)
     assert all(unchanged["summary"][k] == 0 for k in service.CHANGE_KINDS)
     assert apply(client, tenant, unchanged).status_code == 200
+
+
+@pytest.mark.parametrize("problem", ["missing", "invalid", "duplicate", "occupied"])
+def test_email_errors_block_preview_and_apply(
+    tenant: SetupTenant, client: TestClient, db: Session, problem: str
+) -> None:
+    rows = sample_rows()
+    owner = db.exec(
+        select(User)
+        .join(OrgMembership)
+        .where(OrgMembership.org_id == tenant.foreign_org_id)
+    ).first()
+    assert owner is not None
+    owner.email = f"{uuid4()}@example.com"
+    db.add(owner)
+    db.commit()
+    rows[1]["邮箱"] = {
+        "missing": "",
+        "invalid": "bad@",
+        "duplicate": rows[0]["邮箱"].upper(),
+        "occupied": str(owner.email),
+    }[problem]
+    preview = upload(client, tenant, csv_bytes(rows))
+    assert not preview["can_apply"]
+    assert any(
+        "第 3 行" in i["message"] and "邮箱" in i["message"] for i in preview["issues"]
+    )
+    assert apply(client, tenant, preview).status_code == 422
+    assert not employees(db, tenant)
 
 
 def test_update_departure_reactivation_and_optional_columns(
@@ -202,8 +231,8 @@ def test_update_departure_reactivation_and_optional_columns(
         csv.DictReader(
             StringIO(
                 "工号,姓名,部门,职位,上级工号,邮箱\n"
-                f"NEW,新增,星衍科技/新增部门,工程师,{rows[0]['工号']},\n"
-                "RESTORED,恢复,星衍科技/新增部门,,NEW,\n"
+                f"NEW,新增,星衍科技/新增部门,工程师,{rows[0]['工号']},new@example.com\n"
+                "RESTORED,恢复,星衍科技/新增部门,,NEW,restored@example.com\n"
             )
         )
     )
@@ -216,7 +245,13 @@ def test_update_departure_reactivation_and_optional_columns(
     db.refresh(account)
     db.refresh(departing_account)
     db.refresh(restored_account)
-    assert account.full_name == rows[1]["姓名"] and account.email == rows[1]["邮箱"]
+    assert (
+        account.full_name == rows[1]["姓名"]
+        and account.email == account.username == rows[1]["邮箱"]
+    )
+    assert any(
+        e.action == "account.email_changed" for e in records(db, tenant, AuditEvent)
+    )
     assert people[changing.employee_code].title == "新职位"
     assert people[removed["工号"]].employment_status == EmploymentStatus.INACTIVE
     assert not departing_account.is_active and db.get(ProfileVersion, profile.id)
@@ -232,7 +267,7 @@ def test_update_departure_reactivation_and_optional_columns(
     switched = people[rows[2]["工号"]]
     assert current[switched.id] == changing.id
     assert any(line.employee_id == switched.id and line.valid_to for line in lines)
-    optional = [{k: r[k] for k in ("工号", "姓名", "部门")} for r in rows]
+    optional = [{k: r[k] for k in ("工号", "姓名", "部门", "邮箱")} for r in rows]
     assert (
         apply(client, tenant, upload(client, tenant, csv_bytes(optional))).status_code
         == 200
@@ -260,11 +295,17 @@ def test_recompute_email_and_admin_blockers(
     db.add(foreign_user)
     db.commit()
     result = apply(client, tenant, preview)
-    assert result.status_code == 200
-    assert any("不会同步" in i["message"] for i in result.json()["issues"])
+    assert result.status_code == 422
+    blocked_email = upload(client, tenant, csv_bytes(rows))
+    assert not blocked_email["can_apply"]
+    assert any(
+        "第 3 行" in i["message"] and "邮箱" in i["message"]
+        for i in blocked_email["issues"]
+    )
     db.refresh(account)
     db.refresh(employee)
-    assert account.email == previous and employee.work_email == rows[1]["邮箱"]
+    assert account.email == previous and employee.work_email != rows[1]["邮箱"]
+    rows[1]["邮箱"] = f"{uuid4()}@example.com"
     # Preview is allowed before the admin becomes linked to an omitted employee.
     smaller = rows[:-1]
     allowed = upload(client, tenant, csv_bytes(smaller))
@@ -280,6 +321,28 @@ def test_recompute_email_and_admin_blockers(
         i["severity"] == "error" for i in blocked["issues"]
     )
     assert apply(client, tenant, blocked).status_code == 422
+
+
+@pytest.mark.parametrize("protected", ["shared", "superuser"])
+def test_email_change_cannot_modify_protected_account(
+    tenant: SetupTenant, client: TestClient, db: Session, protected: str
+) -> None:
+    assert apply(client, tenant, upload(client, tenant)).status_code == 200
+    rows = sample_rows()
+    account = link(db, tenant, employees(db, tenant)[rows[1]["工号"]])
+    original = (account.username, account.email)
+    if protected == "shared":
+        db.add(OrgMembership(org_id=tenant.foreign_org_id, user_id=account.id))
+    else:
+        account.is_superuser = True
+        db.add(account)
+    db.commit()
+    rows[1]["邮箱"] = f"{uuid4()}@example.com"
+    preview = upload(client, tenant, csv_bytes(rows))
+    assert not preview["can_apply"]
+    assert apply(client, tenant, preview).status_code == 422
+    db.refresh(account)
+    assert (account.username, account.email) == original
 
 
 @pytest.mark.parametrize("removed,confirm", [(6, False), (7, True)])

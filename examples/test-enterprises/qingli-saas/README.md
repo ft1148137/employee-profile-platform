@@ -56,12 +56,12 @@ UTF-8 无 BOM，逗号分隔，首行表头固定为 12 列，顺序如下。
 
 | 邮箱 | 系统角色 | 员工 |
 | --- | --- | --- |
-| `jiang.you@qingli-saas.example.com` | org_admin（企业管理员） | QL025 蒋柚，人力与信息部信息系统管理员 |
-| `jiang.boran@qingli-saas.example.com` | dept_manager | QL001 姜柏然，平台研发部 |
-| `ning.zhiyuan@qingli-saas.example.com` | dept_manager | QL009 宁致远，产品与设计部 |
-| `zheng.yishu@qingli-saas.example.com` | dept_manager | QL013 郑亦舒，质量与运维部 |
-| `luo.cheng@qingli-saas.example.com` | dept_manager | QL018 骆程，客户成功部 |
-| `feng.yi@qingli-saas.example.com` | dept_manager | QL024 冯屹，人力与信息部 |
+| `ql025@qingli-saas.example.com` | org_admin（企业管理员） | QL025 蒋柚，人力与信息部信息系统管理员 |
+| `ql001@qingli-saas.example.com` | dept_manager | QL001 姜柏然，平台研发部 |
+| `ql009@qingli-saas.example.com` | dept_manager | QL009 宁致远，产品与设计部 |
+| `ql013@qingli-saas.example.com` | dept_manager | QL013 郑亦舒，质量与运维部 |
+| `ql018@qingli-saas.example.com` | dept_manager | QL018 骆程，客户成功部 |
+| `ql024@qingli-saas.example.com` | dept_manager | QL024 冯屹，人力与信息部 |
 | 其余 20 个在职员工邮箱 | employee（不写 role） | QL002–QL007、QL010–QL012、QL014–QL017、QL019–QL022、QL026–QL028 |
 
 企业管理员是人力与信息部的普通员工，不是部门负责人；两位项目经理（QL010、QL011）也只有员工角色。
