@@ -34,6 +34,18 @@ from tests.authz.test_tenant_access import tenant_data as tenant_data
 from tests.utils.pi import PiHarness
 
 
+def test_projection_redacts_nested_links_and_email() -> None:
+    assert tools.redact(
+        {
+            "items": [
+                "HTTP://internal.example/a",
+                "HTTPS://internal.example/b",
+                "EMPLOYEE@example.com",
+            ]
+        }
+    ) == {"items": ["[已隐藏]"] * 3}
+
+
 def enable(db: Session, org_id: UUID) -> None:
     db.add(
         ModelSetting(

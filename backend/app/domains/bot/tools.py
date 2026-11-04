@@ -37,7 +37,9 @@ def definitions() -> list[ToolDefinition]:
 
 
 def redact_text(value: str) -> str:
-    return re.sub(r"https?://[^\s<>]+|[\w.+-]+@[\w.-]+", "[已隐藏]", value)
+    return re.sub(
+        r"https?://[^\s<>]+|[\w.+-]+@[\w.-]+", "[已隐藏]", value, flags=re.IGNORECASE
+    )
 
 
 def redact(value: JsonValue) -> JsonValue:
