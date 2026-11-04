@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router"
 import {
+  Inbox,
   ListChecks,
   ScrollText,
   Settings,
@@ -24,6 +25,7 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar"
 import useAuth from "@/hooks/useAuth"
+import { useInbox } from "@/hooks/useInbox"
 import { useOrg } from "@/hooks/useOrg"
 import { useSetup } from "@/hooks/useSetup"
 import { type Item, Main } from "./Main"
@@ -34,8 +36,18 @@ export function AppSidebar() {
 
   const { org, memberships, roles, employeeId, setOrg } = useOrg()
   const setup = useSetup()
+  const inbox = useInbox()
   const navigate = useNavigate()
   const items: Item[] = []
+  if (employeeId)
+    items.push({
+      icon: Inbox,
+      title: "收件箱",
+      path: "/inbox",
+      badge: inbox.data?.unread_count
+        ? String(inbox.data.unread_count)
+        : undefined,
+    })
   if (employeeId)
     items.push({
       icon: UserRound,
