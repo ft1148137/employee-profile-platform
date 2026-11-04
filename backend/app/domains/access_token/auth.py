@@ -42,6 +42,7 @@ def token_principal(session: Session, plaintext: str, ip: str) -> Principal:
         raise InvalidAccessToken()
     principal = get_org_principal(token.org_id, user, session)
     if principal.employee_id != token.employee_id:
+        record_login_attempt(session, "mcp", ip, False)
         raise InvalidAccessToken()
     visible_employee(session, principal, token.employee_id)
     if not get_setting(session, principal).enabled:

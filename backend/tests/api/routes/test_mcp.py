@@ -201,7 +201,11 @@ def test_sdk_employee_flow(demo: tuple, db: Session) -> None:
     "invalid", ["revoked", "expired", "disabled", "inactive", "password", "membership"]
 )
 def test_every_request_rechecks_token(
-    demo: tuple, db: Session, client: TestClient, invalid: str
+    demo: tuple,
+    db: Session,
+    client: TestClient,
+    invalid: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _, people, _ = demo
     headers, row = token_for(db, people["E02"])
@@ -225,6 +229,7 @@ def test_every_request_rechecks_token(
             )
         ).one().employee_id = None
     db.commit()
+    monkeypatch.setattr(settings, "LOGIN_MAX_FAILURES_PER_IP", 6)
     try:
         for auth in (headers, active):
             for method in ("POST", "GET", "DELETE"):
@@ -237,6 +242,8 @@ def test_every_request_rechecks_token(
                 assert response.status_code == (403 if invalid == "disabled" else 401)
                 if invalid == "disabled":
                     assert response.json()["detail"] == "企业已关闭外部 AI 助手"
+        if invalid != "disabled":
+            assert client.post("/mcp", headers=active, json={}).status_code == 429
     finally:
         user.is_active, user.password_changed_at = original
         db.commit()
