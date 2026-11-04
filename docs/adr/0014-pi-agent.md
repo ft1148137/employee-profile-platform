@@ -150,3 +150,26 @@ API key 起草和连接测试使用 `run_turn`，订阅保留原路径至 S7b。
 - [Codex responses 的 access token、重试与错误处理](https://github.com/badlogic/pi-mono/blob/v0.73.1/packages/ai/src/providers/openai-codex-responses.ts)，[类型与 reasoning 定义](https://github.com/badlogic/pi-mono/blob/v0.73.1/packages/ai/src/types.ts)。
 - [锁定模型目录](https://github.com/badlogic/pi-mono/blob/v0.73.1/packages/ai/src/models.generated.ts)，[百炼 OpenAI 兼容协议与区域地址](https://www.alibabacloud.com/help/en/model-studio/compatibility-of-openai-with-dashscope)。
 - [npm 固定包元数据](https://registry.npmjs.org/@mariozechner/pi-ai/0.73.1)，[agent-core 元数据](https://registry.npmjs.org/@mariozechner/pi-agent-core/0.73.1)，[Pi MIT 许可证](https://github.com/badlogic/pi-mono/blob/v0.73.1/LICENSE)。
+
+## 实现（S14a，NERE-97）
+
+S14a 只交付运行底座；员工工具、提示词、卡片、确认动作和对话 HTTP 入口由 S14b（NERE-106）接入。没有新增依赖。企业设置没有可复用的通用设置表，新增每企业一行的 `bot_setting`，管理员通过 `GET/PUT /orgs/{org_id}/bot-settings` 读写。指南上限 4000 字，保留天数 0–30，缺行时返回空指南及 0 天。
+
+`bot_session` 使用 UUID v4，只有员工、入口、时间、轮数、请求 UUID 数组和租约；`bot_message` 通过带企业的复合外键关联会话，级联删除只涉及聊天消息，不涉及 Evidence。消息正文为 `core/secrets.py` Fernet 加密的 JSON；密钥仍从部署环境变量读取，不新增密钥来源。迁移降级会删除聊天数据和机器人设置，保留既有业务表。
+
+给 S14b 的 Python 接口：
+
+- `store.create_session(db, principal, channel="web")` 提交会话元数据；`get_session(db, principal, session_id)` 和 `list_messages` 只允许本企业本人，其他员工及企业一律 404，沿用 `visible_employee`。
+- `append_message(db, session, role, payload)` 接收不透明 JSON，写密文并 flush，更新最后活动时间；提交事务由调用方负责。`list_messages` 返回 `id/role/payload/created_at`，不返回密文。
+- `load_history(db, session)` 返回 `HistoryMessage(role, text)`，text 是原 JSON 文本；只读取最近 20 条，合计最多 24000 字，超长时保留最近文本尾部。入口应在 `begin_turn` 写入本次用户消息之前取历史，再将当前输入单独交给 Pi。内部接受 session 的函数只使用经过 `get_session` 校验的会话。
+- 产生请求后，由 S14b 校验请求归属，并给 `session.request_ids` 赋新数组保存；该字段不承担授权。
+
+默认闲置两小时的会话不再通过读取接口暴露旧消息；再次追加时先清除过期历史，避免重新活跃后恢复旧内容。`bot.cleanup_messages` 每五分钟清理一次密文：0 天按会话闲置两小时删除全部消息，正数按每条消息创建时间删除。元数据保留。没有异步外发或原文日志。
+
+`admission.begin_turn(db, principal, session, user_payload)` 是上下文管理器：企业级事务 advisory lock 串行检查，随后按本人会话行 `FOR UPDATE`；取得 75 秒租约、按用户消息统计最近一小时的 30 轮限制、检查企业 2 轮上限，写入用户消息和轮数后一起提交。网络等待期间不持行锁。上下文正常退出提交调用方写入，异常回滚本轮尚未提交的写入；用户输入及轮数已在准入时提交，不因模型失败退回计数。退出按租约时间匹配释放，过期轮次不能释放接管者的租约。
+
+拒绝类型为 `BotBusy`、`BotRateLimited(retry_at)`、`BotDraftingPriority`、`BotQuotaPaused(retry_at, estimated)`。查询现有 `procrastinate_jobs` 的函数从起草服务抽出，起草流程不变：本企业订阅模型遇到排队或运行中的起草时优先返回 `BotDraftingPriority`；部署存在排队起草时所有新聊天返回 `BotBusy`。API key 企业可与运行中的起草共存。模型返回 PiBusy 时转 BotBusy；额度错误持久化到企业模型设置，下一轮立即拒绝，未知恢复时间估算 30 分钟，已有更晚暂停不缩短。没有重试。
+
+Pi 请求允许 `mode="chat"` 及可选 `history=[{role,text}]`；历史只允许 user/assistant、最多 20 条和 24000 字，draft 携带 history 一律拒绝。每轮仍是全新 Agent，完成后清空，不跨 run 缓存。对话服务期限 60 秒（含后端工具等待），`PI_CHAT_DEADLINE_MS` 只可调短；Python 读取超时为 70 秒，draft 仍为 130 秒。Node 每进程总上限 4 轮，chat 上限 3 轮，超出立即 busy，始终留一个名额给起草。
+
+合成延迟负载验证（本机 Mac，不能据此推算生产吞吐）：Node 8 批、工具等待 30ms，接受 32 轮（24 聊天、8 起草），拒绝 16 轮，耗时 318ms；真实 PostgreSQL 连接 8 批、两名员工各占一轮并等待 30ms，接受 16 轮、拒绝 16 次重复或超额请求，耗时 604ms。小时限制另测 30 轮成功、第 31 轮拒绝，以及剩一轮额度时两个连接争抢只通过一个。并发反序工具回传不串历史；伪造命令和文件工具无法执行；缩短期限后超时释放名额。保留 4 / 2 / 30 默认值，不增加配置项。

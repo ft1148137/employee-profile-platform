@@ -2,7 +2,7 @@
 
 import { type Client, formDataBodySerializer, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { accountsDisableAccountData, accountsDisableAccountErrors, accountsDisableAccountResponses, accountsEnableAccountData, accountsEnableAccountErrors, accountsEnableAccountResponses, accountsIssueAccountsData, accountsIssueAccountsErrors, accountsIssueAccountsResponses, accountsReadAccountsData, accountsReadAccountsErrors, accountsReadAccountsResponses, accountsResetPasswordData, accountsResetPasswordErrors, accountsResetPasswordResponses, auditReadAuditEventsData, auditReadAuditEventsErrors, auditReadAuditEventsResponses, capabilitiesDictionaryTemplateData, capabilitiesDictionaryTemplateErrors, capabilitiesDictionaryTemplateResponses, capabilitiesExportDictionaryData, capabilitiesExportDictionaryErrors, capabilitiesExportDictionaryResponses, capabilitiesPreviewDictionaryData, capabilitiesPreviewDictionaryEditorData, capabilitiesPreviewDictionaryEditorErrors, capabilitiesPreviewDictionaryEditorResponses, capabilitiesPreviewDictionaryErrors, capabilitiesPreviewDictionaryResponses, capabilitiesReadCapabilitiesData, capabilitiesReadCapabilitiesErrors, capabilitiesReadCapabilitiesResponses, capabilitiesReadDictionaryEditorData, capabilitiesReadDictionaryEditorErrors, capabilitiesReadDictionaryEditorResponses, capabilitiesSaveDictionaryData, capabilitiesSaveDictionaryErrors, capabilitiesSaveDictionaryResponses, capabilitiesUpdateDictionaryData, capabilitiesUpdateDictionaryErrors, capabilitiesUpdateDictionaryResponses, capabilityTemplatesActivateCapabilitySchemaData, capabilityTemplatesActivateCapabilitySchemaErrors, capabilityTemplatesActivateCapabilitySchemaResponses, capabilityTemplatesPreviewTemplateData, capabilityTemplatesPreviewTemplateErrors, capabilityTemplatesPreviewTemplateResponses, capabilityTemplatesReadTemplatesData, capabilityTemplatesReadTemplatesResponses, changeRequestsReadChangeRequestsData, changeRequestsReadChangeRequestsErrors, changeRequestsReadChangeRequestsResponses, draftingSettingsGetAutoDraftData, draftingSettingsGetAutoDraftErrors, draftingSettingsGetAutoDraftResponses, draftingSettingsGetDraftingSettingsData, draftingSettingsGetDraftingSettingsErrors, draftingSettingsGetDraftingSettingsResponses, draftingSettingsPutAutoDraftData, draftingSettingsPutAutoDraftErrors, draftingSettingsPutAutoDraftResponses, draftingSettingsPutDraftingSettingsData, draftingSettingsPutDraftingSettingsErrors, draftingSettingsPutDraftingSettingsResponses, employeeRequestsCreateDraftData, employeeRequestsCreateDraftErrors, employeeRequestsCreateDraftResponses, employeeRequestsPreviewRequestData, employeeRequestsPreviewRequestErrors, employeeRequestsPreviewRequestResponses, employeeRequestsReadInboxData, employeeRequestsReadInboxErrors, employeeRequestsReadInboxItemData, employeeRequestsReadInboxItemErrors, employeeRequestsReadInboxItemResponses, employeeRequestsReadInboxResponses, employeeRequestsReadMyCapabilitiesData, employeeRequestsReadMyCapabilitiesErrors, employeeRequestsReadMyCapabilitiesResponses, employeeRequestsReadMyEvidenceData, employeeRequestsReadMyEvidenceErrors, employeeRequestsReadMyEvidenceResponses, employeeRequestsReadMyProfileData, employeeRequestsReadMyProfileErrors, employeeRequestsReadMyProfileResponses, employeeRequestsReadMyRequestsData, employeeRequestsReadMyRequestsErrors, employeeRequestsReadMyRequestsResponses, employeeRequestsSubmitRequestData, employeeRequestsSubmitRequestErrors, employeeRequestsSubmitRequestResponses, employeeRequestsUpdateItemsData, employeeRequestsUpdateItemsErrors, employeeRequestsUpdateItemsResponses, employeeRequestsWithdrawRequestData, employeeRequestsWithdrawRequestErrors, employeeRequestsWithdrawRequestResponses, employeesReadEmployeeData, employeesReadEmployeeErrors, employeesReadEmployeeResponses, employeesReadEmployeesData, employeesReadEmployeesErrors, employeesReadEmployeesResponses, evidenceReadEmployeeEvidenceData, evidenceReadEmployeeEvidenceErrors, evidenceReadEmployeeEvidenceResponses, evidenceReadEvidenceData, evidenceReadEvidenceErrors, evidenceReadEvidenceResponses, externalIdentitiesGetIdentitiesData, externalIdentitiesGetIdentitiesErrors, externalIdentitiesGetIdentitiesResponses, externalIdentitiesPostLinksData, externalIdentitiesPostLinksErrors, externalIdentitiesPostLinksResponses, externalIdentitiesPostUnlinkData, externalIdentitiesPostUnlinkErrors, externalIdentitiesPostUnlinkResponses, initialProfilesDraftData, initialProfilesDraftErrors, initialProfilesDraftResponses, initialProfilesProgressData, initialProfilesProgressErrors, initialProfilesProgressResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginTestTokenData, loginTestTokenResponses, meReadMembershipsData, meReadMembershipsResponses, modelSettingDisconnectChatgptData, modelSettingDisconnectChatgptErrors, modelSettingDisconnectChatgptResponses, modelSettingGetModelSettingData, modelSettingGetModelSettingErrors, modelSettingGetModelSettingResponses, modelSettingPollChatgptLoginData, modelSettingPollChatgptLoginErrors, modelSettingPollChatgptLoginResponses, modelSettingPutModelSettingData, modelSettingPutModelSettingErrors, modelSettingPutModelSettingResponses, modelSettingStartChatgptLoginData, modelSettingStartChatgptLoginErrors, modelSettingStartChatgptLoginResponses, modelSettingTestModelSettingData, modelSettingTestModelSettingErrors, modelSettingTestModelSettingResponses, orgsReadDepartmentsData, orgsReadDepartmentsErrors, orgsReadDepartmentsResponses, orgsRenameOrganizationData, orgsRenameOrganizationErrors, orgsRenameOrganizationResponses, privateCreateSetupTokenData, privateCreateSetupTokenErrors, privateCreateSetupTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesReadProfileData, profilesReadProfileErrors, profilesReadProfileResponses, profilesReadProfileVersionData, profilesReadProfileVersionErrors, profilesReadProfileVersionResponses, profilesReadProfileVersionsData, profilesReadProfileVersionsErrors, profilesReadProfileVersionsResponses, rolesGrantRoleData, rolesGrantRoleErrors, rolesGrantRoleResponses, rolesReadRolesData, rolesReadRolesErrors, rolesReadRolesResponses, rolesRevokeRoleData, rolesRevokeRoleErrors, rolesRevokeRoleResponses, rosterApplyImportData, rosterApplyImportErrors, rosterApplyImportResponses, rosterDownloadTemplateData, rosterDownloadTemplateErrors, rosterDownloadTemplateResponses, rosterReadImportsData, rosterReadImportsErrors, rosterReadImportsResponses, rosterUploadImportData, rosterUploadImportErrors, rosterUploadImportResponses, setupCompleteStepData, setupCompleteStepErrors, setupCompleteStepResponses, setupInitializeOrganizationData, setupInitializeOrganizationErrors, setupInitializeOrganizationResponses, setupReadSetupData, setupReadSetupErrors, setupReadSetupResponses, setupReadStatusData, setupReadStatusResponses, setupSkipStepData, setupSkipStepErrors, setupSkipStepResponses, sourcesGetJiraData, sourcesGetJiraErrors, sourcesGetJiraResponses, sourcesImportWorkRecordsData, sourcesImportWorkRecordsErrors, sourcesImportWorkRecordsResponses, sourcesListSyncRunsData, sourcesListSyncRunsErrors, sourcesListSyncRunsResponses, sourcesPutJiraData, sourcesPutJiraErrors, sourcesPutJiraResponses, sourcesRetrySyncData, sourcesRetrySyncErrors, sourcesRetrySyncResponses, sourcesStartJiraSyncData, sourcesStartJiraSyncErrors, sourcesStartJiraSyncResponses, sourcesTestJiraData, sourcesTestJiraErrors, sourcesTestJiraResponses, sourcesWorkRecordsTemplateData, sourcesWorkRecordsTemplateErrors, sourcesWorkRecordsTemplateResponses, usersReadUserMeData, usersReadUserMeResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, utilsHealthCheckData, utilsHealthCheckResponses } from './types.gen';
+import type { accountsDisableAccountData, accountsDisableAccountErrors, accountsDisableAccountResponses, accountsEnableAccountData, accountsEnableAccountErrors, accountsEnableAccountResponses, accountsIssueAccountsData, accountsIssueAccountsErrors, accountsIssueAccountsResponses, accountsReadAccountsData, accountsReadAccountsErrors, accountsReadAccountsResponses, accountsResetPasswordData, accountsResetPasswordErrors, accountsResetPasswordResponses, auditReadAuditEventsData, auditReadAuditEventsErrors, auditReadAuditEventsResponses, botSettingsGetBotSettingsData, botSettingsGetBotSettingsErrors, botSettingsGetBotSettingsResponses, botSettingsPutBotSettingsData, botSettingsPutBotSettingsErrors, botSettingsPutBotSettingsResponses, capabilitiesDictionaryTemplateData, capabilitiesDictionaryTemplateErrors, capabilitiesDictionaryTemplateResponses, capabilitiesExportDictionaryData, capabilitiesExportDictionaryErrors, capabilitiesExportDictionaryResponses, capabilitiesPreviewDictionaryData, capabilitiesPreviewDictionaryEditorData, capabilitiesPreviewDictionaryEditorErrors, capabilitiesPreviewDictionaryEditorResponses, capabilitiesPreviewDictionaryErrors, capabilitiesPreviewDictionaryResponses, capabilitiesReadCapabilitiesData, capabilitiesReadCapabilitiesErrors, capabilitiesReadCapabilitiesResponses, capabilitiesReadDictionaryEditorData, capabilitiesReadDictionaryEditorErrors, capabilitiesReadDictionaryEditorResponses, capabilitiesSaveDictionaryData, capabilitiesSaveDictionaryErrors, capabilitiesSaveDictionaryResponses, capabilitiesUpdateDictionaryData, capabilitiesUpdateDictionaryErrors, capabilitiesUpdateDictionaryResponses, capabilityTemplatesActivateCapabilitySchemaData, capabilityTemplatesActivateCapabilitySchemaErrors, capabilityTemplatesActivateCapabilitySchemaResponses, capabilityTemplatesPreviewTemplateData, capabilityTemplatesPreviewTemplateErrors, capabilityTemplatesPreviewTemplateResponses, capabilityTemplatesReadTemplatesData, capabilityTemplatesReadTemplatesResponses, changeRequestsReadChangeRequestsData, changeRequestsReadChangeRequestsErrors, changeRequestsReadChangeRequestsResponses, draftingSettingsGetAutoDraftData, draftingSettingsGetAutoDraftErrors, draftingSettingsGetAutoDraftResponses, draftingSettingsGetDraftingSettingsData, draftingSettingsGetDraftingSettingsErrors, draftingSettingsGetDraftingSettingsResponses, draftingSettingsPutAutoDraftData, draftingSettingsPutAutoDraftErrors, draftingSettingsPutAutoDraftResponses, draftingSettingsPutDraftingSettingsData, draftingSettingsPutDraftingSettingsErrors, draftingSettingsPutDraftingSettingsResponses, employeeRequestsCreateDraftData, employeeRequestsCreateDraftErrors, employeeRequestsCreateDraftResponses, employeeRequestsPreviewRequestData, employeeRequestsPreviewRequestErrors, employeeRequestsPreviewRequestResponses, employeeRequestsReadInboxData, employeeRequestsReadInboxErrors, employeeRequestsReadInboxItemData, employeeRequestsReadInboxItemErrors, employeeRequestsReadInboxItemResponses, employeeRequestsReadInboxResponses, employeeRequestsReadMyCapabilitiesData, employeeRequestsReadMyCapabilitiesErrors, employeeRequestsReadMyCapabilitiesResponses, employeeRequestsReadMyEvidenceData, employeeRequestsReadMyEvidenceErrors, employeeRequestsReadMyEvidenceResponses, employeeRequestsReadMyProfileData, employeeRequestsReadMyProfileErrors, employeeRequestsReadMyProfileResponses, employeeRequestsReadMyRequestsData, employeeRequestsReadMyRequestsErrors, employeeRequestsReadMyRequestsResponses, employeeRequestsSubmitRequestData, employeeRequestsSubmitRequestErrors, employeeRequestsSubmitRequestResponses, employeeRequestsUpdateItemsData, employeeRequestsUpdateItemsErrors, employeeRequestsUpdateItemsResponses, employeeRequestsWithdrawRequestData, employeeRequestsWithdrawRequestErrors, employeeRequestsWithdrawRequestResponses, employeesReadEmployeeData, employeesReadEmployeeErrors, employeesReadEmployeeResponses, employeesReadEmployeesData, employeesReadEmployeesErrors, employeesReadEmployeesResponses, evidenceReadEmployeeEvidenceData, evidenceReadEmployeeEvidenceErrors, evidenceReadEmployeeEvidenceResponses, evidenceReadEvidenceData, evidenceReadEvidenceErrors, evidenceReadEvidenceResponses, externalIdentitiesGetIdentitiesData, externalIdentitiesGetIdentitiesErrors, externalIdentitiesGetIdentitiesResponses, externalIdentitiesPostLinksData, externalIdentitiesPostLinksErrors, externalIdentitiesPostLinksResponses, externalIdentitiesPostUnlinkData, externalIdentitiesPostUnlinkErrors, externalIdentitiesPostUnlinkResponses, initialProfilesDraftData, initialProfilesDraftErrors, initialProfilesDraftResponses, initialProfilesProgressData, initialProfilesProgressErrors, initialProfilesProgressResponses, loginLoginAccessTokenData, loginLoginAccessTokenErrors, loginLoginAccessTokenResponses, loginTestTokenData, loginTestTokenResponses, meReadMembershipsData, meReadMembershipsResponses, modelSettingDisconnectChatgptData, modelSettingDisconnectChatgptErrors, modelSettingDisconnectChatgptResponses, modelSettingGetModelSettingData, modelSettingGetModelSettingErrors, modelSettingGetModelSettingResponses, modelSettingPollChatgptLoginData, modelSettingPollChatgptLoginErrors, modelSettingPollChatgptLoginResponses, modelSettingPutModelSettingData, modelSettingPutModelSettingErrors, modelSettingPutModelSettingResponses, modelSettingStartChatgptLoginData, modelSettingStartChatgptLoginErrors, modelSettingStartChatgptLoginResponses, modelSettingTestModelSettingData, modelSettingTestModelSettingErrors, modelSettingTestModelSettingResponses, orgsReadDepartmentsData, orgsReadDepartmentsErrors, orgsReadDepartmentsResponses, orgsRenameOrganizationData, orgsRenameOrganizationErrors, orgsRenameOrganizationResponses, privateCreateSetupTokenData, privateCreateSetupTokenErrors, privateCreateSetupTokenResponses, privateCreateUserData, privateCreateUserErrors, privateCreateUserResponses, profilesReadProfileData, profilesReadProfileErrors, profilesReadProfileResponses, profilesReadProfileVersionData, profilesReadProfileVersionErrors, profilesReadProfileVersionResponses, profilesReadProfileVersionsData, profilesReadProfileVersionsErrors, profilesReadProfileVersionsResponses, rolesGrantRoleData, rolesGrantRoleErrors, rolesGrantRoleResponses, rolesReadRolesData, rolesReadRolesErrors, rolesReadRolesResponses, rolesRevokeRoleData, rolesRevokeRoleErrors, rolesRevokeRoleResponses, rosterApplyImportData, rosterApplyImportErrors, rosterApplyImportResponses, rosterDownloadTemplateData, rosterDownloadTemplateErrors, rosterDownloadTemplateResponses, rosterReadImportsData, rosterReadImportsErrors, rosterReadImportsResponses, rosterUploadImportData, rosterUploadImportErrors, rosterUploadImportResponses, setupCompleteStepData, setupCompleteStepErrors, setupCompleteStepResponses, setupInitializeOrganizationData, setupInitializeOrganizationErrors, setupInitializeOrganizationResponses, setupReadSetupData, setupReadSetupErrors, setupReadSetupResponses, setupReadStatusData, setupReadStatusResponses, setupSkipStepData, setupSkipStepErrors, setupSkipStepResponses, sourcesGetJiraData, sourcesGetJiraErrors, sourcesGetJiraResponses, sourcesImportWorkRecordsData, sourcesImportWorkRecordsErrors, sourcesImportWorkRecordsResponses, sourcesListSyncRunsData, sourcesListSyncRunsErrors, sourcesListSyncRunsResponses, sourcesPutJiraData, sourcesPutJiraErrors, sourcesPutJiraResponses, sourcesRetrySyncData, sourcesRetrySyncErrors, sourcesRetrySyncResponses, sourcesStartJiraSyncData, sourcesStartJiraSyncErrors, sourcesStartJiraSyncResponses, sourcesTestJiraData, sourcesTestJiraErrors, sourcesTestJiraResponses, sourcesWorkRecordsTemplateData, sourcesWorkRecordsTemplateErrors, sourcesWorkRecordsTemplateResponses, usersReadUserMeData, usersReadUserMeResponses, usersUpdatePasswordMeData, usersUpdatePasswordMeErrors, usersUpdatePasswordMeResponses, utilsHealthCheckData, utilsHealthCheckResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -17,6 +17,36 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: Record<string, unknown>;
 };
+
+export class BotSettingsService {
+    /**
+     * Get Bot Settings
+     */
+    public static settingsGetBotSettings<ThrowOnError extends boolean = true>(options: Options<botSettingsGetBotSettingsData, ThrowOnError>) {
+        return (options.client ?? client).get<botSettingsGetBotSettingsResponses, botSettingsGetBotSettingsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/bot-settings',
+            ...options
+        });
+    }
+
+    /**
+     * Put Bot Settings
+     */
+    public static settingsPutBotSettings<ThrowOnError extends boolean = true>(options: Options<botSettingsPutBotSettingsData, ThrowOnError>) {
+        return (options.client ?? client).put<botSettingsPutBotSettingsResponses, botSettingsPutBotSettingsErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/orgs/{org_id}/bot-settings',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+}
 
 export class LoginService {
     /**
@@ -36,7 +66,7 @@ export class LoginService {
             }
         });
     }
-    
+
     /**
      * Test Token
      *
@@ -70,7 +100,7 @@ export class UsersService {
             }
         });
     }
-    
+
     /**
      * Read User Me
      *
@@ -125,7 +155,7 @@ export class EmployeeRequestsService {
             ...options
         });
     }
-    
+
     /**
      * Read My Evidence
      */
@@ -137,7 +167,7 @@ export class EmployeeRequestsService {
             ...options
         });
     }
-    
+
     /**
      * Read My Requests
      */
@@ -149,7 +179,7 @@ export class EmployeeRequestsService {
             ...options
         });
     }
-    
+
     /**
      * Create Draft
      */
@@ -165,7 +195,7 @@ export class EmployeeRequestsService {
             }
         });
     }
-    
+
     /**
      * Read My Capabilities
      */
@@ -177,7 +207,7 @@ export class EmployeeRequestsService {
             ...options
         });
     }
-    
+
     /**
      * Update Items
      */
@@ -193,7 +223,7 @@ export class EmployeeRequestsService {
             }
         });
     }
-    
+
     /**
      * Preview Request
      */
@@ -205,7 +235,7 @@ export class EmployeeRequestsService {
             ...options
         });
     }
-    
+
     /**
      * Submit Request
      */
@@ -221,7 +251,7 @@ export class EmployeeRequestsService {
             }
         });
     }
-    
+
     /**
      * Withdraw Request
      */
@@ -233,7 +263,7 @@ export class EmployeeRequestsService {
             ...options
         });
     }
-    
+
     /**
      * Read Inbox
      */
@@ -245,7 +275,7 @@ export class EmployeeRequestsService {
             ...options
         });
     }
-    
+
     /**
      * Read Inbox Item
      */
@@ -271,7 +301,7 @@ export class ModelSettingService {
             ...options
         });
     }
-    
+
     /**
      * Put Model Setting
      */
@@ -287,7 +317,7 @@ export class ModelSettingService {
             }
         });
     }
-    
+
     /**
      * Test Model Setting
      */
@@ -299,7 +329,7 @@ export class ModelSettingService {
             ...options
         });
     }
-    
+
     /**
      * Poll Chatgpt Login
      */
@@ -311,7 +341,7 @@ export class ModelSettingService {
             ...options
         });
     }
-    
+
     /**
      * Start Chatgpt Login
      */
@@ -323,7 +353,7 @@ export class ModelSettingService {
             ...options
         });
     }
-    
+
     /**
      * Disconnect Chatgpt
      */
@@ -349,7 +379,7 @@ export class SourcesService {
             ...options
         });
     }
-    
+
     /**
      * Work Records Template
      */
@@ -360,7 +390,7 @@ export class SourcesService {
             ...options
         });
     }
-    
+
     /**
      * Import Work Records
      */
@@ -377,7 +407,7 @@ export class SourcesService {
             }
         });
     }
-    
+
     /**
      * Get Jira
      */
@@ -389,7 +419,7 @@ export class SourcesService {
             ...options
         });
     }
-    
+
     /**
      * Put Jira
      */
@@ -405,7 +435,7 @@ export class SourcesService {
             }
         });
     }
-    
+
     /**
      * Test Jira
      */
@@ -417,7 +447,7 @@ export class SourcesService {
             ...options
         });
     }
-    
+
     /**
      * List Sync Runs
      */
@@ -429,7 +459,7 @@ export class SourcesService {
             ...options
         });
     }
-    
+
     /**
      * Retry Sync
      */
@@ -455,7 +485,7 @@ export class ExternalIdentitiesService {
             ...options
         });
     }
-    
+
     /**
      * Post Links
      */
@@ -471,7 +501,7 @@ export class ExternalIdentitiesService {
             }
         });
     }
-    
+
     /**
      * Post Unlink
      */
@@ -501,7 +531,7 @@ export class OrgsService {
             }
         });
     }
-    
+
     /**
      * Read Departments
      */
@@ -527,7 +557,7 @@ export class SetupService {
             ...options
         });
     }
-    
+
     /**
      * Complete Step
      */
@@ -539,7 +569,7 @@ export class SetupService {
             ...options
         });
     }
-    
+
     /**
      * Skip Step
      */
@@ -551,7 +581,7 @@ export class SetupService {
             ...options
         });
     }
-    
+
     /**
      * Read Status
      */
@@ -562,7 +592,7 @@ export class SetupService {
             ...options
         });
     }
-    
+
     /**
      * Initialize Organization
      */
@@ -591,7 +621,7 @@ export class DraftingSettingsService {
             ...options
         });
     }
-    
+
     /**
      * Put Drafting Settings
      */
@@ -607,7 +637,7 @@ export class DraftingSettingsService {
             }
         });
     }
-    
+
     /**
      * Get Auto Draft
      */
@@ -619,7 +649,7 @@ export class DraftingSettingsService {
             ...options
         });
     }
-    
+
     /**
      * Put Auto Draft
      */
@@ -649,7 +679,7 @@ export class EmployeesService {
             ...options
         });
     }
-    
+
     /**
      * Read Employee
      */
@@ -675,7 +705,7 @@ export class CapabilitiesService {
             ...options
         });
     }
-    
+
     /**
      * Update Dictionary
      */
@@ -691,7 +721,7 @@ export class CapabilitiesService {
             }
         });
     }
-    
+
     /**
      * Export Dictionary
      */
@@ -702,7 +732,7 @@ export class CapabilitiesService {
             ...options
         });
     }
-    
+
     /**
      * Dictionary Template
      */
@@ -713,7 +743,7 @@ export class CapabilitiesService {
             ...options
         });
     }
-    
+
     /**
      * Preview Dictionary
      */
@@ -730,7 +760,7 @@ export class CapabilitiesService {
             }
         });
     }
-    
+
     /**
      * Save Dictionary
      */
@@ -746,7 +776,7 @@ export class CapabilitiesService {
             }
         });
     }
-    
+
     /**
      * Read Dictionary Editor
      */
@@ -758,7 +788,7 @@ export class CapabilitiesService {
             ...options
         });
     }
-    
+
     /**
      * Preview Dictionary Editor
      */
@@ -788,7 +818,7 @@ export class CapabilityTemplatesService {
             ...options
         });
     }
-    
+
     /**
      * Preview Template
      */
@@ -800,7 +830,7 @@ export class CapabilityTemplatesService {
             ...options
         });
     }
-    
+
     /**
      * Activate Capability Schema
      */
@@ -830,7 +860,7 @@ export class ProfilesService {
             ...options
         });
     }
-    
+
     /**
      * Read Profile Versions
      */
@@ -842,7 +872,7 @@ export class ProfilesService {
             ...options
         });
     }
-    
+
     /**
      * Read Profile Version
      */
@@ -882,7 +912,7 @@ export class EvidenceService {
             ...options
         });
     }
-    
+
     /**
      * Read Evidence
      */
@@ -912,7 +942,7 @@ export class InitialProfilesService {
             }
         });
     }
-    
+
     /**
      * Progress
      */
@@ -938,7 +968,7 @@ export class AccountsService {
             ...options
         });
     }
-    
+
     /**
      * Issue Accounts
      */
@@ -954,7 +984,7 @@ export class AccountsService {
             }
         });
     }
-    
+
     /**
      * Reset Password
      */
@@ -966,7 +996,7 @@ export class AccountsService {
             ...options
         });
     }
-    
+
     /**
      * Disable Account
      */
@@ -978,7 +1008,7 @@ export class AccountsService {
             ...options
         });
     }
-    
+
     /**
      * Enable Account
      */
@@ -1018,7 +1048,7 @@ export class RolesService {
             ...options
         });
     }
-    
+
     /**
      * Grant Role
      */
@@ -1034,7 +1064,7 @@ export class RolesService {
             }
         });
     }
-    
+
     /**
      * Revoke Role
      */
@@ -1059,7 +1089,7 @@ export class RosterService {
             ...options
         });
     }
-    
+
     /**
      * Read Imports
      */
@@ -1071,7 +1101,7 @@ export class RosterService {
             ...options
         });
     }
-    
+
     /**
      * Upload Import
      */
@@ -1088,7 +1118,7 @@ export class RosterService {
             }
         });
     }
-    
+
     /**
      * Apply Import
      */
@@ -1121,7 +1151,7 @@ export class PrivateService {
             }
         });
     }
-    
+
     /**
      * Create User
      *
