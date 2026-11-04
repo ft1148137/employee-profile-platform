@@ -413,6 +413,24 @@ def pause_drafting(org_id: UUID, ids: list[UUID], error: ModelRateLimited) -> No
         session.commit()
 
 
+def drafting_jobs(
+    session: Session, org_id: UUID | None = None, *, queued_only: bool = False
+) -> bool:
+    return bool(
+        session.connection()
+        .execute(
+            text(
+                "SELECT EXISTS (SELECT 1 FROM procrastinate_jobs "
+                "WHERE task_name = 'profiles.draft_initial' AND status IN ('todo', 'doing') "
+                "AND (CAST(:org_id AS text) IS NULL OR args->>'org_id' = :org_id) "
+                "AND (NOT :queued_only OR status = 'todo'))"
+            ),
+            {"org_id": str(org_id) if org_id else None, "queued_only": queued_only},
+        )
+        .scalar_one()
+    )
+
+
 def queue_drafting(
     session: Session,
     org_id: UUID,
@@ -433,18 +451,7 @@ def queue_drafting(
     except SchemaNotFound:
         raise HTTPException(422, "请先启用能力词典") from None
     # Opting out after queueing preserves pending progress after its job finishes.
-    if (
-        session.connection()
-        .execute(
-            text(
-                "SELECT EXISTS (SELECT 1 FROM procrastinate_jobs "
-                "WHERE task_name = 'profiles.draft_initial' "
-                "AND status IN ('todo', 'doing') AND args->>'org_id' = :org_id)"
-            ),
-            {"org_id": str(org_id)},
-        )
-        .scalar_one()
-    ):
+    if drafting_jobs(session, org_id):
         raise HTTPException(409, "已有起草任务正在排队或执行")
     failed = set(
         session.exec(

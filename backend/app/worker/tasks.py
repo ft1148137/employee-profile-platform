@@ -8,6 +8,7 @@ from sqlmodel import Session
 
 from app.core.db import engine
 from app.domains.base import utc_now
+from app.domains.bot.store import cleanup_messages
 from app.domains.drafting.service import run_drafting
 from app.domains.source.schedule import dispatch_due_syncs
 from app.domains.source.sync import execute_sync
@@ -25,6 +26,13 @@ class SyncRetry(BaseRetryStrategy):
 @app.task(name="system.ping")
 async def ping() -> None:
     """Verify queue execution without accessing tenant data or external services."""
+
+
+@app.periodic(cron="*/5 * * * *")
+@app.task(name="bot.cleanup_messages", queueing_lock="bot_cleanup_messages")
+def cleanup_bot_messages(timestamp: int) -> None:  # noqa: ARG001
+    with Session(engine) as session:
+        cleanup_messages(session, utc_now())
 
 
 @app.periodic(cron="*/5 * * * *")

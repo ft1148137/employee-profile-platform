@@ -2,6 +2,7 @@
 
 from app.domains.account import models as account
 from app.domains.audit import models as audit
+from app.domains.bot import models as bot
 from app.domains.capability import models as capability
 from app.domains.change_request import models as change_request
 from app.domains.drafting import models as drafting
@@ -17,6 +18,7 @@ from app.domains.work import models as work
 __all__ = [
     "account",
     "audit",
+    "bot",
     "capability",
     "change_request",
     "drafting",

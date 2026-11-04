@@ -7,7 +7,7 @@ from pydantic import JsonValue
 
 from app.domains.model import pi_client
 from app.domains.model.client import ModelRateLimited, ModelUnavailable
-from app.domains.model.pi_client import ToolDefinition, run_turn
+from app.domains.model.pi_client import HistoryMessage, PiBusy, ToolDefinition, run_turn
 from tests.utils.pi import PiHarness
 
 TOOLS = [
@@ -22,6 +22,80 @@ TOOLS = [
         },
     )
 ]
+
+
+def test_chat_roundtrip_with_history(pi_service: PiHarness) -> None:
+    result = run_turn(
+        pi_service.config,
+        mode="chat",
+        history=[
+            HistoryMessage(role="user", text="合成旧问题"),
+            HistoryMessage(role="assistant", text="合成旧回答"),
+        ],
+        system_prompt="只用平台工具",
+        input="合成新输入",
+        tools=TOOLS,
+        on_tool_call=lambda *_: {"accepted": True},
+    )
+    assert result.text == "已完成"
+    messages = pi_service.requests[0]["body"]["messages"]
+    transcript = json.dumps(messages, ensure_ascii=False)
+    assert "合成旧问题" in transcript and "合成旧回答" in transcript
+    assert any(
+        m["role"] == "assistant" and m["content"] == "合成旧回答" for m in messages
+    )
+
+
+def test_chat_busy_has_typed_error_and_shorter_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real = httpx.Client
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(503, json={"type": "error", "code": "busy"})
+
+    monkeypatch.setattr(
+        pi_client.httpx,
+        "Client",
+        lambda **kwargs: real(**kwargs, transport=httpx.MockTransport(handler)),
+    )
+    config = pi_client.PiModelConfig(
+        provider="test", api="openai-completions", id="test", baseUrl="http://test"
+    )
+    with pytest.raises(PiBusy):
+        run_turn(
+            config,
+            mode="chat",
+            history=[],
+            system_prompt="",
+            input="",
+            tools=[],
+            on_tool_call=lambda *_: None,
+        )
+    assert seen[0].extensions["timeout"]["read"] == 70
+    assert json.loads(seen[0].content)["history"] == []
+    with pytest.raises(ValueError):
+        run_turn(
+            config,
+            history=[],
+            system_prompt="",
+            input="",
+            tools=[],
+            on_tool_call=lambda *_: None,
+        )
+    with pytest.raises(ValueError):
+        run_turn(
+            config,
+            mode="chat",
+            history=[HistoryMessage(role="user", text="x")] * 21,
+            system_prompt="",
+            input="",
+            tools=[],
+            on_tool_call=lambda *_: None,
+        )
+    assert len(seen) == 1
 
 
 def test_real_pi_round_trip(pi_service: PiHarness) -> None:

@@ -46,6 +46,16 @@ class ToolDefinition(BaseModel):
     parameters: dict[str, JsonValue]
 
 
+class HistoryMessage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: Literal["user", "assistant"]
+    text: str = Field(max_length=24000)
+
+
+class PiBusy(ModelUnavailable):
+    pass
+
+
 class TurnResult(BaseModel):
     text: str
     stop_reason: Literal["stop", "length", "toolUse", "aborted"]
@@ -55,6 +65,9 @@ class TurnResult(BaseModel):
 
 def _error(event: dict[str, JsonValue]) -> None:
     code = event.get("code")
+    if code == "busy":
+        raise PiBusy("模型服务繁忙，请稍后再试")
+
     if code == "model_unauthorized":
         raise ModelAuthenticationError()
     if code == "rate_limited":
@@ -81,7 +94,8 @@ def _error(event: dict[str, JsonValue]) -> None:
 def run_turn(
     config: PiModelConfig,
     *,
-    mode: Literal["draft"] = "draft",
+    mode: Literal["draft", "chat"] = "draft",
+    history: list[HistoryMessage] | None = None,
     system_prompt: str,
     input: str,
     tools: list[ToolDefinition],
@@ -100,6 +114,14 @@ def run_turn(
         "input": input,
         "tools": [tool.model_dump(mode="json") for tool in tools],
     }
+    if history is not None:
+        if (
+            mode != "chat"
+            or len(history) > 20
+            or sum(len(m.text) for m in history) > 24000
+        ):
+            raise ValueError("Invalid conversation history")
+        body["history"] = [m.model_dump(mode="json") for m in history]
     terminal = False
     names = {tool.name for tool in tools}
     try:
@@ -108,7 +130,7 @@ def run_turn(
             headers={
                 "Authorization": f"Bearer {settings.PI_SERVICE_TOKEN.get_secret_value()}"
             },
-            timeout=httpx.Timeout(130, connect=5),
+            timeout=httpx.Timeout(70 if mode == "chat" else 130, connect=5),
             trust_env=False,
         ) as client:
             with client.stream("POST", "/v1/turns", json=body) as response:
