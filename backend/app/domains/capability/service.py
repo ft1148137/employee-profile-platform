@@ -29,6 +29,7 @@ from app.domains.drafting.models import DraftingSetting
 from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
 from app.domains.org.models import Organization
+from app.domains.profile.models import ProfileClaim
 
 
 def activate_template(
@@ -64,6 +65,8 @@ def preview_version(
     principal: Principal,
     definitions: list[DictionaryDefinition],
     errors: list[str],
+    *,
+    sync_ai_inference: bool = False,
 ) -> DictionaryPreview:
     try:
         active = get_schema(session, principal.org_id)
@@ -77,15 +80,57 @@ def preview_version(
     incoming = {c.key: c for c in definitions}
     setting = session.get(DraftingSetting, principal.org_id)
     excluded = set(setting.excluded_capability_keys if setting else [])
+    removed = previous.keys() - incoming.keys()
+    claim_counts = dict(
+        session.exec(
+            select(CapabilityDefinition.key, func.count(col(ProfileClaim.id)))
+            .join(
+                ProfileClaim,
+                col(ProfileClaim.capability_definition_id) == CapabilityDefinition.id,
+            )
+            .where(
+                CapabilityDefinition.org_id == principal.org_id,
+                ProfileClaim.org_id == principal.org_id,
+                col(CapabilityDefinition.key).in_(removed),
+            )
+            .group_by(CapabilityDefinition.key)
+        ).all()
+    )
+    item_counts = dict(
+        session.exec(
+            select(CapabilityDefinition.key, func.count(col(ChangeItem.id)))
+            .join(
+                ChangeItem,
+                col(ChangeItem.capability_definition_id) == CapabilityDefinition.id,
+            )
+            .join(
+                ProfileChangeRequest,
+                col(ChangeItem.request_id) == ProfileChangeRequest.id,
+            )
+            .where(
+                CapabilityDefinition.org_id == principal.org_id,
+                ChangeItem.org_id == principal.org_id,
+                ProfileChangeRequest.org_id == principal.org_id,
+                col(CapabilityDefinition.key).in_(removed),
+                col(ProfileChangeRequest.status).in_(
+                    [RequestStatus.DRAFT, RequestStatus.PENDING_OWNER]
+                ),
+            )
+            .group_by(CapabilityDefinition.key)
+        ).all()
+    )
     return DictionaryPreview(
         expected_version=active.version if active else 0,
         definitions=definitions,
         added=sorted(incoming.keys() - previous.keys()),
-        removed=sorted(previous.keys() - incoming.keys()),
+        removed=sorted(removed),
+        removed_claim_counts={k: claim_counts.get(k, 0) for k in removed},
+        removed_item_counts={k: item_counts.get(k, 0) for k in removed},
         modified=sorted(
             k
             for k in incoming.keys() & previous.keys()
             if (not incoming[k].ai_inference and k not in excluded)
+            or (sync_ai_inference and incoming[k].ai_inference and k in excluded)
             or incoming[k].model_dump(exclude={"ai_inference"})
             != {
                 f: getattr(previous[k], f)
@@ -103,6 +148,7 @@ def save_version(
     *,
     expected_version: int | None = None,
     template_ref: str | None = None,
+    sync_ai_inference: bool = False,
 ) -> CapabilitySchemaVersion:
     SaveDictionary(definitions=definitions, expected_version=expected_version or 0)
     org_id = principal.org_id
@@ -151,14 +197,15 @@ def save_version(
     session.flush()
     _remap_requests(session, principal, new)
     excluded = {d.key for d in definitions if not d.ai_inference}
-    if excluded:
+    if excluded or sync_ai_inference:
         assert principal.user_id is not None
         setting = session.get(DraftingSetting, org_id) or DraftingSetting(
             org_id=org_id, updated_by_user_id=principal.user_id
         )
-        setting.excluded_capability_keys = sorted(
-            set(setting.excluded_capability_keys) | excluded
-        )
+        previous_excluded = set(setting.excluded_capability_keys)
+        if sync_ai_inference:
+            previous_excluded -= new.keys()
+        setting.excluded_capability_keys = sorted(previous_excluded | excluded)
         setting.updated_by_user_id = principal.user_id
         setting.updated_at = datetime.now(UTC)
         session.add(setting)
@@ -281,7 +328,7 @@ def level_exists(rubric: dict[str, JsonValue] | None, level: object) -> bool:
 
 class DictionaryConflict(HTTPException):
     def __init__(self) -> None:
-        super().__init__(409, "词典已变化，请重新上传预览")
+        super().__init__(409, "词典已被别人修改，请刷新")
 
 
 class SchemaNotFound(HTTPException):
