@@ -1,4 +1,5 @@
 import type { ProfileItem } from "@/client"
+import { Button } from "@/components/ui/button"
 import {
   Tooltip,
   TooltipContent,
@@ -13,10 +14,12 @@ export function CapabilityList({
   items,
   onEvidence,
   pendingCapabilityIds,
+  onEdit,
 }: {
   items: ProfileItem[]
   onEvidence: (id: string) => void
   pendingCapabilityIds?: Set<string>
+  onEdit?: (item: ProfileItem, retract?: boolean) => void
 }) {
   const groups = new Map<string, ProfileItem[]>()
   for (const item of items) {
@@ -56,6 +59,7 @@ export function CapabilityList({
                 item={item}
                 onEvidence={onEvidence}
                 pending={pendingCapabilityIds?.has(item.capability.id)}
+                onEdit={!item.retired ? onEdit : undefined}
               />
             ))}
           </div>
@@ -75,10 +79,12 @@ function ClaimCard({
   },
   onEvidence,
   pending,
+  onEdit,
 }: {
   item: ProfileItem
   onEvidence: (id: string) => void
   pending?: boolean
+  onEdit?: (item: ProfileItem, retract?: boolean) => void
 }) {
   const actor = claim?.generated_by.actor_type
   const sources: Record<string, string> = {
@@ -159,6 +165,22 @@ function ClaimCard({
         <p className="text-sm leading-relaxed text-muted-foreground">
           未知：暂无足够证据，不代表不具备这项能力
         </p>
+      )}
+      {onEdit && claim && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={() => onEdit({ capability, status, claim })}
+          >
+            修改
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => onEdit({ capability, status, claim }, true)}
+          >
+            撤回这条判断
+          </Button>
+        </div>
       )}
     </article>
   )

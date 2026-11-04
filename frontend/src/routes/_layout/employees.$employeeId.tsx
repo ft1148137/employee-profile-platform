@@ -6,6 +6,10 @@ import { ChangeRequestsService, ProfilesService } from "@/client"
 import { AutoDraftSetting } from "@/components/Profile/AutoDraftSetting"
 import { CapabilityList } from "@/components/Profile/CapabilityList"
 import { ChangeRequestCard } from "@/components/Profile/ChangeRequestCard"
+import {
+  ChangeRequestEditor,
+  type EditorSelection,
+} from "@/components/Profile/ChangeRequestEditor"
 import { EmployeeSummaryContent } from "@/components/Profile/EmployeeSummary"
 import { EvidenceList } from "@/components/Profile/EvidenceList"
 import { EvidenceSheet } from "@/components/Profile/EvidenceSheet"
@@ -31,6 +35,7 @@ function EmployeeDetails() {
   const { org, employeeId: ownEmployeeId } = useOrg()
   const { employeeId } = Route.useParams()
   const [evidenceId, setEvidenceId] = useState<string | null>(null)
+  const [editing, setEditing] = useState<EditorSelection | null>(null)
   const requests = useQuery({
     queryKey: ["change-requests", org?.id, employeeId],
     queryFn: async () =>
@@ -87,6 +92,8 @@ function EmployeeDetails() {
               requests={requests.data.data}
               isOwner={ownEmployeeId === employeeId}
               onEvidence={setEvidenceId}
+              orgId={org.id}
+              onEdit={setEditing}
             />
           )}
           {!query.data.latest_published &&
@@ -118,6 +125,11 @@ function EmployeeDetails() {
           <CapabilityList
             items={query.data.items}
             onEvidence={setEvidenceId}
+            onEdit={
+              ownEmployeeId === employeeId
+                ? (item, retract) => setEditing({ item, retract })
+                : undefined
+            }
             pendingCapabilityIds={
               new Set(
                 requests.data?.data.flatMap((request) =>
@@ -126,6 +138,16 @@ function EmployeeDetails() {
               )
             }
           />
+          {ownEmployeeId === employeeId && query.data.schema_version && (
+            <div className="mt-6 space-y-3">
+              <Button variant="outline" onClick={() => setEditing({})}>
+                新增能力
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                画像不用于绩效、薪酬和晋升。
+              </p>
+            </div>
+          )}
         </TabsContent>
         <TabsContent value="evidence">
           <EvidenceList
@@ -147,6 +169,14 @@ function EmployeeDetails() {
         evidenceId={evidenceId}
         onClose={() => setEvidenceId(null)}
       />
+      {editing && ownEmployeeId === employeeId && (
+        <ChangeRequestEditor
+          orgId={org.id}
+          selection={editing}
+          profileItems={query.data.items}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   )
 }

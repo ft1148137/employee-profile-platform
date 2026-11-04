@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.api.deps import SessionDep
 from app.authz.deps import OrgAdminDep
+from app.domains.change_request.handover import hand_over
 from app.domains.drafting.service import DraftProgress, queue_drafting, read_progress
 
 router = APIRouter(prefix="/orgs/{org_id}/initial-profiles", tags=["initial-profiles"])
@@ -27,3 +28,17 @@ def draft(body: DraftBody, session: SessionDep, principal: OrgAdminDep) -> Draft
 @router.get("/progress")
 def progress(session: SessionDep, principal: OrgAdminDep) -> DraftProgress:
     return read_progress(session, principal.org_id)
+
+
+class HandoverPublic(BaseModel):
+    count: int
+
+
+@router.get("/hand-over")
+def preview_handover(session: SessionDep, principal: OrgAdminDep) -> HandoverPublic:
+    return HandoverPublic(count=hand_over(session, principal))
+
+
+@router.post("/hand-over")
+def confirm_handover(session: SessionDep, principal: OrgAdminDep) -> HandoverPublic:
+    return HandoverPublic(count=hand_over(session, principal, confirm=True))
