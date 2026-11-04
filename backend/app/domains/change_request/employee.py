@@ -66,6 +66,7 @@ class RequestConflict(HTTPException):
 
 class InvalidItems(HTTPException):
     def __init__(self, errors: list[dict[str, int | str]]) -> None:
+        self.errors = errors
         super().__init__(422, errors)
 
 
@@ -262,6 +263,7 @@ def save_draft(
             else None,
             owner_statement=item.owner_statement,
             objection=item.objection,
+            uncertainty=item.uncertainty,
         )
         for position, item in enumerate(items)
     ]

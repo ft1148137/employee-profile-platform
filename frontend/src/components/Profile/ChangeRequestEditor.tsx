@@ -50,6 +50,7 @@ export function ChangeRequestEditor({
           level: item.after?.level,
           owner_statement: item.owner_statement,
           objection: item.objection,
+          uncertainty: item.uncertainty,
           evidence_ids: (item.evidence ?? []).map((e) => e.evidence_id),
         }))
       : selection.item
@@ -161,6 +162,7 @@ export function ChangeRequestEditor({
           level: item.after?.level,
           owner_statement: item.owner_statement,
           objection: item.objection,
+          uncertainty: item.uncertainty,
           evidence_ids: (item.evidence ?? []).map((e) => e.evidence_id),
         })),
       )

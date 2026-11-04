@@ -249,6 +249,16 @@ export type Body_login_login_access_token = {
 };
 
 /**
+ * Body_profile-import-upload_profile_import
+ */
+export type Body_profile_import_upload_profile_import = {
+    /**
+     * File
+     */
+    file: Blob | File;
+};
+
+/**
  * Body_roster-upload_import
  */
 export type Body_roster_upload_import = {
@@ -1722,6 +1732,10 @@ export type ItemInput = {
      * Evidence Ids
      */
     evidence_ids?: Array<string>;
+    /**
+     * Uncertainty
+     */
+    uncertainty?: string | null;
 };
 
 /**
@@ -5645,6 +5659,69 @@ export type profilesReadProfileVersionResponses = {
 };
 
 export type profilesReadProfileVersionResponse = profilesReadProfileVersionResponses[keyof profilesReadProfileVersionResponses];
+
+export type profileImportDownloadImportFileData = {
+    body?: never;
+    path: {
+        /**
+         * Name
+         */
+        name: 'schema' | 'example' | 'skill';
+    };
+    query?: never;
+    url: '/api/v1/profile-import/files/{name}';
+};
+
+export type profileImportDownloadImportFileErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type profileImportDownloadImportFileError = profileImportDownloadImportFileErrors[keyof profileImportDownloadImportFileErrors];
+
+export type profileImportDownloadImportFileResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type profileImportUploadProfileImportData = {
+    body: Body_profile_import_upload_profile_import;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: {
+        /**
+         * Confirm
+         */
+        confirm?: boolean;
+    };
+    url: '/api/v1/orgs/{org_id}/me/profile-import';
+};
+
+export type profileImportUploadProfileImportErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type profileImportUploadProfileImportError = profileImportUploadProfileImportErrors[keyof profileImportUploadProfileImportErrors];
+
+export type profileImportUploadProfileImportResponses = {
+    /**
+     * Successful Response
+     */
+    200: RequestPreview;
+};
+
+export type profileImportUploadProfileImportResponse = profileImportUploadProfileImportResponses[keyof profileImportUploadProfileImportResponses];
 
 export type changeRequestsReadChangeRequestsData = {
     body?: never;

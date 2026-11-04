@@ -14,6 +14,7 @@ import { EmployeeSummaryContent } from "@/components/Profile/EmployeeSummary"
 import { EvidenceList } from "@/components/Profile/EvidenceList"
 import { EvidenceSheet } from "@/components/Profile/EvidenceSheet"
 import { OrgState } from "@/components/Profile/OrgState"
+import { ProfileImport } from "@/components/Profile/ProfileImport"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { VersionHistory } from "@/components/Profile/VersionHistory"
 import { Button } from "@/components/ui/button"
@@ -76,6 +77,7 @@ function EmployeeDetails() {
     <div className="space-y-8">
       <EmployeeSummaryContent employee={query.data.employee} />
       {ownEmployeeId === employeeId && <AutoDraftSetting orgId={org.id} />}
+      {ownEmployeeId === employeeId && <ProfileImport orgId={org.id} />}
       <Tabs defaultValue="capabilities" className="gap-6">
         <TabsList aria-label="画像详情">
           <TabsTrigger value="capabilities">能力画像</TabsTrigger>

@@ -1,0 +1,14 @@
+{
+  "schema_version": "1",
+  "employee_email": "employee.platform@demo.example.com",
+  "capability_schema_version": 1,
+  "items": [
+    {
+      "capability_key": "rknn_deployment",
+      "statement": "在合成的边缘视觉演示项目中独立完成 RKNN 模型转换和部署。",
+      "level": "independent_complex",
+      "basis": "在合成边缘视觉演示项目中，完成模型转换、开发板部署和结果核对。",
+      "uncertainty": "尚未验证多设备长期运行的稳定性。"
+    }
+  ]
+}
