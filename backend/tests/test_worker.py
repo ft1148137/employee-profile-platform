@@ -1,12 +1,69 @@
 import asyncio
 
+import pytest
 from sqlalchemy import Engine, inspect, text
 from sqlmodel import Session
 
 from app.core.db import engine
 from app.worker.app import app
-from app.worker.tasks import ping
+from app.worker.tasks import ping, retry_stalled_jobs
 from tests.utils.migrations import migrate
+
+
+def recover_stalled_jobs() -> None:
+    async def run() -> None:
+        async with app.open_async():
+            await retry_stalled_jobs.configure(
+                queue="recovery", queueing_lock=None
+            ).defer_async(timestamp=0)
+            await asyncio.wait_for(
+                app.run_worker_async(wait=False, queues=["recovery"]), timeout=20
+            )
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("worker", ["missing", "healthy", "stalled"])
+def test_recover_only_stalled_jobs(db: Session, worker: str) -> None:
+    job_id = ping.configure(
+        connection=db.connection().connection.driver_connection
+    ).defer()
+    worker_id = None
+    if worker != "missing":
+        worker_id = db.execute(
+            text(
+                "INSERT INTO procrastinate_workers (last_heartbeat) VALUES "
+                "(now() - :age * interval '1 minute') RETURNING id"
+            ),
+            {"age": int(worker == "stalled")},
+        ).scalar_one()
+    db.execute(
+        text(
+            "UPDATE procrastinate_jobs SET status = 'doing', worker_id = :worker WHERE id = :id"
+        ),
+        {"worker": worker_id, "id": job_id},
+    )
+    db.commit()
+    try:
+        recover_stalled_jobs()
+        assert db.execute(
+            text("SELECT status FROM procrastinate_jobs WHERE id = :id"),
+            {"id": job_id},
+        ).scalar_one() == ("doing" if worker == "healthy" else "todo")
+    finally:
+        db.execute(
+            text("DELETE FROM procrastinate_jobs WHERE id = :id"), {"id": job_id}
+        )
+        db.execute(
+            text("DELETE FROM procrastinate_workers WHERE id = :id"), {"id": worker_id}
+        )
+        db.commit()
+
+
+def test_stalled_recovery_is_periodic() -> None:
+    periodic = app.periodic_registry.periodic_tasks[("system.retry_stalled_jobs", "")]
+    assert periodic.cron == "*/5 * * * *"
+    assert periodic.task.queueing_lock == "retry_stalled_jobs"
 
 
 def test_ping_job_succeeds(db: Session) -> None:

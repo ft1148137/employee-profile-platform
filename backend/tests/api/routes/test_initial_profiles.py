@@ -29,6 +29,7 @@ from app.worker.app import app
 from app.worker.tasks import draft_initial
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
 from tests.domains.test_ingest import ingest, person, record, rows
+from tests.test_worker import recover_stalled_jobs
 from tests.utils.migrations import migrate
 
 
@@ -38,6 +39,48 @@ def work_queue() -> None:
             await asyncio.wait_for(app.run_worker_async(wait=False), timeout=30)
 
     asyncio.run(run())
+
+
+def test_stalled_drafting_recovers(
+    request: pytest.FixtureRequest, db: Session, client: TestClient
+) -> None:
+    orgs, _, employees, users = request.getfixturevalue("tenant_data")
+    org = orgs[0].id
+    url, auth = f"/api/v1/orgs/{org}/initial-profiles", headers(users[0])
+    activate_template(db, Principal.system_worker(org), "tech-rnd")
+    job_id = draft_initial.configure(
+        connection=db.connection().connection.driver_connection,
+        lock=f"initial-profiles:{org}",
+    ).defer(org_id=str(org))
+    db.execute(
+        text(
+            "UPDATE procrastinate_jobs SET status = 'doing', worker_id = NULL WHERE id = :id"
+        ),
+        {"id": job_id},
+    )
+    db.commit()
+    assert (
+        client.post(url + "/draft", headers=auth, json={"scope": "all"}).status_code
+        == 409
+    )
+    recover_stalled_jobs()
+    assert (
+        db.execute(
+            text("SELECT status FROM procrastinate_jobs WHERE id = :id"), {"id": job_id}
+        ).scalar_one()
+        == "todo"
+    )
+    db.rollback()
+    work_queue()
+    assert (
+        client.get(url + "/progress", headers=auth).json()["counts"]["generated"]
+        == len(employees) - 1
+    )
+    assert (
+        client.post(url + "/draft", headers=auth, json={"scope": "all"}).status_code
+        == 202
+    )
+    work_queue()
 
 
 def test_queue_progress_retry(

@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 from collections.abc import Generator
 from copy import deepcopy
@@ -30,6 +31,7 @@ from app.worker.tasks import sync_run
 from tests.api.routes.test_sources import BODY
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
 from tests.connectors.test_mock_jira import EXAMPLES, jira  # noqa: F401
+from tests.test_worker import recover_stalled_jobs
 
 
 @pytest.fixture
@@ -77,6 +79,94 @@ def start(client: TestClient, base: str, auth: dict[str, str]) -> str:
     response = client.post(base + "/sources/jira/sync", headers=auth)
     assert response.status_code == 202, response.text
     return response.json()["id"]
+
+
+@pytest.mark.parametrize("deployment", ["cloud", "data_center"])
+def test_stalled_sync_resumes_committed_page(
+    context: tuple,
+    client: TestClient,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    deployment: str,
+) -> None:
+    org, base, auth, employees, _ = context
+    if deployment == "data_center":
+        assert (
+            client.put(
+                base + "/sources/jira",
+                headers=auth,
+                json={
+                    **BODY,
+                    "deployment": deployment,
+                    "auth_type": "pat",
+                    "secret": "mock-dc-pat",
+                    "start_date": "2000-01-01",
+                },
+            ).status_code
+            == 200
+        )
+    db.add(
+        ExternalIdentity(
+            org_id=org,
+            source="jira",
+            external_id=(
+                "demo-jira-01"
+                if deployment == "cloud"
+                else "JIRAUSER"
+                + str(int(hashlib.sha256(b"demo-jira-01").hexdigest()[:12], 16))
+            ),
+            employee_id=employees[0].id,
+        )
+    )
+    db.commit()
+    run_id = start(client, base, auth)
+    original = sync._batch
+
+    class WorkerKilled(BaseException):
+        pass
+
+    def stop_after_commit(*args: Any, **kwargs: Any) -> None:
+        original(*args, **kwargs)
+        raise WorkerKilled
+
+    monkeypatch.setattr(sync, "_batch", stop_after_commit)
+    with pytest.raises(WorkerKilled):
+        run_sync(db, org, run_id)
+    db.expire_all()
+    run = db.get(SyncRun, UUID(run_id))
+    assert run.status == "running" and run.counts["records"] == 10
+    assert run.cursor["next_cursor"]
+    db.execute(
+        text(
+            "UPDATE procrastinate_jobs SET status = 'doing', worker_id = NULL "
+            "WHERE task_name = 'sources.sync_run' AND args->>'run_id' = :run"
+        ),
+        {"run": run_id},
+    )
+    db.commit()
+    assert client.post(base + "/sources/jira/sync", headers=auth).status_code == 409
+    monkeypatch.setattr(sync, "_batch", original)
+    recover_stalled_jobs()
+
+    async def work() -> None:
+        async with app.open_async():
+            await asyncio.wait_for(app.run_worker_async(wait=False), timeout=20)
+
+    asyncio.run(work())
+    db.expire_all()
+    assert run.status == "succeeded" and run.counts["records"] == 37
+    assert run.counts["tasks_added"] == 37
+    sizes = [
+        len(db.exec(select(m).where(m.org_id == org)).all())
+        for m in (Task, WorkEvent, Evidence)
+    ]
+    assert sizes[0] == 37 and sizes[2] > 0
+    repeated = run_sync(db, org, start(client, base, auth))
+    assert repeated.status == "succeeded"
+    assert sizes == [
+        len(db.exec(select(m).where(m.org_id == org)).all())
+        for m in (Task, WorkEvent, Evidence)
+    ]
 
 
 def test_jira_resume_incremental_and_migration(
@@ -464,6 +554,9 @@ def test_lock_and_active_retry(context: tuple, client: TestClient, db: Session) 
             text("SELECT pg_advisory_lock(hashtextextended(:key, 0))"), key
         )
         try:
+            with pytest.raises(JobRetry):
+                run_sync(db, org, run_id)
+            assert run.status == "running" and run.attempts == 0
             assert (
                 client.post(
                     base + f"/sync-runs/{run_id}/retry", headers=auth
