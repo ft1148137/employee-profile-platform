@@ -137,6 +137,8 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
   lookup, login, loginLifetime, refresh, localAuthFile, localAuthDirectory = '/run/pi-auth',
   environment, log = entry => console.log(JSON.stringify(entry)) } = {}) {
   if (localAuthFile && environment !== 'development') throw new Error('Local auth requires development');
+  if (process.env.PI_EGRESS_ALLOW_FAKE_IP === '1' && environment !== 'development')
+    throw new Error('Fake IP egress requires development');
   if (!text(token) || !Number.isFinite(deadlineMs) || deadlineMs <= 0 || deadlineMs > 120000 ||
       !Number.isFinite(chatDeadlineMs) || chatDeadlineMs <= 0 || chatDeadlineMs > 60000)
     throw new Error('Invalid Pi service configuration');

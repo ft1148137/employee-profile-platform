@@ -4,6 +4,8 @@
 
 ## 调用方式与证据
 
+开发兼容补充（NERE-101）：本机代理可能将目录模型域名解析为 `198.18.0.0/15`。只在 `compose.chatgpt-local.yml` 为 Pi 设置 `PI_EGRESS_ALLOW_FAKE_IP=1`，允许这一网段；其他内网、回环和元数据限制保持原规则。Pi 启动时要求 development 模式，否则拒绝启动。生产配置不加入这个开关，生产代理出网方式仍需独立决策。
+
 选 `@mariozechner/pi-ai` + `@mariozechner/pi-agent-core`，另建 Compose 内网 Node 服务，无宿主端口。Python 保留身份、事务、证据过滤、排队、限频和凭据所有权；Node 只负责模型与 agent loop。每轮创建独立 Agent，不能用全局 Agent，也不能通过模型参数切换租户。
 
 放弃 coding-agent RPC 和 coding-agent SDK：它们面向编程会话，引入工具、扩展、工作目录和登录文件管理；即使清空工具，也扩大需要审计的路径。只用 pi-ai 手写循环虽可行，但重复 agent-core 的工具校验、事件和取消逻辑。Python 每轮启动 CLI 会增加启动成本并丢失统一的并发控制，所以生产用常驻服务。

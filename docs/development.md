@@ -126,6 +126,8 @@ Compose passes only explicitly listed settings to application containers. `FASTA
 
 ### 本机 ChatGPT 订阅测试
 
+使用 fake-ip 代理时需要 `PI_EGRESS_ALLOW_FAKE_IP=1`；本机订阅覆盖文件已仅为 Pi 设置它。它只放行代理使用的 `198.18.0.0/15`，其他内网和元数据地址仍被拒绝。带此开关且 `FASTAPI_ENV` 不是 `development` 时，Pi 拒绝启动；不要把它加入生产配置。
+
 仅开发模式可叠加 `compose.chatgpt-local.yml`，例如本任务使用：
 
 ```bash

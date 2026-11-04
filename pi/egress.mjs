@@ -17,12 +17,15 @@ for (const [ip, bits] of [['::', 128], ['::1', 128], ['fc00::', 7], ['ff00::', 8
 const loopback = new BlockList();
 loopback.addSubnet('127.0.0.0', 8);
 loopback.addAddress('::1', 'ipv6');
+const fakeIp = new BlockList();
+fakeIp.addSubnet('198.18.0.0', 15);
 
 export function checkAddress(address, policy) {
   const family = isIP(address);
   const type = family === 6 ? 'ipv6' : 'ipv4';
   if (!family || forbidden.check(address, type) || (policy.catalog && privateNet.check(address, type)
-    && !(process.env.PI_EGRESS_ALLOW_LOOPBACK === '1' && loopback.check(address, type))))
+    && !(process.env.PI_EGRESS_ALLOW_LOOPBACK === '1' && loopback.check(address, type))
+    && !(process.env.PI_EGRESS_ALLOW_FAKE_IP === '1' && fakeIp.check(address, type))))
     throw new Error('Model network destination refused');
 }
 
