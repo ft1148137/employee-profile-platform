@@ -18,6 +18,7 @@ import { Route as LayoutInboxRouteImport } from './routes/_layout/inbox'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutSetupWizardRouteImport } from './routes/_layout/setup-wizard'
 import { Route as LayoutAdminAccountsRouteImport } from './routes/_layout/admin.accounts'
+import { Route as LayoutAdminAssistantsRouteImport } from './routes/_layout/admin.assistants'
 import { Route as LayoutAdminAuditRouteImport } from './routes/_layout/admin.audit'
 import { Route as LayoutAdminDraftingRouteImport } from './routes/_layout/admin.drafting'
 import { Route as LayoutAdminIdentitiesRouteImport } from './routes/_layout/admin.identities'
@@ -71,6 +72,11 @@ const LayoutSetupWizardRoute = LayoutSetupWizardRouteImport.update({
 const LayoutAdminAccountsRoute = LayoutAdminAccountsRouteImport.update({
   id: '/admin/accounts',
   path: '/admin/accounts',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutAdminAssistantsRoute = LayoutAdminAssistantsRouteImport.update({
+  id: '/admin/assistants',
+  path: '/admin/assistants',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutAdminAuditRoute = LayoutAdminAuditRouteImport.update({
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof LayoutSettingsRoute
   '/setup-wizard': typeof LayoutSetupWizardRoute
   '/admin/accounts': typeof LayoutAdminAccountsRoute
+  '/admin/assistants': typeof LayoutAdminAssistantsRoute
   '/admin/audit': typeof LayoutAdminAuditRoute
   '/admin/drafting': typeof LayoutAdminDraftingRoute
   '/admin/identities': typeof LayoutAdminIdentitiesRoute
@@ -154,6 +161,7 @@ export interface FileRoutesByTo {
   '/setup-wizard': typeof LayoutSetupWizardRoute
   '/': typeof LayoutIndexRoute
   '/admin/accounts': typeof LayoutAdminAccountsRoute
+  '/admin/assistants': typeof LayoutAdminAssistantsRoute
   '/admin/audit': typeof LayoutAdminAuditRoute
   '/admin/drafting': typeof LayoutAdminDraftingRoute
   '/admin/identities': typeof LayoutAdminIdentitiesRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/_layout/setup-wizard': typeof LayoutSetupWizardRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/admin/accounts': typeof LayoutAdminAccountsRoute
+  '/_layout/admin/assistants': typeof LayoutAdminAssistantsRoute
   '/_layout/admin/audit': typeof LayoutAdminAuditRoute
   '/_layout/admin/drafting': typeof LayoutAdminDraftingRoute
   '/_layout/admin/identities': typeof LayoutAdminIdentitiesRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup-wizard'
     | '/admin/accounts'
+    | '/admin/assistants'
     | '/admin/audit'
     | '/admin/drafting'
     | '/admin/identities'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/setup-wizard'
     | '/'
     | '/admin/accounts'
+    | '/admin/assistants'
     | '/admin/audit'
     | '/admin/drafting'
     | '/admin/identities'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/_layout/setup-wizard'
     | '/_layout/'
     | '/_layout/admin/accounts'
+    | '/_layout/admin/assistants'
     | '/_layout/admin/audit'
     | '/_layout/admin/drafting'
     | '/_layout/admin/identities'
@@ -323,6 +335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAdminAccountsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/admin/assistants': {
+      id: '/_layout/admin/assistants'
+      path: '/admin/assistants'
+      fullPath: '/admin/assistants'
+      preLoaderRoute: typeof LayoutAdminAssistantsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/admin/audit': {
       id: '/_layout/admin/audit'
       path: '/admin/audit'
@@ -402,6 +421,7 @@ interface LayoutRouteChildren {
   LayoutSetupWizardRoute: typeof LayoutSetupWizardRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
   LayoutAdminAccountsRoute: typeof LayoutAdminAccountsRoute
+  LayoutAdminAssistantsRoute: typeof LayoutAdminAssistantsRoute
   LayoutAdminAuditRoute: typeof LayoutAdminAuditRoute
   LayoutAdminDraftingRoute: typeof LayoutAdminDraftingRoute
   LayoutAdminIdentitiesRoute: typeof LayoutAdminIdentitiesRoute
@@ -420,6 +440,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutSetupWizardRoute: LayoutSetupWizardRoute,
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutAdminAccountsRoute: LayoutAdminAccountsRoute,
+  LayoutAdminAssistantsRoute: LayoutAdminAssistantsRoute,
   LayoutAdminAuditRoute: LayoutAdminAuditRoute,
   LayoutAdminDraftingRoute: LayoutAdminDraftingRoute,
   LayoutAdminIdentitiesRoute: LayoutAdminIdentitiesRoute,

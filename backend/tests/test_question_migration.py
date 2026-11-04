@@ -5,7 +5,7 @@ from app.domains.inbox.models import InboxItem, InboxKind, PendingQuestion
 from app.domains.org.models import Employee, Organization
 from tests.utils.migrations import migrate
 
-PREVIOUS = "b97e001bc001"
+PREVIOUS = "a96e001bc001"
 
 
 def test_question_roundtrip(migration_engine: Engine) -> None:
