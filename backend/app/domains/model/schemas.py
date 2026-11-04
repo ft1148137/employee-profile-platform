@@ -74,6 +74,11 @@ class ModelSettingUpdate(BaseModel):
                 raise ValueError("chatgpt/ 只能用于 ChatGPT 订阅")
             if self.model.startswith("github_copilot/"):
                 raise ValueError("不支持 GitHub Copilot 订阅登录")
+        prefix = {"openai-compatible": "openai", "ollama": "ollama_chat"}.get(
+            self.provider or "", self.provider
+        )
+        if prefix and self.model and len(f"{prefix}/{self.model}") > 200:
+            raise ValueError("模型 ID 过长，包含提供方前缀后不能超过 200 个字符")
         if not self.enabled:
             return self
         if not self.kind or not self.model or not self.model.strip():

@@ -24,6 +24,7 @@ def test_provider_migration_roundtrip(migration_engine: Engine) -> None:
             "openai-compatible",
             "custom/model",
         ),
+        ("openai_compatible", "openai/" + "x" * 193, "openai-compatible", "x" * 193),
         ("cloud_api", "unknown/model", None, "unknown/model"),
         ("chatgpt_subscription", "chatgpt/gpt-6.1-sol", None, "chatgpt/gpt-6.1-sol"),
     ]

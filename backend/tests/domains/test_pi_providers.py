@@ -193,3 +193,18 @@ def test_production_compose_has_no_loopback_override() -> None:
     )
     config = json.loads(rendered.stdout)
     assert "PI_EGRESS_ALLOW_LOOPBACK" not in config["services"]["pi"]["environment"]
+
+
+def test_model_id_preserves_downgrade_length_bound() -> None:
+    body = {
+        "enabled": True,
+        "kind": "openai_compatible",
+        "provider": "openai-compatible",
+        "base_url": "http://localhost:11434/v1",
+    }
+    assert (
+        ModelSettingUpdate.model_validate({**body, "model": "x" * 193}).model
+        == "x" * 193
+    )
+    with pytest.raises(ValidationError, match="前缀后不能超过"):
+        ModelSettingUpdate.model_validate({**body, "model": "x" * 194})
