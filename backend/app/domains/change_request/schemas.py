@@ -64,6 +64,7 @@ class ItemInput(ToolInput):
     owner_statement: str | None = None
     objection: str | None = None
     evidence_ids: list[UUID] = Field(default_factory=list)
+    uncertainty: str | None = None
 
 
 class DraftInput(ToolInput):

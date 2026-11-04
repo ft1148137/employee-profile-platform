@@ -21,6 +21,7 @@ from app.api.routes import (
     oauth,
     orgs,
     private,
+    profile_import,
     profiles,
     roles,
     roster,
@@ -53,6 +54,7 @@ api_router.include_router(employees.router)
 api_router.include_router(capabilities.router)
 api_router.include_router(capability_templates.router)
 api_router.include_router(profiles.router)
+api_router.include_router(profile_import.router)
 api_router.include_router(change_requests.router)
 api_router.include_router(evidence.router)
 api_router.include_router(initial_profiles.router)
