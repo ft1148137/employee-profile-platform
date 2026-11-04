@@ -1,14 +1,14 @@
 """Enterprise MCP settings and employee personal access tokens.
 
 Revision ID: a96e001bc001
-Revises: b102001bc001
+Revises: b97e001bc001
 """
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = "a96e001bc001"
-down_revision = "b102001bc001"
+down_revision = "b97e001bc001"
 branch_labels = None
 depends_on = None
 

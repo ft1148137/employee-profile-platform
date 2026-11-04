@@ -62,10 +62,14 @@ channel('undici:request:headers').subscribe(({ request, response }) => {
 });
 
 function validate(body) {
-  if (!only(body, ['version', 'run_id', 'mode', 'model', 'system_prompt', 'input', 'tools']) ||
-      body.version !== 1 || !uuid.test(body.run_id) || body.mode !== 'draft' ||
+  if (!only(body, ['version', 'run_id', 'mode', 'model', 'system_prompt', 'input', 'tools', 'history']) ||
+      body.version !== 1 || !uuid.test(body.run_id) || !['draft', 'chat'].includes(body.mode) ||
       typeof body.system_prompt !== 'string' || typeof body.input !== 'string' ||
       !Array.isArray(body.tools) || body.tools.length > 16) return false;
+  if (Object.hasOwn(body, 'history') && (body.mode !== 'chat' || !Array.isArray(body.history) ||
+      body.history.length > 20 || !body.history.every(m => only(m, ['role', 'text']) &&
+        ['user', 'assistant'].includes(m.role) && typeof m.text === 'string') ||
+      body.history.reduce((sum, m) => sum + Array.from(m.text).length, 0) > 24000)) return false;
   const m = body.model;
   if (!only(m, ['provider', 'api', 'id', 'baseUrl', 'api_key', 'thinkingLevel',
     'reasoning', 'contextWindow', 'maxTokens', 'compat']) ||
@@ -128,9 +132,10 @@ export function quota(headers = {}, message = '', now = Date.now()) {
   return { retry_at: new Date(Math.max(now, at)).toISOString(), estimated };
 }
 
-export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSimple,
+export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60000, streamFn = streamSimple,
   lookup, login, loginLifetime, log = entry => console.log(JSON.stringify(entry)) } = {}) {
-  if (!text(token) || !Number.isFinite(deadlineMs) || deadlineMs <= 0 || deadlineMs > 120000)
+  if (!text(token) || !Number.isFinite(deadlineMs) || deadlineMs <= 0 || deadlineMs > 120000 ||
+      !Number.isFinite(chatDeadlineMs) || chatDeadlineMs <= 0 || chatDeadlineMs > 60000)
     throw new Error('Invalid Pi service configuration');
   const digest = value => createHash('sha256').update(value).digest();
   const expected = digest(`Bearer ${token}`);
@@ -195,10 +200,11 @@ export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSi
       if (!validate(body) || runs.has(body.run_id)) return json(res, 400, { type: 'error', code: 'bad_request' });
       const model = resolveModel(body.model);
       runId = body.run_id;
-      if (runs.size >= 4) return json(res, 503, { type: 'error', code: 'busy' });
+      if (runs.size >= 4 || (body.mode === 'chat' && [...runs.values()].filter(r => r.mode === 'chat').length >= 3))
+        return json(res, 503, { type: 'error', code: 'busy' });
       res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store' });
       res.flushHeaders();
-      const run = { error: undefined, pending: undefined, calls: 0, tools: 0 };
+      const run = { mode: body.mode, error: undefined, pending: undefined, calls: 0, tools: 0 };
       runs.set(runId, run);
       const send = event => {
         if (!res.destroyed && !res.writableEnded) {
@@ -242,6 +248,12 @@ export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSi
             ? { ...message, content: [{ type: 'text', text: TOOL_ERROR }], details: {} } : message);
         },
         initialState: { model, systemPrompt: body.system_prompt, thinkingLevel: m.thinkingLevel ?? 'off',
+          messages: (body.history ?? []).map(message => message.role === 'user'
+            ? { role: 'user', content: message.text, timestamp: Date.now() }
+            : { role: 'assistant', content: [{ type: 'text', text: message.text }], timestamp: Date.now(),
+              api: model.api, provider: model.provider, model: model.id, stopReason: 'stop',
+              usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } } }),
           tools: body.tools.map(t => ({ name: t.name, label: t.name, description: t.description, parameters: t.parameters,
             execute: async (id, args, signal) => {
               if (run.error || run.tools >= 16) { run.cancel('limit_exceeded'); throw new Error(TOOL_ERROR); }
@@ -270,7 +282,7 @@ export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSi
             : { code: response.status === 401 ? 'model_unauthorized' : 'model_error' };
         }
       });
-      const timer = setTimeout(() => run.cancel('deadline'), deadlineMs);
+      const timer = setTimeout(() => run.cancel('deadline'), body.mode === 'chat' ? Math.min(deadlineMs, chatDeadlineMs) : deadlineMs);
       res.on('close', () => { if (!res.writableEnded) run.cancel('cancelled'); });
       run.finished = (async () => {
         try {
@@ -296,6 +308,7 @@ export function createPiServer({ token, deadlineMs = 120000, streamFn = streamSi
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  createPiServer({ token: process.env.PI_SERVICE_TOKEN, deadlineMs: Number(process.env.PI_DEADLINE_MS ?? 120000) })
+  createPiServer({ token: process.env.PI_SERVICE_TOKEN, deadlineMs: Number(process.env.PI_DEADLINE_MS ?? 120000),
+    chatDeadlineMs: Number(process.env.PI_CHAT_DEADLINE_MS ?? 60000) })
     .listen(Number(process.env.PORT ?? 8081), process.env.PI_HOST ?? '0.0.0.0');
 }

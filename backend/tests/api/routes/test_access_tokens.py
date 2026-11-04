@@ -187,7 +187,7 @@ def test_tenant_and_employee_boundaries(
 
 
 def test_migration_roundtrip(migration_engine: Engine) -> None:
-    migrate(migration_engine, "downgrade", "b102001bc001")
+    migrate(migration_engine, "downgrade", "b97e001bc001")
     assert not {"personal_access_token", "mcp_setting"} & set(
         inspect(migration_engine).get_table_names()
     )

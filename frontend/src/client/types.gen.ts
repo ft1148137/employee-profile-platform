@@ -259,6 +259,20 @@ export type Body_sources_import_work_records = {
 };
 
 /**
+ * BotSettings
+ */
+export type BotSettings = {
+    /**
+     * Question Guide
+     */
+    question_guide?: string;
+    /**
+     * Retention Days
+     */
+    retention_days?: number;
+};
+
+/**
  * CapabilitiesPublic
  */
 export type CapabilitiesPublic = {
@@ -3089,6 +3103,66 @@ export type accessTokensRevokeAccessTokenResponses = {
 };
 
 export type accessTokensRevokeAccessTokenResponse = accessTokensRevokeAccessTokenResponses[keyof accessTokensRevokeAccessTokenResponses];
+
+export type botSettingsGetBotSettingsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/bot-settings';
+};
+
+export type botSettingsGetBotSettingsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type botSettingsGetBotSettingsError = botSettingsGetBotSettingsErrors[keyof botSettingsGetBotSettingsErrors];
+
+export type botSettingsGetBotSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: BotSettings;
+};
+
+export type botSettingsGetBotSettingsResponse = botSettingsGetBotSettingsResponses[keyof botSettingsGetBotSettingsResponses];
+
+export type botSettingsPutBotSettingsData = {
+    body: BotSettings;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/bot-settings';
+};
+
+export type botSettingsPutBotSettingsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type botSettingsPutBotSettingsError = botSettingsPutBotSettingsErrors[keyof botSettingsPutBotSettingsErrors];
+
+export type botSettingsPutBotSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: BotSettings;
+};
+
+export type botSettingsPutBotSettingsResponse = botSettingsPutBotSettingsResponses[keyof botSettingsPutBotSettingsResponses];
 
 export type loginLoginAccessTokenData = {
     body: Body_login_login_access_token;
