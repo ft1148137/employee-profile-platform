@@ -18,6 +18,7 @@ def test_provider_migration_roundtrip(migration_engine: Engine) -> None:
         ("cloud_api", "openrouter/vendor/model", "openrouter", "vendor/model"),
         ("local", "ollama/llama3", "ollama", "llama3"),
         ("local", "ollama_chat/llama3", "ollama", "llama3"),
+        ("local", "ollama/" + "x" * 193, "ollama", "x" * 193),
         (
             "openai_compatible",
             "openai/custom/model",
@@ -25,6 +26,7 @@ def test_provider_migration_roundtrip(migration_engine: Engine) -> None:
             "custom/model",
         ),
         ("openai_compatible", "openai/" + "x" * 193, "openai-compatible", "x" * 193),
+        ("openai_compatible", "x/" + "y" * 198, "openai-compatible", "y" * 198),
         ("cloud_api", "unknown/model", None, "unknown/model"),
         ("chatgpt_subscription", "chatgpt/gpt-6.1-sol", None, "chatgpt/gpt-6.1-sol"),
     ]
@@ -47,7 +49,7 @@ def test_provider_migration_roundtrip(migration_engine: Engine) -> None:
                     org_id=org.id,
                     kind=kind,
                     model=model,
-                    enabled=True,
+                    enabled=not model.startswith("x/"),
                     api_key_ciphertext="synthetic-ciphertext",
                     updated_by_user_id=user.id,
                     updated_at=sa.func.now(),
@@ -58,7 +60,7 @@ def test_provider_migration_roundtrip(migration_engine: Engine) -> None:
     migrate(migration_engine, "upgrade", "head")
     with migration_engine.connect() as connection:
         table = sa.Table("model_setting", sa.MetaData(), autoload_with=connection)
-        for org_id, (kind, _, provider, model) in zip(ids, cases, strict=True):
+        for org_id, (kind, original, provider, model) in zip(ids, cases, strict=True):
             row = (
                 connection.execute(sa.select(table).where(table.c.org_id == org_id))
                 .mappings()
@@ -66,21 +68,31 @@ def test_provider_migration_roundtrip(migration_engine: Engine) -> None:
             )
             assert row["provider"] == provider and row["model"] == model
             assert row["enabled"] == (
-                provider is not None or kind == "chatgpt_subscription"
+                not original.startswith("x/")
+                and (provider is not None or kind == "chatgpt_subscription")
             )
             assert row["api_key_ciphertext"] == "synthetic-ciphertext"
     migrate(migration_engine, "downgrade", "a91e001bc001")
     with migration_engine.connect() as connection:
         table = sa.Table("model_setting", sa.MetaData(), autoload_with=connection)
         assert "provider" not in table.c
-        for org_id, (_, original, provider, _) in zip(ids, cases, strict=True):
-            restored = connection.execute(
-                sa.select(table.c.model).where(table.c.org_id == org_id)
-            ).scalar_one()
+        for org_id, (kind, original, provider, model) in zip(ids, cases, strict=True):
+            row = (
+                connection.execute(sa.select(table).where(table.c.org_id == org_id))
+                .mappings()
+                .one()
+            )
             expected = (
                 original.replace("ollama/", "ollama_chat/", 1)
-                if provider == "ollama"
+                if provider == "ollama" and len("ollama_chat/" + model) <= 200
                 else original
             )
-            assert restored == expected
+            if original.startswith("x/"):
+                expected = model
+            assert row["enabled"] == (
+                not original.startswith("x/")
+                and (provider is not None or kind == "chatgpt_subscription")
+            )
+            assert row["model"] == expected
+            assert row["api_key_ciphertext"] == "synthetic-ciphertext"
     migrate(migration_engine, "upgrade", "head")
