@@ -26,6 +26,7 @@ from app.main import app
 from app.models import User
 from app.seed.loader import load_demo
 from app.seed.schema import read_bundle
+from tests.utils.drafting import mock_drafting  # noqa: F401
 from tests.utils.migrations import MIGRATION_TEMPLATE, isolated_database
 from tests.utils.org import ORG_MODELS, cleanup_new_users, delete_test_organization
 from tests.utils.user import authentication_token_from_email

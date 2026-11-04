@@ -1,12 +1,13 @@
 import path from "node:path"
-import { expect, test } from "@playwright/test"
+import { configureModel, expect, test } from "./utils/model"
 import { createSourcesOrg, saveCloud, syncJira } from "./utils/sources"
 import { logOutUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
-test("M2: roster, Jira and PLM, identities, rules, employee evidence", async ({
+test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
   page,
+  modelUrl,
 }, info) => {
   test.setTimeout(180000)
   await createSourcesOrg(page)
@@ -78,7 +79,8 @@ test("M2: roster, Jira and PLM, identities, rules, employee evidence", async ({
   await page.getByRole("button", { name: /确认所选候选/ }).click()
   await expect(page.getByRole("status")).toContainText("已补充")
   await next()
-  await page.getByRole("button", { name: "跳过，用关键词规则起草" }).click()
+  await configureModel(page, modelUrl)
+  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
   await page.getByRole("button", { name: "生成初始画像", exact: true }).click()
   await expect(
     page.getByText(

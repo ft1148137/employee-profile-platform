@@ -52,7 +52,18 @@ export function DraftProgress({
       )}
       {data && (
         <>
-          <p>当前方式：{data.mode === "model" ? "模型" : "关键词规则"}</p>
+          {data.mode === "none" ? (
+            <div role="alert" className="rounded-lg border p-4">
+              <p>
+                还没有配置模型，请先在设置页配置模型，或者让员工用 JSON 导入画像
+              </p>
+              <Link className="underline" to="/admin/model">
+                去配置模型
+              </Link>
+            </div>
+          ) : (
+            <p>当前方式：模型</p>
+          )}
           {data.paused_until && (
             <div
               role="alert"
@@ -106,7 +117,7 @@ export function DraftProgress({
       )}
       <div className="flex flex-wrap gap-3">
         <Button
-          disabled={draft.isPending || !data}
+          disabled={draft.isPending || !data || data.mode === "none"}
           onClick={() => {
             if (
               wizard ||
@@ -119,7 +130,7 @@ export function DraftProgress({
         </Button>
         <Button
           variant="outline"
-          disabled={draft.isPending || !counts.failed}
+          disabled={draft.isPending || !counts.failed || data?.mode === "none"}
           onClick={() => draft.mutate("failed")}
         >
           重试失败的

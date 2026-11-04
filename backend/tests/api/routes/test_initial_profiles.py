@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Callable
 from uuid import UUID
 
 import pytest
@@ -13,7 +14,6 @@ from app.core.db import engine
 from app.domains.audit.models import AuditEvent
 from app.domains.capability.models import CapabilityDefinition
 from app.domains.capability.service import activate_template
-from app.domains.capability.templates import InvalidTemplate
 from app.domains.change_request.models import (
     ChangeItem,
     ProfileChangeRequest,
@@ -21,8 +21,9 @@ from app.domains.change_request.models import (
 )
 from app.domains.drafting import service
 from app.domains.drafting.collect import CollectedRecord
-from app.domains.drafting.rules import DraftItem
+from app.domains.drafting.model import DraftItem
 from app.domains.evidence.service import retract_evidence
+from app.domains.model.client import ModelConfig
 from app.domains.org.models import Employee, EmploymentStatus, ExternalIdentity
 from app.domains.profile.models import ProfileProgress
 from app.worker.app import app
@@ -31,6 +32,8 @@ from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
 from tests.domains.test_ingest import ingest, person, record, rows
 from tests.test_worker import recover_stalled_jobs
 from tests.utils.migrations import migrate
+
+pytestmark = pytest.mark.xdist_group("litellm")
 
 
 def work_queue() -> None:
@@ -42,12 +45,16 @@ def work_queue() -> None:
 
 
 def test_stalled_drafting_recovers(
-    request: pytest.FixtureRequest, db: Session, client: TestClient
+    request: pytest.FixtureRequest,
+    db: Session,
+    client: TestClient,
+    mock_drafting: Callable[[UUID, UUID], None],
 ) -> None:
     orgs, _, employees, users = request.getfixturevalue("tenant_data")
     org = orgs[0].id
     url, auth = f"/api/v1/orgs/{org}/initial-profiles", headers(users[0])
     activate_template(db, Principal.system_worker(org), "tech-rnd")
+    mock_drafting(org, users[0].id)
     job_id = draft_initial.configure(
         connection=db.connection().connection.driver_connection,
         lock=f"initial-profiles:{org}",
@@ -88,6 +95,7 @@ def test_queue_progress_retry(
     db: Session,
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
+    mock_drafting: Callable[[UUID, UUID], None],
 ) -> None:
     orgs, _, employees, users = request.getfixturevalue("tenant_data")
     org = orgs[0].id
@@ -111,6 +119,7 @@ def test_queue_progress_retry(
         ).status_code
         == 404
     )
+    mock_drafting(org, users[0].id)
     assert (
         client.post(url + "/draft", headers=auth, json={"scope": "all"}).status_code
         == 422
@@ -141,14 +150,14 @@ def test_queue_progress_retry(
     original = service.write_initial_request
     failed_employee = employees[1].id
     failure: Exception = RuntimeError("Synthetic sensitive exception")
-    original_draft = service.rules.draft
+    original_draft = service.model.draft
 
     def update_source(
         records: list[CollectedRecord],
         capabilities: list[CapabilityDefinition],
-        keywords: dict[str, list[str]],
-    ) -> list[DraftItem]:
-        items = original_draft(records, capabilities, keywords)
+        config: ModelConfig,
+    ) -> tuple[list[DraftItem], dict[str, JsonValue]]:
+        items, generated_by = original_draft(records, capabilities, config)
         if items and len(records) > 1:
             session = object_session(records[0].evidence)
             assert isinstance(session, Session)
@@ -159,9 +168,9 @@ def test_queue_progress_retry(
                 actor_type=Principal.system_worker(org).actor_type,
                 actor_id=None,
             )
-        return items
+        return items, generated_by
 
-    monkeypatch.setattr(service.rules, "draft", update_source)
+    monkeypatch.setattr(service.model, "draft", update_source)
 
     def fail_one(
         session: Session,
@@ -186,7 +195,7 @@ def test_queue_progress_retry(
     work_queue()
     result = client.get(url + "/progress", headers=auth).json()
     assert (
-        result["mode"] == "rules"
+        result["mode"] == "model"
         and result["counts"]["failed"] == 1
         and result["counts"]["generated"] == 3
     )
@@ -196,7 +205,7 @@ def test_queue_progress_retry(
     requests = rows(db, ProfileChangeRequest, org)
     assert len(requests) == 3 and not rows(db, ChangeItem, org)
     assert all(r.subject_employee_id != failed_employee for r in requests)
-    assert all(r.generated_by["keywords_ref"].startswith("tech-rnd@") for r in requests)
+    assert all(r.generated_by["mode"] == "model" for r in requests)
     monkeypatch.setattr(service, "write_initial_request", original)
     assert client.post(
         url + "/draft", headers=auth, json={"scope": "failed"}
@@ -211,11 +220,8 @@ def test_queue_progress_retry(
     items = rows(db, ChangeItem, org)
     assert len(items) == 1 and items[0].after is not None
     assert items[0].after["evidence_count"] == 1
-    assert items[0].after["statement"].startswith("有 1 项")
-    for failure in (
-        service.InvalidDraft("起草结果使用了词典以外的等级"),
-        InvalidTemplate("关键词文件格式无效"),
-    ):
+    assert items[0].after["statement"] == "合成能力建议"
+    for failure in (service.InvalidDraft("起草结果使用了词典以外的等级"),):
         monkeypatch.setattr(service, "write_initial_request", fail_one)
         draft_initial(org_id=str(org), employee_ids=[str(failed_employee)])
         assert client.get(url + "/progress", headers=auth).json()["failed"][0][
@@ -239,7 +245,7 @@ def test_queue_progress_retry(
         .order_by(col(AuditEvent.created_at).desc())
     ).first()
     assert audit and audit.details == {
-        "mode": "rules",
+        "mode": "model",
         "generated": 3,
         "failed": 0,
         "handed_over": 1,
@@ -260,10 +266,12 @@ def test_enqueue_rollback(
     db: Session,
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
+    mock_drafting: Callable[[UUID, UUID], None],
 ) -> None:
     orgs, _, _, users = request.getfixturevalue("tenant_data")
     org = orgs[0].id
     activate_template(db, Principal.system_worker(org), "tech-rnd")
+    mock_drafting(org, users[0].id)
     db.exec(delete(ProfileProgress).where(col(ProfileProgress.org_id) == org))
     db.commit()
 
@@ -298,3 +306,33 @@ def test_migration(migration_engine: Engine) -> None:
             )
             == 1
         )
+
+
+@pytest.mark.parametrize("configured", [False, True])
+def test_no_model_never_queues(
+    request: pytest.FixtureRequest, db: Session, client: TestClient, configured: bool
+) -> None:
+    from app.domains.model.models import ModelSetting
+
+    orgs, _, _, users = request.getfixturevalue("tenant_data")
+    org = orgs[0].id
+    activate_template(db, Principal.system_worker(org), "tech-rnd")
+    if configured:
+        db.add(ModelSetting(org_id=org, enabled=False, updated_by_user_id=users[0].id))
+    db.commit()
+    auth = headers(users[0])
+    url = f"/api/v1/orgs/{org}/initial-profiles"
+    before = rows(db, ProfileProgress, org)
+    for scope in ("all", "failed"):
+        response = client.post(url + "/draft", headers=auth, json={"scope": scope})
+        assert response.status_code == 409
+        assert response.json()["detail"] == service.MODEL_REQUIRED
+    assert client.get(url + "/progress", headers=auth).json()["mode"] == "none"
+    assert rows(db, ProfileProgress, org) == before
+    assert (
+        db.execute(
+            text("SELECT count(*) FROM procrastinate_jobs WHERE args->>'org_id'=:org"),
+            {"org": str(org)},
+        ).scalar_one()
+        == 0
+    )

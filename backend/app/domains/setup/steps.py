@@ -102,11 +102,7 @@ def check_model(session: Session, org_id: UUID) -> list[str]:
     from app.domains.model.service import read_setting
 
     setting = read_setting(session, org_id)
-    return (
-        []
-        if setting and setting.enabled
-        else ["还没有启用模型；跳过则按关键词规则起草"]
-    )
+    return [] if setting and setting.enabled else ["还没有启用模型，请先配置并启用模型"]
 
 
 def check_initial_profiles(session: Session, org_id: UUID) -> list[str]:
@@ -199,10 +195,10 @@ STEPS = [
     SetupStep(
         "model",
         "配置模型",
-        "启用模型或跳过使用关键词规则",
+        "配置并启用 AI 模型后才能起草",
         70,
-        False,
         True,
+        False,
         check_model,
     ),
     SetupStep(

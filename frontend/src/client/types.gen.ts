@@ -711,7 +711,7 @@ export type DraftProgress = {
     /**
      * Mode
      */
-    mode: 'rules' | 'model';
+    mode: 'none' | 'model';
     /**
      * Counts
      */

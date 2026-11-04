@@ -16,6 +16,7 @@ from app.domains.change_request.models import (
     RequestOrigin,
     RequestStatus,
 )
+from app.domains.model.models import ModelSetting
 from app.domains.org.models import (
     Department,
     Employee,
@@ -125,9 +126,9 @@ def test_new_setup_and_blockers(
     assert all(
         s["required"] and not s["skippable"]
         for s in data["steps"]
-        if s["key"] not in {"sources", "identities", "model"}
+        if s["key"] not in {"sources", "identities"}
     )
-    assert all(not s["required"] and s["skippable"] for s in data["steps"][-4:-1])
+    assert all(not s["required"] and s["skippable"] for s in data["steps"][4:6])
     assert data["steps"][-3]["blockers"] == []
     assert data["steps"][0]["status"] == "completed"
     assert data["steps"][0]["blockers"] == []
@@ -239,8 +240,16 @@ def test_complete_persist_and_extend(
         client.post(f"{tenant.url}/setup/steps/sources/skip", headers=auth).status_code
         == 200
     )
+    db.add(
+        ModelSetting(
+            org_id=tenant.org_id, enabled=True, updated_by_user_id=tenant.admin_id
+        )
+    )
+    db.commit()
     assert (
-        client.post(f"{tenant.url}/setup/steps/model/skip", headers=auth).status_code
+        client.post(
+            f"{tenant.url}/setup/steps/model/complete", headers=auth
+        ).status_code
         == 200
     )
     assert (
@@ -280,7 +289,7 @@ def test_complete_persist_and_extend(
         e.action
         == (
             "setup.step_skipped"
-            if e.details["step_key"] in {"sources", "model"}
+            if e.details["step_key"] in {"sources"}
             else "setup.step_completed"
         )
         and e.actor_id == str(tenant.admin_id)
@@ -295,7 +304,10 @@ def test_complete_persist_and_extend(
     schema.status = SchemaStatus.RETIRED
     db.add_all([employee, schema])
     db.commit()
-    original = [replace(s, check=unexpected_check) for s in steps.STEPS]
+    original = [
+        s if s.key == "model" else replace(s, check=unexpected_check)
+        for s in steps.STEPS
+    ]
     monkeypatch.setattr(steps, "STEPS", original)
     assert client.get(f"{tenant.url}/setup", headers=auth).json()["completed"]
     assert (
@@ -500,7 +512,7 @@ def test_model_step(tenant: SetupTenant, client: TestClient, db: Session) -> Non
     url = f"{tenant.url}/setup/steps/model"
     auth = tenant.auth["admin"]
     assert client.post(f"{url}/complete", headers=auth).status_code == 422
-    assert client.post(f"{url}/skip", headers=auth).status_code == 200
+    assert client.post(f"{url}/skip", headers=auth).status_code == 422
     db.add(
         ModelSetting(
             org_id=tenant.org_id, enabled=True, updated_by_user_id=tenant.admin_id
@@ -508,6 +520,45 @@ def test_model_step(tenant: SetupTenant, client: TestClient, db: Session) -> Non
     )
     db.commit()
     assert client.post(f"{url}/complete", headers=auth).status_code == 200
+
+
+@pytest.mark.parametrize("old_status", [SetupStatus.COMPLETED, SetupStatus.SKIPPED])
+def test_upgrade_reopens_model_step(
+    tenant: SetupTenant, client: TestClient, db: Session, old_status: SetupStatus
+) -> None:
+    db.add_all(
+        [
+            SetupStepState(
+                org_id=tenant.org_id,
+                step_key=s.key,
+                status=old_status if s.key == "model" else SetupStatus.COMPLETED,
+                updated_by_user_id=tenant.admin_id,
+            )
+            for s in steps.STEPS
+            if not s.implicit
+        ]
+    )
+    db.commit()
+    data = client.get(f"{tenant.url}/setup", headers=tenant.auth["admin"]).json()
+    assert not data["completed"] and data["next_step_key"] == "model"
+    model = next(s for s in data["steps"] if s["key"] == "model")
+    assert model["required"] and not model["skippable"] and model["blockers"]
+    assert (
+        client.post(
+            f"{tenant.url}/setup/steps/model/complete", headers=tenant.auth["admin"]
+        ).status_code
+        == 422
+    )
+    db.add(
+        ModelSetting(
+            org_id=tenant.org_id, enabled=True, updated_by_user_id=tenant.admin_id
+        )
+    )
+    db.commit()
+    result = client.post(
+        f"{tenant.url}/setup/steps/model/complete", headers=tenant.auth["admin"]
+    )
+    assert result.status_code == 200 and result.json()["completed"]
 
 
 def test_initial_profiles_checks(

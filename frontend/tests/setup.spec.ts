@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process"
 import path from "node:path"
-import { expect, type Page, test } from "@playwright/test"
+import type { Page } from "@playwright/test"
 import type { SetupPublic } from "../src/client"
 import { expectChineseCopy } from "./utils/copy"
+import { configureModel, expect, test } from "./utils/model"
 import { logOutUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -24,6 +25,7 @@ async function fillSetup(page: Page) {
 test("complete setup with 30 employees, download accounts and first employee login", async ({
   page,
   request,
+  modelUrl,
 }, testInfo) => {
   test.setTimeout(90000)
   const response = await request.post("/api/v1/private/setup-tokens", {
@@ -123,26 +125,16 @@ test("complete setup with 30 employees, download accounts and first employee log
     page.getByRole("button", { name: "跳过", exact: true }),
   ).toBeVisible()
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
-  await page.getByLabel("模型类型").selectOption("local")
-  await page.getByLabel("启用模型").check()
-  await page.getByLabel("模型名", { exact: true }).fill("ollama_chat/synthetic")
-  await page.getByLabel(/base URL/).fill("http://mock-jira:8080")
-  const modelSaved = page.waitForResponse(
-    (r) => r.url().endsWith("/model-setting") && r.request().method() === "PUT",
-  )
-  await page.getByRole("button", { name: "保存", exact: true }).click()
-  const modelUrl = (await modelSaved).url()
-  await page.getByRole("button", { name: "跳过，用关键词规则起草" }).click()
+  await expect(
+    page.getByRole("button", { name: "跳过", exact: true }),
+  ).toHaveCount(0)
+  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await expect(page.getByRole("alert")).toContainText("还没有启用模型")
+  await configureModel(page, modelUrl)
+  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
   await expect(
     page.getByRole("heading", { name: "生成初始画像" }),
   ).toBeVisible()
-  const accessToken = await page.evaluate(() =>
-    localStorage.getItem("access_token"),
-  )
-  const modelSetting = await request.get(modelUrl, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  })
-  expect((await modelSetting.json()).enabled).toBe(false)
   await page.getByRole("button", { name: "生成初始画像", exact: true }).click()
   await expect(
     page.getByText(

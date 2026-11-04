@@ -1,15 +1,26 @@
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Self
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from app.domains.capability.models import CapabilityDefinition
 from app.domains.change_request.claim import ClaimAfter
-from app.domains.drafting.collect import CollectedRecord
-from app.domains.drafting.rules import DraftItem, relation
+from app.domains.drafting.collect import CollectedRecord, relation
 from app.domains.evidence.models import Visibility
 from app.domains.model.client import ModelConfig, chat_json
-from app.domains.profile.models import AssessmentStatus
+from app.domains.profile.models import AssessmentStatus, EvidenceRelation
+
+
+@dataclass
+class DraftItem:
+    capability_id: UUID
+    after: ClaimAfter
+    explanation: str
+    uncertainty: str
+    evidence: dict[UUID, EvidenceRelation]
+
 
 PROMPT_VERSION = "initial-draft-v1"
 SYSTEM_PROMPT = """只根据给出的记录起草能力陈述，没有记录支持的能力不要输出，未知不等于不会。
@@ -171,5 +182,4 @@ def draft(
         "model": result.model,
         "prompt_version": PROMPT_VERSION,
         "reasoning_effort": config.reasoning_effort,
-        "keywords_ref": None,
     }
