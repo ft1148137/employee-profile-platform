@@ -17,7 +17,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
   request,
   modelUrl,
 }, testInfo) => {
-  test.setTimeout(180000)
+  test.setTimeout(120000)
   await page.setViewportSize({ width: 1440, height: 900 })
   const tokenResponse = await request.post("/api/v1/private/setup-tokens", {
     data: { purpose: "new_org" },
