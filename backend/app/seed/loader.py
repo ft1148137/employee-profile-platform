@@ -5,6 +5,7 @@ from typing import Any
 
 from sqlmodel import Session, SQLModel, col, select
 
+from app import crud
 from app.core.config import settings
 from app.core.security import get_password_hash
 from app.domains.audit.models import ActorKind, AuditEvent
@@ -103,7 +104,7 @@ def load_demo(
         if settings.FIRST_SUPERUSER and settings.FIRST_SUPERUSER not in accounts:
             account_emails.append(str(settings.FIRST_SUPERUSER))
         for email in account_emails:
-            user = session.exec(select(User).where(User.email == email)).one_or_none()
+            user = crud.get_user_by_email(session=session, email=email)
             if user is None and email == settings.FIRST_SUPERUSER:
                 raise SeedError("Run initial_data.py before loading demo data")
             account = accounts.get(email)

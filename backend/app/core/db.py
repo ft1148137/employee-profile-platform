@@ -1,8 +1,8 @@
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, create_engine
 
 from app import crud
 from app.core.config import settings
-from app.models import User, UserCreate
+from app.models import UserCreate
 
 engine = create_engine(str(settings.DATABASE_URL), pool_pre_ping=True)
 
@@ -24,13 +24,11 @@ def init_db(session: Session) -> None:
     if not settings.FIRST_SUPERUSER or not settings.FIRST_SUPERUSER_PASSWORD:
         return
 
-    user = session.exec(
-        select(User).where(User.email == settings.FIRST_SUPERUSER)
-    ).first()
+    user = crud.get_user_by_email(session=session, email=str(settings.FIRST_SUPERUSER))
     if not user:
         user_in = UserCreate(
             username=str(settings.FIRST_SUPERUSER).strip().lower(),
-            email=settings.FIRST_SUPERUSER,
+            email=str(settings.FIRST_SUPERUSER).strip().lower(),
             password=settings.FIRST_SUPERUSER_PASSWORD,
             is_superuser=True,
         )
