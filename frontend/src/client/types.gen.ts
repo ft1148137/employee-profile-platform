@@ -636,10 +636,7 @@ export type Claim = {
      * Level
      */
     level: string | null;
-    /**
-     * Assessment Status
-     */
-    assessment_status: string;
+    assessment_status: AssessmentStatus;
 };
 
 /**
@@ -1991,25 +1988,6 @@ export type Message = {
 };
 
 /**
- * MessagePublic
- */
-export type MessagePublic = {
-    /**
-     * Id
-     */
-    id: string;
-    /**
-     * Role
-     */
-    role: 'user' | 'assistant';
-    payload: JsonValue;
-    /**
-     * Created At
-     */
-    created_at: string;
-};
-
-/**
  * ModelSettingPublic
  */
 export type ModelSettingPublic = {
@@ -2755,6 +2733,28 @@ export type SessionCreated = {
 };
 
 /**
+ * SessionMessage
+ */
+export type SessionMessage = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Role
+     */
+    role: 'user' | 'assistant';
+    /**
+     * Payload
+     */
+    payload: TurnInput | TurnResponse;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
  * SetupPublic
  */
 export type SetupPublic = {
@@ -3429,7 +3429,7 @@ export type botListMessagesResponses = {
      *
      * Successful Response
      */
-    200: Array<MessagePublic>;
+    200: Array<SessionMessage>;
 };
 
 export type botListMessagesResponse = botListMessagesResponses[keyof botListMessagesResponses];
