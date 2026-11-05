@@ -3,7 +3,8 @@ from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, inspect
+from sqlalchemy import Engine, inspect, text
+from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
 from app.core.db import engine
@@ -422,3 +423,35 @@ def test_auto_publish_rejects_stale_target_and_other_users(
     assert stale.status_code == 409
     db.expire_all()
     assert db.get(ProfileChangeRequest, drafts[1].id).status == "draft"
+
+
+@pytest.mark.parametrize("operation", ["save", "preview"])
+def test_owner_confirmation_keeps_policy_stable(
+    demo: tuple, db: Session, operation: str
+) -> None:
+    org_id = demo[1]["E02"].org_id
+    owner = actor(db, org_id, "employee.platform@demo.example.com")
+    admin = actor(db, org_id, "admin@demo.example.com")
+    items = [
+        ItemInput(op="modify", capability_key="backend_api", statement="合成锁验证")
+    ]
+    draft = employee.save_draft(owner, db, None, items, "bot")
+    db.commit()
+    if operation == "save":
+        employee.save_draft(owner, db, draft.id, items, "bot")
+    else:
+        employee.preview(owner, db, draft.id)
+    with Session(engine) as concurrent:
+        concurrent.execute(text("SET LOCAL lock_timeout = '100ms'"))
+        with pytest.raises(OperationalError) as error:
+            policy.save_policy(
+                concurrent, admin, policy.PolicyInput(require_manager=False)
+            )
+        assert error.value.orig.sqlstate == "55P03"
+    db.commit()
+    assert (
+        policy.save_policy(
+            db, admin, policy.PolicyInput(require_manager=False)
+        ).current.version
+        == 1
+    )

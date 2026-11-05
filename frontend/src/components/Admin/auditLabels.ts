@@ -55,6 +55,7 @@ export const actorLabels: Record<string, string> = {
   cli: "命令行",
 }
 export const targetLabels: Record<string, string> = {
+  approval_policy: "审批规则",
   oauth_client: "AI 助手客户端",
   oauth_grant: "AI 助手授权",
   mcp_tool: "员工工具",

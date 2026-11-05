@@ -193,6 +193,14 @@ def _validate(
     return capabilities, current
 
 
+def _lock_organization(principal: Principal, session: Session) -> None:
+    session.exec(
+        select(Organization)
+        .where(Organization.id == principal.org_id)
+        .with_for_update(read=True)
+    ).one()
+
+
 def save_draft(
     principal: Principal,
     session: Session,
@@ -201,6 +209,7 @@ def save_draft(
     via: EmployeeVia,
     client_name: str | None = None,
 ) -> ChangeRequestPublic:
+    _lock_organization(principal, session)
     request = _request(principal, session, request_id) if request_id else None
     if request and request.status not in (
         RequestStatus.DRAFT,
@@ -287,6 +296,7 @@ def save_draft(
 
 
 def preview(principal: Principal, session: Session, request_id: UUID) -> RequestPreview:
+    _lock_organization(principal, session)
     request = _request(principal, session, request_id)
     public = _public(principal, session, request.id)
     claims = {
@@ -318,11 +328,7 @@ def submit(
     client_name: str | None = None,
 ) -> ChangeRequestPublic:
     # Match the lock order used by manager publishing and dictionary changes.
-    session.exec(
-        select(Organization)
-        .where(Organization.id == principal.org_id)
-        .with_for_update(read=True)
-    ).one()
+    _lock_organization(principal, session)
     request = _request(principal, session, request_id)
     session.exec(
         select(Employee)
