@@ -167,17 +167,29 @@ def test_review_visibility_and_no_self_approval(
                 OrgMembership.employee_id == person.id,
             )
         ).one()
-        grant = db.exec(
+        grants = db.exec(
             select(RoleGrant).where(
                 RoleGrant.org_id == person.org_id, RoleGrant.role == Role.ORG_ADMIN
             )
-        ).one()
-        grant.membership_id = member.id
+        ).all()
+        for grant in grants:
+            db.delete(grant)
+        db.add(
+            RoleGrant(
+                org_id=person.org_id, membership_id=member.id, role=Role.ORG_ADMIN
+            )
+        )
         db.commit()
     headers, _ = token_for(db, person)
     active = initialize(client, headers)
     listing = call(client, active, "list_pending_reviews", {})
-    assert listing["structuredContent"] == {"data": [], "count": 0}
+    if identity == "admin_self":
+        assert str(request.id) not in {
+            r["id"] for r in listing["structuredContent"]["data"]
+        }
+        assert all(r["can_decide"] for r in listing["structuredContent"]["data"])
+    else:
+        assert listing["structuredContent"] == {"data": [], "count": 0}
     expected = 404 if identity == "unrelated" else 403
     for tool in ("get_review", "decide_review_items"):
         arguments = {"request_id": str(request.id)}
