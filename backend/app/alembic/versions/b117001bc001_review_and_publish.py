@@ -1,12 +1,12 @@
 """Review decisions and atomic publication.
 
 Revision ID: b117001bc001
-Revises: a98e001bc001
+Revises: b119001bc001
 """
 from alembic import op
 
 revision = "b117001bc001"
-down_revision = "a98e001bc001"
+down_revision = "b119001bc001"
 branch_labels = None
 depends_on = None
 
