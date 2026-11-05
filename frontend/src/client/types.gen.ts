@@ -96,6 +96,79 @@ export type AnswerInput = {
 };
 
 /**
+ * AppealInput
+ */
+export type AppealInput = {
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Request Id
+     */
+    request_id: string;
+    /**
+     * Item Id
+     */
+    item_id: string;
+};
+
+/**
+ * AppealPublic
+ */
+export type AppealPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Request Id
+     */
+    request_id: string;
+    /**
+     * Item Id
+     */
+    item_id: string;
+    /**
+     * Employee Id
+     */
+    employee_id: string;
+    /**
+     * Reason
+     */
+    reason: string;
+    status: AppealStatus;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Resolved At
+     */
+    resolved_at: string | null;
+    /**
+     * Resolution Note
+     */
+    resolution_note: string | null;
+};
+
+/**
+ * AppealResolution
+ */
+export type AppealResolution = {
+    appeal: AppealPublic;
+    /**
+     * Draft Request Id
+     */
+    draft_request_id?: string | null;
+};
+
+/**
+ * AppealStatus
+ */
+export type AppealStatus = 'open' | 'upheld' | 'reopened';
+
+/**
  * ApplyImport
  */
 export type ApplyImport = {
@@ -530,6 +603,10 @@ export type ChangeItemPublic = {
      * Objection
      */
     objection?: string | null;
+    /**
+     * Appeal Id
+     */
+    appeal_id?: string | null;
     decision?: ItemDecision | null;
     /**
      * Decision Reason
@@ -2871,6 +2948,20 @@ export type RequestPreview = {
 export type RequestStatus = 'draft' | 'pending_owner' | 'pending_review' | 'approved' | 'changes_requested' | 'rejected' | 'withdrawn';
 
 /**
+ * ResolveAppealInput
+ */
+export type ResolveAppealInput = {
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Status
+     */
+    status: 'upheld' | 'reopened';
+};
+
+/**
  * ReviewDetail
  */
 export type ReviewDetail = {
@@ -4052,6 +4143,136 @@ export type reviewDelegationsRevokeDelegationResponses = {
 };
 
 export type reviewDelegationsRevokeDelegationResponse = reviewDelegationsRevokeDelegationResponses[keyof reviewDelegationsRevokeDelegationResponses];
+
+export type appealsListDisputesData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/appeals';
+};
+
+export type appealsListDisputesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type appealsListDisputesError = appealsListDisputesErrors[keyof appealsListDisputesErrors];
+
+export type appealsListDisputesResponses = {
+    /**
+     * Response Appeals-List Disputes
+     *
+     * Successful Response
+     */
+    200: Array<AppealPublic>;
+};
+
+export type appealsListDisputesResponse = appealsListDisputesResponses[keyof appealsListDisputesResponses];
+
+export type appealsCreateAppealData = {
+    body: AppealInput;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/appeals';
+};
+
+export type appealsCreateAppealErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type appealsCreateAppealError = appealsCreateAppealErrors[keyof appealsCreateAppealErrors];
+
+export type appealsCreateAppealResponses = {
+    /**
+     * Successful Response
+     */
+    200: AppealPublic;
+};
+
+export type appealsCreateAppealResponse = appealsCreateAppealResponses[keyof appealsCreateAppealResponses];
+
+export type appealsReadAppealData = {
+    body?: never;
+    path: {
+        /**
+         * Appeal Id
+         */
+        appeal_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/appeals/{appeal_id}';
+};
+
+export type appealsReadAppealErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type appealsReadAppealError = appealsReadAppealErrors[keyof appealsReadAppealErrors];
+
+export type appealsReadAppealResponses = {
+    /**
+     * Successful Response
+     */
+    200: AppealPublic;
+};
+
+export type appealsReadAppealResponse = appealsReadAppealResponses[keyof appealsReadAppealResponses];
+
+export type appealsResolveAppealData = {
+    body: ResolveAppealInput;
+    path: {
+        /**
+         * Appeal Id
+         */
+        appeal_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/appeals/{appeal_id}/resolve';
+};
+
+export type appealsResolveAppealErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type appealsResolveAppealError = appealsResolveAppealErrors[keyof appealsResolveAppealErrors];
+
+export type appealsResolveAppealResponses = {
+    /**
+     * Successful Response
+     */
+    200: AppealResolution;
+};
+
+export type appealsResolveAppealResponse = appealsResolveAppealResponses[keyof appealsResolveAppealResponses];
 
 export type approvalPolicyGetApprovalPolicyData = {
     body?: never;

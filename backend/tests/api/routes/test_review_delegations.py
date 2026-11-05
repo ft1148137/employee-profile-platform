@@ -207,7 +207,7 @@ def test_cross_tenant_delegate_has_no_review_access(
 
 
 def test_delegation_migration_roundtrip(migration_engine: Engine) -> None:
-    migrate(migration_engine, "downgrade", "b141001bc001")
+    migrate(migration_engine, "downgrade", "b127001bc001")
     assert "review_delegation" not in inspect(migration_engine).get_table_names()
     migrate(migration_engine, "upgrade", "head")
     fks = inspect(migration_engine).get_foreign_keys("review_delegation")
@@ -219,5 +219,5 @@ def test_delegation_migration_roundtrip(migration_engine: Engine) -> None:
         )
         == 3
     )
-    migrate(migration_engine, "downgrade", "b141001bc001")
+    migrate(migration_engine, "downgrade", "b127001bc001")
     migrate(migration_engine, "upgrade", "head")

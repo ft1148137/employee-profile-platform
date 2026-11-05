@@ -10,6 +10,8 @@ from app.domains.change_request.schemas import DraftInput, ToolInput
 from app.domains.evidence.models import EvidenceKind
 from app.domains.inbox import service as inbox
 from app.domains.inbox.schemas import AnswerQuestionInput, QuestionsInput
+from app.domains.review.appeal import appeal_decision
+from app.domains.review.appeal_schemas import AppealInput
 
 
 class EvidenceInput(ToolInput):
@@ -47,6 +49,14 @@ class EmployeeTool:
 
 # Adapters inject Principal, Session and trusted via/client_name; never model input.
 EMPLOYEE_TOOLS = (
+    EmployeeTool(
+        "appeal_decision",
+        "申诉本人被拒绝的改动",
+        AppealInput,
+        appeal_decision,
+        True,
+        False,
+    ),
     EmployeeTool(
         "get_pending_questions",
         "查看我的待确认问题",

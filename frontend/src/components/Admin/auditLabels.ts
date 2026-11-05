@@ -1,6 +1,9 @@
 import type { AuditEventPublic } from "@/client"
 
 export const auditLabels: Record<string, string> = {
+  "appeal.open": "提交申诉",
+  "appeal.upheld": "申诉维持原决定",
+  "appeal.reopened": "申诉允许重新提交",
   "oauth.allowed": "允许 AI 助手授权",
   "oauth.denied": "拒绝 AI 助手授权",
   "oauth.revoked": "撤销 AI 助手授权",
@@ -62,6 +65,7 @@ export const actorLabels: Record<string, string> = {
 }
 export const targetLabels: Record<string, string> = {
   review_delegation: "代理审批",
+  review_appeal: "画像申诉",
   approval_policy: "审批规则",
   im_binding: "IM 账号绑定",
   oauth_client: "AI 助手客户端",

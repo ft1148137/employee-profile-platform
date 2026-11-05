@@ -107,6 +107,7 @@ export function AppSidebar() {
             </SidebarGroup>
             <Main
               items={[
+                { icon: ListChecks, title: "争议", path: "/admin/appeals" },
                 { icon: Users, title: "导入名单", path: "/admin/roster" },
                 {
                   icon: Users,

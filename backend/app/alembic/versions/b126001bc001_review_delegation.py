@@ -4,7 +4,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 
 revision = "b126001bc001"
-down_revision = "b141001bc001"
+down_revision = "b127001bc001"
 branch_labels = None
 depends_on = None
 
