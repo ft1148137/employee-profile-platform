@@ -30,7 +30,7 @@ export class ReviewDelegationsService {
             ...options
         });
     }
-
+    
     /**
      * Create Delegation
      */
@@ -46,7 +46,7 @@ export class ReviewDelegationsService {
             }
         });
     }
-
+    
     /**
      * Revoke Delegation
      */
@@ -71,7 +71,7 @@ export class ApprovalPolicyService {
             ...options
         });
     }
-
+    
     /**
      * Put Approval Policy
      */
