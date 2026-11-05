@@ -9,7 +9,7 @@ Platform = Literal["feishu", "wecom", "telegram"]
 class ImSettingUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     enabled: bool = False
-    email_auto_bind: bool = True
+    email_auto_bind: bool | None = None
     credentials: dict[str, Annotated[SecretStr, Field(max_length=4096)]] = Field(
         default_factory=dict, max_length=4
     )

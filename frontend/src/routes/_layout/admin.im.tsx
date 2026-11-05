@@ -181,7 +181,7 @@ function PlatformSetting({
         >
           <Checkbox
             id={`${setting.platform}-email`}
-            checked={value.email_auto_bind}
+            checked={value.email_auto_bind ?? setting.email_auto_bind}
             disabled={save.isPending}
             onCheckedChange={(checked) => {
               setDraft({ ...value, email_auto_bind: checked === true })
