@@ -1584,6 +1584,64 @@ export type IdentityUnlinkResult = {
 };
 
 /**
+ * ImConnectionTest
+ */
+export type ImConnectionTest = {
+    /**
+     * Ok
+     */
+    ok: boolean;
+    /**
+     * Message
+     */
+    message: string;
+};
+
+/**
+ * ImSettingPublic
+ */
+export type ImSettingPublic = {
+    /**
+     * Platform
+     */
+    platform: 'feishu' | 'wecom' | 'telegram';
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Email Auto Bind
+     */
+    email_auto_bind?: boolean;
+    /**
+     * Has Credentials
+     */
+    has_credentials?: boolean;
+    /**
+     * Updated At
+     */
+    updated_at?: string | null;
+};
+
+/**
+ * ImSettingUpdate
+ */
+export type ImSettingUpdate = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Email Auto Bind
+     */
+    email_auto_bind?: boolean;
+    /**
+     * Data Transfer Acknowledged
+     */
+    data_transfer_acknowledged?: boolean;
+};
+
+/**
  * ImportResult
  */
 export type ImportResult = {
@@ -3332,6 +3390,30 @@ export type app__domains__change_request__schemas__PreviewItem = {
 };
 
 /**
+ * ImSettingUpdate
+ */
+export type ImSettingUpdateWritable = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Email Auto Bind
+     */
+    email_auto_bind?: boolean;
+    /**
+     * Credentials
+     */
+    credentials?: {
+        [key: string]: string;
+    };
+    /**
+     * Data Transfer Acknowledged
+     */
+    data_transfer_acknowledged?: boolean;
+};
+
+/**
  * JiraConnectionUpdate
  */
 export type JiraConnectionUpdateWritable = {
@@ -3402,6 +3484,106 @@ export type ModelSettingUpdateWritable = {
      */
     reasoning_effort?: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null;
 };
+
+export type imSettingsGetImSettingsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/im-settings';
+};
+
+export type imSettingsGetImSettingsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type imSettingsGetImSettingsError = imSettingsGetImSettingsErrors[keyof imSettingsGetImSettingsErrors];
+
+export type imSettingsGetImSettingsResponses = {
+    /**
+     * Response Im-Settings-Get Im Settings
+     *
+     * Successful Response
+     */
+    200: Array<ImSettingPublic>;
+};
+
+export type imSettingsGetImSettingsResponse = imSettingsGetImSettingsResponses[keyof imSettingsGetImSettingsResponses];
+
+export type imSettingsPutImSettingData = {
+    body: ImSettingUpdateWritable;
+    path: {
+        /**
+         * Platform
+         */
+        platform: 'feishu' | 'wecom' | 'telegram';
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/im-settings/{platform}';
+};
+
+export type imSettingsPutImSettingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type imSettingsPutImSettingError = imSettingsPutImSettingErrors[keyof imSettingsPutImSettingErrors];
+
+export type imSettingsPutImSettingResponses = {
+    /**
+     * Successful Response
+     */
+    200: ImSettingPublic;
+};
+
+export type imSettingsPutImSettingResponse = imSettingsPutImSettingResponses[keyof imSettingsPutImSettingResponses];
+
+export type imSettingsTestImConnectionData = {
+    body?: never;
+    path: {
+        /**
+         * Platform
+         */
+        platform: 'feishu' | 'wecom' | 'telegram';
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/im-settings/{platform}/test';
+};
+
+export type imSettingsTestImConnectionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type imSettingsTestImConnectionError = imSettingsTestImConnectionErrors[keyof imSettingsTestImConnectionErrors];
+
+export type imSettingsTestImConnectionResponses = {
+    /**
+     * Successful Response
+     */
+    200: ImConnectionTest;
+};
+
+export type imSettingsTestImConnectionResponse = imSettingsTestImConnectionResponses[keyof imSettingsTestImConnectionResponses];
 
 export type botCreateSessionData = {
     body?: never;
