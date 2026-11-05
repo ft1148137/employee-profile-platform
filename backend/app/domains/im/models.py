@@ -1,10 +1,17 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKeyConstraint, String
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKeyConstraint,
+    String,
+    UniqueConstraint,
+)
 from sqlmodel import Field, SQLModel
 
-from app.domains.base import utc_now
+from app.domains.base import TenantRecord, tenant_fk, utc_now
+from app.domains.im.schemas import Platform
 
 
 class ImSetting(SQLModel, table=True):
@@ -17,11 +24,52 @@ class ImSetting(SQLModel, table=True):
         ),
     )
     org_id: UUID = Field(primary_key=True, foreign_key="organization.id")
-    platform: str = Field(primary_key=True, sa_type=String)
+    platform: Platform = Field(primary_key=True, sa_type=String)
     enabled: bool = False
     credentials: str | None = Field(default=None, repr=False)
+    bot_identity: str | None = None
     email_auto_bind: bool = True
     updated_by_user_id: UUID
     updated_at: datetime = Field(
+        default_factory=utc_now, sa_type=DateTime(timezone=True)
+    )
+
+
+class ImBinding(TenantRecord, table=True):
+    __tablename__ = "im_binding"
+    __table_args__ = (
+        tenant_fk("employee_id", "employee"),
+        UniqueConstraint("org_id", "platform", "external_user_id"),
+        UniqueConstraint("org_id", "platform", "employee_id"),
+        CheckConstraint("platform IN ('telegram', 'feishu', 'wecom')"),
+        CheckConstraint("bound_via IN ('code', 'email')"),
+    )
+    employee_id: UUID
+    platform: Platform = Field(sa_type=String)
+    external_user_id: str
+    external_chat_id: str
+    bot_identity: str
+    bound_via: str = "code"
+    notify: bool = True
+
+
+class ImBindCode(TenantRecord, table=True):
+    __tablename__ = "im_bind_code"
+    __table_args__ = (
+        tenant_fk("employee_id", "employee"),
+        UniqueConstraint("org_id", "code_hash"),
+    )
+    employee_id: UUID
+    code_hash: str = Field(repr=False)
+    expires_at: datetime = Field(sa_type=DateTime(timezone=True))
+    used_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+
+
+class ImEvent(SQLModel, table=True):
+    __tablename__ = "im_event"
+    org_id: UUID = Field(primary_key=True, foreign_key="organization.id")
+    platform: str = Field(primary_key=True)
+    event_id: str = Field(primary_key=True)
+    received_at: datetime = Field(
         default_factory=utc_now, sa_type=DateTime(timezone=True)
     )

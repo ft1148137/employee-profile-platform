@@ -14,6 +14,7 @@ from app.api.routes import (
     employees,
     evidence,
     external_identities,
+    im_bindings,
     im_settings,
     initial_profiles,
     login,
@@ -38,6 +39,7 @@ from app.core.config import settings
 
 api_router = APIRouter()
 api_router.include_router(approval_policy.router)
+api_router.include_router(im_bindings.router)
 api_router.include_router(im_settings.router)
 api_router.include_router(bot.router)
 api_router.include_router(access_tokens.router)

@@ -80,6 +80,14 @@ services:
       timeout: 5s
       retries: 5
 
+  im:
+    <<: *backend
+    command: ["python", "-m", "app.im"]
+    restart: unless-stopped
+    depends_on:
+      prestart:
+        condition: service_completed_successfully
+
   worker:
     <<: *backend
     command: ["procrastinate", "--app=app.worker.app.app", "worker"]

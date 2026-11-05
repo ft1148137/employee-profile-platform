@@ -355,7 +355,7 @@ def test_policy_publication_rolls_back_on_failure(
 
 
 def test_approval_policy_migration(migration_engine: Engine) -> None:
-    migrate(migration_engine, "downgrade", "b117002bc001")
+    migrate(migration_engine, "downgrade", "b125001bc001")
     assert "approval_policy" not in inspect(migration_engine).get_table_names()
     migrate(migration_engine, "upgrade", "head")
     assert "approval_policy" in inspect(migration_engine).get_table_names()

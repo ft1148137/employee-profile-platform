@@ -27,3 +27,16 @@ class ImSettingPublic(BaseModel):
 class ImConnectionTest(BaseModel):
     ok: bool
     message: str
+
+
+class BindingCode(BaseModel):
+    code: str
+    expires_at: datetime
+
+
+class BindingPublic(BaseModel):
+    platform: Platform
+    external_user_id: str
+    created_at: datetime
+    notify: bool
+    active: bool

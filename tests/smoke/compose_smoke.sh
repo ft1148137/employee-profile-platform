@@ -31,14 +31,16 @@ print(password)
 PY
 )"
 
-step="db/backend/worker health"
-docker compose ps --all --format json db backend worker | python3 -c '
+step="db/backend/worker health and im running"
+docker compose ps --all --format json db backend worker im | python3 -c '
 import json, sys
 raw = sys.stdin.read().strip()
 rows = json.loads(raw) if raw.startswith("[") else [json.loads(line) for line in raw.splitlines()]
 for service in ("db", "backend", "worker"):
     matches = [row for row in rows if row["Service"] == service]
     assert matches and all(row.get("State") == "running" and row.get("Health") == "healthy" for row in matches), f"{service} is missing or unhealthy"
+im = [row for row in rows if row["Service"] == "im"]
+assert im and all(row.get("State") == "running" for row in im), "im is missing or stopped"
 '
 printf 'PASS: %s\n' "$step"
 
