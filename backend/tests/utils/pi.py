@@ -1,6 +1,5 @@
 import json
 import os
-import socket
 import subprocess
 import time
 from collections.abc import Generator
@@ -161,10 +160,6 @@ def pi_service(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[PiH
     thread = Thread(target=model_server.serve_forever)
     thread.start()
     harness.config.baseUrl = f"http://127.0.0.1:{model_server.server_port}/v1"
-    with socket.socket() as listener:
-        listener.bind(("127.0.0.1", 0))
-        port = listener.getsockname()[1]
-    monkeypatch.setattr(settings, "PI_URL", f"http://127.0.0.1:{port}")
     monkeypatch.setattr(
         settings, "PI_SERVICE_TOKEN", SecretStr("synthetic-service-token")
     )
@@ -189,10 +184,13 @@ const refresh = async value => {
   if (value === 'synthetic-rejected-refresh') throw new Error('synthetic-access synthetic-rejected-refresh upstream');
   return { access: 'rotated-access', refresh: 'rotated-refresh', expires: Date.now() + 7200000, accountId: 'synthetic-account' };
 };
-createPiServer({ token: process.env.PI_SERVICE_TOKEN, login, refresh,
+const server = createPiServer({ token: process.env.PI_SERVICE_TOKEN, login, refresh,
   streamFn: (model, context, options) => streamSimple(model.provider === 'openai-codex'
     ? { ...model, provider: 'openai-compatible', api: 'openai-completions', baseUrl: process.env.TEST_MODEL_URL } : model, context, options)
-}).listen(Number(process.env.PORT), '127.0.0.1');
+});
+server.listen(Number(process.env.PORT), '127.0.0.1', () => {
+  console.log(JSON.stringify({ type: 'listening', port: server.address().port }));
+});
 """,
                 ],
                 cwd=root,
@@ -202,7 +200,7 @@ createPiServer({ token: process.env.PI_SERVICE_TOKEN, login, refresh,
                     **os.environ,
                     "PI_SERVICE_TOKEN": "synthetic-service-token",
                     "TEST_MODEL_URL": harness.config.baseUrl,
-                    "PORT": str(port),
+                    "PORT": "0",
                     "PI_HOST": "127.0.0.1",
                     "PI_EGRESS_ALLOW_LOOPBACK": "1",
                 },
@@ -211,6 +209,21 @@ createPiServer({ token: process.env.PI_SERVICE_TOKEN, login, refresh,
                     with httpx.Client(timeout=1, trust_env=False) as client:
                         for _ in range(100):
                             assert process.poll() is None, harness.logs.read_text()
+                            port_line = next(
+                                (
+                                    line
+                                    for line in harness.logs.read_text().splitlines()
+                                    if line.startswith('{"type":"listening",')
+                                ),
+                                None,
+                            )
+                            if port_line is None:
+                                time.sleep(0.05)
+                                continue
+                            port = json.loads(port_line)["port"]
+                            monkeypatch.setattr(
+                                settings, "PI_URL", f"http://127.0.0.1:{port}"
+                            )
                             try:
                                 response = client.get(
                                     settings.PI_URL + "/health",

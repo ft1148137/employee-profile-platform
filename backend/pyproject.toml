@@ -93,6 +93,7 @@ error-on-warning = true
 entrypoint = "app.main:app"
 
 [tool.pytest.ini_options]
+faulthandler_timeout = 60
 markers = [
     "chatgpt_live: local opt-in ChatGPT subscription integration",
     "migration: tests using an isolated database cloned from the migration template",
