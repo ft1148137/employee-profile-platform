@@ -3,6 +3,8 @@ from pydantic import JsonValue
 from app.domains.bot import schemas as s
 
 LABELS = {
+    "confirm_review": "确认决定",
+    "continue_review": "继续修改",
     "confirm_submit": "确认提交",
     "continue_editing": "继续修改",
     "withdraw": "撤回",
@@ -52,6 +54,23 @@ def item_text(item: s.ChangeItem) -> str:
 def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
     if isinstance(message, s.TextMessage):
         return message.text, []
+    if isinstance(message, s.ReviewCard):
+        decisions = {d.item_id: d for d in message.decisions}
+        text = (
+            f"审批决定复述（修订 {message.revision}）\n"
+            + "\n\n".join(
+                f"第 {index + 1} 项：{item.after.capability.name}\n"
+                f"修改前：{claim_text(item.before)}\n修改后：{claim_text(item.after.after)}\n"
+                f"依据标题：{'、'.join(e.title for e in item.evidence) or '暂无'}\n"
+                + ("仅 Jira 来源（最多暂定）\n" if item.jira_only else "")
+                + f"决定：{LABELS[decisions[item.after.id].decision]}\n原因：{decisions[item.after.id].reason or '未填写'}"
+                for index, item in enumerate(message.items)
+            )
+            + "\n详情在网页审批页查看"
+        )
+        if len(text) > 12000:
+            return "审批内容较长，请在网页审批页查看并决定。", []
+        return text, [a.model_dump(mode="json") for a in message.actions]
     if isinstance(message, s.QuestionCard):
         return (
             f"{'待确认问题' if message.status == 'open' else '问题已处理'}：{message.question}\n原因：{message.reason}",
