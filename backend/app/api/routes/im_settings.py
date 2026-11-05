@@ -43,7 +43,7 @@ def put_im_setting(
 
 
 @router.post("/{platform}/test", response_model=ImConnectionTest)
-def test_im_connection(
+async def test_im_connection(
     platform: Platform, db: SessionDep, principal: OrgAdminDep
 ) -> ImConnectionTest:
-    return test_connection(db, principal.org_id, platform)
+    return await test_connection(db, principal.org_id, platform)

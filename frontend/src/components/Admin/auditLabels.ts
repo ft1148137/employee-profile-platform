@@ -43,6 +43,9 @@ export const auditLabels: Record<string, string> = {
   "drafting_settings.updated": "修改自动起草设置",
   "bot_settings.updated": "修改机器人设置",
   "im_settings.updated": "修改 IM 入口设置",
+  "im_binding.code_created": "生成 IM 绑定码",
+  "im_binding.bound": "绑定 IM 账号",
+  "im_binding.unbound": "解除 IM 绑定",
   "employee.auto_draft_changed": "修改本人自动起草选择",
   "account.email_changed": "修改账号邮箱",
   "roster.imported": "导入员工名单",
@@ -54,6 +57,7 @@ export const actorLabels: Record<string, string> = {
   cli: "命令行",
 }
 export const targetLabels: Record<string, string> = {
+  im_binding: "IM 账号绑定",
   oauth_client: "AI 助手客户端",
   oauth_grant: "AI 助手授权",
   mcp_tool: "员工工具",
