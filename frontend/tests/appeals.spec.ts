@@ -155,7 +155,9 @@ test("employee appeals and admin permits resubmission", async ({
   await page.getByLabel("申诉原因").fill("本人希望补充独立完成的合成依据")
   await page.getByRole("button", { name: "提交申诉" }).click()
   await expect(page.getByText("申诉：待处理")).toBeVisible()
-  await expect(page.getByRole("tabpanel")).toContainText("存在争议")
+  await expect(
+    page.getByRole("article", { name: "合成能力", exact: true }),
+  ).toContainText("存在争议")
   await expectChineseCopy(page)
   await enter(admin.access_token, "/admin/appeals")
   await expect(
@@ -179,7 +181,9 @@ test("employee appeals and admin permits resubmission", async ({
   await expect(
     page.getByText("申诉：允许重新提交 · 请在新草稿补充合成依据"),
   ).toBeVisible()
-  await expect(page.getByRole("tabpanel")).not.toContainText("存在争议")
+  await expect(
+    page.getByRole("article", { name: "合成能力", exact: true }),
+  ).not.toContainText("存在争议")
   await page.getByRole("button", { name: "继续修改" }).click()
   await page
     .getByRole("dialog")
