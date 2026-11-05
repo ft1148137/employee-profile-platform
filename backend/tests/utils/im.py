@@ -66,6 +66,7 @@ def telegram_server(monkeypatch: pytest.MonkeyPatch) -> Generator[dict]:
     def connect(client: httpx.AsyncClient, **kwargs: object) -> None:
         base = str(kwargs.pop("base_url"))
         assert base.startswith("https://api.telegram.org/bot")
+        assert kwargs["timeout"] == 40
         original(
             client,
             base_url=base.replace(

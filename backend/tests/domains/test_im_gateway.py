@@ -551,6 +551,26 @@ def test_telegram_webhook_chunks_rate_limit_and_normalization(
     asyncio.run(run())
 
 
+def test_connection_deadline_includes_platform_retry_delay(
+    demo: tuple, db: Session, telegram_server: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = principal(db, demo[1]["E02"].org_id, demo[1]["E02"].id)
+    enable(db, p)
+    original = asyncio.timeout
+    deadlines = []
+
+    def short_deadline(seconds: float) -> asyncio.Timeout:
+        deadlines.append(seconds)
+        return original(0.01)
+
+    monkeypatch.setattr(telegram.asyncio, "timeout", short_deadline)
+    telegram_server["responses"]["getMe"] = (429, b'{"parameters":{"retry_after":60}}')
+
+    result = asyncio.run(im_settings.test_connection(db, p.org_id, "telegram"))
+    assert not result.ok and result.message == "连接超时，请检查网络"
+    assert deadlines == [10]
+
+
 def test_supervisor_changes_and_duplicate_bot(
     demo: tuple,
     db: Session,

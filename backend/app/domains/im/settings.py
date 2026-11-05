@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 from uuid import UUID
@@ -124,8 +125,11 @@ async def test_connection(
     adapter = None
     try:
         adapter = Telegram(org_id, json.loads(decrypt_secret(row.credentials)))
-        await adapter.test_connection()
+        async with asyncio.timeout(10):
+            await adapter.test_connection()
         return ImConnectionTest(ok=True, message="连接成功")
+    except TimeoutError:
+        return ImConnectionTest(ok=False, message="连接超时，请检查网络")
     except SecretUnavailable:
         return ImConnectionTest(ok=False, message="保存的密钥已失效，请重新填写")
     except ImError as error:
