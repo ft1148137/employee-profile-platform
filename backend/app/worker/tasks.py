@@ -10,6 +10,7 @@ from app.core.db import engine
 from app.domains.base import utc_now
 from app.domains.bot.store import cleanup_messages
 from app.domains.drafting.service import run_drafting
+from app.domains.inbox.reminders import dispatch_due_reminders
 from app.domains.source.schedule import dispatch_due_syncs
 from app.domains.source.sync import execute_sync
 from app.worker.app import app
@@ -64,3 +65,10 @@ def sync_run(org_id: str, run_id: str, initial_attempts: int = 0) -> None:
 def dispatch_scheduled(timestamp: int) -> None:  # noqa: ARG001
     with Session(engine) as session:
         dispatch_due_syncs(session, utc_now())
+
+
+@app.periodic(cron="0 * * * *")
+@app.task(name="profiles.dispatch_reminders")
+def dispatch_reminders(timestamp: int) -> None:  # noqa: ARG001
+    with Session(engine) as session:
+        dispatch_due_reminders(session, utc_now())

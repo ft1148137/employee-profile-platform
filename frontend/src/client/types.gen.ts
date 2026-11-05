@@ -2280,6 +2280,10 @@ export type ProfileItem = {
     status: AssessmentStatus;
     claim: ClaimPublic | null;
     /**
+     * Evidence Stale
+     */
+    evidence_stale?: boolean;
+    /**
      * Retired
      */
     retired?: boolean;
@@ -3252,6 +3256,42 @@ export type UpdatePassword = {
      * New Password
      */
     new_password: string;
+};
+
+/**
+ * UpdateSettingsInput
+ */
+export type UpdateSettingsInput = {
+    /**
+     * Reminder Schedule
+     */
+    reminder_schedule?: 'quarterly' | 'yearly' | 'off';
+    /**
+     * Stale After Months
+     */
+    stale_after_months?: number;
+};
+
+/**
+ * UpdateSettingsPublic
+ */
+export type UpdateSettingsPublic = {
+    /**
+     * Reminder Schedule
+     */
+    reminder_schedule?: 'quarterly' | 'yearly' | 'off';
+    /**
+     * Stale After Months
+     */
+    stale_after_months?: number;
+    /**
+     * Next Reminder At
+     */
+    next_reminder_at: string | null;
+    /**
+     * Updated At
+     */
+    updated_at: string | null;
 };
 
 /**
@@ -5570,6 +5610,66 @@ export type draftingSettingsPutAutoDraftResponses = {
 };
 
 export type draftingSettingsPutAutoDraftResponse = draftingSettingsPutAutoDraftResponses[keyof draftingSettingsPutAutoDraftResponses];
+
+export type draftingSettingsGetUpdateSettingsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/update-settings';
+};
+
+export type draftingSettingsGetUpdateSettingsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type draftingSettingsGetUpdateSettingsError = draftingSettingsGetUpdateSettingsErrors[keyof draftingSettingsGetUpdateSettingsErrors];
+
+export type draftingSettingsGetUpdateSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: UpdateSettingsPublic;
+};
+
+export type draftingSettingsGetUpdateSettingsResponse = draftingSettingsGetUpdateSettingsResponses[keyof draftingSettingsGetUpdateSettingsResponses];
+
+export type draftingSettingsPutUpdateSettingsData = {
+    body: UpdateSettingsInput;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/update-settings';
+};
+
+export type draftingSettingsPutUpdateSettingsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type draftingSettingsPutUpdateSettingsError = draftingSettingsPutUpdateSettingsErrors[keyof draftingSettingsPutUpdateSettingsErrors];
+
+export type draftingSettingsPutUpdateSettingsResponses = {
+    /**
+     * Successful Response
+     */
+    200: UpdateSettingsPublic;
+};
+
+export type draftingSettingsPutUpdateSettingsResponse = draftingSettingsPutUpdateSettingsResponses[keyof draftingSettingsPutUpdateSettingsResponses];
 
 export type employeesReadEmployeesData = {
     body?: never;

@@ -40,6 +40,14 @@ class QuestionStatus(StrEnum):
     DISMISSED = "dismissed"
 
 
+class QuestionKind(StrEnum):
+    CONFLICT = "conflict"
+    STALE = "stale"
+    SINGLE_SOURCE = "single_source"
+    RECORD = "record"
+    GENERAL = "general"
+
+
 class PendingQuestion(TenantRecord, table=True):
     __tablename__ = "pending_question"
     __table_args__ = (
@@ -47,9 +55,16 @@ class PendingQuestion(TenantRecord, table=True):
         tenant_fk("target_employee_id", "employee"),
         tenant_fk("capability_definition_id", "capability_definition"),
         tenant_fk("answer_evidence_id", "evidence"),
+        tenant_fk("claim_id", "profile_claim"),
         Index("ix_question_target", "org_id", "target_employee_id", "created_at"),
     )
     target_employee_id: UUID
+    kind: QuestionKind = Field(
+        default=QuestionKind.GENERAL,
+        sa_type=enum_type(QuestionKind),
+        sa_column_kwargs={"server_default": "general"},
+    )
+    claim_id: UUID | None = None
     capability_definition_id: UUID | None = None
     question: str
     reason: str

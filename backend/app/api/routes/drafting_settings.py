@@ -12,6 +12,12 @@ from app.domains.drafting.settings import (
     save_auto_draft,
     save_settings,
 )
+from app.domains.drafting.update_settings import (
+    UpdateSettingsInput,
+    UpdateSettingsPublic,
+    read_update_settings,
+    save_update_settings,
+)
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["drafting-settings"])
 
@@ -40,3 +46,17 @@ def put_auto_draft(
     body: AutoDraftUpdate, session: SessionDep, principal: OrgPrincipalDep
 ) -> AutoDraftPublic:
     return save_auto_draft(session, principal, body)
+
+
+@router.get("/update-settings", response_model=UpdateSettingsPublic)
+def get_update_settings(
+    session: SessionDep, principal: OrgAdminDep
+) -> UpdateSettingsPublic:
+    return read_update_settings(session, principal.org_id)
+
+
+@router.put("/update-settings", response_model=UpdateSettingsPublic)
+def put_update_settings(
+    body: UpdateSettingsInput, session: SessionDep, principal: OrgAdminDep
+) -> UpdateSettingsPublic:
+    return save_update_settings(session, principal, body)

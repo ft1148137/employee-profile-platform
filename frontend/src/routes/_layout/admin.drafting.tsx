@@ -9,6 +9,7 @@ import {
   OrgsService,
 } from "@/client"
 import { departmentOptions } from "@/components/Admin/departments"
+import { UpdateSettings } from "@/components/Admin/UpdateSettings"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
@@ -126,6 +127,7 @@ function DraftingSettings({ orgId }: { orgId: string }) {
         目前共有 {settings.data?.excluded_employee_count} 名员工不自动起草，其中{" "}
         {settings.data?.opted_out_count} 人是本人选择。
       </p>
+      <UpdateSettings orgId={orgId} />
       <form
         className="space-y-6"
         onSubmit={(e) => {
