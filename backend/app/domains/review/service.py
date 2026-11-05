@@ -29,7 +29,7 @@ from app.domains.evidence.models import EvidenceKind, Visibility
 from app.domains.evidence.service import append_evidence, read_evidence
 from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
-from app.domains.org.models import Department, Employee, Organization, OrgMembership
+from app.domains.org.models import Department, Employee, Organization
 from app.domains.org.service import visible_employee
 from app.domains.profile.models import EvidenceRelation
 from app.domains.profile.schemas import ClaimPublic
@@ -232,16 +232,10 @@ def decide(
                     }
                 ]
             )
-    member = session.exec(
-        select(OrgMembership).where(
-            OrgMembership.org_id == principal.org_id,
-            OrgMembership.user_id == principal.user_id,
-        )
-    ).one()
     decision = ReviewDecision(
         org_id=principal.org_id,
         request_id=request.id,
-        reviewer_membership_id=member.id,
+        reviewer_user_id=principal.user_id,
         via=via,
         client_name=client_name,
         comment=comment,

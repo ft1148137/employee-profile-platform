@@ -15,7 +15,6 @@ from app.domains.change_request.models import (
     ReviewDecision,
 )
 from app.domains.evidence.models import Evidence
-from app.domains.org.models import OrgMembership
 from app.domains.profile.models import (
     AssessmentStatus,
     ClaimEvidence,
@@ -83,15 +82,11 @@ def publish(
     schema = get_schema(session, org_id)
     definitions = {c.key: c for c in list_capabilities(session, org_id, schema.id)}
     current = current_claims(session, org_id, subject)
-    member = session.exec(
-        select(OrgMembership).where(
-            OrgMembership.org_id == org_id,
-            OrgMembership.id == decision.reviewer_membership_id,
-        )
-    ).one_or_none()
     publisher: dict[str, JsonValue] = {
-        "actor_type": "user" if member else "system_worker",
-        "user_id": str(member.user_id) if member else None,
+        "actor_type": "user" if decision.reviewer_user_id else "system_worker",
+        "user_id": str(decision.reviewer_user_id)
+        if decision.reviewer_user_id
+        else None,
         "via": decision.via.value,
         "request_id": str(request.id),
         "decision_id": str(decision.id),

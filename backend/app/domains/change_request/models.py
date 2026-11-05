@@ -3,7 +3,15 @@ from datetime import datetime
 from enum import StrEnum
 
 from pydantic import JsonValue
-from sqlalchemy import CheckConstraint, Column, DateTime, Index, UniqueConstraint, text
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKeyConstraint,
+    Index,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
@@ -64,16 +72,22 @@ class ReviewDecision(TenantRecord, table=True):
     __table_args__ = (
         UniqueConstraint("org_id", "id"),
         tenant_fk("request_id", "profile_change_request"),
-        tenant_fk("reviewer_membership_id", "org_membership"),
-        tenant_fk("acting_for_membership_id", "org_membership"),
+        ForeignKeyConstraint(
+            ["org_id", "reviewer_user_id"],
+            ["org_membership.org_id", "org_membership.user_id"],
+        ),
+        ForeignKeyConstraint(
+            ["org_id", "acting_for_user_id"],
+            ["org_membership.org_id", "org_membership.user_id"],
+        ),
         CheckConstraint(
-            "(via IN ('policy', 'sync')) = (reviewer_membership_id IS NULL)",
+            "(via IN ('policy', 'sync')) = (reviewer_user_id IS NULL)",
             name="review_decision_actor",
         ),
     )
     request_id: uuid.UUID
-    reviewer_membership_id: uuid.UUID | None = None
-    acting_for_membership_id: uuid.UUID | None = None
+    reviewer_user_id: uuid.UUID | None = None
+    acting_for_user_id: uuid.UUID | None = None
     via: ReviewVia = Field(sa_type=enum_type(ReviewVia))
     client_name: str | None = None
     comment: str | None = None

@@ -1,6 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 import yaml
@@ -394,7 +394,7 @@ def test_dictionary_notification_migration(migration_engine: Engine) -> None:
         assert connection.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalars().all() == ["a91e001bc001"]
-    from app.domains.inbox.models import InboxItem, InboxKind
+    from app.domains.inbox.models import InboxKind
     from app.domains.org.models import Employee, Organization
 
     with Session(migration_engine) as session:
@@ -407,13 +407,17 @@ def test_dictionary_notification_migration(migration_engine: Engine) -> None:
         session.add(employee)
         session.flush()
         for kind in (InboxKind.DICTIONARY_CHANGED, InboxKind.SUBMITTED):
-            session.add(
-                InboxItem(
-                    org_id=employee.org_id,
-                    recipient_employee_id=employee.id,
-                    kind=kind,
-                    message="合成通知",
-                )
+            session.execute(
+                text(
+                    "INSERT INTO inbox_item (id,org_id,created_at,recipient_employee_id,kind,message) "
+                    "VALUES (:id,:org,now(),:employee,:kind,'合成通知')"
+                ),
+                {
+                    "id": uuid4(),
+                    "org": employee.org_id,
+                    "employee": employee.id,
+                    "kind": kind.value,
+                },
             )
         session.commit()
     migrate(migration_engine, "downgrade", "a89e001bc001")

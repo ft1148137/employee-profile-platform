@@ -2,7 +2,13 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from sqlalchemy import DateTime, Index, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKeyConstraint,
+    Index,
+    UniqueConstraint,
+)
 from sqlmodel import Field
 
 from app.domains.base import TenantRecord, enum_type, tenant_fk
@@ -23,11 +29,21 @@ class InboxItem(TenantRecord, table=True):
     __table_args__ = (
         UniqueConstraint("org_id", "id"),
         tenant_fk("recipient_employee_id", "employee"),
+        ForeignKeyConstraint(
+            ["org_id", "recipient_user_id"],
+            ["org_membership.org_id", "org_membership.user_id"],
+        ),
         tenant_fk("request_id", "profile_change_request"),
         tenant_fk("question_id", "pending_question"),
         Index("ix_inbox_recipient", "org_id", "recipient_employee_id", "created_at"),
+        Index("ix_inbox_user", "org_id", "recipient_user_id", "created_at"),
+        CheckConstraint(
+            "num_nonnulls(recipient_employee_id, recipient_user_id) = 1",
+            name="inbox_one_recipient",
+        ),
     )
-    recipient_employee_id: UUID
+    recipient_employee_id: UUID | None = None
+    recipient_user_id: UUID | None = None
     kind: InboxKind = Field(sa_type=enum_type(InboxKind))
     request_id: UUID | None = None
     question_id: UUID | None = None

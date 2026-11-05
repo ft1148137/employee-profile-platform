@@ -13,10 +13,6 @@ def review_access(
         and principal.user_id is not None
         and principal.employee_id != request.subject_employee_id
         and request.status == RequestStatus.PENDING_REVIEW
-        and any(
-            m.user_id == principal.user_id
-            for m in reviewers_for(
-                session, principal.org_id, request.subject_employee_id
-            )
-        )
+        and principal.user_id
+        in reviewers_for(session, principal.org_id, request.subject_employee_id)
     )
