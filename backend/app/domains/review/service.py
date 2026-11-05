@@ -30,6 +30,7 @@ from app.domains.change_request.schemas import ChangeItemPublic
 from app.domains.change_request.service import transition
 from app.domains.evidence.models import EvidenceKind, Visibility
 from app.domains.evidence.service import (
+    EvidenceNotFound,
     append_evidence,
     evidence_access,
     evidence_details,
@@ -155,12 +156,15 @@ def get_review(
         .order_by(col(ChangeItem.position))
     ).all()
     evidence_by_item = {row.id: item_evidence(session, row) for row, _ in rows}
+    evidence_ids = {id_ for evidence in evidence_by_item.values() for id_ in evidence}
     access = evidence_access(
         session,
         principal,
-        {id_ for evidence in evidence_by_item.values() for id_ in evidence},
+        evidence_ids,
         review_permissions={request.id: True},
     )
+    if evidence_ids != set(access):
+        raise EvidenceNotFound()
     details = evidence_details(session, principal, access)
     result = []
     for row, capability in rows:

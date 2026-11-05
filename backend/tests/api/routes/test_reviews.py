@@ -18,6 +18,7 @@ from app.domains.capability.service import get_schema, list_capabilities, save_v
 from app.domains.change_request import employee
 from app.domains.change_request.models import (
     ChangeItem,
+    ChangeItemEvidence,
     ChangeOp,
     ItemDecision,
     ProfileChangeRequest,
@@ -38,7 +39,7 @@ from app.domains.org.models import (
     Role,
     RoleGrant,
 )
-from app.domains.profile.models import ClaimEvidence, ProfileVersion
+from app.domains.profile.models import ClaimEvidence, EvidenceRelation, ProfileVersion
 from app.domains.review import service
 from app.domains.review.publish import current_claims, publish
 from app.domains.review.routing import reviewers_for
@@ -1035,3 +1036,32 @@ def test_publish_missing_target_raises_conflict(
     with pytest.raises(employee.RequestConflict, match="目标判断不存在"):
         publish(db, db.get(ProfileChangeRequest, request.id), [item], decision)
     db.rollback()
+
+
+def test_review_batch_does_not_bypass_employee_scope(demo: tuple, db: Session) -> None:
+    _, request = pending(db, demo)
+    foreign_subject = demo[1]["E04"]
+    evidence, _ = append_evidence(
+        db,
+        org_id=foreign_subject.org_id,
+        subject_employee_id=foreign_subject.id,
+        kind=EvidenceKind.WORK_RECORD,
+        source="synthetic",
+        source_ref="outside-scope",
+        title="合成范围外证据",
+        content={"synthetic": True},
+        visibility=Visibility.RESTRICTED,
+        provenance={},
+    )
+    db.add(
+        ChangeItemEvidence(
+            org_id=foreign_subject.org_id,
+            item_id=request.items[0].id,
+            evidence_id=evidence.id,
+            relation=EvidenceRelation.SUPPORTS,
+        )
+    )
+    db.commit()
+    with pytest.raises(HTTPException) as error:
+        service.get_review(manager(db, demo), db, request.id)
+    assert error.value.status_code == 404
