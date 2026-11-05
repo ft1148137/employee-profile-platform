@@ -152,6 +152,8 @@ class Wecom:
                     ):
                         continue
                     self.callbacks[req_id] = detail["task_id"]
+                    # A previous model turn can still be running; acknowledge within five seconds.
+                    await self.answer_callback(req_id)
                 self.events.put_nowait(
                     Event(
                         self.org_id,
@@ -290,18 +292,23 @@ class Wecom:
 
     async def answer_callback(self, callback_id: str) -> None:
         task_id = self.callbacks.pop(callback_id, None)
-        if task_id:
-            await self._request(
-                "aibot_respond_update_msg",
-                {
-                    "response_type": "update_template_card",
-                    "template_card": {
-                        "card_type": "text_notice",
-                        "task_id": task_id,
-                        "main_title": {"title": "请在下方查看处理结果"},
-                    },
-                },
-                callback_id,
+        if task_id and self.socket:
+            # The reader cannot wait for its own response; the later gateway call is a no-op.
+            await self.socket.send(
+                json.dumps(
+                    {
+                        "cmd": "aibot_respond_update_msg",
+                        "headers": {"req_id": callback_id},
+                        "body": {
+                            "response_type": "update_template_card",
+                            "template_card": {
+                                "card_type": "text_notice",
+                                "task_id": task_id,
+                                "main_title": {"title": "请在下方查看处理结果"},
+                            },
+                        },
+                    }
+                )
             )
 
     async def clear_buttons(self, external_chat_id: str, message_id: str) -> None:

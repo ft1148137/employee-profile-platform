@@ -10,6 +10,7 @@ from uuid import UUID, uuid4
 import httpx
 import pytest
 import sentry_sdk
+from fastapi.testclient import TestClient
 from sqlalchemy import Engine, inspect
 from sqlmodel import Session, col, select
 from websockets.asyncio.server import ServerConnection, serve
@@ -18,15 +19,17 @@ from app.core.db import engine
 from app.core.secrets import encrypt_secret
 from app.domains.base import utc_now
 from app.domains.bot import core
-from app.domains.change_request.models import ProfileChangeRequest
-from app.domains.im import binding, gateway, settings
+from app.domains.bot import schemas as s
+from app.domains.change_request.models import ProfileChangeRequest, ReviewDecision
+from app.domains.im import actions, binding, gateway, settings
 from app.domains.im.adapters import wecom
 from app.domains.im.adapters.base import Adapter, Event, ImError
 from app.domains.im.models import ImAction, ImBinding, ImSetting
-from app.domains.org.models import Employee, Organization, OrgMembership
+from app.domains.org.models import Employee, OrgMembership
 from app.models import User
 from tests.api.routes.test_employee_requests import payload
 from tests.domains.test_bot_core import enable as enable_model
+from tests.domains.test_bot_reviews import prepared
 from tests.domains.test_im_gateway import principal
 from tests.utils.migrations import migrate
 from tests.utils.pi import PiHarness
@@ -41,7 +44,12 @@ CREDS = {
 
 @asynccontextmanager
 async def server(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[dict[str, Any]]:
-    state = {"requests": [], "code": 0, "ping": asyncio.Event()}
+    state = {
+        "requests": [],
+        "code": 0,
+        "ping": asyncio.Event(),
+        "callback_ack": asyncio.Event(),
+    }
 
     async def handle(socket: ServerConnection) -> None:
         state["socket"] = socket
@@ -59,6 +67,8 @@ async def server(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[dict[str, Any
             )
             if frame["cmd"] == "ping":
                 state["ping"].set()
+            if frame["cmd"] == "aibot_respond_update_msg":
+                state["callback_ack"].set()
 
     original = wecom.connect
     async with serve(
@@ -154,6 +164,9 @@ def test_conversation(
                             }
                         )
                     )
+                    if action:
+                        await asyncio.wait_for(fake["callback_ack"].wait(), 1)
+                        fake["callback_ack"].clear()
                     async for event in adapter.poll():
                         await g.handle(
                             event, CREDS["bot_id"], setting.credentials, adapter
@@ -288,7 +301,7 @@ def test_connection_and_privacy(
 @pytest.mark.parametrize(
     "case", ["match", "disabled", "duplicate", "foreign", "inactive", "conflict"]
 )
-def test_email_binding(demo: tuple, db: Session, case: str) -> None:
+def test_email_binding(demo: tuple, db: Session, client: TestClient, case: str) -> None:
     p, setting = setup(db, demo)
     person = demo[1]["E02"]
     email = person.work_email.upper()
@@ -320,10 +333,13 @@ def test_email_binding(demo: tuple, db: Session, case: str) -> None:
             binding.create_code(db, p).code,
         )
     db.add(setting)
+    foreign_user = client.get("/api/v1/users/me", headers=demo[2]["foreign"]).json()
     foreign = db.exec(
-        select(Organization).where(Organization.name == "Synthetic foreign tenant")
+        select(OrgMembership).where(OrgMembership.user_id == UUID(foreign_user["id"]))
     ).one()
-    db.add(Employee(org_id=foreign.id, display_name="合成外企业员工", work_email=email))
+    db.add(
+        Employee(org_id=foreign.org_id, display_name="合成外企业员工", work_email=email)
+    )
     db.commit()
     try:
         assert binding.bind_email(
@@ -350,7 +366,12 @@ def test_email_binding(demo: tuple, db: Session, case: str) -> None:
         )
 
 
-def test_directory_fallback_and_privacy(caplog: pytest.LogCaptureFixture) -> None:
+@pytest.mark.parametrize(
+    "case", ["email", "missing", "conversion_failure", "permission", "timeout"]
+)
+def test_directory_fallback_and_privacy(
+    caplog: pytest.LogCaptureFixture, case: str
+) -> None:
     caplog.set_level(logging.DEBUG)
 
     async def run() -> None:
@@ -359,9 +380,18 @@ def test_directory_fallback_and_privacy(caplog: pytest.LogCaptureFixture) -> Non
 
         def respond(request: httpx.Request) -> httpx.Response:
             calls.append(request)
+            logging.getLogger("httpcore.http11").debug(
+                "private-upstream-body private-user"
+            )
             if request.url.path.endswith("gettoken"):
+                if case == "timeout":
+                    raise httpx.ReadTimeout("private-upstream-body")
+                if case == "permission":
+                    return httpx.Response(403, json={"errmsg": "private-upstream-body"})
                 return httpx.Response(200, json={"access_token": "private-token"})
             if request.url.path.endswith("openuserid_to_userid"):
+                if case == "conversion_failure":
+                    return httpx.Response(200, json={"errcode": 48009})
                 return httpx.Response(
                     200,
                     json={
@@ -371,23 +401,45 @@ def test_directory_fallback_and_privacy(caplog: pytest.LogCaptureFixture) -> Non
             if request.url.params.get("userid") == "encrypted":
                 return httpx.Response(200, json={"errcode": 60111})
             return httpx.Response(
-                200, json={"errcode": 0, "biz_mail": "work@synthetic.example"}
+                200,
+                json={
+                    "errcode": 0,
+                    "biz_mail"
+                    if case == "email"
+                    else "email": "work@synthetic.example",
+                },
             )
 
         await adapter.client.aclose()
         adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
         try:
-            assert (
-                await adapter.enterprise_email("encrypted") == "work@synthetic.example"
+            assert await adapter.enterprise_email("encrypted") == (
+                "work@synthetic.example" if case == "email" else None
             )
-            assert len(calls) == 4
+            assert len(calls) == (
+                4
+                if case in ("email", "missing")
+                else 3
+                if case == "conversion_failure"
+                else 1
+            )
             adapter.credentials = {"bot_id": "bot", "secret": "secret"}
             assert await adapter.enterprise_email("user") is None
         finally:
             await adapter.close()
 
     asyncio.run(run())
-    assert "private-token" not in caplog.text and "private-contact" not in caplog.text
+    assert all(
+        value not in caplog.text
+        for value in (
+            "private-token",
+            "private-contact",
+            "private-user",
+            "private-upstream-body",
+            "encrypted",
+            "work@synthetic.example",
+        )
+    )
 
 
 def test_migration(migration_engine: Engine) -> None:
@@ -441,3 +493,92 @@ def test_gateway_heartbeat_is_throttled(
     assert snapshots == [initial, initial, initial, initial + timedelta(seconds=60)]
     db.refresh(setting)
     assert setting.connection_checked_at is None
+
+
+def test_review_card_over_wecom(
+    demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, setting = setup(db, demo)
+    _, request, p, session, card, _ = prepared(db, demo)
+    session.channel, session.bot_identity = "wecom", CREDS["bot_id"]
+    db.add(session)
+    core._save(db, session, [card])
+    db.commit()
+    assert binding.bind(
+        db,
+        p.org_id,
+        "wecom",
+        "100",
+        "100",
+        CREDS["bot_id"],
+        binding.create_code(db, p).code,
+    )
+
+    async def run() -> None:
+        async with server(monkeypatch) as fake:
+            adapter = wecom.Wecom(p.org_id, CREDS)
+            try:
+                await adapter.test_connection()
+                incoming = Event(p.org_id, "wecom", uuid4().hex, "100", "100", True)
+                await actions.deliver(
+                    db,
+                    p,
+                    incoming,
+                    CREDS["bot_id"],
+                    actions.Reply(session.id, s.TurnResponse(messages=[card])),
+                    adapter,
+                )
+                outgoing = json.dumps(fake["requests"], ensure_ascii=False)
+                assert (
+                    "审批决定复述" in outgoing
+                    and "确认决定" in outgoing
+                    and "详情在网页审批页查看" in outgoing
+                )
+                row = db.exec(
+                    select(ImAction).where(
+                        ImAction.org_id == p.org_id,
+                        ImAction.action["action"].astext == "confirm_review",
+                    )
+                ).one()
+                assert not db.exec(
+                    select(ReviewDecision).where(ReviewDecision.org_id == p.org_id)
+                ).all()
+                body = {
+                    "aibotid": CREDS["bot_id"],
+                    "msgid": uuid4().hex,
+                    "chattype": "single",
+                    "from": {"userid": "100"},
+                    "msgtype": "event",
+                    "event": {
+                        "eventtype": "template_card_event",
+                        "task_id": row.message_id,
+                        "event_key": row.token,
+                    },
+                }
+                await fake["socket"].send(
+                    json.dumps(
+                        {
+                            "cmd": "aibot_event_callback",
+                            "headers": {"req_id": uuid4().hex},
+                            "body": body,
+                        }
+                    )
+                )
+                async for event in adapter.poll():
+                    await gateway.Gateway(engine).handle(
+                        event, CREDS["bot_id"], setting.credentials, adapter
+                    )
+                decision = db.exec(
+                    select(ReviewDecision).where(ReviewDecision.org_id == p.org_id)
+                ).one()
+                assert (decision.via, decision.client_name) == ("im", "wecom")
+                assert (
+                    db.get(
+                        ProfileChangeRequest, request.id, populate_existing=True
+                    ).status
+                    == "approved"
+                )
+            finally:
+                await adapter.close()
+
+    asyncio.run(run())
