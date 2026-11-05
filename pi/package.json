@@ -2,13 +2,14 @@
   "name": "employee-profile-pi-research",
   "private": true,
   "type": "module",
+  "engines": { "node": ">=22.19.0" },
   "scripts": {
     "test": "node --test sample.test.mjs server.test.mjs",
     "demo": "python3 demo.py"
   },
   "dependencies": {
-    "@mariozechner/pi-agent-core": "0.73.1",
-    "@mariozechner/pi-ai": "0.73.1",
+    "@earendil-works/pi-agent-core": "1.5.0",
+    "@earendil-works/pi-ai": "1.5.0",
     "undici": "7.30.1"
   }
 }

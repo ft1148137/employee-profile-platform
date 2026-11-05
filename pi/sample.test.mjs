@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { streamSimple, getModel } from '@mariozechner/pi-ai';
+import { streamSimple, getModel } from './runtime.mjs';
 import { fakeModel, makeAgent } from './sample.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -12,6 +12,13 @@ test('all locked packages have integrity hashes and permissive licenses; no codi
   const allowed = new Set(['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', '0BSD']);
   for (const [path, pkg] of Object.entries(lock.packages)) {
     if (!path) continue;
+    // Audited public-domain dependency of the new Anthropic SDK; keep this exception pinned.
+    if (path === 'node_modules/fast-sha256') {
+      assert.equal(pkg.version, '1.3.0');
+      assert.equal(pkg.license, 'Unlicense');
+      assert.equal(pkg.integrity, 'sha512-n11RGP/lrWEFI/bWdygLxhI+pVeo1ZYIVwvvPkW7azl/rOy+F3HYRZ2K5zeE9mmkhQppyv9sQFx0JM9UabnpPQ==');
+      continue;
+    }
     assert.ok(pkg.integrity && allowed.has(pkg.license), path);
     assert.equal(path.includes('pi-coding-agent'), false);
   }
@@ -73,7 +80,7 @@ test('Codex accepts access token only, never refreshes; quota metadata is lossy'
       { status: 400, headers: { 'retry-after': '60' } });
   });
   let response;
-  const result = await streamSimple(getModel('openai-codex', 'gpt-5.4'),
+  const result = await streamSimple(getModel('openai-codex', 'gpt-6.1-sol'),
     { messages: [{ role: 'user', content: 'synthetic', timestamp: 0 }] },
     { apiKey: token, transport: 'sse', onResponse: value => { response = value; } }).result();
   assert.equal(seen.length, 1);

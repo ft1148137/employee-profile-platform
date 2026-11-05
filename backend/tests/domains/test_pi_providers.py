@@ -17,15 +17,27 @@ from tests.utils.pi import PiHarness
     "provider,model,effort,path,field",
     [
         ("openai", "gpt-5", "high", "/v1/responses", "reasoning"),
-        ("anthropic", "claude-3-7-sonnet-20250219", "high", "/v1/messages", "thinking"),
-        ("deepseek", "deepseek-v4-flash", "high", "/v1/chat/completions", "thinking"),
+        (
+            "anthropic",
+            "claude-sonnet-4-6",
+            "high",
+            "/v1/messages?beta=true",
+            "thinking",
+        ),
+        ("deepseek", "deepseek-flash", "high", "/v1/chat/completions", "thinking"),
         ("qwen", "synthetic", "high", "/v1/chat/completions", "reasoning_effort"),
-        ("moonshotai", "kimi-k2-thinking", "off", "/v1/chat/completions", None),
-        ("moonshotai-cn", "kimi-k2-thinking", "off", "/v1/chat/completions", None),
-        ("kimi-coding", "kimi-for-coding", "high", "/v1/messages", "thinking"),
+        ("moonshotai", "kimi-k2.6", "off", "/v1/chat/completions", None),
+        ("moonshotai-cn", "kimi-k2.6", "off", "/v1/chat/completions", None),
+        (
+            "kimi-coding",
+            "kimi-for-coding",
+            "high",
+            "/v1/chat/completions",
+            "reasoning_effort",
+        ),
         (
             "openrouter",
-            "alibaba/tongyi-deepresearch-30b-a3b",
+            "deepseek/deepseek-r1-0528",
             "high",
             "/v1/chat/completions",
             "reasoning",
@@ -56,7 +68,7 @@ def test_provider_transport(
             (
                 CLOUD_PROVIDERS[provider][0],
                 pi_service.config.baseUrl.removesuffix("/v1")
-                if provider in ("anthropic", "kimi-coding")
+                if provider == "anthropic"
                 else pi_service.config.baseUrl,
             ),
         )

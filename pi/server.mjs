@@ -1,5 +1,5 @@
-import { Agent } from '@mariozechner/pi-agent-core';
-import { getModel, getProviders, getSupportedThinkingLevels, streamSimple } from '@mariozechner/pi-ai';
+import { Agent } from '@earendil-works/pi-agent-core';
+import { getModel, getProviders, getSupportedThinkingLevels, streamSimple } from './runtime.mjs';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { channel } from 'node:diagnostics_channel';
@@ -20,8 +20,9 @@ function catalogModel(provider, id) {
   }
   const model = getModel(provider, id);
   if (!model && provider === 'openai-codex') {
-    const template = getModel(provider, 'gpt-5.4');
-    return { ...template, id, reasoning: true, thinkingLevelMap: { ...template.thinkingLevelMap, xhigh: null } };
+    const template = getModel(provider, 'gpt-6.1-sol');
+    return { ...template, id, reasoning: true, compat: undefined, thinkingLevelMap:
+      { off: 'none', minimal: 'low', low: 'low', medium: 'medium', high: 'high', xhigh: null, max: null } };
   }
   if (!model) throw new Error('bad_request');
   return model;
@@ -29,7 +30,7 @@ function catalogModel(provider, id) {
 function levels(model) {
   if (!model) return thinkingLevels;
   if (model.compat?.supportsReasoningEffort === false) return ['off'];
-  return getSupportedThinkingLevels(model);
+  return getSupportedThinkingLevels(model).filter(level => thinkingLevels.includes(level));
 }
 function resolveModel(m) {
   const catalog = catalogModel(m.provider, m.id);

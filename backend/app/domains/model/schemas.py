@@ -34,7 +34,7 @@ CLOUD_PROVIDERS = {
     "qwen": ("openai-completions", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
     "moonshotai": ("openai-completions", "https://api.moonshot.ai/v1"),
     "moonshotai-cn": ("openai-completions", "https://api.moonshot.cn/v1"),
-    "kimi-coding": ("anthropic-messages", "https://api.kimi.com/coding"),
+    "kimi-coding": ("openai-completions", "https://api.kimi.com/coding/v1"),
     "openrouter": ("openai-completions", "https://openrouter.ai/api/v1"),
 }
 QWEN_URLS = (
