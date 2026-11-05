@@ -4,7 +4,7 @@ from tests.utils.migrations import migrate
 
 
 def test_review_migration_roundtrip(migration_engine: Engine) -> None:
-    migrate(migration_engine, "downgrade", "b119001bc001")
+    migrate(migration_engine, "downgrade", "b118001bc001")
     with migration_engine.connect() as connection:
         inspector = inspect(connection)
         assert "review_decision" not in inspector.get_table_names()

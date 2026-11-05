@@ -18,7 +18,7 @@ from app.domains.change_request.models import (
     ProfileChangeRequest,
     ReviewDecision,
 )
-from app.domains.drafting.models import DraftingSetting
+from app.domains.drafting.models import DraftingSetting, UpdateSetting
 from app.domains.evidence.models import Evidence
 from app.domains.im.models import ImSetting
 from app.domains.inbox.models import InboxItem, PendingQuestion
@@ -57,6 +57,7 @@ ORG_MODELS = (
     ModelSetting,
     SyncRun,
     DraftingSetting,
+    UpdateSetting,
     SourceConnection,
     AuditEvent,
     InboxItem,
