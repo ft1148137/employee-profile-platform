@@ -248,11 +248,19 @@ for (const reviewer of ["manager", "admin"]) {
           }),
         { times: 1 },
       )
+      await page.route(
+        `**/api/v1/orgs/${admin.org_id}/reviews/${draft.id}`,
+        (route) =>
+          route.fulfill({ status: 403, json: { detail: "你不是当前审批人" } }),
+        { times: 1 },
+      )
       await page.getByRole("button", { name: "核对并提交" }).click()
       await page.getByRole("button", { name: "确认提交决定" }).click()
       await expect(page.getByRole("alert")).toContainText(
         "内容已变化，请重新查看",
       )
+      await expect(page.getByLabel("合成能力1的决定")).toHaveCount(0)
+      await page.reload()
       await expect(page.getByLabel("合成能力1的决定")).toHaveValue("")
       await choose()
     }

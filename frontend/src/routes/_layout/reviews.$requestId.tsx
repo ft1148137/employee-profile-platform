@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useOrg } from "@/hooks/useOrg"
+import { useReviews } from "@/hooks/useReviews"
 
 export const Route = createFileRoute("/_layout/reviews/$requestId")({
   component: ReviewPage,
@@ -43,6 +44,8 @@ function ReviewForm({
 }) {
   const path = { org_id: orgId, request_id: requestId }
   const cache = useQueryClient()
+  const reviews = useReviews()
+  const subject = reviews.data?.data.find((request) => request.id === requestId)
   const [decisions, setDecisions] = useState<Record<string, DecisionInput>>({})
   const [comment, setComment] = useState("")
   const [confirm, setConfirm] = useState(false)
@@ -95,7 +98,13 @@ function ReviewForm({
       isAxiosError(query.error) &&
       [403, 404].includes(query.error.response?.status ?? 0)
     )
-      return <p role="alert">404 · 未找到请求或你没有审批权限</p>
+      return (
+        <p role="alert">
+          {stale
+            ? "内容已变化，请重新查看"
+            : "404 · 未找到请求或你没有审批权限"}
+        </p>
+      )
     return <ProfileError retry={() => query.refetch()} />
   }
   const items = query.data.items.filter((item) => !item.after.decision)
@@ -117,6 +126,11 @@ function ReviewForm({
           返回待审批
         </Link>
         <h1 className="text-2xl font-semibold">逐项审批</h1>
+        {subject && (
+          <p>
+            {subject.employee_name} · {subject.department_name ?? "未分配部门"}
+          </p>
+        )}
         <p className="text-muted-foreground">
           依据事实核对改动。意见会存为经理评价，员工本人能看到。
         </p>
