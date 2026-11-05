@@ -48,6 +48,21 @@ def text(db: Session, p: Principal, event: Event, identity: str) -> Reply:
     session = conversation(db, p, event, identity)
     body = s.TurnInput(text=event.text or "")
     if session.pending_question_id:
+        question = read_question(p, db, session.pending_question_id)
+        if question.status != "open":
+            session.pending_question_id = None
+            db.add(session)
+            db.commit()
+            return Reply(
+                session.id,
+                s.TurnResponse(
+                    messages=[
+                        s.TextMessage(
+                            text="该问题已在其他入口处理，请重新发送消息继续对话。"
+                        )
+                    ]
+                ),
+            )
         response = core.act(
             db,
             p,

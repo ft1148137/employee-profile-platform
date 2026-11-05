@@ -21,6 +21,7 @@ from app.domains.im.adapters.base import Event
 from app.domains.im.adapters.telegram import Telegram
 from app.domains.im.models import ImAction
 from app.domains.inbox.models import PendingQuestion
+from app.domains.inbox.service import answer_question
 from tests.api.routes.test_employee_requests import payload
 from tests.domains.test_bot_core import enable as enable_model
 from tests.domains.test_im_gateway import TOKEN, enable, event, principal
@@ -401,3 +402,29 @@ def test_im_action_migration(migration_engine: Engine) -> None:
         assert connection.execute(
             text("SELECT version_num FROM alembic_version")
         ).all() == [("b141001bc001",)]
+
+
+def test_closed_question_does_not_trap_conversation(demo: tuple, db: Session) -> None:
+    p, _ = setup(db, demo)
+    incoming = event(p.org_id, "本人合成回答")
+    session = actions.conversation(db, p, incoming, "12345")
+    question = PendingQuestion(
+        org_id=p.org_id,
+        target_employee_id=p.employee_id,
+        question="还在使用这项能力吗？",
+        reason="定期确认",
+    )
+    db.add(question)
+    db.flush()
+    session.pending_question_id = question.id
+    db.add(session)
+    db.commit()
+    # The web entry answers after the IM answer button was selected.
+    answer_question(p, db, question.id, "已在网页确认的合成回答")
+    db.commit()
+    reply = actions.text(db, p, incoming, "12345")
+    db.refresh(session)
+    assert session.pending_question_id is None
+    assert "其他入口处理" in reply.response.messages[0].text
+    resumed = actions.text(db, p, incoming, "12345")
+    assert "先配置模型" in resumed.response.messages[0].text
