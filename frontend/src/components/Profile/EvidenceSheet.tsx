@@ -95,6 +95,8 @@ export function EvidenceSheet({
 }) {
   const query = useQuery({
     queryKey: ["evidence-detail", orgId, evidenceId],
+    // Review access can expire; discard restricted content when its view closes.
+    gcTime: 0,
     queryFn: async () =>
       (
         await EvidenceService.readEvidence({

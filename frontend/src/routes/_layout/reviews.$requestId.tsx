@@ -54,6 +54,8 @@ function ReviewForm({
   const [evidenceId, setEvidenceId] = useState<string | null>(null)
   const query = useQuery({
     queryKey: ["review", orgId, requestId],
+    // Review access can expire; discard restricted content when its view closes.
+    gcTime: 0,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => (await ReviewsService.getReview({ path })).data,

@@ -228,16 +228,16 @@ for (const reviewer of ["manager", "admin"]) {
       await page.reload()
     }
     await choose()
-    const evidence = page
-      .getByRole("region", { name: "审批：合成能力1" })
-      .getByRole("button", { name: "员工依据说明" })
-    await evidence.click()
-    await expect(page.getByRole("dialog")).toContainText("来源与导入信息")
-    await expect(page.getByRole("dialog")).toContainText("本人确认的合成依据")
-    await page
-      .getByRole("dialog")
-      .getByRole("button", { name: "关闭", exact: true })
-      .click()
+    for (const button of await page
+      .getByRole("button", { name: "员工依据说明", exact: true })
+      .all()) {
+      await button.click()
+      await expect(page.getByRole("dialog")).toContainText("本人确认的合成依据")
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "关闭", exact: true })
+        .click()
+    }
     if (reviewer === "manager") {
       await page.route(
         `**/reviews/${draft.id}/decisions`,
@@ -269,6 +269,46 @@ for (const reviewer of ["manager", "admin"]) {
     await expect(page.getByRole("dialog")).toContainText("请补充独立完成的依据")
     await page.getByRole("button", { name: "确认提交决定" }).click()
     await expect(page.getByRole("status")).toContainText("审批已提交")
+    if (reviewer === "admin") {
+      await page.setViewportSize({ width: 1280, height: 900 })
+      await page.getByRole("link", { name: "员工", exact: true }).click()
+      await page.getByRole("row").filter({ hasText: "合成员工" }).click()
+      await page.getByRole("tab", { name: "证据", exact: true }).click()
+      await page.getByLabel("证据类型").selectOption("self_report")
+      let release = () => {}
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const pattern = `**/api/v1/orgs/${admin.org_id}/evidence/*`
+      await page.route(pattern, async (route) => {
+        await gate
+        await route.continue()
+      })
+      const fetched = page.waitForRequest((url) =>
+        url.url().includes(`${base}/evidence/`),
+      )
+      await page.getByRole("tabpanel").getByRole("button").first().click()
+      await fetched
+      try {
+        expect(
+          await page
+            .getByRole("dialog")
+            .getByText("本人确认的合成依据", { exact: true })
+            .count(),
+        ).toBe(0)
+      } finally {
+        release()
+      }
+      await expect(page.getByRole("dialog")).toContainText(
+        "受限内容：仅本人和管辖该部门的经理可见",
+      )
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "关闭", exact: true })
+        .click()
+      await page.unroute(pattern)
+      await page.setViewportSize({ width: 390, height: 844 })
+    }
     await enter(ownerToken, `/employees/${subject.id}`)
     const card = page.locator(`[id="request-${draft.id}"]`)
     await expect(card).toContainText("合成能力1：批准")
