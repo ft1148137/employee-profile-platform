@@ -11,6 +11,7 @@ from app.domains.profile.models import EvidenceRelation
 from app.domains.work.models import Task
 
 type RecordKey = tuple[str, str]
+type TaskGroups = dict[RecordKey, tuple[Task, RecordKey]]
 
 
 @dataclass(frozen=True)
@@ -28,10 +29,7 @@ class EvidenceStats:
     sources: tuple[str, ...]
 
 
-def _collect(
-    session: Session, org_id: UUID, evidence: list[Evidence]
-) -> list[CollectedRecord]:
-    # shortcut: Rebuild all tenant Task groups 2 + item-count times per employee; cache them when M4 adds incremental drafting.
+def task_groups(session: Session, org_id: UUID) -> TaskGroups:
     tasks = {
         (t.source, t.external_key): t
         for t in session.exec(select(Task).where(Task.org_id == org_id))
@@ -55,15 +53,23 @@ def _collect(
         for ref in refs:
             for other in by_ref.get(ref, []):
                 parents[root(key)] = root(other)
+    return {key: (task, root(key)) for key, task in tasks.items()}
+
+
+def _collect(evidence: list[Evidence], groups: TaskGroups) -> list[CollectedRecord]:
     return [
-        CollectedRecord(e, tasks.get(key), root(key) if key in parents else key)
+        CollectedRecord(
+            e,
+            groups[key][0] if key in groups else None,
+            groups[key][1] if key in groups else key,
+        )
         for e in evidence
         for key in [(e.source, e.source_ref)]
     ]
 
 
 def collect(
-    session: Session, org_id: UUID, employee: Employee
+    session: Session, org_id: UUID, employee: Employee, groups: TaskGroups | None = None
 ) -> list[CollectedRecord]:
     evidence = list(
         session.exec(
@@ -77,11 +83,16 @@ def collect(
             .order_by(col(Evidence.id))
         )
     )
-    return _collect(session, org_id, evidence)
+    return _collect(
+        evidence, groups if groups is not None else task_groups(session, org_id)
+    )
 
 
 def evidence_stats(
-    session: Session, org_id: UUID, evidence_ids: list[UUID]
+    session: Session,
+    org_id: UUID,
+    evidence_ids: list[UUID],
+    groups: TaskGroups | None = None,
 ) -> EvidenceStats:
     evidence = list(
         session.exec(
@@ -93,7 +104,9 @@ def evidence_stats(
             )
         )
     )
-    records = _collect(session, org_id, evidence)
+    records = _collect(
+        evidence, groups if groups is not None else task_groups(session, org_id)
+    )
     sources = tuple(sorted({e.source for e in evidence}))
     return EvidenceStats(
         len({r.experience_id for r in records}),

@@ -323,6 +323,10 @@ def _finish(
             target_id=str(run.id),
             details=details,
         )
+    if status == "succeeded" and run.trigger == "schedule":
+        from app.domains.drafting.incremental import queue_incremental
+
+        queue_incremental(session, run.org_id)
     session.commit()
 
 

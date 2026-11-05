@@ -25,7 +25,12 @@ from app.domains.change_request.models import (
     RequestStatus,
 )
 from app.domains.drafting import model
-from app.domains.drafting.collect import collect, evidence_stats
+from app.domains.drafting.collect import (
+    TaskGroups,
+    collect,
+    evidence_stats,
+    task_groups,
+)
 from app.domains.drafting.collect import relation as record_relation
 from app.domains.drafting.model import DraftItem
 from app.domains.drafting.settings import drafting_scope
@@ -54,8 +59,10 @@ def postprocess(
     employee: Employee,
     items: list[DraftItem],
     capabilities: list[CapabilityDefinition],
+    groups: TaskGroups | None = None,
 ) -> list[DraftItem]:
-    records = {r.evidence.id: r for r in collect(session, org_id, employee)}
+    groups = groups if groups is not None else task_groups(session, org_id)
+    records = {r.evidence.id: r for r in collect(session, org_id, employee, groups)}
     definitions = {c.id: c for c in capabilities}
     result = []
     for item in items:
@@ -83,7 +90,7 @@ def postprocess(
         ]
         if not supports:
             continue
-        stats = evidence_stats(session, org_id, supports)
+        stats = evidence_stats(session, org_id, supports, groups)
         item.after.assessment_status = AssessmentStatus.TENTATIVE
         item.after.evidence_count, item.after.source_count = (
             stats.evidence_count,
@@ -336,7 +343,8 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                     for c in list_capabilities(session, org_id, schema.id)
                     if c.key not in current_scope.excluded_capability_keys
                 ]
-                records = collect(session, org_id, employee)
+                groups = task_groups(session, org_id)
+                records = collect(session, org_id, employee, groups)
                 setting = read_setting(session, org_id)
                 if setting is None or not setting.enabled:
                     raise ModelDisabled()
@@ -345,7 +353,9 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                 items, generated_by = model.draft(
                     records, capabilities, model_config(setting)
                 )
-                items = postprocess(session, org_id, employee, items, capabilities)
+                items = postprocess(
+                    session, org_id, employee, items, capabilities, groups
+                )
                 generated_by["schema_version_id"] = str(schema.id)
                 written = write_initial_request(
                     session, org_id, employee, items, generated_by
@@ -392,7 +402,9 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
         session.commit()
 
 
-def pause_drafting(org_id: UUID, ids: list[UUID], error: ModelRateLimited) -> None:
+def pause_drafting(
+    org_id: UUID, ids: list[UUID], error: ModelRateLimited, *, incremental: bool = False
+) -> None:
     retry_at = error.retry_at or utc_now() + timedelta(minutes=30)
     with Session(engine) as session:
         setting = read_setting(session, org_id)
@@ -410,7 +422,7 @@ def pause_drafting(org_id: UUID, ids: list[UUID], error: ModelRateLimited) -> No
         session.flush()
         # The running Worker's async connector cannot use this sync transaction.
         App(connector=SyncPsycopgConnector()).configure_task(
-            "profiles.draft_initial",
+            "profiles.draft_incremental" if incremental else "profiles.draft_initial",
             connection=session.connection().connection.driver_connection,
             lock=f"initial-profiles:{org_id}",
             queueing_lock=f"draft:{org_id}",
@@ -427,7 +439,7 @@ def drafting_jobs(
         .execute(
             text(
                 "SELECT EXISTS (SELECT 1 FROM procrastinate_jobs "
-                "WHERE task_name = 'profiles.draft_initial' AND status IN ('todo', 'doing') "
+                "WHERE task_name IN ('profiles.draft_initial', 'profiles.draft_incremental') AND status IN ('todo', 'doing') "
                 "AND (CAST(:org_id AS text) IS NULL OR args->>'org_id' = :org_id) "
                 "AND (NOT :queued_only OR status = 'todo'))"
             ),

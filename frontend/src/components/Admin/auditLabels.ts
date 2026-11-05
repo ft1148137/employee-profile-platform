@@ -11,6 +11,7 @@ export const auditLabels: Record<string, string> = {
   "mcp_setting.updated": "修改外部 AI 助手设置",
   "initial_profiles.handed_over": "初始画像批量送审（员工未过目）",
   "initial_profiles.drafted": "生成初始画像",
+  "incremental_profiles.drafted": "起草增量画像",
   "change_request.dictionary_changed": "词典调整后更新请求",
   "profile_import.created": "管理员导入画像",
   "change_request.submitted": "提交画像请求",
