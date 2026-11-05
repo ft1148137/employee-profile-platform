@@ -7,6 +7,7 @@ from app.domains.base import utc_now
 from app.domains.capability.models import CapabilityDefinition
 from app.domains.capability.service import get_schema, list_capabilities
 from app.domains.change_request.claim import ClaimAfter
+from app.domains.change_request.employee import RequestConflict
 from app.domains.change_request.models import (
     ChangeItem,
     ChangeItemEvidence,
@@ -65,6 +66,32 @@ def item_evidence(
     }
 
 
+def effective_evidence(
+    session: Session,
+    item: ChangeItem,
+    target: ProfileClaim | None,
+    evidence: dict[UUID, tuple[Evidence, EvidenceRelation]],
+) -> dict[UUID, tuple[Evidence, EvidenceRelation]]:
+    if item.op == ChangeOp.RETRACT:
+        return {}
+    result = evidence.copy()
+    if item.op == ChangeOp.ATTACH_EVIDENCE and target is not None:
+        for link, e in session.exec(
+            select(ClaimEvidence, Evidence)
+            .join(
+                Evidence,
+                (col(Evidence.id) == ClaimEvidence.evidence_id)
+                & (col(Evidence.org_id) == ClaimEvidence.org_id),
+            )
+            .where(
+                ClaimEvidence.org_id == item.org_id,
+                ClaimEvidence.claim_id == target.id,
+            )
+        ).all():
+            result.setdefault(e.id, (e, link.relation))
+    return result
+
+
 def jira_only(evidence: dict[UUID, tuple[Evidence, EvidenceRelation]]) -> bool:
     supports = [
         e for e, relation in evidence.values() if relation == EvidenceRelation.SUPPORTS
@@ -99,32 +126,21 @@ def publish(
             )
         ).one()
         target = current.get(original.key)
-        evidence = item_evidence(session, item)
-        if item.op == ChangeOp.ATTACH_EVIDENCE:
-            assert target is not None
-            for link, e in session.exec(
-                select(ClaimEvidence, Evidence)
-                .join(
-                    Evidence,
-                    (col(Evidence.id) == ClaimEvidence.evidence_id)
-                    & (col(Evidence.org_id) == ClaimEvidence.org_id),
-                )
-                .where(
-                    ClaimEvidence.org_id == org_id, ClaimEvidence.claim_id == target.id
-                )
-            ).all():
-                evidence.setdefault(e.id, (e, link.relation))
+        evidence = effective_evidence(
+            session, item, target, item_evidence(session, item)
+        )
+        if item.op in (ChangeOp.ATTACH_EVIDENCE, ChangeOp.RETRACT) and target is None:
+            raise RequestConflict("目标判断不存在，请重新查看")
+        if item.op == ChangeOp.ATTACH_EVIDENCE and target is not None:
             after = ClaimAfter.model_validate(
                 target.model_dump(
                     include={"statement", "level", "assessment_status", "confidence"}
                 )
             )
-        elif item.op == ChangeOp.RETRACT:
-            assert target is not None
+        elif item.op == ChangeOp.RETRACT and target is not None:
             after = ClaimAfter(
                 statement=target.statement, assessment_status=AssessmentStatus.UNKNOWN
             )
-            evidence = {}
         else:
             after = ClaimAfter.model_validate(item.after)
             after.assessment_status = AssessmentStatus.CONFIRMED

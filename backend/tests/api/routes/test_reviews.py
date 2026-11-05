@@ -5,18 +5,20 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, text
+from sqlalchemy import delete, event, text
 from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
 from app.authz.deps import get_org_principal
 from app.authz.principal import Principal
 from app.core.db import engine
+from app.domains.base import utc_now
 from app.domains.capability.schemas import DictionaryDefinition
 from app.domains.capability.service import get_schema, list_capabilities, save_version
 from app.domains.change_request import employee
 from app.domains.change_request.models import (
     ChangeItem,
+    ChangeOp,
     ItemDecision,
     ProfileChangeRequest,
     RequestStatus,
@@ -38,9 +40,10 @@ from app.domains.org.models import (
 )
 from app.domains.profile.models import ClaimEvidence, ProfileVersion
 from app.domains.review import service
-from app.domains.review.publish import current_claims
+from app.domains.review.publish import current_claims, publish
 from app.domains.review.routing import reviewers_for
 from app.domains.review.schemas import DecisionInput
+from app.domains.work.models import Task, WorkEvent
 from app.models import User
 
 
@@ -828,3 +831,207 @@ def test_review_candidates_require_active_account_and_employment(
         )
         db.commit()
         assert db.get(ReviewDecision, result.decision_id).reviewer_user_id == user_id
+
+
+@pytest.mark.parametrize("original_source", ["self_report", "jira"])
+def test_attach_preview_matches_published_jira_status(
+    demo: tuple, db: Session, original_source: str
+) -> None:
+    subject = demo[1]["E02"]
+    evidence_ids = []
+    for index, source in enumerate([original_source, "jira"]):
+        evidence, _ = append_evidence(
+            db,
+            org_id=subject.org_id,
+            subject_employee_id=subject.id,
+            kind=EvidenceKind.WORK_RECORD,
+            source=source,
+            source_ref=f"synthetic-attach-{index}",
+            title="合成依据",
+            content={"synthetic": True},
+            visibility=Visibility.RESTRICTED,
+            provenance={},
+        )
+        evidence_ids.append(evidence.id)
+    owner, initial = pending(
+        db,
+        demo,
+        items=[
+            {
+                "op": "add",
+                "capability_key": "automated_testing",
+                "statement": "合成判断",
+                "evidence_ids": evidence_ids[:1],
+            }
+        ],
+    )
+    reviewer = manager(db, demo)
+    service.decide(reviewer, db, initial.id, initial.revision, values(initial))
+    db.commit()
+    _, attach = pending(
+        db,
+        demo,
+        items=[
+            {
+                "op": "attach_evidence",
+                "capability_key": "automated_testing",
+                "statement": "合成补充",
+                "evidence_ids": evidence_ids[1:],
+            }
+        ],
+    )
+    detail = service.get_review(reviewer, db, attach.id)
+    assert detail.items[0].jira_only == (original_source == "jira")
+    service.decide(reviewer, db, attach.id, attach.revision, values(attach))
+    db.commit()
+    claim = current_claims(db, owner.org_id, owner.employee_id)["automated_testing"]
+    assert claim.assessment_status == (
+        "tentative" if original_source == "jira" else "confirmed"
+    )
+    assert set(
+        db.exec(
+            select(ClaimEvidence.evidence_id).where(
+                ClaimEvidence.org_id == owner.org_id,
+                ClaimEvidence.claim_id == claim.id,
+            )
+        ).all()
+    ) == set(evidence_ids)
+
+
+def test_review_evidence_queries_are_batched(demo: tuple, db: Session) -> None:
+    subject = demo[1]["E01"]
+    reviewer = actor(db, subject.org_id, "admin@demo.example.com")
+    requests = []
+    for count in (1, 10):
+        ids = []
+        for index in range(count):
+            key = f"synthetic-batch-{count}-{index}"
+            task = Task(
+                org_id=subject.org_id, source="jira", external_key=key, title=key
+            )
+            db.add(task)
+            db.flush()
+            work_event = WorkEvent(
+                org_id=subject.org_id,
+                actor_employee_id=subject.id,
+                task_id=task.id,
+                source="jira",
+                source_ref=key,
+                action="合成工作记录",
+                occurred_at=utc_now(),
+            )
+            db.add(work_event)
+            db.flush()
+            evidence, _ = append_evidence(
+                db,
+                org_id=subject.org_id,
+                subject_employee_id=subject.id,
+                kind=EvidenceKind.WORK_RECORD,
+                source="jira",
+                source_ref=key,
+                title=key,
+                content={"synthetic": True},
+                visibility=Visibility.RESTRICTED,
+                provenance={},
+                event_id=work_event.id,
+            )
+            ids.append(evidence.id)
+        _, request = pending(
+            db,
+            demo,
+            role="manager.platform",
+            items=[
+                {
+                    "op": "modify",
+                    "capability_key": "backend_api",
+                    "statement": "合成判断",
+                    "evidence_ids": ids,
+                }
+            ],
+        )
+        requests.append(request)
+    counts = []
+    queries = []
+
+    def record(*args: object) -> None:
+        queries.append(args[2])
+
+    for request in requests:
+        queries.clear()
+
+        db.expire_all()
+        event.listen(engine, "before_cursor_execute", record)
+        try:
+            detail = service.get_review(reviewer, db, request.id)
+        finally:
+            event.remove(engine, "before_cursor_execute", record)
+        counts.append(len(queries))
+        assert len(detail.items[0].evidence) == len(request.items[0].evidence)
+        for evidence in detail.items[0].evidence:
+            assert evidence.content == {"synthetic": True}
+            assert evidence.work_event is not None and evidence.task is not None
+            assert evidence.task.external_key == evidence.source_ref
+            assert not evidence.redacted
+        assert detail.items[0].after.evidence == request.items[0].evidence
+    assert abs(counts[1] - counts[0]) <= 1, counts
+
+
+@pytest.mark.parametrize(
+    "status",
+    [RequestStatus.PENDING_REVIEW, RequestStatus.APPROVED, RequestStatus.WITHDRAWN],
+)
+@pytest.mark.parametrize("revision_delta", [0, -1, 1])
+@pytest.mark.parametrize("role", ["admin", "employee"])
+def test_decide_checks_authority_before_revision_and_status(
+    demo: tuple,
+    db: Session,
+    client: TestClient,
+    status: RequestStatus,
+    revision_delta: int,
+    role: str,
+) -> None:
+    _, request = pending(db, demo)
+    row = db.get(ProfileChangeRequest, request.id)
+    row.status = status
+    db.commit()
+    response = client.post(
+        f"{demo[0]}/reviews/{request.id}/decisions",
+        headers=demo[2][role],
+        json={
+            "revision": request.revision + revision_delta,
+            "decisions": [d.model_dump(mode="json") for d in values(request)],
+        },
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "你不是当前审批人，或不能审批本人的请求"
+
+
+@pytest.mark.parametrize("op", [ChangeOp.ATTACH_EVIDENCE, ChangeOp.RETRACT])
+def test_publish_missing_target_raises_conflict(
+    demo: tuple, db: Session, op: ChangeOp
+) -> None:
+    owner, request = pending(db, demo)
+    item = db.get(ChangeItem, request.items[0].id)
+    definition = next(
+        c
+        for c in list_capabilities(db, owner.org_id, get_schema(db, owner.org_id).id)
+        if c.key == "technical_docs"
+    )
+    assert "technical_docs" not in current_claims(db, owner.org_id, owner.employee_id)
+    item.op, item.capability_definition_id, item.after = (
+        op,
+        definition.id,
+        None,
+    )
+    decision = ReviewDecision(
+        org_id=owner.org_id,
+        request_id=request.id,
+        reviewer_user_id=manager(db, demo).user_id,
+        request_revision=request.revision,
+        via=ReviewVia.WEB,
+    )
+    db.add(decision)
+    db.flush()
+    with pytest.raises(employee.RequestConflict, match="目标判断不存在"):
+        publish(db, db.get(ProfileChangeRequest, request.id), [item], decision)
+    db.rollback()
