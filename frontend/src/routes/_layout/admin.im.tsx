@@ -191,6 +191,13 @@ function PlatformSetting({
           允许按企业邮箱自动绑定
         </label>
       )}
+      {setting.platform === "wecom" && (
+        <p className="text-sm text-muted-foreground">
+          请使用智能机器人的长连接模式，无需公网回调地址。同一机器人只允许一个服务实例。
+          无法读取企业邮箱时，请使用网页个人设置中的绑定码；新建应用通常无法读取邮箱。
+          已启用时，连接测试读取最近心跳，不会另建连接。
+        </p>
+      )}
       {value.enabled && (
         <aside className="space-y-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
           <p className="font-medium">数据外发提示</p>
@@ -221,25 +228,23 @@ function PlatformSetting({
         >
           {save.isPending ? "正在保存…" : "保存"}
         </Button>
-        {setting.platform !== "wecom" ? (
-          <Button
-            type="button"
-            variant="outline"
-            disabled={
-              !setting.has_credentials ||
-              save.isPending ||
-              test.isPending ||
-              Object.values(credentials).some(Boolean)
-            }
-            onClick={() => test.mutate()}
-          >
-            {test.isPending ? "正在测试…" : "测试已保存的连接"}
-          </Button>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            连接测试将在后续接入完成后可用
-          </p>
-        )}
+        <Button
+          type="button"
+          variant="outline"
+          disabled={
+            !setting.has_credentials ||
+            save.isPending ||
+            test.isPending ||
+            Object.values(credentials).some(Boolean)
+          }
+          onClick={() => test.mutate()}
+        >
+          {test.isPending
+            ? "正在测试…"
+            : setting.platform === "wecom" && setting.enabled
+              ? "查看长连接最近心跳"
+              : "测试已保存的连接"}
+        </Button>
       </div>
       {save.isSuccess && <p role="status">设置已保存</p>}
       {test.data && (

@@ -84,6 +84,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "sentry-sdk", extra = ["fastapi"] },
     { name = "sqlmodel" },
+    { name = "websockets" },
 ]
 
 [package.dev-dependencies]
@@ -119,6 +120,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.3,<7" },
     { name = "sentry-sdk", extras = ["fastapi"], specifier = ">=2.70.0,<3.0.0" },
     { name = "sqlmodel", specifier = ">=0.0.46,<1.0.0" },
+    { name = "websockets", specifier = ">=15,<16" },
 ]
 
 [package.metadata.requires-dev]

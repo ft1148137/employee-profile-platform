@@ -13,7 +13,8 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
     "admin@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
-  await page.goto("/admin/im")
+  await page.waitForURL((url) => url.pathname !== "/")
+  await page.getByRole("link", { name: "IM 入口", exact: true }).click()
   await expect(page.getByRole("heading", { name: "IM 入口" })).toBeVisible()
   await expectChineseCopy(page, ["Telegram"])
   const token = await page.evaluate(() => localStorage.getItem("access_token"))
@@ -98,6 +99,18 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
     const telegram = page.getByRole("form", { name: "Telegram", exact: true })
     await telegram.getByRole("button", { name: "测试已保存的连接" }).click()
     await expect(telegram.getByRole("alert")).toHaveText("连接超时，请检查网络")
+    const wecom = page.getByRole("form", { name: "企业微信", exact: true })
+    await expect(wecom).toContainText("无法读取企业邮箱时")
+    await expect(wecom).toContainText("同一机器人只允许一个服务实例")
+    await page.route("**/im-settings/wecom/test", (route) =>
+      route.fulfill({
+        json: { ok: true, message: "长连接最近心跳时间：合成时间" },
+      }),
+    )
+    await wecom.getByRole("button", { name: "查看长连接最近心跳" }).click()
+    await expect(wecom.getByRole("status")).toHaveText(
+      "长连接最近心跳时间：合成时间",
+    )
     await page.route("**/im-settings/feishu/test", (route) =>
       route.fulfill({ json: { ok: true, message: "连接成功" } }),
     )
