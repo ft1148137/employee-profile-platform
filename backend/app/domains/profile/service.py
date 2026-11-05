@@ -14,8 +14,7 @@ from app.domains.capability.service import (
     level_exists,
     list_capabilities,
 )
-from app.domains.drafting.models import UpdateSetting
-from app.domains.drafting.update_settings import months_before
+from app.domains.drafting.update_settings import months_before, read_update_settings
 from app.domains.evidence.models import Evidence, EvidenceStatus
 from app.domains.evidence.service import evidence_access, restricted_title
 from app.domains.org.models import Employee, OrgMembership
@@ -61,19 +60,18 @@ def profile_items(
             ref.occurred_at = record[0].occurred_at if record else None
             if ref.redacted:
                 ref.title = restricted_title(ref.kind)
-    originals_with_settings = session.exec(
-        select(CapabilityDefinition, UpdateSetting.stale_after_months)
-        .outerjoin(
-            UpdateSetting, col(UpdateSetting.org_id) == CapabilityDefinition.org_id
+    originals = {c.id: c for c in capabilities}
+    missing_ids = {c.capability_definition_id for c in claims} - originals.keys()
+    if missing_ids:
+        originals.update(
+            (c.id, c)
+            for c in session.exec(
+                select(CapabilityDefinition).where(
+                    CapabilityDefinition.org_id == principal.org_id,
+                    col(CapabilityDefinition.id).in_(missing_ids),
+                )
+            ).all()
         )
-        .where(
-            CapabilityDefinition.org_id == principal.org_id,
-            col(CapabilityDefinition.id).in_(
-                {c.capability_definition_id for c in claims}
-            ),
-        )
-    ).all()
-    originals = {c.id: c for c, _ in originals_with_settings}
     by_key = {
         originals[c.capability_definition_id].key: c
         for c in claims
@@ -85,7 +83,7 @@ def profile_items(
         for k, c in by_key.items()
         if k not in active_keys
     ]
-    months = next((m for _, m in originals_with_settings if m is not None), 24)
+    months = read_update_settings(session, principal.org_id).stale_after_months
     cutoff = months_before(utc_now(), months)
     items = []
     for capability in [*capabilities, *removed]:

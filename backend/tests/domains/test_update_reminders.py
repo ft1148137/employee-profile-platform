@@ -88,9 +88,11 @@ def test_settings_permissions_and_audit(
             )
         assert client.put(url, headers=auth["admin"], json=body).json() == data
     audits = db.exec(
-        select(AuditEvent).where(
+        select(AuditEvent)
+        .where(
             AuditEvent.org_id == org_id, AuditEvent.action == "update_settings.updated"
         )
+        .order_by(col(AuditEvent.created_at), col(AuditEvent.id))
     ).all()
     assert (
         len(audits) == 3 and audits[0].details["after"]["reminder_schedule"] == "yearly"

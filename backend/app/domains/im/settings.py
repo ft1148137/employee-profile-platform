@@ -84,7 +84,10 @@ def save_setting(
         if updates:
             row.credentials = encrypt_secret(json.dumps(credentials))
     row.enabled = body.enabled
-    row.email_auto_bind = body.email_auto_bind if platform != "telegram" else False
+    if platform == "telegram":
+        row.email_auto_bind = False
+    elif body.email_auto_bind is not None:
+        row.email_auto_bind = body.email_auto_bind
     row.updated_by_user_id = principal.user_id
     row.updated_at = utc_now()
     db.add(row)
