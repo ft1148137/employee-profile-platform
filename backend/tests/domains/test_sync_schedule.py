@@ -11,6 +11,7 @@ from sqlmodel import Session, select
 
 from app.connectors.jira.client import jira_client_for
 from app.core.db import engine
+from app.domains.org.models import ExternalIdentity
 from app.domains.source import schedule, sync
 from app.domains.source.models import SourceConnection, SyncRun
 from app.worker.app import app
@@ -238,6 +239,36 @@ def test_schedule_migration(migration_engine: Engine) -> None:
         )
     migrate(migration_engine, "downgrade", "a84e001bc001")
     migrate(migration_engine, "upgrade", "head")
+
+
+def test_scheduled_sync_queues_incremental_for_manual_records(
+    request: pytest.FixtureRequest, client: TestClient, db: Session
+) -> None:
+    org, base, auth, employees, _ = request.getfixturevalue("context")
+    db.add(
+        ExternalIdentity(
+            org_id=org,
+            source="jira",
+            external_id="demo-jira-01",
+            employee_id=employees[0].id,
+        )
+    )
+    db.commit()
+    run_sync(db, org, start(client, base, auth))
+    query = text(
+        "SELECT args, lock FROM procrastinate_jobs WHERE task_name='profiles.draft_incremental' AND args->>'org_id'=:org"
+    )
+    assert not db.execute(query, {"org": str(org)}).all()
+    make_due(db, org)
+    schedule.dispatch_due_syncs(db, datetime.now(UTC))
+    run = db.exec(
+        select(SyncRun).where(SyncRun.org_id == org, SyncRun.trigger == "schedule")
+    ).one()
+    result = run_sync(db, org, str(run.id))
+    assert result.status == "succeeded" and result.counts["tasks_added"] == 0
+    job = db.execute(query, {"org": str(org)}).one()
+    assert str(employees[0].id) in job.args["employee_ids"]
+    assert job.lock == f"initial-profiles:{org}"
 
 
 def test_dispatch_rolls_back_queue_and_due_time(
