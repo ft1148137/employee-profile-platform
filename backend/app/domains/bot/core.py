@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlmodel import Session
 
 from app.authz.principal import Principal
+from app.domains import manager_tools
 from app.domains.base import utc_now
 from app.domains.bot import schemas as s
 from app.domains.bot import store, tools
@@ -16,6 +17,7 @@ from app.domains.bot.admission import (
 from app.domains.bot.models import BotSession
 from app.domains.bot.prompts import system_prompt
 from app.domains.change_request import employee
+from app.domains.change_request.models import ReviewVia
 from app.domains.inbox import service as inbox
 from app.domains.model import pi_client
 from app.domains.model.client import ModelServiceError, ModelUnavailable
@@ -109,7 +111,34 @@ def act(
         for card in s.TurnResponse.model_validate(message.payload).messages
     ]
     messages: list[s.Message]
-    if isinstance(action, s.QuestionAction):
+    if isinstance(action, s.ReviewAction):
+        card = next(
+            (c for c in cards if isinstance(c, s.ReviewCard) and action in c.actions),
+            None,
+        )
+        if session.channel == "web" or card is None:
+            raise employee.RequestConflict("请重新查看审批卡片")
+        if action.action == "continue_review":
+            review = manager_tools.get_review(p, db, action.request_id)
+            if review.revision != action.revision:
+                raise employee.RequestConflict("内容已变化，请重新查看")
+            messages = [s.TextMessage(text="请告诉我需要修改的决定或原因")]
+        else:
+            manager_tools.decide_review_items(
+                p,
+                db,
+                action.request_id,
+                action.revision,
+                card.decisions,
+                via=ReviewVia.IM,
+                client_name=session.channel,
+            )
+            messages = [
+                s.TextMessage(
+                    text="审批决定已保存，请在网页查看结果", review_link="/reviews"
+                )
+            ]
+    elif isinstance(action, s.QuestionAction):
         inbox.read_question(p, db, action.question_id)
         if not any(
             isinstance(c, s.QuestionCard)

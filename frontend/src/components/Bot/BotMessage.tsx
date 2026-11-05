@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router"
 import { useState } from "react"
 import type { QuestionAction, RequestAction, TurnResponse } from "@/client"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
@@ -30,7 +31,22 @@ export function BotMessage({
 }) {
   const [answer, setAnswer] = useState("")
   if (message.type === "text")
-    return <p className="whitespace-pre-wrap break-words">{message.text}</p>
+    return (
+      <div className="space-y-2">
+        <p className="whitespace-pre-wrap break-words">{message.text}</p>
+        {message.review_link && (
+          <Link to="/reviews" className="underline">
+            去审批页
+          </Link>
+        )}
+      </div>
+    )
+  if (message.type === "review_card")
+    return (
+      <Link to="/reviews" className="underline">
+        去审批页
+      </Link>
+    )
   return (
     <section
       className="space-y-4 rounded-xl border bg-background p-4"

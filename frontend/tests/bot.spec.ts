@@ -279,3 +279,43 @@ test("disabled model keeps the entry and points to the form", async ({
   await expect(panel.getByText("问题已处理")).toBeVisible()
   await expectChineseCopy(page)
 })
+
+test("web bot directs reviews to the review page without decision buttons", async ({
+  page,
+}) => {
+  const email = `review-bot-${crypto.randomUUID()}@example.com`
+  const password = "synthetic-password-2026"
+  await createUser({ email, password, withEmptyProfile: true })
+  await logInUser(page, email, password)
+  await page.route("**/bot/sessions/*/turns?*", (route) =>
+    route.fulfill({
+      json: {
+        messages: [
+          {
+            type: "text",
+            text: "请在网页审批页查看并决定",
+            review_link: "/reviews",
+          },
+          {
+            type: "review_card",
+            id: crypto.randomUUID(),
+            revision: 1,
+            items: [],
+            decisions: [],
+            actions: [],
+          },
+        ],
+      },
+    }),
+  )
+  await page.getByRole("button", { name: "打开画像机器人" }).click()
+  const panel = page.getByRole("dialog")
+  await panel.getByLabel("发给机器人的消息").fill("查看待审批请求")
+  await panel.getByRole("button", { name: "发送", exact: true }).click()
+  await expect(panel.getByRole("link", { name: "去审批页" })).toHaveCount(2)
+  await expect(
+    panel.getByRole("link", { name: "去审批页" }).first(),
+  ).toHaveAttribute("href", "/reviews")
+  await expect(panel.getByRole("button", { name: "确认决定" })).toHaveCount(0)
+  await expectChineseCopy(page)
+})

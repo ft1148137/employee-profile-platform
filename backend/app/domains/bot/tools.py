@@ -5,6 +5,7 @@ from pydantic import JsonValue, ValidationError
 from sqlmodel import Session
 
 from app.authz.principal import Principal
+from app.domains.bot import reviews
 from app.domains.bot import schemas as s
 from app.domains.bot.models import BotSession
 from app.domains.change_request import employee
@@ -26,7 +27,7 @@ PROJECTIONS: dict[str, type[s.Projection]] = {
 
 
 def definitions() -> list[ToolDefinition]:
-    return [
+    return reviews.definitions() + [
         ToolDefinition(
             name=t.name,
             description=t.description,
@@ -93,6 +94,8 @@ def call(
     name: str,
     arguments: dict[str, JsonValue],
 ) -> JsonValue:
+    if name in reviews.INPUTS:
+        return redact(reviews.call(db, p, session, cards, name, arguments))
     tool = TOOLS.get(name)
     if tool is None:
         return {"error": "不允许调用此工具，请使用卡片动作"}
