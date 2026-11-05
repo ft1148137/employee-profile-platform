@@ -475,7 +475,7 @@ def test_sdk_callbacks_and_process_cleanup(
     async def run() -> None:
         adapter = Feishu(uuid4(), CREDS)
         try:
-            async with asyncio.timeout(15):
+            async with asyncio.timeout(5):
                 incoming = await anext(adapter.poll())
             assert incoming.private and incoming.text == "本人合成经历"
             process = adapter.process
