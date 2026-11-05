@@ -16,6 +16,7 @@ from app.domains.change_request.models import (
     ChangeItem,
     ChangeItemEvidence,
     ProfileChangeRequest,
+    ReviewDecision,
 )
 from app.domains.drafting.models import DraftingSetting, UpdateSetting
 from app.domains.evidence.models import Evidence
@@ -63,6 +64,7 @@ ORG_MODELS = (
     PendingQuestion,
     ChangeItemEvidence,
     ChangeItem,
+    ReviewDecision,
     ProfileChangeRequest,
     ClaimEvidence,
     ProfileVersion,

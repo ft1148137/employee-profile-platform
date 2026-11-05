@@ -45,12 +45,48 @@ class ChangeOp(StrEnum):
     ATTACH_EVIDENCE = "attach_evidence"
 
 
+class ItemDecision(StrEnum):
+    APPROVED = "approved"
+    CHANGES_REQUESTED = "changes_requested"
+    REJECTED = "rejected"
+
+
+class ReviewVia(StrEnum):
+    WEB = "web"
+    MCP = "mcp"
+    IM = "im"
+    POLICY = "policy"
+    SYNC = "sync"
+
+
+class ReviewDecision(TenantRecord, table=True):
+    __tablename__ = "review_decision"
+    __table_args__ = (
+        UniqueConstraint("org_id", "id"),
+        tenant_fk("request_id", "profile_change_request"),
+        tenant_fk("reviewer_membership_id", "org_membership"),
+        tenant_fk("acting_for_membership_id", "org_membership"),
+        CheckConstraint(
+            "(via IN ('policy', 'sync')) = (reviewer_membership_id IS NULL)",
+            name="review_decision_actor",
+        ),
+    )
+    request_id: uuid.UUID
+    reviewer_membership_id: uuid.UUID | None = None
+    acting_for_membership_id: uuid.UUID | None = None
+    via: ReviewVia = Field(sa_type=enum_type(ReviewVia))
+    client_name: str | None = None
+    comment: str | None = None
+    request_revision: int
+
+
 class ProfileChangeRequest(TenantRecord, table=True):
     __tablename__ = "profile_change_request"
     __table_args__ = (
         UniqueConstraint("org_id", "id"),
         tenant_fk("subject_employee_id", "employee"),
         tenant_fk("base_version_id", "profile_version"),
+        tenant_fk("parent_request_id", "profile_change_request"),
         Index("ix_request_employee_status", "org_id", "subject_employee_id", "status"),
         Index(
             "uq_request_initial_sync",
@@ -65,6 +101,8 @@ class ProfileChangeRequest(TenantRecord, table=True):
     status: RequestStatus = Field(sa_type=enum_type(RequestStatus))
     author: dict[str, JsonValue] = Field(sa_column=Column(JSONB, nullable=False))
     base_version_id: uuid.UUID | None = None
+    parent_request_id: uuid.UUID | None = None
+    decided_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     generated_by: dict[str, JsonValue] = Field(
         default_factory=dict, sa_column=Column(JSONB, nullable=False)
     )
@@ -87,6 +125,8 @@ class ChangeItem(TenantRecord, table=True):
         tenant_fk("request_id", "profile_change_request"),
         tenant_fk("capability_definition_id", "capability_definition"),
         tenant_fk("target_claim_id", "profile_claim"),
+        tenant_fk("review_decision_id", "review_decision"),
+        tenant_fk("published_claim_id", "profile_claim"),
         CheckConstraint(
             "(op = 'add') = (target_claim_id IS NULL)", name="change_item_target"
         ),
@@ -107,6 +147,10 @@ class ChangeItem(TenantRecord, table=True):
     uncertainty: str | None = None
     owner_statement: str | None = None
     objection: str | None = None
+    decision: ItemDecision | None = Field(default=None, sa_type=enum_type(ItemDecision))
+    decision_reason: str | None = None
+    review_decision_id: uuid.UUID | None = None
+    published_claim_id: uuid.UUID | None = None
 
 
 class ChangeItemEvidence(SQLModel, table=True):
