@@ -127,13 +127,13 @@ def publish(
             )
         ).one()
         target = current.get(original.key)
-        if (target.id if target else None) != item.target_claim_id:
-            raise RequestConflict("目标判断已被其他请求取代，请重新查看")
         evidence = effective_evidence(
             session, item, target, item_evidence(session, item)
         )
         if item.op in (ChangeOp.ATTACH_EVIDENCE, ChangeOp.RETRACT) and target is None:
             raise RequestConflict("目标判断不存在，请重新查看")
+        if (target.id if target else None) != item.target_claim_id:
+            raise RequestConflict("目标判断已被其他请求取代，请重新查看")
         if item.op == ChangeOp.ATTACH_EVIDENCE and target is not None:
             after = ClaimAfter.model_validate(
                 target.model_dump(
