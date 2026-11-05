@@ -327,7 +327,7 @@ def test_stale_flag_changes_immediately(
 
 
 def test_migration_roundtrip(migration_engine: Engine) -> None:
-    migrate(migration_engine, "downgrade", "a98e001bc001")
+    migrate(migration_engine, "downgrade", "b119001bc001")
     assert "update_setting" not in inspect(migration_engine).get_table_names()
     assert "kind" not in {
         c["name"] for c in inspect(migration_engine).get_columns("pending_question")

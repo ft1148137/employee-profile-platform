@@ -1,13 +1,13 @@
 """Periodic employee questions and update settings.
 
 Revision ID: b118001bc001
-Revises: a98e001bc001
+Revises: b119001bc001
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "b118001bc001"
-down_revision = "a98e001bc001"
+down_revision = "b119001bc001"
 branch_labels = None
 depends_on = None
 
