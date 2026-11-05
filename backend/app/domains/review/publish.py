@@ -14,6 +14,7 @@ from app.domains.change_request.models import (
     ChangeOp,
     ProfileChangeRequest,
     ReviewDecision,
+    ReviewVia,
 )
 from app.domains.evidence.models import Evidence
 from app.domains.profile.models import (
@@ -126,6 +127,8 @@ def publish(
             )
         ).one()
         target = current.get(original.key)
+        if (target.id if target else None) != item.target_claim_id:
+            raise RequestConflict("目标判断已被其他请求取代，请重新查看")
         evidence = effective_evidence(
             session, item, target, item_evidence(session, item)
         )
@@ -144,7 +147,9 @@ def publish(
         else:
             after = ClaimAfter.model_validate(item.after)
             after.assessment_status = AssessmentStatus.CONFIRMED
-        if jira_only(evidence):
+        if jira_only(evidence) or (
+            decision.via == ReviewVia.POLICY and item.op != ChangeOp.RETRACT
+        ):
             after.assessment_status = AssessmentStatus.TENTATIVE
         claim = ProfileClaim(
             org_id=org_id,

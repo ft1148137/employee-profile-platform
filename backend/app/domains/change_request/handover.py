@@ -16,13 +16,12 @@ from app.domains.change_request.service import transition
 from app.domains.drafting.settings import drafting_scope
 from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
+from app.domains.review.policy import read_policy
 from app.domains.review.routing import notify_reviewers
-
-# shortcut: Fixed at 14 days; make it an organization setting with M4 ApprovalPolicy.
-HANDOVER_DAYS = 14
 
 
 def hand_over(session: Session, principal: Principal, *, confirm: bool = False) -> int:
+    owner_review_days = read_policy(session, principal.org_id).owner_review_days
     scope = drafting_scope(session, principal.org_id)
     query = (
         select(ProfileChangeRequest)
@@ -31,7 +30,7 @@ def hand_over(session: Session, principal: Principal, *, confirm: bool = False) 
             ProfileChangeRequest.origin == RequestOrigin.INITIAL_SYNC,
             ProfileChangeRequest.status == RequestStatus.PENDING_OWNER,
             ProfileChangeRequest.created_at
-            <= utc_now() - timedelta(days=HANDOVER_DAYS),
+            <= utc_now() - timedelta(days=owner_review_days),
             col(ProfileChangeRequest.subject_employee_id).not_in(
                 scope.excluded_employee_ids
             ),
@@ -67,7 +66,7 @@ def hand_over(session: Session, principal: Principal, *, confirm: bool = False) 
                 session,
                 request,
                 InboxKind.SUBMITTED,
-                "初始画像满 14 天未处理，管理员已送交经理审批（员工未过目），批准前你可以撤回",
+                f"初始画像满 {owner_review_days} 天未处理，管理员已送交经理审批（员工未过目），批准前你可以撤回",
             )
         session.commit()
     return len(requests)

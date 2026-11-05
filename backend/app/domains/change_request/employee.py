@@ -18,6 +18,7 @@ from app.domains.change_request.models import (
     ChangeItem,
     ChangeItemEvidence,
     ChangeOp,
+    ItemDecision,
     ProfileChangeRequest,
     RequestOrigin,
     RequestStatus,
@@ -46,6 +47,7 @@ from app.domains.evidence.service import (
 )
 from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
+from app.domains.org.models import Employee, Organization
 from app.domains.org.service import visible_employee
 from app.domains.profile.models import AssessmentStatus, EvidenceRelation
 from app.domains.profile.schemas import ClaimPublic, ProfileView
@@ -315,7 +317,20 @@ def submit(
     via: EmployeeVia,
     client_name: str | None = None,
 ) -> ChangeRequestPublic:
+    # Match the lock order used by manager publishing and dictionary changes.
+    session.exec(
+        select(Organization)
+        .where(Organization.id == principal.org_id)
+        .with_for_update(read=True)
+    ).one()
     request = _request(principal, session, request_id)
+    session.exec(
+        select(Employee)
+        .where(
+            Employee.org_id == principal.org_id, Employee.id == employee_id(principal)
+        )
+        .with_for_update()
+    ).one()
     if request.revision != revision:
         raise RequestConflict("内容已变化，请重新预览")
     if request.status not in (RequestStatus.DRAFT, RequestStatus.PENDING_OWNER):
@@ -400,15 +415,26 @@ def submit(
         target_id=str(request.id),
         details={"via": via, "client_name": client_name, "revision": revision},
     )
+    from app.domains.review.policy import apply_policy
+
+    session.flush()
+    apply_policy(session, principal, request, list(items))
     message = (
-        f"你通过 {client_name or via} 提交了一个请求，经理批准前可以撤回"
-        if via in ("mcp", "import")
-        else "请求已提交，经理批准前可以撤回"
+        "请求已按审批规则发布为暂定，请查看逐项结果"
+        if all(i.decision == ItemDecision.APPROVED for i in items)
+        else "部分改动已按审批规则发布为暂定，其余改动等待经理审批"
+        if any(i.decision == ItemDecision.APPROVED for i in items)
+        else (
+            f"你通过 {client_name or via} 提交了一个请求，经理批准前可以撤回"
+            if via in ("mcp", "import")
+            else "请求已提交，经理批准前可以撤回"
+        )
     )
     notify(session, request, InboxKind.SUBMITTED, message)
     from app.domains.review.routing import notify_reviewers
 
-    notify_reviewers(session, request)
+    if any(i.decision is None for i in items):
+        notify_reviewers(session, request)
     return _public(principal, session, request.id)
 
 
@@ -419,6 +445,16 @@ def withdraw(
     if request.status not in (RequestStatus.DRAFT, RequestStatus.PENDING_REVIEW):
         raise RequestConflict()
     transition(request, RequestStatus.WITHDRAWN)
+    published_items = {
+        str(id_)
+        for id_ in session.exec(
+            select(ChangeItem.id).where(
+                ChangeItem.org_id == principal.org_id,
+                ChangeItem.request_id == request.id,
+                ChangeItem.decision == ItemDecision.APPROVED,
+            )
+        ).all()
+    }
     records = session.exec(
         select(Evidence)
         .where(
@@ -432,6 +468,8 @@ def withdraw(
         .order_by(col(Evidence.id))
     ).all()
     for evidence in records:
+        if evidence.source_ref in published_items:
+            continue
         retract_evidence(
             session,
             evidence=evidence,

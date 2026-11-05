@@ -92,6 +92,7 @@ def list_pending_reviews(principal: Principal, session: Session) -> PendingRevie
                 select(ChangeItem.id).where(
                     ChangeItem.org_id == principal.org_id,
                     ChangeItem.request_id == request.id,
+                    col(ChangeItem.decision).is_(None),
                 )
             ).all()
         )
@@ -151,7 +152,9 @@ def get_review(
             & (col(CapabilityDefinition.org_id) == ChangeItem.org_id),
         )
         .where(
-            ChangeItem.org_id == principal.org_id, ChangeItem.request_id == request.id
+            ChangeItem.org_id == principal.org_id,
+            ChangeItem.request_id == request.id,
+            col(ChangeItem.decision).is_(None),
         )
         .order_by(col(ChangeItem.position))
     ).all()
@@ -283,14 +286,15 @@ def decide(
     )
     session.add(decision)
     session.flush()
-    for item in rows:
+    pending_rows = [i for i in rows if i.decision is None]
+    for item in pending_rows:
         value = inputs[item.id]
         item.decision, item.decision_reason, item.review_decision_id = (
             value.decision,
             value.reason,
             decision.id,
         )
-    approved = [i for i in rows if i.decision == ItemDecision.APPROVED]
+    approved = [i for i in pending_rows if i.decision == ItemDecision.APPROVED]
     returned = [i for i in rows if i.decision == ItemDecision.CHANGES_REQUESTED]
     version = publish(session, request, approved, decision) if approved else None
     draft = None
@@ -343,14 +347,14 @@ def decide(
         )
     status = (
         RequestStatus.APPROVED
-        if approved
+        if any(i.decision == ItemDecision.APPROVED for i in rows)
         else RequestStatus.CHANGES_REQUESTED
         if returned
         else RequestStatus.REJECTED
     )
     transition(request, status)
     request.decided_at = utc_now()
-    reason_items = [i for i in rows if (i.decision_reason or "").strip()]
+    reason_items = [i for i in pending_rows if (i.decision_reason or "").strip()]
     if (comment or "").strip() or reason_items:
         evidence, _ = append_evidence(
             session,
@@ -382,7 +386,7 @@ def decide(
                     evidence_id=evidence.id,
                     relation=EvidenceRelation.CONTEXT,
                 )
-                for i in (list(rows) if (comment or "").strip() else reason_items)
+                for i in (pending_rows if (comment or "").strip() else reason_items)
             ]
         )
     record_audit(
