@@ -476,13 +476,13 @@ def test_submit_rolls_back_with_notifications(
 
 
 def test_tools_exclude_identity_and_bot_submission() -> None:
-    assert len(EMPLOYEE_TOOLS) == 10
+    assert len(EMPLOYEE_TOOLS) == 11
     for tool in EMPLOYEE_TOOLS:
         properties = tool.input_model.model_json_schema()["properties"]
         assert not {"employee_id", "org_id", "via", "client_name"} & properties.keys()
         assert tool.input_model.model_json_schema()["additionalProperties"] is False
         assert tool.bot_allowed == (
-            tool.name not in ("submit_request", "withdraw_request")
+            tool.name not in ("submit_request", "withdraw_request", "appeal_decision")
         )
         assert tool.writes == (
             tool.name
@@ -491,6 +491,7 @@ def test_tools_exclude_identity_and_bot_submission() -> None:
                 "submit_request",
                 "withdraw_request",
                 "answer_question",
+                "appeal_decision",
             )
         )
 

@@ -31,6 +31,7 @@ class ChangeItemPublic(SQLModel):
     uncertainty: str | None
     owner_statement: str | None = None
     objection: str | None = None
+    appeal_id: UUID | None = None
     decision: ItemDecision | None = None
     decision_reason: str | None = None
     published_claim_id: UUID | None = None
