@@ -287,6 +287,21 @@ def test_admin_without_employee_is_fallback_and_access_expires(
     )
     assert read_evidence(db, admin, evidence_id).content is None
     assert read_evidence(db, owner, evidence_id).content is not None
+    history_url = f"{url}/employees/{owner.employee_id}/change-requests?status=all"
+    admin_history = client.get(history_url, headers=auth["admin"]).json()["data"]
+    owner_history = client.get(history_url, headers=auth["manager"]).json()["data"]
+    assert (
+        next(r for r in admin_history if r["id"] == str(request.id))["items"][0][
+            "decision_reason"
+        ]
+        is None
+    )
+    assert (
+        next(r for r in owner_history if r["id"] == str(request.id))["items"][0][
+            "decision_reason"
+        ]
+        == "合成审批原因"
+    )
     assert (
         client.get(f"{url}/reviews/{request.id}", headers=auth["admin"]).status_code
         == 403

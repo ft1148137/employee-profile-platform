@@ -93,6 +93,7 @@ def list_requests(
             principal, subject_employee=employee, visibility=Visibility.RESTRICTED
         ):
             public.owner_statement = public.objection = None
+            public.decision_reason = None
         items[item.id] = public
         requests[item.request_id].items.append(public)
     links = session.exec(
