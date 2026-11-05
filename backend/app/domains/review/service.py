@@ -7,6 +7,8 @@ from app.authz.principal import Principal
 from app.authz.review import review_access
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
+from app.domains.capability.models import CapabilityDefinition
+from app.domains.capability.schemas import CapabilityPublic
 from app.domains.capability.service import get_schema, level_exists, list_capabilities
 from app.domains.change_request.employee import (
     EmployeeRecordNotFound,
@@ -24,16 +26,27 @@ from app.domains.change_request.models import (
     ReviewVia,
     SubmissionVia,
 )
-from app.domains.change_request.service import list_requests, transition
+from app.domains.change_request.schemas import ChangeItemPublic
+from app.domains.change_request.service import transition
 from app.domains.evidence.models import EvidenceKind, Visibility
-from app.domains.evidence.service import append_evidence, read_evidence
+from app.domains.evidence.service import (
+    EvidenceNotFound,
+    append_evidence,
+    evidence_access,
+    evidence_details,
+)
 from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
 from app.domains.org.models import Department, Employee, Organization
-from app.domains.org.service import visible_employee
 from app.domains.profile.models import EvidenceRelation
-from app.domains.profile.schemas import ClaimPublic
-from app.domains.review.publish import current_claims, item_evidence, jira_only, publish
+from app.domains.profile.schemas import ClaimEvidencePublic, ClaimPublic
+from app.domains.review.publish import (
+    current_claims,
+    effective_evidence,
+    item_evidence,
+    jira_only,
+    publish,
+)
 from app.domains.review.routing import reviewers_for
 from app.domains.review.schemas import (
     DecisionInput,
@@ -71,10 +84,9 @@ def list_pending_reviews(principal: Principal, session: Session) -> PendingRevie
         .order_by(col(ProfileChangeRequest.submitted_at), col(ProfileChangeRequest.id))
     ).all():
         reviewers = reviewers_for(session, principal.org_id, subject.id)
-        allowed = review_access(session, principal, request)
+        allowed = principal.employee_id != subject.id and principal.user_id in reviewers
         if not allowed and not (principal.is_org_admin and not reviewers):
             continue
-        visible_employee(session, principal, subject.id)
         count = len(
             session.exec(
                 select(ChangeItem.id).where(
@@ -126,25 +138,52 @@ def get_review(
     request = _request(principal, session, request_id)
     if not review_access(session, principal, request):
         raise ReviewForbidden()
-    public = list_requests(
-        session, principal, request.subject_employee_id, "all", request.id
-    ).data[0]
     schema = get_schema(session, principal.org_id)
     definitions = {
         c.key: c for c in list_capabilities(session, principal.org_id, schema.id)
     }
     current = current_claims(session, principal.org_id, request.subject_employee_id)
-    rows = {
-        i.id: i
-        for i in session.exec(
-            select(ChangeItem).where(
-                ChangeItem.org_id == principal.org_id,
-                ChangeItem.request_id == request.id,
-            )
-        ).all()
-    }
+    rows = session.exec(
+        select(ChangeItem, CapabilityDefinition)
+        .join(
+            CapabilityDefinition,
+            (col(CapabilityDefinition.id) == ChangeItem.capability_definition_id)
+            & (col(CapabilityDefinition.org_id) == ChangeItem.org_id),
+        )
+        .where(
+            ChangeItem.org_id == principal.org_id, ChangeItem.request_id == request.id
+        )
+        .order_by(col(ChangeItem.position))
+    ).all()
+    evidence_by_item = {row.id: item_evidence(session, row) for row, _ in rows}
+    evidence_ids = {id_ for evidence in evidence_by_item.values() for id_ in evidence}
+    access = evidence_access(
+        session,
+        principal,
+        evidence_ids,
+        review_permissions={request.id: True},
+    )
+    if evidence_ids != set(access):
+        raise EvidenceNotFound()
+    details = evidence_details(session, principal, access)
     result = []
-    for item in public.items:
+    for row, capability in rows:
+        evidence = evidence_by_item[row.id]
+        item = ChangeItemPublic.model_validate(
+            row, update={"capability": CapabilityPublic.model_validate(capability)}
+        )
+        item.evidence = [
+            ClaimEvidencePublic(
+                evidence_id=id_,
+                kind=details[id_].kind,
+                title=details[id_].title,
+                occurred_at=details[id_].occurred_at,
+                relation=evidence[id_][1],
+                redacted=details[id_].redacted,
+            )
+            for id_ in sorted(evidence)
+            if id_ in details
+        ]
         before = current.get(item.capability.key)
         definition = definitions.get(item.capability.key)
         reason = (
@@ -161,11 +200,8 @@ def get_review(
             ReviewItem(
                 before=ClaimPublic.model_validate(before) if before else None,
                 after=item,
-                evidence=[
-                    read_evidence(session, principal, id_)
-                    for id_ in item_evidence(session, rows[item.id])
-                ],
-                jira_only=jira_only(item_evidence(session, rows[item.id])),
+                evidence=[details[id_] for id_ in evidence if id_ in details],
+                jira_only=jira_only(effective_evidence(session, row, before, evidence)),
                 approvable=reason is None,
                 approval_blocked_reason=reason,
             )
@@ -190,12 +226,16 @@ def decide(
         .with_for_update(read=True)
     ).one()
     request = _request(principal, session, request_id, lock=True)
-    if request.revision != revision or request.status != RequestStatus.PENDING_REVIEW:
-        raise RequestConflict("内容已变化，请重新查看")
-    if via not in (ReviewVia.WEB, ReviewVia.MCP, ReviewVia.IM) or not review_access(
-        session, principal, request
+    if via not in (
+        ReviewVia.WEB,
+        ReviewVia.MCP,
+        ReviewVia.IM,
+    ) or principal.user_id not in reviewers_for(
+        session, principal.org_id, request.subject_employee_id
     ):
         raise ReviewForbidden()
+    if request.revision != revision or request.status != RequestStatus.PENDING_REVIEW:
+        raise RequestConflict("内容已变化，请重新查看")
     session.exec(
         select(Employee)
         .where(

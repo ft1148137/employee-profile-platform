@@ -48,7 +48,11 @@ def restricted_title(kind: EvidenceKind) -> str:
 
 
 def evidence_access(
-    session: Session, principal: Principal, ids: set[UUID]
+    session: Session,
+    principal: Principal,
+    ids: set[UUID],
+    *,
+    review_permissions: dict[UUID, bool] | None = None,
 ) -> dict[UUID, tuple[Evidence, bool]]:
     from app.authz.review import review_access
     from app.domains.change_request.models import (
@@ -58,8 +62,10 @@ def evidence_access(
         RequestStatus,
     )
 
+    # Only reuse permissions computed by review_access for this principal and call.
+    permissions = review_permissions if review_permissions is not None else {}
     access: dict[UUID, tuple[Evidence, bool]] = {}
-    for e, employee, request in session.exec(
+    rows = session.exec(
         select(Evidence, Employee, ProfileChangeRequest)
         .join(
             Employee,
@@ -87,14 +93,19 @@ def evidence_access(
             col(Evidence.id).in_(ids),
             employee_scope_clause(principal),
         )
-    ).all():
-        readable = (
-            access.get(e.id, (e, False))[1]
-            or can_view_evidence_content(
-                principal, subject_employee=employee, visibility=e.visibility
-            )
-            or (request is not None and review_access(session, principal, request))
+    ).all()
+    # Joined rows may list another request first for the same evidence.
+    for e, _, request in rows:
+        if request is not None and permissions.get(request.id, False):
+            access[e.id] = (e, True)
+    for e, employee, request in rows:
+        readable = access.get(e.id, (e, False))[1] or can_view_evidence_content(
+            principal, subject_employee=employee, visibility=e.visibility
         )
+        if not readable and request is not None:
+            if request.id not in permissions:
+                permissions[request.id] = review_access(session, principal, request)
+            readable = permissions[request.id]
         access[e.id] = (e, readable)
     return access
 
@@ -150,31 +161,52 @@ def list_evidence(
 def read_evidence(
     session: Session, principal: Principal, evidence_id: UUID
 ) -> EvidenceDetail:
-    access = evidence_access(session, principal, {evidence_id}).get(evidence_id)
-    if access is None:
+    access = evidence_access(session, principal, {evidence_id})
+    if evidence_id not in access:
         raise EvidenceNotFound()
-    evidence, readable = access
-    event = (
-        session.exec(
+    return evidence_details(session, principal, access)[evidence_id]
+
+
+def evidence_details(
+    session: Session,
+    principal: Principal,
+    access: dict[UUID, tuple[Evidence, bool]],
+) -> dict[UUID, EvidenceDetail]:
+    """Load details in batches after evidence_access has checked visibility."""
+    events = {
+        event.id: event
+        for event in session.exec(
             select(WorkEvent).where(
-                WorkEvent.org_id == principal.org_id, WorkEvent.id == evidence.event_id
+                WorkEvent.org_id == principal.org_id,
+                col(WorkEvent.id).in_(
+                    {
+                        e.event_id
+                        for e, readable in access.values()
+                        if readable and e.event_id
+                    }
+                ),
             )
-        ).first()
-        if readable and evidence.event_id
-        else None
-    )
-    task = (
-        session.exec(
+        ).all()
+    }
+    tasks = {
+        task.id: task
+        for task in session.exec(
             select(Task).where(
-                Task.org_id == principal.org_id, Task.id == event.task_id
+                Task.org_id == principal.org_id,
+                col(Task.id).in_(
+                    {event.task_id for event in events.values() if event.task_id}
+                ),
             )
-        ).first()
-        if event and event.task_id
-        else None
-    )
+        ).all()
+    }
     successor = aliased(ProfileClaim)
     claims = session.exec(
-        select(ProfileClaim.id, CapabilityDefinition.name, ClaimEvidence.relation)
+        select(
+            ClaimEvidence.evidence_id,
+            ProfileClaim.id,
+            CapabilityDefinition.name,
+            ClaimEvidence.relation,
+        )
         .join(
             ClaimEvidence,
             (col(ClaimEvidence.claim_id) == ProfileClaim.id)
@@ -192,7 +224,7 @@ def read_evidence(
         )
         .where(
             ProfileClaim.org_id == principal.org_id,
-            ClaimEvidence.evidence_id == evidence_id,
+            col(ClaimEvidence.evidence_id).in_(access),
             employee_scope_clause(principal),
             ~select(successor.id)
             .where(
@@ -203,27 +235,36 @@ def read_evidence(
         )
         .order_by(col(ProfileClaim.id))
     ).all()
-    return EvidenceDetail(
-        **evidence_summary(evidence, readable).model_dump(),
-        content=evidence.content if readable else None,
-        provenance=evidence.provenance
-        if readable
-        else {
-            "source": evidence.source,
-            "imported_at": evidence.provenance.get(
-                "imported_at", evidence.created_at.isoformat()
-            ),
-        },
-        work_event=WorkEventPublic.model_validate(event) if event else None,
-        task=TaskPublic.model_validate(task) if task else None,
-        supersedes_evidence_id=evidence.supersedes_evidence_id,
-        claims=[
+    claim_details: dict[UUID, list[EvidenceClaimPublic]] = {}
+    for evidence_id, id_, name, relation in claims:
+        claim_details.setdefault(evidence_id, []).append(
             EvidenceClaimPublic(
-                claim_id=id, capability_name=name, relation=EvidenceRelation(relation)
+                claim_id=id_, capability_name=name, relation=EvidenceRelation(relation)
             )
-            for id, name, relation in claims
-        ],
-    )
+        )
+    result = {}
+    for evidence_id, (evidence, readable) in access.items():
+        event = (
+            events.get(evidence.event_id) if readable and evidence.event_id else None
+        )
+        task = tasks.get(event.task_id) if event and event.task_id else None
+        result[evidence_id] = EvidenceDetail(
+            **evidence_summary(evidence, readable).model_dump(),
+            content=evidence.content if readable else None,
+            provenance=evidence.provenance
+            if readable
+            else {
+                "source": evidence.source,
+                "imported_at": evidence.provenance.get(
+                    "imported_at", evidence.created_at.isoformat()
+                ),
+            },
+            work_event=WorkEventPublic.model_validate(event) if event else None,
+            task=TaskPublic.model_validate(task) if task else None,
+            supersedes_evidence_id=evidence.supersedes_evidence_id,
+            claims=claim_details.get(evidence_id, []),
+        )
+    return result
 
 
 def append_evidence(
