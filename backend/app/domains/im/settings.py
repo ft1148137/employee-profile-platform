@@ -11,6 +11,7 @@ from app.core.secrets import SecretUnavailable, decrypt_secret, encrypt_secret
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.im.adapters.base import ImError
+from app.domains.im.adapters.feishu import Feishu
 from app.domains.im.adapters.telegram import Telegram
 from app.domains.im.adapters.wecom import Wecom
 from app.domains.im.models import ImSetting
@@ -122,11 +123,6 @@ def save_setting(
 async def test_connection(
     db: Session, org_id: UUID, platform: Platform
 ) -> ImConnectionTest:
-    if platform == "feishu":
-        # shortcut: Connection tests are implemented with the platform adapters in S14/S15.
-        return ImConnectionTest(
-            ok=False, message="该平台的连接测试将在后续接入完成后可用"
-        )
     row = db.get(ImSetting, (org_id, platform))
     if not row or not row.credentials:
         return ImConnectionTest(ok=False, message="请先保存应用凭据")
@@ -159,7 +155,13 @@ async def test_connection(
             ).first()
         ):
             return ImConnectionTest(ok=False, message="该机器人已被其他企业使用")
-        adapter = (Wecom if platform == "wecom" else Telegram)(org_id, credentials)
+        adapter = (
+            Wecom
+            if platform == "wecom"
+            else Feishu
+            if platform == "feishu"
+            else Telegram
+        )(org_id, credentials)
         async with asyncio.timeout(10):
             await adapter.test_connection()
         return ImConnectionTest(ok=True, message="连接成功")

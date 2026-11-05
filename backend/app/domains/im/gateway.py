@@ -16,13 +16,18 @@ from app.core.secrets import SecretUnavailable, decrypt_secret
 from app.domains.base import utc_now
 from app.domains.im import actions, binding
 from app.domains.im.adapters.base import Adapter, Event, ImError
+from app.domains.im.adapters.feishu import Feishu
 from app.domains.im.adapters.telegram import Telegram
 from app.domains.im.adapters.wecom import Wecom
 from app.domains.im.models import ImEvent, ImSetting
 from app.domains.im.notifications import send_pending
 from app.domains.im.schemas import Platform
 
-ADAPTERS: dict[Platform, type[Adapter]] = {"telegram": Telegram, "wecom": Wecom}
+ADAPTERS: dict[Platform, type[Adapter]] = {
+    "telegram": Telegram,
+    "wecom": Wecom,
+    "feishu": Feishu,
+}
 logger = logging.getLogger(__name__)
 
 
@@ -115,42 +120,25 @@ class Gateway:
         if event.callback_id:
             await adapter.answer_callback(event.callback_id)
         if (
-            isinstance(adapter, Wecom)
+            isinstance(adapter, (Feishu, Wecom))
             and event.private
-            and not event.callback_id
-            and not (event.text or "").strip().startswith("绑定")
+            and event.text is not None
+            and not event.text.strip().startswith("绑定")
+            and self.enabled(event.org_id, event.platform, credentials)
         ):
             with Session(self.engine) as db:
-                setting = db.get(ImSetting, (event.org_id, event.platform))
-                needs_email = bool(
-                    setting
-                    and setting.enabled
-                    and setting.credentials == credentials
-                    and setting.email_auto_bind
-                    and binding.current_binding(
-                        db,
-                        event.org_id,
-                        event.platform,
-                        event.external_user_id,
-                        event.external_chat_id,
-                        identity,
-                    )
-                    is None
-                )
-            if needs_email:
+                wanted = binding.wants_email(db, event, identity)
+            if wanted:
                 email = await adapter.enterprise_email(event.external_user_id)
-                if email:
-                    with Session(self.engine) as db:
-                        binding.bind_email(
-                            db,
-                            event.org_id,
-                            event.platform,
-                            event.external_user_id,
+                with Session(self.engine) as db:
+                    if email and binding.bind_email(
+                        db, event, identity, credentials, email
+                    ):
+                        await adapter.send_text(
                             event.external_chat_id,
-                            identity,
-                            credentials,
-                            email,
+                            "已按企业邮箱绑定，可以在网页的个人设置中解绑。请继续发送消息。",
                         )
+                        return
         # Model turns are synchronous; keep polling tasks and setting refresh responsive.
         reply = await asyncio.to_thread(self.dispatch, event, identity, credentials)
         if not reply or not self.enabled(event.org_id, event.platform, credentials):

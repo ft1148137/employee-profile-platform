@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import func, or_
+from sqlalchemy.dialects.postgresql import insert
 from sqlmodel import Session, col, delete, select
 
 from app.authz.principal import Principal
@@ -14,10 +15,16 @@ from app.domains.access_token.auth import account_principal
 from app.domains.account.limiter import check_login_limit, record_login_attempt
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
+from app.domains.im.adapters.base import Event
 from app.domains.im.models import ImAction, ImBindCode, ImBinding, ImEvent, ImSetting
 from app.domains.im.notifications import cancel_pending
 from app.domains.im.schemas import BindingCode, BindingPublic, Platform
-from app.domains.org.models import Employee, Organization, OrgMembership
+from app.domains.org.models import (
+    Employee,
+    EmploymentStatus,
+    Organization,
+    OrgMembership,
+)
 from app.domains.org.service import EmployeeNotFound, visible_employee
 
 GUIDE = "请在网页的个人设置中生成绑定码，再私聊发送「绑定 123456」。"
@@ -194,62 +201,86 @@ def bind(
     return True
 
 
+def wants_email(db: Session, event: Event, identity: str) -> bool:
+    setting = db.get(ImSetting, (event.org_id, event.platform))
+    return bool(
+        setting
+        and setting.enabled
+        and setting.email_auto_bind
+        and setting.bot_identity == identity
+        and db.exec(
+            select(ImBinding.id).where(
+                ImBinding.org_id == event.org_id,
+                ImBinding.platform == event.platform,
+                ImBinding.external_user_id == event.external_user_id,
+            )
+        ).first()
+        is None
+    )
+
+
 def bind_email(
-    db: Session,
-    org_id: UUID,
-    platform: Platform,
-    external_user_id: str,
-    chat_id: str,
-    bot_identity: str,
-    credentials: str,
-    email: str,
+    db: Session, event: Event, identity: str, credentials: str, email: str
 ) -> bool:
-    _lock(db, org_id)
-    setting = db.get(ImSetting, (org_id, platform), populate_existing=True)
+    _lock(db, event.org_id)
+    setting = db.get(ImSetting, (event.org_id, event.platform), populate_existing=True)
     if (
-        not setting
-        or not setting.enabled
-        or not setting.email_auto_bind
+        not event.private
+        or not setting
         or setting.credentials != credentials
-        or setting.bot_identity != bot_identity
+        or not wants_email(db, event, identity)
     ):
         return False
     employees = db.exec(
         select(Employee).where(
-            Employee.org_id == org_id,
+            Employee.org_id == event.org_id,
             func.lower(Employee.work_email) == email.strip().lower(),
         )
     ).all()
     if len(employees) != 1:
         return False
     employee = employees[0]
-    existing = db.exec(
-        select(ImBinding).where(
-            ImBinding.org_id == org_id,
-            ImBinding.platform == platform,
-            or_(
-                col(ImBinding.employee_id) == employee.id,
-                col(ImBinding.external_user_id) == external_user_id,
-            ),
+    if employee.employment_status != EmploymentStatus.ACTIVE:
+        return False
+    if db.exec(
+        select(ImBinding.id).where(
+            ImBinding.org_id == event.org_id,
+            ImBinding.platform == event.platform,
+            ImBinding.employee_id == employee.id,
         )
-    ).first()
-    if existing:
+    ).first():
         return False
     row = ImBinding(
-        org_id=org_id,
+        org_id=event.org_id,
         employee_id=employee.id,
-        platform=platform,
-        external_user_id=external_user_id,
-        external_chat_id=chat_id,
-        bot_identity=bot_identity,
+        platform=event.platform,
+        external_user_id=event.external_user_id,
+        external_chat_id=event.external_chat_id,
+        bot_identity=identity,
         bound_via="email",
     )
     try:
         p = principal_for(db, row)
     except HTTPException:
         return False
+    added = (
+        db.connection()
+        .execute(
+            insert(ImEvent)
+            .values(
+                org_id=event.org_id,
+                platform=event.platform,
+                event_id=f"{identity}:{event.event_id}",
+            )
+            .on_conflict_do_nothing()
+            .returning(col(ImEvent.event_id))
+        )
+        .first()
+    )
+    if added is None:
+        return False
     db.add(row)
-    _audit(db, p, "im_binding.email_bound", platform)
+    _audit(db, p, "im_binding.bound", event.platform)
     db.commit()
     return True
 

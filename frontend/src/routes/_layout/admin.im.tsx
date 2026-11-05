@@ -228,29 +228,23 @@ function PlatformSetting({
         >
           {save.isPending ? "正在保存…" : "保存"}
         </Button>
-        {setting.platform !== "feishu" ? (
-          <Button
-            type="button"
-            variant="outline"
-            disabled={
-              !setting.has_credentials ||
-              save.isPending ||
-              test.isPending ||
-              Object.values(credentials).some(Boolean)
-            }
-            onClick={() => test.mutate()}
-          >
-            {test.isPending
-              ? "正在测试…"
-              : setting.platform === "wecom" && setting.enabled
-                ? "查看长连接最近心跳"
-                : "测试已保存的连接"}
-          </Button>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            连接测试将在后续接入完成后可用
-          </p>
-        )}
+        <Button
+          type="button"
+          variant="outline"
+          disabled={
+            !setting.has_credentials ||
+            save.isPending ||
+            test.isPending ||
+            Object.values(credentials).some(Boolean)
+          }
+          onClick={() => test.mutate()}
+        >
+          {test.isPending
+            ? "正在测试…"
+            : setting.platform === "wecom" && setting.enabled
+              ? "查看长连接最近心跳"
+              : "测试已保存的连接"}
+        </Button>
       </div>
       {save.isSuccess && <p role="status">设置已保存</p>}
       {test.data && (

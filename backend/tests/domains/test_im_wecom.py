@@ -344,10 +344,7 @@ def test_email_binding(demo: tuple, db: Session, client: TestClient, case: str) 
     try:
         assert binding.bind_email(
             db,
-            p.org_id,
-            "wecom",
-            "user",
-            "user",
+            Event(p.org_id, "wecom", uuid4().hex, "user", "user", True),
             CREDS["bot_id"],
             setting.credentials,
             email,

@@ -111,6 +111,12 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
     await expect(wecom.getByRole("status")).toHaveText(
       "长连接最近心跳时间：合成时间",
     )
+    await page.route("**/im-settings/feishu/test", (route) =>
+      route.fulfill({ json: { ok: true, message: "连接成功" } }),
+    )
+    const feishu = page.getByRole("form", { name: "飞书", exact: true })
+    await feishu.getByRole("button", { name: "测试已保存的连接" }).click()
+    await expect(feishu.getByRole("status")).toContainText("连接成功")
     for (const row of rows) {
       const form = page.getByRole("form", { name: row.name, exact: true })
       await form
