@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { isAxiosError } from "axios"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ChangeRequestsService, ProfilesService } from "@/client"
 import { AutoDraftSetting } from "@/components/Profile/AutoDraftSetting"
 import { CapabilityList } from "@/components/Profile/CapabilityList"
@@ -35,6 +35,8 @@ function EmployeePage() {
 function EmployeeDetails() {
   const { org, employeeId: ownEmployeeId } = useOrg()
   const { employeeId } = Route.useParams()
+  const [tab, setTab] = useState("capabilities")
+  const [requestId, setRequestId] = useState<string | null>(null)
   const [evidenceId, setEvidenceId] = useState<string | null>(null)
   const [editing, setEditing] = useState<EditorSelection | null>(null)
   const requests = useQuery({
@@ -43,6 +45,7 @@ function EmployeeDetails() {
       (
         await ChangeRequestsService.readChangeRequests({
           path: { org_id: org!.id, employee_id: employeeId },
+          query: { status: "all" },
         })
       ).data,
     enabled: !!org,
@@ -59,6 +62,12 @@ function EmployeeDetails() {
     enabled: !!org,
     retry: false,
   })
+  useEffect(() => {
+    if (tab === "capabilities" && requestId && requests.data)
+      document
+        .getElementById(`request-${requestId}`)
+        ?.scrollIntoView({ block: "center" })
+  }, [tab, requestId, requests.data])
   if (!org) return <OrgState />
   if (query.isPending) return <ProfileLoading />
   if (query.isError) {
@@ -78,7 +87,7 @@ function EmployeeDetails() {
       <EmployeeSummaryContent employee={query.data.employee} />
       {ownEmployeeId === employeeId && <AutoDraftSetting orgId={org.id} />}
       {ownEmployeeId === employeeId && <ProfileImport orgId={org.id} />}
-      <Tabs defaultValue="capabilities" className="gap-6">
+      <Tabs value={tab} onValueChange={setTab} className="gap-6">
         <TabsList aria-label="画像详情">
           <TabsTrigger value="capabilities">能力画像</TabsTrigger>
           <TabsTrigger value="evidence">证据</TabsTrigger>
@@ -92,6 +101,7 @@ function EmployeeDetails() {
           ) : (
             <ChangeRequestCard
               requests={requests.data.data}
+              employeeId={employeeId}
               isOwner={ownEmployeeId === employeeId}
               onEvidence={setEvidenceId}
               orgId={org.id}
@@ -134,9 +144,15 @@ function EmployeeDetails() {
             }
             pendingCapabilityIds={
               new Set(
-                requests.data?.data.flatMap((request) =>
-                  (request.items ?? []).map((item) => item.capability.id),
-                ),
+                requests.data?.data
+                  .filter((request) =>
+                    ["draft", "pending_owner", "pending_review"].includes(
+                      request.status,
+                    ),
+                  )
+                  .flatMap((request) =>
+                    (request.items ?? []).map((item) => item.capability.id),
+                  ),
               )
             }
           />
@@ -163,6 +179,10 @@ function EmployeeDetails() {
             orgId={org.id}
             employeeId={employeeId}
             onEvidence={setEvidenceId}
+            onRequest={(id) => {
+              setRequestId(id)
+              setTab("capabilities")
+            }}
           />
         </TabsContent>
       </Tabs>

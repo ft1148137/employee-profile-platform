@@ -1078,3 +1078,117 @@ def test_review_batch_does_not_bypass_employee_scope(demo: tuple, db: Session) -
     with pytest.raises(HTTPException) as error:
         service.get_review(manager(db, demo), db, request.id)
     assert error.value.status_code == 404
+
+
+def test_request_timeline_tracks_decision_version_and_private_returned_draft(
+    demo: tuple, client: TestClient, db: Session
+) -> None:
+    owner, request = pending(
+        db,
+        demo,
+        items=[
+            {
+                "op": "modify",
+                "capability_key": "backend_api",
+                "statement": "合成批准项",
+            },
+            {
+                "op": "add",
+                "capability_key": "automated_testing",
+                "statement": "合成退回项",
+            },
+        ],
+    )
+    url, employees, auth = demo
+    result = service.decide(
+        manager(db, demo),
+        db,
+        request.id,
+        request.revision,
+        [
+            DecisionInput(item_id=request.items[0].id, decision=ItemDecision.APPROVED),
+            DecisionInput(
+                item_id=request.items[1].id,
+                decision=ItemDecision.CHANGES_REQUESTED,
+                reason="请补充依据",
+            ),
+        ],
+        via=ReviewVia.MCP,
+        client_name="合成客户端",
+    )
+    db.commit()
+    base = f"{url}/employees/{owner.employee_id}"
+    timeline_url = f"{base}/change-requests/{request.id}/timeline"
+    response = client.get(timeline_url, headers=auth["employee"])
+    assert response.status_code == 200
+    events = response.json()
+    assert [e["at"] for e in events] == sorted(e["at"] for e in events)
+    assert {e["action"] for e in events} == {
+        "created",
+        "submitted",
+        "decided",
+        "published",
+        "returned",
+    }
+    decision = next(e for e in events if e["action"] == "decided")
+    assert decision["via"] == "mcp" and decision["client_name"] == "合成客户端"
+    assert decision["reviewer"] == db.get(User, manager(db, demo).user_id).full_name
+    returned = next(e for e in events if e["action"] == "returned")
+    assert returned["request_id"] == str(result.returned_request_id)
+    manager_events = client.get(timeline_url, headers=auth["manager"]).json()
+    assert not any(e["action"] == "returned" for e in manager_events)
+    versions = client.get(f"{base}/profile-versions", headers=auth["employee"]).json()[
+        "data"
+    ]
+    assert versions[0]["via"] == "mcp" and versions[0]["request_id"] == str(request.id)
+    assert (
+        next(e for e in events if e["action"] == "published")["version"]
+        == versions[0]["revision"]
+    )
+    for denied in [
+        timeline_url.replace(str(owner.employee_id), str(employees["E03"].id)),
+        timeline_url.replace(str(request.id), str(uuid4())),
+    ]:
+        assert client.get(denied, headers=auth["employee"]).status_code == 404
+    assert client.get(timeline_url, headers=auth["foreign"]).status_code == 404
+    assert (
+        client.get(
+            f"{base}/change-requests/{result.returned_request_id}/timeline",
+            headers=auth["manager"],
+        ).status_code
+        == 404
+    )
+    assert (
+        client.get(
+            f"{base}/change-requests/{result.returned_request_id}/timeline",
+            headers=auth["employee"],
+        ).status_code
+        == 200
+    )
+
+
+def test_request_timeline_withdrawal_and_admin_account_name(
+    demo: tuple, client: TestClient, db: Session
+) -> None:
+    owner, request = pending(db, demo)
+    employee.withdraw(owner, db, request.id)
+    db.commit()
+    url, _, auth = demo
+    events = client.get(
+        f"{url}/employees/{owner.employee_id}/change-requests/{request.id}/timeline",
+        headers=auth["employee"],
+    ).json()
+    assert events[-1]["action"] == "withdrawn"
+    owner, request = pending(db, demo, role="manager.platform")
+    admin = actor(db, owner.org_id, "admin@demo.example.com")
+    assert admin.employee_id is None
+    service.decide(admin, db, request.id, request.revision, values(request))
+    db.commit()
+    events = client.get(
+        f"{url}/employees/{owner.employee_id}/change-requests/{request.id}/timeline",
+        headers=auth["admin"],
+    ).json()
+    assert (
+        next(e for e in events if e["action"] == "decided")["reviewer"]
+        == db.get(User, admin.user_id).full_name
+    )

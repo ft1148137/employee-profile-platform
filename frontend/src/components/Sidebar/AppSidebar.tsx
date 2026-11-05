@@ -27,6 +27,7 @@ import {
 import useAuth from "@/hooks/useAuth"
 import { useInbox } from "@/hooks/useInbox"
 import { useOrg } from "@/hooks/useOrg"
+import { useReviews } from "@/hooks/useReviews"
 import { useSetup } from "@/hooks/useSetup"
 import { type Item, Main } from "./Main"
 import { User } from "./User"
@@ -37,10 +38,11 @@ export function AppSidebar() {
   const { org, memberships, roles, employeeId, setOrg } = useOrg()
   const setup = useSetup()
   const inbox = useInbox()
+  const reviews = useReviews()
   const navigate = useNavigate()
   const location = useLocation()
   const items: Item[] = []
-  if (employeeId)
+  if (org)
     items.push({
       icon: Inbox,
       title: "收件箱",
@@ -48,6 +50,13 @@ export function AppSidebar() {
       badge: inbox.data?.unread_count
         ? String(inbox.data.unread_count)
         : undefined,
+    })
+  if (reviews.data?.count)
+    items.push({
+      icon: ListChecks,
+      title: "待审批",
+      path: "/reviews",
+      badge: String(reviews.data.count),
     })
   if (employeeId)
     items.push({

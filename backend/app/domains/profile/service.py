@@ -220,7 +220,7 @@ def version_summaries(
         if v.published_by.get("actor_type") == "user" and v.published_by.get("user_id")
     }
     names = {
-        user.id: employee_name or user.full_name
+        user.id: employee_name or user.full_name or user.username
         for user, employee_name in session.exec(
             select(User, Employee.display_name)
             .outerjoin(
@@ -238,6 +238,10 @@ def version_summaries(
     }
     return [
         ProfileVersionSummary(
+            via=str(v.published_by["via"]) if v.published_by.get("via") else None,
+            request_id=UUID(str(v.published_by["request_id"]))
+            if v.published_by.get("request_id")
+            else None,
             revision=v.revision,
             published_at=v.published_at,
             schema_version=schemas[v.schema_version_id],

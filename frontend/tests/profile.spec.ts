@@ -199,25 +199,28 @@ test("another employee cannot read the initial draft", async ({ page }) => {
 test("empty initial draft cannot submit and pending requests can be withdrawn", async ({
   page,
 }) => {
-  await page.route("**/employees/*/change-requests", async (route) => {
-    const response = await route.fetch()
-    const body = await response.json()
-    const initial = body.data[0]
-    await route.fulfill({
-      json: {
-        data: [
-          { ...initial, items: [] },
-          {
-            ...initial,
-            id: "other",
-            origin: "manual",
-            status: "pending_review",
-          },
-        ],
-        count: 2,
-      },
-    })
-  })
+  await page.route(
+    "**/employees/*/change-requests?status=all",
+    async (route) => {
+      const response = await route.fetch()
+      const body = await response.json()
+      const initial = body.data[0]
+      await route.fulfill({
+        json: {
+          data: [
+            { ...initial, items: [] },
+            {
+              ...initial,
+              id: "other",
+              origin: "manual",
+              status: "pending_review",
+            },
+          ],
+          count: 2,
+        },
+      })
+    },
+  )
   await openE02(page, "employee.platform@demo.example.com")
   await expect(
     page.getByRole("region", { name: "初始画像草稿", exact: true }),
@@ -242,12 +245,12 @@ test("empty initial draft cannot submit and pending requests can be withdrawn", 
 })
 
 test("initial draft read failure can be retried", async ({ page }) => {
-  await page.route("**/employees/*/change-requests", (route) =>
+  await page.route("**/employees/*/change-requests?status=all", (route) =>
     route.fulfill({ status: 500 }),
   )
   await openE02(page, "employee.platform@demo.example.com")
   await expect(page.getByRole("alert")).toBeVisible()
-  await page.unroute("**/employees/*/change-requests")
+  await page.unroute("**/employees/*/change-requests?status=all")
   await page.getByRole("button", { name: "重试" }).click()
   await expect(
     page.getByRole("region", { name: "初始画像草稿", exact: true }),

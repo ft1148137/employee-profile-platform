@@ -3,17 +3,19 @@ import { useState } from "react"
 import { ProfilesService } from "@/client"
 import { Button } from "@/components/ui/button"
 import { CapabilityList } from "./CapabilityList"
-import { dateLabel } from "./fields"
 import { ProfileError, ProfileLoading } from "./QueryState"
+import { viaLabels } from "./RequestTimeline"
 
 export function VersionHistory({
   orgId,
   employeeId,
   onEvidence,
+  onRequest,
 }: {
   orgId: string
   employeeId: string
   onEvidence: (id: string) => void
+  onRequest: (id: string) => void
 }) {
   const [revision, setRevision] = useState<number | null>(null)
   const path = { org_id: orgId, employee_id: employeeId }
@@ -43,6 +45,22 @@ export function VersionHistory({
           .sort((a, b) => b.revision - a.revision)
           .map((version) => (
             <li key={version.revision}>
+              <div className="px-5 pt-4 text-sm text-muted-foreground">
+                {version.via && viaLabels[version.via]}
+                {version.request_id && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <button
+                      type="button"
+                      className="text-primary underline"
+                      onClick={() => onRequest(version.request_id!)}
+                    >
+                      来源请求
+                    </button>
+                  </>
+                )}
+              </div>
               <Button
                 variant="ghost"
                 aria-expanded={revision === version.revision}
@@ -54,7 +72,8 @@ export function VersionHistory({
                 }
               >
                 <span>
-                  r{version.revision} · {dateLabel(version.published_at)}
+                  r{version.revision} ·{" "}
+                  {new Date(version.published_at).toLocaleString("zh-CN")}
                 </span>
                 <span className="text-sm text-muted-foreground">
                   发布人：{version.published_by.display_name ?? "—"}

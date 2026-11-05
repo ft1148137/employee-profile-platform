@@ -116,7 +116,6 @@ function QuestionAnswer({
 function InboxPage() {
   const { org, employeeId } = useOrg()
   if (!org) return <OrgState />
-  if (!employeeId) return <p>当前组织尚未为你分配员工身份，请联系管理员。</p>
   return (
     <InboxContent
       key={`${org.id}:${employeeId}`}
@@ -131,7 +130,7 @@ function InboxContent({
   employeeId,
 }: {
   orgId: string
-  employeeId: string
+  employeeId: string | null | undefined
 }) {
   const [skip, setSkip] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
@@ -212,19 +211,36 @@ function InboxContent({
                           : "回答问题"}
                     </Button>
                   )}
-                  {item.request_id && (
-                    <Button variant="outline" asChild>
-                      <Link
-                        to="/employees/$employeeId"
-                        params={{ employeeId }}
-                        onClick={() => {
-                          if (!item.read_at) read.mutate(item.id)
-                        }}
-                      >
-                        查看画像请求
-                      </Link>
-                    </Button>
-                  )}
+                  {item.request_id &&
+                    item.kind === "review_requested" &&
+                    !item.done_at && (
+                      <Button variant="outline" asChild>
+                        <Link
+                          to="/reviews/$requestId"
+                          params={{ requestId: item.request_id }}
+                          onClick={() => {
+                            if (!item.read_at) read.mutate(item.id)
+                          }}
+                        >
+                          查看并审批
+                        </Link>
+                      </Button>
+                    )}
+                  {item.request_id &&
+                    employeeId &&
+                    item.kind !== "review_requested" && (
+                      <Button variant="outline" asChild>
+                        <Link
+                          to="/employees/$employeeId"
+                          params={{ employeeId }}
+                          onClick={() => {
+                            if (!item.read_at) read.mutate(item.id)
+                          }}
+                        >
+                          查看画像请求
+                        </Link>
+                      </Button>
+                    )}
                   {!item.read_at && (
                     <Button
                       variant="ghost"
