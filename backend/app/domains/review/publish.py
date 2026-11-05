@@ -120,6 +120,7 @@ def publish(
         "decision_id": str(decision.id),
     }
     for item in items:
+        explanation = item.explanation
         original = session.exec(
             select(CapabilityDefinition).where(
                 CapabilityDefinition.org_id == org_id,
@@ -135,6 +136,8 @@ def publish(
         if (target.id if target else None) != item.target_claim_id:
             raise RequestConflict("目标判断已被其他请求取代，请重新查看")
         if item.op == ChangeOp.ATTACH_EVIDENCE and target is not None:
+            if decision.via == ReviewVia.SYNC:
+                explanation = target.explanation
             after = ClaimAfter.model_validate(
                 target.model_dump(
                     include={"statement", "level", "assessment_status", "confidence"}
@@ -158,7 +161,7 @@ def publish(
             **after.model_dump(
                 include={"statement", "level", "assessment_status", "confidence"}
             ),
-            explanation=item.explanation,
+            explanation=explanation,
             generated_by=publisher,
             supersedes_claim_id=item.target_claim_id,
         )

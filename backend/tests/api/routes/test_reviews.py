@@ -561,11 +561,16 @@ def test_jira_only_and_retract_and_attach(demo: tuple, db: Session) -> None:
             }
         ],
     )
+    attach_item = db.get(ChangeItem, attach.items[0].id)
+    attach_item.explanation = "经理过目后的补充解释"
+    db.add(attach_item)
+    db.flush()
     service.decide(reviewer, db, attach.id, attach.revision, values(attach))
     db.commit()
     claim = current_claims(db, owner.org_id, owner.employee_id)["backend_api"]
     assert claim.statement == original.statement and claim.level == original.level
     assert claim.assessment_status == original.assessment_status
+    assert claim.explanation == attach_item.explanation != original.explanation
     assert set(
         db.exec(
             select(ClaimEvidence.evidence_id).where(ClaimEvidence.claim_id == claim.id)

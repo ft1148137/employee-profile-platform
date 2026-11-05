@@ -12,8 +12,11 @@ from sqlmodel import Session, select
 
 from app.authz.deps import get_org_principal
 from app.authz.principal import Principal
+from app.core.config import settings
 from app.core.db import engine
 from app.core.secrets import encrypt_secret
+from app.domains.account.limiter import LoginLimited
+from app.domains.account.models import LoginAttempt
 from app.domains.base import utc_now
 from app.domains.im import binding, gateway
 from app.domains.im import settings as im_settings
@@ -141,6 +144,31 @@ def test_http_binding_cycle(
     asyncio.run(run())
     assert TOKEN not in caplog.text and "合成私聊正文" not in caplog.text
     assert "解绑后的合成私聊" not in caplog.text
+
+
+def test_binding_limit_is_shared_across_accounts(
+    demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = principal(db, demo[1]["E02"].org_id, demo[1]["E02"].id)
+    enable(db, p)
+    code = binding.create_code(db, p).code
+    # A small shared threshold exercises the real limiter with distinct accounts.
+    monkeypatch.setattr(settings, "LOGIN_MAX_FAILURES_PER_IP", 6)
+    wrong = "000000" if code != "000000" else "000001"
+    for i in range(settings.LOGIN_MAX_FAILURES_PER_IP):
+        user = str(100 + i % 3)
+        assert not binding.bind(db, p.org_id, "telegram", user, user, "12345", wrong)
+    attempts = db.exec(
+        select(LoginAttempt).where(LoginAttempt.ip == f"im:{p.org_id}:telegram")
+    ).all()
+    assert len(attempts) == settings.LOGIN_MAX_FAILURES_PER_IP
+    assert len({a.identifier_norm for a in attempts}) == 3
+    with pytest.raises(LoginLimited):
+        binding.bind(db, p.org_id, "telegram", "999", "999", "12345", code)
+    db.rollback()
+    assert binding.list_bindings(db, p) == []
+    stored = db.exec(select(ImBindCode).where(ImBindCode.org_id == p.org_id)).one()
+    assert stored.used_at is None
 
 
 def test_gateway_polls_and_sends_through_http(

@@ -133,7 +133,8 @@ def bind(
     code: str,
 ) -> bool:
     identifier = f"im:{org_id}:{platform}:{external_user_id}"
-    check_login_limit(db, identifier, identifier)
+    ip = f"im:{org_id}:{platform}"
+    check_login_limit(db, identifier, ip)
     _lock(db, org_id)
     setting = db.get(ImSetting, (org_id, platform), populate_existing=True)
     if not setting or not setting.enabled or setting.bot_identity != bot_identity:
@@ -153,7 +154,7 @@ def bind(
         except HTTPException:
             pass
     if row is None or p is None:
-        record_login_attempt(db, identifier, identifier, False)
+        record_login_attempt(db, identifier, ip, False)
         return False
     existing = db.exec(
         select(ImBinding).where(
@@ -170,7 +171,7 @@ def bind(
         and (b.employee_id != row.employee_id or b.external_user_id != external_user_id)
         for b in existing
     ):
-        record_login_attempt(db, identifier, identifier, False)
+        record_login_attempt(db, identifier, ip, False)
         return False
     for old in existing:
         db.delete(old)
@@ -188,7 +189,7 @@ def bind(
         )
     )
     _audit(db, p, "im_binding.bound", platform)
-    record_login_attempt(db, identifier, identifier, True)
+    record_login_attempt(db, identifier, ip, True)
     return True
 
 
