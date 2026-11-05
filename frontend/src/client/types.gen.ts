@@ -490,6 +490,15 @@ export type ChangeItemPublic = {
      * Objection
      */
     objection?: string | null;
+    decision?: ItemDecision | null;
+    /**
+     * Decision Reason
+     */
+    decision_reason?: string | null;
+    /**
+     * Published Claim Id
+     */
+    published_claim_id?: string | null;
     /**
      * Evidence
      */
@@ -533,6 +542,14 @@ export type ChangeRequestPublic = {
      * Submitted At
      */
     submitted_at: string | null;
+    /**
+     * Decided At
+     */
+    decided_at?: string | null;
+    /**
+     * Parent Request Id
+     */
+    parent_request_id?: string | null;
     /**
      * Items
      */
@@ -808,6 +825,66 @@ export type CsvImportPublic = {
      * Issues
      */
     issues: Array<WorkRecordIssue>;
+};
+
+/**
+ * DecideInput
+ */
+export type DecideInput = {
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Decisions
+     */
+    decisions: Array<DecisionInput>;
+    /**
+     * Comment
+     */
+    comment?: string | null;
+};
+
+/**
+ * DecisionInput
+ */
+export type DecisionInput = {
+    /**
+     * Item Id
+     */
+    item_id: string;
+    decision: ItemDecision;
+    /**
+     * Reason
+     */
+    reason?: string | null;
+};
+
+/**
+ * DecisionResult
+ */
+export type DecisionResult = {
+    /**
+     * Request Id
+     */
+    request_id: string;
+    /**
+     * Decision Id
+     */
+    decision_id: string;
+    status: RequestStatus;
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Published Version Id
+     */
+    published_version_id: string | null;
+    /**
+     * Returned Request Id
+     */
+    returned_request_id: string | null;
 };
 
 /**
@@ -1612,7 +1689,7 @@ export type ImportResult = {
 /**
  * InboxKind
  */
-export type InboxKind = 'initial_review' | 'submitted' | 'status_changed' | 'question' | 'dictionary_changed';
+export type InboxKind = 'initial_review' | 'submitted' | 'status_changed' | 'question' | 'dictionary_changed' | 'review_requested' | 'decided';
 
 /**
  * InboxList
@@ -1803,6 +1880,11 @@ export type IssueAccounts = {
      */
     regenerate_pending?: boolean;
 };
+
+/**
+ * ItemDecision
+ */
+export type ItemDecision = 'approved' | 'changes_requested' | 'rejected';
 
 /**
  * ItemInput
@@ -2130,6 +2212,20 @@ export type OrganizationUpdate = {
      * Name
      */
     name: string;
+};
+
+/**
+ * PendingReviews
+ */
+export type PendingReviews = {
+    /**
+     * Data
+     */
+    data: Array<ReviewSummary>;
+    /**
+     * Count
+     */
+    count: number;
 };
 
 /**
@@ -2504,6 +2600,95 @@ export type RequestPreview = {
  * RequestStatus
  */
 export type RequestStatus = 'draft' | 'pending_owner' | 'pending_review' | 'approved' | 'changes_requested' | 'rejected' | 'withdrawn';
+
+/**
+ * ReviewDetail
+ */
+export type ReviewDetail = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Items
+     */
+    items: Array<ReviewItem>;
+};
+
+/**
+ * ReviewItem
+ */
+export type ReviewItem = {
+    before: ClaimPublic | null;
+    after: ChangeItemPublic;
+    /**
+     * Evidence
+     */
+    evidence: Array<EvidenceDetail>;
+    /**
+     * Jira Only
+     */
+    jira_only: boolean;
+    /**
+     * Approvable
+     */
+    approvable: boolean;
+    /**
+     * Approval Blocked Reason
+     */
+    approval_blocked_reason: string | null;
+};
+
+/**
+ * ReviewSummary
+ */
+export type ReviewSummary = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Subject Employee Id
+     */
+    subject_employee_id: string;
+    /**
+     * Employee Name
+     */
+    employee_name: string;
+    /**
+     * Department Name
+     */
+    department_name: string | null;
+    /**
+     * Submitted At
+     */
+    submitted_at: string | null;
+    submitted_via: SubmissionVia | null;
+    /**
+     * Client Name
+     */
+    client_name: string | null;
+    /**
+     * Owner Reviewed
+     */
+    owner_reviewed: boolean;
+    /**
+     * Item Count
+     */
+    item_count: number;
+    /**
+     * Can Decide
+     */
+    can_decide: boolean;
+    /**
+     * Unavailable Reason
+     */
+    unavailable_reason?: string | null;
+};
 
 /**
  * Role
@@ -5894,6 +6079,104 @@ export type profilesReadProfileVersionResponses = {
 };
 
 export type profilesReadProfileVersionResponse = profilesReadProfileVersionResponses[keyof profilesReadProfileVersionResponses];
+
+export type reviewsListPendingReviewsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/reviews';
+};
+
+export type reviewsListPendingReviewsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsListPendingReviewsError = reviewsListPendingReviewsErrors[keyof reviewsListPendingReviewsErrors];
+
+export type reviewsListPendingReviewsResponses = {
+    /**
+     * Successful Response
+     */
+    200: PendingReviews;
+};
+
+export type reviewsListPendingReviewsResponse = reviewsListPendingReviewsResponses[keyof reviewsListPendingReviewsResponses];
+
+export type reviewsGetReviewData = {
+    body?: never;
+    path: {
+        /**
+         * Request Id
+         */
+        request_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/reviews/{request_id}';
+};
+
+export type reviewsGetReviewErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsGetReviewError = reviewsGetReviewErrors[keyof reviewsGetReviewErrors];
+
+export type reviewsGetReviewResponses = {
+    /**
+     * Successful Response
+     */
+    200: ReviewDetail;
+};
+
+export type reviewsGetReviewResponse = reviewsGetReviewResponses[keyof reviewsGetReviewResponses];
+
+export type reviewsDecideData = {
+    body: DecideInput;
+    path: {
+        /**
+         * Request Id
+         */
+        request_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/reviews/{request_id}/decisions';
+};
+
+export type reviewsDecideErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewsDecideError = reviewsDecideErrors[keyof reviewsDecideErrors];
+
+export type reviewsDecideResponses = {
+    /**
+     * Successful Response
+     */
+    200: DecisionResult;
+};
+
+export type reviewsDecideResponse = reviewsDecideResponses[keyof reviewsDecideResponses];
 
 export type profileImportUploadProfileImportsData = {
     body: Body_profile_import_upload_profile_imports;

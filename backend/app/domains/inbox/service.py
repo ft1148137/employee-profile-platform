@@ -24,17 +24,24 @@ from app.domains.inbox.schemas import (
 
 
 def notify(
-    session: Session, request: ProfileChangeRequest, kind: InboxKind, message: str
+    session: Session,
+    request: ProfileChangeRequest,
+    kind: InboxKind,
+    message: str,
+    recipient_employee_id: UUID | None = None,
 ) -> None:
-    if kind in (InboxKind.SUBMITTED, InboxKind.STATUS_CHANGED):
+    if kind in (InboxKind.SUBMITTED, InboxKind.STATUS_CHANGED, InboxKind.DECIDED):
         now = utc_now()
         session.exec(
             update(InboxItem)
             .where(
                 col(InboxItem.org_id) == request.org_id,
-                col(InboxItem.recipient_employee_id) == request.subject_employee_id,
                 col(InboxItem.request_id) == request.id,
-                col(InboxItem.kind) == InboxKind.INITIAL_REVIEW,
+                col(InboxItem.kind).in_(
+                    [InboxKind.INITIAL_REVIEW, InboxKind.REVIEW_REQUESTED]
+                    if kind != InboxKind.SUBMITTED
+                    else [InboxKind.INITIAL_REVIEW]
+                ),
                 col(InboxItem.done_at).is_(None),
             )
             .values(done_at=now, read_at=func.coalesce(InboxItem.read_at, now))
@@ -42,7 +49,7 @@ def notify(
     session.add(
         InboxItem(
             org_id=request.org_id,
-            recipient_employee_id=request.subject_employee_id,
+            recipient_employee_id=recipient_employee_id or request.subject_employee_id,
             request_id=request.id,
             kind=kind,
             message=message,
@@ -70,6 +77,7 @@ def my_inbox(
                     [
                         InboxKind.INITIAL_REVIEW,
                         InboxKind.QUESTION,
+                        InboxKind.REVIEW_REQUESTED,
                     ]
                 ),
             ),

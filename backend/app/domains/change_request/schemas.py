@@ -8,6 +8,7 @@ from app.domains.capability.schemas import CapabilityPublic
 from app.domains.change_request.claim import ClaimAfter as ClaimAfter
 from app.domains.change_request.models import (
     ChangeOp,
+    ItemDecision,
     RequestOrigin,
     RequestStatus,
     SubmissionVia,
@@ -30,6 +31,9 @@ class ChangeItemPublic(SQLModel):
     uncertainty: str | None
     owner_statement: str | None = None
     objection: str | None = None
+    decision: ItemDecision | None = None
+    decision_reason: str | None = None
+    published_claim_id: UUID | None = None
     evidence: list[ClaimEvidencePublic] = Field(default_factory=list)
 
 
@@ -44,6 +48,8 @@ class ChangeRequestPublic(SQLModel):
     submitted_via: SubmissionVia | None
     client_name: str | None
     submitted_at: datetime | None
+    decided_at: datetime | None = None
+    parent_request_id: UUID | None = None
     items: list[ChangeItemPublic] = Field(default_factory=list)
 
 
