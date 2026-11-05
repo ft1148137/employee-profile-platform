@@ -21,6 +21,7 @@ from app.domains.change_request.models import (
 from app.domains.drafting.models import DraftingSetting, UpdateSetting
 from app.domains.evidence.models import Evidence
 from app.domains.im.models import (
+    ImAction,
     ImBindCode,
     ImBinding,
     ImEvent,
@@ -54,6 +55,7 @@ from app.models import User
 ORG_MODELS = (
     ImNotification,
     ApprovalPolicy,
+    ImAction,
     ImEvent,
     ImBindCode,
     ImBinding,

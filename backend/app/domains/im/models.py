@@ -1,6 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
+from pydantic import JsonValue
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
@@ -9,6 +10,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
 from app.domains.base import TenantRecord, tenant_fk, utc_now
@@ -94,3 +96,23 @@ class ImNotification(TenantRecord, table=True):
     attempts: int = 0
     last_error_code: str | None = None
     sent_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+
+
+class ImAction(SQLModel, table=True):
+    __tablename__ = "im_action"
+    __table_args__ = (
+        tenant_fk("employee_id", "employee"),
+        tenant_fk("session_id", "bot_session"),
+        CheckConstraint("platform IN ('telegram', 'feishu', 'wecom')"),
+    )
+    token: str = Field(primary_key=True, max_length=22)
+    org_id: UUID = Field(foreign_key="organization.id", index=True)
+    platform: Platform = Field(sa_type=String)
+    bot_identity: str
+    employee_id: UUID
+    session_id: UUID
+    external_chat_id: str
+    message_id: str
+    action: dict[str, JsonValue] = Field(sa_type=JSONB)
+    expires_at: datetime = Field(sa_type=DateTime(timezone=True))
+    consumed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
