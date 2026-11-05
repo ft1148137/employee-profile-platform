@@ -10,7 +10,7 @@ depends_on = None
 
 def upgrade() -> None:
     op.add_column("im_setting", sa.Column("bot_identity", sa.String()))
-    for name, columns, constraints in [
+    tables: list[tuple[str, list[sa.Column], list[sa.Constraint]]] = [
         ("im_binding", [
             sa.Column("platform", sa.String(), nullable=False),
             sa.Column("external_user_id", sa.String(), nullable=False),
@@ -29,7 +29,8 @@ def upgrade() -> None:
             sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("used_at", sa.DateTime(timezone=True)),
         ], [sa.UniqueConstraint("org_id", "code_hash")]),
-    ]:
+    ]
+    for name, columns, constraints in tables:
         op.create_table(name,
             sa.Column("id", sa.Uuid(), primary_key=True),
             sa.Column("org_id", sa.Uuid(), sa.ForeignKey("organization.id"), nullable=False),
