@@ -73,20 +73,64 @@ def deliver(bound: tuple) -> None:
     asyncio.run(run())
 
 
-def test_all_kinds_and_periodic_reminders_are_private_and_unread(
-    demo: tuple, db: Session, bound: tuple, telegram_server: dict
+@pytest.mark.parametrize(
+    "kind", [InboxKind.SUBMITTED, InboxKind.STATUS_CHANGED, InboxKind.DECIDED]
+)
+def test_completed_inbox_notifications_are_not_sent(
+    db: Session, bound: tuple, telegram_server: dict, kind: InboxKind
 ) -> None:
     p, _, _ = bound
     request = ProfileChangeRequest(
         org_id=p.org_id,
         subject_employee_id=p.employee_id,
         origin=RequestOrigin.MANUAL,
-        status=RequestStatus.DRAFT,
+        status=RequestStatus.PENDING_OWNER,
         author={},
     )
     db.add(request)
     db.flush()
+    old_kind = (
+        InboxKind.INITIAL_REVIEW
+        if kind == InboxKind.SUBMITTED
+        else InboxKind.REVIEW_REQUESTED
+    )
+    notify(db, request, old_kind, "合成的旧通知")
+    db.commit()
+    asyncio.run(notifications.send_pending(engine, {}))
+    notify(db, request, kind, "合成的新通知")
+    db.commit()
+    asyncio.run(notifications.send_pending(engine, {}))
+    old = db.exec(select(ImNotification).where(ImNotification.org_id == p.org_id)).all()
+    db.expire_all()
+    failed = [n for n in old if n.status == "failed"]
+    assert len(failed) == 1
+    assert failed[0].last_error_code == "inbox_done"
+    assert failed[0].attempts == 0 and failed[0].sent_at is None
+    deliver(bound)
+    deliver(bound)
+    db.expire_all()
+    sent = [n for n in old if n.status == "sent"]
+    assert len(sent) == 1 and sent[0].attempts == 1
+    sends = [b for m, b in telegram_server["requests"] if m == "sendMessage"]
+    assert [b["text"] for b in sends] == [
+        notifications.REMINDERS[kind] + "，在网页或私聊我查看。"
+    ]
+
+
+def test_all_kinds_and_periodic_reminders_are_private_and_unread(
+    demo: tuple, db: Session, bound: tuple, telegram_server: dict
+) -> None:
+    p, _, _ = bound
     for kind in InboxKind:
+        request = ProfileChangeRequest(
+            org_id=p.org_id,
+            subject_employee_id=p.employee_id,
+            origin=RequestOrigin.MANUAL,
+            status=RequestStatus.DRAFT,
+            author={},
+        )
+        db.add(request)
+        db.flush()
         notify(db, request, kind, "合成的证据正文与画像陈述")
     generate_questions(
         db, demo[1]["E02"], utc_now(), 24, utc_now() - timedelta(days=90)
