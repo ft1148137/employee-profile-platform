@@ -29,6 +29,7 @@ from app.domains.profile.models import (
     ProgressReviewStatus,
 )
 from app.domains.profile.schemas import ClaimEvidencePublic
+from app.domains.review.models import AppealStatus, ReviewAppeal
 
 
 def list_requests(
@@ -96,6 +97,15 @@ def list_requests(
             public.decision_reason = None
         items[item.id] = public
         requests[item.request_id].items.append(public)
+    for appeal in session.exec(
+        select(ReviewAppeal)
+        .where(
+            ReviewAppeal.org_id == principal.org_id,
+            col(ReviewAppeal.item_id).in_(items),
+        )
+        .order_by(col(ReviewAppeal.created_at), col(ReviewAppeal.id))
+    ).all():
+        items[appeal.item_id].appeal_id = appeal.id
     links = session.exec(
         select(ChangeItemEvidence)
         .where(
@@ -207,11 +217,27 @@ def review_statuses(
             ),
         ),
     )
-    priority = {"disputed": 1, "pending_manager": 2, "pending_employee": 3}
-    combined = union_all(disputed, pending).subquery()
+    priority = {
+        "disputed": 1,
+        "pending_manager": 2,
+        "pending_employee": 3,
+        "appealed": 4,
+    }
+    appeals = select(ReviewAppeal.employee_id, literal("appealed")).where(
+        ReviewAppeal.org_id == org_id,
+        col(ReviewAppeal.employee_id).in_(employee_ids),
+        ReviewAppeal.status == AppealStatus.OPEN,
+    )
+    combined = union_all(disputed, pending, appeals).subquery()
+    assigned: dict[UUID, int] = {}
     for employee_id, value in session.exec(
         select(combined.c.subject_employee_id, combined.c.review_status)
     ).all():
-        if priority[value] > priority.get(statuses[employee_id], 0):
-            statuses[employee_id] = ProgressReviewStatus(value)
+        if priority[value] > assigned.get(employee_id, 0):
+            assigned[employee_id] = priority[value]
+            statuses[employee_id] = (
+                ProgressReviewStatus.DISPUTED
+                if value == "appealed"
+                else ProgressReviewStatus(value)
+            )
     return statuses
