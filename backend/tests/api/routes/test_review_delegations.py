@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 
@@ -8,17 +9,21 @@ from sqlalchemy import Engine, inspect
 from sqlmodel import Session, select
 
 from app.authz.principal import Principal
+from app.core.security import create_access_token
 from app.domains import manager_tools
 from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
 from app.domains.change_request.models import ReviewDecision
-from app.domains.evidence.service import read_evidence
+from app.domains.evidence.models import Evidence, EvidenceKind, Visibility
+from app.domains.evidence.service import append_evidence, read_evidence
 from app.domains.inbox.models import InboxItem, InboxKind
-from app.domains.org.models import OrgMembership
+from app.domains.org.models import Employee, OrgMembership
 from app.domains.review import delegation, service
 from app.domains.review.models import ReviewDelegation
 from app.domains.review.routing import can_review
 from app.models import User
+from tests.api.routes.test_mcp import call as mcp_call
+from tests.api.routes.test_mcp import initialize, token_for
 from tests.api.routes.test_reviews import actor, manager, pending, values
 from tests.utils.migrations import migrate
 
@@ -82,6 +87,118 @@ def test_delegate_reads_decides_and_notifies_without_employee(
     ).one()
     assert audit.details["acting_for_user_id"] == str(row.manager_user_id)
     assert read_evidence(db, delegate, evidence_id).content is None
+
+
+@pytest.mark.parametrize("channel", ["web", "mcp"])
+@pytest.mark.parametrize("ending", ["approved", "revoked", "expired"])
+def test_cross_department_employee_delegate_evidence_is_request_scoped(
+    demo: tuple, db: Session, client: TestClient, channel: str, ending: str
+) -> None:
+    base, employees, _ = demo
+    delegate = actor(db, employees["E02"].org_id, "employee.algorithm@demo.example.com")
+    assert not delegate.is_org_admin and not delegate.managed_department_ids
+    subject = employees["E02"]
+    assert db.get(Employee, delegate.employee_id).department_id != subject.department_id
+    row = setup_delegation(db, demo, delegate=delegate)
+    _, request = pending(db, demo)
+    unrelated, _ = append_evidence(
+        db,
+        org_id=subject.org_id,
+        subject_employee_id=subject.id,
+        kind=EvidenceKind.SELF_REPORT,
+        source="synthetic",
+        source_ref="unrelated",
+        title="合成的未引用证据",
+        content={"text": "未引用的受限正文"},
+        visibility=Visibility.RESTRICTED,
+        provenance={},
+    )
+    db.commit()
+    originals = {
+        e.id: e.model_dump()
+        for e in db.exec(select(Evidence).where(Evidence.org_id == subject.org_id))
+    }
+    web_headers = {
+        "Authorization": f"Bearer {create_access_token(delegate.user_id, expires_delta=timedelta(minutes=5))}"
+    }
+    headers = web_headers
+    if channel == "mcp":
+        headers, _ = token_for(db, db.get(Employee, delegate.employee_id))
+        headers = initialize(client, headers)
+
+    def invoke(tool: str) -> tuple[int, dict]:
+        args = {"request_id": str(request.id)}
+        if tool == "decide_review_items":
+            args.update(
+                revision=request.revision,
+                decisions=[d.model_dump(mode="json") for d in values(request)],
+            )
+        if channel == "mcp":
+            result = mcp_call(client, headers, tool, args)
+            if result.get("isError"):
+                return json.loads(result["content"][0]["text"])["status"], result
+            return 200, result["structuredContent"]
+        path = f"{base}/reviews/{request.id}"
+        response = (
+            client.get(path, headers=headers)
+            if tool == "get_review"
+            else client.post(
+                path + "/decisions",
+                headers=headers,
+                json={k: v for k, v in args.items() if k != "request_id"},
+            )
+        )
+        return response.status_code, response.json()
+
+    status, detail = invoke("get_review")
+    assert status == 200, detail
+    evidence = [e for item in detail["items"] for e in item["evidence"]]
+    assert evidence and all(e["content"] and not e["redacted"] for e in evidence)
+    assert any(e["visibility"] == "restricted" for e in evidence)
+    assert str(unrelated.id) not in {e["id"] for e in evidence}
+    for e in evidence:
+        response = client.get(f"{base}/evidence/{e['id']}", headers=web_headers)
+        assert response.status_code == 200, response.text
+        assert response.json() == e
+        assert (
+            client.get(
+                f"{base}/evidence/{e['id']}", headers=demo[2]["foreign"]
+            ).status_code
+            == 404
+        )
+    for path in (
+        f"/evidence/{unrelated.id}",
+        f"/employees/{subject.id}/profile",
+        f"/employees/{subject.id}/evidence",
+    ):
+        assert client.get(base + path, headers=web_headers).status_code == 404
+    if ending == "approved":
+        status, result = invoke("decide_review_items")
+        assert status == 200 and result["status"] == "approved", result
+        db.expire_all()
+        decision = db.get(ReviewDecision, UUID(result["decision_id"]))
+        assert decision.acting_for_user_id == row.manager_user_id
+        assert decision.reviewer_user_id == delegate.user_id
+        assert decision.via == channel
+    else:
+        if ending == "revoked":
+            delegation.revoke_delegation(db, manager(db, demo), row.id)
+        else:
+            row.ends_at = utc_now()
+            db.add(row)
+        db.commit()
+    for tool in ("get_review", "decide_review_items"):
+        expected = 404 if channel == "mcp" and ending != "approved" else 403
+        if ending == "approved" and tool == "decide_review_items":
+            expected = 409
+        assert invoke(tool)[0] == expected
+    for e in evidence:
+        assert (
+            client.get(f"{base}/evidence/{e['id']}", headers=web_headers).status_code
+            == 404
+        )
+    for id_, original in originals.items():
+        assert db.get(Evidence, id_).model_dump() == original
 
 
 @pytest.mark.parametrize(

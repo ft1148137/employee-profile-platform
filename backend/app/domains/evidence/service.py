@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from pydantic import JsonValue
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import aliased
-from sqlmodel import Session, col, func, select
+from sqlmodel import Session, col, func, or_, select
 
 from app.authz.policies import can_view_evidence_content, employee_scope_clause
 from app.authz.principal import Principal
@@ -91,7 +91,16 @@ def evidence_access(
         .where(
             Evidence.org_id == principal.org_id,
             col(Evidence.id).in_(ids),
-            employee_scope_clause(principal),
+            or_(
+                employee_scope_clause(principal),
+                col(ProfileChangeRequest.id).in_(
+                    [id_ for id_, allowed in permissions.items() if allowed]
+                )
+                & (
+                    col(ProfileChangeRequest.subject_employee_id)
+                    == Evidence.subject_employee_id
+                ),
+            ),
         )
     ).all()
     # Joined rows may list another request first for the same evidence.
@@ -161,7 +170,48 @@ def list_evidence(
 def read_evidence(
     session: Session, principal: Principal, evidence_id: UUID
 ) -> EvidenceDetail:
-    access = evidence_access(session, principal, {evidence_id})
+    from app.authz.review import review_access
+    from app.domains.change_request.models import (
+        ChangeItem,
+        ChangeItemEvidence,
+        ProfileChangeRequest,
+        RequestStatus,
+    )
+
+    requests = session.exec(
+        select(ProfileChangeRequest)
+        .join(
+            ChangeItem,
+            (col(ChangeItem.request_id) == ProfileChangeRequest.id)
+            & (col(ChangeItem.org_id) == ProfileChangeRequest.org_id),
+        )
+        .join(
+            ChangeItemEvidence,
+            (col(ChangeItemEvidence.item_id) == ChangeItem.id)
+            & (col(ChangeItemEvidence.org_id) == ChangeItem.org_id),
+        )
+        .join(
+            Evidence,
+            (col(Evidence.id) == ChangeItemEvidence.evidence_id)
+            & (col(Evidence.org_id) == ChangeItemEvidence.org_id),
+        )
+        .where(
+            ProfileChangeRequest.org_id == principal.org_id,
+            ProfileChangeRequest.status == RequestStatus.PENDING_REVIEW,
+            ProfileChangeRequest.subject_employee_id == Evidence.subject_employee_id,
+            Evidence.id == evidence_id,
+        )
+        .distinct()
+    ).all()
+    access = evidence_access(
+        session,
+        principal,
+        {evidence_id},
+        review_permissions={
+            request.id: review_access(session, principal, request)
+            for request in requests
+        },
+    )
     if evidence_id not in access:
         raise EvidenceNotFound()
     return evidence_details(session, principal, access)[evidence_id]
