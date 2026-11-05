@@ -198,7 +198,7 @@ export function ChangeRequestEditor({
       >
         <DialogTitle>{showPreview ? "提交前预览" : "更新我的画像"}</DialogTitle>
         <DialogDescription>
-          画像不用于绩效、薪酬和晋升。提交后由经理审批，批准前可以撤回。
+          画像不用于绩效、薪酬和晋升。提交后按企业审批规则处理；待审批的改动可以在批准前撤回。
         </DialogDescription>
         <SetupError error={error} />
         {notice && <p role="status">{notice}</p>}
