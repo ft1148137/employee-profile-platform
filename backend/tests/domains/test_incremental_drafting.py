@@ -34,7 +34,7 @@ from app.domains.profile.models import (
 from app.domains.profile.service import build_profile_snapshot
 from app.domains.source.models import SourceConnection, SyncRun
 from app.domains.source.sync import _finish
-from app.worker.tasks import draft_incremental
+from app.worker.tasks import draft_incremental, draft_initial
 from tests.authz.test_tenant_access import (
     headers,
     tenant_data,  # noqa: F401
@@ -385,18 +385,33 @@ def test_scope_and_empty_work(
         assert not pi_service.requests
 
 
+@pytest.mark.parametrize("initial_queued", [False, True])
 def test_rate_limit_resumes_incremental(
-    incremental_context: tuple, db: Session, pi_service: PiHarness
+    incremental_context: tuple, db: Session, pi_service: PiHarness, initial_queued: bool
 ) -> None:
     org = incremental_context[0]
+    if initial_queued:
+        draft_initial.configure(
+            connection=db.connection().connection.driver_connection,
+            lock=f"initial-profiles:{org}",
+            queueing_lock=f"draft:{org}",
+            schedule_at=utc_now() + timedelta(hours=1),
+        ).defer(org_id=str(org), employee_ids=[str(incremental_context[3][1].id)])
+        db.commit()
     pi_service.rate_limited = True
     run(incremental_context, db)
-    job = db.execute(
+    jobs = db.execute(
         text(
             "SELECT task_name, args, lock FROM procrastinate_jobs WHERE args->>'org_id'=:org"
         ),
         {"org": str(org)},
-    ).one()
+    ).all()
+    assert {job.task_name for job in jobs} == (
+        {"profiles.draft_initial", "profiles.draft_incremental"}
+        if initial_queued
+        else {"profiles.draft_incremental"}
+    )
+    job = next(job for job in jobs if job.task_name == "profiles.draft_incremental")
     assert (
         job.task_name == "profiles.draft_incremental"
         and job.lock == f"initial-profiles:{org}"
@@ -490,7 +505,7 @@ def test_tenant_isolation(
 
 
 def test_watermark_migration(migration_engine: Engine) -> None:
-    migrate(migration_engine, "downgrade", "b125001bc001")
+    migrate(migration_engine, "downgrade", "b122001bc001")
     assert "incremental_drafted_at" not in {
         c["name"] for c in inspect(migration_engine).get_columns("profile_progress")
     }

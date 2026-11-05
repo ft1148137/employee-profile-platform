@@ -428,7 +428,7 @@ def pause_drafting(
             "profiles.draft_incremental" if incremental else "profiles.draft_initial",
             connection=session.connection().connection.driver_connection,
             lock=f"initial-profiles:{org_id}",
-            queueing_lock=f"draft:{org_id}",
+            queueing_lock=None if incremental else f"draft:{org_id}",
             schedule_at=retry_at,
         ).defer(org_id=str(org_id), employee_ids=[str(id_) for id_ in ids])
         session.commit()
