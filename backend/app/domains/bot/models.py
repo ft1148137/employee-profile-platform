@@ -33,7 +33,11 @@ class BotSession(SQLModel, table=True):
     __table_args__ = (
         UniqueConstraint("org_id", "id"),
         tenant_fk("employee_id", "employee"),
-        CheckConstraint("channel = 'web'"),
+        tenant_fk("pending_question_id", "pending_question"),
+        CheckConstraint(
+            "channel IN ('web', 'telegram', 'feishu', 'wecom')",
+            name="ck_bot_session_channel",
+        ),
         CheckConstraint("turn_count >= 0"),
         Index("ix_bot_session_employee", "org_id", "employee_id"),
         Index("ix_bot_session_lease", "org_id", "lease_until"),
@@ -41,7 +45,12 @@ class BotSession(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     org_id: UUID = Field(foreign_key="organization.id", index=True)
     employee_id: UUID
-    channel: Literal["web"] = Field(default="web", sa_type=String)
+    channel: Literal["web", "telegram", "feishu", "wecom"] = Field(
+        default="web", sa_type=String
+    )
+    external_chat_id: str | None = None
+    bot_identity: str | None = None
+    pending_question_id: UUID | None = None
     started_at: datetime = Field(
         default_factory=utc_now, sa_type=DateTime(timezone=True)
     )

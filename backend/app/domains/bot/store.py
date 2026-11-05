@@ -33,13 +33,21 @@ class MessagePublic(BaseModel):
 
 
 def create_session(
-    db: Session, principal: Principal, channel: Literal["web"] = "web"
+    db: Session,
+    principal: Principal,
+    channel: Literal["web", "telegram", "feishu", "wecom"] = "web",
+    external_chat_id: str | None = None,
+    bot_identity: str | None = None,
 ) -> BotSession:
     if principal.employee_id is None:
         raise BotSessionNotFound()
     visible_employee(db, principal, principal.employee_id)
     row = BotSession(
-        org_id=principal.org_id, employee_id=principal.employee_id, channel=channel
+        org_id=principal.org_id,
+        employee_id=principal.employee_id,
+        channel=channel,
+        external_chat_id=external_chat_id,
+        bot_identity=bot_identity,
     )
     db.add(row)
     db.commit()

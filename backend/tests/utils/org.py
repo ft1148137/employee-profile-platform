@@ -20,7 +20,7 @@ from app.domains.change_request.models import (
 )
 from app.domains.drafting.models import DraftingSetting, UpdateSetting
 from app.domains.evidence.models import Evidence
-from app.domains.im.models import ImBindCode, ImBinding, ImEvent, ImSetting
+from app.domains.im.models import ImAction, ImBindCode, ImBinding, ImEvent, ImSetting
 from app.domains.inbox.models import InboxItem, PendingQuestion
 from app.domains.model.models import ModelSetting
 from app.domains.org.models import (
@@ -47,6 +47,7 @@ from app.models import User
 
 ORG_MODELS = (
     ApprovalPolicy,
+    ImAction,
     ImEvent,
     ImBindCode,
     ImBinding,
