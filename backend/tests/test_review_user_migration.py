@@ -68,7 +68,7 @@ def test_review_user_migration_preserves_decision_identity(
                 "request": request.id,
             },
         )
-        user_id, member_id = user.id, member.id
+        user_id, member_id, employee_id = user.id, member.id, reviewer.id
         session.commit()
     migrate(migration_engine, "upgrade", "head")
     with migration_engine.connect() as connection:
@@ -90,11 +90,19 @@ def test_review_user_migration_preserves_decision_identity(
         )
     for statement in (
         "UPDATE inbox_item SET recipient_user_id=NULL WHERE id=:id",
-        "UPDATE inbox_item SET recipient_employee_id=recipient_user_id WHERE id=:id",
+        "UPDATE inbox_item SET recipient_employee_id=:employee WHERE id=:id",
         "UPDATE inbox_item SET recipient_user_id=:foreign WHERE id=:id",
     ):
         with pytest.raises(IntegrityError), migration_engine.begin() as connection:
-            connection.execute(text(statement), {"id": inbox_id, "foreign": uuid4()})
+            connection.execute(
+                text(statement),
+                {"id": inbox_id, "foreign": uuid4(), "employee": employee_id},
+            )
+    with pytest.raises(IntegrityError), migration_engine.begin() as connection:
+        connection.execute(
+            text("UPDATE review_decision SET reviewer_user_id=NULL WHERE id=:id"),
+            {"id": decision_id},
+        )
     migrate(migration_engine, "downgrade", "b117001bc001")
     with migration_engine.connect() as connection:
         assert connection.execute(
