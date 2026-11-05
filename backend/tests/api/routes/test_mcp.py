@@ -28,6 +28,7 @@ from app.domains.change_request.models import (
 from app.domains.employee_tools import EMPLOYEE_TOOLS
 from app.domains.evidence.models import Evidence
 from app.domains.inbox.models import InboxItem
+from app.domains.manager_tools import MANAGER_TOOLS
 from app.domains.org.models import Employee, Organization, OrgMembership
 from app.mcp.oauth import resource_url
 from app.mcp.server import endpoint, lifespan
@@ -124,7 +125,7 @@ def test_sdk_employee_flow(demo: tuple, db: Session) -> None:
                 await sdk.initialize()
                 listing = await sdk.list_tools()
                 assert {t.name for t in listing.tools} == {
-                    t.name for t in EMPLOYEE_TOOLS
+                    t.name for t in (*EMPLOYEE_TOOLS, *MANAGER_TOOLS)
                 }
                 assert all(
                     not {"employee_id", "org_id", "via", "client_name"}
