@@ -221,7 +221,7 @@ function PlatformSetting({
         >
           {save.isPending ? "正在保存…" : "保存"}
         </Button>
-        {setting.platform === "telegram" ? (
+        {setting.platform !== "wecom" ? (
           <Button
             type="button"
             variant="outline"

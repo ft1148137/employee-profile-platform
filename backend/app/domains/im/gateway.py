@@ -14,12 +14,13 @@ from sqlmodel import Session, col, select
 from app.core.secrets import SecretUnavailable, decrypt_secret
 from app.domains.im import actions, binding
 from app.domains.im.adapters.base import Adapter, Event, ImError
+from app.domains.im.adapters.feishu import Feishu
 from app.domains.im.adapters.telegram import Telegram
 from app.domains.im.models import ImEvent, ImSetting
 from app.domains.im.notifications import send_pending
 from app.domains.im.schemas import Platform
 
-ADAPTERS: dict[Platform, type[Adapter]] = {"telegram": Telegram}
+ADAPTERS: dict[Platform, type[Adapter]] = {"telegram": Telegram, "feishu": Feishu}
 logger = logging.getLogger(__name__)
 
 
@@ -111,6 +112,26 @@ class Gateway:
     ) -> None:
         if event.callback_id:
             await adapter.answer_callback(event.callback_id)
+        if (
+            isinstance(adapter, Feishu)
+            and event.private
+            and event.text is not None
+            and not event.text.strip().startswith("绑定")
+            and self.enabled(event.org_id, event.platform, credentials)
+        ):
+            with Session(self.engine) as db:
+                wanted = binding.wants_email(db, event, identity)
+            if wanted:
+                email = await adapter.enterprise_email(event.external_user_id)
+                with Session(self.engine) as db:
+                    if email and binding.bind_email(
+                        db, event, identity, credentials, email
+                    ):
+                        await adapter.send_text(
+                            event.external_chat_id,
+                            "已按企业邮箱绑定，可以在网页的个人设置中解绑。请继续发送消息。",
+                        )
+                        return
         # Model turns are synchronous; keep polling tasks and setting refresh responsive.
         reply = await asyncio.to_thread(self.dispatch, event, identity, credentials)
         if not reply or not self.enabled(event.org_id, event.platform, credentials):

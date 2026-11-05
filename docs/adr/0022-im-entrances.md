@@ -53,7 +53,7 @@
 
 1. 用有应用管理权限的账号进入[飞书开发者后台][F8]，创建「企业自建应用」，添加「机器人」能力，名称可设为「员工画像助手」。
 2. 在「凭证与基础信息」复制 App ID、App Secret，在本平台「管理 → IM 入口 → 飞书」填写 `app_id`、`app_secret`。不用填写公网 URL、Verification Token 或 Encrypt Key。
-3. 在飞书「权限管理」开通「读取用户发给机器人的单聊消息」`im:message.p2p_msg:readonly` 和「以应用的身份发消息」`im:message:send_as_bot`。如需在群里回复私聊引导，再开「接收群聊中 @ 机器人消息事件」`im:message.group_at_msg:readonly`，不申请全部群消息权限。
+3. 在飞书「权限管理」开通「读取用户发给机器人的单聊消息」`im:message.p2p_msg:readonly` 和「以应用的身份发消息」`im:message:send_as_bot`。按钮回调没有会话类型字段，还需「查看群信息」`im:chat:read`，用返回的 `chat_mode=p2p` 核实私聊；群信息 API 也支持单聊（[官方说明](https://open.feishu.cn/document/server-docs/group/chat/intro)）。如需在群里回复私聊引导，再开「接收群聊中 @ 机器人消息事件」`im:message.group_at_msg:readonly`，不申请全部群消息权限。
 4. 要按邮箱自动绑定时，再开第 3 节的通讯录和字段权限，选择本企业测试员工的可见范围；不授权也能用一次性绑定码。
 5. 在本平台勾选数据外发提示并开启，服务建立连接后，在飞书「事件与回调」的「事件配置」选择「使用长连接接收事件」，添加 `im.message.receive_v1`；在「回调配置」也选长连接，添加「卡片回传交互」`card.action.trigger`。后台若提示尚未建立连接，先检查本平台的连接状态。
 6. 在「版本管理与发布」创建版本、提交管理员审核并发布，确认员工在应用可用范围内。员工搜索机器人并发起私聊，发送网页生成的绑定码。
@@ -78,6 +78,13 @@
 默认安装会带 `requests`、`requests-toolbelt`（Apache-2.0）、`pycryptodome`（BSD／公有领域）和 `websockets`（BSD），已有 `httpx` 为 BSD；不安装 Flask/FastAPI 等额外可选组。
 该版要求 `websockets>=11,<16`，当前仓库锁为 16.0；S14 必须让包管理器重新解析、核对实际依赖许可证并跑回归，不能忽略此约束或单独复制 SDK 源码。
 依据（2026-11-05）：[官方 SDK][F14]、[1.7.5 发布物与依赖][F15]、[仓库主分支许可证][F16]。
+
+S14 实施：每个开启的飞书入口用一个受管理的 `spawn` 子进程运行官方 SDK。
+原因是 SDK 的 `start()` 使用全局事件循环，发现连接地址时同步调用 `requests`，没有公开的关闭方法；放在主进程会阻塞其他企业入口，放在线程中无法可靠停连。
+子进程关闭全部日志，只把 SDK 验证后的事件放入有界内存队列，卡片回调立即响应；父进程执行去重、授权及事务。停用或更换凭据时终止并回收对应子进程。
+不更改 SDK 的协议实现，不在 HTTP 后端启动接收连接；连接测试仍只获取应用令牌。
+超过项目 3000 字符预算的卡片只显示网页引导、不显示动作按钮；没有真实应用，平台布局、权限和硬边界仍待真实验证。
+锁定 wheel 的许可证：`lark-oapi` MIT；`requests`、`requests-toolbelt` Apache-2.0；`charset-normalizer` MIT；`pycryptodome` BSD-2-Clause / Unlicense / MIT；`websockets` 重新解析为 15.0.1（BSD-3-Clause）。
 
 ### 7. 出网与消息存储
 
