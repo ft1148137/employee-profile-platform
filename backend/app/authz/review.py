@@ -2,7 +2,7 @@ from sqlmodel import Session
 
 from app.authz.principal import Principal
 from app.domains.change_request.models import ProfileChangeRequest, RequestStatus
-from app.domains.review.routing import reviewers_for
+from app.domains.review.routing import can_review
 
 
 def review_access(
@@ -13,6 +13,5 @@ def review_access(
         and principal.user_id is not None
         and principal.employee_id != request.subject_employee_id
         and request.status == RequestStatus.PENDING_REVIEW
-        and principal.user_id
-        in reviewers_for(session, principal.org_id, request.subject_employee_id)
+        and can_review(session, principal, request.subject_employee_id) is not None
     )

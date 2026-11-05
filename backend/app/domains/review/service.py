@@ -47,7 +47,7 @@ from app.domains.review.publish import (
     jira_only,
     publish,
 )
-from app.domains.review.routing import reviewers_for
+from app.domains.review.routing import can_review, reviewers_for
 from app.domains.review.schemas import (
     DecisionInput,
     DecisionResult,
@@ -56,6 +56,7 @@ from app.domains.review.schemas import (
     ReviewItem,
     ReviewSummary,
 )
+from app.models import User
 
 
 class ReviewForbidden(HTTPException):
@@ -84,7 +85,7 @@ def list_pending_reviews(principal: Principal, session: Session) -> PendingRevie
         .order_by(col(ProfileChangeRequest.submitted_at), col(ProfileChangeRequest.id))
     ).all():
         reviewers = reviewers_for(session, principal.org_id, subject.id)
-        allowed = principal.employee_id != subject.id and principal.user_id in reviewers
+        allowed = can_review(session, principal, subject.id) is not None
         if not allowed and not (principal.is_org_admin and not reviewers):
             continue
         count = len(
@@ -209,11 +210,18 @@ def get_review(
                 approval_blocked_reason=reason,
             )
         )
+    represented_user_id = can_review(session, principal, request.subject_employee_id)
+    manager = (
+        session.get(User, represented_user_id)
+        if represented_user_id and represented_user_id != principal.user_id
+        else None
+    )
     return ReviewDetail(
         id=request.id,
         revision=request.revision,
         items=result,
         owner_reviewed=request.submitted_via != SubmissionVia.ADMIN_HANDOVER,
+        acting_for_name=(manager.full_name or manager.username) if manager else None,
     )
 
 
@@ -234,12 +242,15 @@ def decide(
         .with_for_update(read=True)
     ).one()
     request = _request(principal, session, request_id, lock=True)
-    if via not in (
-        ReviewVia.WEB,
-        ReviewVia.MCP,
-        ReviewVia.IM,
-    ) or principal.user_id not in reviewers_for(
-        session, principal.org_id, request.subject_employee_id
+    reviewer = can_review(session, principal, request.subject_employee_id)
+    if (
+        via
+        not in (
+            ReviewVia.WEB,
+            ReviewVia.MCP,
+            ReviewVia.IM,
+        )
+        or reviewer is None
     ):
         raise ReviewForbidden()
     if request.revision != revision or request.status != RequestStatus.PENDING_REVIEW:
@@ -284,6 +295,7 @@ def decide(
         org_id=principal.org_id,
         request_id=request.id,
         reviewer_user_id=principal.user_id,
+        acting_for_user_id=reviewer if reviewer != principal.user_id else None,
         via=via,
         client_name=client_name,
         comment=comment,
@@ -406,6 +418,9 @@ def decide(
             "decision_id": str(decision.id),
             "via": via.value,
             "client_name": client_name,
+            "acting_for_user_id": str(decision.acting_for_user_id)
+            if decision.acting_for_user_id
+            else None,
         },
     )
     notify(session, request, InboxKind.DECIDED, "画像请求已完成审批，请查看逐项结果")

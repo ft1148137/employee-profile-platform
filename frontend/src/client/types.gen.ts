@@ -1005,6 +1005,82 @@ export type DecisionResult = {
 };
 
 /**
+ * DelegateCandidate
+ */
+export type DelegateCandidate = {
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Name
+     */
+    name: string;
+};
+
+/**
+ * DelegationInput
+ */
+export type DelegationInput = {
+    /**
+     * Delegate User Id
+     */
+    delegate_user_id: string;
+    /**
+     * Starts At
+     */
+    starts_at: string;
+    /**
+     * Ends At
+     */
+    ends_at: string;
+};
+
+/**
+ * DelegationPublic
+ */
+export type DelegationPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Delegate User Id
+     */
+    delegate_user_id: string;
+    /**
+     * Delegate Name
+     */
+    delegate_name: string;
+    /**
+     * Starts At
+     */
+    starts_at: string;
+    /**
+     * Ends At
+     */
+    ends_at: string;
+    /**
+     * Revoked At
+     */
+    revoked_at: string | null;
+};
+
+/**
+ * DelegationView
+ */
+export type DelegationView = {
+    /**
+     * Data
+     */
+    data: Array<DelegationPublic>;
+    /**
+     * Candidates
+     */
+    candidates: Array<DelegateCandidate>;
+};
+
+/**
  * DepartmentNode
  */
 export type DepartmentNode = {
@@ -2890,6 +2966,10 @@ export type ResolveAppealInput = {
  */
 export type ReviewDetail = {
     /**
+     * Acting For Name
+     */
+    acting_for_name?: string | null;
+    /**
      * Owner Reviewed
      */
     owner_reviewed?: boolean;
@@ -3969,6 +4049,100 @@ export type ModelSettingUpdateWritable = {
      */
     reasoning_effort?: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null;
 };
+
+export type reviewDelegationsReadDelegationsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/review-delegations';
+};
+
+export type reviewDelegationsReadDelegationsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewDelegationsReadDelegationsError = reviewDelegationsReadDelegationsErrors[keyof reviewDelegationsReadDelegationsErrors];
+
+export type reviewDelegationsReadDelegationsResponses = {
+    /**
+     * Successful Response
+     */
+    200: DelegationView;
+};
+
+export type reviewDelegationsReadDelegationsResponse = reviewDelegationsReadDelegationsResponses[keyof reviewDelegationsReadDelegationsResponses];
+
+export type reviewDelegationsCreateDelegationData = {
+    body: DelegationInput;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/review-delegations';
+};
+
+export type reviewDelegationsCreateDelegationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewDelegationsCreateDelegationError = reviewDelegationsCreateDelegationErrors[keyof reviewDelegationsCreateDelegationErrors];
+
+export type reviewDelegationsCreateDelegationResponses = {
+    /**
+     * Successful Response
+     */
+    201: DelegationView;
+};
+
+export type reviewDelegationsCreateDelegationResponse = reviewDelegationsCreateDelegationResponses[keyof reviewDelegationsCreateDelegationResponses];
+
+export type reviewDelegationsRevokeDelegationData = {
+    body?: never;
+    path: {
+        /**
+         * Delegation Id
+         */
+        delegation_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/review-delegations/{delegation_id}';
+};
+
+export type reviewDelegationsRevokeDelegationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type reviewDelegationsRevokeDelegationError = reviewDelegationsRevokeDelegationErrors[keyof reviewDelegationsRevokeDelegationErrors];
+
+export type reviewDelegationsRevokeDelegationResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type reviewDelegationsRevokeDelegationResponse = reviewDelegationsRevokeDelegationResponses[keyof reviewDelegationsRevokeDelegationResponses];
 
 export type appealsListDisputesData = {
     body?: never;
