@@ -4,7 +4,7 @@ from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.domains.audit.service import record_audit
@@ -34,11 +34,13 @@ def months_before(now: datetime, months: int) -> datetime:
 
 
 def read_update_settings(session: Session, org_id: UUID) -> UpdateSettingsPublic:
-    setting = session.get(UpdateSetting, org_id)
+    org, setting = session.exec(
+        select(Organization, UpdateSetting)
+        .outerjoin(UpdateSetting, col(UpdateSetting.org_id) == Organization.id)
+        .where(Organization.id == org_id)
+    ).one()
     if setting:
         return UpdateSettingsPublic.model_validate(setting, from_attributes=True)
-    org = session.get(Organization, org_id)
-    assert org is not None
     return UpdateSettingsPublic(
         next_reminder_at=add_period(org.created_at, "quarterly"), updated_at=None
     )

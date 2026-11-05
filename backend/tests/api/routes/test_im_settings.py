@@ -274,3 +274,23 @@ def test_migration(migration_engine: Engine) -> None:
             fk["constrained_columns"] == ["org_id", "updated_by_user_id"]
             for fk in inspect(connection).get_foreign_keys("im_setting")
         )
+
+
+@pytest.mark.parametrize("platform", ["feishu", "wecom", "telegram"])
+def test_omitted_auto_bind_preserves_setting(
+    demo: tuple, client: TestClient, platform: str
+) -> None:
+    base, _, auth = demo
+    url = f"{base}/im-settings/{platform}"
+    assert (
+        client.put(url, headers=auth["admin"], json={"email_auto_bind": False}).json()[
+            "email_auto_bind"
+        ]
+        is False
+    )
+    response = client.put(url, headers=auth["admin"], json={"enabled": False})
+    assert response.status_code == 200
+    assert response.json()["email_auto_bind"] is False
+    explicit = client.put(url, headers=auth["admin"], json={"email_auto_bind": True})
+    assert explicit.status_code == 200
+    assert explicit.json()["email_auto_bind"] == (platform != "telegram")

@@ -1,12 +1,12 @@
 """Fixed-template reminders; only questions and inbox entries are appended."""
 
+import logging
 from datetime import datetime
 from uuid import UUID
 
 from sqlmodel import Session, col, select
 
 from app.domains.capability.models import CapabilityDefinition
-from app.domains.drafting.collect import evidence_stats
 from app.domains.drafting.models import UpdateSetting
 from app.domains.drafting.settings import drafting_scope
 from app.domains.drafting.update_settings import months_before, read_update_settings
@@ -32,6 +32,8 @@ from app.domains.profile.models import (
 )
 from app.domains.source.schedule import add_period
 from app.models import User
+
+logger = logging.getLogger(__name__)
 
 
 def generate_questions(
@@ -69,21 +71,31 @@ def generate_questions(
             )
         ).all()
     }
+    excluded_keys = drafting_scope(session, org_id).excluded_capability_keys
+    evidence_by_claim: dict[UUID, list[tuple[ClaimEvidence, Evidence]]] = {}
+    for link, evidence in session.exec(
+        select(ClaimEvidence, Evidence)
+        .join(
+            Evidence,
+            (col(Evidence.id) == ClaimEvidence.evidence_id)
+            & (col(Evidence.org_id) == ClaimEvidence.org_id),
+        )
+        .where(
+            ClaimEvidence.org_id == org_id,
+            col(ClaimEvidence.claim_id).in_([c.id for c in claims]),
+        )
+    ).all():
+        evidence_by_claim.setdefault(link.claim_id, []).append((link, evidence))
     candidates: list[tuple[QuestionKind, ProfileClaim | None, str]] = []
     referenced: set[UUID] = set()
     for claim in claims:
-        links = session.exec(
-            select(ClaimEvidence, Evidence)
-            .join(
-                Evidence,
-                (col(Evidence.id) == ClaimEvidence.evidence_id)
-                & (col(Evidence.org_id) == ClaimEvidence.org_id),
-            )
-            .where(ClaimEvidence.org_id == org_id, ClaimEvidence.claim_id == claim.id)
-        ).all()
+        links = evidence_by_claim.get(claim.id, [])
         referenced.update(e.id for _, e in links)
+        capability = capabilities[claim.capability_definition_id]
+        if capability.key in excluded_keys:
+            continue
         active = [(link, e) for link, e in links if e.status == EvidenceStatus.ACTIVE]
-        name = capabilities[claim.capability_definition_id].name
+        name = capability.name
         latest = max((e.occurred_at for _, e in active if e.occurred_at), default=None)
         if any(link.relation == EvidenceRelation.CONTRADICTS for link, _ in active):
             candidates.append(
@@ -105,7 +117,12 @@ def generate_questions(
                     f"「{name}」最近一次记录在 {latest.year} 年 {latest.month} 月，现在还在用吗？",
                 )
             )
-        if evidence_stats(session, org_id, [e.id for _, e in active]).source_count == 1:
+        sources = {e.source for _, e in active if e.kind == EvidenceKind.WORK_RECORD}
+        if (
+            claim.assessment_status != AssessmentStatus.UNKNOWN
+            and active
+            and len(sources) <= 1
+        ):
             candidates.append(
                 (
                     QuestionKind.SINGLE_SOURCE,
@@ -130,7 +147,7 @@ def generate_questions(
                 (
                     QuestionKind.RECORD,
                     None,
-                    f"{evidence.source_ref} 里你负责的是哪部分？",
+                    f"「{evidence.title}」（{evidence.source_ref}）里你负责的是哪部分？",
                 )
             )
     candidates.append((QuestionKind.GENERAL, None, "最近有新项目或新技能吗？"))
@@ -168,9 +185,9 @@ def generate_questions(
 
 
 def dispatch_due_reminders(session: Session, now: datetime) -> None:
-    # Lock the tenant even when its default setting has not been materialized yet.
-    orgs = session.exec(
-        select(Organization)
+    # Discovery takes no locks; each tenant claims its own period below.
+    org_ids = session.exec(
+        select(Organization.id)
         .outerjoin(UpdateSetting, col(UpdateSetting.org_id) == Organization.id)
         .where(
             col(UpdateSetting.org_id).is_(None)
@@ -179,46 +196,61 @@ def dispatch_due_reminders(session: Session, now: datetime) -> None:
                 & (col(UpdateSetting.next_reminder_at) <= now)
             )
         )
-        .with_for_update(of=Organization, skip_locked=True)
+        .order_by(col(Organization.id))
     ).all()
-    for org in orgs:
-        settings = read_update_settings(session, org.id)
-        due = settings.next_reminder_at
-        if due is None or due > now:
-            continue
-        period_months = 3 if settings.reminder_schedule == "quarterly" else 12
-        since = months_before(due, period_months)
-        while due <= now:
-            previous = due
-            due = add_period(due, settings.reminder_schedule)
-            if due <= now:
-                since = previous
-        scope = drafting_scope(session, org.id)
-        employees = session.exec(
-            select(Employee)
-            .join(
-                OrgMembership,
-                (col(OrgMembership.employee_id) == Employee.id)
-                & (col(OrgMembership.org_id) == Employee.org_id),
-            )
-            .join(User, col(User.id) == OrgMembership.user_id)
-            .where(
-                Employee.org_id == org.id,
-                Employee.employment_status == EmploymentStatus.ACTIVE,
-                col(User.is_active).is_(True),
-                col(Employee.id).not_in(scope.excluded_employee_ids),
-            )
-            .order_by(col(Employee.id))
-        ).all()
-        for employee in employees:
-            generate_questions(
-                session,
-                employee,
-                now,
-                settings.stale_after_months,
-                since,
-            )
-        setting = session.get(UpdateSetting, org.id) or UpdateSetting(org_id=org.id)
-        setting.next_reminder_at = due
-        session.add(setting)
     session.commit()
+    for org_id in org_ids:
+        try:
+            org = session.exec(
+                select(Organization)
+                .where(Organization.id == org_id)
+                .with_for_update(skip_locked=True)
+            ).one_or_none()
+            if org is None:
+                session.rollback()
+                continue
+            settings = read_update_settings(session, org_id)
+            due = settings.next_reminder_at
+            if due is None or due > now:
+                session.commit()
+                continue
+            period_months = 3 if settings.reminder_schedule == "quarterly" else 12
+            since = months_before(due, period_months)
+            while due <= now:
+                previous = due
+                due = add_period(due, settings.reminder_schedule)
+                if due <= now:
+                    since = previous
+            setting = session.get(UpdateSetting, org_id) or UpdateSetting(org_id=org_id)
+            setting.next_reminder_at = due
+            session.add(setting)
+            session.commit()
+            # shortcut: A failure after claiming skips remaining employees this period, add resumable employee jobs if retries are required.
+            scope = drafting_scope(session, org_id)
+            employees = session.exec(
+                select(Employee)
+                .join(
+                    OrgMembership,
+                    (col(OrgMembership.employee_id) == Employee.id)
+                    & (col(OrgMembership.org_id) == Employee.org_id),
+                )
+                .join(User, col(User.id) == OrgMembership.user_id)
+                .where(
+                    Employee.org_id == org_id,
+                    Employee.employment_status == EmploymentStatus.ACTIVE,
+                    col(User.is_active).is_(True),
+                    col(Employee.id).not_in(scope.excluded_employee_ids),
+                )
+                .order_by(col(Employee.id))
+            ).all()
+            for employee in employees:
+                generate_questions(
+                    session, employee, now, settings.stale_after_months, since
+                )
+                session.commit()
+        except Exception as exc:
+            session.rollback()
+            # Do not include exception text or tracebacks containing employee data.
+            logger.error(
+                "Reminder generation failed for org %s (%s)", org_id, type(exc).__name__
+            )

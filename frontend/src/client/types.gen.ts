@@ -1711,7 +1711,7 @@ export type ImSettingUpdate = {
     /**
      * Email Auto Bind
      */
-    email_auto_bind?: boolean;
+    email_auto_bind?: boolean | null;
     /**
      * Data Transfer Acknowledged
      */
@@ -3625,7 +3625,7 @@ export type ImSettingUpdateWritable = {
     /**
      * Email Auto Bind
      */
-    email_auto_bind?: boolean;
+    email_auto_bind?: boolean | null;
     /**
      * Credentials
      */
