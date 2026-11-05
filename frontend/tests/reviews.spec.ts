@@ -4,7 +4,7 @@ import { expectChineseCopy } from "./utils/copy"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
-for (const reviewer of ["manager", "admin"]) {
+for (const reviewer of ["manager", "admin", "delegate"]) {
   test(`${reviewer}: mixed decisions, returned draft and timelines on mobile`, async ({
     page,
     request,
@@ -122,6 +122,38 @@ for (const reviewer of ["manager", "admin"]) {
     const ownerToken = await login(subject)
     const reviewerToken =
       reviewer === "manager" ? await login(manager) : admin.access_token
+    const enter = async (accessToken: string, path: string) => {
+      await page.goto("/login")
+      await page.evaluate(
+        ({ accessToken, orgId }) => {
+          localStorage.setItem("access_token", accessToken)
+          localStorage.setItem("current_org_id", orgId)
+        },
+        { accessToken, orgId: admin.org_id },
+      )
+      await page.goto(path)
+    }
+    if (reviewer === "delegate") {
+      await enter(await login(manager), "/settings")
+      await page.getByRole("tab", { name: "代理审批", exact: true }).click()
+      await page
+        .getByLabel("代理人", { exact: true })
+        .selectOption({ label: "合成管理员" })
+      const localDate = (offset: number) =>
+        new Date(Date.now() + offset - new Date().getTimezoneOffset() * 60000)
+          .toISOString()
+          .slice(0, 16)
+      await page.getByLabel("开始时间", { exact: true }).fill(localDate(-60000))
+      await page
+        .getByLabel("结束时间", { exact: true })
+        .fill(localDate(86400000))
+      await page.getByRole("button", { name: "保存代理", exact: true }).click()
+      await expect(page.getByLabel("代理记录")).toContainText("代理中")
+      await page.reload()
+      await page.getByRole("tab", { name: "代理审批", exact: true }).click()
+      await expect(page.getByLabel("代理记录")).toContainText("合成管理员")
+      await expectChineseCopy(page)
+    }
     const ownerHeaders = { Authorization: `Bearer ${ownerToken}` }
     if (reviewer === "admin") {
       const grants = await (
@@ -155,23 +187,16 @@ for (const reviewer of ["manager", "admin"]) {
       { headers: ownerHeaders, data: { revision: draft.revision } },
     )
     expect(submitted.ok()).toBeTruthy()
-    const enter = async (accessToken: string, path: string) => {
-      await page.goto("/login")
-      await page.evaluate(
-        ({ accessToken, orgId }) => {
-          localStorage.setItem("access_token", accessToken)
-          localStorage.setItem("current_org_id", orgId)
-        },
-        { accessToken, orgId: admin.org_id },
-      )
-      await page.goto(path)
-    }
     await enter(ownerToken, `/reviews/${draft.id}`)
     await expect(page.getByRole("alert")).toContainText("404")
     await expect(page.getByRole("link", { name: /^待审批/ })).toHaveCount(0)
     await enter(reviewerToken, "/inbox")
     await page.getByRole("link", { name: "查看并审批", exact: true }).click()
     await expect(page.getByRole("heading", { name: "逐项审批" })).toBeVisible()
+    if (reviewer === "delegate")
+      await expect(
+        page.getByText("代合成经理审批", { exact: true }),
+      ).toBeVisible()
     if (reviewer === "manager") {
       await page.route(`**/orgs/${admin.org_id}/reviews`, async (route) => {
         const data = await (await route.fetch()).json()
@@ -319,7 +344,7 @@ for (const reviewer of ["manager", "admin"]) {
       "发布画像 · r1",
     )
     await expect(card).toContainText(
-      `审批决定 · ${reviewer === "admin" ? "合成管理员" : "合成经理"}`,
+      `审批决定 · ${reviewer === "manager" ? "合成经理" : "合成管理员"}`,
     )
     await card.getByRole("link", { name: "查看退回草稿" }).click()
     await expectChineseCopy(page)
@@ -357,5 +382,11 @@ for (const reviewer of ["manager", "admin"]) {
           value.status === "pending_review",
       ),
     ).toBeTruthy()
+    if (reviewer === "delegate") {
+      await enter(await login(manager), "/settings")
+      await page.getByRole("tab", { name: "代理审批", exact: true }).click()
+      await page.getByRole("button", { name: "撤销代理", exact: true }).click()
+      await expect(page.getByLabel("代理记录")).toContainText("已撤销")
+    }
   })
 }

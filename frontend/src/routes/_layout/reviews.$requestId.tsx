@@ -128,6 +128,11 @@ function ReviewForm({
           返回待审批
         </Link>
         <h1 className="text-2xl font-semibold">逐项审批</h1>
+        {query.data.acting_for_name && (
+          <p className="font-medium text-primary">
+            代{query.data.acting_for_name}审批
+          </p>
+        )}
         {subject && (
           <p>
             {subject.employee_name} · {subject.department_name ?? "未分配部门"}

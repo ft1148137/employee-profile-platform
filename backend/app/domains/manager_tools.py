@@ -10,7 +10,7 @@ from app.domains.employee_tools import EmployeeTool, RequestInput
 from app.domains.org.service import list_employees
 from app.domains.profile.models import ProgressReviewStatus
 from app.domains.review import service
-from app.domains.review.routing import reviewers_for
+from app.domains.review.routing import can_review
 from app.domains.review.schemas import (
     DecideInput,
     DecisionInput,
@@ -48,9 +48,7 @@ def _require_reviewer(principal: Principal, session: Session, request_id: UUID) 
         raise EmployeeRecordNotFound()
     if principal.employee_id == request.subject_employee_id:
         raise service.ReviewForbidden()
-    if principal.user_id not in reviewers_for(
-        session, principal.org_id, request.subject_employee_id
-    ):
+    if can_review(session, principal, request.subject_employee_id) is None:
         raise EmployeeRecordNotFound()
 
 

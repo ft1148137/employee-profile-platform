@@ -5,6 +5,7 @@ import { CapabilityDictionary } from "@/components/Setup/CapabilityDictionary"
 import { AiConnections } from "@/components/UserSettings/AiConnections"
 import ChangePassword from "@/components/UserSettings/ChangePassword"
 import { ImBindings } from "@/components/UserSettings/ImBindings"
+import { ReviewDelegation } from "@/components/UserSettings/ReviewDelegation"
 import UserInformation from "@/components/UserSettings/UserInformation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import useAuth from "@/hooks/useAuth"
@@ -16,6 +17,11 @@ const tabsConfig = [
   { value: "appearance", title: "外观", component: Appearance },
   { value: "assistants", title: "连接 AI 助手", component: AiConnections },
   { value: "im", title: "IM 绑定", component: ImBindings },
+  {
+    value: "review-delegation",
+    title: "代理审批",
+    component: ReviewDelegation,
+  },
   { value: "dictionary", title: "能力词典", component: CapabilityDictionary },
 ]
 
