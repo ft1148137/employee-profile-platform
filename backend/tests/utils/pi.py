@@ -157,7 +157,7 @@ def pi_service(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[PiH
             )
 
     model_server = ThreadingHTTPServer(("127.0.0.1", 0), ModelHandler)
-    thread = Thread(target=model_server.serve_forever)
+    thread = Thread(target=model_server.serve_forever, kwargs={"poll_interval": 0.05})
     thread.start()
     harness.config.baseUrl = f"http://127.0.0.1:{model_server.server_port}/v1"
     monkeypatch.setattr(
