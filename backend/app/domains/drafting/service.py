@@ -39,6 +39,7 @@ from app.domains.inbox.service import notify
 from app.domains.model.client import (
     ModelOutputInvalid,
     ModelRateLimited,
+    ModelServiceError,
     ModelUnavailable,
 )
 from app.domains.model.service import model_config, read_setting, validate_capabilities
@@ -377,6 +378,8 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                     message = "保存的模型密钥已失效，请重新填写"
                 elif isinstance(error, ModelOutputInvalid):
                     message = "模型输出不符合格式，已重试 3 次"
+                elif isinstance(error, ModelServiceError):
+                    message = str(error)
                 elif isinstance(error, ModelUnavailable):
                     message = (
                         str(error)

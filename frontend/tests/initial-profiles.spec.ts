@@ -361,6 +361,11 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
 }) => {
   // A saved pending row must not block restarting after its worker has stopped.
   let counts = { generated: 2, failed: 1, excluded: 3, pending: 1 }
+  const modelErrors = [
+    "这个模型不可用，请换一个模型",
+    "模型服务拒绝了请求，请检查模型设置",
+    "模型服务暂时不可用，请稍后重试",
+  ]
   await page.route("**/initial-profiles/progress", (route) =>
     route.fulfill({
       json: {
@@ -372,6 +377,11 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
             display_name: "合成员工",
             error: "起草失败，请重试",
           },
+          ...modelErrors.map((error, index) => ({
+            employee_id: `synthetic-${index}`,
+            display_name: `合成员工${index}`,
+            error,
+          })),
         ],
         requests: { pending_owner: counts.generated, handed_over: 0 },
         paused_until: "2026-11-04T10:40:00Z",
@@ -427,6 +437,9 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
     page.getByRole("link", { name: "自动起草设置", exact: true }).last(),
   ).toHaveAttribute("href", "/admin/drafting")
   await expect(page.getByText("合成员工：起草失败，请重试")).toBeVisible()
+  for (const error of modelErrors) {
+    await expect(page.getByText(error, { exact: false })).toBeVisible()
+  }
   await expect(page.getByText("合成工作记录.csv")).toBeVisible()
   await expect(page.getByText("新增证据：8", { exact: true })).toBeVisible()
   await expectChineseCopy(page, ["ChatGPT"])

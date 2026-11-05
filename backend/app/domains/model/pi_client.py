@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.domains.model.client import (
     ModelAuthenticationError,
     ModelRateLimited,
+    ModelServiceError,
     ModelUnavailable,
 )
 
@@ -64,12 +65,16 @@ class TurnResult(BaseModel):
 
 
 def _error(event: dict[str, JsonValue]) -> None:
-    code = event.get("code")
+    value = event.get("code")
+    code = value if isinstance(value, str) else ""
     if code == "busy":
         raise PiBusy("模型服务繁忙，请稍后再试")
 
     if code == "model_unauthorized":
         raise ModelAuthenticationError()
+    match code:
+        case "model_not_found" | "upstream_rejected" | "upstream_unavailable":
+            raise ModelServiceError(code)
     if code == "rate_limited":
         retry_at = datetime.fromisoformat(str(event["retry_at"]))
         if retry_at.tzinfo is None:
@@ -82,7 +87,6 @@ def _error(event: dict[str, JsonValue]) -> None:
         logger.error("Pi protocol failure: %s", code)
     messages = {
         "model_forbidden": "密钥不对或没有权限",
-        "model_not_found": "地址或模型名不对",
         "busy": "模型服务繁忙，请稍后再试",
         "deadline": "模型调用超时",
         "limit_exceeded": "模型调用次数达到上限",
