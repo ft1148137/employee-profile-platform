@@ -46,7 +46,7 @@ from app.domains.profile.models import (
     ProfileProgress,
     ProfileVersion,
 )
-from app.domains.review.models import ApprovalPolicy, ReviewAppeal
+from app.domains.review.models import ApprovalPolicy, ReviewAppeal, ReviewDelegation
 from app.domains.setup.models import SetupStepState
 from app.domains.source.models import SourceConnection, SyncRun
 from app.domains.work.models import Task, WorkEvent
@@ -54,6 +54,7 @@ from app.models import User
 
 ORG_MODELS = (
     ImNotification,
+    ReviewDelegation,
     ReviewAppeal,
     ApprovalPolicy,
     ImAction,

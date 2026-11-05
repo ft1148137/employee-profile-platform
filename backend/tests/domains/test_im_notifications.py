@@ -341,7 +341,7 @@ def test_toggle_only_changes_own_binding(
 
 
 def test_notification_migration_roundtrip(migration_engine: Engine) -> None:
-    migrate(migration_engine, "downgrade", "b127001bc001")
+    migrate(migration_engine, "downgrade", "b126001bc001")
     with migration_engine.connect() as conn:
         assert "im_notification" not in inspect(conn).get_table_names()
     migrate(migration_engine, "upgrade", "head")

@@ -27,6 +27,7 @@ from app.api.routes import (
     private,
     profile_import,
     profiles,
+    review_delegations,
     reviews,
     roles,
     roster,
@@ -39,6 +40,7 @@ from app.api.routes import (
 from app.core.config import settings
 
 api_router = APIRouter()
+api_router.include_router(review_delegations.router)
 api_router.include_router(appeals.router)
 api_router.include_router(approval_policy.router)
 api_router.include_router(im_bindings.router)
