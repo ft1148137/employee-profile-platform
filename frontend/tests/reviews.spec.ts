@@ -338,7 +338,9 @@ for (const reviewer of ["manager", "admin"]) {
     await expect(card).toBeVisible()
     await page.getByRole("button", { name: "继续修改" }).click()
     const editor = page.getByRole("dialog")
-    await editor.getByLabel("依据说明").fill("本人补充了独立完成的合成依据")
+    await editor
+      .getByRole("textbox", { name: "依据说明", exact: true })
+      .fill("本人补充了独立完成的合成依据")
     await editor
       .getByRole("button", { name: "预览并提交", exact: true })
       .click()
