@@ -317,6 +317,71 @@ test('real SDK error responses retain quota headers without mixing concurrent ru
   }
 });
 
+test('real SDK classifies upstream errors by status and structured type, with no body in output or logs', async t => {
+  const cases = [
+    [404, {}, 'model_not_found'], [401, {}, 'model_unauthorized'],
+    [400, { type: 'model_not_available' }, 'model_not_found'],
+    [403, { code: 'model_not_found' }, 'model_not_found'],
+    [403, { type: 'permission_error' }, 'upstream_rejected'],
+    [400, { type: 'invalid_request_error' }, 'upstream_rejected'],
+    [422, {}, 'upstream_rejected'], [500, {}, 'upstream_unavailable'],
+    [503, {}, 'upstream_unavailable'], [429, {}, 'rate_limited'],
+    [403, { type: 'usage_limit_reached' }, 'rate_limited'],
+    [400, { code: 'insufficient_quota' }, 'rate_limited'],
+    [400, null, 'upstream_rejected'],
+    [403, { type: 'model_not_found' + 'x'.repeat(17000) }, 'upstream_rejected'],
+  ];
+  let calls = 0;
+  const upstream = createServer((req, res) => {
+    calls++;
+    const [status, error] = cases[Number(req.headers.authorization.split(' ').at(-1))];
+    res.writeHead(status, { 'Content-Type': 'application/json', 'Retry-After': '60' });
+    res.end(error === null ? 'synthetic-secret invalid JSON' :
+      JSON.stringify({ error: { ...error, message: 'synthetic-secret model_not_found rate_limit' } }));
+  });
+  upstream.listen(0, '127.0.0.1'); await once(upstream, 'listening');
+  t.after(() => new Promise(resolve => { upstream.closeAllConnections(); upstream.close(resolve); }));
+  const { request, logs } = await setup(t, { streamFn: undefined });
+  for (let i = 0; i < cases.length; i++) {
+    const data = body();
+    data.model.baseUrl = `http://127.0.0.1:${upstream.address().port}/v1`;
+    data.model.api_key = String(i);
+    const output = await (await request('/v1/turns', 'POST', data)).text();
+    assert.equal(JSON.parse(output.trim()).code, cases[i][2], `case ${i}`);
+    assert.doesNotMatch(output + JSON.stringify(logs), /synthetic-secret|invalid_request_error|permission_error/);
+  }
+  assert.equal(calls, cases.length);
+});
+
+test('request fetch captures structured errors for Responses, Anthropic and Codex too', async t => {
+  const original = globalThis.fetch;
+  t.mock.method(globalThis, 'fetch', (url, options) => String(url).startsWith('http://127.0.0.1:')
+    ? original(url, options)
+    : Promise.resolve(Response.json({ error: { code: 'model_not_found', message: 'synthetic-secret' } }, { status: 403 })));
+  const { request, logs } = await setup(t, { streamFn: undefined });
+  for (const [provider, api, id, baseUrl, api_key] of [
+    ['openai', 'openai-responses', 'gpt-4o-mini', 'https://api.openai.com/v1', 'synthetic-key'],
+    ['anthropic', 'anthropic-messages', 'claude-sonnet-4-5', 'https://api.anthropic.com', 'synthetic-key'],
+    ['openai-codex', 'openai-codex-responses', 'gpt-5.4', 'https://chatgpt.com/backend-api', jwt(7200)],
+  ]) {
+    const data = { ...body(), model: { provider, api, id, baseUrl, api_key } };
+    const output = await (await request('/v1/turns', 'POST', data)).text();
+    assert.deepEqual(JSON.parse(output.trim()), { type: 'error', code: 'model_not_found' }, provider);
+    assert.doesNotMatch(output + JSON.stringify(logs), /synthetic-secret|synthetic-key/);
+  }
+});
+
+test('connection failures are unavailable, unclassified SDK errors remain model_error', async t => {
+  const { request, logs } = await setup(t, { streamFn: undefined });
+  const output = await (await request('/v1/turns', 'POST', body())).text();
+  assert.equal(JSON.parse(output.trim()).code, 'upstream_unavailable');
+  assert.doesNotMatch(output + JSON.stringify(logs), /synthetic-api-key|ECONNREFUSED/);
+  const unknown = await setup(t, { streamFn: () => { throw new Error('synthetic-secret model_not_found'); } });
+  const unclassified = await (await unknown.request('/v1/turns', 'POST', body())).text();
+  assert.deepEqual(JSON.parse(unclassified.trim()), { type: 'error', code: 'model_error' });
+  assert.doesNotMatch(unclassified + JSON.stringify(unknown.logs), /synthetic-secret/);
+});
+
 test('deadline interrupts real SDK network waiting, not only platform tools', async t => {
   let closed;
   const disconnected = new Promise(resolve => { closed = resolve; });
@@ -326,7 +391,7 @@ test('deadline interrupts real SDK network waiting, not only platform tools', as
   const { request } = await setup(t, { streamFn: undefined, deadlineMs: 500 });
   const data = body(); data.model.baseUrl = `http://127.0.0.1:${upstream.address().port}/v1`;
   const response = await request('/v1/turns', 'POST', data);
-  assert.equal(JSON.parse((await response.text()).trim()).code, 'deadline');
+  assert.equal(JSON.parse((await response.text()).trim()).code, 'upstream_unavailable');
   await disconnected;
   assert.equal((await request('/health')).status, 200);
 });
@@ -412,7 +477,7 @@ test('egress rejects redirects without contacting their target', async t => {
   const { request } = await setup(t, { streamFn: undefined });
   const data = body(); data.model.baseUrl = `http://127.0.0.1:${upstream.address().port}/v1`;
   const response = await request('/v1/turns', 'POST', data);
-  assert.equal(JSON.parse((await response.text()).trim()).code, 'model_error');
+  assert.equal(JSON.parse((await response.text()).trim()).code, 'upstream_unavailable');
   assert.equal(requests, 1);
 });
 
@@ -426,7 +491,7 @@ test('DNS results, literals and origin policies are checked at each connection',
     lookup: (_host, _options, callback) => callback(null, [{ address: '192.168.1.1', family: 4 }]) });
   const data = body(); data.model = { ...data.model, provider: 'openai', api: 'openai-responses', id: 'gpt-4o-mini', baseUrl: 'http://synthetic.invalid/v1' };
   const response = await request('/v1/turns', 'POST', data);
-  assert.equal(JSON.parse((await response.text()).trim()).code, 'model_error');
+  assert.equal(JSON.parse((await response.text()).trim()).code, 'upstream_unavailable');
   await assert.rejects(egress.run({ catalog: false, origin: 'http://allowed.invalid:123' },
     () => globalThis.fetch('http://other.invalid:123')));
   await assert.rejects(egress.run({ catalog: false, origin: 'http://allowed.invalid:123' },
@@ -483,7 +548,7 @@ test('a second connection rechecks DNS instead of reusing an allowed socket', as
   t.after(() => new Promise(resolve => { upstream.closeAllConnections(); upstream.close(resolve); }));
   const { request } = await setup(t, { streamFn: undefined,
     lookup: (_host, _opts, callback) => callback(null, [{ address: ++resolutions === 1 ? '127.0.0.1' : '169.254.169.254', family: 4 }]) });
-  for (const code of ['rate_limited', 'model_error']) {
+  for (const code of ['rate_limited', 'upstream_unavailable']) {
     const data = body(); data.model.baseUrl = `http://synthetic.invalid:${upstream.address().port}/v1`;
     const response = await request('/v1/turns', 'POST', data);
     assert.equal(JSON.parse((await response.text()).trim()).code, code);
