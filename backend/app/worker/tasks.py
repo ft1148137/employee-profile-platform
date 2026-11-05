@@ -9,6 +9,7 @@ from sqlmodel import Session
 from app.core.db import engine
 from app.domains.base import utc_now
 from app.domains.bot.store import cleanup_messages
+from app.domains.drafting.incremental import run_incremental
 from app.domains.drafting.service import run_drafting
 from app.domains.im.binding import cleanup_events
 from app.domains.inbox.reminders import dispatch_due_reminders
@@ -59,6 +60,13 @@ def sync_run(org_id: str, run_id: str, initial_attempts: int = 0) -> None:
     tenant_task(
         UUID(org_id),
         lambda principal: execute_sync(principal, UUID(run_id), initial_attempts),
+    )
+
+
+@app.task(name="profiles.draft_incremental")
+def draft_incremental(org_id: str, employee_ids: list[str] | None = None) -> None:
+    tenant_task(
+        UUID(org_id), lambda principal: run_incremental(principal, employee_ids)
     )
 
 

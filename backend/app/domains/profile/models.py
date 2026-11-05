@@ -126,6 +126,9 @@ class ProfileProgress(SQLModel, table=True):
         default=EvidenceQuality.UNKNOWN, sa_type=enum_type(EvidenceQuality)
     )
     inference_error: str | None = None
+    incremental_drafted_at: datetime | None = Field(
+        default=None, sa_type=DateTime(timezone=True)
+    )
     updated_at: datetime = Field(
         default_factory=utc_now, sa_type=DateTime(timezone=True)
     )

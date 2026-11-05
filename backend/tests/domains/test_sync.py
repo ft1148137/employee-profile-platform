@@ -58,7 +58,7 @@ def context(
     db.rollback()
     db.execute(
         text(
-            "DELETE FROM procrastinate_jobs WHERE task_name = 'sources.sync_run' AND args->>'org_id' = :org"
+            "DELETE FROM procrastinate_jobs WHERE task_name IN ('sources.sync_run', 'profiles.draft_incremental') AND args->>'org_id' = :org"
         ),
         {"org": str(orgs[0].id)},
     )
