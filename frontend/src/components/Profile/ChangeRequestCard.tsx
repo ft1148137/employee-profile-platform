@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import type { EditorSelection } from "./ChangeRequestEditor"
 import { EvidenceRows } from "./EvidenceList"
 import { levelLabel } from "./fields"
+import { decisionLabels, RequestTimeline } from "./RequestTimeline"
 import { StatusBadge } from "./StatusBadge"
 
 const statusLabels: Record<RequestStatus, string> = {
@@ -23,12 +24,14 @@ const statusLabels: Record<RequestStatus, string> = {
 
 export function ChangeRequestCard({
   requests,
+  employeeId,
   isOwner,
   onEvidence,
   orgId,
   onEdit,
 }: {
   requests: ChangeRequestPublic[]
+  employeeId: string
   isOwner: boolean
   onEvidence: (id: string) => void
   orgId: string
@@ -52,12 +55,23 @@ export function ChangeRequestCard({
       request.status === "pending_owner",
   )
   const others = requests.filter((request) => !pending.includes(request))
+  const open = others.filter((request) =>
+    ["draft", "pending_owner", "pending_review"].includes(request.status),
+  )
+  const groups = [
+    { title: "其他待处理请求", requests: open },
+    {
+      title: "已处理请求",
+      requests: others.filter((request) => !open.includes(request)),
+    },
+  ]
   return (
     <div className="mb-6 space-y-4">
       <SetupError error={withdraw.error} />
       {pending.map((initial) => (
         <section
           key={initial.id}
+          id={`request-${initial.id}`}
           aria-label={
             initial.origin === "import" ? "导入画像草稿" : "初始画像草稿"
           }
@@ -157,6 +171,11 @@ export function ChangeRequestCard({
               </section>
             ))}
           </div>
+          <RequestTimeline
+            orgId={orgId}
+            employeeId={employeeId}
+            requestId={initial.id}
+          />
           {isOwner && (
             <Button
               disabled={!initial.items?.length}
@@ -167,47 +186,80 @@ export function ChangeRequestCard({
           )}
         </section>
       ))}
-      {others.length > 0 && (
-        <section aria-label="其他待处理请求" className="rounded-lg border p-4">
-          <h2 className="mb-2 font-semibold">其他待处理请求</h2>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            {others.map((request) => (
-              <li key={request.id}>
-                {statusLabels[request.status]} · {request.items?.length ?? 0}{" "}
-                项改动
-                {request.submitted_via === "admin_handover" && (
-                  <span> · 员工未过目</span>
-                )}
-                {isOwner && request.status === "draft" && (
-                  <Button
-                    className="ml-2"
-                    variant="outline"
-                    onClick={() => onEdit({ request })}
+      {groups.map(
+        ({ title, requests: group }) =>
+          group.length > 0 && (
+            <section
+              key={title}
+              aria-label={title}
+              className="rounded-lg border p-4"
+            >
+              <h2 className="mb-2 font-semibold">{title}</h2>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                {group.map((request) => (
+                  <li
+                    key={request.id}
+                    id={`request-${request.id}`}
+                    className="space-y-3 border-b py-3 last:border-0"
                   >
-                    继续修改
-                  </Button>
-                )}
-                {isOwner && request.status === "pending_review" && (
-                  <Button
-                    className="ml-2"
-                    variant="outline"
-                    disabled={withdraw.isPending}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          "确定撤回这个请求？经理将不再审批此请求。",
-                        )
-                      )
-                        withdraw.mutate(request.id)
-                    }}
-                  >
-                    撤回
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
+                    {statusLabels[request.status]} ·{" "}
+                    {request.items?.length ?? 0} 项改动
+                    {request.submitted_via === "admin_handover" && (
+                      <span> · 员工未过目</span>
+                    )}
+                    {request.items?.some((item) => item.decision) && (
+                      <ul className="space-y-2">
+                        {request.items.map((item) => (
+                          <li key={item.id}>
+                            {item.capability.name}：
+                            {item.decision
+                              ? decisionLabels[item.decision]
+                              : "待决定"}
+                            {item.decision_reason && (
+                              <p className="whitespace-pre-wrap break-words">
+                                原因：{item.decision_reason}
+                              </p>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <RequestTimeline
+                      orgId={orgId}
+                      employeeId={employeeId}
+                      requestId={request.id}
+                    />
+                    {isOwner && request.status === "draft" && (
+                      <Button
+                        className="ml-2"
+                        variant="outline"
+                        onClick={() => onEdit({ request })}
+                      >
+                        继续修改
+                      </Button>
+                    )}
+                    {isOwner && request.status === "pending_review" && (
+                      <Button
+                        className="ml-2"
+                        variant="outline"
+                        disabled={withdraw.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              "确定撤回这个请求？经理将不再审批此请求。",
+                            )
+                          )
+                            withdraw.mutate(request.id)
+                        }}
+                      >
+                        撤回
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ),
       )}
     </div>
   )

@@ -13,7 +13,7 @@ export function useInbox(skip = 0) {
           query: { skip, limit: 20 },
         })
       ).data,
-    enabled: !!org && !!employeeId,
+    enabled: !!org,
     retry: false,
     refetchInterval: 30000,
   })

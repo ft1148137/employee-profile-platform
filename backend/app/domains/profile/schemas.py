@@ -74,6 +74,8 @@ class PublisherPublic(SQLModel):
 class ProfileVersionSummary(PublishedSummary):
     published_by: PublisherPublic
     schema_version: SchemaVersionPublic
+    via: str | None = None
+    request_id: UUID | None = None
 
 
 class ProfileVersionsPublic(SQLModel):
