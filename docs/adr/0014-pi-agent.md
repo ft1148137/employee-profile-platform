@@ -195,3 +195,28 @@ API、Worker 和对话继续共用 `chatgpt.access_token`：独立事务取得�
 为覆盖刷新结果返回后、提交前进程退出的情况，在发送刷新前先提交 `needs_relogin=true`。取令牌过程另外持有以企业为键的 PostgreSQL session advisory lock，固定租用同一连接，跨这次短提交仍串行；其他取令牌调用等待它，成功后拿到新令牌。标记提交后重新取得同一模型设置行锁并检查启用状态、类型及原密文，期间若断开、禁用或换过登录，就不再刷新，也不覆盖新状态。请求和令牌提交期间继续持行锁，断开/禁用等待该锁；最终解锁后才推理。会话在退出时显式解 advisory lock，进程退出则由 PostgreSQL 释放；异常退出留下的标记会阻止下一进程重用旧 refresh token。这样使用既有字段及 PostgreSQL 即可安全中断，不增加迁移或刷新任务队列。
 
 开发覆盖文件 `compose.chatgpt-local.yml` 仅把单个授权文件只读挂载给 Pi，另建 Pi 独立 tmpfs；后端/Worker 只接收 `CHATGPT_LOCAL_AUTH=true` 开关，不接收文件或凭据。Python 和 Pi 都检查 development 模式。此模式下 ChatGPT 调用使用本机授权，企业启用/禁用仍生效，不读写企业订阅凭据。Pi 每轮读取 access JWT 的账号与过期时间，拒绝有效期不足一小时；只把 `{access, accountId, expires}` 写入 0600 临时文件，按轮隔离，完成、异常或取消后删除。推理仍直接传 access，不经过 OAuth 自动刷新。没有新增依赖、迁移、证据或权限协议改动。
+
+## 升级到 1.x（M4-S1，NERE-115）
+
+2026-11-05 用 `npm view @earendil-works/pi-ai versions --json` 和 agent-core 的同名命令核对：最新 1.x 稳定版为 **1.5.0**。两包都精确锁定 1.5.0，许可证仍为 MIT；`undici@7.30.1` 不变。Node 最低要求升为 22.19.0，写入 package.json；沿用现有 Node 22 构建与 distroless 镜像 digest，不增加运行工具。后端 `pi_client.py` 及 HTTP/NDJSON 协议不变。
+
+本次只适配实际使用的 API，不引入 coding-agent、Models 的凭据存储或自动刷新：
+
+- 主入口不再提供旧全局分发和目录函数。`runtime.mjs` 用 `getBuiltinModel/getBuiltinProviders` 读取静态目录，并直接调用四种已允许 API 的 `streamSimple`；`normalizeContext` 将旧式提示词和工具定义折入 system 消息。agent-core 1.x 同样把 system 消息放进 transcript，测试改为按 user 角色定位输入，保留跨 run 拒绝断言。不依赖上游临时 `/compat` 入口。
+- 1.5.0 移除了 `Type` 导出，空参数工具改用同等的闭合 JSON Schema。生产继续使用 Python 生成的 schema。新版验证器是 pi-schema，会对普通 JSON Schema 参数也做强制转换；Python 的第二次严格校验及脱敏工具错误仍是最终边界。
+- `/oauth` 不再导出登录和刷新函数，改用 `openaiCodexProvider().auth.oauth`。显式选择 browser 登录，将 notify/prompt 适配到现有网页链接及回传 URL；给登录和刷新传入原有取消/超时 signal。只取 access、refresh、expires、accountId 四字段，去掉新版内部 type 字段，HTTP 响应保持原样。推理直接传 access token 和 SSE，绝不走 `Models.getAuth()` 或凭据存储；本机授权文件仍只读、临时文件不含 refresh token，绝不刷新或写回。
+- 新目录已收录 `gpt-6.1-sol`，Codex 目录已不含 `gpt-5.4`。目录外合法 ID（包括已保存的 gpt-5.4）沿用现有 fallback，用 Sol 的传输元数据和明确的保守 off/minimal/low/medium/high 映射；不向目录外模型开放 xhigh/max，也不继承 Sol 专属的 compat 能力标志。目录内模型按真实能力校验，只向后端公开既有六档，不新增 1.x 的 max 协议档位。
+- 新目录将 Kimi Coding 改为 `openai-completions`，base URL 改为 `https://api.kimi.com/coding/v1`。同步调整后端唯一的 `CLOUD_PROVIDERS` 映射，沿用原有提供方白名单和固定地址校验，不改 `pi_client.py`。Anthropic、DeepSeek、Moonshot 和 OpenRouter 的协议矩阵测试改用 1.5.0 目录中的模型（claude-sonnet-4-6、deepseek-flash、kimi-k2.6、deepseek/deepseek-r1-0528）；Anthropic SDK 的新 beta 请求路径也做精确断言，所有提供方和推理字段断言仍保留。模型设置中的未知或已移除 ID 继续明确报错；没有把它们放宽成任意模型。
+- 新版 Codex SSE 会压缩请求为 zstd，假 fetch 测试先按 Content-Encoding 解压，再继续断言模型、推理强度、固定 SSE 和 access-only；安全断言没有删减。新增实际 SDK 浏览器登录、取消和单次刷新成功路径测试；上游令牌响应全部合成。
+
+锁文件共 89 个依赖包，全部有 integrity：MIT 41、Apache-2.0 35、BSD-3-Clause 11、0BSD 1、Unlicense 1。pi-schema、pi-telemetry 均为 Pi 1.5.0 必需的 MIT 传递依赖；没有遥测发送器配置。Anthropic SDK 必需的 standardwebhooks 引入 `fast-sha256@1.3.0`（Unlicense）：已读其发布包 LICENSE，允许任意目的使用、修改及再分发并放弃版权，没有 copyleft 要求，与 Apache-2.0 分发兼容。原许可证白名单不变，仅对该包的路径、版本、许可证及完整 integrity 做精确断言；升级时必须重新核对。其余 SDK 的变化均由 Pi 1.5.0 的精确依赖要求引起，不单独升级 undici 或放开版本范围。项目 Apache-2.0 和模板 MIT 声明不变。
+
+复核沿用上文边界：仅平台工具、每轮独立 Agent、出网地址/DNS/重定向限制、非 root/只读/无 shell 容器、Python 统一拥有生产刷新、开发订阅绝不刷新。没有数据库迁移、Evidence 写入或权限模型变更。
+
+上游依据：[1.5.0 ai 变更记录](https://github.com/earendil-works/pi/blob/v1.5.0/packages/ai/CHANGELOG.md)、[agent 变更记录](https://github.com/earendil-works/pi/blob/v1.5.0/packages/agent/CHANGELOG.md)、[Codex OAuth 实现](https://github.com/earendil-works/pi/blob/v1.5.0/packages/ai/src/auth/oauth/openai-codex.ts)、[fast-sha256 LICENSE](https://github.com/dchest/fast-sha256-js/blob/v1.3.0/LICENSE)。
+
+本机实测：Node 22.22.0 的 37 项测试及 Python 并发 demo 全通过（升级前 36 项）；容器样例 6 项全通过（含非 root、只读、无 shell），Compose 健康与角色权限冒烟通过。通过 `compose.chatgpt-local.yml` 的单文件只读挂载，用合成 R1 证据、`chatgpt/gpt-6.1-sol`、high 完成真实订阅起草冒烟：2 次模型调用、1 次 submit_draft，最终 done；授权文件未刷新、未写回，临时文件不含 refresh token。测试记录只保存脱敏计数。
+
+前端 OpenAPI 客户端重新生成后无类型差异；lint、TypeScript 和构建通过。中文界面、机器人、模型设置的 Playwright 16 项按 CI 的单 worker 配置全部通过（本机默认四 worker 首轮初始化企业发生竞争，重跑未改测试）。
+
+后端全量 891 passed / 3 skipped（既有跳过项未变），覆盖率 98%；mypy、ty、Ruff 全通过。现有迁移测试通过，`alembic heads` 仅 `a98e001bc001` 一个 head，无新增迁移。`git grep` 检查 pi、backend、.github、docs（排除本 ADR 历史）不含旧命名空间。

@@ -13,7 +13,8 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { createInterface } from 'node:readline';
 import { test } from 'node:test';
-import { createAssistantMessageEventStream } from '@mariozechner/pi-ai';
+import { zstdDecompressSync } from 'node:zlib';
+import { createAssistantMessageEventStream } from '@earendil-works/pi-ai';
 import { createPiServer, quota } from './server.mjs';
 import { egress } from './egress.mjs';
 
@@ -56,6 +57,38 @@ test('locked SDK refresh sends a single request, including when its response is 
   assert.equal(JSON.parse(failed).code, 'refresh_failed');
   assert.equal(calls, 1);
   assert.doesNotMatch(failed + JSON.stringify(logs), /secret-refresh|upstream/);
+});
+
+test('locked SDK browser login and refresh keep the HTTP token shape and cancellation', async t => {
+  const original = globalThis.fetch;
+  const access = jwt(7200);
+  const calls = [];
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    if (String(url).startsWith('http://127.0.0.1:')) return original(url, options);
+    assert.equal(String(url), 'https://auth.openai.com/oauth/token');
+    calls.push(options.body.get('grant_type'));
+    return Response.json({ access_token: access, refresh_token: 'synthetic-refresh', expires_in: 7200 });
+  });
+  const { request, logs } = await setup(t);
+  const path = '/v1/auth/openai-codex/logins';
+  const start = await (await request(path, 'POST', {})).json();
+  const state = new URL(start.url).searchParams.get('state');
+  assert.ok(state);
+  const result = await (await request(path + '/' + start.login_id, 'POST',
+    { input: `http://localhost:1455/auth/callback?code=synthetic-code&state=${state}` })).json();
+  assert.deepEqual(Object.keys(result).sort(), ['access', 'accountId', 'expires', 'refresh']);
+  assert.equal(result.access, access);
+  assert.equal(result.accountId, 'synthetic-account');
+  assert.equal(result.refresh, 'synthetic-refresh');
+  const rotated = await (await request('/v1/auth/openai-codex/refresh', 'POST', { refresh: result.refresh })).json();
+  assert.deepEqual(Object.keys(rotated).sort(), Object.keys(result).sort());
+  assert.equal(rotated.access, access);
+  assert.deepEqual(calls, ['authorization_code', 'refresh_token']);
+  const pending = await (await request(path, 'POST', {})).json();
+  assert.equal((await request(path + '/' + pending.login_id, 'DELETE')).status, 200);
+  assert.deepEqual(calls, ['authorization_code', 'refresh_token']);
+  assert.ok(!JSON.stringify(logs).includes(access));
+  assert.doesNotMatch(JSON.stringify(logs), /synthetic-refresh|synthetic-code/);
 });
 
 test('local auth uses only access in a private temporary file, removes it after done/cancel, never refreshes', async t => {
@@ -175,7 +208,7 @@ test('every route authenticates; bad inputs and unsupported modes/APIs are rejec
 
 test('tool results bind to the waiting call and run; duplicate IDs/results do not disturb it', async t => {
   const { request, start } = await setup(t, { streamFn: fake(context => context.messages.some(m => m.role === 'toolResult')
-    ? [] : [call('submit_draft', { statement: 'ok' }, context.messages[0].content[0].text)]) });
+    ? [] : [call('submit_draft', { statement: 'ok' }, context.messages.find(m => m.role === 'user').content[0].text)]) });
   const a = await start({ ...body(), input: 'call-a' });
   const b = await start({ ...body(), input: 'call-b' });
   const ca = await a.next(); const cb = await b.next();
@@ -308,7 +341,7 @@ test('upstream failures and logs contain no body, authorization, API key or raw 
   };
   const child = spawn(process.execPath, ['--input-type=module', '-e', `
     import { createPiServer } from './server.mjs';
-    import { createAssistantMessageEventStream } from '@mariozechner/pi-ai';
+    import { createAssistantMessageEventStream } from '@earendil-works/pi-ai';
     const server = createPiServer({ token: process.env.PI_SERVICE_TOKEN, streamFn: ${streamFn.toString()} });
     server.listen(0, '127.0.0.1', () => process.send(server.address().port));
     process.on('message', () => server.close(() => process.disconnect()));
@@ -336,6 +369,8 @@ test('catalog capabilities, model identity, API and reasoning cannot be overridd
     { in_catalog: true, api: 'openai-responses', thinking_levels: ['off'] });
   assert.equal((await request('/v1/models/openai/not-in-catalog')).status, 400);
   assert.equal((await request('/v1/models/unknown/model')).status, 400);
+  assert.deepEqual(await (await request('/v1/models/openai-codex/gpt-6.1-sol')).json(),
+    { in_catalog: true, api: 'openai-codex-responses', thinking_levels: ['minimal', 'low', 'medium', 'high', 'xhigh'] });
   const supported = await (await request('/v1/models/openai-compatible/local%2Fmodel')).json();
   assert.equal(supported.in_catalog, false);
   assert.ok(supported.thinking_levels.includes('xhigh'));
@@ -349,9 +384,9 @@ test('catalog capabilities, model identity, API and reasoning cannot be overridd
 
 test('uncataloged Codex models inherit transport and conservative reasoning, with validated IDs', async t => {
   const { request } = await setup(t);
-  const model = { provider: 'openai-codex', api: 'openai-codex-responses', id: 'gpt-6.1-sol',
+  const model = { provider: 'openai-codex', api: 'openai-codex-responses', id: 'uncataloged-model',
     baseUrl: 'https://chatgpt.com/backend-api', thinkingLevel: 'high' };
-  assert.deepEqual(await (await request('/v1/models/openai-codex/gpt-6.1-sol')).json(),
+  assert.deepEqual(await (await request('/v1/models/openai-codex/uncataloged-model')).json(),
     { in_catalog: false, api: 'openai-codex-responses', thinking_levels: ['off', 'minimal', 'low', 'medium', 'high'] });
   for (const id of ['a'.repeat(100), 'Model_1.2-test'])
     assert.equal((await request('/v1/models/openai-codex/' + id)).status, 200);
@@ -605,7 +640,8 @@ test('Codex turns use only responses with an access token and fixed SSE', async 
   const seen = [];
   t.mock.method(globalThis, 'fetch', async (url, options) => {
     if (String(url).startsWith('http://127.0.0.1:')) return original(url, options);
-    seen.push(JSON.parse(options.body));
+    seen.push(JSON.parse(options.headers.get('content-encoding') === 'zstd'
+      ? zstdDecompressSync(options.body).toString() : options.body));
     assert.equal(String(url), 'https://chatgpt.com/backend-api/codex/responses');
     assert.equal(options.headers.get('Authorization'), `Bearer ${access}`);
     return new Response('sensitive synthetic-refresh', { status: 401 });
@@ -621,6 +657,7 @@ test('Codex turns use only responses with an access token and fixed SSE', async 
       assert.deepEqual(await run.next(), { type: 'error', code: 'model_unauthorized' });
       assert.equal(seen.at(-1).model, id);
       assert.equal(seen.at(-1).reasoning.effort, 'high');
+      if (id === 'gpt-5.4') assert.ok(seen.at(-1).tools.every(tool => tool.type === 'function'));
     }
   }
   assert.equal(seen.length, 4);
