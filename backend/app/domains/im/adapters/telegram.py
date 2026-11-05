@@ -90,6 +90,10 @@ class Telegram:
                         if body is None
                         else await self.client.post(method, json=body)
                     )
+                # Transport cancellation can race with a completed HTTP response.
+                task = asyncio.current_task()
+                if task is not None and task.cancelling():
+                    raise asyncio.CancelledError
                 if method in (
                     "sendMessage",
                     "editMessageReplyMarkup",

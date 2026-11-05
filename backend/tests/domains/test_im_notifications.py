@@ -4,6 +4,7 @@ import logging
 from datetime import timedelta
 from uuid import uuid4
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, inspect, text
@@ -342,6 +343,33 @@ def test_disconnected_adapter_waits_and_gateway_delivers(
     asyncio.run(run())
     db.refresh(row)
     assert row.status == "sent"
+
+
+def test_telegram_request_preserves_cancellation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def run() -> None:
+        ready = asyncio.Event()
+        adapter = Telegram(uuid4(), {"bot_token": TOKEN})
+
+        async def respond(_method: str) -> httpx.Response:
+            ready.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                return httpx.Response(200, json={"ok": True, "result": []})
+
+        monkeypatch.setattr(adapter.client, "get", respond)
+        task = asyncio.create_task(adapter._request("getUpdates"))
+        try:
+            await asyncio.wait_for(ready.wait(), timeout=5)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+        finally:
+            await adapter.close()
+
+    asyncio.run(run())
 
 
 def test_toggle_only_changes_own_binding(
