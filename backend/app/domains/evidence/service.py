@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from pydantic import JsonValue
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import aliased
-from sqlmodel import Session, col, func, select
+from sqlmodel import Session, col, func, or_, select
 
 from app.authz.policies import can_view_evidence_content, employee_scope_clause
 from app.authz.principal import Principal
@@ -91,7 +91,16 @@ def evidence_access(
         .where(
             Evidence.org_id == principal.org_id,
             col(Evidence.id).in_(ids),
-            employee_scope_clause(principal),
+            or_(
+                employee_scope_clause(principal),
+                col(ProfileChangeRequest.id).in_(
+                    [id_ for id_, allowed in permissions.items() if allowed]
+                )
+                & (
+                    col(ProfileChangeRequest.subject_employee_id)
+                    == Evidence.subject_employee_id
+                ),
+            ),
         )
     ).all()
     # Joined rows may list another request first for the same evidence.

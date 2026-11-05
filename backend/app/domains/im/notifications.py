@@ -104,6 +104,16 @@ async def send_pending(
                 ).one_or_none()
                 if row is None:
                     continue
+                item = db.exec(
+                    select(InboxItem).where(
+                        InboxItem.org_id == org_id, InboxItem.id == row.inbox_item_id
+                    )
+                ).one()
+                if item.done_at is not None:
+                    row.status, row.last_error_code = "failed", "inbox_done"
+                    db.add(row)
+                    db.commit()
+                    continue
                 setting = db.get(ImSetting, (org_id, row.platform))
                 bound = db.exec(
                     select(ImBinding).where(
@@ -138,11 +148,6 @@ async def send_pending(
                 ):
                     continue
                 assert bound is not None
-                item = db.exec(
-                    select(InboxItem).where(
-                        InboxItem.org_id == org_id, InboxItem.id == row.inbox_item_id
-                    )
-                ).one()
                 row.attempts += 1
                 try:
                     async with asyncio.timeout(10):
