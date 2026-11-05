@@ -1,11 +1,12 @@
 from datetime import datetime
 from typing import Annotated, Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.domains.change_request.schemas import ToolInput
 from app.domains.profile.models import AssessmentStatus
+from app.domains.review.schemas import DecisionInput
 
 
 class Projection(BaseModel):
@@ -125,12 +126,53 @@ class QuestionAction(ToolInput):
     answer: str = Field(min_length=1, max_length=10000, pattern=r"\S")
 
 
-Action = RequestAction | QuestionAction
+class ReviewAction(ToolInput):
+    action: Literal["confirm_review", "continue_review"]
+    request_id: UUID
+    revision: int = Field(ge=1)
+    card_id: UUID
+
+
+Action = RequestAction | QuestionAction | ReviewAction
 
 
 class TextMessage(BaseModel):
     type: Literal["text"] = "text"
     text: str
+    review_link: Literal["/reviews"] | None = None
+
+
+class ReviewAfter(Projection):
+    id: UUID
+    op: str
+    capability: Capability
+    after: Claim | None
+
+
+class EvidenceTitle(Projection):
+    title: str
+
+
+class ReviewItem(Projection):
+    before: Claim | None
+    after: ReviewAfter
+    evidence: list[EvidenceTitle]
+    jira_only: bool
+    approvable: bool
+    approval_blocked_reason: str | None
+
+
+class Review(Projection):
+    id: UUID
+    revision: int
+    items: list[ReviewItem]
+
+
+class ReviewCard(Review):
+    type: Literal["review_card"] = "review_card"
+    card_id: UUID = Field(default_factory=uuid4)
+    decisions: list[DecisionInput]
+    actions: list[ReviewAction] = Field(default_factory=list)
 
 
 class PreviewCard(Preview):
@@ -149,7 +191,8 @@ class QuestionCard(Question):
 
 
 Message = Annotated[
-    TextMessage | PreviewCard | StatusCard | QuestionCard, Field(discriminator="type")
+    TextMessage | PreviewCard | StatusCard | QuestionCard | ReviewCard,
+    Field(discriminator="type"),
 ]
 
 

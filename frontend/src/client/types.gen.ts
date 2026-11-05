@@ -1601,6 +1601,16 @@ export type EvidenceSummary = {
 };
 
 /**
+ * EvidenceTitle
+ */
+export type EvidenceTitle = {
+    /**
+     * Title
+     */
+    title: string;
+};
+
+/**
  * ExternalIdentitiesPublic
  */
 export type ExternalIdentitiesPublic = {
@@ -2972,6 +2982,78 @@ export type ResolveAppealInput = {
 };
 
 /**
+ * ReviewAction
+ */
+export type ReviewAction = {
+    /**
+     * Action
+     */
+    action: 'confirm_review' | 'continue_review';
+    /**
+     * Request Id
+     */
+    request_id: string;
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Card Id
+     */
+    card_id: string;
+};
+
+/**
+ * ReviewAfter
+ */
+export type ReviewAfter = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Op
+     */
+    op: string;
+    capability: Capability;
+    after: Claim | null;
+};
+
+/**
+ * ReviewCard
+ */
+export type ReviewCard = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Items
+     */
+    items: Array<app__domains__bot__schemas__ReviewItem>;
+    /**
+     * Type
+     */
+    type?: 'review_card';
+    /**
+     * Card Id
+     */
+    card_id?: string;
+    /**
+     * Decisions
+     */
+    decisions: Array<DecisionInput>;
+    /**
+     * Actions
+     */
+    actions?: Array<ReviewAction>;
+};
+
+/**
  * ReviewDetail
  */
 export type ReviewDetail = {
@@ -2994,31 +3076,7 @@ export type ReviewDetail = {
     /**
      * Items
      */
-    items: Array<ReviewItem>;
-};
-
-/**
- * ReviewItem
- */
-export type ReviewItem = {
-    before: ClaimPublic | null;
-    after: ChangeItemPublic;
-    /**
-     * Evidence
-     */
-    evidence: Array<EvidenceDetail>;
-    /**
-     * Jira Only
-     */
-    jira_only: boolean;
-    /**
-     * Approvable
-     */
-    approvable: boolean;
-    /**
-     * Approval Blocked Reason
-     */
-    approval_blocked_reason: string | null;
+    items: Array<app__domains__review__schemas__ReviewItem>;
 };
 
 /**
@@ -3603,6 +3661,10 @@ export type TextMessage = {
      * Text
      */
     text: string;
+    /**
+     * Review Link
+     */
+    review_link?: '/reviews' | null;
 };
 
 /**
@@ -3776,7 +3838,9 @@ export type TurnResponse = {
         type: 'status_card';
     } & StatusCard) | ({
         type: 'question_card';
-    } & QuestionCard)>;
+    } & QuestionCard) | ({
+        type: 'review_card';
+    } & ReviewCard)>;
 };
 
 /**
@@ -3953,6 +4017,30 @@ export type app__domains__bot__schemas__PreviewItem = {
 };
 
 /**
+ * ReviewItem
+ */
+export type app__domains__bot__schemas__ReviewItem = {
+    before: Claim | null;
+    after: ReviewAfter;
+    /**
+     * Evidence
+     */
+    evidence: Array<EvidenceTitle>;
+    /**
+     * Jira Only
+     */
+    jira_only: boolean;
+    /**
+     * Approvable
+     */
+    approvable: boolean;
+    /**
+     * Approval Blocked Reason
+     */
+    approval_blocked_reason: string | null;
+};
+
+/**
  * PreviewItem
  */
 export type app__domains__change_request__schemas__PreviewItem = {
@@ -3962,6 +4050,30 @@ export type app__domains__change_request__schemas__PreviewItem = {
      * Warning
      */
     warning?: string | null;
+};
+
+/**
+ * ReviewItem
+ */
+export type app__domains__review__schemas__ReviewItem = {
+    before: ClaimPublic | null;
+    after: ChangeItemPublic;
+    /**
+     * Evidence
+     */
+    evidence: Array<EvidenceDetail>;
+    /**
+     * Jira Only
+     */
+    jira_only: boolean;
+    /**
+     * Approvable
+     */
+    approvable: boolean;
+    /**
+     * Approval Blocked Reason
+     */
+    approval_blocked_reason: string | null;
 };
 
 /**

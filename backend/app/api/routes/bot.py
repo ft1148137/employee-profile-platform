@@ -6,7 +6,8 @@ from app.api.deps import SessionDep
 from app.authz.deps import OrgPrincipalDep
 from app.domains.bot import core, store
 from app.domains.bot.schemas import (
-    Action,
+    QuestionAction,
+    RequestAction,
     SessionCreated,
     SessionMessage,
     TurnInput,
@@ -40,6 +41,9 @@ def turn(
 
 @router.post("/{session_id}/actions")
 def act(
-    principal: OrgPrincipalDep, session: SessionDep, session_id: UUID, body: Action
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    session_id: UUID,
+    body: RequestAction | QuestionAction,
 ) -> TurnResponse:
     return core.act(session, principal, session_id, body)
