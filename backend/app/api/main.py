@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.routes import (
     access_tokens,
     accounts,
+    approval_policy,
     audit,
     bot,
     bot_settings,
@@ -37,6 +38,7 @@ from app.api.routes import (
 from app.core.config import settings
 
 api_router = APIRouter()
+api_router.include_router(approval_policy.router)
 api_router.include_router(im_bindings.router)
 api_router.include_router(im_settings.router)
 api_router.include_router(bot.router)

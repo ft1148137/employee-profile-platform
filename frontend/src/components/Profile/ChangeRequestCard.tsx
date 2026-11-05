@@ -246,7 +246,7 @@ export function ChangeRequestCard({
                         onClick={() => {
                           if (
                             window.confirm(
-                              "确定撤回这个请求？经理将不再审批此请求。",
+                              "确定撤回待审批的改动？已发布的改动仍然保留。",
                             )
                           )
                             withdraw.mutate(request.id)

@@ -120,22 +120,23 @@ def test_new_setup_and_blockers(
         "sources",
         "identities",
         "model",
+        "approval_policy",
         "initial_profiles",
     ]
-    assert [s["order"] for s in data["steps"]] == [10, 20, 30, 40, 50, 60, 70, 90]
+    assert [s["order"] for s in data["steps"]] == [10, 20, 30, 40, 50, 60, 70, 80, 90]
     assert all(
         s["required"] and not s["skippable"]
         for s in data["steps"]
-        if s["key"] not in {"sources", "identities"}
+        if s["key"] not in {"sources", "identities", "approval_policy"}
     )
     assert all(not s["required"] and s["skippable"] for s in data["steps"][4:6])
-    assert data["steps"][-3]["blockers"] == []
+    assert data["steps"][-4]["blockers"] == []
     assert data["steps"][0]["status"] == "completed"
     assert data["steps"][0]["blockers"] == []
     for step in [
         s
         for s in data["steps"][1:]
-        if s["key"] not in {"identities", "initial_profiles"}
+        if s["key"] not in {"identities", "approval_policy", "initial_profiles"}
     ]:
         assert step["status"] == "pending" and step["blockers"]
         blocked = client.post(
@@ -254,7 +255,13 @@ def test_complete_persist_and_extend(
     )
     assert (
         client.get(f"{tenant.url}/setup", headers=auth).json()["next_step_key"]
-        == "initial_profiles"
+        == "approval_policy"
+    )
+    assert (
+        client.post(
+            f"{tenant.url}/setup/steps/approval_policy/complete", headers=auth
+        ).status_code
+        == 200
     )
     db.add_all(
         [
@@ -275,7 +282,7 @@ def test_complete_persist_and_extend(
     assert response.status_code == 200
     assert response.json()["completed"] and response.json()["next_step_key"] is None
     events = audits(db, tenant)
-    assert len(events) == 7
+    assert len(events) == 8
     assert {e.details["step_key"] for e in events} == {
         "roster",
         "capabilities",
@@ -283,6 +290,7 @@ def test_complete_persist_and_extend(
         "sources",
         "identities",
         "model",
+        "approval_policy",
         "initial_profiles",
     }
     assert all(
@@ -322,7 +330,18 @@ def test_complete_persist_and_extend(
     monkeypatch.setattr(steps, "STEPS", [extra, *original])
     data = client.get(f"{tenant.url}/setup", headers=auth).json()
     assert not data["completed"] and data["next_step_key"] == "future"
-    assert [s["order"] for s in data["steps"]] == [10, 20, 25, 30, 40, 50, 60, 70, 90]
+    assert [s["order"] for s in data["steps"]] == [
+        10,
+        20,
+        25,
+        30,
+        40,
+        50,
+        60,
+        70,
+        80,
+        90,
+    ]
 
 
 @pytest.mark.parametrize(

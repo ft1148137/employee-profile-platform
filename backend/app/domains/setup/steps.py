@@ -202,6 +202,15 @@ STEPS = [
         check_model,
     ),
     SetupStep(
+        "approval_policy",
+        "审批规则",
+        "确认经理审批要求与员工过目期限",
+        80,
+        False,
+        True,
+        check_org_profile,
+    ),
+    SetupStep(
         "initial_profiles",
         "生成初始画像",
         "为员工生成待本人过目的初始画像",

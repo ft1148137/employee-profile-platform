@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { InitialProfilesService } from "@/client"
+import { ApprovalPolicyService, InitialProfilesService } from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 
@@ -22,6 +22,12 @@ export function DraftProgress({
 }) {
   const client = useQueryClient()
   const path = { org_id: orgId }
+  const policy = useQuery({
+    queryKey: ["approval-policy", orgId],
+    queryFn: async () =>
+      (await ApprovalPolicyService.policyGetApprovalPolicy({ path })).data,
+    enabled: !wizard,
+  })
   const progress = useQuery({
     queryKey: ["draft-progress", orgId],
     queryFn: async () =>
@@ -62,7 +68,10 @@ export function DraftProgress({
       <SetupError error={progress.error ?? draft.error} />
       {!wizard && (
         <div className="space-y-3 rounded-lg border p-4">
-          <p>满 14 天未处理、可批量送审：{handover.data?.count ?? "—"} 人</p>
+          <p>
+            满 {policy.data?.current.owner_review_days ?? "—"}{" "}
+            天未处理、可批量送审：{handover.data?.count ?? "—"} 人
+          </p>
           <p className="text-sm text-muted-foreground">
             送审后标为「员工未过目」，通知本人，批准前本人可以撤回。
           </p>

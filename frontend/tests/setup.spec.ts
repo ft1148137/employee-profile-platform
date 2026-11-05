@@ -133,6 +133,13 @@ test("complete setup with 30 employees, download accounts and first employee log
   await configureModel(page, modelUrl)
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
   await expect(
+    page.getByRole("heading", { name: "审批规则", exact: true }),
+  ).toBeVisible()
+  await expect(page.getByLabel("全企业需要经理确认")).toBeChecked()
+  await expect(page.getByLabel("员工过目期限（天）")).toHaveValue("14")
+  await expectChineseCopy(page)
+  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await expect(
     page.getByRole("heading", { name: "生成初始画像" }),
   ).toBeVisible()
   await page.getByRole("button", { name: "生成初始画像", exact: true }).click()
