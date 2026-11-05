@@ -32,10 +32,12 @@ from app.domains.access_token.models import PersonalAccessToken
 from app.domains.access_token.service import get_setting
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
+from app.domains.change_request.models import ReviewVia
 from app.domains.employee_tools import EMPLOYEE_TOOLS
+from app.domains.manager_tools import MANAGER_TOOLS
 from app.mcp.oauth import resource_url
 
-TOOLS = {tool.name: tool for tool in EMPLOYEE_TOOLS}
+TOOLS = {tool.name: tool for tool in (*EMPLOYEE_TOOLS, *MANAGER_TOOLS)}
 
 
 class McpRequestError(HTTPException):
@@ -54,7 +56,7 @@ async def list_tools(
                 description=t.description,
                 input_schema=t.input_model.model_json_schema(),
             )
-            for t in EMPLOYEE_TOOLS
+            for t in TOOLS.values()
         ]
     )
 
@@ -84,6 +86,8 @@ def invoke(
             arguments = {key: getattr(body, key) for key in type(body).model_fields}
             if tool.name in ("draft_update_request", "submit_request"):
                 arguments.update(via="mcp", client_name=client_name)
+            if tool.name == "decide_review_items":
+                arguments.update(via=ReviewVia.MCP, client_name=client_name)
             result = tool.handler(principal=principal, session=session, **arguments)
             session.commit()
             data = result.model_dump(mode="json")
