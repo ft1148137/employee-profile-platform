@@ -19,7 +19,12 @@ from app.domains.im.adapters.base import Event
 from app.domains.im.models import ImAction, ImBindCode, ImBinding, ImEvent, ImSetting
 from app.domains.im.notifications import cancel_pending
 from app.domains.im.schemas import BindingCode, BindingPublic, Platform
-from app.domains.org.models import Employee, Organization, OrgMembership
+from app.domains.org.models import (
+    Employee,
+    EmploymentStatus,
+    Organization,
+    OrgMembership,
+)
 from app.domains.org.service import EmployeeNotFound, visible_employee
 
 GUIDE = "请在网页的个人设置中生成绑定码，再私聊发送「绑定 123456」。"
@@ -235,6 +240,8 @@ def bind_email(
     if len(employees) != 1:
         return False
     employee = employees[0]
+    if employee.employment_status != EmploymentStatus.ACTIVE:
+        return False
     if db.exec(
         select(ImBinding.id).where(
             ImBinding.org_id == event.org_id,

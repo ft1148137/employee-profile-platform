@@ -20,7 +20,7 @@ from app.domains.im import binding, gateway
 from app.domains.im.adapters import feishu
 from app.domains.im.adapters.feishu import Feishu
 from app.domains.im.models import ImAction, ImBinding, ImSetting
-from app.domains.org.models import Employee, OrgMembership
+from app.domains.org.models import Employee, EmploymentStatus, OrgMembership
 from app.models import User
 from tests.api.routes.test_employee_requests import payload
 from tests.domains.test_bot_core import enable as enable_model
@@ -119,6 +119,7 @@ def setup(db: Session, demo: tuple) -> tuple:
         "disabled",
         "no_account",
         "inactive",
+        "departed",
         "duplicate",
         "foreign",
         "personal",
@@ -149,6 +150,8 @@ def test_email_binding(demo: tuple, db: Session, service: dict, case: str) -> No
         user = db.get(User, p.user_id)
         user.is_active = False
         db.add(user)
+    elif case == "departed":
+        person.employment_status = EmploymentStatus.INACTIVE
     elif case == "duplicate":
         other = db.get(Employee, demo[1]["E01"].id)
         other.work_email = person.work_email.lower()
@@ -188,6 +191,11 @@ def test_email_binding(demo: tuple, db: Session, service: dict, case: str) -> No
                     rows[0].bound_via == "email"
                     and rows[0].employee_id == p.employee_id
                 )
+                count = len(service["requests"])
+                await gateway.Gateway(engine).handle(
+                    incoming, CREDS["app_id"], setting.credentials, adapter
+                )
+                assert len(service["requests"]) == count
             if case == "disabled":
                 assert not any("/contact/" in path for path, _ in service["requests"])
         finally:
@@ -281,6 +289,8 @@ def test_turn_submit_withdraw(
             db.refresh(request)
             assert request.status == "withdrawn"
             assert not any("/contact/" in path for path, _ in service["requests"])
+            service["status"] = 403
+            assert await adapter._event(json.dumps(click(row))) is None
         finally:
             await adapter.close()
 

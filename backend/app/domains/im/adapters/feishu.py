@@ -205,7 +205,14 @@ class Feishu:
             else:
                 return None
             return TypeAdapter(Event).validate_python(asdict(result))
-        except ValueError, KeyError, TypeError, AttributeError, ValidationError:
+        except (
+            ImError,
+            ValueError,
+            KeyError,
+            TypeError,
+            AttributeError,
+            ValidationError,
+        ):
             return None
         return None
 
