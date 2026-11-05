@@ -575,6 +575,8 @@ def test_telegram_webhook_chunks_rate_limit_and_normalization(
             assert waits == [2]
         finally:
             await adapter.close()
+        with pytest.raises(ImError, match="network"):
+            await adapter.send_text("100", "断线后的合成提醒")
 
     asyncio.run(run())
 

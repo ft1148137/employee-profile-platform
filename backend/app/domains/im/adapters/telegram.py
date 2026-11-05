@@ -66,6 +66,8 @@ class Telegram:
         self, method: str, body: dict[str, JsonValue] | None = None
     ) -> JsonValue:
         for _ in range(3):
+            if self.client.is_closed:
+                raise ImError("network", retryable=True)
             try:
                 # Telegram embeds credentials in URLs; disable tracing at this boundary.
                 with sentry_sdk.new_scope() as scope:
