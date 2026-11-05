@@ -914,7 +914,7 @@ export class DraftingSettingsService {
             }
         });
     }
-
+    
     /**
      * Get Update Settings
      */
@@ -926,7 +926,7 @@ export class DraftingSettingsService {
             ...options
         });
     }
-
+    
     /**
      * Put Update Settings
      */
