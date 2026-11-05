@@ -5,6 +5,7 @@ from pydantic import JsonValue
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
+from app.domains.base import utc_now
 from app.domains.capability.models import CapabilityDefinition, CapabilitySchemaVersion
 from app.domains.capability.schemas import CapabilityPublic, SchemaVersionPublic
 from app.domains.capability.service import (
@@ -13,7 +14,9 @@ from app.domains.capability.service import (
     level_exists,
     list_capabilities,
 )
-from app.domains.evidence.models import Evidence
+from app.domains.drafting.models import UpdateSetting
+from app.domains.drafting.update_settings import months_before
+from app.domains.evidence.models import Evidence, EvidenceStatus
 from app.domains.evidence.service import evidence_access, restricted_title
 from app.domains.org.models import Employee, OrgMembership
 from app.domains.org.service import employee_summary, visible_employee
@@ -58,17 +61,19 @@ def profile_items(
             ref.occurred_at = record[0].occurred_at if record else None
             if ref.redacted:
                 ref.title = restricted_title(ref.kind)
-    originals = {
-        c.id: c
-        for c in session.exec(
-            select(CapabilityDefinition).where(
-                CapabilityDefinition.org_id == principal.org_id,
-                col(CapabilityDefinition.id).in_(
-                    {c.capability_definition_id for c in claims}
-                ),
-            )
-        ).all()
-    }
+    originals_with_settings = session.exec(
+        select(CapabilityDefinition, UpdateSetting.stale_after_months)
+        .outerjoin(
+            UpdateSetting, col(UpdateSetting.org_id) == CapabilityDefinition.org_id
+        )
+        .where(
+            CapabilityDefinition.org_id == principal.org_id,
+            col(CapabilityDefinition.id).in_(
+                {c.capability_definition_id for c in claims}
+            ),
+        )
+    ).all()
+    originals = {c.id: c for c, _ in originals_with_settings}
     by_key = {
         originals[c.capability_definition_id].key: c
         for c in claims
@@ -80,6 +85,8 @@ def profile_items(
         for k, c in by_key.items()
         if k not in active_keys
     ]
+    months = next((m for _, m in originals_with_settings if m is not None), 24)
+    cutoff = months_before(utc_now(), months)
     items = []
     for capability in [*capabilities, *removed]:
         claim = by_key.get(capability.key)
@@ -99,11 +106,29 @@ def profile_items(
                     ),
                     claim.level,
                 )
+        dates = (
+            [
+                access[ref.evidence_id][0].occurred_at
+                for ref in claim.evidence
+                if ref.evidence_id in access
+                and access[ref.evidence_id][0].status == EvidenceStatus.ACTIVE
+                and access[ref.evidence_id][0].occurred_at is not None
+            ]
+            if claim
+            else []
+        )
+        latest = max((date for date in dates if date is not None), default=None)
         items.append(
             ProfileItem(
                 capability=CapabilityPublic.model_validate(capability),
                 claim=claim,
                 status=claim.assessment_status if claim else AssessmentStatus.UNKNOWN,
+                evidence_stale=bool(
+                    claim
+                    and claim.assessment_status == AssessmentStatus.CONFIRMED
+                    and latest
+                    and latest < cutoff
+                ),
                 retired=capability.key not in active_keys,
                 level_adjusted=adjusted,
                 original_level_description=old_description,

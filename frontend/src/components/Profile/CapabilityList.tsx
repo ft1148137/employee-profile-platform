@@ -1,4 +1,5 @@
 import type { ProfileItem } from "@/client"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -74,6 +75,7 @@ function ClaimCard({
     capability,
     status,
     claim,
+    evidence_stale,
     level_adjusted,
     original_level_description,
   },
@@ -106,7 +108,10 @@ function ClaimCard({
             <p className="mt-1 text-xs text-muted-foreground">有待处理的改动</p>
           )}
         </div>
-        <StatusBadge kind="assessment_status" value={status} />
+        <div className="flex flex-wrap items-center gap-2">
+          {evidence_stale && <Badge variant="outline">证据较旧</Badge>}
+          <StatusBadge kind="assessment_status" value={status} />
+        </div>
       </div>
       {claim ? (
         <>

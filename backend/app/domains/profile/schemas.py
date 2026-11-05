@@ -45,6 +45,7 @@ class ProfileItem(SQLModel):
     capability: CapabilityPublic
     status: AssessmentStatus
     claim: ClaimPublic | None
+    evidence_stale: bool = False
     retired: bool = False
     level_adjusted: bool = False
     original_level_description: str | None = None
