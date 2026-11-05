@@ -94,6 +94,7 @@ entrypoint = "app.main:app"
 
 [tool.pytest.ini_options]
 faulthandler_timeout = 60
+verbosity_test_cases = 1
 markers = [
     "chatgpt_live: local opt-in ChatGPT subscription integration",
     "migration: tests using an isolated database cloned from the migration template",
