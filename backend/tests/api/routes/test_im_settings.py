@@ -162,6 +162,11 @@ def test_connection(
         == 200
     )
     with sentry_sdk.init(dsn="", default_integrations=True):
+
+        def unexpected_release() -> None:
+            pytest.fail("Telegram requests must not auto-detect a Sentry release")
+
+        monkeypatch.setattr("sentry_sdk.client.get_default_release", unexpected_release)
         with sentry_sdk.isolation_scope() as scope:
             assert client.post(url + "/test", headers=auth["admin"]).json() == {
                 "ok": True,

@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from threading import Barrier
 
 import pytest
 from fastapi.testclient import TestClient
@@ -368,9 +369,15 @@ def test_policy_concurrent_saves_have_distinct_versions(
 ) -> None:
     admin = actor(db, demo[1]["E02"].org_id, "admin@demo.example.com")
     db.commit()
+    committed = Barrier(2)
+
+    class ConcurrentSession(Session):
+        def commit(self) -> None:
+            super().commit()
+            committed.wait(timeout=10)
 
     def update(days: int) -> int:
-        with Session(engine) as session:
+        with ConcurrentSession(engine) as session:
             return policy.save_policy(
                 session, admin, policy.PolicyInput(owner_review_days=days)
             ).current.version

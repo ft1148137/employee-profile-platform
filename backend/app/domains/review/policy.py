@@ -149,8 +149,10 @@ def save_policy(
             "after": body.model_dump(mode="json"),
         },
     )
+    session.flush()
+    result = policy_view(session, principal.org_id)
     session.commit()
-    return policy_view(session, principal.org_id)
+    return result
 
 
 def apply_policy(

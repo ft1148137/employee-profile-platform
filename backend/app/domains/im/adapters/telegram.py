@@ -81,7 +81,9 @@ class Telegram:
                 # Telegram embeds credentials in URLs; disable tracing at this boundary.
                 with sentry_sdk.new_scope() as scope:
                     scope.set_client(
-                        sentry_sdk.Client(dsn="", default_integrations=False)
+                        sentry_sdk.Client(
+                            dsn="", default_integrations=False, release=""
+                        )
                     )
                     response = (
                         await self.client.get(method)
