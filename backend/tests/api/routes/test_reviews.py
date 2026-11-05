@@ -937,6 +937,19 @@ def test_review_evidence_queries_are_batched(demo: tuple, db: Session) -> None:
                 event_id=work_event.id,
             )
             ids.append(evidence.id)
+            pending(
+                db,
+                demo,
+                role="manager.platform",
+                items=[
+                    {
+                        "op": "modify",
+                        "capability_key": "backend_api",
+                        "statement": "合成的其他待审批请求",
+                        "evidence_ids": [evidence.id],
+                    }
+                ],
+            )
         _, request = pending(
             db,
             demo,

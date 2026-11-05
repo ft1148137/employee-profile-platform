@@ -65,7 +65,7 @@ def evidence_access(
     # Only reuse permissions computed by review_access for this principal and call.
     permissions = review_permissions if review_permissions is not None else {}
     access: dict[UUID, tuple[Evidence, bool]] = {}
-    for e, employee, request in session.exec(
+    rows = session.exec(
         select(Evidence, Employee, ProfileChangeRequest)
         .join(
             Employee,
@@ -93,7 +93,12 @@ def evidence_access(
             col(Evidence.id).in_(ids),
             employee_scope_clause(principal),
         )
-    ).all():
+    ).all()
+    # Joined rows may list another request first for the same evidence.
+    for e, _, request in rows:
+        if request is not None and permissions.get(request.id, False):
+            access[e.id] = (e, True)
+    for e, employee, request in rows:
         readable = access.get(e.id, (e, False))[1] or can_view_evidence_content(
             principal, subject_employee=employee, visibility=e.visibility
         )
