@@ -156,6 +156,16 @@ def test_cross_department_employee_delegate_evidence_is_request_scoped(
     assert evidence and all(e["content"] and not e["redacted"] for e in evidence)
     assert any(e["visibility"] == "restricted" for e in evidence)
     assert str(unrelated.id) not in {e["id"] for e in evidence}
+    for e in evidence:
+        response = client.get(f"{base}/evidence/{e['id']}", headers=web_headers)
+        assert response.status_code == 200, response.text
+        assert response.json() == e
+        assert (
+            client.get(
+                f"{base}/evidence/{e['id']}", headers=demo[2]["foreign"]
+            ).status_code
+            == 404
+        )
     for path in (
         f"/evidence/{unrelated.id}",
         f"/employees/{subject.id}/profile",
