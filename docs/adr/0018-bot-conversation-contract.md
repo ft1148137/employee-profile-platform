@@ -49,3 +49,22 @@ E12 通过提示词和投影共同表达：本人退出或部门关闭时 auto_d
 错误只返回固定中文 text，不透传 Pi 原文、不重试：忙为「忙，请稍后再试」；起草优先为「正在起草画像，请稍后再试」；限频为「每小时 30 轮已用完，{ISO 恢复时间} 恢复」；额度为「模型额度暂时用完，预计 {ISO 恢复时间} 恢复」；未启用模型为「机器人需要先配置模型，你也可以在画像页直接修改」；其他模型错误为「模型服务暂时不可用，请稍后再试」。ISO 时间带时区。额度错误的企业暂停仍由 S14a 写入，未知恢复时间按 ADR-0014 估算 30 分钟。
 
 没有新增依赖或迁移。可逆默认：沿用 S14a 的历史保留作为卡片动作有效期，历史过期后员工重新预览。网页入口在 S15 交付；IM 入口在 M4 复用同一核心协议。
+
+## IM 经理审批（NERE-131）
+
+Pi 增加三个只读/准备工具，沿用 S3 的审批人路由与有效代理人校验。`list_pending_reviews` 只投影有权决定的请求；`get_review` 和 `prepare_review_decision` 对本人请求、跨企业及无权审批的请求返回空。没有员工身份的企业成员不能绑定 IM，只能在网页审批。
+
+| 工具 | 发给 Pi 的字段 |
+| --- | --- |
+| list_pending_reviews | data（id、item_count）、count |
+| get_review / prepare_review_decision | id、revision、items（before claim、after 的 id/op/capability/after claim、evidence 的 title、jira_only、approvable、approval_blocked_reason） |
+
+claim 与 capability 继续使用上述封闭投影。没有 restricted 证据正文、员工依据说明、本人补充、异议、source_ref、来源链接、员工身份或企业信息；投影字符串与历史仍替换邮箱和 HTTP(S) 链接。准备工具校验修订号、全部未决定项、重复项、可批准状态和原因，复用决定服务的校验，不写决定或画像。退回和拒绝的原因必须从经理的话中取得，缺失则追问。
+
+新增第五类核心消息 `review_card`：白名单审批详情、每项决定和原因、revision、随机 card_id、动作「确认决定」「继续修改」。IM 渲染只外发能力、改动前后陈述/等级/状态、依据标题、jira_only 标签，以及经理的决定和原因，提示「详情在网页审批页查看」。超过卡片长度上限则引导网页，不提供确认按钮。群聊在网关进入会话前即返回私聊提示，不读取审批数据。
+
+入口仍用 S11b 的 22 字符短 token；token 绑定企业、入口、机器人、员工、私聊、原消息和会话，消费与决定同事务。`confirm_review` 只接受本会话保留期内实际生成过的 card_id 与动作，从保存的卡片取决定，重新验证审批权与当前 revision，再调用唯一的 `decide(..., via="im", client_name=平台标识)`（telegram / feishu / wecom）。同 revision 的不同卡片由 card_id 区分，不能替换决定。Pi 无 decide、confirm_review 或任何审批写入工具，文字「已确认」不产生动作。
+
+网页工具调用只回复文字及「去审批页」链接，不生成审批卡片；HTTP 动作请求不接受 ReviewAction。网页组件对误收到的 review_card 也只显示审批页链接。
+
+没有新增依赖或数据库迁移。可逆默认：审批卡沿用现有会话历史与 token 保留期限；整体意见不接受隐藏字段，经理的原因逐项显示和保存。

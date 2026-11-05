@@ -225,6 +225,29 @@ def get_review(
     )
 
 
+def validate_decisions(preview: ReviewDetail, decisions: list[DecisionInput]) -> None:
+    inputs = {d.item_id: d for d in decisions}
+    if len(inputs) != len(decisions) or set(inputs) != {
+        i.after.id for i in preview.items
+    }:
+        raise InvalidItems(
+            [{"index": 0, "message": "必须逐项决定所有尚未决定的改动，不能重复"}]
+        )
+    for index, review_item in enumerate(preview.items):
+        value = inputs[review_item.after.id]
+        if value.decision != ItemDecision.APPROVED and not (value.reason or "").strip():
+            raise InvalidItems([{"index": index, "message": "退回和拒绝必须填写原因"}])
+        if value.decision == ItemDecision.APPROVED and not review_item.approvable:
+            raise InvalidItems(
+                [
+                    {
+                        "index": index,
+                        "message": review_item.approval_blocked_reason or "不能批准",
+                    }
+                ]
+            )
+
+
 def decide(
     principal: Principal,
     session: Session,
@@ -272,25 +295,7 @@ def decide(
         .order_by(col(ChangeItem.position))
     ).all()
     inputs = {d.item_id: d for d in decisions}
-    if len(inputs) != len(decisions) or set(inputs) != {
-        i.id for i in rows if i.decision is None
-    }:
-        raise InvalidItems(
-            [{"index": 0, "message": "必须逐项决定所有尚未决定的改动，不能重复"}]
-        )
-    for index, review_item in enumerate(preview.items):
-        value = inputs[review_item.after.id]
-        if value.decision != ItemDecision.APPROVED and not (value.reason or "").strip():
-            raise InvalidItems([{"index": index, "message": "退回和拒绝必须填写原因"}])
-        if value.decision == ItemDecision.APPROVED and not review_item.approvable:
-            raise InvalidItems(
-                [
-                    {
-                        "index": index,
-                        "message": review_item.approval_blocked_reason or "不能批准",
-                    }
-                ]
-            )
+    validate_decisions(preview, decisions)
     decision = ReviewDecision(
         org_id=principal.org_id,
         request_id=request.id,
