@@ -5,7 +5,7 @@ from datetime import timedelta
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlmodel import Session, col, delete, select
 
 from app.authz.principal import Principal
@@ -17,7 +17,7 @@ from app.domains.base import utc_now
 from app.domains.im.models import ImAction, ImBindCode, ImBinding, ImEvent, ImSetting
 from app.domains.im.notifications import cancel_pending
 from app.domains.im.schemas import BindingCode, BindingPublic, Platform
-from app.domains.org.models import Organization, OrgMembership
+from app.domains.org.models import Employee, Organization, OrgMembership
 from app.domains.org.service import EmployeeNotFound, visible_employee
 
 GUIDE = "请在网页的个人设置中生成绑定码，再私聊发送「绑定 123456」。"
@@ -191,6 +191,66 @@ def bind(
     )
     _audit(db, p, "im_binding.bound", platform)
     record_login_attempt(db, identifier, ip, True)
+    return True
+
+
+def bind_email(
+    db: Session,
+    org_id: UUID,
+    platform: Platform,
+    external_user_id: str,
+    chat_id: str,
+    bot_identity: str,
+    credentials: str,
+    email: str,
+) -> bool:
+    _lock(db, org_id)
+    setting = db.get(ImSetting, (org_id, platform), populate_existing=True)
+    if (
+        not setting
+        or not setting.enabled
+        or not setting.email_auto_bind
+        or setting.credentials != credentials
+        or setting.bot_identity != bot_identity
+    ):
+        return False
+    employees = db.exec(
+        select(Employee).where(
+            Employee.org_id == org_id,
+            func.lower(Employee.work_email) == email.strip().lower(),
+        )
+    ).all()
+    if len(employees) != 1:
+        return False
+    employee = employees[0]
+    existing = db.exec(
+        select(ImBinding).where(
+            ImBinding.org_id == org_id,
+            ImBinding.platform == platform,
+            or_(
+                col(ImBinding.employee_id) == employee.id,
+                col(ImBinding.external_user_id) == external_user_id,
+            ),
+        )
+    ).first()
+    if existing:
+        return False
+    row = ImBinding(
+        org_id=org_id,
+        employee_id=employee.id,
+        platform=platform,
+        external_user_id=external_user_id,
+        external_chat_id=chat_id,
+        bot_identity=bot_identity,
+        bound_via="email",
+    )
+    try:
+        p = principal_for(db, row)
+    except HTTPException:
+        return False
+    db.add(row)
+    _audit(db, p, "im_binding.email_bound", platform)
+    db.commit()
     return True
 
 

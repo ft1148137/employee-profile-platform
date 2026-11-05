@@ -104,13 +104,14 @@ def test_settings(
     }
 
 
-def test_permissions(shared_demo: tuple, client: TestClient) -> None:
+@pytest.mark.parametrize("platform", ["telegram", "wecom"])
+def test_permissions(shared_demo: tuple, client: TestClient, platform: str) -> None:
     base, _, auth = shared_demo
     for role, status in [("manager", 403), ("employee", 403), ("foreign", 404)]:
         for method, suffix, body in [
             ("GET", "", None),
-            ("PUT", "/telegram", {"credentials": CREDS["telegram"]}),
-            ("POST", "/telegram/test", None),
+            ("PUT", f"/{platform}", {"credentials": CREDS[platform]}),
+            ("POST", f"/{platform}/test", None),
         ]:
             assert (
                 client.request(

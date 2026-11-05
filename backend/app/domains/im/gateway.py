@@ -15,11 +15,12 @@ from app.core.secrets import SecretUnavailable, decrypt_secret
 from app.domains.im import actions, binding
 from app.domains.im.adapters.base import Adapter, Event, ImError
 from app.domains.im.adapters.telegram import Telegram
+from app.domains.im.adapters.wecom import Wecom
 from app.domains.im.models import ImEvent, ImSetting
 from app.domains.im.notifications import send_pending
 from app.domains.im.schemas import Platform
 
-ADAPTERS: dict[Platform, type[Adapter]] = {"telegram": Telegram}
+ADAPTERS: dict[Platform, type[Adapter]] = {"telegram": Telegram, "wecom": Wecom}
 logger = logging.getLogger(__name__)
 
 
@@ -111,6 +112,43 @@ class Gateway:
     ) -> None:
         if event.callback_id:
             await adapter.answer_callback(event.callback_id)
+        if (
+            isinstance(adapter, Wecom)
+            and event.private
+            and not event.callback_id
+            and not (event.text or "").strip().startswith("绑定")
+        ):
+            with Session(self.engine) as db:
+                setting = db.get(ImSetting, (event.org_id, event.platform))
+                needs_email = bool(
+                    setting
+                    and setting.enabled
+                    and setting.credentials == credentials
+                    and setting.email_auto_bind
+                    and binding.current_binding(
+                        db,
+                        event.org_id,
+                        event.platform,
+                        event.external_user_id,
+                        event.external_chat_id,
+                        identity,
+                    )
+                    is None
+                )
+            if needs_email:
+                email = await adapter.enterprise_email(event.external_user_id)
+                if email:
+                    with Session(self.engine) as db:
+                        binding.bind_email(
+                            db,
+                            event.org_id,
+                            event.platform,
+                            event.external_user_id,
+                            event.external_chat_id,
+                            identity,
+                            credentials,
+                            email,
+                        )
         # Model turns are synchronous; keep polling tasks and setting refresh responsive.
         reply = await asyncio.to_thread(self.dispatch, event, identity, credentials)
         if not reply or not self.enabled(event.org_id, event.platform, credentials):
@@ -149,6 +187,11 @@ class Gateway:
                     adapter = ADAPTERS[platform](
                         org_id, json.loads(decrypt_secret(credentials))
                     )
+                    if isinstance(adapter, Wecom):
+                        identity = adapter.credentials["bot_id"]
+                        if self.identities.get((platform, identity), org_id) != org_id:
+                            raise ImError("bot_already_used")
+                        self.identities[platform, identity] = org_id
                     identity = await adapter.test_connection()
                     key = platform, identity
                     owner = self.identities.get(key)
@@ -164,6 +207,8 @@ class Gateway:
                         ):
                             return
                         setting.bot_identity = identity
+                        if isinstance(adapter, Wecom):
+                            setting.connection_checked_at = adapter.checked_at
                         db.add(setting)
                         db.commit()
                     self.adapters[org_id, platform] = credentials, adapter
@@ -174,6 +219,13 @@ class Gateway:
                             except ImError as error:
                                 if error.code != "recipient_unavailable":
                                     raise
+                        if isinstance(adapter, Wecom):
+                            with Session(self.engine) as db:
+                                setting = db.get(ImSetting, (org_id, platform))
+                                if setting and setting.credentials == credentials:
+                                    setting.connection_checked_at = adapter.checked_at
+                                    db.add(setting)
+                                    db.commit()
                         delay = 1
                 except (
                     ImError,
@@ -206,6 +258,13 @@ class Gateway:
                     if adapter:
                         await adapter.close()
                         adapter = None
+                    if platform == "wecom":
+                        with Session(self.engine) as db:
+                            setting = db.get(ImSetting, (org_id, platform))
+                            if setting and setting.credentials == credentials:
+                                setting.connection_checked_at = None
+                                db.add(setting)
+                                db.commit()
                 await asyncio.sleep(delay)
                 delay = min(delay * 2, 60)
         finally:

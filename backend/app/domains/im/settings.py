@@ -1,6 +1,7 @@
 import asyncio
 import json
 import re
+from datetime import timedelta
 from uuid import UUID
 
 from sqlmodel import Session, select
@@ -11,6 +12,7 @@ from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.im.adapters.base import ImError
 from app.domains.im.adapters.telegram import Telegram
+from app.domains.im.adapters.wecom import Wecom
 from app.domains.im.models import ImSetting
 from app.domains.im.notifications import cancel_pending
 from app.domains.im.schemas import (
@@ -88,8 +90,10 @@ def save_setting(
             cancel_pending(db, principal.org_id, platform)
             row.credentials = encrypt_secret(json.dumps(credentials))
             row.bot_identity = None
+            row.connection_checked_at = None
     row.enabled = body.enabled
     if not row.enabled:
+        row.connection_checked_at = None
         cancel_pending(db, principal.org_id, platform)
     if platform == "telegram":
         row.email_auto_bind = False
@@ -118,7 +122,7 @@ def save_setting(
 async def test_connection(
     db: Session, org_id: UUID, platform: Platform
 ) -> ImConnectionTest:
-    if platform != "telegram":
+    if platform == "feishu":
         # shortcut: Connection tests are implemented with the platform adapters in S14/S15.
         return ImConnectionTest(
             ok=False, message="该平台的连接测试将在后续接入完成后可用"
@@ -126,9 +130,33 @@ async def test_connection(
     row = db.get(ImSetting, (org_id, platform))
     if not row or not row.credentials:
         return ImConnectionTest(ok=False, message="请先保存应用凭据")
+    if platform == "wecom" and row.enabled:
+        healthy = bool(
+            row.connection_checked_at
+            and row.connection_checked_at > utc_now() - timedelta(seconds=60)
+        )
+        return ImConnectionTest(
+            ok=healthy,
+            message="连接成功"
+            if healthy
+            else "尚未收到有效心跳，请检查机器人服务及凭据",
+        )
     adapter = None
     try:
-        adapter = Telegram(org_id, json.loads(decrypt_secret(row.credentials)))
+        credentials = json.loads(decrypt_secret(row.credentials))
+        if (
+            platform == "wecom"
+            and db.exec(
+                select(ImSetting.org_id).where(
+                    ImSetting.platform == "wecom",
+                    ImSetting.enabled == True,  # noqa: E712
+                    ImSetting.org_id != org_id,
+                    ImSetting.bot_identity == credentials["bot_id"],
+                )
+            ).first()
+        ):  # noqa: E712
+            return ImConnectionTest(ok=False, message="该机器人已被其他企业使用")
+        adapter = (Wecom if platform == "wecom" else Telegram)(org_id, credentials)
         async with asyncio.timeout(10):
             await adapter.test_connection()
         return ImConnectionTest(ok=True, message="连接成功")

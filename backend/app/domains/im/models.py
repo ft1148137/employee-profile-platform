@@ -31,6 +31,9 @@ class ImSetting(SQLModel, table=True):
     enabled: bool = False
     credentials: str | None = Field(default=None, repr=False)
     bot_identity: str | None = None
+    connection_checked_at: datetime | None = Field(
+        default=None, sa_type=DateTime(timezone=True)
+    )
     email_auto_bind: bool = True
     updated_by_user_id: UUID
     updated_at: datetime = Field(
