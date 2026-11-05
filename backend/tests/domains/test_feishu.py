@@ -15,8 +15,9 @@ from sqlmodel import Session, select
 from app.core.db import engine
 from app.core.secrets import encrypt_secret
 from app.domains.bot import core
-from app.domains.change_request.models import ProfileChangeRequest
-from app.domains.im import binding, gateway
+from app.domains.bot import schemas as s
+from app.domains.change_request.models import ProfileChangeRequest, ReviewDecision
+from app.domains.im import actions, binding, gateway
 from app.domains.im.adapters import feishu
 from app.domains.im.adapters.feishu import Feishu
 from app.domains.im.models import ImAction, ImBinding, ImSetting
@@ -24,6 +25,7 @@ from app.domains.org.models import Employee, EmploymentStatus, OrgMembership
 from app.models import User
 from tests.api.routes.test_employee_requests import payload
 from tests.domains.test_bot_core import enable as enable_model
+from tests.domains.test_bot_reviews import prepared
 from tests.domains.test_im_gateway import principal
 from tests.utils.pi import PiHarness
 
@@ -328,6 +330,83 @@ def test_group_and_rendering(demo: tuple, db: Session, service: dict) -> None:
                 )
                 if len(text) > 3000:
                     assert len(card["elements"]) == 1
+        finally:
+            await adapter.close()
+
+    asyncio.run(run())
+
+
+def test_review_card_confirmation(demo: tuple, db: Session, service: dict) -> None:
+    _, setting = setup(db, demo)
+    owner, request, p, session, card, _ = prepared(db, demo)
+    session.channel, session.external_chat_id, session.bot_identity = (
+        "feishu",
+        "oc_test",
+        CREDS["app_id"],
+    )
+    db.add(session)
+    core._save(db, session, [card])
+    db.commit()
+    for person, external in [(p, "ou_test"), (owner, "ou_owner")]:
+        assert binding.bind(
+            db,
+            p.org_id,
+            "feishu",
+            external,
+            "oc_test",
+            CREDS["app_id"],
+            binding.create_code(db, person).code,
+        )
+
+    async def run() -> None:
+        adapter = Feishu(p.org_id, CREDS)
+        g = gateway.Gateway(engine)
+        try:
+            incoming = await adapter._event(json.dumps(message()))
+            await actions.deliver(
+                db,
+                p,
+                incoming,
+                CREDS["app_id"],
+                actions.Reply(session.id, s.TurnResponse(messages=[card])),
+                adapter,
+            )
+            wire = json.dumps(service["requests"], ensure_ascii=False)
+            assert "审批决定复述" in wire and "确认决定" in wire and "继续修改" in wire
+            assert "详情在网页审批页查看" in wire and "本人陈述" not in wire
+            assert not db.exec(
+                select(ReviewDecision).where(ReviewDecision.org_id == p.org_id)
+            ).all()
+            row = db.exec(
+                select(ImAction).where(
+                    ImAction.org_id == p.org_id,
+                    ImAction.action["action"].astext == "confirm_review",
+                )
+            ).one()
+            callback = await adapter._event(json.dumps(click(row)))
+            await g.handle(
+                replace(callback, external_user_id="ou_owner"),
+                CREDS["app_id"],
+                setting.credentials,
+                adapter,
+            )
+            db.refresh(row)
+            assert row.consumed_at is None
+            await g.handle(callback, CREDS["app_id"], setting.credentials, adapter)
+            await g.handle(
+                replace(callback, event_id=uuid4().hex),
+                CREDS["app_id"],
+                setting.credentials,
+                adapter,
+            )
+            decision = db.exec(
+                select(ReviewDecision).where(ReviewDecision.org_id == p.org_id)
+            ).one()
+            assert (decision.via, decision.client_name) == ("im", "feishu")
+            assert (
+                db.get(ProfileChangeRequest, request.id, populate_existing=True).status
+                == "approved"
+            )
         finally:
             await adapter.close()
 
