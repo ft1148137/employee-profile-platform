@@ -22,7 +22,7 @@ from app.domains.drafting.models import DraftingSetting
 from app.domains.evidence.models import Evidence
 from app.domains.inbox.models import InboxItem
 from app.domains.model.models import ModelSetting
-from app.domains.org.models import Employee, OrgMembership
+from app.domains.org.models import Employee, ExternalIdentity, OrgMembership
 from app.domains.profile.models import (
     AssessmentStatus,
     ClaimEvidence,
@@ -361,6 +361,13 @@ def test_scope_and_empty_work(
         db.add(progress)
     elif reason == "no_version":
         employee = employees[1]
+        db.add(
+            ExternalIdentity(
+                org_id=org, employee_id=employee.id, source="jira", external_id="beta"
+            )
+        )
+        db.flush()
+        ingest(db, org, record(person("beta"), key="NOVERSION-1"))
     else:
         db.add(
             DraftingSetting(
@@ -483,7 +490,7 @@ def test_tenant_isolation(
 
 
 def test_watermark_migration(migration_engine: Engine) -> None:
-    migrate(migration_engine, "downgrade", "b117002bc001")
+    migrate(migration_engine, "downgrade", "b125001bc001")
     assert "incremental_drafted_at" not in {
         c["name"] for c in inspect(migration_engine).get_columns("profile_progress")
     }
