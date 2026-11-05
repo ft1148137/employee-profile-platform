@@ -126,6 +126,7 @@ export function AppSidebar() {
                 },
                 { icon: Settings, title: "模型", path: "/admin/model" },
                 { icon: Settings, title: "内置机器人", path: "/admin/bot" },
+                { icon: Settings, title: "IM 入口", path: "/admin/im" },
                 { icon: ScrollText, title: "审计日志", path: "/admin/audit" },
                 {
                   icon: ListChecks,
