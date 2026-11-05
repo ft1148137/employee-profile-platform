@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from pydantic import JsonValue
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, func, select
 
 from app.authz.principal import Principal
 from app.domains.base import utc_now
@@ -49,38 +49,8 @@ def profile_items(
     principal: Principal,
     schema_id: UUID,
     claims: list[SnapshotClaim],
-    employee_id: UUID | None = None,
+    disputed_keys: set[str] | None = None,
 ) -> tuple[list[ProfileItem], ProfileCounts]:
-    from app.domains.change_request.models import ChangeItem
-    from app.domains.review.models import AppealStatus, ReviewAppeal
-
-    disputed_keys = (
-        set(
-            session.exec(
-                select(CapabilityDefinition.key)
-                .join(
-                    ChangeItem,
-                    (
-                        col(ChangeItem.capability_definition_id)
-                        == CapabilityDefinition.id
-                    )
-                    & (col(ChangeItem.org_id) == CapabilityDefinition.org_id),
-                )
-                .join(
-                    ReviewAppeal,
-                    (col(ReviewAppeal.item_id) == ChangeItem.id)
-                    & (col(ReviewAppeal.org_id) == ChangeItem.org_id),
-                )
-                .where(
-                    ReviewAppeal.org_id == principal.org_id,
-                    ReviewAppeal.employee_id == employee_id,
-                    ReviewAppeal.status == AppealStatus.OPEN,
-                )
-            ).all()
-        )
-        if employee_id
-        else set()
-    )
     capabilities = list_capabilities(session, principal.org_id, schema_id)
     access = evidence_access(
         session,
@@ -155,7 +125,7 @@ def profile_items(
                 capability=CapabilityPublic.model_validate(capability),
                 claim=claim,
                 status=AssessmentStatus.DISPUTED
-                if capability.key in disputed_keys
+                if disputed_keys and capability.key in disputed_keys
                 else claim.assessment_status
                 if claim
                 else AssessmentStatus.UNKNOWN,
@@ -194,14 +164,43 @@ def read_profile(
             items=[],
             counts=ProfileCounts(),
         )
-    rows = session.exec(
-        select(ProfileClaim)
-        .where(
-            ProfileClaim.org_id == principal.org_id,
-            ProfileClaim.subject_employee_id == employee_id,
+    from app.domains.change_request.models import ChangeItem
+    from app.domains.review.models import AppealStatus, ReviewAppeal
+
+    disputes = (
+        select(func.array_agg(CapabilityDefinition.key))
+        .select_from(ReviewAppeal)
+        .join(
+            ChangeItem,
+            (col(ChangeItem.id) == ReviewAppeal.item_id)
+            & (col(ChangeItem.org_id) == ReviewAppeal.org_id),
         )
+        .join(
+            CapabilityDefinition,
+            (col(CapabilityDefinition.id) == ChangeItem.capability_definition_id)
+            & (col(CapabilityDefinition.org_id) == ChangeItem.org_id),
+        )
+        .where(
+            ReviewAppeal.org_id == principal.org_id,
+            ReviewAppeal.employee_id == employee_id,
+            ReviewAppeal.status == AppealStatus.OPEN,
+        )
+        .scalar_subquery()
+    )
+    # Anchor on the employee so appeals also display before any claim is published.
+    records = session.exec(
+        select(ProfileClaim, disputes)
+        .select_from(Employee)
+        .outerjoin(
+            ProfileClaim,
+            (col(ProfileClaim.org_id) == Employee.org_id)
+            & (col(ProfileClaim.subject_employee_id) == Employee.id),
+        )
+        .where(Employee.org_id == principal.org_id, Employee.id == employee_id)
         .order_by(col(ProfileClaim.created_at), col(ProfileClaim.id))
     ).all()
+    rows = [claim for claim, _ in records if claim is not None]
+    disputed_keys = set(records[0][1] or []) if records else set()
     superseded = {c.supersedes_claim_id for c in rows}
     current = {
         c.id: SnapshotClaim.model_validate(c) for c in rows if c.id not in superseded
@@ -229,7 +228,7 @@ def read_profile(
             )
         )
     items, counts = profile_items(
-        session, principal, schema.id, list(current.values()), employee_id
+        session, principal, schema.id, list(current.values()), disputed_keys
     )
     return ProfileView(
         employee=employee,
