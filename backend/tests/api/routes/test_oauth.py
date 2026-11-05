@@ -31,12 +31,14 @@ from app.domains.change_request.models import (
     ProfileChangeRequest,
     RequestOrigin,
     RequestStatus,
+    ReviewDecision,
 )
 from app.domains.org.models import Employee, OrgMembership
 from app.mcp.oauth import oauth_routes, resource_url
 from app.mcp.server import endpoint, lifespan
 from app.models import User
 from tests.api.routes.test_mcp import call, initialize
+from tests.api.routes.test_reviews import pending
 from tests.utils.migrations import migrate
 
 VERIFIER = "a" * 43
@@ -798,6 +800,39 @@ def test_mcp_uses_authorized_client_name(
         client, headers(pair["access_token"]), name="Different transport library"
     )
     assert not call(client, active, "get_my_profile", {})["isError"]
+
+
+def test_mcp_oauth_manager_decision(
+    demo: tuple, db: Session, client: TestClient, registered: dict
+) -> None:
+    _, request = pending(db, demo)
+    code = approve(client, registered, demo[2]["manager"])
+    authorized = token(client, registered, code)
+    assert authorized.status_code == 200, authorized.text
+    active = initialize(
+        client, headers(authorized.json()["access_token"]), name="Untrusted name"
+    )
+    review = call(client, active, "get_review", {"request_id": str(request.id)})
+    assert not review["isError"]
+    detail = review["structuredContent"]
+    result = call(
+        client,
+        active,
+        "decide_review_items",
+        {
+            "request_id": str(request.id),
+            "revision": detail["revision"],
+            "decisions": [
+                {"item_id": i["after"]["id"], "decision": "approved"}
+                for i in detail["items"]
+            ],
+        },
+    )
+    assert not result["isError"]
+    assert result["structuredContent"]["published_version_id"]
+    decision = db.get(ReviewDecision, UUID(result["structuredContent"]["decision_id"]))
+    assert decision.via == "mcp"
+    assert decision.client_name == "Synthetic client"
 
 
 @pytest.mark.parametrize(
