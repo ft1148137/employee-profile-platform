@@ -29,7 +29,7 @@ from app.domains.evidence.models import EvidenceKind, Visibility
 from app.domains.evidence.service import append_evidence, read_evidence
 from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
-from app.domains.org.models import Department, Employee, OrgMembership
+from app.domains.org.models import Department, Employee, Organization, OrgMembership
 from app.domains.org.service import visible_employee
 from app.domains.profile.models import EvidenceRelation
 from app.domains.profile.schemas import ClaimPublic
@@ -183,6 +183,12 @@ def decide(
     via: ReviewVia = ReviewVia.WEB,
     client_name: str | None = None,
 ) -> DecisionResult:
+    # Dictionary saves take the exclusive organization lock before remapping requests.
+    session.exec(
+        select(Organization)
+        .where(Organization.id == principal.org_id)
+        .with_for_update(read=True)
+    ).one()
     request = _request(principal, session, request_id, lock=True)
     if request.revision != revision or request.status != RequestStatus.PENDING_REVIEW:
         raise RequestConflict("内容已变化，请重新查看")

@@ -5,7 +5,8 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-from sqlalchemy import delete
+from sqlalchemy import delete, text
+from sqlalchemy.exc import OperationalError
 from sqlmodel import Session, select
 
 from app.authz.deps import get_org_principal
@@ -703,3 +704,40 @@ def test_publish_maps_current_dictionary_and_clears_old_dispute(
         ]
         == "published"
     )
+
+
+def test_dictionary_cannot_change_between_validation_and_publication(
+    demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    owner, request = pending(db, demo)
+    admin = actor(db, owner.org_id, "admin@demo.example.com")
+    schema = get_schema(db, owner.org_id)
+    definitions = [
+        DictionaryDefinition.model_validate(
+            c.model_dump(
+                include={"key", "name", "category", "description", "level_rubric"}
+            )
+        )
+        for c in list_capabilities(db, owner.org_id, schema.id)
+    ]
+    original_publish = service.publish
+
+    def publish_while_dictionary_changes(
+        session: Session,
+        row: ProfileChangeRequest,
+        items: list[ChangeItem],
+        decision: ReviewDecision,
+    ) -> ProfileVersion:
+        with Session(engine) as concurrent:
+            concurrent.execute(text("SET LOCAL lock_timeout = '100ms'"))
+            with pytest.raises(OperationalError) as error:
+                save_version(concurrent, admin, definitions)
+            assert error.value.orig.sqlstate == "55P03"
+            concurrent.rollback()
+        return original_publish(session, row, items, decision)
+
+    monkeypatch.setattr(service, "publish", publish_while_dictionary_changes)
+    service.decide(manager(db, demo), db, request.id, request.revision, values(request))
+    db.commit()
+    save_version(db, admin, definitions)
+    db.commit()
