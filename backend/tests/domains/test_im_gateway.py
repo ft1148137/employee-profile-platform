@@ -102,9 +102,7 @@ def test_http_binding_cycle(
                     }
                 ]
                 async for incoming in adapter.poll():
-                    reply = g.dispatch(incoming, "12345", setting.credentials)
-                    if reply:
-                        await adapter.send_text(incoming.external_chat_id, reply)
+                    await g.handle(incoming, "12345", setting.credentials, adapter)
 
             await pump(10, "绑定 " + code)
             await pump(10, "绑定 " + code)
@@ -122,9 +120,7 @@ def test_http_binding_cycle(
             )
             assert TOKEN not in json.dumps(rows)
             await pump(11, "合成私聊正文")
-            assert (
-                people["E02"].display_name in telegram_server["requests"][-1][1]["text"]
-            )
+            assert "先配置模型" in telegram_server["requests"][-1][1]["text"]
             assert (
                 client.delete(
                     base + "/me/im-bindings/telegram", headers=auth["employee"]

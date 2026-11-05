@@ -14,7 +14,7 @@ from app.domains.access_token.auth import account_principal
 from app.domains.account.limiter import check_login_limit, record_login_attempt
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
-from app.domains.im.models import ImBindCode, ImBinding, ImEvent, ImSetting
+from app.domains.im.models import ImAction, ImBindCode, ImBinding, ImEvent, ImSetting
 from app.domains.im.schemas import BindingCode, BindingPublic, Platform
 from app.domains.org.models import Organization, OrgMembership
 from app.domains.org.service import EmployeeNotFound, visible_employee
@@ -242,6 +242,11 @@ def unbind(db: Session, p: Principal, platform: Platform) -> None:
 
 def cleanup_events(db: Session) -> None:
     for org_id in db.exec(select(Organization.id)).all():
+        db.exec(
+            delete(ImAction).where(
+                col(ImAction.org_id) == org_id, col(ImAction.expires_at) <= utc_now()
+            )
+        )
         db.exec(
             delete(ImEvent).where(
                 col(ImEvent.org_id) == org_id,

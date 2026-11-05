@@ -91,7 +91,13 @@ def turn(db: Session, p: Principal, session_id: UUID, text: str) -> s.TurnRespon
 
 
 def act(
-    db: Session, p: Principal, session_id: UUID, action: s.Action
+    db: Session,
+    p: Principal,
+    session_id: UUID,
+    action: s.Action,
+    *,
+    client_name: str = "内置机器人",
+    commit: bool = True,
 ) -> s.TurnResponse:
     session = store.get_session(db, p, session_id, lock=True)
     if session.lease_until and session.lease_until > utc_now():
@@ -128,12 +134,13 @@ def act(
         else:
             request = (
                 employee.submit(
-                    p, db, action.request_id, action.revision, "bot", "内置机器人"
+                    p, db, action.request_id, action.revision, "bot", client_name
                 )
                 if action.action == "confirm_submit"
                 else employee.withdraw(p, db, action.request_id)
             )
             messages = [tools.status_card(s.Request.model_validate(request))]
     response = _save(db, session, messages)
-    db.commit()
+    if commit:
+        db.commit()
     return response
