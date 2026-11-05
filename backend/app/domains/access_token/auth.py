@@ -22,13 +22,12 @@ class InvalidAccessToken(HTTPException):
         )
 
 
-def credential_principal(
+def account_principal(
     session: Session,
     org_id: UUID,
     user_id: UUID,
     employee_id: UUID,
     created_at: datetime,
-    client_name: str | None = None,
 ) -> Principal:
     user = session.get(User, user_id)
     if (
@@ -42,6 +41,18 @@ def credential_principal(
     if principal.employee_id != employee_id:
         raise InvalidAccessToken()
     visible_employee(session, principal, employee_id)
+    return principal
+
+
+def credential_principal(
+    session: Session,
+    org_id: UUID,
+    user_id: UUID,
+    employee_id: UUID,
+    created_at: datetime,
+    client_name: str | None = None,
+) -> Principal:
+    principal = account_principal(session, org_id, user_id, employee_id, created_at)
     setting = get_setting(session, principal)
     if not setting.enabled:
         raise McpDisabled()

@@ -209,6 +209,46 @@ export type AutoDraftUpdate = {
 };
 
 /**
+ * BindingCode
+ */
+export type BindingCode = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Expires At
+     */
+    expires_at: string;
+};
+
+/**
+ * BindingPublic
+ */
+export type BindingPublic = {
+    /**
+     * Platform
+     */
+    platform: 'feishu' | 'wecom' | 'telegram';
+    /**
+     * External User Id
+     */
+    external_user_id: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Notify
+     */
+    notify: boolean;
+    /**
+     * Active
+     */
+    active: boolean;
+};
+
+/**
  * Body_capabilities-preview_dictionary
  */
 export type Body_capabilities_preview_dictionary = {
@@ -3763,6 +3803,102 @@ export type ModelSettingUpdateWritable = {
      */
     reasoning_effort?: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null;
 };
+
+export type imBindingsCreateImBindCodeData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/im-bind-code';
+};
+
+export type imBindingsCreateImBindCodeErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type imBindingsCreateImBindCodeError = imBindingsCreateImBindCodeErrors[keyof imBindingsCreateImBindCodeErrors];
+
+export type imBindingsCreateImBindCodeResponses = {
+    /**
+     * Successful Response
+     */
+    200: BindingCode;
+};
+
+export type imBindingsCreateImBindCodeResponse = imBindingsCreateImBindCodeResponses[keyof imBindingsCreateImBindCodeResponses];
+
+export type imBindingsReadImBindingsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/im-bindings';
+};
+
+export type imBindingsReadImBindingsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type imBindingsReadImBindingsError = imBindingsReadImBindingsErrors[keyof imBindingsReadImBindingsErrors];
+
+export type imBindingsReadImBindingsResponses = {
+    /**
+     * Response Im-Bindings-Read Im Bindings
+     *
+     * Successful Response
+     */
+    200: Array<BindingPublic>;
+};
+
+export type imBindingsReadImBindingsResponse = imBindingsReadImBindingsResponses[keyof imBindingsReadImBindingsResponses];
+
+export type imBindingsDeleteImBindingData = {
+    body?: never;
+    path: {
+        /**
+         * Platform
+         */
+        platform: 'feishu' | 'wecom' | 'telegram';
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/im-bindings/{platform}';
+};
+
+export type imBindingsDeleteImBindingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type imBindingsDeleteImBindingError = imBindingsDeleteImBindingErrors[keyof imBindingsDeleteImBindingErrors];
+
+export type imBindingsDeleteImBindingResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type imBindingsDeleteImBindingResponse = imBindingsDeleteImBindingResponses[keyof imBindingsDeleteImBindingResponses];
 
 export type imSettingsGetImSettingsData = {
     body?: never;
