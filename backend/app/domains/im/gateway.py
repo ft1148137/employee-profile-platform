@@ -5,18 +5,18 @@ import re
 from uuid import UUID
 
 from fastapi import HTTPException
+from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, col, select
 
 from app.core.secrets import SecretUnavailable, decrypt_secret
-from app.domains.im import binding
+from app.domains.im import actions, binding
 from app.domains.im.adapters.base import Adapter, Event, ImError
 from app.domains.im.adapters.telegram import Telegram
 from app.domains.im.models import ImEvent, ImSetting
 from app.domains.im.schemas import Platform
-from app.domains.org.service import visible_employee
 
 ADAPTERS: dict[Platform, type[Adapter]] = {"telegram": Telegram}
 logger = logging.getLogger(__name__)
@@ -33,7 +33,9 @@ class Gateway:
             row = db.get(ImSetting, (org_id, platform))
             return bool(row and row.enabled and row.credentials == credentials)
 
-    def dispatch(self, event: Event, identity: str, credentials: str) -> str | None:
+    def dispatch(
+        self, event: Event, identity: str, credentials: str
+    ) -> str | actions.Reply | None:
         if not self.enabled(event.org_id, event.platform, credentials):
             return None
         with Session(self.engine) as db:
@@ -53,13 +55,18 @@ class Gateway:
             )
             # shortcut: Receipt is at most once; revisit if crash-safe reply delivery is required.
             db.commit()
-            if added is None or event.text is None or not event.external_chat_id:
+            if (
+                added is None
+                or (event.text is None and not event.callback_id)
+                or not event.external_chat_id
+            ):
                 return None
             if not event.private:
                 return "请私聊我"
-            match = re.fullmatch(r"绑定\s+([0-9]{6})", event.text.strip())
+            text = event.text or ""
+            match = re.fullmatch(r"绑定\s+([0-9]{6})", text.strip())
             try:
-                if event.text.strip().startswith("绑定"):
+                if text.strip().startswith("绑定") and not event.callback_id:
                     ok = binding.bind(
                         db,
                         event.org_id,
@@ -80,11 +87,55 @@ class Gateway:
                 )
                 if p is None or p.employee_id is None:
                     return binding.GUIDE
-                employee = visible_employee(db, p, p.employee_id)
-                # shortcut: Text conversations land in S11b; only acknowledge the valid binding here.
-                return f"已绑定为{employee.display_name}。对话功能稍后开放，请在网页使用内置机器人。"
+                setting = db.get(ImSetting, (event.org_id, event.platform))
+                if not setting or setting.bot_identity != identity:
+                    return binding.GUIDE
+                if event.callback_id:
+                    return actions.callback(db, p, event, identity)
+                return actions.text(db, p, event, identity)
             except HTTPException:
-                return binding.GUIDE
+                db.rollback()
+                return (
+                    "操作未完成，请重新查看后再试。"
+                    if event.callback_id
+                    else binding.GUIDE
+                )
+            except ValidationError:
+                db.rollback()
+                return "请输入不超过一万字的文本。"
+
+    async def handle(
+        self, event: Event, identity: str, credentials: str, adapter: Adapter
+    ) -> None:
+        if event.callback_id:
+            await adapter.answer_callback(event.callback_id)
+        # Model turns are synchronous; keep polling tasks and setting refresh responsive.
+        reply = await asyncio.to_thread(self.dispatch, event, identity, credentials)
+        if not reply or not self.enabled(event.org_id, event.platform, credentials):
+            return
+        if isinstance(reply, str):
+            await adapter.send_text(event.external_chat_id, reply)
+            return
+        with Session(self.engine) as db:
+            p = binding.current_binding(
+                db,
+                event.org_id,
+                event.platform,
+                event.external_user_id,
+                event.external_chat_id,
+                identity,
+            )
+            if p is None:
+                return
+            if reply.clear_buttons and event.message_id:
+                try:
+                    await adapter.clear_buttons(
+                        event.external_chat_id, event.message_id
+                    )
+                except ImError as error:
+                    if error.code != "recipient_unavailable":
+                        raise
+            await actions.deliver(db, p, event, identity, reply, adapter)
 
     async def connect(self, org_id: UUID, platform: Platform, credentials: str) -> None:
         delay = 1
@@ -115,15 +166,11 @@ class Gateway:
                         db.commit()
                     while True:
                         async for event in adapter.poll():
-                            reply = self.dispatch(event, identity, credentials)
-                            if reply and self.enabled(org_id, platform, credentials):
-                                try:
-                                    await adapter.send_text(
-                                        event.external_chat_id, reply
-                                    )
-                                except ImError as error:
-                                    if error.code != "recipient_unavailable":
-                                        raise
+                            try:
+                                await self.handle(event, identity, credentials, adapter)
+                            except ImError as error:
+                                if error.code != "recipient_unavailable":
+                                    raise
                         delay = 1
                 except (
                     ImError,
