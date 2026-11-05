@@ -39,6 +39,7 @@ def list_requests(
     request_id: UUID | None = None,
 ) -> ChangeRequestsPublic:
     # Employee summaries also derive their review status from this module.
+    from app.authz.review import review_access
     from app.domains.evidence.service import evidence_access, restricted_title
     from app.domains.org.service import visible_employee
 
@@ -61,14 +62,15 @@ def list_requests(
                 ]
             )
         )
-    requests = {
-        row.id: ChangeRequestPublic.model_validate(row)
-        for row in session.exec(
-            query.order_by(
-                col(ProfileChangeRequest.created_at).desc(),
-                col(ProfileChangeRequest.id),
-            )
-        ).all()
+    request_rows = session.exec(
+        query.order_by(
+            col(ProfileChangeRequest.created_at).desc(),
+            col(ProfileChangeRequest.id),
+        )
+    ).all()
+    requests = {row.id: ChangeRequestPublic.model_validate(row) for row in request_rows}
+    reviewable = {
+        row.id for row in request_rows if review_access(session, principal, row)
     }
     items: dict[UUID, ChangeItemPublic] = {}
     for item, capability in session.exec(
@@ -87,10 +89,11 @@ def list_requests(
         public = ChangeItemPublic.model_validate(
             item, update={"capability": CapabilityPublic.model_validate(capability)}
         )
-        if not can_view_evidence_content(
+        if item.request_id not in reviewable and not can_view_evidence_content(
             principal, subject_employee=employee, visibility=Visibility.RESTRICTED
         ):
             public.owner_statement = public.objection = None
+            public.decision_reason = None
         items[item.id] = public
         requests[item.request_id].items.append(public)
     links = session.exec(
@@ -163,8 +166,6 @@ def review_statuses(
             .where(
                 successor.org_id == org_id,
                 successor.supersedes_claim_id == ProfileClaim.id,
-                successor.capability_definition_id
-                == ProfileClaim.capability_definition_id,
             )
             .exists(),
         )

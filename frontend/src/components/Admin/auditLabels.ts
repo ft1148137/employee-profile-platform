@@ -14,6 +14,7 @@ export const auditLabels: Record<string, string> = {
   "change_request.dictionary_changed": "词典调整后更新请求",
   "profile_import.created": "管理员导入画像",
   "change_request.submitted": "提交画像请求",
+  "change_request.decided": "审批画像请求",
   "change_request.withdrawn": "撤回画像请求",
   "sync_run.succeeded": "同步完成",
   "sync_run.failed": "同步失败",

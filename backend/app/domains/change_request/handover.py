@@ -16,6 +16,7 @@ from app.domains.change_request.service import transition
 from app.domains.drafting.settings import drafting_scope
 from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
+from app.domains.review.routing import notify_reviewers
 
 # shortcut: Fixed at 14 days; make it an organization setting with M4 ApprovalPolicy.
 HANDOVER_DAYS = 14
@@ -51,6 +52,7 @@ def hand_over(session: Session, principal: Principal, *, confirm: bool = False) 
             transition(request, RequestStatus.PENDING_REVIEW)
             request.submitted_via = SubmissionVia.ADMIN_HANDOVER
             request.submitted_at = utc_now()
+            notify_reviewers(session, request)
             record_audit(
                 session,
                 org_id=principal.org_id,

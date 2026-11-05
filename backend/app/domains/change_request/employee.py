@@ -406,6 +406,9 @@ def submit(
         else "请求已提交，经理批准前可以撤回"
     )
     notify(session, request, InboxKind.SUBMITTED, message)
+    from app.domains.review.routing import notify_reviewers
+
+    notify_reviewers(session, request)
     return _public(principal, session, request.id)
 
 

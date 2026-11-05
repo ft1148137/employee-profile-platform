@@ -50,27 +50,53 @@ def restricted_title(kind: EvidenceKind) -> str:
 def evidence_access(
     session: Session, principal: Principal, ids: set[UUID]
 ) -> dict[UUID, tuple[Evidence, bool]]:
-    return {
-        e.id: (
-            e,
-            can_view_evidence_content(
-                principal, subject_employee=employee, visibility=e.visibility
-            ),
+    from app.authz.review import review_access
+    from app.domains.change_request.models import (
+        ChangeItem,
+        ChangeItemEvidence,
+        ProfileChangeRequest,
+        RequestStatus,
+    )
+
+    access: dict[UUID, tuple[Evidence, bool]] = {}
+    for e, employee, request in session.exec(
+        select(Evidence, Employee, ProfileChangeRequest)
+        .join(
+            Employee,
+            (col(Employee.id) == Evidence.subject_employee_id)
+            & (col(Employee.org_id) == Evidence.org_id),
         )
-        for e, employee in session.exec(
-            select(Evidence, Employee)
-            .join(
-                Employee,
-                (col(Employee.id) == Evidence.subject_employee_id)
-                & (col(Employee.org_id) == Evidence.org_id),
+        .outerjoin(
+            ChangeItemEvidence,
+            (col(ChangeItemEvidence.evidence_id) == Evidence.id)
+            & (col(ChangeItemEvidence.org_id) == Evidence.org_id),
+        )
+        .outerjoin(
+            ChangeItem,
+            (col(ChangeItem.id) == ChangeItemEvidence.item_id)
+            & (col(ChangeItem.org_id) == ChangeItemEvidence.org_id),
+        )
+        .outerjoin(
+            ProfileChangeRequest,
+            (col(ProfileChangeRequest.id) == ChangeItem.request_id)
+            & (col(ProfileChangeRequest.org_id) == ChangeItem.org_id)
+            & (col(ProfileChangeRequest.status) == RequestStatus.PENDING_REVIEW),
+        )
+        .where(
+            Evidence.org_id == principal.org_id,
+            col(Evidence.id).in_(ids),
+            employee_scope_clause(principal),
+        )
+    ).all():
+        readable = (
+            access.get(e.id, (e, False))[1]
+            or can_view_evidence_content(
+                principal, subject_employee=employee, visibility=e.visibility
             )
-            .where(
-                Evidence.org_id == principal.org_id,
-                col(Evidence.id).in_(ids),
-                employee_scope_clause(principal),
-            )
-        ).all()
-    }
+            or (request is not None and review_access(session, principal, request))
+        )
+        access[e.id] = (e, readable)
+    return access
 
 
 def evidence_summary(evidence: Evidence, readable: bool) -> EvidenceSummary:
