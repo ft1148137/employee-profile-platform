@@ -64,6 +64,7 @@ def incremental_context(
         level="routine",
         assessment_status=AssessmentStatus.TENTATIVE,
         confidence=Confidence.MEDIUM,
+        explanation="已经过目确认的原解释",
         generated_by={"actor_type": "system_worker"},
     )
     db.add(claim)
@@ -168,9 +169,13 @@ def test_attach_publishes_without_pending_or_notification(
     db.refresh(original)
     assert original.model_dump() == snapshot
     published = db.get(ProfileClaim, item.published_claim_id)
-    fields = {"statement", "level", "assessment_status", "confidence"}
+    assert item.explanation != claim.explanation
+    fields = {"statement", "level", "assessment_status", "confidence", "explanation"}
     db.refresh(claim)
     assert published.model_dump(include=fields) == claim.model_dump(include=fields)
+    frozen = next(c for c in latest.snapshot["claims"] if c["id"] == str(published.id))
+    assert frozen["explanation"] == claim.explanation
+    assert len(frozen["evidence"]) == 2
     assert (
         len(
             db.exec(
