@@ -176,19 +176,27 @@ def test_quota_response_preserves_retry_time(pi_service: PiHarness) -> None:
 
 
 @pytest.mark.parametrize(
-    "code",
+    "code,message",
     [
-        "busy",
-        "deadline",
-        "limit_exceeded",
-        "cancelled",
-        "model_error",
-        "unauthorized",
-        "bad_request",
+        ("busy", "模型服务繁忙，请稍后再试"),
+        ("deadline", "模型调用超时"),
+        ("limit_exceeded", "模型调用次数达到上限"),
+        ("cancelled", "模型调用已取消"),
+        ("model_error", "模型服务暂时不可用"),
+        ("unauthorized", "模型服务暂时不可用"),
+        ("bad_request", "模型服务暂时不可用"),
+        ("model_unauthorized", "密钥不对或没有权限"),
+        ("model_not_found", "这个模型不可用，请换一个模型"),
+        ("upstream_rejected", "模型服务拒绝了请求，请检查模型设置"),
+        ("upstream_unavailable", "模型服务暂时不可用，请稍后重试"),
+        ("unknown-secret-code", "模型服务暂时不可用"),
     ],
 )
 def test_protocol_error_mapping(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, code: str
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    code: str,
+    message: str,
 ) -> None:
     real = httpx.Client
 
@@ -218,6 +226,7 @@ def test_protocol_error_mapping(
             on_tool_call=lambda *_: None,
         )
     assert "sensitive" not in str(error.value) + caplog.text
+    assert str(error.value) == message
     assert ("Pi protocol failure" in caplog.text) is (
         code in ("unauthorized", "bad_request")
     )

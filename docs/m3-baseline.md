@@ -37,3 +37,27 @@ docker compose -f compose.yml -f compose.dev.yml -f compose.chatgpt-local.yml -f
 Pi 仅提取 access token、账号和到期时间，临时文件不含 refresh token，用后删除；有效期不足一小时会拒绝调用。其他模型可在 `backend/` 运行 `PYTHONPATH=. uv run python ../examples/test-enterprises/evaluate_drafts.py qiguang-aiot --provider openai --model 模型名 --reasoning-effort high`，密钥从 `MODEL_API_KEY` 环境变量读取，不能写在命令行或结果文档。
 
 评测仅向模型提供词典及工作记录，不发送 `personas.yaml` 的答案；按在职员工 / 能力 key 和保留答案离线比对。成功时脚本输出精确率、召回率、四类证据命中和未知比例。额度不足或任一员工失败时拒绝评分，退出清理本企业任务、临时企业和账号，其他企业的任务保留。复测成功后应追加完整输出及日期，不覆盖这次失败记录。
+
+## 2026-11-05 追加：模型方式基线完成
+
+来源：NERE-4「M3 总结」的「模型方式准确率基线（栖光智联）」。NERE-113 合并后，技术规划使用 **`chatgpt/gpt-6.1-sol`、推理强度 `high`、Pi 0.73.1**，以本机订阅只读授权完成一次评测，未刷新、未写回授权。本节只补记已有结果，不代表 Pi 1.5.0 的重新评测；此前「未完成」及 `gpt-5.4` 两次 `model_error` 的记录保留。
+
+| 指标 | M2 规则方式（历史） | M3 模型方式 |
+| --- | --- | --- |
+| 精确率 | 34/64（53.1%） | 35/54（64.8%） |
+| 召回率 | 34/71（47.9%） | 35/71（49.3%） |
+| 没有记录的能力保持未知 | 25/25（100%） | 25/25（100%） |
+| misleading 被起草 | 5/7（71.4%） | 6/7（85.7%） |
+
+按证据状态的起草命中分布：
+
+| 证据状态 | 起草命中 / 能力对 |
+| --- | --- |
+| documented | 19/22 |
+| partial | 10/17 |
+| undocumented | 0/25 |
+| misleading | 6/7 |
+
+被起草的 misleading 能力对：`QG002/pcb_layout`、`QG003/emc_debug`、`QG005/pcb_layout`、`QG007/firmware_integration`、`QG011/rknn_conversion`、`QG020/ecn_bom_management`。没有工作记录的能力均保持未知；misleading 起草比例偏高，结果仍是待本人过目的请求，须按审批规则处理，不能直接当作正式判断。沿用 M3 约定，不设准确率门槛。
+
+当时对 `gpt-5.4` 失败原因的账号可用性判断只是推断，旧错误码不能证明原因。

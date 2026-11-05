@@ -1,8 +1,23 @@
 from datetime import datetime
+from typing import Literal
 
 
 class ModelUnavailable(Exception):
     pass
+
+
+class ModelServiceError(ModelUnavailable):
+    def __init__(
+        self,
+        code: Literal["model_not_found", "upstream_rejected", "upstream_unavailable"],
+    ) -> None:
+        super().__init__(
+            {
+                "model_not_found": "这个模型不可用，请换一个模型",
+                "upstream_rejected": "模型服务拒绝了请求，请检查模型设置",
+                "upstream_unavailable": "模型服务暂时不可用，请稍后重试",
+            }[code]
+        )
 
 
 class ModelAuthenticationError(ModelUnavailable):
