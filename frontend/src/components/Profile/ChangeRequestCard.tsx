@@ -6,6 +6,7 @@ import {
 } from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
+import { AppealItem } from "./AppealItem"
 import type { EditorSelection } from "./ChangeRequestEditor"
 import { EvidenceRows } from "./EvidenceList"
 import { levelLabel } from "./fields"
@@ -219,6 +220,13 @@ export function ChangeRequestCard({
                               <p className="whitespace-pre-wrap break-words">
                                 原因：{item.decision_reason}
                               </p>
+                            )}
+                            {isOwner && item.decision === "rejected" && (
+                              <AppealItem
+                                orgId={orgId}
+                                requestId={request.id}
+                                item={item}
+                              />
                             )}
                           </li>
                         ))}

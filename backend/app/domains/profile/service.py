@@ -45,8 +45,42 @@ class VersionNotFound(HTTPException):
 
 
 def profile_items(
-    session: Session, principal: Principal, schema_id: UUID, claims: list[SnapshotClaim]
+    session: Session,
+    principal: Principal,
+    schema_id: UUID,
+    claims: list[SnapshotClaim],
+    employee_id: UUID | None = None,
 ) -> tuple[list[ProfileItem], ProfileCounts]:
+    from app.domains.change_request.models import ChangeItem
+    from app.domains.review.models import AppealStatus, ReviewAppeal
+
+    disputed_keys = (
+        set(
+            session.exec(
+                select(CapabilityDefinition.key)
+                .join(
+                    ChangeItem,
+                    (
+                        col(ChangeItem.capability_definition_id)
+                        == CapabilityDefinition.id
+                    )
+                    & (col(ChangeItem.org_id) == CapabilityDefinition.org_id),
+                )
+                .join(
+                    ReviewAppeal,
+                    (col(ReviewAppeal.item_id) == ChangeItem.id)
+                    & (col(ReviewAppeal.org_id) == ChangeItem.org_id),
+                )
+                .where(
+                    ReviewAppeal.org_id == principal.org_id,
+                    ReviewAppeal.employee_id == employee_id,
+                    ReviewAppeal.status == AppealStatus.OPEN,
+                )
+            ).all()
+        )
+        if employee_id
+        else set()
+    )
     capabilities = list_capabilities(session, principal.org_id, schema_id)
     access = evidence_access(
         session,
@@ -120,7 +154,11 @@ def profile_items(
             ProfileItem(
                 capability=CapabilityPublic.model_validate(capability),
                 claim=claim,
-                status=claim.assessment_status if claim else AssessmentStatus.UNKNOWN,
+                status=AssessmentStatus.DISPUTED
+                if capability.key in disputed_keys
+                else claim.assessment_status
+                if claim
+                else AssessmentStatus.UNKNOWN,
                 evidence_stale=bool(
                     claim
                     and claim.assessment_status == AssessmentStatus.CONFIRMED
@@ -190,7 +228,9 @@ def read_profile(
                 relation=link.relation,
             )
         )
-    items, counts = profile_items(session, principal, schema.id, list(current.values()))
+    items, counts = profile_items(
+        session, principal, schema.id, list(current.values()), employee_id
+    )
     return ProfileView(
         employee=employee,
         schema_version=SchemaVersionPublic.model_validate(schema),
