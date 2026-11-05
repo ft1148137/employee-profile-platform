@@ -273,6 +273,10 @@ def test_admin_without_employee_is_fallback_and_access_expires(
     url, _, auth = demo
     inbox = client.get(f"{url}/me/inbox", headers=auth["admin"])
     assert inbox.status_code == 200
+    assert all(
+        db.get(InboxItem, UUID(i["id"])).recipient_user_id == admin.user_id
+        for i in inbox.json()["data"]
+    )
     notification = next(
         i for i in inbox.json()["data"] if i["request_id"] == str(request.id)
     )
