@@ -11,7 +11,7 @@ def test_review_migration_roundtrip(migration_engine: Engine) -> None:
         assert "decision" not in {
             c["name"] for c in inspector.get_columns("change_item")
         }
-    migrate(migration_engine, "upgrade", "head")
+    migrate(migration_engine, "upgrade", "b117002bc001")
     with migration_engine.connect() as connection:
         inspector = inspect(connection)
         assert connection.execute(
