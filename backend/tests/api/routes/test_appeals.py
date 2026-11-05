@@ -1,4 +1,5 @@
 from dataclasses import replace
+from datetime import timedelta
 from uuid import UUID, uuid4
 
 import pytest
@@ -8,6 +9,7 @@ from sqlalchemy import Engine, inspect, text
 from sqlmodel import Session, select
 
 from app.authz.principal import Principal
+from app.core.security import create_access_token
 from app.domains.change_request import employee
 from app.domains.change_request.models import ChangeItemEvidence, ItemDecision
 from app.domains.change_request.service import review_statuses
@@ -18,10 +20,10 @@ from app.domains.profile.models import ProfileClaim, ProfileVersion
 from app.domains.review import appeal, service
 from app.domains.review.appeal_schemas import ResolveAppealInput
 from app.domains.review.models import ReviewAppeal
+from app.models import User
 from tests.api.routes.test_mcp import call, initialize, token_for
 from tests.api.routes.test_reviews import actor, manager, pending, values
 from tests.utils.migrations import migrate
-from tests.utils.user import authentication_token_from_email
 
 
 @pytest.mark.parametrize("status", ["upheld", "reopened"])
@@ -163,9 +165,10 @@ def test_appeal_api_permissions_and_mcp(
 ) -> None:
     owner, request = pending(db, demo)
     base = f"/api/v1/orgs/{owner.org_id}/appeals"
-    headers = authentication_token_from_email(
-        client=client, email="employee.platform@demo.example.com", db=db
-    )
+    headers = demo[2]["employee"]
+    before_passwords = {
+        user.id: user.hashed_password for user in db.exec(select(User)).all()
+    }
     args = {
         "request_id": str(request.id),
         "item_id": str(request.items[0].id),
@@ -186,9 +189,10 @@ def test_appeal_api_permissions_and_mcp(
         values(request, ItemDecision.REJECTED),
     )
     db.commit()
-    other = authentication_token_from_email(
-        client=client, email="employee.delivery@demo.example.com", db=db
-    )
+    outsider = actor(db, owner.org_id, "employee.algorithm@demo.example.com")
+    other = {
+        "Authorization": f"Bearer {create_access_token(outsider.user_id, expires_delta=timedelta(minutes=5))}"
+    }
     assert client.post(base, headers=other, json=args).status_code == 404
     assert (
         client.post(
@@ -230,6 +234,9 @@ def test_appeal_api_permissions_and_mcp(
     assert not next(
         t for t in EMPLOYEE_TOOLS if t.name == "appeal_decision"
     ).bot_allowed
+    assert before_passwords == {
+        user.id: user.hashed_password for user in db.exec(select(User)).all()
+    }
 
 
 def test_existing_open_appeal_returns_conflict(db: Session, demo: tuple) -> None:
