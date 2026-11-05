@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { ApprovalPolicy } from "@/components/Admin/ApprovalPolicy"
 import { Appearance } from "@/components/Common/Appearance"
 import { CapabilityDictionary } from "@/components/Setup/CapabilityDictionary"
 import { AiConnections } from "@/components/UserSettings/AiConnections"
@@ -7,6 +8,7 @@ import { ImBindings } from "@/components/UserSettings/ImBindings"
 import UserInformation from "@/components/UserSettings/UserInformation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import useAuth from "@/hooks/useAuth"
+import { useOrg } from "@/hooks/useOrg"
 
 const tabsConfig = [
   { value: "my-profile", title: "个人信息", component: UserInformation },
@@ -30,6 +32,8 @@ export const Route = createFileRoute("/_layout/settings")({
 
 function UserSettings() {
   const { user: currentUser } = useAuth()
+  const { org, roles } = useOrg()
+  const admin = roles.includes("org_admin")
 
   if (!currentUser) {
     return null
@@ -51,12 +55,18 @@ function UserSettings() {
               {tab.title}
             </TabsTrigger>
           ))}
+          {admin && <TabsTrigger value="approval-policy">审批规则</TabsTrigger>}
         </TabsList>
         {tabsConfig.map((tab) => (
           <TabsContent key={tab.value} value={tab.value}>
             <tab.component />
           </TabsContent>
         ))}
+        {admin && org && (
+          <TabsContent value="approval-policy">
+            <ApprovalPolicy key={org.id} orgId={org.id} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )

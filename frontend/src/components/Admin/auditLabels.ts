@@ -9,6 +9,8 @@ export const auditLabels: Record<string, string> = {
   "access_token.created": "生成个人令牌",
   "access_token.revoked": "吊销个人令牌",
   "mcp_setting.updated": "修改外部 AI 助手设置",
+  "approval_policy.saved": "保存审批规则",
+  "change_request.policy_published": "按审批规则发布",
   "initial_profiles.handed_over": "初始画像批量送审（员工未过目）",
   "initial_profiles.drafted": "生成初始画像",
   "incremental_profiles.drafted": "起草增量画像",
@@ -57,6 +59,7 @@ export const actorLabels: Record<string, string> = {
   cli: "命令行",
 }
 export const targetLabels: Record<string, string> = {
+  approval_policy: "审批规则",
   im_binding: "IM 账号绑定",
   oauth_client: "AI 助手客户端",
   oauth_grant: "AI 助手授权",
@@ -88,6 +91,7 @@ const stepLabels: Record<string, string> = {
   capabilities: "选择能力词典",
   accounts: "生成员工账号",
   model: "配置模型",
+  approval_policy: "审批规则",
   initial_profiles: "生成初始画像",
 }
 const countLabels: Record<string, string> = {

@@ -2327,6 +2327,81 @@ export type PendingReviews = {
 };
 
 /**
+ * PolicyInput
+ */
+export type PolicyInput = {
+    /**
+     * Require Manager
+     */
+    require_manager?: boolean;
+    /**
+     * Category Overrides
+     */
+    category_overrides?: {
+        [key: string]: boolean;
+    };
+    /**
+     * Owner Review Days
+     */
+    owner_review_days?: number;
+};
+
+/**
+ * PolicyPublic
+ */
+export type PolicyPublic = {
+    /**
+     * Require Manager
+     */
+    require_manager?: boolean;
+    /**
+     * Category Overrides
+     */
+    category_overrides?: {
+        [key: string]: boolean;
+    };
+    /**
+     * Owner Review Days
+     */
+    owner_review_days?: number;
+    /**
+     * Version
+     */
+    version?: number;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+    /**
+     * Created By User Id
+     */
+    created_by_user_id?: string | null;
+    /**
+     * Created By Name
+     */
+    created_by_name?: string | null;
+    /**
+     * Changed Fields
+     */
+    changed_fields?: Array<string>;
+};
+
+/**
+ * PolicyView
+ */
+export type PolicyView = {
+    current: PolicyPublic;
+    /**
+     * Categories
+     */
+    categories: Array<string>;
+    /**
+     * History
+     */
+    history: Array<PolicyPublic>;
+};
+
+/**
  * PreviewCard
  */
 export type PreviewCard = {
@@ -3803,6 +3878,66 @@ export type ModelSettingUpdateWritable = {
      */
     reasoning_effort?: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null;
 };
+
+export type approvalPolicyGetApprovalPolicyData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/approval-policy';
+};
+
+export type approvalPolicyGetApprovalPolicyErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type approvalPolicyGetApprovalPolicyError = approvalPolicyGetApprovalPolicyErrors[keyof approvalPolicyGetApprovalPolicyErrors];
+
+export type approvalPolicyGetApprovalPolicyResponses = {
+    /**
+     * Successful Response
+     */
+    200: PolicyView;
+};
+
+export type approvalPolicyGetApprovalPolicyResponse = approvalPolicyGetApprovalPolicyResponses[keyof approvalPolicyGetApprovalPolicyResponses];
+
+export type approvalPolicyPutApprovalPolicyData = {
+    body: PolicyInput;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/approval-policy';
+};
+
+export type approvalPolicyPutApprovalPolicyErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type approvalPolicyPutApprovalPolicyError = approvalPolicyPutApprovalPolicyErrors[keyof approvalPolicyPutApprovalPolicyErrors];
+
+export type approvalPolicyPutApprovalPolicyResponses = {
+    /**
+     * Successful Response
+     */
+    200: PolicyView;
+};
+
+export type approvalPolicyPutApprovalPolicyResponse = approvalPolicyPutApprovalPolicyResponses[keyof approvalPolicyPutApprovalPolicyResponses];
 
 export type imBindingsCreateImBindCodeData = {
     body?: never;

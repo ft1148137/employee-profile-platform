@@ -98,7 +98,7 @@ export function ProfileImport({ orgId }: { orgId: string }) {
       >
         <DialogTitle>导入 AI 生成的画像</DialogTitle>
         <DialogDescription>
-          只导入本人的候选画像，确认后交经理审批，批准前可以撤回。依据仅本人和管辖经理可读。
+          只导入本人的候选画像，确认后按企业审批规则处理，待审批的改动可以撤回。依据仅本人和管辖经理可读。
         </DialogDescription>
         <p className="text-sm">
           当前词典版本：{dictionary.data?.schema_version.version ?? "尚未启用"}

@@ -74,6 +74,10 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   await expect(page.getByRole("alert")).toContainText("模型")
   await configureModel(page, modelUrl)
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await expect(
+    page.getByRole("heading", { name: "审批规则", exact: true }),
+  ).toBeVisible()
+  await next()
   await page.getByRole("button", { name: "生成初始画像", exact: true }).click()
   await expect(
     page.getByText(

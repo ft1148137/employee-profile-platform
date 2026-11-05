@@ -81,6 +81,10 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
   await next()
   await configureModel(page, modelUrl)
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await expect(
+    page.getByRole("heading", { name: "审批规则", exact: true }),
+  ).toBeVisible()
+  await next()
   await page.getByRole("button", { name: "生成初始画像", exact: true }).click()
   await expect(
     page.getByText(

@@ -1,4 +1,5 @@
 import type { ComponentType } from "react"
+import { ApprovalPolicy } from "@/components/Admin/ApprovalPolicy"
 import { AccountsStep } from "./AccountsStep"
 import { CapabilitiesStep } from "./CapabilitiesStep"
 import { IdentitiesStep } from "./IdentitiesStep"
@@ -19,4 +20,5 @@ export const setupSteps: Record<string, ComponentType<StepProps>> = {
   identities: IdentitiesStep,
   initial_profiles: InitialProfilesStep,
   model: ModelStep,
+  approval_policy: ApprovalPolicy,
 }

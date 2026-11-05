@@ -14,6 +14,7 @@ from app.domains.change_request.models import (
     ChangeOp,
     ProfileChangeRequest,
     ReviewDecision,
+    ReviewVia,
 )
 from app.domains.evidence.models import Evidence
 from app.domains.profile.models import (
@@ -131,6 +132,8 @@ def publish(
         )
         if item.op in (ChangeOp.ATTACH_EVIDENCE, ChangeOp.RETRACT) and target is None:
             raise RequestConflict("目标判断不存在，请重新查看")
+        if (target.id if target else None) != item.target_claim_id:
+            raise RequestConflict("目标判断已被其他请求取代，请重新查看")
         if item.op == ChangeOp.ATTACH_EVIDENCE and target is not None:
             after = ClaimAfter.model_validate(
                 target.model_dump(
@@ -144,7 +147,9 @@ def publish(
         else:
             after = ClaimAfter.model_validate(item.after)
             after.assessment_status = AssessmentStatus.CONFIRMED
-        if jira_only(evidence):
+        if jira_only(evidence) or (
+            decision.via == ReviewVia.POLICY and item.op != ChangeOp.RETRACT
+        ):
             after.assessment_status = AssessmentStatus.TENTATIVE
         claim = ProfileClaim(
             org_id=org_id,
