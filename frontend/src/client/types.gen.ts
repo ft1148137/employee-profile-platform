@@ -2447,6 +2447,14 @@ export type ProfileVersionSummary = {
     published_at: string;
     published_by: PublisherPublic;
     schema_version: SchemaVersionPublic;
+    /**
+     * Via
+     */
+    via?: string | null;
+    /**
+     * Request Id
+     */
+    request_id?: string | null;
 };
 
 /**
@@ -2463,6 +2471,14 @@ export type ProfileVersionView = {
     published_at: string;
     published_by: PublisherPublic;
     schema_version: SchemaVersionPublic;
+    /**
+     * Via
+     */
+    via?: string | null;
+    /**
+     * Request Id
+     */
+    request_id?: string | null;
     counts: ProfileCounts;
     /**
      * Items
@@ -2707,6 +2723,10 @@ export type RequestStatus = 'draft' | 'pending_owner' | 'pending_review' | 'appr
  * ReviewDetail
  */
 export type ReviewDetail = {
+    /**
+     * Owner Reviewed
+     */
+    owner_reviewed?: boolean;
     /**
      * Id
      */
@@ -3327,6 +3347,40 @@ export type TextMessage = {
      * Text
      */
     text: string;
+};
+
+/**
+ * TimelineEvent
+ */
+export type TimelineEvent = {
+    /**
+     * At
+     */
+    at: string;
+    /**
+     * Action
+     */
+    action: string;
+    /**
+     * Via
+     */
+    via?: string | null;
+    /**
+     * Client Name
+     */
+    client_name?: string | null;
+    /**
+     * Reviewer
+     */
+    reviewer?: string | null;
+    /**
+     * Version
+     */
+    version?: number | null;
+    /**
+     * Request Id
+     */
+    request_id?: string | null;
 };
 
 /**
@@ -6734,6 +6788,46 @@ export type changeRequestsReadChangeRequestsResponses = {
 };
 
 export type changeRequestsReadChangeRequestsResponse = changeRequestsReadChangeRequestsResponses[keyof changeRequestsReadChangeRequestsResponses];
+
+export type changeRequestsReadRequestTimelineData = {
+    body?: never;
+    path: {
+        /**
+         * Employee Id
+         */
+        employee_id: string;
+        /**
+         * Request Id
+         */
+        request_id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/employees/{employee_id}/change-requests/{request_id}/timeline';
+};
+
+export type changeRequestsReadRequestTimelineErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type changeRequestsReadRequestTimelineError = changeRequestsReadRequestTimelineErrors[keyof changeRequestsReadRequestTimelineErrors];
+
+export type changeRequestsReadRequestTimelineResponses = {
+    /**
+     * Response Change Requests-Read Request Timeline
+     *
+     * Successful Response
+     */
+    200: Array<TimelineEvent>;
+};
+
+export type changeRequestsReadRequestTimelineResponse = changeRequestsReadRequestTimelineResponses[keyof changeRequestsReadRequestTimelineResponses];
 
 export type evidenceReadEmployeeEvidenceData = {
     body?: never;

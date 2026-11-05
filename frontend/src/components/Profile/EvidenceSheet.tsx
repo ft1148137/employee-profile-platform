@@ -53,7 +53,7 @@ function EvidenceContent({ evidence }: { evidence: EvidenceDetail }) {
     return (
       <div className="space-y-3">
         <p className="whitespace-pre-wrap leading-relaxed">
-          {text(content.text)}
+          {text(content.text ?? content.statement)}
         </p>
         <p className="text-sm text-muted-foreground">
           关联任务：
@@ -95,6 +95,8 @@ export function EvidenceSheet({
 }) {
   const query = useQuery({
     queryKey: ["evidence-detail", orgId, evidenceId],
+    // Review access can expire; discard restricted content when its view closes.
+    gcTime: 0,
     queryFn: async () =>
       (
         await EvidenceService.readEvidence({

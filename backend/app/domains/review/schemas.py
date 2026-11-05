@@ -39,6 +39,7 @@ class ReviewItem(SQLModel):
 
 
 class ReviewDetail(SQLModel):
+    owner_reviewed: bool = True
     id: UUID
     revision: int
     items: list[ReviewItem]

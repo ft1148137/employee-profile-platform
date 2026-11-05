@@ -100,6 +100,12 @@ test("employee previews imports, downloads files, submits and withdraws", async 
   page.once("dialog", (alert) => alert.accept())
   await pending.getByRole("button", { name: "撤回", exact: true }).click()
   await expect(pending).toHaveCount(0)
+  const withdrawn = page.locator(`[id="request-${submitted.request_id}"]`)
+  await expect(withdrawn).toContainText("已撤回")
+  await withdrawn.getByText("请求时间线", { exact: true }).click()
+  await expect(
+    withdrawn.getByRole("list", { name: "请求时间线" }),
+  ).toContainText("撤回请求")
 })
 
 test("editing an initial candidate sends uncertainty back unchanged", async ({
