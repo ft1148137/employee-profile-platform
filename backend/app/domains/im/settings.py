@@ -133,13 +133,16 @@ async def test_connection(
     if platform == "wecom" and row.enabled:
         healthy = bool(
             row.connection_checked_at
-            and row.connection_checked_at > utc_now() - timedelta(seconds=60)
+            and row.connection_checked_at > utc_now() - timedelta(seconds=150)
         )
         return ImConnectionTest(
             ok=healthy,
-            message="连接成功"
-            if healthy
-            else "尚未收到有效心跳，请检查机器人服务及凭据",
+            message=(
+                f"长连接最近心跳时间：{row.connection_checked_at.isoformat()}"
+                if row.connection_checked_at
+                else "尚未收到有效心跳"
+            )
+            + ("" if healthy else "，请检查机器人进程及凭据"),
         )
     adapter = None
     try:
@@ -154,7 +157,7 @@ async def test_connection(
                     ImSetting.bot_identity == credentials["bot_id"],
                 )
             ).first()
-        ):  # noqa: E712
+        ):
             return ImConnectionTest(ok=False, message="该机器人已被其他企业使用")
         adapter = (Wecom if platform == "wecom" else Telegram)(org_id, credentials)
         async with asyncio.timeout(10):

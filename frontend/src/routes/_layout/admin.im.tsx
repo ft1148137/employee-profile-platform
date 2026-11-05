@@ -240,7 +240,11 @@ function PlatformSetting({
             }
             onClick={() => test.mutate()}
           >
-            {test.isPending ? "正在测试…" : "测试已保存的连接"}
+            {test.isPending
+              ? "正在测试…"
+              : setting.platform === "wecom" && setting.enabled
+                ? "查看长连接最近心跳"
+                : "测试已保存的连接"}
           </Button>
         ) : (
           <p className="text-sm text-muted-foreground">

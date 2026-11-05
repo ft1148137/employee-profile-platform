@@ -21,7 +21,7 @@ from app.domains.bot import core
 from app.domains.change_request.models import ProfileChangeRequest
 from app.domains.im import binding, gateway, settings
 from app.domains.im.adapters import wecom
-from app.domains.im.adapters.base import ImError
+from app.domains.im.adapters.base import Adapter, Event, ImError
 from app.domains.im.models import ImAction, ImBinding, ImSetting
 from app.domains.org.models import Employee, Organization, OrgMembership
 from app.models import User
@@ -260,7 +260,7 @@ def test_connection_and_privacy(
             db.commit()
             assert (await settings.test_connection(db, p.org_id, "wecom")).ok
             assert fake["requests"] == []
-            setting.connection_checked_at -= timedelta(minutes=2)
+            setting.connection_checked_at -= timedelta(minutes=3)
             db.commit()
             assert not (await settings.test_connection(db, p.org_id, "wecom")).ok
             setting.enabled = False
@@ -399,3 +399,45 @@ def test_migration(migration_engine: Engine) -> None:
     assert "connection_checked_at" in {
         c["name"] for c in inspect(migration_engine).get_columns("im_setting")
     }
+
+
+def test_gateway_heartbeat_is_throttled(
+    demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p, setting = setup(db, demo)
+    initial = utc_now()
+    now = [initial]
+    snapshots = []
+    original_metadata = setting.updated_at, setting.updated_by_user_id
+    monkeypatch.setattr(gateway, "utc_now", lambda: now[0])
+
+    class Fake(wecom.Wecom):
+        async def test_connection(self) -> str:
+            self.checked_at = now[0]
+            return CREDS["bot_id"]
+
+        async def poll(self) -> AsyncIterator[Event]:
+            row = db.get(ImSetting, (p.org_id, "wecom"), populate_existing=True)
+            snapshots.append(row.connection_checked_at)
+            assert (row.updated_at, row.updated_by_user_id) == original_metadata
+            now[0] += timedelta(seconds=20)
+            self.checked_at = now[0]
+            if len(snapshots) == 4:
+                raise ImError("connection_conflict")
+            yield Event(p.org_id, "wecom", uuid4().hex)
+
+    async def handle(
+        self: gateway.Gateway,
+        event: Event,
+        identity: str,
+        credentials: str,
+        adapter: Adapter,
+    ) -> None:
+        pass
+
+    monkeypatch.setitem(gateway.ADAPTERS, "wecom", Fake)
+    monkeypatch.setattr(gateway.Gateway, "handle", handle)
+    asyncio.run(gateway.Gateway(engine).connect(p.org_id, "wecom", setting.credentials))
+    assert snapshots == [initial, initial, initial, initial + timedelta(seconds=60)]
+    db.refresh(setting)
+    assert setting.connection_checked_at is None

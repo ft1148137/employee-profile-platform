@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import re
+from datetime import timedelta
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -12,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, col, select
 
 from app.core.secrets import SecretUnavailable, decrypt_secret
+from app.domains.base import utc_now
 from app.domains.im import actions, binding
 from app.domains.im.adapters.base import Adapter, Event, ImError
 from app.domains.im.adapters.telegram import Telegram
@@ -212,6 +214,7 @@ class Gateway:
                         db.add(setting)
                         db.commit()
                     self.adapters[org_id, platform] = credentials, adapter
+                    heartbeat_written_at = utc_now()
                     while True:
                         async for event in adapter.poll():
                             try:
@@ -219,13 +222,16 @@ class Gateway:
                             except ImError as error:
                                 if error.code != "recipient_unavailable":
                                     raise
-                        if isinstance(adapter, Wecom):
+                        if isinstance(
+                            adapter, Wecom
+                        ) and utc_now() - heartbeat_written_at >= timedelta(minutes=1):
                             with Session(self.engine) as db:
                                 setting = db.get(ImSetting, (org_id, platform))
                                 if setting and setting.credentials == credentials:
                                     setting.connection_checked_at = adapter.checked_at
                                     db.add(setting)
                                     db.commit()
+                                    heartbeat_written_at = utc_now()
                         delay = 1
                 except (
                     ImError,
