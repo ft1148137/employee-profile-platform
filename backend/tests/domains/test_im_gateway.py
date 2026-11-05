@@ -757,7 +757,7 @@ def test_network_backoff_and_shutdown(
     delays.clear()
 
     async def stop(seconds: float) -> None:
-        assert seconds == 30
+        assert seconds == 10
         raise asyncio.CancelledError()
 
     monkeypatch.setattr(gateway.asyncio, "sleep", stop)

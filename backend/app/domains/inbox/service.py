@@ -8,6 +8,7 @@ from app.domains.base import utc_now
 from app.domains.change_request.models import ProfileChangeRequest
 from app.domains.evidence.models import EvidenceKind, Visibility
 from app.domains.evidence.service import append_evidence
+from app.domains.im.notifications import enqueue
 from app.domains.inbox.models import (
     InboxItem,
     InboxKind,
@@ -21,6 +22,12 @@ from app.domains.inbox.schemas import (
     QuestionPublic,
     QuestionsList,
 )
+
+
+def add_item(session: Session, item: InboxItem) -> None:
+    session.add(item)
+    session.flush()
+    enqueue(session, item)
 
 
 def notify(
@@ -47,7 +54,8 @@ def notify(
             )
             .values(done_at=now, read_at=func.coalesce(InboxItem.read_at, now))
         )
-    session.add(
+    add_item(
+        session,
         InboxItem(
             org_id=request.org_id,
             recipient_employee_id=None
@@ -57,7 +65,7 @@ def notify(
             request_id=request.id,
             kind=kind,
             message=message,
-        )
+        ),
     )
 
 

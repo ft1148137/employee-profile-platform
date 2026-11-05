@@ -40,3 +40,8 @@ class BindingPublic(BaseModel):
     created_at: datetime
     notify: bool
     active: bool
+
+
+class BindingNotifyUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    notify: bool

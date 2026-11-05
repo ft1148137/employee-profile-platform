@@ -15,6 +15,7 @@ from app.domains.account.limiter import check_login_limit, record_login_attempt
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.im.models import ImBindCode, ImBinding, ImEvent, ImSetting
+from app.domains.im.notifications import cancel_pending
 from app.domains.im.schemas import BindingCode, BindingPublic, Platform
 from app.domains.org.models import Organization, OrgMembership
 from app.domains.org.service import EmployeeNotFound, visible_employee
@@ -221,8 +222,31 @@ def list_bindings(db: Session, p: Principal) -> list[BindingPublic]:
     return result
 
 
+def set_notify(db: Session, p: Principal, platform: Platform, notify: bool) -> None:
+    if p.employee_id is None:
+        raise EmployeeNotFound()
+    _lock(db, p.org_id)
+    row = db.exec(
+        select(ImBinding).where(
+            ImBinding.org_id == p.org_id,
+            ImBinding.employee_id == p.employee_id,
+            ImBinding.platform == platform,
+        )
+    ).one_or_none()
+    if row is None:
+        raise EmployeeNotFound()
+    row.notify = notify
+    db.add(row)
+    if not notify:
+        cancel_pending(db, p.org_id, platform, p.employee_id)
+    _audit(db, p, "im_binding.notify_updated", platform)
+    db.commit()
+
+
 def unbind(db: Session, p: Principal, platform: Platform) -> None:
     _lock(db, p.org_id)
+    if p.employee_id is not None:
+        cancel_pending(db, p.org_id, platform, p.employee_id)
     db.exec(
         delete(ImBinding).where(
             col(ImBinding.org_id) == p.org_id,

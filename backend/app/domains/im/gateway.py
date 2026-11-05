@@ -15,6 +15,7 @@ from app.domains.im import binding
 from app.domains.im.adapters.base import Adapter, Event, ImError
 from app.domains.im.adapters.telegram import Telegram
 from app.domains.im.models import ImEvent, ImSetting
+from app.domains.im.notifications import send_pending
 from app.domains.im.schemas import Platform
 from app.domains.org.service import visible_employee
 
@@ -27,6 +28,7 @@ class Gateway:
         self.engine = engine
         self.tasks: dict[tuple[UUID, Platform], tuple[str, asyncio.Task[None]]] = {}
         self.identities: dict[tuple[Platform, str], UUID] = {}
+        self.adapters: dict[tuple[UUID, Platform], tuple[str, Adapter]] = {}
 
     def enabled(self, org_id: UUID, platform: Platform, credentials: str) -> bool:
         with Session(self.engine) as db:
@@ -113,6 +115,7 @@ class Gateway:
                         setting.bot_identity = identity
                         db.add(setting)
                         db.commit()
+                    self.adapters[org_id, platform] = credentials, adapter
                     while True:
                         async for event in adapter.poll():
                             reply = self.dispatch(event, identity, credentials)
@@ -152,6 +155,7 @@ class Gateway:
                     ):
                         return
                 finally:
+                    self.adapters.pop((org_id, platform), None)
                     if adapter:
                         await adapter.close()
                         adapter = None
@@ -184,7 +188,11 @@ class Gateway:
         try:
             while True:
                 await self.refresh()
-                await asyncio.sleep(30)
+                try:
+                    await send_pending(self.engine, self.adapters)
+                except SQLAlchemyError:
+                    logger.warning("IM notification delivery stopped: code=storage")
+                await asyncio.sleep(10)
         finally:
             for _, task in self.tasks.values():
                 task.cancel()
