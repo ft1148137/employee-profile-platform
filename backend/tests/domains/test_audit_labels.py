@@ -9,6 +9,7 @@ def test_audit_labels_cover_backend_events() -> None:
     root = Path(__file__).resolve().parents[3]
     labels = (root / "frontend/src/components/Admin/auditLabels.ts").read_text()
     expansions = {
+        "review_delegation.{}": {"created", "revoked"},
         "setup.step_{}": {"completed", "skipped"},
         "sync_run.{}": {"succeeded", "failed"},
         "external_identity.{}": {"linked", "unlinked"},
