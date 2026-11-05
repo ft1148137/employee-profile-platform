@@ -61,6 +61,10 @@ test("M2 real Cloud: roster, manual identity, initial request and evidence", asy
   await steps.getByRole("button", { name: /配置模型/ }).click()
   await configureModel(page, modelUrl)
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await expect(
+    page.getByRole("heading", { name: "审批规则", exact: true }),
+  ).toBeVisible()
+  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
   await page.getByRole("button", { name: "生成初始画像", exact: true }).click()
   await expect(
     page.getByText(
