@@ -18,6 +18,7 @@ from app.domains.inbox.models import (
     QuestionKind,
     QuestionStatus,
 )
+from app.domains.inbox.service import add_item
 from app.domains.org.models import (
     Employee,
     EmploymentStatus,
@@ -169,14 +170,15 @@ def generate_questions(
         )
         session.add(question)
         session.flush()
-        session.add(
+        add_item(
+            session,
             InboxItem(
                 org_id=org_id,
                 recipient_employee_id=employee.id,
                 kind=InboxKind.QUESTION,
                 question_id=question.id,
                 message=text,
-            )
+            ),
         )
         opened.add(key)
         generated += 1

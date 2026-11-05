@@ -12,6 +12,7 @@ from app.domains.base import utc_now
 from app.domains.im.adapters.base import ImError
 from app.domains.im.adapters.telegram import Telegram
 from app.domains.im.models import ImSetting
+from app.domains.im.notifications import cancel_pending
 from app.domains.im.schemas import (
     ImConnectionTest,
     ImSettingPublic,
@@ -84,9 +85,12 @@ def save_setting(
         ):
             raise InvalidImSetting("机器人令牌格式不正确")
         if updates and credentials != previous:
+            cancel_pending(db, principal.org_id, platform)
             row.credentials = encrypt_secret(json.dumps(credentials))
             row.bot_identity = None
     row.enabled = body.enabled
+    if not row.enabled:
+        cancel_pending(db, principal.org_id, platform)
     if platform == "telegram":
         row.email_auto_bind = False
     elif body.email_auto_bind is not None:

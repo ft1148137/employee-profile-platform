@@ -6,6 +6,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKeyConstraint,
+    Index,
     String,
     UniqueConstraint,
 )
@@ -75,6 +76,26 @@ class ImEvent(SQLModel, table=True):
     received_at: datetime = Field(
         default_factory=utc_now, sa_type=DateTime(timezone=True)
     )
+
+
+class ImNotification(TenantRecord, table=True):
+    __tablename__ = "im_notification"
+    __table_args__ = (
+        tenant_fk("inbox_item_id", "inbox_item"),
+        tenant_fk("employee_id", "employee"),
+        UniqueConstraint("org_id", "inbox_item_id", "platform"),
+        CheckConstraint("platform IN ('telegram', 'feishu', 'wecom')"),
+        CheckConstraint("status IN ('pending', 'sent', 'failed')"),
+        CheckConstraint("attempts BETWEEN 0 AND 3"),
+        Index("ix_im_notification_pending", "org_id", "status", "created_at"),
+    )
+    inbox_item_id: UUID
+    employee_id: UUID
+    platform: Platform = Field(sa_type=String)
+    status: str = "pending"
+    attempts: int = 0
+    last_error_code: str | None = None
+    sent_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
 
 class ImAction(SQLModel, table=True):

@@ -296,6 +296,16 @@ export type BindingCode = {
 };
 
 /**
+ * BindingNotifyUpdate
+ */
+export type BindingNotifyUpdate = {
+    /**
+     * Notify
+     */
+    notify: boolean;
+};
+
+/**
  * BindingPublic
  */
 export type BindingPublic = {
@@ -4429,6 +4439,40 @@ export type imBindingsDeleteImBindingResponses = {
 };
 
 export type imBindingsDeleteImBindingResponse = imBindingsDeleteImBindingResponses[keyof imBindingsDeleteImBindingResponses];
+
+export type imBindingsUpdateImBindingNotifyData = {
+    body: BindingNotifyUpdate;
+    path: {
+        /**
+         * Platform
+         */
+        platform: 'feishu' | 'wecom' | 'telegram';
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/me/im-bindings/{platform}';
+};
+
+export type imBindingsUpdateImBindingNotifyErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type imBindingsUpdateImBindingNotifyError = imBindingsUpdateImBindingNotifyErrors[keyof imBindingsUpdateImBindingNotifyErrors];
+
+export type imBindingsUpdateImBindingNotifyResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type imBindingsUpdateImBindingNotifyResponse = imBindingsUpdateImBindingNotifyResponses[keyof imBindingsUpdateImBindingNotifyResponses];
 
 export type imSettingsGetImSettingsData = {
     body?: never;

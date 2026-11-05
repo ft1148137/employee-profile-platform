@@ -42,6 +42,32 @@ test("employees generate a code, see bindings and unbind from personal settings"
     },
   ]
   await expect(page.getByText("Telegram · 100")).toBeVisible({ timeout: 15000 })
+  let rejectUpdate = false
+  await page.route("**/me/im-bindings/telegram", async (route) => {
+    expect(route.request().method()).toBe("PATCH")
+    const body = route.request().postDataJSON()
+    expect(Object.keys(body)).toEqual(["notify"])
+    if (rejectUpdate) {
+      await route.fulfill({ status: 503, json: { detail: "保存失败，请重试" } })
+    } else {
+      rows[0].notify = body.notify
+      await route.fulfill({ status: 204 })
+    }
+  })
+  const notification = page.getByRole("checkbox", { name: "Telegram 推送通知" })
+  await expect(notification).toBeChecked()
+  await notification.click()
+  await expect(notification).not.toBeChecked()
+  await expect(page.getByRole("status")).toHaveText("推送设置已保存")
+  await page.reload()
+  await page.getByRole("tab", { name: "IM 绑定", exact: true }).click()
+  await expect(notification).not.toBeChecked()
+  await notification.click()
+  await expect(notification).toBeChecked()
+  rejectUpdate = true
+  await notification.click()
+  await expect(page.getByRole("status")).toHaveText("保存失败，请重试")
+  await expect(notification).toBeChecked()
   await expectChineseCopy(page, ["Telegram"])
   await page.screenshot({
     path: "test-results/im-bindings.png",

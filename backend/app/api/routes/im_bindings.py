@@ -3,7 +3,12 @@ from fastapi import APIRouter, Response
 from app.api.deps import SessionDep
 from app.authz.deps import OrgPrincipalDep
 from app.domains.im import binding
-from app.domains.im.schemas import BindingCode, BindingPublic, Platform
+from app.domains.im.schemas import (
+    BindingCode,
+    BindingNotifyUpdate,
+    BindingPublic,
+    Platform,
+)
 
 router = APIRouter(prefix="/orgs/{org_id}/me", tags=["im-bindings"])
 
@@ -26,3 +31,13 @@ def delete_im_binding(
     platform: Platform, db: SessionDep, principal: OrgPrincipalDep
 ) -> None:
     binding.unbind(db, principal, platform)
+
+
+@router.patch("/im-bindings/{platform}", status_code=204)
+def update_im_binding_notify(
+    platform: Platform,
+    body: BindingNotifyUpdate,
+    db: SessionDep,
+    principal: OrgPrincipalDep,
+) -> None:
+    binding.set_notify(db, principal, platform, body.notify)

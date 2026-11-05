@@ -571,6 +571,8 @@ def test_telegram_webhook_chunks_rate_limit_and_normalization(
             assert waits == [2]
         finally:
             await adapter.close()
+        with pytest.raises(ImError, match="network"):
+            await adapter.send_text("100", "断线后的合成提醒")
 
     asyncio.run(run())
 
@@ -753,7 +755,7 @@ def test_network_backoff_and_shutdown(
     delays.clear()
 
     async def stop(seconds: float) -> None:
-        assert seconds == 30
+        assert seconds == 10
         raise asyncio.CancelledError()
 
     monkeypatch.setattr(gateway.asyncio, "sleep", stop)

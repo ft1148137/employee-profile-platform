@@ -4,6 +4,7 @@ import { type BindingCode, ImBindingsService } from "@/client"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useOrg } from "@/hooks/useOrg"
 import { handleError } from "@/utils"
 
@@ -46,6 +47,24 @@ function Bindings({ orgId }: { orgId: string }) {
     onSuccess: () => {
       setCode(undefined)
       setMessage("已解绑，旧绑定和绑定码已失效")
+      client.invalidateQueries({ queryKey })
+    },
+    onError: handleError.bind(setMessage),
+  })
+  const notification = useMutation({
+    mutationFn: ({
+      platform,
+      notify,
+    }: {
+      platform: keyof typeof names
+      notify: boolean
+    }) =>
+      ImBindingsService.bindingsUpdateImBindingNotify({
+        path: { ...path, platform },
+        body: { notify },
+      }),
+    onSuccess: () => {
+      setMessage("推送设置已保存")
       client.invalidateQueries({ queryKey })
     },
     onError: handleError.bind(setMessage),
@@ -105,6 +124,24 @@ function Bindings({ orgId }: { orgId: string }) {
                 {row.active ? "已绑定" : "已失效，请确认入口已开启后重新绑定"}
               </p>
             </div>
+            <label
+              className="flex items-center gap-2 text-sm"
+              htmlFor={`notify-${row.platform}`}
+            >
+              <Checkbox
+                id={`notify-${row.platform}`}
+                checked={row.notify}
+                disabled={notification.isPending}
+                onCheckedChange={(checked) =>
+                  notification.mutate({
+                    platform: row.platform,
+                    notify: checked === true,
+                  })
+                }
+                aria-label={`${names[row.platform]} 推送通知`}
+              />
+              推送通知
+            </label>
             <Button
               variant="outline"
               disabled={remove.isPending}
