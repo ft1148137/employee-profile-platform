@@ -68,6 +68,25 @@ Agent 用 `thinkingLevel`：`off/minimal/low/medium/high/xhigh`；底层 `stream
 
 ## 额度、错误与续跑
 
+### M4 错误分类（NERE-120）
+
+Pi 的错误事件只返回固定代码；上游错误正文、类型原值、凭据不进入事件或日志。后端起草进度、连接测试和机器人使用以下固定中文文案：
+
+| 代码 | 条件 | 后端文案 |
+| --- | --- | --- |
+| `model_not_found` | HTTP 404；或 400/403 且结构化类型明确说明模型不可用 | 这个模型不可用，请换一个模型 |
+| `model_unauthorized` | HTTP 401 | 密钥不对或没有权限（订阅沿用重新登录流程） |
+| `upstream_rejected` | 其他 4xx（额度、限频除外） | 模型服务拒绝了请求，请检查模型设置 |
+| `upstream_unavailable` | 5xx、网络连接失败、等待模型的总期限到期 | 模型服务暂时不可用，请稍后重试 |
+| `rate_limited` | 429、400/403 的明确额度类型，或既有流内额度错误 | 沿用模型用量到上限及恢复时间 |
+| `model_error` | 其余无法分类的失败 | 模型服务暂时不可用 |
+
+新分类只看 HTTP 状态和错误对象的结构化类型字段，不从 `message` 猜测模型是否可用。400/403 的 JSON 只检查 `error.type`、`error.code`、顶层 `type` / `code`，精确匹配 `model_not_found`、`model_not_available`、`model_not_supported`、`unsupported_model`、`invalid_model`、`model_access_denied`；其他值按上游拒绝处理。无法解析、超过 16 KiB 的正文也回退到上游拒绝。上游 HTTP 错误不通过错误原文识别额度；既有成功 HTTP 流中的额度文字识别和恢复时间估算保留。
+
+400/403 的 `insufficient_quota`、`rate_limit_exceeded`、`usage_limit_reached`、`usage_not_included` 类型继续走额度处理。
+
+Pi 1.5.0 支持请求级 `fetch`。它在 SDK 消费响应前捕获状态及允许的头，并限量读取 400/403 的响应副本以检查上述字段，取代旧 diagnostics_channel 观察器；不替换全局 fetch，不增加重试、不改变出口约束。工具等待超时仍返回 `deadline`。后端用专门的固定文案异常供机器人展示，其他未分类异常继续使用通用提示，不能直接展示任意异常正文。
+
 provider 通过流的 error 事件及最终 `AssistantMessage.stopReason=error/aborted`、`errorMessage` 返回失败；不能只捕获 JS throw，也不能把空输出算成功。Codex 的 `usage_limit_reached/usage_not_included/rate_limit_exceeded` 会转换成人类文字，resets_at 被四舍五入为分钟，结构化正文不保留。SSE 路径还会对部分 429/5xx 做最多三轮退避重试，必须计入总期限，不能再在外层无限叠加重试。
 
 S7 在每次调用的 `onResponse` 捕获状态与允许的响应头（只选 Retry-After、配额 reset 头），不记录全部 headers；优先 Retry-After（秒数或 HTTP 日期），其次可解析 reset 头，再其次文字里的估计分钟，完全未知按 ADR-0011 估算 30 分钟并标 `estimated=true`。不能承诺从 Pi 取得原始 resets_at 或可靠区分 5 小时/每周窗口；若产品要精确时间，须在 S7b 给固定版本 SSE fetch 加请求级响应拦截，配套并发测试，不用进程全局替换 fetch。
