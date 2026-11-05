@@ -266,7 +266,7 @@ def test_existing_open_appeal_returns_conflict(db: Session, demo: tuple) -> None
 
 
 def test_appeal_migration_roundtrip(migration_engine: Engine) -> None:
-    migrate(migration_engine, "downgrade", "b123001bc001")
+    migrate(migration_engine, "downgrade", "b141001bc001")
     with migration_engine.connect() as connection:
         assert "review_appeal" not in inspect(connection).get_table_names()
     migrate(migration_engine, "upgrade", "b127001bc001")
