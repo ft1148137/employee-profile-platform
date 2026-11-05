@@ -71,6 +71,7 @@ function Delegations({ orgId, manager }: { orgId: string; manager: boolean }) {
           <label className="block space-y-2">
             <span>代理人</span>
             <select
+              aria-label="代理人"
               className="w-full rounded-md border bg-background p-2"
               required
               value={delegate}
