@@ -16,14 +16,14 @@ def test_review_migration_roundtrip(migration_engine: Engine) -> None:
         inspector = inspect(connection)
         assert connection.execute(
             text("SELECT version_num FROM alembic_version")
-        ).all() == [("b117001bc001",)]
+        ).all() == [("b117002bc001",)]
         assert {
             tuple(fk["constrained_columns"])
             for fk in inspector.get_foreign_keys("review_decision")
         } >= {
             ("org_id", "request_id"),
-            ("org_id", "reviewer_membership_id"),
-            ("org_id", "acting_for_membership_id"),
+            ("org_id", "reviewer_user_id"),
+            ("org_id", "acting_for_user_id"),
         }
         assert {
             tuple(fk["constrained_columns"])

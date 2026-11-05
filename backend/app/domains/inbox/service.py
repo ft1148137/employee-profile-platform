@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlmodel import Session, col, func, select, update
+from sqlmodel import Session, col, func, or_, select, update
 
 from app.authz.principal import Principal
 from app.domains.audit.service import record_audit
@@ -29,6 +29,7 @@ def notify(
     kind: InboxKind,
     message: str,
     recipient_employee_id: UUID | None = None,
+    recipient_user_id: UUID | None = None,
 ) -> None:
     if kind in (InboxKind.SUBMITTED, InboxKind.STATUS_CHANGED, InboxKind.DECIDED):
         now = utc_now()
@@ -49,7 +50,10 @@ def notify(
     session.add(
         InboxItem(
             org_id=request.org_id,
-            recipient_employee_id=recipient_employee_id or request.subject_employee_id,
+            recipient_employee_id=None
+            if recipient_user_id
+            else recipient_employee_id or request.subject_employee_id,
+            recipient_user_id=recipient_user_id,
             request_id=request.id,
             kind=kind,
             message=message,
@@ -60,11 +64,16 @@ def notify(
 def my_inbox(
     principal: Principal, session: Session, skip: int = 0, limit: int = 50
 ) -> InboxList:
-    from app.domains.change_request.employee import employee_id
-
     query = select(InboxItem).where(
         col(InboxItem.org_id) == principal.org_id,
-        col(InboxItem.recipient_employee_id) == employee_id(principal),
+        or_(
+            col(InboxItem.recipient_employee_id) == principal.employee_id
+            if principal.employee_id
+            else False,
+            col(InboxItem.recipient_user_id) == principal.user_id
+            if principal.user_id
+            else False,
+        ),
     )
     scoped = query.subquery()
     count, unread, pending = session.exec(
@@ -97,13 +106,20 @@ def my_inbox(
 
 
 def mark_read(principal: Principal, session: Session, inbox_id: UUID) -> InboxPublic:
-    from app.domains.change_request.employee import EmployeeRecordNotFound, employee_id
+    from app.domains.change_request.employee import EmployeeRecordNotFound
 
     item = session.exec(
         select(InboxItem)
         .where(
             col(InboxItem.org_id) == principal.org_id,
-            col(InboxItem.recipient_employee_id) == employee_id(principal),
+            or_(
+                col(InboxItem.recipient_employee_id) == principal.employee_id
+                if principal.employee_id
+                else False,
+                col(InboxItem.recipient_user_id) == principal.user_id
+                if principal.user_id
+                else False,
+            ),
             InboxItem.id == inbox_id,
         )
         .with_for_update()

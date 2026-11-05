@@ -52,7 +52,10 @@ def test_my_reads(shared_demo: tuple, client: TestClient) -> None:
         assert (
             client.get(f"{url}/me/{path}", headers=auth["foreign"]).status_code == 404
         )
-        assert client.get(f"{url}/me/{path}", headers=auth["admin"]).status_code == 404
+        admin_response = client.get(f"{url}/me/{path}", headers=auth["admin"])
+        assert admin_response.status_code == (200 if path == "inbox" else 404)
+        if path == "inbox":
+            assert admin_response.json()["data"] == []
     for query in ("limit=0", "limit=101", "skip=-1"):
         assert (
             client.get(

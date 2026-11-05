@@ -265,12 +265,40 @@ def test_admin_without_employee_is_fallback_and_access_expires(
     admin = actor(db, owner.org_id, "admin@demo.example.com")
     assert admin.employee_id is None
     reviewer = reviewers_for(db, owner.org_id, owner.employee_id)
-    assert any(r.user_id == admin.user_id for r in reviewer)
+    assert admin.user_id in reviewer
     detail = service.get_review(admin, db, request.id)
     evidence_id = detail.items[0].evidence[-1].id
     assert detail.items[0].evidence[-1].content is not None
     assert read_evidence(db, admin, evidence_id).content is not None
     url, _, auth = demo
+    inbox = client.get(f"{url}/me/inbox", headers=auth["admin"])
+    assert inbox.status_code == 200
+    notification = next(
+        i for i in inbox.json()["data"] if i["request_id"] == str(request.id)
+    )
+    assert (
+        notification["kind"] == "review_requested"
+        and inbox.json()["pending_count"] >= 1
+    )
+    assert (
+        client.post(
+            f"{url}/me/inbox/{notification['id']}/read", headers=auth["admin"]
+        ).status_code
+        == 200
+    )
+    foreign_notification = db.exec(
+        select(InboxItem).where(
+            InboxItem.org_id == owner.org_id,
+            InboxItem.recipient_employee_id == demo[1]["E02"].id,
+        )
+    ).first()
+    assert foreign_notification is not None
+    assert (
+        client.post(
+            f"{url}/me/inbox/{foreign_notification.id}/read", headers=auth["admin"]
+        ).status_code
+        == 404
+    )
     response = client.post(
         f"{url}/reviews/{request.id}/decisions",
         headers=auth["admin"],
@@ -282,9 +310,9 @@ def test_admin_without_employee_is_fallback_and_access_expires(
     assert response.status_code == 200, response.text
     db.expire_all()
     decision = db.get(ReviewDecision, UUID(response.json()["decision_id"]))
-    assert decision.reviewer_membership_id == next(
-        r.id for r in reviewer if r.user_id == admin.user_id
-    )
+    assert decision.reviewer_user_id == admin.user_id
+    db.expire_all()
+    assert db.get(InboxItem, UUID(notification["id"])).done_at is not None
     assert read_evidence(db, admin, evidence_id).content is None
     assert read_evidence(db, owner, evidence_id).content is not None
     history_url = f"{url}/employees/{owner.employee_id}/change-requests?status=all"
@@ -325,21 +353,15 @@ def test_routing_hierarchy_and_reporting_line_priority(
     db.flush()
     subject.department_id = child.id
     upper_member = add_manager(db, upper, root.id)
-    assert [m.employee_id for m in reviewers_for(db, subject.org_id, subject.id)] == [
-        direct.id
-    ]
-    assert [m.id for m in reviewers_for(db, subject.org_id, direct.id)] == [
-        upper_member.id
-    ]
+    assert reviewers_for(db, subject.org_id, subject.id) == [manager(db, demo).user_id]
+    assert reviewers_for(db, subject.org_id, direct.id) == [upper_member.user_id]
     db.add(
         ReportingLine(
             org_id=subject.org_id, employee_id=subject.id, manager_employee_id=upper.id
         )
     )
     db.commit()
-    assert [m.id for m in reviewers_for(db, subject.org_id, subject.id)] == [
-        upper_member.id
-    ]
+    assert reviewers_for(db, subject.org_id, subject.id) == [upper_member.user_id]
     db.exec(
         delete(RoleGrant).where(
             RoleGrant.org_id == subject.org_id,
@@ -347,9 +369,7 @@ def test_routing_hierarchy_and_reporting_line_priority(
         )
     )
     db.commit()
-    assert [m.employee_id for m in reviewers_for(db, subject.org_id, subject.id)] == [
-        direct.id
-    ]
+    assert reviewers_for(db, subject.org_id, subject.id) == [manager(db, demo).user_id]
 
 
 @pytest.mark.parametrize("admin", [False, True])
@@ -756,3 +776,51 @@ def test_dictionary_cannot_change_between_validation_and_publication(
     db.commit()
     save_version(db, admin, definitions)
     db.commit()
+
+
+@pytest.mark.parametrize("state", ["disabled", "inactive", "no_employee"])
+def test_review_candidates_require_active_account_and_employment(
+    demo: tuple, db: Session, state: str
+) -> None:
+    subject = demo[1]["E02"]
+    member = db.exec(
+        select(OrgMembership).where(
+            OrgMembership.org_id == subject.org_id,
+            OrgMembership.employee_id == demo[1]["E01"].id,
+        )
+    ).one()
+    isolated_user = User(
+        username=str(uuid4()), email=f"{uuid4()}@example.com", hashed_password="unused"
+    )
+    db.add(isolated_user)
+    db.flush()
+    member.user_id = isolated_user.id
+    user_id = isolated_user.id
+    if state == "disabled":
+        db.get(User, user_id).is_active = False
+    elif state == "inactive":
+        demo[1]["E01"].employment_status = "inactive"
+    else:
+        member.employee_id = None
+    db.commit()
+    reviewers = reviewers_for(db, subject.org_id, subject.id)
+    assert reviewers == sorted(set(reviewers))
+    if state != "no_employee":
+        assert user_id not in reviewers
+        assert actor(db, subject.org_id, "admin@demo.example.com").user_id in reviewers
+    else:
+        assert reviewers == [user_id]
+        _, request = pending(db, demo)
+        principal = get_org_principal(subject.org_id, isolated_user, db)
+        assert principal.employee_id is None
+        detail = service.get_review(principal, db, request.id)
+        assert detail.items
+        from app.domains.inbox.service import my_inbox
+
+        notifications = my_inbox(principal, db)
+        assert any(i.request_id == request.id for i in notifications.data)
+        result = service.decide(
+            principal, db, request.id, request.revision, values(request)
+        )
+        db.commit()
+        assert db.get(ReviewDecision, result.decision_id).reviewer_user_id == user_id

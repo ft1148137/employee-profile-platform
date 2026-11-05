@@ -4,11 +4,11 @@
 
 ## 审批人身份与路由
 
-审批人是企业成员 OrgMembership，允许没有员工身份的管理员参与兜底审批。Principal 不增加字段，按企业和 user_id 对应成员；人工决定记录 reviewer_membership_id。acting_for_membership_id 仅预留给后续代理审批。policy、sync 决定不记录人工成员；本次人工 decide 服务拒绝使用这两个入口。
+审批人以企业成员的 user_id 表示，允许没有员工身份的管理员参与兜底审批。Principal 不增加字段；人工决定记录 reviewer_user_id，acting_for_user_id 仅预留给后续代理审批，两列均用企业和 user_id 复合外键指向 OrgMembership。policy、sync 决定不记录人工成员；本次人工 decide 服务拒绝使用这两个入口。
 
-reviewers_for(session, org_id, subject_employee_id) 动态返回成员列表，始终排除请求对象本人。优先选择 ReportingLine 的当前直属上级，但他必须有覆盖员工部门（包括下级部门）的部门经理授权。否则从员工部门沿父部门逐级寻找，取最近一级的全部经理；仍为空则交给全部企业管理员。部门经理提交自己的请求同样排除自己；没有可用审批人时保留 pending_review，管理员列表返回不可决定的条目和原因。
+reviewers_for(session, org_id, subject_employee_id) 动态返回去重、排序的 user_id 列表，始终排除请求对象本人、停用账号及关联了离职员工的成员。没有关联员工但有部门经理授权的成员同样可当审批人。优先选择 ReportingLine 的当前直属上级，但他必须有覆盖员工部门（包括下级部门）的部门经理授权。否则从员工部门沿父部门逐级寻找，取最近一级的全部经理；仍为空则交给全部企业管理员。部门经理提交自己的请求同样排除自己；没有可用审批人时保留 pending_review，管理员列表返回不可决定的条目和原因。
 
-有员工身份的审批人收到 review_requested；没有员工身份的管理员通过待审批列表及其数量获取任务，不改变员工收件箱模型。提交和管理员批量送审共用路由；决定、撤回时关闭该请求的待办通知。
+所有审批人通过 recipient_user_id 收到 review_requested；其余通知继续使用 recipient_employee_id，两种收件人恰好一个非空。my_inbox 和 mark_read 在租户内按当前 user_id 或非空 employee_id 读取，没有员工身份的成员也可使用；员工专属的待确认问题等接口保持原限制。提交和管理员批量送审共用路由；决定、撤回时关闭该请求全部待办通知。没有员工身份的成员目前不能获取 MCP 员工令牌或绑定 IM，审批入口为网页；对应网页由 S7 实现。
 
 ## 审批期间的读取
 
@@ -36,6 +36,8 @@ publish(session, request, items, decision) 供后续审批规则和增量同步�
 
 ## 迁移与取舍
 
-一个迁移新增 review_decision、请求父指针及决定时间、逐项结果及发布指针，并扩展通知种类；引用全部带 org_id 复合外键。降级移除本阶段新增的列、决定表和两种新通知，保留已发布画像和追加的经理意见证据。禁止把降级当作撤销已经发布的业务结果。
+首次迁移 b117001bc001 新增决定、请求父指针、逐项结果及通知种类。该版本已经发布，保留不改写。补充迁移 b117002bc001 按技术规划 01:14:15 的最终决定，将 reviewer_membership_id/acting_for_membership_id 的值通过 OrgMembership 映射为 user_id 后改列名和复合外键，并增加用户收件人。历史 review_requested 能映射到当前成员的转为用户收件人；没有对应成员的保留原员工收件人，避免丢弃历史通知。
+
+补充迁移降级将决定中的 user_id 映射回成员 ID，按约定删除用户收件箱条目后恢复员工收件人的非空约束。首次迁移降级移除新增决定字段、决定表和两种新通知；两次降级都保留已发布画像及追加的经理意见证据。禁止把降级当作撤销已经发布的业务结果。
 
 复用现有 Principal、员工可见范围、append_evidence、状态转换、通知和画像快照；不添加依赖，不另建入口专属发布逻辑。此阶段不提供网页、代理审批、审批规则、申诉、MCP 或 IM 适配器。
