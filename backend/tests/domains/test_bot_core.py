@@ -25,7 +25,11 @@ from app.domains.change_request.models import ProfileChangeRequest, RequestOrigi
 from app.domains.change_request.schemas import ItemInput
 from app.domains.drafting.models import DraftingSetting
 from app.domains.inbox.models import PendingQuestion
-from app.domains.model.client import ModelRateLimited, ModelUnavailable
+from app.domains.model.client import (
+    ModelRateLimited,
+    ModelServiceError,
+    ModelUnavailable,
+)
 from app.domains.model.models import ModelSetting
 from app.domains.model.pi_client import TurnResult
 from tests.api.routes.test_employee_requests import payload, principal_for
@@ -283,6 +287,15 @@ def test_model_cannot_submit(
         (BotQuotaPaused(utc_now(), False), "模型额度暂时用完，预计"),
         (ModelRateLimited(None), "模型额度暂时用完，预计"),
         (ModelUnavailable("secret upstream"), "模型服务暂时不可用"),
+        (ModelServiceError("model_not_found"), "这个模型不可用，请换一个模型"),
+        (
+            ModelServiceError("upstream_rejected"),
+            "模型服务拒绝了请求，请检查模型设置",
+        ),
+        (
+            ModelServiceError("upstream_unavailable"),
+            "模型服务暂时不可用，请稍后重试",
+        ),
     ],
 )
 def test_fixed_errors(

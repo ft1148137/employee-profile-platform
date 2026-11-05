@@ -1,8 +1,6 @@
 import { Agent } from '@earendil-works/pi-agent-core';
 import { getModel, getProviders, getSupportedThinkingLevels, streamSimple } from './runtime.mjs';
-import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { channel } from 'node:diagnostics_channel';
 import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
 
@@ -51,23 +49,38 @@ const object = value => value !== null && typeof value === 'object' && !Array.is
 const text = value => typeof value === 'string' && value.length > 0;
 const only = (value, keys) => object(value) && Object.keys(value).every(k => keys.includes(k));
 const allowedHeader = name => /^(retry-after|[a-z0-9-]*reset[a-z0-9-]*)$/i.test(name);
-// Pi 0.73.1 skips onResponse on SDK HTTP errors; bind native fetch metadata per request.
-const observers = new AsyncLocalStorage();
-const requests = new WeakMap();
-channel('undici:request:create').subscribe(({ request }) => {
-  if (observers.getStore()) requests.set(request, observers.getStore());
-});
-channel('undici:request:headers').subscribe(({ request, response }) => {
-  const observe = requests.get(request);
-  if (!observe) return;
-  requests.delete(request);
-  const headers = {};
-  for (let i = 0; i < response.headers.length; i += 2) {
-    const name = String(response.headers[i]).toLowerCase();
-    if (allowedHeader(name)) headers[name] = String(response.headers[i + 1]).slice(0, 200);
-  }
-  observe({ status: response.statusCode, headers });
-});
+const unavailableModels = new Set(['model_not_found', 'model_not_available', 'model_not_supported',
+  'unsupported_model', 'invalid_model', 'model_access_denied']);
+const quotaTypes = new Set(['insufficient_quota', 'rate_limit_exceeded', 'usage_limit_reached', 'usage_not_included']);
+
+async function errorCode(response) {
+  const reader = response.clone().body?.getReader();
+  if (!reader) return undefined;
+  try {
+    let size = 0;
+    const chunks = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > 16384) return undefined;
+      chunks.push(value);
+    }
+    const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    const types = [body?.error?.type, body?.error?.code, body?.type, body?.code];
+    if (types.some(type => unavailableModels.has(type))) return 'model_not_found';
+    if (types.some(type => quotaTypes.has(type))) return 'rate_limited';
+  } catch { return undefined; }
+  finally { void reader.cancel().catch(() => {}); }
+}
+
+function upstreamCode(response) {
+  if (response.status === 401) return 'model_unauthorized';
+  if (response.status === 404 || response.code === 'model_not_found') return 'model_not_found';
+  if (response.status >= 500 || response.networkError) return 'upstream_unavailable';
+  if (response.status >= 400) return 'upstream_rejected';
+  return 'model_error';
+}
 
 function validate(body) {
   if (!only(body, ['version', 'run_id', 'mode', 'model', 'system_prompt', 'input', 'tools', 'history']) ||
@@ -244,13 +257,19 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
           response = {};
           run.signal = options.signal;
           return egress.run({ catalog: getProviders().includes(m.provider), origin: new URL(m.baseUrl).origin, lookup },
-            () => observers.run(options.onResponse, () => streamFn(model, context, { ...options, maxRetries: 0 })));
+            () => streamFn(model, context, { ...options, maxRetries: 0, fetch: async (...args) => {
+              let upstream;
+              try { upstream = await globalThis.fetch(...args); }
+              catch (error) { response.networkError = true; throw error; }
+              options.onResponse({ status: upstream.status, headers: Object.fromEntries(upstream.headers) });
+              if ([400, 403].includes(upstream.status)) response.code = await errorCode(upstream);
+              return upstream;
+            } }));
         },
         onResponse: r => {
           if (r.status === 401) run.cancel('model_unauthorized');
-          if (r.status === 403) run.cancel('model_forbidden');
           if (r.status === 404) run.cancel('model_not_found');
-          response = { status: r.status, headers: Object.fromEntries(Object.entries(r.headers)
+          response = { ...response, status: r.status, headers: Object.fromEntries(Object.entries(r.headers)
             .filter(([name]) => allowedHeader(name))
             .map(([name, value]) => [name.toLowerCase(), String(value).slice(0, 200)])) };
         },
@@ -298,12 +317,14 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
           send({ type: 'text', text: event.assistantMessageEvent.delta });
         if (event.type === 'message_end' && event.message.role === 'assistant' && event.message.stopReason === 'error') {
           const message = event.message.errorMessage ?? '';
-          run.error ??= response.status === 429 || /rate.?limit|usage limit|quota/i.test(message)
+          run.error ??= response.status === 429 || response.code === 'rate_limited' ||
+            ((!response.status || response.status < 400) && /rate.?limit|usage limit|quota/i.test(message))
             ? { code: 'rate_limited', ...quota(response.headers, message) }
-            : { code: response.status === 401 ? 'model_unauthorized' : 'model_error' };
+            : { code: upstreamCode(response) };
         }
       });
-      const timer = setTimeout(() => run.cancel('deadline'), body.mode === 'chat' ? Math.min(deadlineMs, chatDeadlineMs) : deadlineMs);
+      const timer = setTimeout(() => run.cancel(run.pending ? 'deadline' : 'upstream_unavailable'),
+        body.mode === 'chat' ? Math.min(deadlineMs, chatDeadlineMs) : deadlineMs);
       res.on('close', () => { if (!res.writableEnded) run.cancel('cancelled'); });
       run.finished = (async () => {
         let local;
@@ -317,7 +338,7 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
           await agent.prompt(body.input);
           send(run.error ? { type: 'error', ...run.error } : { type: 'done', stopReason: agent.state.messages.at(-1)?.stopReason ?? 'stop',
             model_calls: run.calls, tool_calls: run.tools });
-        } catch (error) { send({ type: 'error', ...(run.error ?? { code: error.message === 'local_auth_unavailable' ? error.message : 'model_error' }) }); }
+        } catch (error) { send({ type: 'error', ...(run.error ?? { code: error.message === 'local_auth_unavailable' ? error.message : upstreamCode(response) }) }); }
         finally {
           clearTimeout(timer);
           run.pending = undefined;

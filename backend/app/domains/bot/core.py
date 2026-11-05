@@ -18,7 +18,7 @@ from app.domains.bot.prompts import system_prompt
 from app.domains.change_request import employee
 from app.domains.inbox import service as inbox
 from app.domains.model import pi_client
-from app.domains.model.client import ModelUnavailable
+from app.domains.model.client import ModelServiceError, ModelUnavailable
 from app.domains.model.service import model_config, read_setting
 
 
@@ -78,6 +78,8 @@ def turn(db: Session, p: Principal, session_id: UUID, text: str) -> s.TurnRespon
         message = f"每小时 30 轮已用完，{error.retry_at.isoformat()} 恢复"
     except BotQuotaPaused as error:
         message = f"模型额度暂时用完，预计 {error.retry_at.isoformat()} 恢复"
+    except ModelServiceError as error:
+        message = str(error)
     except ModelUnavailable:
         message = "模型服务暂时不可用，请稍后再试"
     messages = [s.TextMessage(text=message)]
