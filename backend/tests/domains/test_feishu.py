@@ -3,7 +3,6 @@ import json
 import logging
 from dataclasses import replace
 from queue import Queue
-from threading import Event as Wait
 from uuid import uuid4
 
 import httpx
@@ -27,24 +26,10 @@ from tests.api.routes.test_employee_requests import payload
 from tests.domains.test_bot_core import enable as enable_model
 from tests.domains.test_bot_reviews import prepared
 from tests.domains.test_im_gateway import principal
+from tests.utils.feishu_listener import fake_listener, message
 from tests.utils.pi import PiHarness
 
 CREDS = {"app_id": "synthetic-app", "app_secret": "synthetic-secret"}
-
-
-def message(kind: str = "p2p") -> dict:
-    return {
-        "header": {"event_id": uuid4().hex, "event_type": "im.message.receive_v1"},
-        "event": {
-            "sender": {"sender_type": "user", "sender_id": {"open_id": "ou_test"}},
-            "message": {
-                "chat_id": "oc_test",
-                "chat_type": kind,
-                "message_type": "text",
-                "content": json.dumps({"text": "本人合成经历"}),
-            },
-        },
-    }
 
 
 def click(row: ImAction) -> dict:
@@ -453,11 +438,6 @@ def test_connection(
                         "private-upstream-body",
                     ]
                 )
-
-
-def fake_listener(_credentials: dict, events: object) -> None:
-    events.put_nowait(("event", json.dumps(message())))
-    Wait().wait(30)
 
 
 def test_sdk_callbacks_and_process_cleanup(
