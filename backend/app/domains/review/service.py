@@ -206,7 +206,12 @@ def get_review(
                 approval_blocked_reason=reason,
             )
         )
-    return ReviewDetail(id=request.id, revision=request.revision, items=result)
+    return ReviewDetail(
+        id=request.id,
+        revision=request.revision,
+        items=result,
+        owner_reviewed=request.submitted_via != SubmissionVia.ADMIN_HANDOVER,
+    )
 
 
 def decide(

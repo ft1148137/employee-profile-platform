@@ -53,7 +53,7 @@ function EvidenceContent({ evidence }: { evidence: EvidenceDetail }) {
     return (
       <div className="space-y-3">
         <p className="whitespace-pre-wrap leading-relaxed">
-          {text(content.text)}
+          {text(content.text ?? content.statement)}
         </p>
         <p className="text-sm text-muted-foreground">
           关联任务：
