@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from app.authz.principal import Principal
@@ -23,6 +24,7 @@ from app.domains.evidence.models import Evidence, EvidenceKind, Visibility
 from app.domains.evidence.service import append_evidence, retract_evidence
 from app.domains.model.client import (
     ModelRateLimited,
+    ModelServiceError,
     ModelUnavailable,
 )
 from app.domains.model.models import ModelSetting
@@ -31,7 +33,7 @@ from app.domains.org.models import ExternalIdentity
 from app.domains.profile.models import ProfileProgress
 from app.worker.tasks import draft_initial
 from tests.api.routes.test_initial_profiles import work_queue
-from tests.authz.test_tenant_access import tenant_data  # noqa: F401
+from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
 from tests.domains.test_ingest import ingest, person, record, rows
 from tests.utils.pi import PiHarness
 
@@ -403,6 +405,18 @@ def test_pause_and_resume(
             "ChatGPT 登录已失效，请在设置页重新连接",
         ),
         (ModelUnavailable("模型服务暂时不可用"), "连不上模型服务：模型服务暂时不可用"),
+        (
+            ModelServiceError("model_not_found"),
+            "这个模型不可用，请换一个模型",
+        ),
+        (
+            ModelServiceError("upstream_rejected"),
+            "模型服务拒绝了请求，请检查模型设置",
+        ),
+        (
+            ModelServiceError("upstream_unavailable"),
+            "模型服务暂时不可用，请稍后重试",
+        ),
         (SecretUnavailable(), "保存的模型密钥已失效，请重新填写"),
     ],
 )
@@ -422,6 +436,32 @@ def test_failures(
     service.run_drafting(Principal.system_worker(org), [str(employees[0].id)])
     db.expire_all()
     assert service.read_progress(db, org).failed[0].error == message
+
+
+@pytest.mark.parametrize(
+    "status,message",
+    [
+        (404, "这个模型不可用，请换一个模型"),
+        (422, "模型服务拒绝了请求，请检查模型设置"),
+        (503, "模型服务暂时不可用，请稍后重试"),
+    ],
+)
+def test_upstream_failure_reaches_progress_api(
+    drafting: tuple,
+    client: TestClient,
+    pi_service: PiHarness,
+    status: int,
+    message: str,
+) -> None:
+    org, _, _, employees, users = drafting
+    pi_service.replies.append({"status": status})
+    service.run_drafting(Principal.system_worker(org), [str(employees[0].id)])
+    response = client.get(
+        f"/api/v1/orgs/{org}/initial-profiles/progress", headers=headers(users[0])
+    )
+    assert response.status_code == 200
+    assert response.json()["failed"][0]["error"] == message
+    assert "sensitive" not in response.text + pi_service.logs.read_text()
 
 
 def test_pause_without_retry_time(drafting: tuple, db: Session) -> None:

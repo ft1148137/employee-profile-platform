@@ -13,6 +13,7 @@ from app.domains.audit.models import AuditEvent
 from app.domains.model.client import (
     ModelOutputInvalid,
     ModelRateLimited,
+    ModelServiceError,
     ModelUnavailable,
 )
 from app.domains.model.models import ModelSetting
@@ -312,6 +313,9 @@ def test_connection(
         "message": "模型连接成功",
     }
     for error in [
+        ModelServiceError("model_not_found"),
+        ModelServiceError("upstream_rejected"),
+        ModelServiceError("upstream_unavailable"),
         ModelUnavailable("密钥不对或没有权限"),
         ModelUnavailable("地址或模型名不对"),
         ModelUnavailable("连不上模型服务"),
@@ -419,10 +423,10 @@ def test_unsupported_reasoning_save(
     "status,reason",
     [
         (401, "密钥不对或没有权限"),
-        (403, "密钥不对或没有权限"),
-        (404, "地址或模型名不对"),
-        (400, "模型服务暂时不可用"),
-        (500, "模型服务暂时不可用"),
+        (403, "模型服务拒绝了请求，请检查模型设置"),
+        (404, "这个模型不可用，请换一个模型"),
+        (400, "模型服务拒绝了请求，请检查模型设置"),
+        (500, "模型服务暂时不可用，请稍后重试"),
     ],
 )
 def test_exceptions(
