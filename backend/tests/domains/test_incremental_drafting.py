@@ -121,9 +121,9 @@ def run(context: tuple, db: Session) -> None:
 
 
 def test_attach_publishes_without_pending_or_notification(
-    incremental_context: tuple, db: Session, pi_service: PiHarness
+    incremental_context: tuple, db: Session, pi_service: PiHarness, client: TestClient
 ) -> None:
-    org, schema, _, employees, _, claim, original = incremental_context
+    org, schema, _, employees, users, claim, original = incremental_context
     db.refresh(original)
     snapshot = original.model_dump()
     evidence_before = {e.id: e.model_dump() for e in rows(db, Evidence, org)}
@@ -152,6 +152,19 @@ def test_attach_publishes_without_pending_or_notification(
     assert latest.published_by["request_id"] == str(request.id) and latest.published_by[
         "decision_id"
     ] == str(decision.id)
+    base = f"/api/v1/orgs/{org}/employees/{employees[0].id}"
+    timeline = client.get(
+        f"{base}/change-requests/{request.id}/timeline", headers=headers(users[0])
+    )
+    assert timeline.status_code == 200
+    assert any(event["via"] == "sync" for event in timeline.json())
+    assert any(
+        event["action"] == "published" and event["version"] == 4
+        for event in timeline.json()
+    )
+    detail = client.get(f"{base}/profile-versions/4", headers=headers(users[0]))
+    assert detail.status_code == 200 and detail.json()["via"] == "sync"
+    assert detail.json()["request_id"] == str(request.id)
     db.refresh(original)
     assert original.model_dump() == snapshot
     published = db.get(ProfileClaim, item.published_claim_id)
