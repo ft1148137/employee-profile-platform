@@ -1,15 +1,15 @@
-import http.client
 import json
 import re
 from uuid import UUID
 
-import sentry_sdk
 from sqlmodel import Session, select
 
 from app.authz.principal import Principal
 from app.core.secrets import SecretUnavailable, decrypt_secret, encrypt_secret
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
+from app.domains.im.adapters.base import ImError
+from app.domains.im.adapters.telegram import Telegram
 from app.domains.im.models import ImSetting
 from app.domains.im.schemas import (
     ImConnectionTest,
@@ -74,6 +74,7 @@ def save_setting(
             if not REQUIRED[platform] <= updates.keys():
                 raise
             credentials = {}
+        previous = dict(credentials)
         credentials.update(updates)
         if not REQUIRED[platform] <= credentials.keys():
             raise InvalidImSetting("请填写完整的应用凭据")
@@ -81,8 +82,9 @@ def save_setting(
             r"[0-9]+:[A-Za-z0-9_-]+", credentials["bot_token"]
         ):
             raise InvalidImSetting("机器人令牌格式不正确")
-        if updates:
+        if updates and credentials != previous:
             row.credentials = encrypt_secret(json.dumps(credentials))
+            row.bot_identity = None
     row.enabled = body.enabled
     if platform == "telegram":
         row.email_auto_bind = False
@@ -108,7 +110,9 @@ def save_setting(
     return public_setting(db, principal.org_id, platform)
 
 
-def test_connection(db: Session, org_id: UUID, platform: Platform) -> ImConnectionTest:
+async def test_connection(
+    db: Session, org_id: UUID, platform: Platform
+) -> ImConnectionTest:
     if platform != "telegram":
         # shortcut: Connection tests are implemented with the platform adapters in S14/S15.
         return ImConnectionTest(
@@ -117,29 +121,25 @@ def test_connection(db: Session, org_id: UUID, platform: Platform) -> ImConnecti
     row = db.get(ImSetting, (org_id, platform))
     if not row or not row.credentials:
         return ImConnectionTest(ok=False, message="请先保存应用凭据")
-    connection = http.client.HTTPSConnection("api.telegram.org", timeout=10)
+    adapter = None
     try:
-        token = json.loads(decrypt_secret(row.credentials))["bot_token"]
-        # Suppress tracing because Telegram puts credentials in the URL path.
-        with sentry_sdk.new_scope() as scope:
-            scope.set_client(sentry_sdk.Client(dsn="", default_integrations=False))
-            connection.request("GET", f"/bot{token}/getMe")
-            response = connection.getresponse()
-            if response.status in (401, 403, 404):
-                return ImConnectionTest(ok=False, message="应用凭据无效或没有权限")
-            if response.status != 200:
-                return ImConnectionTest(ok=False, message="平台服务暂时不可用")
-            data = json.loads(response.read(65536))
-            if isinstance(data, dict) and data.get("ok") is True:
-                return ImConnectionTest(ok=True, message="连接成功")
-            return ImConnectionTest(ok=False, message="平台返回无效响应")
+        adapter = Telegram(org_id, json.loads(decrypt_secret(row.credentials)))
+        await adapter.test_connection()
+        return ImConnectionTest(ok=True, message="连接成功")
     except SecretUnavailable:
         return ImConnectionTest(ok=False, message="保存的密钥已失效，请重新填写")
-    except TimeoutError:
-        return ImConnectionTest(ok=False, message="连接超时，请检查网络")
-    except OSError, http.client.HTTPException:
-        return ImConnectionTest(ok=False, message="无法连接平台，请检查网络")
-    except ValueError, KeyError:
+    except ImError as error:
+        messages = {
+            "credentials": "应用凭据无效或没有权限",
+            "timeout": "连接超时，请检查网络",
+            "network": "无法连接平台，请检查网络",
+            "invalid_response": "平台返回无效响应",
+        }
+        return ImConnectionTest(
+            ok=False, message=messages.get(error.code, "平台服务暂时不可用")
+        )
+    except ValueError, KeyError, TypeError:
         return ImConnectionTest(ok=False, message="平台返回无效响应")
     finally:
-        connection.close()
+        if adapter:
+            await adapter.close()

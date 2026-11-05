@@ -1,10 +1,7 @@
-import http.client
 import json
 import logging
-from collections.abc import Generator
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from threading import Thread
 
+import httpx
 import pytest
 import sentry_sdk
 from fastapi.testclient import TestClient
@@ -13,7 +10,6 @@ from sqlmodel import Session, select
 
 from app.core.secrets import decrypt_secret
 from app.domains.audit.models import AuditEvent
-from app.domains.im import settings as im
 from app.domains.im.models import ImSetting
 from tests.utils.migrations import migrate
 
@@ -144,39 +140,6 @@ def test_validation(demo: tuple, client: TestClient) -> None:
         assert "private-value" not in response.text
 
 
-@pytest.fixture
-def telegram_server(monkeypatch: pytest.MonkeyPatch) -> Generator[dict]:
-    state = {"status": 200, "body": b'{"ok": true, "result": {}}', "paths": []}
-
-    class Handler(BaseHTTPRequestHandler):
-        def do_GET(self) -> None:
-            state["paths"].append(self.path)
-            self.send_response(state["status"])
-            self.end_headers()
-            self.wfile.write(state["body"])
-
-        def log_message(self, _format: str, *_args: object) -> None:
-            pass
-
-    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    thread = Thread(target=server.serve_forever)
-    thread.start()
-
-    def connect(host: str, timeout: int) -> http.client.HTTPConnection:
-        assert host == "api.telegram.org" and timeout == 10
-        return http.client.HTTPConnection(
-            "127.0.0.1", server.server_port, timeout=timeout
-        )
-
-    monkeypatch.setattr(im.http.client, "HTTPSConnection", connect)
-    try:
-        yield state
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join()
-
-
 def test_connection(
     demo: tuple,
     client: TestClient,
@@ -222,17 +185,17 @@ def test_connection(
         assert response.json() == {"ok": False, "message": message}
         assert "private-upstream-body" not in response.text + caplog.text
     for error, message in [
-        (TimeoutError, "连接超时，请检查网络"),
-        (OSError, "无法连接平台，请检查网络"),
+        (httpx.TimeoutException, "连接超时，请检查网络"),
+        (httpx.ConnectError, "无法连接平台，请检查网络"),
     ]:
 
-        def fail(
+        async def fail(
             *_args: object, _error: type[Exception] = error, **_kwargs: object
         ) -> None:
             raise _error("private-upstream-body")
 
         with monkeypatch.context() as patch:
-            patch.setattr(http.client.HTTPConnection, "request", fail)
+            patch.setattr(httpx.AsyncClient, "request", fail)
             assert (
                 client.post(url + "/test", headers=auth["admin"]).json()["message"]
                 == message
