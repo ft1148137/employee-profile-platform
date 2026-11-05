@@ -98,11 +98,11 @@ def test_login(
         json={
             "enabled": True,
             "kind": "chatgpt_subscription",
-            "reasoning_effort": "xhigh",
+            "reasoning_effort": "off",
         },
     )
     assert unsupported.status_code == 422
-    assert "推理强度 xhigh 不适用于该模型" in unsupported.text
+    assert "推理强度 off 不适用于该模型" in unsupported.text
     for model in [
         "chatgpt/",
         "chatgpt/bad/model",

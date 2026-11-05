@@ -1,6 +1,16 @@
-import { loginOpenAICodex, refreshOpenAICodexToken } from '@mariozechner/pi-ai/oauth';
+import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex';
 import { randomUUID } from 'node:crypto';
 import { egress } from './egress.mjs';
+
+const oauth = openaiCodexProvider().auth.oauth;
+const tokens = ({ access, refresh, expires, accountId }) => ({ access, refresh, expires, accountId });
+const refreshOpenAICodexToken = refresh => oauth.refresh(
+  { type: 'oauth', refresh, access: '', expires: 0 }, egress.getStore().signal).then(tokens);
+const loginOpenAICodex = callbacks => oauth.login({
+  signal: egress.getStore().signal,
+  notify: event => { if (event.type === 'auth_url') callbacks.onAuth(event); },
+  prompt: prompt => prompt.type === 'select' ? Promise.resolve('browser') : callbacks.onManualCodeInput(),
+}).then(tokens);
 
 export async function authRefresh(refresh, refreshFn = refreshOpenAICodexToken) {
   return egress.run({ catalog: false, origin: 'https://auth.openai.com', signal: AbortSignal.timeout(14000) },

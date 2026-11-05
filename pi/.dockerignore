@@ -5,6 +5,7 @@
 !sample.mjs
 !sample.test.mjs
 !server.mjs
+!runtime.mjs
 !egress.mjs
 !auth.mjs
 !local-auth.mjs

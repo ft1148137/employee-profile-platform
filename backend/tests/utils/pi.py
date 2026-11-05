@@ -65,7 +65,7 @@ def pi_service(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[PiH
                 return
             tool_result = (
                 request["messages"][-1]
-                if request["messages"][-1]["role"] == "tool"
+                if request["messages"] and request["messages"][-1]["role"] == "tool"
                 else None
             )
             accepted = tool_result and '"accepted":true' in tool_result.get(
@@ -178,7 +178,7 @@ def pi_service(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[PiH
                     "-e",
                     """
 import { createPiServer } from './pi/server.mjs';
-import { streamSimple } from './pi/node_modules/@mariozechner/pi-ai/dist/index.js';
+import { streamSimple } from './pi/runtime.mjs';
 const login = async ({ onAuth, onManualCodeInput }) => {
   onAuth({ url: 'https://auth.openai.com/oauth/authorize?state=synthetic-state' });
   const input = await onManualCodeInput();
