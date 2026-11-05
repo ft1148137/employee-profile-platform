@@ -165,7 +165,11 @@ def bind(
             ),
         )
     ).all()
-    if any(b.bot_identity == bot_identity for b in existing):
+    if any(
+        b.bot_identity == bot_identity
+        and (b.employee_id != row.employee_id or b.external_user_id != external_user_id)
+        for b in existing
+    ):
         record_login_attempt(db, identifier, identifier, False)
         return False
     for old in existing:

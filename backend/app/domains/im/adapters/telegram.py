@@ -77,6 +77,8 @@ class Telegram:
                         if body is None
                         else await self.client.post(method, json=body)
                     )
+                if method == "sendMessage" and response.status_code in (400, 403):
+                    raise ImError("recipient_unavailable")
                 if response.status_code in (401, 403, 404):
                     raise ImError("credentials")
                 if response.status_code == 409:

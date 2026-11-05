@@ -117,7 +117,13 @@ class Gateway:
                         async for event in adapter.poll():
                             reply = self.dispatch(event, identity, credentials)
                             if reply and self.enabled(org_id, platform, credentials):
-                                await adapter.send_text(event.external_chat_id, reply)
+                                try:
+                                    await adapter.send_text(
+                                        event.external_chat_id, reply
+                                    )
+                                except ImError as error:
+                                    if error.code != "recipient_unavailable":
+                                        raise
                         delay = 1
                 except (
                     ImError,

@@ -178,6 +178,31 @@ def test_gateway_polls_and_sends_through_http(
             assert binding.current_binding(
                 db, p.org_id, "telegram", "100", "100", "12345"
             )
+            # One blocked recipient must not stop the entire enterprise's polling.
+            telegram_server["responses"]["sendMessage"] = (
+                403,
+                b"private-upstream-body",
+            )
+            telegram_server["updates"] = [
+                {
+                    "update_id": 1002,
+                    "message": {
+                        "from": {"id": 200, "is_bot": False},
+                        "chat": {"id": 200, "type": "private"},
+                        "text": "hello",
+                    },
+                }
+            ]
+
+            async def consumed() -> None:
+                while not any(
+                    method == "getUpdates" and body["offset"] == 1003
+                    for method, body in telegram_server["requests"]
+                ):
+                    await asyncio.sleep(0.01)
+
+            await asyncio.wait_for(consumed(), timeout=5)
+            assert not task.done()
             # Replacing the bot invalidates the old binding in personal settings too.
             db.refresh(setting)
             setting.bot_identity = "99999"
@@ -299,6 +324,33 @@ def test_codes_scope_reuse_and_rate_limit(demo: tuple, db: Session) -> None:
         from tests.utils.org import delete_test_organization
 
         delete_test_organization(db, foreign.id)
+
+
+def test_fresh_code_can_renew_the_same_binding(demo: tuple, db: Session) -> None:
+    _, people, _ = demo
+    p = principal(db, people["E02"].org_id, people["E02"].id)
+    enable(db, p)
+    assert binding.bind(
+        db, p.org_id, "telegram", "100", "100", "12345", binding.create_code(db, p).code
+    )
+    user = db.get(User, p.user_id)
+    previous = user.password_changed_at
+    try:
+        user.password_changed_at = utc_now()
+        db.add(user)
+        db.commit()
+        assert (
+            binding.current_binding(db, p.org_id, "telegram", "100", "100", "12345")
+            is None
+        )
+        fresh = binding.create_code(db, p).code
+        assert binding.bind(db, p.org_id, "telegram", "100", "100", "12345", fresh)
+        assert binding.current_binding(db, p.org_id, "telegram", "100", "100", "12345")
+        assert not binding.bind(db, p.org_id, "telegram", "100", "100", "12345", fresh)
+    finally:
+        user.password_changed_at = previous
+        db.add(user)
+        db.commit()
 
 
 @pytest.mark.parametrize(
