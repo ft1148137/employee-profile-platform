@@ -82,6 +82,60 @@
 `get_team_overview` 只读汇总员工列表可见范围（本人、获授权部门及全部下级部门）的画像状态和当前用户待审批数，不返回范围外员工。经理工具沿用服务端审批权限；MCP 令牌和 OAuth 必须关联员工身份，没有员工身份的企业管理员只能在网页审批。内置画像机器人不提供这些审批工具。
 
 外部客户端必须能访问平台地址并信任 HTTPS 证书。云端客户端通常不能访问企业内网，也不能接受自签证书；本机客户端需要在本机信任企业证书后连接，是否可用取决于客户端的证书配置。
+
+### 在本机 Codex 和 Claude Code 中连接
+
+下面使用本机测试地址 `http://localhost:18236/mcp`；正式部署换成企业提供的 HTTPS 地址。云端连接器不能用这个 localhost 地址。先在网页「设置 → 连接 AI 助手」创建本人的个人令牌，通过终端安全输入到当前进程环境，不把令牌写入配置文件或命令历史：
+
+```bash
+# 在 bash 中执行；用完后关闭此终端，或执行 unset EPP_MCP_TOKEN
+read -r -s -p '个人令牌：' EPP_MCP_TOKEN; echo
+export EPP_MCP_TOKEN
+```
+
+**Codex**：在专用测试目录创建 `.codex/config.toml`，无需修改全局 `~/.codex/config.toml`。该目录必须是你信任的项目，Codex 才会加载项目配置。
+
+```toml
+[mcp_servers.epp]
+url = "http://localhost:18236/mcp"
+bearer_token_env_var = "EPP_MCP_TOKEN"
+startup_timeout_sec = 30
+```
+
+从该目录运行 `codex`，检查 MCP 中的 `epp`，然后要求「查看我的画像」。此配置已通过 Codex 原生 MCP 客户端验证：查看画像、保存草稿、预览、提交、撤回，以及经理读取并批准另一员工的请求、生成正式版本。验证通过直接工具调用完成，没有启动模型轮次。
+
+本机 OAuth 也已验证动态注册（DCR）、PKCE、员工授权和授权后读取画像。测试时使用只含 `url` 的独立配置，不同时设置个人令牌或 Authorization 请求头；执行 `codex mcp login epp --scopes employee` 并在浏览器核对授权。需要完全隔离客户端配置与 OAuth 凭据时，可将 `CODEX_HOME` 指向测试目录下的独立目录，在其中写 `config.toml`，再运行登录命令。不要向该目录复制其他客户端的登录凭据。
+
+**Claude Code**：在专用测试目录创建 `.mcp.json`，保留下面的环境变量占位符：
+
+```json
+{
+  "mcpServers": {
+    "epp": {
+      "type": "http",
+      "url": "http://localhost:18236/mcp",
+      "headers": {
+        "Authorization": "Bearer ${EPP_MCP_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+从该目录启动，以下命令把 Claude Code 自身的状态也隔离在测试目录内：
+
+```bash
+export CLAUDE_CONFIG_DIR="$PWD/.claude-test"
+claude mcp list
+claude --strict-mcp-config --mcp-config .mcp.json
+```
+
+本机实测 `claude mcp list` 显示 `epp … ✓ Connected`。这只证明客户端配置和 MCP 连接成功；本次未提供 Anthropic API key，尚未验证 Claude Code 的模型驱动提交、撤回和审批，不能把连接成功当作完整流程通过。测试模型请使用 Anthropic API key，不读取或复制其他应用的订阅凭据。
+
+员工可先要求助手「读取词典，为我的一段合成经历保存草稿，预览后提交」，再要求撤回；另提交一份保留待审批。经理须在另一个会话使用自己的令牌，先读取待审批请求和逐项内容，明确同意后再批准，最后由员工查看正式画像。经理不能使用员工的令牌审批，也不能批准自己的请求。测试结束在网页吊销测试令牌和 OAuth 授权，并删除测试目录中的客户端状态；这些状态文件不能提交到仓库。
+
+配置字段说明：[Codex 官方 MCP 文档](https://developers.openai.com/codex/mcp/)、[Claude Code 官方 MCP 文档](https://code.claude.com/docs/en/mcp)。
+
 ### 在 ChatGPT 中连接
 
 1. 从企业管理员处取得 MCP 地址：`https://企业平台域名/mcp`。
