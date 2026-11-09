@@ -132,10 +132,14 @@ for (const available of [true, false]) {
             {
               type: "table",
               title: "账号列表",
-              columns: ["display_name", "employment_status"],
+              columns: ["display_name", "employment_status", "roles"],
               rows: [
-                ["合成员工", "inactive"],
-                ["active", "active"],
+                [
+                  "合成员工",
+                  "inactive",
+                  [{ display_name: "合成员工", role: "dept_manager" }],
+                ],
+                ["active", "active", []],
               ],
               total: 2,
               page: "/admin/people?tab=accounts",
@@ -163,6 +167,9 @@ for (const available of [true, false]) {
     ).toBeVisible()
     await expect(
       page.getByRole("cell", { name: "active", exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole("cell", { name: "部门经理", exact: true }),
     ).toBeVisible()
     expect(sends).toBe(1)
     await page

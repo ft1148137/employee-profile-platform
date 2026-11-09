@@ -95,6 +95,8 @@ def turn(
 
 
 def _fallback(text: str, page: str) -> AdminTurnResponse:
+    if page == "/admin/people/$employeeId":
+        page = "/admin/people"
     return AdminTurnResponse(
         messages=[
             TextMessage(text=text),

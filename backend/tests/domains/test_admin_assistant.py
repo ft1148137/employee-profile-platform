@@ -297,13 +297,17 @@ def test_failed_turn_releases_lease(
 
     monkeypatch.setattr(core.pi_client, "run_turn", fail)
     response = core.turn(
-        db, p, row.id, AdminTurnInput(text="今天有什么要处理的", page="/admin")
+        db,
+        p,
+        row.id,
+        AdminTurnInput(text="查看员工", page="/admin/people/$employeeId"),
     )
     assert (
         response.messages[0].type == "text"
         and "未完成" not in response.messages[0].text
     )
     assert response.messages[1].type == "link"
+    assert response.messages[1].page == "/admin/people"
     if isinstance(error, admission.BotDraftingPriority):
         assert "正在起草画像" in response.messages[0].text
     db.refresh(row)

@@ -94,7 +94,9 @@ function cellText(value: unknown, field = ""): string {
   if (Array.isArray(value))
     return value.map((entry) => cellText(entry, field)).join("、")
   if (typeof value === "object") {
-    for (const key of ["display_name", "name", "status"]) {
+    for (const key of field === "roles"
+      ? ["role"]
+      : ["display_name", "name", "status"]) {
       const entry = Object.entries(value).find(([field]) => field === key)?.[1]
       if (entry != null) return cellText(entry, key)
     }
