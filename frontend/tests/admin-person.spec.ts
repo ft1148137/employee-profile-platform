@@ -95,7 +95,7 @@ test("manage an employee from their detail page and see their history", async ({
   await expect(history).toContainText("授予角色")
   await expect(history).toContainText("撤销角色")
   await expect(history).toContainText("网页")
-  await expectChineseCopy(page)
+  await expectChineseCopy(page, ["demo-jira-12"])
   await page.screenshot({
     path: "test-results/admin-person.png",
     fullPage: true,
