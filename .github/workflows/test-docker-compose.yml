@@ -23,7 +23,18 @@ jobs:
         with:
           persist-credentials: false
       - run: cp .env.example .env
-      - run: docker compose build
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build stack with cache
+        uses: docker/bake-action@5be5f02ff8819ecd3092ea6b2e6261c31774f2b4 # v6
+        with:
+          source: .
+          files: compose.yml
+          load: true
+          set: |
+            backend.cache-from=type=gha,scope=compose-backend
+            backend.cache-to=type=gha,scope=compose-backend,mode=max
+            pi.cache-from=type=gha,scope=compose-pi
+            pi.cache-to=type=gha,scope=compose-pi,mode=max
       - run: docker compose up -d --wait
       - name: Test demo stack and role permissions
         run: bash tests/smoke/compose_smoke.sh
@@ -40,6 +51,24 @@ jobs:
           persist-credentials: false
       - name: Check shell scripts
         run: shellcheck install.sh upgrade.sh backup.sh restore.sh deploy/common.sh deploy/backup/*.sh
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Warm production build cache
+        uses: docker/bake-action@5be5f02ff8819ecd3092ea6b2e6261c31774f2b4 # v6
+        env:
+          COMPOSE_PROJECT_NAME: epp-production-ci
+          PROJECT_NAME: CI
+          POSTGRES_PASSWORD: cache-config-only
+          SECRET_KEY: cache-config-only
+          PI_SERVICE_TOKEN: cache-config-only
+        with:
+          source: .
+          files: compose.yml
+          load: true
+          set: |
+            backend.cache-from=type=gha,scope=production-backend
+            backend.cache-to=type=gha,scope=production-backend,mode=max
+            pi.cache-from=type=gha,scope=production-pi
+            pi.cache-to=type=gha,scope=production-pi,mode=max
       - name: Install without demo data
         env:
           EPP_ACCESS: http
