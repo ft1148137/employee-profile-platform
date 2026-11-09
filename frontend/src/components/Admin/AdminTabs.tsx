@@ -14,6 +14,7 @@ export function AdminTabs({
   tab,
   onTabChange,
   adminOnly = true,
+  deniedMessage = "需要企业管理员权限",
 }: {
   title: string
   description: string
@@ -21,11 +22,12 @@ export function AdminTabs({
   tab: string | undefined
   onTabChange: (value: string) => void
   adminOnly?: boolean
+  deniedMessage?: string
 }) {
   const { org, roles } = useOrg()
   if (!org) return <OrgState />
   if (adminOnly && !roles.includes("org_admin"))
-    return <p role="alert">需要企业管理员权限</p>
+    return <p role="alert">{deniedMessage}</p>
   const selected = tabs.some((item) => item.value === tab) ? tab : tabs[0].value
   return (
     <div className="min-w-0 space-y-6">

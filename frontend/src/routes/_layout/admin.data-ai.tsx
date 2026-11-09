@@ -25,6 +25,11 @@ function DataAi() {
       description="接入工作记录，配置用于起草画像和对话的模型。"
       tabs={tabs}
       tab={tab}
+      deniedMessage={
+        tab === "model" || tab === "bot"
+          ? undefined
+          : "你没有权限管理数据来源，只有企业管理员可以操作。"
+      }
       onTabChange={(tab) => navigate({ search: { tab } })}
     />
   )
