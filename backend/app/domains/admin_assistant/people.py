@@ -1,5 +1,6 @@
 """Account and dispute changes use the same services as the manual console."""
 
+from base64 import b64encode
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -9,7 +10,9 @@ from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.domains.account import service as accounts
-from app.domains.account.schemas import GrantRole, InitialPassword, IssueAccounts, RolePublic
+from app.domains.account.export import export_accounts
+from app.domains.account.schemas import GrantRole, IssueAccounts, RolePublic
+from app.domains.admin_assistant.outputs import AccountsOutput, PasswordOutput
 from app.domains.org.models import Employee, EmploymentStatus, OrgMembership, Role
 from app.domains.review import appeal
 from app.domains.review.appeal_schemas import ResolveAppealInput
@@ -195,17 +198,28 @@ def people_impact(db: Session, p: Principal, args: Any) -> BaseModel:
     return RootModel({"count": len(names), "text": text})
 
 
-def issue(db: Session, p: Principal, args: IssueArgs, *, commit: bool = False) -> BaseModel:
-    _, rows = accounts.issue_accounts(db, p, args)
+def issue(
+    db: Session, p: Principal, args: IssueArgs, *, commit: bool = False
+) -> AccountsOutput:
+    org, rows = accounts.issue_accounts(db, p, args)
+    result = AccountsOutput(
+        filename=f"账号-{org.name}.xlsx",
+        content_base64=b64encode(export_accounts(rows)).decode(),
+        count=len(rows),
+    )
     if commit:
         db.commit()
-    return RootModel({"count": len(rows)})
-
-
-def reset(db: Session, p: Principal, args: AccountArgs, *, commit: bool = False) -> InitialPassword:
-    result = accounts.change_account(db, p, args.user_id, "password_reset", commit=commit)
-    assert result is not None
     return result
+
+
+def reset(
+    db: Session, p: Principal, args: AccountArgs, *, commit: bool = False
+) -> PasswordOutput:
+    result = accounts.change_account(
+        db, p, args.user_id, "password_reset", commit=commit
+    )
+    assert result is not None
+    return PasswordOutput(**result.model_dump())
 
 
 def disable(

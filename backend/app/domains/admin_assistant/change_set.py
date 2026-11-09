@@ -14,9 +14,15 @@ from app.core.secrets import decrypt_secret, encrypt_secret
 from app.domains.account.service import AccountError
 from app.domains.admin_assistant import registry, store
 from app.domains.admin_assistant.models import AdminAssistantSession, AdminChangeSet
+from app.domains.admin_assistant.outputs import (
+    AccountsOutput,
+    OneTimeOutput,
+    PasswordOutput,
+)
 from app.domains.admin_assistant.people import DisableArgs
 from app.domains.admin_assistant.schemas import (
     AdminTurnResponse,
+    ChangeSetApplied,
     ChangeSetCard,
     ChangeSetPublic,
     ProposeChanges,
@@ -24,6 +30,7 @@ from app.domains.admin_assistant.schemas import (
 )
 from app.domains.base import utc_now
 from app.domains.bot import store as messages
+from app.domains.bot.schemas import TextMessage
 from app.domains.org.models import Organization
 
 
@@ -189,7 +196,7 @@ def _stale(db: Session, row: AdminChangeSet) -> None:
 
 def apply(
     db: Session, principal: Principal, id: UUID, revision: int
-) -> ChangeSetPublic:
+) -> ChangeSetApplied:
     _lock_org(db, principal)
     row = get(db, principal, id, lock=True)
     if row.status != "draft":
@@ -239,7 +246,9 @@ def apply(
         row.confirmed_once_at = row.updated_at = utc_now()
         db.add(row)
         db.commit()
-        return public(row)
+        return ChangeSetApplied(**public(row).model_dump())
+    one_time: list[OneTimeOutput] = []
+    notices: list[TextMessage] = []
     db.info["audit_context"] = {
         "via": "admin_assistant",
         "assistant_session_id": str(row.session_id),
@@ -251,6 +260,15 @@ def apply(
             result = entry.handler(db, principal, args, commit=False)
             if not isinstance(result, BaseModel):
                 raise ChangeSetError("暂不支持这类改动")
+            if isinstance(result, PasswordOutput | AccountsOutput):
+                one_time.append(result)
+                notices.append(
+                    TextMessage(
+                        text="已重置，初始密码只显示这一次"
+                        if isinstance(result, PasswordOutput)
+                        else f"已发放 {result.count} 个账号，账号表只能下载这一次"
+                    )
+                )
             if entry.snapshot and entry.undoable:
                 item.after = entry.snapshot(db, principal, args).model_dump(
                     mode="json", exclude=set(entry.secret_fields)
@@ -266,6 +284,13 @@ def apply(
             original.status = "undone"
             original.updated_at = utc_now()
             db.add(original)
+        if notices:
+            messages.append_message(
+                db,
+                store.get_session(db, principal, row.session_id),
+                "assistant",
+                AdminTurnResponse(messages=[*notices]).model_dump(mode="json"),
+            )
         db.commit()
     except AccountError as error:
         db.rollback()
@@ -275,7 +300,7 @@ def apply(
         raise ChangeSetError("未能应用，所有改动均已回滚，请检查设置后重试") from None
     finally:
         db.info.pop("audit_context", None)
-    return public(row)
+    return ChangeSetApplied(**public(row).model_dump(), one_time=one_time)
 
 
 def discard(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
