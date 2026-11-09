@@ -349,6 +349,8 @@ def change_account(
     p: Principal,
     user_id: UUID,
     action: Literal["password_reset", "disabled", "enabled"],
+    *,
+    commit: bool = True,
 ) -> InitialPassword | None:
     lock_org(session, p)
     membership, user = member(session, p.org_id, user_id)
@@ -366,7 +368,10 @@ def change_account(
         user.is_active = True
     session.add(user)
     audit(session, p, f"account.{action}", user.id)
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     return result
 
 
@@ -398,7 +403,9 @@ def list_roles(session: Session, p: Principal) -> list[RolePublic]:
     ]
 
 
-def grant_role(session: Session, p: Principal, body: GrantRole) -> RolePublic:
+def grant_role(
+    session: Session, p: Principal, body: GrantRole, *, commit: bool = True
+) -> RolePublic:
     lock_org(session, p)
     membership, user = member(session, p.org_id, body.user_id)
     require_org_only_account(session, p.org_id, user)
@@ -433,11 +440,16 @@ def grant_role(session: Session, p: Principal, body: GrantRole) -> RolePublic:
         session.add(grant)
     audit(session, p, "role.granted", grant.id, grant)
     result = next(g for g in list_roles(session, p) if g.id == grant.id)
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     return result
 
 
-def revoke_role(session: Session, p: Principal, grant_id: UUID) -> None:
+def revoke_role(
+    session: Session, p: Principal, grant_id: UUID, *, commit: bool = True
+) -> None:
     lock_org(session, p)
     grant = session.exec(
         select(RoleGrant).where(RoleGrant.org_id == p.org_id, RoleGrant.id == grant_id)
@@ -448,7 +460,10 @@ def revoke_role(session: Session, p: Principal, grant_id: UUID) -> None:
         protect_admin(session, p.org_id, grant.membership_id)
     audit(session, p, "role.revoked", grant.id, grant)
     session.delete(grant)
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
 
 
 def list_accounts(

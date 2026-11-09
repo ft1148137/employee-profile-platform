@@ -11,8 +11,10 @@ from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.core.secrets import decrypt_secret, encrypt_secret
+from app.domains.account.service import AccountError
 from app.domains.admin_assistant import registry, store
 from app.domains.admin_assistant.models import AdminAssistantSession, AdminChangeSet
+from app.domains.admin_assistant.people import DisableArgs
 from app.domains.admin_assistant.schemas import (
     AdminTurnResponse,
     ChangeSetCard,
@@ -103,7 +105,12 @@ def _entry(
     name: str, args: dict[str, JsonValue]
 ) -> tuple[registry.AdminFunction, BaseModel]:
     entry = registry.FUNCTIONS.get(name)
-    if entry is None or entry.kind != "change" or {"org_id", "user_id"} & args.keys():
+    if (
+        entry is None
+        or entry.kind != "change"
+        or "org_id" in args
+        or ("user_id" in args and "user_id" not in entry.input_model.model_fields)
+    ):
         raise ChangeSetError("改动功能或参数不正确，不能指定身份或企业", 422)
     if set(entry.secret_fields) & args.keys():
         raise ChangeSetError("请用安全输入框填写密钥", 422)
@@ -125,8 +132,11 @@ def propose(
     if row and (row.session_id != session_id or row.status != "draft"):
         raise ChangeSetError("这份改动已结束，请重新起草")
     items: list[dict[str, JsonValue]] = []
+    disabled_users: set[UUID] = set()
     for item in body.items:
         entry, args = _entry(item.function, item.args)
+        if isinstance(args, DisableArgs):
+            disabled_users.update(args.user_ids)
         items.append(
             {
                 "function": entry.name,
@@ -144,6 +154,10 @@ def propose(
                 "undoable": entry.undoable,
             }
         )
+    if len(disabled_users) >= 2:
+        for saved_item in items:
+            if saved_item["function"] == "disable_accounts":
+                saved_item["risk"] = "high"
     if row:
         row.items = items
         row.revision += 1
@@ -186,13 +200,19 @@ def apply(
     prepared = []
     for item in public(row).items:
         entry, args = _entry(item.function, item.args)
-        if (
-            entry.snapshot
-            and entry.snapshot(db, principal, args).model_dump(
-                mode="json", exclude=set(entry.secret_fields)
+        try:
+            snapshot = (
+                entry.snapshot(db, principal, args).model_dump(
+                    mode="json", exclude=set(entry.secret_fields)
+                )
+                if entry.snapshot
+                else None
             )
-            != item.before
-        ):
+        except HTTPException as error:
+            if error.status_code != 404:
+                raise
+            _stale(db, row)
+        if entry.snapshot and snapshot != item.before:
             _stale(db, row)
         if entry.secret_fields:
             try:
@@ -235,7 +255,9 @@ def apply(
                 item.after = entry.snapshot(db, principal, args).model_dump(
                     mode="json", exclude=set(entry.secret_fields)
                 )
-        row.items = [item.model_dump(mode="json", exclude={"title"}) for item in applied_items]
+        row.items = [
+            item.model_dump(mode="json", exclude={"title"}) for item in applied_items
+        ]
         row.status = "applied"
         row.secrets = None
         row.applied_at = row.updated_at = utc_now()
@@ -245,6 +267,9 @@ def apply(
             original.updated_at = utc_now()
             db.add(original)
         db.commit()
+    except AccountError as error:
+        db.rollback()
+        raise ChangeSetError(str(error.detail), error.status_code) from None
     except Exception:
         db.rollback()
         raise ChangeSetError("未能应用，所有改动均已回滚，请检查设置后重试") from None
