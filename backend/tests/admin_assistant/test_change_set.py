@@ -3,21 +3,23 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, inspect
+from sqlalchemy import Engine, inspect, text
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.domains.admin_assistant import change_set as c
 from app.domains.admin_assistant import core, registry, store, tools
-from app.domains.admin_assistant.models import AdminChangeSet
+from app.domains.admin_assistant.models import AdminAssistantSession, AdminChangeSet
 from app.domains.admin_assistant.schemas import AdminTurnInput, ProposeChanges
 from app.domains.audit.models import AuditEvent
+from app.domains.bot import store as messages
 from app.domains.drafting.update_settings import (
     UpdateSettingsInput,
     read_update_settings,
     save_update_settings,
 )
 from app.domains.model.pi_client import TurnResult
-from app.domains.org.models import OrgMembership, Role, RoleGrant
+from app.domains.org.models import Organization, OrgMembership, Role, RoleGrant
 from tests.admin_assistant.test_registry import principal
 from tests.domains.test_bot_core import enable
 from tests.utils.migrations import migrate
@@ -51,6 +53,70 @@ def events(db: Session, org_id: object) -> list[dict]:
             )
         ).all()
     ]
+
+
+@pytest.mark.parametrize("revise", [False, True])
+def test_propose_does_not_lock_org(db: Session, demo: tuple, revise: bool) -> None:
+    p = principal(db, demo)
+    sid = store.create_session(db, p).id
+    body = ProposeChanges.model_validate(
+        {
+            "items": [
+                {
+                    "function": "update_update_settings",
+                    "args": {"reminder_schedule": "yearly"},
+                }
+            ]
+        }
+    )
+    if revise:
+        row = c.propose(db, p, sid, body)
+        db.commit()
+        body.change_set_id = row.id
+    try:
+        c.propose(db, p, sid, body)
+        with Session(db.get_bind()) as other:
+            assert (
+                other.exec(
+                    select(Organization.id)
+                    .where(Organization.id == p.org_id)
+                    .with_for_update(nowait=True)
+                ).one()
+                == p.org_id
+            )
+            assert (
+                other.exec(
+                    select(AdminAssistantSession.id)
+                    .where(
+                        AdminAssistantSession.org_id == p.org_id,
+                        AdminAssistantSession.id == sid,
+                    )
+                    .with_for_update(nowait=True)
+                ).one()
+                == sid
+            )
+        db.commit()
+    finally:
+        db.rollback()
+
+
+def test_draft_foreign_key_checked_at_commit(db: Session, demo: tuple) -> None:
+    p = principal(db, demo)
+    row = proposal(db, demo)
+    with Session(db.get_bind()) as other:
+        other.add(
+            AdminChangeSet(
+                org_id=p.org_id,
+                created_by_user_id=p.user_id,
+                session_id=uuid4(),
+                items=row.items,
+            )
+        )
+        other.flush()
+        with pytest.raises(
+            IntegrityError, match="admin_change_set_org_id_session_id_fkey"
+        ):
+            other.commit()
 
 
 def test_confirm_and_undo(db: Session, demo: tuple, client: TestClient) -> None:
@@ -138,6 +204,19 @@ def test_undo_after_manual_change(db: Session, demo: tuple) -> None:
     assert reversed.status == "draft" and reversed.undo_of_id == row.id
     assert reversed.items[0].before["reminder_schedule"] == "off"
     assert read_update_settings(db, p.org_id).reminder_schedule == "off"
+    with Session(db.get_bind()) as other:
+        saved = messages.messages_for(
+            other, store.get_session(other, p, row.session_id)
+        )
+        assert saved[-1].role == "assistant"
+        assert saved[-1].payload == {
+            "messages": [
+                {
+                    "type": "admin_change_set",
+                    "change_set": reversed.model_dump(mode="json"),
+                }
+            ]
+        }
     c.apply(db, p, reversed.id, reversed.revision)
     assert read_update_settings(db, p.org_id).reminder_schedule == "quarterly"
     assert c.get(db, p, row.id).status == "undone"
@@ -298,3 +377,28 @@ def test_migration(migration_engine: Engine) -> None:
     assert "admin_change_set" not in inspect(migration_engine).get_table_names()
     migrate(migration_engine, "upgrade", "head")
     assert len(inspect(migration_engine).get_foreign_keys("admin_change_set")) == 4
+
+
+def test_deferred_foreign_key_migration(migration_engine: Engine) -> None:
+    original_oids = None
+    for action, revision, deferred in (
+        ("upgrade", "head", True),
+        ("downgrade", "b263001bc001", False),
+        ("upgrade", "head", True),
+    ):
+        migrate(migration_engine, action, revision)
+        with migration_engine.connect() as connection:
+            constraints = connection.execute(
+                text(
+                    "SELECT oid, condeferrable, condeferred FROM pg_constraint "
+                    "WHERE conrelid = 'admin_change_set'::regclass AND contype = 'f'"
+                )
+            ).all()
+        assert len(constraints) == 4
+        assert all(
+            row.condeferrable == row.condeferred == deferred for row in constraints
+        )
+        oids = {row.oid for row in constraints}
+        if original_oids is None:
+            original_oids = oids
+        assert oids == original_oids
