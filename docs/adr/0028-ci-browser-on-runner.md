@@ -12,7 +12,7 @@
 
 保留三个 runner、三个独立数据库、每片一个 Playwright worker 和原汇总门禁。使用已有 Bun 依赖在 runner 上安装匹配锁定 Playwright 版本的 Chromium，直接访问容器后端发布的前端；backend、worker、mock-jira 仍在 Compose 网络中运行，Jira 测试地址仍由后端解析。
 
-每片只 Bake backend / pi 镜像，`up --no-build --wait` 启动服务；普通 Compose smoke 同样复用 Bake 结果。生产安装与升级保留真实构建流程。本地浏览器容器的 Dockerfile 和 Compose 服务保留。
+每片只 Bake backend / pi 镜像，`up --no-build --wait` 启动服务；普通 Compose smoke 同样复用 Bake 结果。两个 job 都显式设置 COMPOSE_PROJECT_NAME，使 Bake 和 Compose 生成相同镜像名，并在启动前 inspect 校验。生产安装与升级保留真实构建流程。本地浏览器容器的 Dockerfile 和 Compose 服务保留。
 
 backend 在 coverage 前预编译依赖字节码，不更换覆盖率引擎、不排除 SDK 用例或应用代码。M2 模拟 Jira 的 TestClient 使用上下文管理，跨请求复用 ASGI portal。没有新增依赖或运行时组件，没有改变任何断言、重试、flaky 检查或性能门槛。
 

@@ -47,6 +47,8 @@ jobs:
     if: ${{ needs.changes.outputs.changed == 'true' }}
     timeout-minutes: 15
     runs-on: ubuntu-latest
+    env:
+      COMPOSE_PROJECT_NAME: epp-playwright-ci
     strategy:
       fail-fast: false
       matrix:
@@ -89,6 +91,8 @@ jobs:
           backend.cache-to=type=gha,scope=playwright-backend,mode=max
           pi.cache-from=type=gha,scope=playwright-pi
           pi.cache-to=type=gha,scope=playwright-pi,mode=max
+    - name: Verify Compose image names
+      run: docker image inspect "${COMPOSE_PROJECT_NAME}-backend:latest" "${COMPOSE_PROJECT_NAME}-pi:latest" > /dev/null
     - run: docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
     - name: Start test services from the built images
       run: docker compose -f compose.yml -f compose.dev.yml up -d --no-build --wait backend worker mock-jira
