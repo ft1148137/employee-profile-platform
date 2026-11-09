@@ -20,6 +20,9 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
     page.getByRole("button", { name: "完成此步骤并继续" }).click()
   await step(/企业信息/).click()
   await next()
+  await expect(
+    page.getByRole("heading", { name: "配置模型", exact: true }),
+  ).toBeVisible()
   await step(/导入员工名单/).click()
   await page.getByLabel("拖拽名单到这里，或选择文件上传").setInputFiles({
     name: "roster.csv",

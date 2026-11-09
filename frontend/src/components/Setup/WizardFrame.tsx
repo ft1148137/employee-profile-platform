@@ -33,12 +33,13 @@ export function WizardFrame({ orgId }: { orgId: string }) {
     onSuccess: ({ data }, { key }) => {
       const completedIndex = steps.findIndex((item) => item.key === key)
       client.setQueryData(["setup", orgId], data)
-      setSelected(
-        steps[completedIndex]?.required ||
+      setSelected((current) => {
+        if (current !== null && current !== key) return current
+        return steps[completedIndex]?.required ||
           (data.completed && !steps[completedIndex + 1])
           ? null
-          : (steps[completedIndex + 1]?.key ?? data.next_step_key),
-      )
+          : (steps[completedIndex + 1]?.key ?? data.next_step_key)
+      })
     },
   })
   if (setup.isPending) return <p role="status">正在加载首次设置…</p>

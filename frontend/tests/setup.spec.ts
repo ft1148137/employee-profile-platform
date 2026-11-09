@@ -350,6 +350,54 @@ test("missing and invalid initialization links and uninitialized login hint", as
   await expectChineseCopy(page)
 })
 
+test("keep the selected step when enterprise saving completes later", async ({
+  page,
+  request,
+}) => {
+  const response = await request.post("/api/v1/private/setup-tokens", {
+    data: { purpose: "new_org" },
+  })
+  expect(response.ok()).toBeTruthy()
+  await page.goto(`/setup#token=${(await response.json()).token}`)
+  await fillSetup(page)
+  await page.getByRole("button", { name: "创建企业并继续" }).click()
+  const steps = page.getByRole("navigation", { name: "设置步骤" })
+  await steps.getByText("稍后处理的事项", { exact: true }).click()
+  await steps.getByRole("button", { name: /企业信息/ }).click()
+  let releaseSave = () => {}
+  let releaseCompletion = () => {}
+  const save = new Promise<void>((resolve) => {
+    releaseSave = resolve
+  })
+  const completion = new Promise<void>((resolve) => {
+    releaseCompletion = resolve
+  })
+  await page.route("**/api/v1/orgs/*", async (route) => {
+    await save
+    await route.continue()
+  })
+  await page.route("**/setup/steps/org_profile/complete", async (route) => {
+    await completion
+    await route.continue()
+  })
+  const roster = steps.getByRole("button", { name: /导入员工名单/ })
+  try {
+    await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+    await roster.click()
+    releaseSave()
+    await expect(roster).toBeDisabled()
+    releaseCompletion()
+    await expect(roster).toBeEnabled()
+    await expect(
+      page.getByRole("heading", { name: "导入员工名单", exact: true }),
+    ).toBeVisible()
+    await expect(roster).toHaveAttribute("aria-current", "step")
+  } finally {
+    releaseSave()
+    releaseCompletion()
+  }
+})
+
 test("skip model setup and enter the manual home", async ({
   page,
   request,
