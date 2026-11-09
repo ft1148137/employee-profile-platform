@@ -180,7 +180,9 @@ export type AdminTurnResponse = {
         type: 'table';
     } & TableCard) | ({
         type: 'admin_change_set';
-    } & ChangeSetCard)>;
+    } & ChangeSetCard) | ({
+        type: 'secret_input';
+    } & SecretInputCard)>;
 };
 
 /**
@@ -826,6 +828,10 @@ export type ChangeSetPublic = {
      * Undo Of Id
      */
     undo_of_id: string | null;
+    /**
+     * Confirmed Once At
+     */
+    confirmed_once_at?: string | null;
 };
 
 /**
@@ -3551,6 +3557,38 @@ export type SchemaVersionPublic = {
 };
 
 /**
+ * SecretInput
+ */
+export type SecretInput = {
+    /**
+     * Value
+     */
+    value: string;
+};
+
+/**
+ * SecretInputCard
+ */
+export type SecretInputCard = {
+    /**
+     * Type
+     */
+    type?: 'secret_input';
+    /**
+     * Change Set Id
+     */
+    change_set_id: string;
+    /**
+     * Field
+     */
+    field: string;
+    /**
+     * Title
+     */
+    title: string;
+};
+
+/**
  * SessionCreated
  */
 export type SessionCreated = {
@@ -5717,6 +5755,44 @@ export type adminAssistantListChangeSetsResponses = {
 };
 
 export type adminAssistantListChangeSetsResponse = adminAssistantListChangeSetsResponses[keyof adminAssistantListChangeSetsResponses];
+
+export type adminAssistantSaveChangeSetSecretData = {
+    body: SecretInput;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+        /**
+         * Field
+         */
+        field: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/admin-assistant/change-sets/{id}/secrets/{field}';
+};
+
+export type adminAssistantSaveChangeSetSecretErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantSaveChangeSetSecretError = adminAssistantSaveChangeSetSecretErrors[keyof adminAssistantSaveChangeSetSecretErrors];
+
+export type adminAssistantSaveChangeSetSecretResponses = {
+    /**
+     * Successful Response
+     */
+    200: TextMessage;
+};
+
+export type adminAssistantSaveChangeSetSecretResponse = adminAssistantSaveChangeSetSecretResponses[keyof adminAssistantSaveChangeSetSecretResponses];
 
 export type adminAssistantGetChangeSetData = {
     body?: never;

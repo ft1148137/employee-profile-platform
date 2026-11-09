@@ -1,3 +1,4 @@
+import re
 from uuid import UUID
 
 from sqlmodel import Session
@@ -11,6 +12,7 @@ from app.domains.admin_assistant.schemas import (
     Availability,
     ChangeSetCard,
     LinkCard,
+    SecretInputCard,
     TableCard,
 )
 from app.domains.base import utc_now
@@ -29,6 +31,16 @@ from app.domains.model.client import ModelServiceError, ModelUnavailable
 from app.domains.model.service import model_config, read_setting
 
 DRAFTING_REASON = "正在起草画像，期间管理助手暂停，可以继续使用手工页面。"
+
+
+def looks_like_secret(text: str) -> bool:
+    # shortcut: conservative token detection; extend here when supported vendors add formats.
+    return bool(
+        re.search(
+            r"(?<![A-Za-z0-9])sk-\S+|(?<![A-Za-z0-9])[A-Za-z0-9]{32,}(?![A-Za-z0-9])",
+            text,
+        )
+    )
 
 
 def availability(db: Session, principal: Principal) -> Availability:
@@ -51,12 +63,14 @@ def turn(
     db: Session, principal: Principal, session_id: UUID, body: AdminTurnInput
 ) -> AdminTurnResponse:
     row = store.get_session(db, principal, session_id)
+    if looks_like_secret(body.text):
+        return _fallback("请用安全输入框填写", body.page)
     status = availability(db, principal)
     if not status.available:
         return _fallback(status.reason, body.page)
     history = messages.load_history(db, row)
     admitted = False
-    cards: list[LinkCard | TableCard | ChangeSetCard] = []
+    cards: list[LinkCard | TableCard | ChangeSetCard | SecretInputCard] = []
     try:
         with begin_turn(db, principal, row, body.model_dump(mode="json")):
             admitted = True
@@ -92,7 +106,7 @@ def turn(
     for card in cards:
         if isinstance(card, LinkCard | TableCard):
             page = card.page
-        elif card.change_set.items:
+        elif isinstance(card, ChangeSetCard) and card.change_set.items:
             page = registry.FUNCTIONS[card.change_set.items[-1].function].page
     response = _fallback(text, page)
     if admitted:

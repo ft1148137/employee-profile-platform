@@ -7,11 +7,29 @@ import { Button } from "@/components/ui/button"
 const labels: Record<string, string> = {
   reminder_schedule: "提醒周期",
   stale_after_months: "证据较旧期限",
+  require_manager: "需要经理确认",
+  category_overrides: "各类能力的确认规则",
+  owner_review_days: "本人过目期限（天）",
 }
 const values: Record<string, string> = {
   quarterly: "每季度",
   yearly: "每年",
   off: "不提醒",
+  true: "需要",
+  false: "不需要",
+}
+
+function display(value: unknown): string {
+  if (value && typeof value === "object")
+    return (
+      Object.entries(value)
+        .map(
+          ([category, required]) =>
+            `${category}：${required ? "需要" : "不需要"}经理确认`,
+        )
+        .join("；") || "沿用总规则"
+    )
+  return values[String(value)] ?? String(value)
 }
 const statuses = {
   draft: "待确认",
@@ -43,6 +61,8 @@ export function ChangeSetCard({
       (await AdminAssistantService.assistantGetChangeSet({ path })).data,
   })
   const current = query.data
+  const confirmAgain =
+    current.status === "draft" && Boolean(current.confirmed_once_at)
   const action = useMutation({
     mutationFn: async (kind: "apply" | "discard" | "undo") => {
       if (kind === "apply")
@@ -74,12 +94,16 @@ export function ChangeSetCard({
           {current.undo_of_id ? "撤销前请确认" : "请核对设置改动"}
         </h3>
         <span role="status" className="text-xs text-muted-foreground">
-          {statuses[current.status]}
+          {confirmAgain ? "请再次确认" : statuses[current.status]}
         </span>
       </div>
       {current.items.map((item, i) => (
         <div key={i} className="space-y-2">
-          <p className="text-sm font-medium">定期提醒设置</p>
+          <p className="text-sm font-medium">
+            {item.function === "update_approval_policy"
+              ? "经理确认规则"
+              : "定期提醒设置"}
+          </p>
           {Object.keys(item.after).map((field) => (
             <div key={field} className="rounded-lg bg-muted/40 p-3 text-sm">
               <p className="mb-2 text-muted-foreground">
@@ -99,8 +123,7 @@ export function ChangeSetCard({
                     >
                       {value == null
                         ? "未设置"
-                        : (values[String(value)] ??
-                          `${value}${field === "stale_after_months" ? " 个月" : ""}`)}
+                        : `${display(value)}${field === "stale_after_months" ? " 个月" : ""}`}
                     </p>
                   </div>
                 ))}
@@ -114,11 +137,29 @@ export function ChangeSetCard({
           )}
         </div>
       ))}
+      {confirmAgain && (
+        <div
+          role="alert"
+          className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm"
+        >
+          <p className="font-semibold">
+            请核对影响范围，再次确认后生效。超过五分钟需重新确认。
+          </p>
+          {current.items
+            .filter((item) => item.risk === "high")
+            .map((item, i) => (
+              <p key={i}>
+                影响 {item.impact?.count ?? 0} 人 ·{" "}
+                {item.impact?.text ?? "请核对上述改动"}
+              </p>
+            ))}
+        </div>
+      )}
       <SetupError error={action.error ?? query.error} />
       {current.status === "draft" && (
         <div className="flex gap-2">
           <Button disabled={busy} onClick={() => action.mutate("apply")}>
-            确认应用
+            {confirmAgain ? "再次确认" : "确认应用"}
           </Button>
           <Button
             variant="outline"

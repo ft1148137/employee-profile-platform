@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 
 from app.api.deps import SessionDep
+from app.api.secret_safe import SecretSafeRoute
 from app.authz.deps import OrgAdminDep, OrgPrincipalDep
 from app.domains.admin_assistant import change_set, core, store
 from app.domains.admin_assistant.schemas import (
@@ -13,8 +14,9 @@ from app.domains.admin_assistant.schemas import (
     ApplyChanges,
     Availability,
     ChangeSetPublic,
+    SecretInput,
 )
-from app.domains.bot.schemas import SessionCreated
+from app.domains.bot.schemas import SessionCreated, TextMessage
 from app.domains.bot.store import BotSessionNotFound, messages_for
 
 
@@ -25,6 +27,7 @@ def require_admin(principal: OrgPrincipalDep) -> None:
 
 
 router = APIRouter(
+    route_class=SecretSafeRoute,
     prefix="/admin-assistant",
     tags=["admin-assistant"],
     dependencies=[Depends(require_admin)],
@@ -61,6 +64,7 @@ def availability(principal: OrgAdminDep, session: SessionDep) -> Availability:
 
 
 change_router = APIRouter(
+    route_class=SecretSafeRoute,
     prefix="/orgs/{org_id}/admin-assistant/change-sets",
     tags=["admin-assistant"],
     dependencies=[Depends(require_admin)],
@@ -75,6 +79,14 @@ def list_change_sets(
     status: Literal["draft"],
 ) -> list[ChangeSetPublic]:
     return change_set.list_drafts(session, principal, function, status)
+
+
+@change_router.put("/{id}/secrets/{field}")
+def save_change_set_secret(
+    principal: OrgAdminDep, session: SessionDep, id: UUID, field: str, body: SecretInput
+) -> TextMessage:
+    change_set.save_secret(session, principal, id, field, body.value.get_secret_value())
+    return TextMessage(text="已填写")
 
 
 @change_router.get("/{id}")

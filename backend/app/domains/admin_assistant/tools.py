@@ -8,7 +8,12 @@ from sqlmodel import Session
 from app.authz.principal import Principal
 from app.domains.admin.overview import build_overview
 from app.domains.admin_assistant import change_set, registry
-from app.domains.admin_assistant.schemas import ChangeSetCard, LinkCard, ProposeChanges
+from app.domains.admin_assistant.schemas import (
+    ChangeSetCard,
+    LinkCard,
+    ProposeChanges,
+    SecretInputCard,
+)
 from app.domains.change_request.schemas import ToolInput
 from app.domains.model.pi_client import ToolDefinition
 
@@ -22,8 +27,18 @@ class ReadInput(ToolInput):
     args: dict[str, JsonValue]
 
 
+class RequestSecretInput(ToolInput):
+    function: str
+    field: str
+
+
 def definitions() -> list[ToolDefinition]:
     return [
+        ToolDefinition(
+            name="request_secret_input",
+            description="为已起草改动的密钥字段显示安全输入框，不能接收密钥值",
+            parameters=RequestSecretInput.model_json_schema(),
+        ),
         ToolDefinition(
             name="get_today",
             description="查看今天要处理的事和运行状态",
@@ -50,13 +65,21 @@ def definitions() -> list[ToolDefinition]:
 def call(
     db: Session,
     principal: Principal,
-    cards: list[LinkCard | registry.TableCard | ChangeSetCard],
+    cards: list[LinkCard | registry.TableCard | ChangeSetCard | SecretInputCard],
     name: str,
     args: dict[str, JsonValue],
     *,
     session_id: UUID | None = None,
 ) -> JsonValue:
     try:
+        if name == "request_secret_input" and session_id:
+            body_secret = RequestSecretInput.model_validate(args)
+            cards.append(
+                change_set.request_secret_input(
+                    db, principal, session_id, body_secret.function, body_secret.field
+                )
+            )
+            return {"data": {"message": "请在安全输入框填写"}}
         if name == "list_admin_functions":
             return registry.list_admin_functions(
                 ListFunctionsInput.model_validate(args).area
@@ -75,6 +98,8 @@ def call(
             return {"data": result["data"]}
     except ValidationError:
         return {"data": {"error": "参数不正确，请按功能说明填写"}}
+    except HTTPException:
+        return {"data": {"error": "请先起草改动，并选择允许安全输入的字段"}}
     if name == "propose_changes" and session_id:
         try:
             row = change_set.propose(

@@ -27,6 +27,7 @@ import {
 import useAuth from "@/hooks/useAuth"
 import { useOrg } from "@/hooks/useOrg"
 import { ChangeSetCard } from "./ChangeSetCard"
+import { SecretInputCard } from "./SecretInputCard"
 
 const labels: Record<string, string> = {
   id: "编号",
@@ -238,9 +239,15 @@ export function AdminAssistantPanel({
         body,
         timeout: 75000,
       }),
-    onSuccess: ({ data }) => {
+    onSuccess: ({ data }, body) => {
       setMessages((previous) => [
         ...previous,
+        ...(data.messages.some(
+          (message) =>
+            message.type === "text" && message.text === "请用安全输入框填写",
+        )
+          ? []
+          : [{ role: "user" as const, payload: body }]),
         { role: "assistant", payload: data },
       ])
       client.invalidateQueries()
@@ -303,6 +310,13 @@ export function AdminAssistantPanel({
                       key={i}
                       orgId={orgId}
                       changeSet={message.change_set}
+                      disabled={busy}
+                    />
+                  ) : message.type === "secret_input" ? (
+                    <SecretInputCard
+                      key={i}
+                      orgId={orgId}
+                      card={message}
                       disabled={busy}
                     />
                   ) : message.type === "table" ? (
@@ -392,10 +406,6 @@ export function AdminAssistantPanel({
           event.preventDefault()
           if (!text.trim() || busy || !sessionId) return
           const body = { text: text.trim(), page }
-          setMessages((previous) => [
-            ...previous,
-            { role: "user", payload: body },
-          ])
           setText("")
           send.mutate(body)
         }}
