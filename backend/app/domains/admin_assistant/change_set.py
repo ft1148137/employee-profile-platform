@@ -60,7 +60,7 @@ def _entry(
     if entry is None or entry.kind != "change" or {"org_id", "user_id"} & args.keys():
         raise ChangeSetError("改动功能或参数不正确，不能指定身份或企业", 422)
     if entry.risk == "high" or entry.secret_fields:
-        # shortcut: 高风险和安全输入由 S5b 接入后再开放。
+        # shortcut: High-risk changes and secret inputs stay disabled until S5b.
         raise ChangeSetError("暂不支持这类改动，请到对应页面操作", 422)
     return entry, entry.input_model.model_validate(args)
 
