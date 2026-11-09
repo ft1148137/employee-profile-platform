@@ -31,6 +31,7 @@ def compute_roster_diff(
     """Read five bounded queries; never flush even if the caller has pending writes."""
     if roster.has_errors:
         raise ValueError("名单有解析错误，不能对比")
+    roster = roster.active()
     with session.no_autoflush:
         employees = session.exec(
             select(Employee)
