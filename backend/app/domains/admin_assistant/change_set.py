@@ -9,8 +9,14 @@ from sqlmodel import Session, select
 from app.authz.principal import Principal
 from app.domains.admin_assistant import registry, store
 from app.domains.admin_assistant.models import AdminChangeSet
-from app.domains.admin_assistant.schemas import ChangeSetPublic, ProposeChanges
+from app.domains.admin_assistant.schemas import (
+    AdminTurnResponse,
+    ChangeSetCard,
+    ChangeSetPublic,
+    ProposeChanges,
+)
 from app.domains.base import utc_now
+from app.domains.bot import store as messages
 from app.domains.org.models import Organization
 
 
@@ -32,8 +38,6 @@ def _lock_org(db: Session, principal: Principal) -> None:
 def get(
     db: Session, principal: Principal, id: UUID, *, lock: bool = False
 ) -> AdminChangeSet:
-    if lock:
-        _lock_org(db, principal)
     query = (
         select(AdminChangeSet)
         .where(
@@ -69,7 +73,6 @@ def propose(
     db: Session, principal: Principal, session_id: UUID, body: ProposeChanges
 ) -> AdminChangeSet:
     store.get_session(db, principal, session_id)
-    _lock_org(db, principal)
     row = (
         get(db, principal, body.change_set_id, lock=True)
         if body.change_set_id
@@ -122,6 +125,7 @@ def _stale(db: Session, row: AdminChangeSet) -> None:
 def apply(
     db: Session, principal: Principal, id: UUID, revision: int
 ) -> ChangeSetPublic:
+    _lock_org(db, principal)
     row = get(db, principal, id, lock=True)
     if row.status != "draft":
         raise ChangeSetError("这份改动已结束，请重新起草")
@@ -167,6 +171,7 @@ def apply(
 
 
 def discard(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
+    _lock_org(db, principal)
     row = get(db, principal, id, lock=True)
     if row.status not in ("draft", "stale"):
         raise ChangeSetError("这份改动已结束")
@@ -178,6 +183,7 @@ def discard(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
 
 
 def undo(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
+    _lock_org(db, principal)
     row = get(db, principal, id, lock=True)
     if row.status != "applied":
         raise ChangeSetError("这份改动尚未应用或已经撤销")
@@ -207,6 +213,15 @@ def undo(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
     )
     reverse.undo_of_id = row.id
     db.add(reverse)
+    if not unchanged:
+        messages.append_message(
+            db,
+            store.get_session(db, principal, row.session_id),
+            "assistant",
+            AdminTurnResponse(
+                messages=[ChangeSetCard(change_set=public(reverse))]
+            ).model_dump(mode="json"),
+        )
     db.commit()
     return (
         apply(db, principal, reverse.id, reverse.revision)

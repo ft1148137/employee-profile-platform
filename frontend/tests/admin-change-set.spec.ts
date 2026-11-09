@@ -93,5 +93,41 @@ for (const width of [1440, 390]) {
     await expect(
       page.getByRole("region", { name: "设置改动确认卡" }).getByRole("status"),
     ).toHaveText("已撤销")
+
+    await page
+      .getByRole("textbox", { name: "发给管理助手的消息" })
+      .fill("把提醒改成每年一次，证据期限改为36个月")
+    await page.getByRole("button", { name: "发送", exact: true }).click()
+    const latest = page.getByRole("region", { name: "设置改动确认卡" }).last()
+    await latest.getByRole("button", { name: "确认应用" }).click()
+    await expect(latest.getByRole("status")).toHaveText("已应用")
+    expect(
+      (
+        await request.put(`${base}/update-settings`, {
+          headers,
+          data: { reminder_schedule: "off", stale_after_months: 24 },
+        })
+      ).ok(),
+    ).toBeTruthy()
+    await latest.getByRole("button", { name: "撤销", exact: true }).click()
+    await expect(
+      page.getByRole("heading", { name: "撤销前请确认" }),
+    ).toBeVisible()
+    await page.reload()
+    const reverse = page.getByRole("region", { name: "设置改动确认卡" }).last()
+    await expect(
+      reverse.getByRole("heading", { name: "撤销前请确认" }),
+    ).toBeVisible()
+    await expect(reverse.getByRole("status")).toHaveText("待确认")
+    expect(
+      (await (await request.get(`${base}/update-settings`, { headers })).json())
+        .reminder_schedule,
+    ).toBe("off")
+    await reverse.getByRole("button", { name: "确认应用" }).click()
+    await expect(reverse.getByRole("status")).toHaveText("已应用")
+    expect(
+      (await (await request.get(`${base}/update-settings`, { headers })).json())
+        .reminder_schedule,
+    ).toBe("quarterly")
   })
 }

@@ -60,6 +60,7 @@ class AdminAssistantMessage(ConversationMessage, table=True):
 
 
 class AdminChangeSet(TenantRecord, table=True):
+    # PostgreSQL defers these foreign keys until commit so drafting cannot lock org/session rows during a turn.
     __tablename__ = "admin_change_set"
     __table_args__ = (
         UniqueConstraint("org_id", "id"),
