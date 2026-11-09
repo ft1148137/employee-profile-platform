@@ -62,6 +62,8 @@ class Impact(BaseModel):
 
 
 class ChangeItem(ChangeSpec):
+    title: str = ""
+    undoable: bool = True
     before: dict[str, JsonValue] | None
     after: dict[str, JsonValue]
     impact: Impact | None = None

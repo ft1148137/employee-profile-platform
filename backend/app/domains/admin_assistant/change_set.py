@@ -59,7 +59,10 @@ def get(
 
 
 def public(row: AdminChangeSet) -> ChangeSetPublic:
-    return ChangeSetPublic.model_validate(row, from_attributes=True)
+    result = ChangeSetPublic.model_validate(row, from_attributes=True)
+    for item in result.items:
+        item.title = registry.FUNCTIONS[item.function].description
+    return result
 
 
 def list_drafts(
@@ -138,6 +141,7 @@ def propose(
                 if entry.impact
                 else None,
                 "risk": entry.risk(args) if callable(entry.risk) else entry.risk,
+                "undoable": entry.undoable,
             }
         )
     if row:
@@ -227,11 +231,11 @@ def apply(
             result = entry.handler(db, principal, args, commit=False)
             if not isinstance(result, BaseModel):
                 raise ChangeSetError("暂不支持这类改动")
-            if entry.snapshot:
+            if entry.snapshot and entry.undoable:
                 item.after = entry.snapshot(db, principal, args).model_dump(
                     mode="json", exclude=set(entry.secret_fields)
                 )
-        row.items = [item.model_dump(mode="json") for item in applied_items]
+        row.items = [item.model_dump(mode="json", exclude={"title"}) for item in applied_items]
         row.status = "applied"
         row.secrets = None
         row.applied_at = row.updated_at = utc_now()
@@ -268,7 +272,7 @@ def undo(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
     if row.status != "applied":
         raise ChangeSetError("这份改动尚未应用或已经撤销")
     items = public(row).items
-    if any(item.before is None for item in items):
+    if any(not item.undoable or item.before is None for item in items):
         raise ChangeSetError("这份改动不能撤销")
     unchanged = True
     reverse_items = []

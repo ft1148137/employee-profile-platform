@@ -138,6 +138,7 @@ class AdminFunction:
     impact: Snapshot | None = None
     secret_fields: tuple[str, ...] = ()
     reverse: Reverse | None = None
+    undoable: bool = True
 
 
 def _profile(db: Session, principal: Principal, args: EmployeeArgs) -> BaseModel:
