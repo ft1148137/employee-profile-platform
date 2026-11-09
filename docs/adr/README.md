@@ -29,3 +29,4 @@
 - [ADR-0023：审批路由、临时读取权限与原子发布](0023-review-and-publish.md)
 - [ADR-0026：限时代理审批](0026-review-delegation.md)
 - [ADR-0027：CI 隔离并行与异步自动合并](0027-ci-and-asynchronous-merge.md)
+- [ADR-0028：管理助手只读功能登记表](0028-admin-function-registry.md)

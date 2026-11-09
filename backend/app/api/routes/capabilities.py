@@ -9,7 +9,6 @@ from app.domains.capability.files import (
     dictionary_yaml,
     parse_dictionary,
 )
-from app.domains.capability.models import CapabilitySchemaVersion
 from app.domains.capability.schemas import (
     ActiveSchemaPublic,
     CapabilitiesPublic,
@@ -20,14 +19,14 @@ from app.domains.capability.schemas import (
 )
 from app.domains.capability.service import (
     DictionaryConflict,
-    SchemaNotFound,
+    _definitions,
     get_schema,
     list_capabilities,
     preview_version,
+    read_editor,
     save_version,
 )
 from app.domains.capability.templates import get_template
-from app.domains.drafting.models import DraftingSetting
 from app.domains.drafting.service import queue_drafting
 
 router = APIRouter(prefix="/orgs/{org_id}/capabilities", tags=["capabilities"])
@@ -45,33 +44,6 @@ def read_capabilities(
             for c in list_capabilities(session, principal.org_id, schema.id)
         ],
     )
-
-
-def _definitions(
-    session: SessionDep,
-    principal: OrgPrincipalDep,
-    schema: CapabilitySchemaVersion | None = None,
-) -> list[DictionaryDefinition]:
-    schema = schema or get_schema(session, principal.org_id)
-    setting = session.get(DraftingSetting, principal.org_id)
-    excluded = set(setting.excluded_capability_keys if setting else [])
-    return [
-        DictionaryDefinition.model_validate(
-            {
-                **c.model_dump(
-                    exclude={
-                        "id",
-                        "org_id",
-                        "created_at",
-                        "schema_version_id",
-                        "position",
-                    }
-                ),
-                "ai_inference": c.key not in excluded,
-            }
-        )
-        for c in list_capabilities(session, principal.org_id, schema.id)
-    ]
 
 
 @router.get("/export", response_class=Response)
@@ -126,20 +98,7 @@ def save_dictionary(
 def read_dictionary_editor(
     session: SessionDep, principal: OrgAdminDep
 ) -> DictionaryPreview:
-    try:
-        schema = get_schema(session, principal.org_id)
-    except SchemaNotFound:
-        return preview_version(session, principal, [], [])
-    return DictionaryPreview(
-        definitions=_definitions(session, principal, schema),
-        expected_version=schema.version,
-        added=[],
-        modified=[],
-        removed=[],
-        removed_claim_counts={},
-        removed_item_counts={},
-        errors=[],
-    )
+    return read_editor(session, principal)
 
 
 @router.post("/editor/preview", response_model=DictionaryPreview)

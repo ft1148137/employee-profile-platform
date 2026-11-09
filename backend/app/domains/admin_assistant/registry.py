@@ -1,0 +1,517 @@
+"""Administrative reads shared with the manual console; identity is server-owned."""
+
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from inspect import isawaitable
+from typing import Any, Literal
+from uuid import UUID
+
+from fastapi import HTTPException
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    RootModel,
+    ValidationError,
+)
+from sqlmodel import Session
+
+from app.authz.deps import get_org_admin
+from app.authz.principal import Principal
+from app.domains.access_token import service as access
+from app.domains.account import service as accounts
+from app.domains.account.schemas import AccountStatus
+from app.domains.admin.overview import build_overview
+from app.domains.audit import service as audit
+from app.domains.bot import settings as bot
+from app.domains.capability.service import read_editor
+from app.domains.drafting import settings as drafting
+from app.domains.drafting import update_settings as updates
+from app.domains.drafting.service import DraftProgress, read_progress
+from app.domains.im import settings as im
+from app.domains.im.schemas import Platform
+from app.domains.model import service as model
+from app.domains.org.models import EmploymentStatus
+from app.domains.org.roster import service as roster
+from app.domains.org.service import visible_employee
+from app.domains.profile.service import read_profile
+from app.domains.review import appeal
+from app.domains.review.policy import policy_view
+from app.domains.setup.wizard import read_setup
+from app.domains.source import identities
+from app.domains.source import service as sources
+from app.domains.source.schemas import SyncRunsPublic
+
+Area = Literal["home", "people", "rules", "data_ai", "connections", "more"]
+Handler = Callable[[Session, Principal, Any], BaseModel | Awaitable[BaseModel]]
+Endpoint = tuple[str, str]
+
+
+class NoArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class PageArgs(NoArgs):
+    skip: int = Field(default=0, ge=0)
+    limit: int = Field(default=100, ge=1, le=100)
+
+
+class ProgressArgs(PageArgs):
+    kind: Literal["jira", "csv"] | None = None
+
+
+class EmployeeFilter(NoArgs):
+    employee_id: UUID | None = None
+
+
+class EmployeeArgs(NoArgs):
+    employee_id: UUID
+
+
+class AppealArgs(NoArgs):
+    appeal_id: UUID
+
+
+class AccountArgs(PageArgs):
+    department_id: UUID | None = None
+    status: AccountStatus | None = None
+    q: str | None = None
+    employment_status: EmploymentStatus | None = None
+    employee_id: UUID | None = None
+
+
+class IdentityArgs(PageArgs):
+    limit: int = Field(default=50, ge=1, le=200)
+    status: Literal["unlinked", "linked", "all"] = "unlinked"
+    source: str | None = None
+    q: str | None = None
+    employee_id: UUID | None = None
+
+
+class AuditArgs(PageArgs):
+    limit: int = Field(default=50, ge=1, le=100)
+    action: str | None = None
+    actor_user_id: UUID | None = None
+    since: AwareDatetime | None = None
+    until: AwareDatetime | None = None
+    target_type: str | None = None
+    target_id: list[str] | None = Field(default=None, max_length=20)
+    employee_id: UUID | None = None
+
+
+class ImArgs(NoArgs):
+    platform: Platform
+
+
+class ProgressPublic(BaseModel):
+    sync_runs: SyncRunsPublic
+    drafting: DraftProgress
+
+
+class TableCard(BaseModel):
+    type: Literal["table"] = "table"
+    title: str
+    columns: list[str]
+    rows: list[list[JsonValue]] = Field(max_length=20)
+    total: int
+    page: str
+
+
+@dataclass(frozen=True)
+class AdminFunction:
+    name: str
+    area: Area
+    kind: Literal["read", "change"]
+    risk: Literal["normal", "high"]
+    description: str
+    input_model: type[BaseModel]
+    handler: Handler
+    page: str
+    endpoints: tuple[Endpoint, ...]
+    snapshot: Handler | None = None
+    impact: Handler | None = None
+    secret_fields: tuple[str, ...] = ()
+
+
+def _profile(db: Session, principal: Principal, args: EmployeeArgs) -> BaseModel:
+    result = read_profile(db, principal, args.employee_id).model_copy(deep=True)
+    titles = {
+        "work_record": "工作记录",
+        "self_report": "员工自述",
+        "manager_review": "经理评价",
+    }
+    for item in result.items:
+        if item.claim:
+            for ref in item.claim.evidence:
+                ref.title = titles[ref.kind]
+    return result
+
+
+def _audit(db: Session, principal: Principal, args: AuditArgs) -> BaseModel:
+    if args.employee_id is not None:
+        visible_employee(db, principal, args.employee_id)
+    values = args.model_dump()
+    values["target_ids"] = values.pop("target_id")
+    return audit.list_events(db, principal.org_id, **values)
+
+
+async def _im_test(db: Session, principal: Principal, args: ImArgs) -> BaseModel:
+    return await im.test_connection(db, principal.org_id, args.platform)
+
+
+def _f(
+    name: str,
+    area: Area,
+    description: str,
+    input_model: type[BaseModel],
+    handler: Handler,
+    page: str,
+    *endpoints: str,
+) -> AdminFunction:
+    return AdminFunction(
+        name,
+        area,
+        "read",
+        "normal",
+        description,
+        input_model,
+        handler,
+        page,
+        tuple((e.split(" ", 1)[0], e.split(" ", 1)[1]) for e in endpoints),
+    )
+
+
+FUNCTIONS = {
+    f.name: f
+    for f in [
+        _f(
+            "get_today",
+            "home",
+            "查看今天要处理的事和运行状态",
+            NoArgs,
+            lambda d, p, a: build_overview(d, p),
+            "/admin",
+            "GET /admin/overview",
+        ),
+        _f(
+            "get_progress",
+            "home",
+            "查看同步记录和画像起草进度",
+            ProgressArgs,
+            lambda d, p, a: ProgressPublic(
+                sync_runs=sources.read_sync_runs(d, p, **a.model_dump()),
+                drafting=read_progress(d, p.org_id),
+            ),
+            "/admin",
+            "GET /sync-runs",
+            "GET /initial-profiles/progress",
+        ),
+        _f(
+            "get_setup_status",
+            "home",
+            "查看首次设置完成情况",
+            NoArgs,
+            lambda d, p, a: read_setup(d, p.org_id),
+            "/admin/setup",
+            "GET /setup",
+        ),
+        _f(
+            "list_accounts",
+            "people",
+            "查看员工及账号状态",
+            AccountArgs,
+            lambda d, p, a: accounts.list_accounts(d, p, **a.model_dump()),
+            "/admin/people?tab=accounts",
+            "GET /accounts",
+        ),
+        _f(
+            "list_roster_imports",
+            "people",
+            "查看名单导入记录",
+            PageArgs,
+            lambda d, p, a: roster.list_imports(d, p, **a.model_dump()),
+            "/admin/people?tab=roster",
+            "GET /roster/imports",
+        ),
+        _f(
+            "list_roles",
+            "people",
+            "查看管理员和经理角色",
+            NoArgs,
+            lambda d, p, a: RootModel(accounts.list_roles(d, p)),
+            "/admin/people?tab=roles",
+            "GET /role-grants",
+        ),
+        _f(
+            "list_appeals",
+            "people",
+            "查看待处理的争议",
+            EmployeeFilter,
+            lambda d, p, a: RootModel(appeal.list_disputes(p, d, **a.model_dump())),
+            "/admin/people?tab=appeals",
+            "GET /appeals",
+        ),
+        _f(
+            "get_appeal",
+            "people",
+            "查看一个争议的处理情况",
+            AppealArgs,
+            lambda d, p, a: appeal.read_appeal(p, d, a.appeal_id),
+            "/admin/people?tab=appeals",
+            "GET /appeals/{appeal_id}",
+        ),
+        _f(
+            "get_employee_profile",
+            "people",
+            "查看可见员工的正式画像",
+            EmployeeArgs,
+            _profile,
+            "/employees",
+            "GET /employees/{employee_id}/profile",
+        ),
+        _f(
+            "get_capability_dictionary",
+            "rules",
+            "查看当前能力词典",
+            NoArgs,
+            lambda d, p, a: read_editor(d, p),
+            "/admin/rules?tab=dictionary",
+            "GET /capabilities/editor",
+        ),
+        _f(
+            "get_approval_policy",
+            "rules",
+            "查看经理确认规则",
+            NoArgs,
+            lambda d, p, a: policy_view(d, p.org_id),
+            "/admin/rules?tab=approval",
+            "GET /approval-policy",
+        ),
+        _f(
+            "get_drafting_settings",
+            "rules",
+            "查看自动起草范围和周期",
+            NoArgs,
+            lambda d, p, a: drafting.read_settings(d, p.org_id),
+            "/admin/rules?tab=drafting",
+            "GET /drafting-settings",
+        ),
+        _f(
+            "get_update_settings",
+            "rules",
+            "查看定期提醒设置",
+            NoArgs,
+            lambda d, p, a: updates.read_update_settings(d, p.org_id),
+            "/admin/rules?tab=reminders",
+            "GET /update-settings",
+        ),
+        _f(
+            "get_sources",
+            "data_ai",
+            "查看数据来源配置（不含凭据）",
+            NoArgs,
+            lambda d, p, a: sources.public_jira(sources.read_jira(d, p.org_id)),
+            "/admin/data-ai?tab=sources",
+            "GET /sources/jira",
+        ),
+        _f(
+            "list_identities",
+            "data_ai",
+            "查看 Jira 账号匹配情况",
+            IdentityArgs,
+            lambda d, p, a: identities.list_identities(d, p.org_id, **a.model_dump()),
+            "/admin/people?tab=identities",
+            "GET /external-identities",
+        ),
+        _f(
+            "get_model_setting",
+            "data_ai",
+            "查看模型设置（不含密钥）",
+            NoArgs,
+            lambda d, p, a: model.public_setting(model.read_setting(d, p.org_id)),
+            "/admin/data-ai?tab=model",
+            "GET /model-setting",
+        ),
+        _f(
+            "get_bot_settings",
+            "data_ai",
+            "查看内置机器人设置",
+            NoArgs,
+            lambda d, p, a: bot.read_settings(d, p.org_id),
+            "/admin/data-ai?tab=bot",
+            "GET /bot-settings",
+        ),
+        _f(
+            "get_im_settings",
+            "connections",
+            "查看消息平台连接设置（不含凭据）",
+            NoArgs,
+            lambda d, p, a: RootModel(im.list_settings(d, p.org_id)),
+            "/admin/connections?tab=im",
+            "GET /im-settings",
+        ),
+        _f(
+            "get_mcp_setting",
+            "connections",
+            "查看外部 AI 助手开关",
+            NoArgs,
+            lambda d, p, a: access.get_setting(d, p),
+            "/admin/connections?tab=mcp",
+            "GET /mcp-setting",
+        ),
+        _f(
+            "test_model",
+            "data_ai",
+            "测试已保存的模型连接",
+            NoArgs,
+            lambda d, p, a: model.check_connection(d, p),
+            "/admin/data-ai?tab=model",
+            "POST /model-setting/test",
+        ),
+        _f(
+            "test_jira_connection",
+            "data_ai",
+            "测试已保存的 Jira 连接",
+            NoArgs,
+            lambda d, p, a: sources.check_jira(d, p),
+            "/admin/data-ai?tab=sources",
+            "POST /sources/jira/test",
+        ),
+        _f(
+            "test_im_connection",
+            "connections",
+            "测试已保存的消息平台连接",
+            ImArgs,
+            _im_test,
+            "/admin/connections?tab=im",
+            "POST /im-settings/{platform}/test",
+        ),
+        _f(
+            "list_audit_events",
+            "more",
+            "查看操作审计记录",
+            AuditArgs,
+            _audit,
+            "/admin/audit",
+            "GET /audit-events",
+        ),
+    ]
+}
+
+
+def list_admin_functions(area: Area) -> dict[str, Any]:
+    return {
+        "data": [
+            {
+                "name": f.name,
+                "description": f.description,
+                "kind": f.kind,
+                "risk": f.risk,
+                "input_model": f.input_model.model_json_schema(),
+            }
+            for f in FUNCTIONS.values()
+            if f.area == area
+        ]
+    }
+
+
+def _table(function: AdminFunction, data: Any) -> TableCard | None:
+    if function.name == "get_progress":
+        data = data["sync_runs"]
+    rows = (
+        data
+        if isinstance(data, list)
+        else data.get("data")
+        if isinstance(data, dict)
+        else None
+    )
+    if not isinstance(rows, list):
+        return None
+    columns = list(rows[0]) if rows else []
+    return TableCard(
+        title=function.description,
+        columns=columns,
+        rows=[[row.get(c) for c in columns] for row in rows[:20]],
+        total=len(rows) if isinstance(data, list) else data.get("count", len(rows)),
+        page=function.page,
+    )
+
+
+async def admin_read(
+    db: Session, principal: Principal, function: str, args: dict[str, Any]
+) -> dict[str, Any]:
+    try:
+        get_org_admin(principal)
+        entry = FUNCTIONS.get(function)
+        if entry is None or entry.kind != "read":
+            return {"data": {"error": "该功能不存在或不是只读功能"}}
+        validated = entry.input_model.model_validate(args)
+        result = entry.handler(db, principal, validated)
+        if isawaitable(result):
+            result = await result
+        data = result.model_dump(mode="json", exclude_unset=function == "get_sources")
+        card = _table(entry, data)
+        return {"data": data, "cards": [card.model_dump(mode="json")] if card else []}
+    except ValidationError:
+        return {"data": {"error": "参数不正确，请按功能说明填写，不能指定身份或企业"}}
+    except HTTPException as error:
+        # Never echo arbitrary service details (including rejected input) to the model.
+        message = (
+            "找不到该记录"
+            if error.status_code == 404
+            else "需要企业管理员权限"
+            if error.status_code == 403
+            else "查询失败，请在对应页面检查设置"
+        )
+        return {"data": {"error": message}}
+
+
+NOT_FOR_ASSISTANT = {
+    ("GET", "/sources/csv/template"): "模板下载由助手给页面链接",
+    ("GET", "/roster/template"): "模板下载由助手给页面链接",
+    ("GET", "/capabilities/template"): "模板下载由助手给页面链接",
+    ("GET", "/model-setting/chatgpt/login"): "订阅登录在浏览器里完成",
+    ("POST", "/model-setting/chatgpt/login"): "订阅登录在浏览器里完成",
+    ("POST", "/model-setting/chatgpt/callback"): "订阅登录在浏览器里完成",
+    ("DELETE", "/model-setting/chatgpt/login"): "订阅登录在浏览器里完成",
+    ("DELETE", "/model-setting/chatgpt"): "订阅登录在浏览器里完成",
+}
+
+PENDING = {
+    ("PUT", "/approval-policy"): "S5",
+    ("PUT", "/drafting-settings"): "S5",
+    ("PUT", "/update-settings"): "S5",
+    ("POST", "/capabilities/preview"): "S8",
+    ("POST", "/capabilities/versions"): "S5",
+    ("POST", "/capabilities/editor/preview"): "S5",
+    ("PUT", "/capabilities"): "S5",
+    ("POST", "/capability-schema"): "S5",
+    ("PUT", "/im-settings/{platform}"): "S6",
+    ("PUT", "/mcp-setting"): "S6",
+    ("PUT", "/bot-settings"): "S6",
+    ("PUT", "/model-setting"): "S6",
+    ("PUT", "/sources/jira"): "S6",
+    ("POST", "/sources/jira/sync"): "S6",
+    ("POST", "/sync-runs/{run_id}/retry"): "S6",
+    ("POST", "/external-identities/link"): "S6",
+    ("POST", "/external-identities/{identity_id}/unlink"): "S6",
+    ("POST", "/initial-profiles/draft"): "S6",
+    ("POST", "/initial-profiles/hand-over"): "S6",
+    ("GET", "/initial-profiles/hand-over"): "S6（交付前预览）",
+    ("PATCH", ""): "S6",
+    ("POST", "/setup/steps/{key}/complete"): "S6",
+    ("POST", "/setup/steps/{key}/skip"): "S6",
+    ("POST", "/accounts/issue"): "S7",
+    ("POST", "/accounts/{user_id}/reset-password"): "S7",
+    ("POST", "/accounts/{user_id}/disable"): "S7",
+    ("POST", "/accounts/{user_id}/enable"): "S7",
+    ("POST", "/role-grants"): "S7",
+    ("DELETE", "/role-grants/{grant_id}"): "S7",
+    ("POST", "/appeals/{appeal_id}/resolve"): "S7",
+    ("POST", "/sources/csv/imports"): "S8",
+    ("POST", "/roster/imports"): "S8",
+    ("POST", "/roster/imports/{id}/apply"): "S8",
+    ("POST", "/profile-imports"): "S8",
+}

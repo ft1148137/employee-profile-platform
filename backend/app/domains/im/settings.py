@@ -184,3 +184,10 @@ async def test_connection(
     finally:
         if adapter:
             await adapter.close()
+
+
+def list_settings(db: Session, org_id: UUID) -> list[ImSettingPublic]:
+    return [
+        public_setting(db, org_id, platform)
+        for platform in ("feishu", "wecom", "telegram")
+    ]

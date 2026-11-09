@@ -7,16 +7,21 @@ from sqlmodel import Session, select
 
 from app.authz.principal import Principal
 from app.core.config import settings
-from app.core.secrets import decrypt_secret, encrypt_secret
+from app.core.secrets import SecretUnavailable, decrypt_secret, encrypt_secret
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.model import chatgpt
-from app.domains.model.client import ModelUnavailable
+from app.domains.model.client import (
+    ModelOutputInvalid,
+    ModelRateLimited,
+    ModelUnavailable,
+)
 from app.domains.model.models import ModelSetting
-from app.domains.model.pi_client import PiModelConfig
+from app.domains.model.pi_client import PiModelConfig, run_turn
 from app.domains.model.schemas import (
     CLOUD_PROVIDERS,
     ChatGPTStatus,
+    ConnectionTest,
     ModelSettingPublic,
     ModelSettingUpdate,
 )
@@ -197,3 +202,25 @@ def validate_capabilities(
             )
     except httpx.HTTPError, ValueError, KeyError, TypeError:
         raise ModelUnavailable("模型服务暂时不可用，请稍后再试") from None
+
+
+def check_connection(session: Session, principal: Principal) -> ConnectionTest:
+    try:
+        setting = read_setting(session, principal.org_id)
+        config = model_config(setting)
+        validate_capabilities(config.provider, config.id, config.thinkingLevel)
+        run_turn(
+            config,
+            system_prompt="请简短回复连接成功。",
+            input="连接测试",
+            tools=[],
+            on_tool_call=lambda _name, _args: None,
+        )
+    except (
+        SecretUnavailable,
+        ModelUnavailable,
+        ModelOutputInvalid,
+        ModelRateLimited,
+    ) as error:
+        return ConnectionTest(ok=False, message=str(error))
+    return ConnectionTest(ok=True, message="模型连接成功")
