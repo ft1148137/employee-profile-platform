@@ -1,12 +1,15 @@
 """Only explicit HTTP actions may apply a proposed administrative change."""
 
+import json
+from datetime import timedelta
 from uuid import UUID
 
 from fastapi import HTTPException
 from pydantic import BaseModel, JsonValue
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
+from app.core.secrets import decrypt_secret, encrypt_secret
 from app.domains.admin_assistant import registry, store
 from app.domains.admin_assistant.models import AdminChangeSet
 from app.domains.admin_assistant.schemas import (
@@ -14,6 +17,7 @@ from app.domains.admin_assistant.schemas import (
     ChangeSetCard,
     ChangeSetPublic,
     ProposeChanges,
+    SecretInputCard,
 )
 from app.domains.base import utc_now
 from app.domains.bot import store as messages
@@ -63,10 +67,12 @@ def _entry(
     entry = registry.FUNCTIONS.get(name)
     if entry is None or entry.kind != "change" or {"org_id", "user_id"} & args.keys():
         raise ChangeSetError("改动功能或参数不正确，不能指定身份或企业", 422)
-    if entry.risk == "high" or entry.secret_fields:
-        # shortcut: High-risk changes and secret inputs stay disabled until S5b.
-        raise ChangeSetError("暂不支持这类改动，请到对应页面操作", 422)
-    return entry, entry.input_model.model_validate(args)
+    if set(entry.secret_fields) & args.keys():
+        raise ChangeSetError("请用安全输入框填写密钥", 422)
+    # Validate ordinary fields now; secret values are validated again at application.
+    return entry, entry.input_model.model_validate(
+        {**args, **dict.fromkeys(entry.secret_fields, "pending-secure-input")}
+    )
 
 
 def propose(
@@ -86,20 +92,24 @@ def propose(
         items.append(
             {
                 "function": entry.name,
-                "args": args.model_dump(mode="json"),
-                "before": entry.snapshot(db, principal, args).model_dump(mode="json")
+                "args": args.model_dump(mode="json", exclude=set(entry.secret_fields)),
+                "before": entry.snapshot(db, principal, args).model_dump(
+                    mode="json", exclude=set(entry.secret_fields)
+                )
                 if entry.snapshot
                 else None,
-                "after": args.model_dump(mode="json"),
+                "after": args.model_dump(mode="json", exclude=set(entry.secret_fields)),
                 "impact": entry.impact(db, principal, args).model_dump(mode="json")
                 if entry.impact
                 else None,
-                "risk": entry.risk,
+                "risk": entry.risk(args) if callable(entry.risk) else entry.risk,
             }
         )
     if row:
         row.items = items
         row.revision += 1
+        row.confirmed_once_at = None
+        row.secrets = None
         row.updated_at = utc_now()
     else:
         assert principal.user_id is not None
@@ -116,6 +126,8 @@ def propose(
 
 def _stale(db: Session, row: AdminChangeSet) -> None:
     row.status = "stale"
+    row.secrets = None
+    row.confirmed_once_at = None
     row.updated_at = utc_now()
     db.add(row)
     db.commit()
@@ -131,19 +143,44 @@ def apply(
         raise ChangeSetError("这份改动已结束，请重新起草")
     if row.revision != revision:
         _stale(db, row)
+    secret_values = json.loads(decrypt_secret(row.secrets)) if row.secrets else {}
     prepared = []
     for item in public(row).items:
         entry, args = _entry(item.function, item.args)
         if (
             entry.snapshot
-            and entry.snapshot(db, principal, args).model_dump(mode="json")
+            and entry.snapshot(db, principal, args).model_dump(
+                mode="json", exclude=set(entry.secret_fields)
+            )
             != item.before
         ):
             _stale(db, row)
+        if entry.secret_fields:
+            try:
+                args = entry.input_model.model_validate(
+                    {
+                        **item.args,
+                        **{
+                            f: secret_values[f]
+                            for f in entry.secret_fields
+                            if f in secret_values
+                        },
+                    }
+                )
+            except ValueError:
+                raise ChangeSetError("请先用安全输入框填写有效的密钥", 422) from None
         prepared.append((entry, args))
     original = get(db, principal, row.undo_of_id) if row.undo_of_id else None
     if original and original.status != "applied":
         _stale(db, row)
+    if any(item.risk == "high" for item in public(row).items) and (
+        row.confirmed_once_at is None
+        or utc_now() - row.confirmed_once_at >= timedelta(minutes=5)
+    ):
+        row.confirmed_once_at = row.updated_at = utc_now()
+        db.add(row)
+        db.commit()
+        return public(row)
     db.info["audit_context"] = {
         "via": "admin_assistant",
         "assistant_session_id": str(row.session_id),
@@ -155,6 +192,7 @@ def apply(
             if not isinstance(result, BaseModel):
                 raise ChangeSetError("暂不支持这类改动")
         row.status = "applied"
+        row.secrets = None
         row.applied_at = row.updated_at = utc_now()
         db.add(row)
         if original:
@@ -162,9 +200,9 @@ def apply(
             original.updated_at = utc_now()
             db.add(original)
         db.commit()
-    except Exception as error:
+    except Exception:
         db.rollback()
-        raise ChangeSetError("未能应用，所有改动均已回滚，请检查设置后重试") from error
+        raise ChangeSetError("未能应用，所有改动均已回滚，请检查设置后重试") from None
     finally:
         db.info.pop("audit_context", None)
     return public(row)
@@ -176,6 +214,7 @@ def discard(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
     if row.status not in ("draft", "stale"):
         raise ChangeSetError("这份改动已结束")
     row.status = "discarded"
+    row.secrets = None
     row.updated_at = utc_now()
     db.add(row)
     db.commit()
@@ -213,7 +252,7 @@ def undo(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
     )
     reverse.undo_of_id = row.id
     db.add(reverse)
-    if not unchanged:
+    if not unchanged or any(item.risk == "high" for item in public(reverse).items):
         messages.append_message(
             db,
             store.get_session(db, principal, row.session_id),
@@ -228,3 +267,49 @@ def undo(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
         if unchanged
         else public(reverse)
     )
+
+
+def request_secret_input(
+    db: Session, principal: Principal, session_id: UUID, function: str, field: str
+) -> SecretInputCard:
+    store.get_session(db, principal, session_id)
+    entry = registry.FUNCTIONS.get(function)
+    if entry is None or field not in entry.secret_fields:
+        raise ChangeSetError("这个字段不接受安全输入", 422)
+    rows = db.exec(
+        select(AdminChangeSet)
+        .where(
+            AdminChangeSet.org_id == principal.org_id,
+            AdminChangeSet.created_by_user_id == principal.user_id,
+            AdminChangeSet.session_id == session_id,
+            AdminChangeSet.status == "draft",
+        )
+        .order_by(col(AdminChangeSet.updated_at).desc())
+    ).all()
+    row = next(
+        (r for r in rows if any(i["function"] == function for i in r.items)), None
+    )
+    if row is None:
+        raise ChangeSetError("请先起草需要填写密钥的改动", 422)
+    return SecretInputCard(
+        change_set_id=row.id, field=field, title=f"{entry.description}：安全填写密钥"
+    )
+
+
+def save_secret(
+    db: Session, principal: Principal, id: UUID, field: str, value: str
+) -> None:
+    row = get(db, principal, id, lock=True)
+    if row.status != "draft":
+        raise ChangeSetError("这份改动已结束")
+    if not any(
+        field in registry.FUNCTIONS[item.function].secret_fields
+        for item in public(row).items
+    ):
+        raise ChangeSetError("这个字段不接受安全输入", 422)
+    values = json.loads(decrypt_secret(row.secrets)) if row.secrets else {}
+    values[field] = value
+    row.secrets = encrypt_secret(json.dumps(values))
+    row.confirmed_once_at = None
+    db.add(row)
+    db.commit()

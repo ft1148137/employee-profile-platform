@@ -95,11 +95,19 @@ export const test = base.extend<{ modelUrl: string }>({
                             ? {
                                 items: [
                                   {
-                                    function: "update_update_settings",
-                                    args: {
-                                      reminder_schedule: "yearly",
-                                      stale_after_months: 36,
-                                    },
+                                    function: JSON.stringify(last).includes(
+                                      "关闭经理确认",
+                                    )
+                                      ? "update_approval_policy"
+                                      : "update_update_settings",
+                                    args: JSON.stringify(last).includes(
+                                      "关闭经理确认",
+                                    )
+                                      ? { require_manager: false }
+                                      : {
+                                          reminder_schedule: "yearly",
+                                          stale_after_months: 36,
+                                        },
                                   },
                                 ],
                               }

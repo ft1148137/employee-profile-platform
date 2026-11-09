@@ -114,7 +114,7 @@ def policy_view(session: Session, org_id: UUID) -> PolicyView:
 
 
 def save_policy(
-    session: Session, principal: Principal, body: PolicyInput
+    session: Session, principal: Principal, body: PolicyInput, *, commit: bool = True
 ) -> PolicyView:
     if not principal.is_org_admin or principal.user_id is None:
         raise OrgAdminRequired()
@@ -151,7 +151,8 @@ def save_policy(
     )
     session.flush()
     result = policy_view(session, principal.org_id)
-    session.commit()
+    if commit:
+        session.commit()
     return result
 
 

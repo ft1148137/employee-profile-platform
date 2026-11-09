@@ -4,6 +4,72 @@ import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
+test("closing manager confirmation requires two clicks with impact", async ({
+  page,
+  request,
+  modelUrl,
+}) => {
+  const email = `admin-policy-${crypto.randomUUID()}@example.com`
+  const password = "synthetic-password-2026"
+  const token = await request.post("/api/v1/private/setup-tokens", {
+    data: { purpose: "new_org" },
+  })
+  const initialized = await request.post("/api/v1/setup/initialize", {
+    data: {
+      token: (await token.json()).token,
+      org_name: "二次确认合成企业",
+      admin_username: email,
+      admin_password: password,
+      admin_full_name: "管理员",
+    },
+  })
+  expect(initialized.ok()).toBeTruthy()
+  const { org_id: orgId, access_token: accessToken } = await initialized.json()
+  const base = `/api/v1/orgs/${orgId}`
+  const headers = { Authorization: `Bearer ${accessToken}` }
+  expect(
+    (
+      await request.put(`${base}/model-setting`, {
+        headers,
+        data: {
+          enabled: true,
+          kind: "openai_compatible",
+          provider: "openai-compatible",
+          model: "synthetic",
+          base_url: modelUrl,
+          api_key: "synthetic-key",
+        },
+      })
+    ).ok(),
+  ).toBeTruthy()
+  await logInUser(page, email, password)
+  await page.goto("/admin/assistant")
+  await page
+    .getByRole("textbox", { name: "发给管理助手的消息" })
+    .fill("关闭经理确认")
+  await page.getByRole("button", { name: "发送", exact: true }).click()
+  const card = page.getByRole("region", { name: "设置改动确认卡" })
+  await expect(card).toBeVisible({ timeout: 30000 })
+  await card.getByRole("button", { name: "确认应用" }).click()
+  await expect(card.getByRole("status")).toHaveText("请再次确认")
+  await expect(card.getByRole("alert")).toContainText("影响全体在职员工")
+  expect(
+    (await (await request.get(`${base}/approval-policy`, { headers })).json())
+      .current.require_manager,
+  ).toBe(true)
+  await page.reload()
+  await expect(
+    card.getByRole("button", { name: "再次确认", exact: true }),
+  ).toBeVisible()
+  await card.getByRole("button", { name: "再次确认", exact: true }).click()
+  await expect(card.getByRole("status")).toHaveText("已应用")
+  expect(
+    (await (await request.get(`${base}/approval-policy`, { headers })).json())
+      .current.require_manager,
+  ).toBe(false)
+  await expectChineseCopy(page)
+})
+
 for (const width of [1440, 390]) {
   test(`reminder change is previewed, applied and undone at ${width}px`, async ({
     page,
