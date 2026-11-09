@@ -111,7 +111,7 @@ def test_new_setup_and_blockers(
     response = client.get(f"{tenant.url}/setup", headers=tenant.auth["admin"])
     assert response.status_code == 200
     data = response.json()
-    assert not data["completed"] and data["next_step_key"] == "roster"
+    assert not data["completed"] and data["next_step_key"] == "model"
     assert [s["key"] for s in data["steps"]] == [
         "org_profile",
         "roster",
@@ -124,12 +124,11 @@ def test_new_setup_and_blockers(
         "initial_profiles",
     ]
     assert [s["order"] for s in data["steps"]] == [10, 20, 30, 40, 50, 60, 70, 80, 90]
-    assert all(
-        s["required"] and not s["skippable"]
-        for s in data["steps"]
-        if s["key"] not in {"sources", "identities", "approval_policy"}
-    )
-    assert all(not s["required"] and s["skippable"] for s in data["steps"][4:6])
+    assert {s["key"] for s in data["steps"] if s["required"]} == {
+        "org_profile",
+        "model",
+    }
+    assert next(s for s in data["steps"] if s["key"] == "model")["skippable"]
     assert data["steps"][-4]["blockers"] == []
     assert data["steps"][0]["status"] == "completed"
     assert data["steps"][0]["blockers"] == []
@@ -234,8 +233,7 @@ def test_complete_persist_and_extend(
             state.updated_by_user_id == tenant.admin_id and state.updated_at is not None
         )
     assert (
-        not response.json()["completed"]
-        and response.json()["next_step_key"] == "sources"
+        not response.json()["completed"] and response.json()["next_step_key"] == "model"
     )
     assert (
         client.post(f"{tenant.url}/setup/steps/sources/skip", headers=auth).status_code
@@ -254,8 +252,7 @@ def test_complete_persist_and_extend(
         == 200
     )
     assert (
-        client.get(f"{tenant.url}/setup", headers=auth).json()["next_step_key"]
-        == "approval_policy"
+        client.get(f"{tenant.url}/setup", headers=auth).json()["next_step_key"] is None
     )
     assert (
         client.post(
@@ -531,7 +528,7 @@ def test_model_step(tenant: SetupTenant, client: TestClient, db: Session) -> Non
     url = f"{tenant.url}/setup/steps/model"
     auth = tenant.auth["admin"]
     assert client.post(f"{url}/complete", headers=auth).status_code == 422
-    assert client.post(f"{url}/skip", headers=auth).status_code == 422
+    assert client.post(f"{url}/skip", headers=auth).json()["completed"]
     db.add(
         ModelSetting(
             org_id=tenant.org_id, enabled=True, updated_by_user_id=tenant.admin_id
@@ -542,7 +539,7 @@ def test_model_step(tenant: SetupTenant, client: TestClient, db: Session) -> Non
 
 
 @pytest.mark.parametrize("old_status", [SetupStatus.COMPLETED, SetupStatus.SKIPPED])
-def test_upgrade_reopens_model_step(
+def test_upgrade_preserves_completed_setup(
     tenant: SetupTenant, client: TestClient, db: Session, old_status: SetupStatus
 ) -> None:
     db.add_all(
@@ -559,15 +556,12 @@ def test_upgrade_reopens_model_step(
     )
     db.commit()
     data = client.get(f"{tenant.url}/setup", headers=tenant.auth["admin"]).json()
-    assert not data["completed"] and data["next_step_key"] == "model"
+    assert data["completed"] and data["next_step_key"] is None
     model = next(s for s in data["steps"] if s["key"] == "model")
-    assert model["required"] and not model["skippable"] and model["blockers"]
-    assert (
-        client.post(
-            f"{tenant.url}/setup/steps/model/complete", headers=tenant.auth["admin"]
-        ).status_code
-        == 422
-    )
+    assert model["required"] and model["skippable"] and not model["blockers"]
+    assert client.post(
+        f"{tenant.url}/setup/steps/model/complete", headers=tenant.auth["admin"]
+    ).status_code == (200 if old_status == SetupStatus.COMPLETED else 422)
     db.add(
         ModelSetting(
             org_id=tenant.org_id, enabled=True, updated_by_user_id=tenant.admin_id
@@ -664,4 +658,29 @@ def test_initial_profiles_checks(
     assert (
         client.post(f"{base}/initial_profiles/complete", headers=auth).status_code
         == 200
+    )
+
+
+def test_two_step_completion_and_home_todos(
+    tenant: SetupTenant, client: TestClient, db: Session
+) -> None:
+    auth = tenant.auth["admin"]
+    assert client.post(f"{tenant.url}/setup/steps/model/skip", headers=auth).json()[
+        "completed"
+    ]
+    overview = client.get(f"{tenant.url}/admin/overview", headers=auth).json()
+    todo = next(t for t in overview["todos"] if t["kind"] == "setup_step")
+    assert todo["count"] == 7
+    db.add(
+        ModelSetting(
+            org_id=tenant.org_id, enabled=True, updated_by_user_id=tenant.admin_id
+        )
+    )
+    db.commit()
+    result = client.post(
+        f"{tenant.url}/setup/steps/model/complete", headers=auth
+    ).json()
+    assert result["completed"] and result["next_step_key"] is None
+    assert (
+        next(s for s in result["steps"] if s["key"] == "roster")["status"] == "pending"
     )

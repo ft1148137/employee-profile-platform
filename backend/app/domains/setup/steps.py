@@ -1,7 +1,7 @@
 """Add steps by registering a check here and a matching frontend component.
 
 Use spaced order values (M2: 50/60/70/90, M4: 80). No migration is needed;
-new required steps automatically make previously finished setups incomplete.
+only enterprise information and model setup gate first use.
 """
 
 from collections.abc import Callable
@@ -152,7 +152,7 @@ STEPS = [
         "导入员工名单",
         "导入名单并确认在职员工",
         20,
-        True,
+        False,
         False,
         check_roster,
     ),
@@ -161,7 +161,7 @@ STEPS = [
         "选择能力词典",
         "为企业启用能力词典",
         30,
-        True,
+        False,
         False,
         check_capabilities,
     ),
@@ -170,7 +170,7 @@ STEPS = [
         "生成员工账号",
         "为有邮箱的在职员工生成账号",
         40,
-        True,
+        False,
         False,
         check_accounts,
     ),
@@ -198,7 +198,7 @@ STEPS = [
         "配置并启用 AI 模型后才能起草",
         70,
         True,
-        False,
+        True,
         check_model,
     ),
     SetupStep(
@@ -215,7 +215,7 @@ STEPS = [
         "生成初始画像",
         "为员工生成待本人过目的初始画像",
         90,
-        True,
+        False,
         False,
         check_initial_profiles,
     ),

@@ -1,4 +1,9 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  Outlet,
+  redirect,
+  useLocation,
+} from "@tanstack/react-router"
 import axios, { AxiosError } from "axios"
 import { UsersService } from "@/client"
 import { AssistantEntry } from "@/components/AdminAssistant/AdminAssistantPanel"
@@ -46,6 +51,13 @@ export const Route = createFileRoute("/_layout")({
 })
 
 function Layout() {
+  const location = useLocation()
+  if (location.pathname.replace(/\/$/, "") === "/admin/assistant")
+    return (
+      <SidebarProvider>
+        <Outlet />
+      </SidebarProvider>
+    )
   return (
     <SidebarProvider>
       <AppSidebar />

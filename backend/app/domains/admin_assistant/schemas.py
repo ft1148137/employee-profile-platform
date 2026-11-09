@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, JsonValue
 
+from app.domains.admin_assistant.registry import TableCard as TableCard
 from app.domains.bot.schemas import TextMessage
 from app.domains.change_request.schemas import ToolInput
 
@@ -37,7 +38,7 @@ AdminPage = Literal[
 class LinkCard(BaseModel):
     type: Literal["link"] = "link"
     title: str
-    page: AdminPage
+    page: str
 
 
 class AdminTurnInput(ToolInput):
@@ -86,7 +87,10 @@ class ApplyChanges(ToolInput):
 
 class AdminTurnResponse(BaseModel):
     messages: list[
-        Annotated[TextMessage | LinkCard | ChangeSetCard, Field(discriminator="type")]
+        Annotated[
+            TextMessage | LinkCard | TableCard | ChangeSetCard,
+            Field(discriminator="type"),
+        ]
     ]
 
 

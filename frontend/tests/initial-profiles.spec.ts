@@ -160,7 +160,14 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     ).toBeTruthy()
   }
   await logInUser(page, `${username}@example.com`, password)
+  await expect(page).toHaveURL("/admin/assistant")
+  await page.goto("/setup-wizard")
   await expect(page).toHaveURL("/setup-wizard")
+  await page.getByText("稍后处理的事项", { exact: true }).click()
+  await page
+    .getByRole("navigation", { name: "设置步骤" })
+    .getByRole("button", { name: /生成初始画像/ })
+    .click()
   await expect(
     page.getByRole("heading", { name: "生成初始画像", exact: true }),
   ).toBeVisible()

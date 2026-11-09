@@ -209,6 +209,7 @@ test("confirm candidates in bulk, select employee, unlink and save optional setu
     fullPage: true,
   })
   await page.goto("/setup-wizard")
+  await page.getByText("稍后处理的事项", { exact: true }).click()
   const step = page
     .getByRole("navigation", { name: "设置步骤" })
     .getByRole("button", { name: /确认账号对应/ })
@@ -219,6 +220,7 @@ test("confirm candidates in bulk, select employee, unlink and save optional setu
   await page.getByRole("button", { name: "跳过", exact: true }).click()
   await expect(step).toContainText("已跳过")
   await page.reload()
+  await page.getByText("稍后处理的事项", { exact: true }).click()
   await expect(step).toContainText("已跳过")
   await step.click()
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()

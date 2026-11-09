@@ -1,3 +1,4 @@
+import asyncio
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -6,10 +7,19 @@ from sqlmodel import Session
 
 from app.authz.principal import Principal
 from app.domains.admin.overview import build_overview
-from app.domains.admin_assistant import change_set
+from app.domains.admin_assistant import change_set, registry
 from app.domains.admin_assistant.schemas import ChangeSetCard, LinkCard, ProposeChanges
 from app.domains.change_request.schemas import ToolInput
 from app.domains.model.pi_client import ToolDefinition
+
+
+class ListFunctionsInput(ToolInput):
+    area: registry.Area
+
+
+class ReadInput(ToolInput):
+    function: str
+    args: dict[str, JsonValue]
 
 
 def definitions() -> list[ToolDefinition]:
@@ -18,6 +28,16 @@ def definitions() -> list[ToolDefinition]:
             name="get_today",
             description="查看今天要处理的事和运行状态",
             parameters=ToolInput.model_json_schema(),
+        ),
+        ToolDefinition(
+            name="list_admin_functions",
+            description="查看某个区域的管理功能和参数说明",
+            parameters=ListFunctionsInput.model_json_schema(),
+        ),
+        ToolDefinition(
+            name="admin_read",
+            description="执行只读管理功能，参数按功能说明填写",
+            parameters=ReadInput.model_json_schema(),
         ),
         ToolDefinition(
             name="propose_changes",
@@ -30,12 +50,31 @@ def definitions() -> list[ToolDefinition]:
 def call(
     db: Session,
     principal: Principal,
-    cards: list[LinkCard | ChangeSetCard],
+    cards: list[LinkCard | registry.TableCard | ChangeSetCard],
     name: str,
     args: dict[str, JsonValue],
     *,
     session_id: UUID | None = None,
 ) -> JsonValue:
+    try:
+        if name == "list_admin_functions":
+            return registry.list_admin_functions(
+                ListFunctionsInput.model_validate(args).area
+            )
+        if name == "admin_read":
+            body = ReadInput.model_validate(args)
+            result = asyncio.run(
+                registry.admin_read(db, principal, body.function, body.args)
+            )
+            if "cards" in result:
+                entry = registry.FUNCTIONS[body.function]
+                cards.append(LinkCard(title="打开对应页面", page=entry.page))
+                cards.extend(
+                    registry.TableCard.model_validate(c) for c in result["cards"]
+                )
+            return {"data": result["data"]}
+    except ValidationError:
+        return {"data": {"error": "参数不正确，请按功能说明填写"}}
     if name == "propose_changes" and session_id:
         try:
             row = change_set.propose(
@@ -62,8 +101,8 @@ def call(
                 else "找不到这份改动或会话"
             }
     if name != "get_today" or args:
-        return {"error": "工具或参数不正确，目前只能查看今天要处理的事"}
-    result = build_overview(db, principal)
+        return {"error": "工具或参数不正确，请使用已开放的功能"}
+    overview = build_overview(db, principal)
     if not cards:
         cards.append(LinkCard(title="打开管理首页", page="/admin"))
-    return {"data": result.model_dump(mode="json")}
+    return {"data": overview.model_dump(mode="json")}

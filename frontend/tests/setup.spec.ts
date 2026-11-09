@@ -37,6 +37,14 @@ test("complete setup with 30 employees, download accounts and first employee log
   await page.getByLabel("姓名（可选）").fill("测试管理员")
   await page.getByRole("button", { name: "创建企业并继续" }).click()
   await expect(page).toHaveURL("/setup-wizard")
+  await expect(
+    page.getByRole("heading", { name: "配置模型", exact: true }),
+  ).toBeVisible()
+  await page.getByText("稍后处理的事项", { exact: true }).click()
+  await page
+    .getByRole("navigation", { name: "设置步骤" })
+    .getByRole("button", { name: /导入员工名单/ })
+    .click()
   await page
     .getByLabel("拖拽名单到这里，或选择文件上传")
     .setInputFiles(
@@ -127,11 +135,16 @@ test("complete setup with 30 employees, download accounts and first employee log
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
   await expect(
     page.getByRole("button", { name: "跳过", exact: true }),
-  ).toHaveCount(0)
+  ).toBeVisible()
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
   await expect(page.getByRole("alert")).toContainText("还没有启用模型")
   await configureModel(page, modelUrl)
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await expect(page.getByRole("heading", { name: "设置完成" })).toBeVisible()
+  await page
+    .getByRole("navigation", { name: "设置步骤" })
+    .getByRole("button", { name: /审批规则/ })
+    .click()
   await expect(
     page.getByRole("heading", { name: "审批规则", exact: true }),
   ).toBeVisible()
@@ -207,6 +220,9 @@ test("initialize, preview and replace dictionary, persist progress and reject re
   await page.getByRole("button", { name: "创建企业并继续" }).click()
   await expect(page).toHaveURL("/setup-wizard")
   const steps = page.getByRole("navigation", { name: "设置步骤" })
+  await expect(steps.getByRole("button")).toHaveCount(2)
+  await steps.getByText("稍后处理的事项", { exact: true }).click()
+  await expect(steps.getByRole("button")).toHaveCount(9)
   await steps.getByRole("button", { name: /企业信息/ }).click()
   await page.getByLabel("企业名称", { exact: true }).fill("合成测试医院更新")
   await page.screenshot({
@@ -214,6 +230,10 @@ test("initialize, preview and replace dictionary, persist progress and reject re
     fullPage: true,
   })
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await expect(
+    page.getByRole("heading", { name: "配置模型", exact: true }),
+  ).toBeVisible()
+  await steps.getByRole("button", { name: /导入员工名单/ }).click()
   await expect(
     page.getByRole("heading", { name: "导入员工名单" }),
   ).toBeVisible()
@@ -254,6 +274,7 @@ test("initialize, preview and replace dictionary, persist progress and reject re
     page.getByRole("heading", { name: "生成员工账号" }),
   ).toBeVisible()
   await page.reload()
+  await steps.getByText("稍后处理的事项", { exact: true }).click()
   await expect(
     steps.getByRole("button", { name: /选择能力词典/ }),
   ).toContainText("已完成")
@@ -327,4 +348,90 @@ test("missing and invalid initialization links and uninitialized login hint", as
   await page.goto("/login")
   await expect(page.getByRole("status")).toContainText("系统还没有初始化")
   await expectChineseCopy(page)
+})
+
+test("keep the selected step when enterprise saving completes later", async ({
+  page,
+  request,
+}) => {
+  const response = await request.post("/api/v1/private/setup-tokens", {
+    data: { purpose: "new_org" },
+  })
+  expect(response.ok()).toBeTruthy()
+  await page.goto(`/setup#token=${(await response.json()).token}`)
+  await fillSetup(page)
+  await page.getByRole("button", { name: "创建企业并继续" }).click()
+  const steps = page.getByRole("navigation", { name: "设置步骤" })
+  await steps.getByText("稍后处理的事项", { exact: true }).click()
+  await steps.getByRole("button", { name: /企业信息/ }).click()
+  let releaseSave = () => {}
+  let releaseCompletion = () => {}
+  const save = new Promise<void>((resolve) => {
+    releaseSave = resolve
+  })
+  const completion = new Promise<void>((resolve) => {
+    releaseCompletion = resolve
+  })
+  await page.route("**/api/v1/orgs/*", async (route) => {
+    await save
+    await route.continue()
+  })
+  await page.route("**/setup/steps/org_profile/complete", async (route) => {
+    await completion
+    await route.continue()
+  })
+  const roster = steps.getByRole("button", { name: /导入员工名单/ })
+  try {
+    await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+    await roster.click()
+    releaseSave()
+    await expect(roster).toBeDisabled()
+    releaseCompletion()
+    await expect(roster).toBeEnabled()
+    await expect(
+      page.getByRole("heading", { name: "导入员工名单", exact: true }),
+    ).toBeVisible()
+    await expect(roster).toHaveAttribute("aria-current", "step")
+  } finally {
+    releaseSave()
+    releaseCompletion()
+  }
+})
+
+test("skip model setup and enter the manual home", async ({
+  page,
+  request,
+}) => {
+  const response = await request.post("/api/v1/private/setup-tokens", {
+    data: { purpose: "new_org" },
+  })
+  expect(response.ok()).toBeTruthy()
+  await page.goto(`/setup#token=${(await response.json()).token}`)
+  await fillSetup(page)
+  await page.getByRole("button", { name: "创建企业并继续" }).click()
+  await expect(
+    page.getByRole("heading", { name: "配置模型", exact: true }),
+  ).toBeVisible()
+  await page.getByRole("button", { name: "上一步", exact: true }).click()
+  await expect(
+    page.getByRole("heading", { name: "企业信息与管理员账号", exact: true }),
+  ).toBeVisible()
+  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await expect(
+    page.getByRole("heading", { name: "配置模型", exact: true }),
+  ).toBeVisible()
+  await page.getByRole("button", { name: "跳过", exact: true }).click()
+  await expect(page.getByRole("heading", { name: "设置完成" })).toBeVisible()
+  await page.getByRole("link", { name: "进入首页", exact: true }).click()
+  await expect(page).toHaveURL(/\/admin\/?$/)
+  const fallback = page
+    .getByRole("status")
+    .filter({ hasText: "请先在模型设置里配置模型" })
+  await expect(fallback.getByRole("link", { name: "去配置模型" })).toBeVisible()
+  await expect(
+    fallback.getByRole("link", { name: "去配置模型" }),
+  ).toHaveAttribute("href", "/admin/data-ai?tab=model")
+  await expect(
+    page.getByRole("region", { name: "今天要处理的事" }),
+  ).toContainText("步首次设置没完成")
 })

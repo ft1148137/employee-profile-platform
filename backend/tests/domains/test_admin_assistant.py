@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, inspect
+from sqlalchemy import Engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
@@ -29,6 +29,7 @@ from app.domains.model.models import ModelSetting
 from app.domains.model.pi_client import PiBusy, TurnResult
 from app.domains.org.models import OrgMembership, Role, RoleGrant
 from app.models import User
+from app.worker.tasks import draft_initial
 from tests.api.routes.test_employee_requests import principal_for
 from tests.domains.test_bot_core import enable
 from tests.utils.migrations import migrate
@@ -117,7 +118,12 @@ def test_turn_and_private_sessions(
 
     def reply(_config: object, **kwargs: object) -> TurnResult:
         assert body["page"] in kwargs["system_prompt"]
-        assert [t.name for t in kwargs["tools"]] == ["get_today", "propose_changes"]
+        assert [t.name for t in kwargs["tools"]] == [
+            "get_today",
+            "list_admin_functions",
+            "admin_read",
+            "propose_changes",
+        ]
         assert kwargs["on_tool_call"]("get_today", {}) == {"data": expected}
         assert "error" in kwargs["on_tool_call"]("get_today", {"org_id": str(org_id)})
         assert "error" in kwargs["on_tool_call"]("write_settings", {})
@@ -265,6 +271,7 @@ def test_admin_hourly_limit_and_availability(demo: tuple, db: Session) -> None:
     "error",
     [
         ModelUnavailable(),
+        admission.BotDraftingPriority(),
         PiBusy(),
         ModelRateLimited(None),
         ModelServiceError("upstream_unavailable"),
@@ -288,12 +295,19 @@ def test_failed_turn_releases_lease(
 
     monkeypatch.setattr(core.pi_client, "run_turn", fail)
     response = core.turn(
-        db, p, row.id, AdminTurnInput(text="今天有什么要处理的", page="/admin")
+        db,
+        p,
+        row.id,
+        AdminTurnInput(text="查看员工", page="/admin/people/$employeeId"),
     )
     assert (
         response.messages[0].type == "text"
         and "未完成" not in response.messages[0].text
     )
+    assert response.messages[1].type == "link"
+    assert response.messages[1].page == "/admin/people"
+    if isinstance(error, admission.BotDraftingPriority):
+        assert "正在起草画像" in response.messages[0].text
     db.refresh(row)
     assert row.lease_until is None
     assert len(messages.messages_for(db, row)) == 2
@@ -309,3 +323,117 @@ def test_migration_roundtrip(migration_engine: Engine) -> None:
     assert (
         len(inspect(migration_engine).get_foreign_keys("admin_assistant_message")) == 2
     )
+
+
+@pytest.mark.parametrize(
+    "function", ["get_progress", "list_accounts", "update_update_settings", "missing"]
+)
+def test_registry_wired_to_turn(
+    demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch, function: str
+) -> None:
+    _, people, _ = demo
+    p = admin(db, people["E02"].org_id)
+    enable(db, p.org_id)
+    row = store.create_session(db, p)
+
+    def reply(_config: object, **kwargs: object) -> TurnResult:
+        assert "list_accounts" in kwargs["system_prompt"]
+        callback = kwargs["on_tool_call"]
+        assert callback("list_admin_functions", {"area": "people"})["data"]
+        data = callback("admin_read", {"function": function, "args": {}})
+        assert set(data) == {"data"}
+        if function in {"missing", "update_update_settings"}:
+            assert "只读" in data["data"]["error"]
+        return TurnResult(
+            text="查询完成", stop_reason="stop", model_calls=1, tool_calls=2
+        )
+
+    monkeypatch.setattr(core.pi_client, "run_turn", reply)
+    response = core.turn(
+        db, p, row.id, AdminTurnInput(text="同步怎么样了", page="/admin")
+    )
+    cards = response.messages[1:]
+    if function in {"get_progress", "list_accounts"}:
+        assert cards[0].type == "link"
+        assert cards[0].page == (
+            "/admin" if function == "get_progress" else "/admin/people?tab=accounts"
+        )
+        assert cards[1].type == "table" and len(cards[1].rows) <= 20
+    else:
+        assert cards == []
+
+
+def test_failed_proposal_links_to_manual_topic(
+    demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = admin(db, demo[1]["E02"].org_id)
+    enable(db, p.org_id)
+    row = store.create_session(db, p)
+
+    def fail(_config: object, **kwargs: object) -> TurnResult:
+        kwargs["on_tool_call"](
+            "propose_changes",
+            {"items": [{"function": "update_update_settings", "args": {}}]},
+        )
+        raise ModelUnavailable()
+
+    monkeypatch.setattr(core.pi_client, "run_turn", fail)
+    response = core.turn(
+        db, p, row.id, AdminTurnInput(text="修改提醒周期", page="/admin")
+    )
+    assert response.messages[1].type == "link"
+    assert response.messages[1].page == "/admin/rules?tab=reminders"
+
+
+@pytest.mark.parametrize(
+    "kind,status,available",
+    [
+        ("cloud_api", "doing", True),
+        ("chatgpt_subscription", "doing", False),
+        ("cloud_api", "todo", False),
+    ],
+)
+def test_drafting_unavailable(
+    demo: tuple,
+    db: Session,
+    client: TestClient,
+    kind: str,
+    status: str,
+    available: bool,
+) -> None:
+    _, people, auth = demo
+    p = admin(db, people["E02"].org_id)
+    enable(db, p.org_id)
+    setting = db.get(ModelSetting, p.org_id)
+    setting.kind = kind
+    db.add(setting)
+    job_id = draft_initial.configure(
+        connection=db.connection().connection.driver_connection
+    ).defer(org_id=str(p.org_id))
+    db.execute(
+        text("UPDATE procrastinate_jobs SET status=:status WHERE id=:id"),
+        {"status": status, "id": job_id},
+    )
+    db.commit()
+    try:
+        result = client.get(
+            "/api/v1/admin-assistant/availability",
+            params={"org_id": str(p.org_id)},
+            headers=auth["admin"],
+        ).json()
+        assert result["available"] is available
+        if not available:
+            assert "正在起草画像" in result["reason"]
+            row = store.create_session(db, p)
+            response = core.turn(
+                db,
+                p,
+                row.id,
+                AdminTurnInput(text="你好", page="/admin/data-ai?tab=sources"),
+            )
+            assert response.messages[1].type == "link"
+            assert response.messages[1].page == "/admin/data-ai?tab=sources"
+    finally:
+        db.rollback()
+        db.execute(text("DELETE FROM procrastinate_jobs WHERE id=:id"), {"id": job_id})
+        db.commit()

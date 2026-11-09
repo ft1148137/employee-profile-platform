@@ -88,5 +88,10 @@ for (const width of [1440, 390]) {
     await expect(
       page.getByRole("region", { name: "设置改动确认卡" }).getByRole("status"),
     ).toHaveText("已撤销")
+    await page.getByRole("link", { name: "全屏打开", exact: true }).click()
+    await expect(page).toHaveURL("/admin/assistant")
+    await expect(
+      page.getByRole("region", { name: "设置改动确认卡" }).getByRole("status"),
+    ).toHaveText("已撤销")
   })
 }

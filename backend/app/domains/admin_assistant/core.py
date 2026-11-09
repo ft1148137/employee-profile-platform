@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlmodel import Session
 
 from app.authz.principal import Principal
-from app.domains.admin_assistant import store, tools
+from app.domains.admin_assistant import registry, store, tools
 from app.domains.admin_assistant.prompts import system_prompt
 from app.domains.admin_assistant.schemas import (
     AdminTurnInput,
@@ -11,6 +11,7 @@ from app.domains.admin_assistant.schemas import (
     Availability,
     ChangeSetCard,
     LinkCard,
+    TableCard,
 )
 from app.domains.base import utc_now
 from app.domains.bot import store as messages
@@ -22,9 +23,12 @@ from app.domains.bot.admission import (
     begin_turn,
 )
 from app.domains.bot.schemas import TextMessage
+from app.domains.drafting.service import drafting_jobs
 from app.domains.model import pi_client
 from app.domains.model.client import ModelServiceError, ModelUnavailable
 from app.domains.model.service import model_config, read_setting
+
+DRAFTING_REASON = "正在起草画像，期间管理助手暂停，可以继续使用手工页面。"
 
 
 def availability(db: Session, principal: Principal) -> Availability:
@@ -36,6 +40,10 @@ def availability(db: Session, principal: Principal) -> Availability:
         reason = "模型尚未启用，请在模型设置里启用，也可以继续使用手工页面。"
     elif setting.paused_until and setting.paused_until > utc_now():
         reason = f"模型额度暂时用完，请在 {setting.paused_until.isoformat()} 后重试。"
+    elif (
+        setting.kind == "chatgpt_subscription" and drafting_jobs(db, principal.org_id)
+    ) or drafting_jobs(db, queued_only=True):
+        reason = DRAFTING_REASON
     return Availability(available=not reason, reason=reason)
 
 
@@ -45,13 +53,13 @@ def turn(
     row = store.get_session(db, principal, session_id)
     status = availability(db, principal)
     if not status.available:
-        return AdminTurnResponse(messages=[TextMessage(text=status.reason)])
+        return _fallback(status.reason, body.page)
     history = messages.load_history(db, row)
     admitted = False
+    cards: list[LinkCard | TableCard | ChangeSetCard] = []
     try:
         with begin_turn(db, principal, row, body.model_dump(mode="json")):
             admitted = True
-            cards: list[LinkCard | ChangeSetCard] = []
             result = pi_client.run_turn(
                 model_config(read_setting(db, principal.org_id)),
                 mode="chat",
@@ -72,14 +80,33 @@ def turn(
                 db, row, "assistant", response.model_dump(mode="json")
             )
             return response
-    except BotBusy, BotDraftingPriority:
+    except BotDraftingPriority:
+        text = DRAFTING_REASON
+    except BotBusy:
         text = "系统正忙，请稍后重试，也可以继续使用手工页面。"
     except (BotRateLimited, BotQuotaPaused) as error:
         text = f"暂时无法对话，请在 {error.retry_at.isoformat()} 后重试。"
     except ModelServiceError, ModelUnavailable:
         text = "模型暂时不可用，请稍后重试，也可以继续使用手工页面。"
-    response = AdminTurnResponse(messages=[TextMessage(text=text)])
+    page: str = body.page
+    for card in cards:
+        if isinstance(card, LinkCard | TableCard):
+            page = card.page
+        elif card.change_set.items:
+            page = registry.FUNCTIONS[card.change_set.items[-1].function].page
+    response = _fallback(text, page)
     if admitted:
         messages.append_message(db, row, "assistant", response.model_dump(mode="json"))
         db.commit()
     return response
+
+
+def _fallback(text: str, page: str) -> AdminTurnResponse:
+    if page == "/admin/people/$employeeId":
+        page = "/admin/people"
+    return AdminTurnResponse(
+        messages=[
+            TextMessage(text=text),
+            LinkCard(title="切换到手工页面", page=page),
+        ]
+    )
