@@ -9,6 +9,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -81,6 +82,10 @@ class AdminChangeSet(TenantRecord, table=True):
     status: str = Field(default="draft", sa_type=String)
     revision: int = 1
     items: list[dict[str, JsonValue]] = Field(sa_column=Column(JSONB, nullable=False))
+    confirmed_once_at: datetime | None = Field(
+        default=None, sa_type=DateTime(timezone=True)
+    )
+    secrets: str | None = Field(default=None, sa_type=Text, repr=False)
     applied_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     undo_of_id: UUID | None = None
     updated_at: datetime = Field(

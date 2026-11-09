@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, JsonValue
+from pydantic import BaseModel, Field, JsonValue, SecretStr
 
 from app.domains.admin_assistant.registry import TableCard as TableCard
 from app.domains.bot.schemas import TextMessage
@@ -74,6 +74,18 @@ class ChangeSetPublic(BaseModel):
     status: Literal["draft", "applied", "discarded", "stale", "undone"]
     items: list[ChangeItem]
     undo_of_id: UUID | None
+    confirmed_once_at: datetime | None = None
+
+
+class SecretInputCard(BaseModel):
+    type: Literal["secret_input"] = "secret_input"
+    change_set_id: UUID
+    field: str
+    title: str
+
+
+class SecretInput(ToolInput):
+    value: SecretStr = Field(min_length=1, max_length=10000)
 
 
 class ChangeSetCard(BaseModel):
@@ -88,7 +100,7 @@ class ApplyChanges(ToolInput):
 class AdminTurnResponse(BaseModel):
     messages: list[
         Annotated[
-            TextMessage | LinkCard | TableCard | ChangeSetCard,
+            TextMessage | LinkCard | TableCard | ChangeSetCard | SecretInputCard,
             Field(discriminator="type"),
         ]
     ]

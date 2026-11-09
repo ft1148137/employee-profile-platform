@@ -99,7 +99,11 @@ export const test = base.extend<{ modelUrl: string }>({
                                       "关闭部门自动起草",
                                     )
                                       ? "update_drafting_settings"
-                                      : "update_update_settings",
+                                      : JSON.stringify(last).includes(
+                                            "关闭经理确认",
+                                          )
+                                        ? "update_approval_policy"
+                                        : "update_update_settings",
                                     args: JSON.stringify(last).includes(
                                       "关闭部门自动起草",
                                     )
@@ -111,10 +115,14 @@ export const test = base.extend<{ modelUrl: string }>({
                                             )?.[0],
                                           ],
                                         }
-                                      : {
-                                          reminder_schedule: "yearly",
-                                          stale_after_months: 36,
-                                        },
+                                      : JSON.stringify(last).includes(
+                                            "关闭经理确认",
+                                          )
+                                        ? { require_manager: false }
+                                        : {
+                                            reminder_schedule: "yearly",
+                                            stale_after_months: 36,
+                                          },
                                   },
                                 ],
                               }

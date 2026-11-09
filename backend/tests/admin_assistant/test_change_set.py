@@ -240,7 +240,6 @@ def test_atomic_failure_and_validation(
         registry.FUNCTIONS, "high", replace(entry, name="high", risk="high")
     )
     for name, args in [
-        ("high", {}),
         ("missing", {}),
         ("get_today", {}),
         ("normal", {"org_id": str(uuid4())}),
@@ -258,6 +257,14 @@ def test_atomic_failure_and_validation(
         db.exec(select(AdminChangeSet).where(AdminChangeSet.org_id == p.org_id)).all()
         == []
     )
+    high = c.propose(
+        db,
+        p,
+        sid,
+        ProposeChanges.model_validate({"items": [{"function": "high", "args": {}}]}),
+    )
+    assert high.items[0]["risk"] == "high"
+    db.commit()
     before = read_update_settings(db, p.org_id)
     audit_before = events(db, p.org_id)
     row = proposal(
