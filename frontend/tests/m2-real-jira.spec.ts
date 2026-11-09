@@ -31,6 +31,7 @@ test("M2 real Cloud: roster, manual identity, initial request and evidence", asy
   await page.getByRole("button", { name: "确认导入", exact: true }).click()
   await expect(page.getByText("导入成功，员工名单和部门已更新。")).toBeVisible()
   await page.goto("/setup-wizard")
+  await page.getByText("稍后处理的事项", { exact: true }).click()
   const steps = page.getByRole("navigation", { name: "设置步骤" })
   await steps.getByRole("button", { name: /能力词典/ }).click()
   await page.getByRole("button", { name: /科技研发/ }).click()
@@ -61,6 +62,8 @@ test("M2 real Cloud: roster, manual identity, initial request and evidence", asy
   await steps.getByRole("button", { name: /配置模型/ }).click()
   await configureModel(page, modelUrl)
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await page.getByText("稍后处理的事项", { exact: true }).click()
+  await steps.getByRole("button", { name: /审批规则/ }).click()
   await expect(
     page.getByRole("heading", { name: "审批规则", exact: true }),
   ).toBeVisible()

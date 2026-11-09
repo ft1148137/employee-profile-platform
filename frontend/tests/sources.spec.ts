@@ -25,6 +25,7 @@ test("Cloud connection, secret preservation, sync and complete source step", asy
   ).toBeVisible()
   await saveCloud(page, base, "jira-admin@example.com", "mock-cloud-token")
   await page.reload()
+  await page.getByText("稍后处理的事项", { exact: true }).click()
   await page
     .getByRole("navigation", { name: "设置步骤" })
     .getByRole("button", { name: /接数据来源/ })

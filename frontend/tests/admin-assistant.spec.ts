@@ -133,8 +133,11 @@ for (const available of [true, false]) {
               type: "table",
               title: "账号列表",
               columns: ["display_name", "employment_status"],
-              rows: [["合成员工", "inactive"]],
-              total: 1,
+              rows: [
+                ["合成员工", "inactive"],
+                ["active", "active"],
+              ],
+              total: 2,
               page: "/admin/people?tab=accounts",
             },
           ],
@@ -158,6 +161,9 @@ for (const available of [true, false]) {
     await expect(
       page.getByRole("cell", { name: "已离职", exact: true }),
     ).toBeVisible()
+    await expect(
+      page.getByRole("cell", { name: "active", exact: true }),
+    ).toBeVisible()
     expect(sends).toBe(1)
     await page
       .getByRole("button", { name: "让助手处理", exact: true })
@@ -173,7 +179,7 @@ for (const available of [true, false]) {
     await page.screenshot({
       path: testInfo.outputPath("full-screen-mobile.png"),
     })
-    await expectChineseCopy(page)
+    await expectChineseCopy(page, ["active"])
   })
 }
 

@@ -22,6 +22,7 @@ export async function createSourcesOrg(page: Page) {
   }, data)
   await page.goto("/setup-wizard")
   await expect(page).toHaveURL("/setup-wizard")
+  await page.getByText("稍后处理的事项", { exact: true }).click()
   await page
     .getByRole("navigation", { name: "设置步骤" })
     .getByRole("button", { name: /接数据来源/ })

@@ -7,6 +7,11 @@ import {
   type AdminSessionMessage,
   type AdminTurnInput,
 } from "@/client"
+import {
+  actorLabels,
+  auditLabels,
+  targetLabels,
+} from "@/components/Admin/auditLabels"
 import { BotMessage } from "@/components/Bot/BotMessage"
 import { BotPanel } from "@/components/Bot/BotPanel"
 import { SetupError } from "@/components/Setup/SetupError"
@@ -58,6 +63,11 @@ const labels: Record<string, string> = {
   target_id: "对象编号",
   target_type: "对象类型",
   details: "详情",
+  open: "待处理",
+  upheld: "维持原决定",
+  reopened: "允许重新提交",
+  preview: "待确认",
+  applied: "已导入",
   active: "正常",
   inactive: "已离职",
   none: "未生成",
@@ -78,18 +88,37 @@ const labels: Record<string, string> = {
   csv: "文件导入",
 }
 
-function cellText(value: unknown): string {
+function cellText(value: unknown, field = ""): string {
   if (value == null) return "—"
   if (typeof value === "boolean") return value ? "是" : "否"
-  if (Array.isArray(value)) return value.map(cellText).join("、")
+  if (Array.isArray(value))
+    return value.map((entry) => cellText(entry, field)).join("、")
   if (typeof value === "object") {
     for (const key of ["display_name", "name", "status"]) {
       const entry = Object.entries(value).find(([field]) => field === key)?.[1]
-      if (entry != null) return cellText(entry)
+      if (entry != null) return cellText(entry, key)
     }
-    return Object.values(value).map(cellText).join("、")
+    return Object.entries(value)
+      .map(([key, entry]) => cellText(entry, key))
+      .join("、")
   }
-  return labels[String(value)] ?? String(value)
+  return [
+    "status",
+    "employment_status",
+    "role",
+    "platform",
+    "kind",
+    "trigger",
+    "action",
+    "actor_type",
+    "target_type",
+  ].includes(field)
+    ? (labels[String(value)] ??
+        auditLabels[String(value)] ??
+        actorLabels[String(value)] ??
+        targetLabels[String(value)] ??
+        String(value))
+    : String(value)
 }
 
 const pages: AdminTurnInput["page"][] = [
@@ -288,7 +317,7 @@ export function AdminAssistantPanel({
                                   key={cellIndex}
                                   className="max-w-64 break-words p-2"
                                 >
-                                  {cellText(cell)}
+                                  {cellText(cell, message.columns[cellIndex])}
                                 </td>
                               ))}
                             </tr>
