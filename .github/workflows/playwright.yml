@@ -103,7 +103,7 @@ jobs:
         PLAYWRIGHT_BASE_URL: http://localhost:8000
         VITE_API_URL: http://localhost:8000
         PLAYWRIGHT_HTML_OUTPUT_DIR: blob-report
-      run: bunx playwright test --shard="$SHARD/3" --fail-on-flaky-tests --trace=retain-on-failure --reporter=html
+      run: MODEL_TEST_HOST="$(hostname -I | awk '{print $1}')" bunx playwright test --shard="$SHARD/3" --fail-on-flaky-tests --trace=retain-on-failure --reporter=html
     - if: always()
       run: docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
     - name: Upload HTML report
