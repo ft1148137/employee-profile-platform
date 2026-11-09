@@ -91,7 +91,7 @@ export function ChangeSetCard({
     >
       <div className="flex items-center justify-between gap-3 border-b pb-3">
         <h3 className="font-semibold">
-          {current.undo_of_id ? "撤销前请确认" : "请核对设置改动"}
+          {current.undo_of_id ? "撤销前请确认" : "请核对改动"}
         </h3>
         <span role="status" className="text-xs text-muted-foreground">
           {confirmAgain ? "请再次确认" : statuses[current.status]}
@@ -99,37 +99,34 @@ export function ChangeSetCard({
       </div>
       {current.items.map((item, i) => (
         <div key={i} className="space-y-2">
-          <p className="text-sm font-medium">
-            {item.function === "update_approval_policy"
-              ? "经理确认规则"
-              : "定期提醒设置"}
-          </p>
-          {Object.keys(item.after).map((field) => (
-            <div key={field} className="rounded-lg bg-muted/40 p-3 text-sm">
-              <p className="mb-2 text-muted-foreground">
-                {labels[field] ?? "设置项"}
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { title: "修改前", value: item.before?.[field] },
-                  { title: "修改后", value: item.after[field] },
-                ].map(({ title, value }) => (
-                  <div key={title}>
-                    <p className="text-xs text-muted-foreground">{title}</p>
-                    <p
-                      className={
-                        title === "修改后" ? "font-semibold text-primary" : ""
-                      }
-                    >
-                      {value == null
-                        ? "未设置"
-                        : `${display(value)}${field === "stale_after_months" ? " 个月" : ""}`}
-                    </p>
-                  </div>
-                ))}
+          <p className="text-sm font-medium">{item.title}</p>
+          {item.undoable &&
+            Object.keys(item.after).map((field) => (
+              <div key={field} className="rounded-lg bg-muted/40 p-3 text-sm">
+                <p className="mb-2 text-muted-foreground">
+                  {labels[field] ?? "设置项"}
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { title: "修改前", value: item.before?.[field] },
+                    { title: "修改后", value: item.after[field] },
+                  ].map(({ title, value }) => (
+                    <div key={title}>
+                      <p className="text-xs text-muted-foreground">{title}</p>
+                      <p
+                        className={
+                          title === "修改后" ? "font-semibold text-primary" : ""
+                        }
+                      >
+                        {value == null
+                          ? "未设置"
+                          : `${display(value)}${field === "stale_after_months" ? " 个月" : ""}`}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
           {item.impact && (
             <p className="text-xs text-muted-foreground">
               影响 {item.impact.count} 人 · {item.impact.text}
@@ -171,7 +168,9 @@ export function ChangeSetCard({
         </div>
       )}
       {current.status === "applied" &&
-        current.items.every((item) => item.before !== null) && (
+        current.items.every(
+          (item) => item.before !== null && item.undoable,
+        ) && (
           <Button
             variant="outline"
             disabled={busy}

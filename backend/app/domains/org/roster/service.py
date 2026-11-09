@@ -1,4 +1,6 @@
+import csv
 import hashlib
+from io import StringIO
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -22,6 +24,7 @@ from app.domains.org.roster.diff import compute_roster_diff
 from app.domains.org.roster.parser import parse_roster, validate_roster
 from app.domains.org.roster.schemas import (
     CHANGE_KINDS,
+    HEADERS,
     ApplyImport,
     ParsedRoster,
     RosterDiff,
@@ -41,11 +44,36 @@ class RosterError(HTTPException):
 
 
 def create_import(
-    session: Session, principal: Principal, content: bytes, filename: str
+    session: Session,
+    principal: Principal,
+    content: bytes | ParsedRoster,
+    filename: str,
+    *,
+    commit: bool = True,
 ) -> RosterImportPreview:
     org = lock_org(session, principal)
     assert principal.user_id is not None
-    roster = parse_roster(content, filename)
+    if isinstance(content, ParsedRoster):
+        preserved = [row for row in content.rows if row.inactive]
+        output = StringIO()
+        writer = csv.writer(output)
+        writer.writerow(HEADERS)
+        writer.writerows(
+            (
+                r.employee_code,
+                r.display_name,
+                "/".join(r.department_path),
+                r.title,
+                r.manager_code,
+                r.email,
+            )
+            for r in content.active().rows
+        )
+        content = output.getvalue().encode()
+        roster = parse_roster(content, "人员变动.csv")
+        roster.rows.extend(preserved)
+    else:
+        roster = parse_roster(content, filename)
     diff = (
         RosterDiff(
             summary=dict.fromkeys(
@@ -83,7 +111,9 @@ def create_import(
         uploaded_by_user_id=principal.user_id,
     )
     session.add(record)
-    session.commit()
+    session.flush()
+    if commit:
+        session.commit()
     return RosterImportPreview(
         **diff.model_dump(),
         id=record.id,
@@ -95,7 +125,12 @@ def create_import(
 
 
 def apply_import(
-    session: Session, principal: Principal, import_id: UUID, body: ApplyImport
+    session: Session,
+    principal: Principal,
+    import_id: UUID,
+    body: ApplyImport,
+    *,
+    commit: bool = True,
 ) -> RosterImportResult:
     org = lock_org(session, principal)
     record = session.exec(
@@ -116,11 +151,13 @@ def apply_import(
     ):
         record.status = "stale"
         session.add(record)
-        session.commit()
+        session.flush()
+        if commit:
+            session.commit()
         raise RosterError(409, stale_message)
     roster = ParsedRoster.model_validate(
         {"rows": record.rows, "column_mapping": record.column_mapping}
-    )
+    ).active()
     validate_roster(roster)
     if roster.has_errors:
         raise RosterError(
@@ -299,7 +336,9 @@ def apply_import(
         target_id=str(record.id),
         details={"id": str(record.id), **diff.summary},
     )
-    session.commit()
+    session.flush()
+    if commit:
+        session.commit()
     return RosterImportResult(
         id=record.id, status="applied", summary=record.summary, issues=issues
     )

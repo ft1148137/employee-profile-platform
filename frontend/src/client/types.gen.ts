@@ -2635,6 +2635,54 @@ export type ModelSettingUpdate = {
 };
 
 /**
+ * Offboard
+ */
+export type Offboard = {
+    /**
+     * Kind
+     */
+    kind?: 'offboard';
+    /**
+     * Employee Ids
+     */
+    employee_ids: Array<string>;
+};
+
+/**
+ * Onboard
+ */
+export type Onboard = {
+    /**
+     * Kind
+     */
+    kind?: 'onboard';
+    /**
+     * Employee Code
+     */
+    employee_code: string;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Department
+     */
+    department: string;
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Manager Id
+     */
+    manager_id?: string | null;
+};
+
+/**
  * OrganizationPublic
  */
 export type OrganizationPublic = {
@@ -4023,6 +4071,32 @@ export type TokenPublic = {
 };
 
 /**
+ * Transfer
+ */
+export type Transfer = {
+    /**
+     * Kind
+     */
+    kind?: 'transfer';
+    /**
+     * Employee Id
+     */
+    employee_id: string;
+    /**
+     * Department
+     */
+    department?: string | null;
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Manager Id
+     */
+    manager_id?: string | null;
+};
+
+/**
  * TurnInput
  */
 export type TurnInput = {
@@ -4261,6 +4335,14 @@ export type app__domains__admin_assistant__schemas__ChangeItem = {
     args: {
         [key: string]: JsonValue;
     };
+    /**
+     * Title
+     */
+    title?: string;
+    /**
+     * Undoable
+     */
+    undoable?: boolean;
     /**
      * Before
      */
@@ -8793,6 +8875,45 @@ export type rolesRevokeRoleResponses = {
 };
 
 export type rolesRevokeRoleResponse = rolesRevokeRoleResponses[keyof rolesRevokeRoleResponses];
+
+export type rosterPreviewSingleChangeData = {
+    /**
+     * Body
+     */
+    body: ({
+        kind: 'onboard';
+    } & Onboard) | ({
+        kind: 'transfer';
+    } & Transfer) | ({
+        kind: 'offboard';
+    } & Offboard);
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/roster/single-change';
+};
+
+export type rosterPreviewSingleChangeErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type rosterPreviewSingleChangeError = rosterPreviewSingleChangeErrors[keyof rosterPreviewSingleChangeErrors];
+
+export type rosterPreviewSingleChangeResponses = {
+    /**
+     * Successful Response
+     */
+    200: RosterImportPreview;
+};
+
+export type rosterPreviewSingleChangeResponse = rosterPreviewSingleChangeResponses[keyof rosterPreviewSingleChangeResponses];
 
 export type rosterDownloadTemplateData = {
     body?: never;

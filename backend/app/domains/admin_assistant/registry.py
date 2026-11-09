@@ -36,6 +36,7 @@ from app.domains.im.schemas import Platform
 from app.domains.model import service as model
 from app.domains.org.models import EmploymentStatus
 from app.domains.org.roster import service as roster
+from app.domains.org.roster import single
 from app.domains.org.service import visible_employee
 from app.domains.profile.service import read_profile
 from app.domains.review import appeal
@@ -138,6 +139,7 @@ class AdminFunction:
     impact: Snapshot | None = None
     secret_fields: tuple[str, ...] = ()
     reverse: Reverse | None = None
+    undoable: bool = True
 
 
 def _profile(db: Session, principal: Principal, args: EmployeeArgs) -> BaseModel:
@@ -560,6 +562,33 @@ NOT_FOR_ASSISTANT = {
 }
 
 register_rules(FUNCTIONS)
+
+for name, title, input_type in (
+    ("onboard_employee", "新增员工", single.Onboard),
+    ("transfer_employee", "员工调岗", single.Transfer),
+    ("offboard_employees", "办理离职", single.Offboard),
+):
+    FUNCTIONS[name] = AdminFunction(
+        name=name,
+        area="people",
+        kind="change",
+        risk=lambda a: (
+            "high"
+            if isinstance(a, single.Offboard) and len(set(a.employee_ids)) >= 2
+            else "normal"
+        ),
+        description=title,
+        input_model=input_type,
+        handler=single.apply,
+        page="/admin/people",
+        # All three operations share a discriminated route, classified once.
+        endpoints=(("POST", "/roster/single-change"),)
+        if name == "onboard_employee"
+        else (),
+        snapshot=single.snapshot,
+        impact=single.impact,
+        undoable=False,
+    )
 
 PENDING = {
     ("POST", "/capabilities/preview"): "S8",
