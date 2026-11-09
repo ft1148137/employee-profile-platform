@@ -29,13 +29,7 @@ def read_setup(session: Session, org_id: UUID) -> SetupPublic:
         status: SetupStatus | Literal["pending"] = (
             SetupStatus.COMPLETED if step.implicit else states.get(step.key, "pending")
         )
-        blockers = (
-            step.check(session, org_id)
-            if status == "pending" or step.key == "model"
-            else []
-        )
-        if step.key == "model" and (blockers or status == SetupStatus.SKIPPED):
-            status = "pending"
+        blockers = step.check(session, org_id) if status == "pending" else []
         result.append(
             SetupStepPublic(
                 key=step.key,
@@ -50,8 +44,12 @@ def read_setup(session: Session, org_id: UUID) -> SetupPublic:
         )
     return SetupPublic(
         steps=result,
-        completed=all(s.status == "completed" for s in result if s.required),
-        next_step_key=next((s.key for s in result if s.status == "pending"), None),
+        completed=all(
+            s.status in {"completed", "skipped"} for s in result if s.required
+        ),
+        next_step_key=next(
+            (s.key for s in result if s.required and s.status == "pending"), None
+        ),
     )
 
 
@@ -69,9 +67,6 @@ def update_step(
     ).one()
     state = session.get(SetupStepState, (principal.org_id, key))
     completed = step.implicit or (state and state.status == SetupStatus.COMPLETED)
-    if key == "model":
-        # Revalidate saved pre-E16 completions against current settings.
-        completed = False
     if status == SetupStatus.SKIPPED:
         if completed:
             raise SetupStepError(status_code=409, detail="这一步已经完成")

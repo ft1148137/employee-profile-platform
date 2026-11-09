@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import type { MembershipPublic } from "../src/client"
 import { expectChineseCopy } from "./utils/copy"
 import { logInUser } from "./utils/user"
 
@@ -75,4 +76,112 @@ test("employee sees their profile bot on a manual page", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "打开画像机器人" }),
   ).toBeVisible()
+})
+
+for (const available of [true, false]) {
+  test(`admin lands on assistant when available=${available}`, async ({
+    page,
+  }, testInfo) => {
+    await page.route("**/admin-assistant/availability?*", (route) =>
+      route.fulfill({
+        json: {
+          available,
+          reason: available ? "" : "请先配置模型，可以继续使用手工页面。",
+        },
+      }),
+    )
+    await page.route("**/me/memberships", async (route) => {
+      const data: MembershipPublic[] = await (await route.fetch()).json()
+      await route.fulfill({
+        json: data.map((membership) => ({
+          ...membership,
+          roles: [...membership.roles, "dept_manager", "employee"],
+        })),
+      })
+    })
+    await page.route("**/orgs/*/setup", async (route) => {
+      const data = await (await route.fetch()).json()
+      await route.fulfill({ json: { ...data, completed: true } })
+    })
+    await logInUser(
+      page,
+      "admin@demo.example.com",
+      process.env.DEMO_USER_PASSWORD!,
+    )
+    await expect(page).toHaveURL(
+      available ? /\/admin\/assistant$/ : /\/admin\/?$/,
+    )
+    if (!available) {
+      await expect(
+        page.getByText("请先配置模型，可以继续使用手工页面。", { exact: true }),
+      ).toBeVisible()
+      await expect(
+        page.getByRole("link", { name: "去配置模型" }),
+      ).toHaveAttribute("href", "/admin/data-ai?tab=model")
+    } else {
+      await expect(
+        page.getByRole("link", { name: "切换到手工页面" }),
+      ).toBeVisible()
+    }
+    let sends = 0
+    await page.route("**/admin-assistant/sessions/*/turns?*", (route) => {
+      sends++
+      return route.fulfill({
+        json: {
+          messages: [
+            {
+              type: "table",
+              title: "账号列表",
+              columns: ["display_name", "employment_status"],
+              rows: [["合成员工", "inactive"]],
+              total: 1,
+              page: "/admin/people?tab=accounts",
+            },
+          ],
+        },
+      })
+    })
+    await page.goto("/admin")
+    const action = page
+      .getByRole("link", { name: "让助手处理", exact: true })
+      .first()
+    await action.click()
+    await expect(
+      page.getByRole("textbox", { name: "发给管理助手的消息" }),
+    ).not.toHaveValue("")
+    await page.goto("/admin/assistant?prompt=查看账号")
+    await expect(
+      page.getByRole("textbox", { name: "发给管理助手的消息" }),
+    ).toHaveValue("查看账号")
+    expect(sends).toBe(0)
+    await page.getByRole("button", { name: "发送", exact: true }).click()
+    await expect(
+      page.getByRole("cell", { name: "已离职", exact: true }),
+    ).toBeVisible()
+    expect(sends).toBe(1)
+    await page
+      .getByRole("button", { name: "让助手处理", exact: true })
+      .first()
+      .click()
+    await expect(
+      page.getByRole("textbox", { name: "发给管理助手的消息" }),
+    ).not.toHaveValue("")
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(
+      page.getByRole("button", { name: "发送", exact: true }),
+    ).toBeVisible()
+    await page.screenshot({
+      path: testInfo.outputPath("full-screen-mobile.png"),
+    })
+    await expectChineseCopy(page)
+  })
+}
+
+test("manager keeps employee landing page", async ({ page }) => {
+  await logInUser(
+    page,
+    "manager.platform@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  await expect(page).toHaveURL("/employees")
 })

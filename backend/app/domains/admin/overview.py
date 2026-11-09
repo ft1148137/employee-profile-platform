@@ -237,11 +237,7 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
         "帮我检查同步失败",
         min((r.finished_at or r.created_at for r in failed_runs), default=None),
     )
-    steps = [
-        s
-        for s in read_setup(session, org_id).steps
-        if s.required and s.status != "completed"
-    ]
+    steps = [s for s in read_setup(session, org_id).steps if s.status == "pending"]
     titles = "、".join(s.title for s in steps[:2]) + ("…" if len(steps) > 2 else "")
     add(
         "setup_step",

@@ -176,7 +176,9 @@ export type AdminTurnResponse = {
         type: 'text';
     } & TextMessage) | ({
         type: 'link';
-    } & LinkCard)>;
+    } & LinkCard) | ({
+        type: 'table';
+    } & TableCard)>;
 };
 
 /**
@@ -2442,7 +2444,7 @@ export type LinkCard = {
     /**
      * Page
      */
-    page: '/admin' | '/admin/people' | '/admin/people/$employeeId' | '/admin/people?tab=accounts' | '/admin/people?tab=roster' | '/admin/people?tab=roles' | '/admin/people?tab=identities' | '/admin/people?tab=appeals' | '/admin/rules' | '/admin/rules?tab=dictionary' | '/admin/rules?tab=approval' | '/admin/rules?tab=drafting' | '/admin/rules?tab=reminders' | '/admin/rules?tab=profile-import' | '/admin/data-ai' | '/admin/data-ai?tab=sources' | '/admin/data-ai?tab=model' | '/admin/data-ai?tab=bot' | '/admin/connections' | '/admin/connections?tab=im' | '/admin/connections?tab=mcp' | '/admin/audit' | '/setup-wizard';
+    page: string;
 };
 
 /**
@@ -3707,6 +3709,36 @@ export type SyncRunsPublic = {
      * Count
      */
     count: number;
+};
+
+/**
+ * TableCard
+ */
+export type TableCard = {
+    /**
+     * Type
+     */
+    type?: 'table';
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Columns
+     */
+    columns: Array<string>;
+    /**
+     * Rows
+     */
+    rows: Array<Array<JsonValue>>;
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Page
+     */
+    page: string;
 };
 
 /**

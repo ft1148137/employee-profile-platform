@@ -228,7 +228,7 @@ def test_todos_and_tenant_isolation(
     org_id = principal.org_id
     setting = model_setting(db, demo)
     for step in STEPS:
-        if step.required and not step.implicit:
+        if not step.implicit:
             db.add(
                 SetupStepState(
                     org_id=org_id,
@@ -286,6 +286,10 @@ def test_todos_and_tenant_isolation(
     db.add_all([appeal, identity])
     setting.enabled = False
     db.add(setting)
+    db.commit()
+    assert "setup_step" not in {t["kind"] for t in overview(client, demo)["todos"]}
+    # Optional work still appears after the two-step setup has finished.
+    db.delete(db.get(SetupStepState, (org_id, "sources")))
     db.commit()
     todos = overview(client, demo)["todos"]
     assert [t["kind"] for t in todos] == [
@@ -362,5 +366,13 @@ def test_todos_and_tenant_isolation(
     identity.employee_id = demo[1]["E02"].id
     setting.enabled = True
     db.add_all([appeal, *requests, identity, setting])
+    db.add(
+        SetupStepState(
+            org_id=org_id,
+            step_key="sources",
+            status=SetupStatus.COMPLETED,
+            updated_by_user_id=principal.user_id,
+        )
+    )
     db.commit()
     assert overview(client, demo)["todos"] == []

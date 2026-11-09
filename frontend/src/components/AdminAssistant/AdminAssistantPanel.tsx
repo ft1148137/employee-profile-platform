@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query"
 import { useLocation } from "@tanstack/react-router"
 import { AxiosError } from "axios"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   AdminAssistantService,
   type AdminSessionMessage,
@@ -21,6 +21,76 @@ import {
 } from "@/components/ui/sheet"
 import useAuth from "@/hooks/useAuth"
 import { useOrg } from "@/hooks/useOrg"
+
+const labels: Record<string, string> = {
+  id: "编号",
+  employee_code: "工号",
+  display_name: "姓名",
+  title: "职位",
+  work_email: "工作邮箱",
+  employment_status: "在职状态",
+  department: "部门",
+  account: "账号",
+  roles: "角色",
+  username: "登录邮箱",
+  role: "角色",
+  department_id: "部门编号",
+  user_id: "账号编号",
+  kind: "来源",
+  status: "状态",
+  trigger: "启动方式",
+  attempts: "尝试次数",
+  counts: "处理数量",
+  error: "问题说明",
+  filename: "文件名",
+  created_at: "创建时间",
+  started_at: "开始时间",
+  finished_at: "完成时间",
+  updated_at: "更新时间",
+  platform: "消息平台",
+  enabled: "已开启",
+  email_auto_bind: "自动匹配邮箱",
+  has_credentials: "已填写连接信息",
+  summary: "摘要",
+  action: "操作",
+  actor_id: "操作人",
+  actor_type: "操作来源",
+  target_id: "对象编号",
+  target_type: "对象类型",
+  details: "详情",
+  active: "正常",
+  inactive: "已离职",
+  none: "未生成",
+  pending_first_login: "待首次登录",
+  disabled: "已停用",
+  org_admin: "企业管理员",
+  dept_manager: "部门经理",
+  employee: "员工",
+  queued: "排队中",
+  running: "进行中",
+  succeeded: "已完成",
+  failed: "失败",
+  manual: "手动",
+  retry: "重试",
+  schedule: "定期",
+  feishu: "飞书",
+  jira: "工作记录",
+  csv: "文件导入",
+}
+
+function cellText(value: unknown): string {
+  if (value == null) return "—"
+  if (typeof value === "boolean") return value ? "是" : "否"
+  if (Array.isArray(value)) return value.map(cellText).join("、")
+  if (typeof value === "object") {
+    for (const key of ["display_name", "name", "status"]) {
+      const entry = Object.entries(value).find(([field]) => field === key)?.[1]
+      if (entry != null) return cellText(entry)
+    }
+    return Object.values(value).map(cellText).join("、")
+  }
+  return labels[String(value)] ?? String(value)
+}
 
 const pages: AdminTurnInput["page"][] = [
   "/admin",
@@ -76,21 +146,26 @@ export function AssistantEntry() {
   ) : null
 }
 
-function AdminAssistantPanel({
+export function AdminAssistantPanel({
   orgId,
   storageKey,
   page,
+  fullScreen = false,
+  prefill,
 }: {
   orgId: string
   storageKey: string
   page: AdminTurnInput["page"]
+  fullScreen?: boolean
+  prefill?: { text: string }
 }) {
   const [open, setOpen] = useState(false)
   const [sessionId, setSessionId] = useState("")
   const [messages, setMessages] = useState<
     Pick<AdminSessionMessage, "role" | "payload">[]
   >([])
-  const [text, setText] = useState("")
+  const [text, setText] = useState(prefill?.text ?? "")
+  const bottom = useRef<HTMLDivElement>(null)
   const query = { org_id: orgId }
   const initialize = useMutation({
     mutationFn: async (fresh: boolean) => {
@@ -136,6 +211,180 @@ function AdminAssistantPanel({
       ]),
   })
   const busy = initialize.isPending || send.isPending
+  useEffect(() => {
+    if (
+      fullScreen &&
+      !sessionId &&
+      !initialize.isPending &&
+      !initialize.isError
+    )
+      initialize.mutate(false)
+  }, [
+    fullScreen,
+    sessionId,
+    initialize.isPending,
+    initialize.isError,
+    initialize.mutate,
+  ])
+  useEffect(() => {
+    if (prefill) setText(prefill.text)
+  }, [prefill])
+  useEffect(() => {
+    if (messages.length || busy)
+      bottom.current?.scrollIntoView({ block: "end" })
+  }, [messages.length, busy])
+  const content = (
+    <>
+      <div
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 text-sm"
+        role="log"
+        aria-label="管理助手对话"
+        aria-busy={busy}
+      >
+        <p className="rounded-xl border-l-4 border-primary bg-muted/40 p-4">
+          试着问「今天有什么要处理的」。我会结合首页状态，帮你找到对应页面。
+        </p>
+        {messages.map((entry, index) => (
+          <div
+            key={index}
+            className={`space-y-3 ${entry.role === "user" ? "ml-8 rounded-xl bg-primary/10 p-3 whitespace-pre-wrap" : "mr-1"}`}
+          >
+            <p className="text-xs text-muted-foreground">
+              {entry.role === "user" ? "我" : "管理助手"}
+            </p>
+            {"messages" in entry.payload
+              ? entry.payload.messages.map((message, i) =>
+                  message.type === "link" ? (
+                    <a
+                      key={i}
+                      href={message.page}
+                      className="block rounded-xl border p-4 underline"
+                    >
+                      {message.title}
+                    </a>
+                  ) : message.type === "table" ? (
+                    <div
+                      key={i}
+                      className="overflow-x-auto rounded-xl border p-3"
+                    >
+                      <p>
+                        {message.title}（共 {message.total} 条，最多显示 20 条）
+                      </p>
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr>
+                            {message.columns.map((column) => (
+                              <th key={column} className="p-2">
+                                {labels[column] ?? "信息"}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {message.rows.map((row, rowIndex) => (
+                            <tr key={rowIndex}>
+                              {row.map((cell, cellIndex) => (
+                                <td
+                                  key={cellIndex}
+                                  className="max-w-64 break-words p-2"
+                                >
+                                  {cellText(cell)}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <a href={message.page} className="underline">
+                        打开对应页面
+                      </a>
+                    </div>
+                  ) : (
+                    <BotMessage
+                      key={i}
+                      message={message}
+                      disabled={busy}
+                      onAction={() => {}}
+                    />
+                  ),
+                )
+              : entry.payload.text}
+          </div>
+        ))}
+        <div ref={bottom} />
+        {busy && <p role="status">正在处理，请稍候…</p>}
+        <SetupError error={initialize.error ?? send.error} />
+        {initialize.isError && (
+          <Button onClick={() => initialize.mutate(false)}>重试加载对话</Button>
+        )}
+      </div>
+      <div className="space-y-2 border-t px-4 pt-3 text-xs">
+        <h2 className="font-semibold">我能帮你做什么</h2>
+        <div className="flex flex-wrap gap-2">
+          {[
+            "查看同步与起草进度",
+            "查看提醒周期",
+            "查看员工名单和账号",
+            "查看离职人员",
+            "检查飞书连接",
+            "排查同步失败",
+          ].map((example) => (
+            <button
+              type="button"
+              key={example}
+              className="rounded-full border px-3 py-1"
+              onClick={() => setText(example)}
+            >
+              {example}
+            </button>
+          ))}
+        </div>
+        <p className="text-muted-foreground">
+          当前只能查看。备份恢复、升级、重置请联系部署人员；不做绩效和薪酬判断。
+        </p>
+      </div>
+      <form
+        className="space-y-3 border-t p-4"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (!text.trim() || busy || !sessionId) return
+          const body = { text: text.trim(), page }
+          setMessages((previous) => [
+            ...previous,
+            { role: "user", payload: body },
+          ])
+          setText("")
+          send.mutate(body)
+        }}
+      >
+        <label htmlFor="admin-assistant-input" className="sr-only">
+          发给管理助手的消息
+        </label>
+        <textarea
+          id="admin-assistant-input"
+          className="min-h-20 w-full rounded-lg border bg-background p-3 text-sm"
+          placeholder="今天有什么要处理的？"
+          maxLength={10000}
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          disabled={busy || !sessionId}
+        />
+        <div className="flex justify-between gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            onClick={() => initialize.mutate(true)}
+          >
+            新对话
+          </Button>
+          <Button disabled={busy || !sessionId || !text.trim()}>发送</Button>
+        </div>
+      </form>
+    </>
+  )
+  if (fullScreen)
+    return <div className="flex h-full min-h-0 flex-col">{content}</div>
   return (
     <Sheet
       open={open}
@@ -156,94 +405,13 @@ function AdminAssistantPanel({
         <SheetHeader className="border-b pr-12">
           <SheetTitle>管理助手</SheetTitle>
           <SheetDescription>
-            查看今天要处理的事和运行状态。当前只提供查看，所有设置请到对应页面修改。聊天默认在闲置两小时后清除；开启保留时按企业设置清理。
+            当前只提供查看。聊天默认在闲置两小时后清除；开启保留时按企业设置清理。
           </SheetDescription>
+          <a href="/admin/assistant" className="text-sm underline">
+            全屏打开
+          </a>
         </SheetHeader>
-        <div
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 text-sm"
-          role="log"
-          aria-label="管理助手对话"
-          aria-busy={busy}
-        >
-          <p className="rounded-xl border-l-4 border-primary bg-muted/40 p-4">
-            试着问「今天有什么要处理的」。我会结合首页状态，帮你找到对应页面。
-          </p>
-          {messages.map((entry, index) => (
-            <div
-              key={index}
-              className={`space-y-3 ${entry.role === "user" ? "ml-8 rounded-xl bg-primary/10 p-3 whitespace-pre-wrap" : "mr-1"}`}
-            >
-              <p className="text-xs text-muted-foreground">
-                {entry.role === "user" ? "我" : "管理助手"}
-              </p>
-              {"messages" in entry.payload
-                ? entry.payload.messages.map((message, i) =>
-                    message.type === "link" ? (
-                      <a
-                        key={i}
-                        href={message.page}
-                        className="block rounded-xl border p-4 underline"
-                      >
-                        {message.title}
-                      </a>
-                    ) : (
-                      <BotMessage
-                        key={i}
-                        message={message}
-                        disabled={busy}
-                        onAction={() => {}}
-                      />
-                    ),
-                  )
-                : entry.payload.text}
-            </div>
-          ))}
-          {busy && <p role="status">正在处理，请稍候…</p>}
-          <SetupError error={initialize.error ?? send.error} />
-          {initialize.isError && (
-            <Button onClick={() => initialize.mutate(false)}>
-              重试加载对话
-            </Button>
-          )}
-        </div>
-        <form
-          className="space-y-3 border-t p-4"
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (!text.trim() || busy || !sessionId) return
-            const body = { text: text.trim(), page }
-            setMessages((previous) => [
-              ...previous,
-              { role: "user", payload: body },
-            ])
-            setText("")
-            send.mutate(body)
-          }}
-        >
-          <label htmlFor="admin-assistant-input" className="sr-only">
-            发给管理助手的消息
-          </label>
-          <textarea
-            id="admin-assistant-input"
-            className="min-h-20 w-full rounded-lg border bg-background p-3 text-sm"
-            placeholder="今天有什么要处理的？"
-            maxLength={10000}
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            disabled={busy || !sessionId}
-          />
-          <div className="flex justify-between gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy}
-              onClick={() => initialize.mutate(true)}
-            >
-              新对话
-            </Button>
-            <Button disabled={busy || !sessionId || !text.trim()}>发送</Button>
-          </div>
-        </form>
+        {content}
       </SheetContent>
     </Sheet>
   )

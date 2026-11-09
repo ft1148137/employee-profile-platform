@@ -11,13 +11,32 @@ const levels = {
   error: { label: "需要处理", color: "border-l-destructive" },
 }
 
-export function TodayPanel({ orgId }: { orgId: string }) {
+export function TodayPanel({
+  orgId,
+  onPrompt,
+}: {
+  orgId: string
+  onPrompt?: (prompt: string) => void
+}) {
   const overview = useQuery({
     queryKey: ["admin-overview", orgId],
     queryFn: async () =>
       (await AdminService.getOverview({ path: { org_id: orgId } })).data,
     refetchInterval: 30000,
   })
+  function assistantButton(prompt: string) {
+    return onPrompt ? (
+      <Button variant="link" onClick={() => onPrompt(prompt)}>
+        让助手处理
+      </Button>
+    ) : (
+      <Button variant="link" asChild>
+        <a href={`/admin/assistant?prompt=${encodeURIComponent(prompt)}`}>
+          让助手处理
+        </a>
+      </Button>
+    )
+  }
   return (
     <section className="space-y-4" aria-label="今天要处理的事">
       <h2 className="text-2xl font-semibold">今天要处理的事</h2>
@@ -55,6 +74,7 @@ export function TodayPanel({ orgId }: { orgId: string }) {
                     <Button variant="link" asChild className="self-start px-0">
                       <a href={card.page}>去处理</a>
                     </Button>
+                    {assistantButton(card.assistant_prompt)}
                   </>
                 )}
               </Card>
@@ -70,9 +90,12 @@ export function TodayPanel({ orgId }: { orgId: string }) {
                 className="flex items-center justify-between gap-4 py-2"
               >
                 <span>{todo.title}</span>
-                <Button variant="link" asChild>
-                  <a href={todo.page}>去处理</a>
-                </Button>
+                <div className="flex shrink-0 flex-wrap">
+                  <Button variant="link" asChild>
+                    <a href={todo.page}>去处理</a>
+                  </Button>
+                  {assistantButton(todo.assistant_prompt)}
+                </div>
               </li>
             ))}
           </ul>
