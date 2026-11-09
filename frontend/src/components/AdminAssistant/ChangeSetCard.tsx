@@ -25,10 +25,12 @@ export function ChangeSetCard({
   orgId,
   changeSet,
   disabled,
+  inline = false,
 }: {
   orgId: string
   changeSet: ChangeSetPublic
   disabled: boolean
+  inline?: boolean
 }) {
   const client = useQueryClient()
   const [reverse, setReverse] = useState<ChangeSetPublic | null>(null)
@@ -57,19 +59,14 @@ export function ChangeSetCard({
     },
     onSuccess: (data) => {
       client.setQueryData(["admin-change-set", orgId, data.id], data)
-      if (data.status === "applied") {
-        client.invalidateQueries({ queryKey: ["update-settings", orgId] })
-        client.invalidateQueries({ queryKey: ["profile", orgId] })
-      }
       if (data.id !== changeSet.id && data.status === "draft") setReverse(data)
     },
-    onSettled: () =>
-      client.invalidateQueries({ queryKey: ["admin-change-set", orgId] }),
+    onSettled: () => client.invalidateQueries(),
   })
   const busy = disabled || action.isPending || query.isFetching || query.isError
   return (
     <section
-      aria-label="设置改动确认卡"
+      aria-label={inline ? "页面草稿确认" : "设置改动确认卡"}
       className="space-y-4 rounded-xl border border-primary/25 bg-background p-4 shadow-sm"
     >
       <div className="flex items-center justify-between gap-3 border-b pb-3">

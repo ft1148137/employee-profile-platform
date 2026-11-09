@@ -1,14 +1,15 @@
 """Only explicit HTTP actions may apply a proposed administrative change."""
 
+from typing import Literal
 from uuid import UUID
 
 from fastapi import HTTPException
 from pydantic import BaseModel, JsonValue
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.domains.admin_assistant import registry, store
-from app.domains.admin_assistant.models import AdminChangeSet
+from app.domains.admin_assistant.models import AdminAssistantSession, AdminChangeSet
 from app.domains.admin_assistant.schemas import (
     AdminTurnResponse,
     ChangeSetCard,
@@ -55,6 +56,40 @@ def get(
 
 def public(row: AdminChangeSet) -> ChangeSetPublic:
     return ChangeSetPublic.model_validate(row, from_attributes=True)
+
+
+def list_drafts(
+    db: Session, principal: Principal, function: str, status: Literal["draft"] = "draft"
+) -> list[ChangeSetPublic]:
+    if not principal.is_org_admin:
+        raise ChangeSetError("找不到这份改动", 404)
+    current_session = (
+        select(AdminAssistantSession.id)
+        .where(
+            AdminAssistantSession.org_id == principal.org_id,
+            AdminAssistantSession.user_id == principal.user_id,
+        )
+        .order_by(
+            col(AdminAssistantSession.started_at).desc(),
+            col(AdminAssistantSession.id).desc(),
+        )
+        .limit(1)
+        .scalar_subquery()
+    )
+    rows = db.exec(
+        select(AdminChangeSet)
+        .where(
+            AdminChangeSet.org_id == principal.org_id,
+            AdminChangeSet.created_by_user_id == principal.user_id,
+            AdminChangeSet.session_id == current_session,
+            AdminChangeSet.status == status,
+        )
+        .order_by(col(AdminChangeSet.updated_at).desc(), col(AdminChangeSet.id).desc())
+    ).all()
+    # Keep the whole change set: confirming a page must still confirm all its items.
+    return [
+        public(row) for row in rows if any(i["function"] == function for i in row.items)
+    ]
 
 
 def _entry(

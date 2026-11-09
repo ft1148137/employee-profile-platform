@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useLocation } from "@tanstack/react-router"
 import { AxiosError } from "axios"
 import { useEffect, useRef, useState } from "react"
@@ -191,6 +191,7 @@ export function AdminAssistantPanel({
   fullScreen?: boolean
   prefill?: { text: string }
 }) {
+  const client = useQueryClient()
   const [open, setOpen] = useState(false)
   const [sessionId, setSessionId] = useState("")
   const [messages, setMessages] = useState<
@@ -226,6 +227,7 @@ export function AdminAssistantPanel({
     onSuccess: (data) => {
       setSessionId(data.id)
       setMessages(data.messages)
+      client.invalidateQueries({ queryKey: ["admin-page-drafts", orgId] })
     },
   })
   const send = useMutation({
@@ -236,11 +238,13 @@ export function AdminAssistantPanel({
         body,
         timeout: 75000,
       }),
-    onSuccess: ({ data }) =>
+    onSuccess: ({ data }) => {
       setMessages((previous) => [
         ...previous,
         { role: "assistant", payload: data },
-      ]),
+      ])
+      client.invalidateQueries()
+    },
   })
   const busy = initialize.isPending || send.isPending
   useEffect(() => {
