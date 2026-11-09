@@ -85,7 +85,13 @@ test("manage an employee from their detail page and see their history", async ({
   await page.getByRole("button", { name: "撤销角色", exact: true }).click()
   await dialog.getByRole("button", { name: "确认撤销角色" }).click()
   await expect(history).toContainText("撤销角色")
+  const reloadedHistory = page.waitForResponse(
+    (response) =>
+      response.url().includes(`${base}/audit-events?`) &&
+      new URL(response.url()).searchParams.get("employee_id") === employee.id,
+  )
   await page.reload()
+  expect((await reloadedHistory).ok()).toBeTruthy()
   await expect(history).toContainText("授予角色")
   await expect(history).toContainText("撤销角色")
   await expect(history).toContainText("网页")
