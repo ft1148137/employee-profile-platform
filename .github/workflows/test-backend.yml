@@ -36,6 +36,8 @@ jobs:
           version: "latest-known"
       - run: docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
       - run: docker compose -f compose.yml -f compose.dev.yml up -d --wait db
+      - name: Install dependencies and compile bytecode before coverage
+        run: uv sync --all-packages --frozen --compile-bytecode
       - name: Migrate DB
         run: uv run bash scripts/prestart.sh
         working-directory: backend

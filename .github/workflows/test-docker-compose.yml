@@ -16,6 +16,8 @@ jobs:
 
   test-docker-compose:
     runs-on: ubuntu-latest
+    env:
+      COMPOSE_PROJECT_NAME: epp-compose-ci
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -35,7 +37,9 @@ jobs:
             backend.cache-to=type=gha,scope=compose-backend,mode=max
             pi.cache-from=type=gha,scope=compose-pi
             pi.cache-to=type=gha,scope=compose-pi,mode=max
-      - run: docker compose up -d --wait
+      - name: Verify Compose image names
+        run: docker image inspect "${COMPOSE_PROJECT_NAME}-backend:latest" "${COMPOSE_PROJECT_NAME}-pi:latest" > /dev/null
+      - run: docker compose up -d --no-build --wait
       - name: Test demo stack and role permissions
         run: bash tests/smoke/compose_smoke.sh
       - if: always()

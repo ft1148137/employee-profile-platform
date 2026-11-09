@@ -47,6 +47,8 @@ jobs:
     if: ${{ needs.changes.outputs.changed == 'true' }}
     timeout-minutes: 15
     runs-on: ubuntu-latest
+    env:
+      COMPOSE_PROJECT_NAME: epp-playwright-ci
     strategy:
       fail-fast: false
       matrix:
@@ -71,6 +73,9 @@ jobs:
     - run: bun ci
       working-directory: frontend
     - run: bash scripts/generate-client.sh
+    - name: Install Chromium on the runner
+      run: bunx playwright install --with-deps chromium
+      working-directory: frontend
     - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
     - name: Build test images with cache
       uses: docker/bake-action@5be5f02ff8819ecd3092ea6b2e6261c31774f2b4 # v6
@@ -80,18 +85,25 @@ jobs:
           compose.yml
           compose.dev.yml
         load: true
+        targets: backend,pi
         set: |
           backend.cache-from=type=gha,scope=playwright-backend
           backend.cache-to=type=gha,scope=playwright-backend,mode=max
           pi.cache-from=type=gha,scope=playwright-pi
           pi.cache-to=type=gha,scope=playwright-pi,mode=max
-          playwright.cache-from=type=gha,scope=playwright-runner
-          playwright.cache-to=type=gha,scope=playwright-runner,mode=max
+    - name: Verify Compose image names
+      run: docker image inspect "${COMPOSE_PROJECT_NAME}-backend:latest" "${COMPOSE_PROJECT_NAME}-pi:latest" > /dev/null
     - run: docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
+    - name: Start test services from the built images
+      run: docker compose -f compose.yml -f compose.dev.yml up -d --no-build --wait backend worker mock-jira
     - name: Run Playwright tests
+      working-directory: frontend
       env:
         SHARD: ${{ matrix.shard }}
-      run: docker compose -f compose.yml -f compose.dev.yml run --rm -e PLAYWRIGHT_HTML_OUTPUT_DIR=/app/frontend/blob-report playwright bunx playwright test --shard="$SHARD/3" --fail-on-flaky-tests --trace=retain-on-failure --reporter=html
+        PLAYWRIGHT_BASE_URL: http://localhost:8000
+        VITE_API_URL: http://localhost:8000
+        PLAYWRIGHT_HTML_OUTPUT_DIR: blob-report
+      run: MODEL_TEST_HOST="$(hostname -I | awk '{print $1}')" bunx playwright test --shard="$SHARD/3" --fail-on-flaky-tests --trace=retain-on-failure --reporter=html
     - if: always()
       run: docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
     - name: Upload HTML report
@@ -99,7 +111,6 @@ jobs:
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: playwright-report-${{ matrix.shard }}
-        # Reuse the existing report volume without changing Compose.
         path: frontend/blob-report
         include-hidden-files: true
         retention-days: 7

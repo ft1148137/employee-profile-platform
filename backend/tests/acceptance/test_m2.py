@@ -64,17 +64,19 @@ def enterprise(
         )
         session.commit()
         mock_drafting(org.id, admin.id)
-        http = TestClient(create_mock_app(ROOT / "examples"))
-        monkeypatch.setattr(sync, "jira_client_for", lambda c: jira_client_for(c, http))
-        yield (
-            session,
-            org,
-            employees,
-            f"/api/v1/orgs/{org.id}",
-            superuser_token_headers,
-            admin,
-        )
-        http.close()
+        # Reuse one ASGI portal across all Jira pages and retries.
+        with TestClient(create_mock_app(ROOT / "examples")) as http:
+            monkeypatch.setattr(
+                sync, "jira_client_for", lambda c: jira_client_for(c, http)
+            )
+            yield (
+                session,
+                org,
+                employees,
+                f"/api/v1/orgs/{org.id}",
+                superuser_token_headers,
+                admin,
+            )
         session.rollback()
         session.execute(
             text("DELETE FROM procrastinate_jobs WHERE args->>'org_id'=:org"),
