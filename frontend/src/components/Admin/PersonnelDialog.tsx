@@ -101,6 +101,7 @@ export function PersonnelDialog({
         if (busy) return
         setOpen(next)
         setPreview(null)
+        setManagerSearch("")
         setManager("keep")
         create.reset()
         apply.reset()
@@ -185,7 +186,10 @@ export function PersonnelDialog({
                   <Input
                     id={`${id}-search`}
                     value={managerSearch}
-                    onChange={(e) => setManagerSearch(e.target.value)}
+                    onChange={(e) => {
+                      setManagerSearch(e.target.value)
+                      setManager("keep")
+                    }}
                     placeholder="输入姓名查找"
                     disabled={busy}
                   />

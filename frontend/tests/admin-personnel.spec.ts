@@ -9,6 +9,7 @@ test("onboard and transfer on the web, then offboard through the assistant", asy
   request,
   modelUrl,
 }, testInfo) => {
+  test.setTimeout(90000)
   const email = `personnel-${crypto.randomUUID()}@example.com`
   const password = "synthetic-password-2026"
   const token = await request.post("/api/v1/private/setup-tokens", {
@@ -61,6 +62,34 @@ test("onboard and transfer on the web, then offboard through the assistant", asy
   ).toBe(0)
   await dialog.getByRole("button", { name: "确认新增员工" }).click()
   await expect(dialog).toHaveCount(0)
+  const managerIds: string[] = []
+  for (const [code, name] of [
+    ["M1", "合成上级甲"],
+    ["M2", "合成上级乙"],
+  ]) {
+    const preview = await request.post(`${base}/roster/single-change`, {
+      headers,
+      data: {
+        kind: "onboard",
+        employee_code: code,
+        display_name: name,
+        email: `${code.toLowerCase()}@example.com`,
+        department: "研发中心/平台部",
+      },
+    })
+    expect(preview.ok()).toBeTruthy()
+    const record = await preview.json()
+    expect(
+      (
+        await request.post(`${base}/roster/imports/${record.id}/apply`, {
+          headers,
+          data: { base_revision: record.base_revision },
+        })
+      ).ok(),
+    ).toBeTruthy()
+    const found = await request.get(`${base}/accounts?q=${code}`, { headers })
+    managerIds.push((await found.json()).data[0].id)
+  }
   await page.getByRole("link", { name: "合成员工", exact: true }).click()
   await page.getByRole("button", { name: "调岗", exact: true }).click()
   await expect(dialog.getByLabel("部门", { exact: true })).toHaveValue(
@@ -68,6 +97,12 @@ test("onboard and transfer on the web, then offboard through the assistant", asy
   )
   await dialog.getByLabel("部门", { exact: true }).fill("运营部")
   await dialog.getByLabel("职位", { exact: true }).fill("主管")
+  await dialog.getByLabel("查找上级", { exact: true }).fill("合成上级甲")
+  await dialog.getByRole("combobox").selectOption(managerIds[0])
+  await expect(dialog.getByRole("combobox")).toHaveValue(managerIds[0])
+  await dialog.getByLabel("查找上级", { exact: true }).fill("合成上级乙")
+  await expect(dialog.getByRole("combobox")).toHaveValue("keep")
+  await dialog.getByRole("combobox").selectOption(managerIds[1])
   await dialog.getByRole("button", { name: "预览变动" }).click()
   await expect(dialog.getByRole("region", { name: "名单预览" })).toContainText(
     "运营部",
@@ -105,7 +140,7 @@ test("onboard and transfer on the web, then offboard through the assistant", asy
     (await (await request.get(`${base}/accounts`, { headers })).json()).data[0]
       .employment_status,
   ).toBe("inactive")
-  await expectChineseCopy(page)
+  await expectChineseCopy(page, [employee.id])
   await page.screenshot({
     path: testInfo.outputPath("personnel-offboard.png"),
     fullPage: true,
