@@ -132,6 +132,7 @@ def test_case_insensitive_duplicates_and_manager_lookup() -> None:
 
 @pytest.mark.parametrize("size, cyclic", [(3, True), (5000, True), (5000, False)])
 @pytest.mark.parametrize("xlsx", [False, True])
+@pytest.mark.roster_performance
 def test_long_chains_cycles_and_performance(
     size: int, cyclic: bool, xlsx: bool
 ) -> None:

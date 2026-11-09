@@ -40,8 +40,15 @@ jobs:
         run: uv run bash scripts/prestart.sh
         working-directory: backend
       - name: Run tests
+        env:
+          PYTEST_ADDOPTS: '-m "not roster_performance"'
         run: uv run bash scripts/tests-start.sh "Coverage for ${{ github.sha }}"
         working-directory: backend
+      - name: Run roster performance tests without workers or coverage
+        run: uv run pytest tests/domains/roster/test_parser.py -m roster_performance -n 0 --no-cov -x -q --durations=6
+        working-directory: backend
+        env:
+          FASTAPI_ENV: development
       - if: always()
         run: docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
       - name: Store coverage files

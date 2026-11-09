@@ -41,12 +41,16 @@ jobs:
             - compose*.yml
             - .github/workflows/playwright.yml
 
-  test-playwright:
+  playwright-shard:
     needs:
       - changes
     if: ${{ needs.changes.outputs.changed == 'true' }}
     timeout-minutes: 15
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
@@ -67,18 +71,55 @@ jobs:
     - run: bun ci
       working-directory: frontend
     - run: bash scripts/generate-client.sh
-    - run: docker compose -f compose.yml -f compose.dev.yml build
+    - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+    - name: Build test images with cache
+      uses: docker/bake-action@5be5f02ff8819ecd3092ea6b2e6261c31774f2b4 # v6
+      with:
+        source: .
+        files: |
+          compose.yml
+          compose.dev.yml
+        load: true
+        set: |
+          backend.cache-from=type=gha,scope=playwright-backend
+          backend.cache-to=type=gha,scope=playwright-backend,mode=max
+          pi.cache-from=type=gha,scope=playwright-pi
+          pi.cache-to=type=gha,scope=playwright-pi,mode=max
+          playwright.cache-from=type=gha,scope=playwright-runner
+          playwright.cache-to=type=gha,scope=playwright-runner,mode=max
     - run: docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
     - name: Run Playwright tests
-      run: docker compose -f compose.yml -f compose.dev.yml run --rm -e PLAYWRIGHT_HTML_OUTPUT_DIR=/app/frontend/blob-report playwright bunx playwright test --fail-on-flaky-tests --trace=retain-on-failure --reporter=html
+      env:
+        SHARD: ${{ matrix.shard }}
+      run: docker compose -f compose.yml -f compose.dev.yml run --rm -e PLAYWRIGHT_HTML_OUTPUT_DIR=/app/frontend/blob-report playwright bunx playwright test --shard="$SHARD/3" --fail-on-flaky-tests --trace=retain-on-failure --reporter=html
     - if: always()
       run: docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
     - name: Upload HTML report
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
-        name: playwright-report
+        name: playwright-report-${{ matrix.shard }}
         # Reuse the existing report volume without changing Compose.
         path: frontend/blob-report
         include-hidden-files: true
         retention-days: 7
+
+  test-playwright:
+    needs: [changes, playwright-shard]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+    - name: Require every shard or a successful path filter
+      env:
+        CHANGES_RESULT: ${{ needs.changes.result }}
+        CHANGED: ${{ needs.changes.outputs.changed }}
+        TEST_RESULT: ${{ needs.playwright-shard.result }}
+      run: |
+        test "$CHANGES_RESULT" = success
+        if [ "$CHANGED" = true ]; then
+          test "$TEST_RESULT" = success
+        else
+          test "$CHANGED" = false
+          test "$TEST_RESULT" = skipped
+        fi
