@@ -25,7 +25,7 @@ from app.domains.org.models import (
     OrgMembership,
     ReportingLine,
 )
-from app.domains.org.roster import single
+from app.domains.org.roster import service, single
 from app.domains.org.roster.diff import compute_roster_diff
 from app.domains.org.roster.schemas import HEADERS
 from app.domains.org.service import EmployeeNotFound
@@ -40,6 +40,33 @@ FUNCTIONS = {
     "transfer": "transfer_employee",
     "offboard": "offboard_employees",
 }
+
+
+def test_unkeyed_manager_cannot_silently_clear_reporting_line(
+    db: Session, tenant: SetupTenant, client: TestClient, roster: dict
+) -> None:
+    roster["A"].employee_code = None
+    db.add(roster["A"])
+    db.commit()
+    body = {
+        "kind": "transfer",
+        "employee_id": str(roster["B"].id),
+        "department": "运营",
+    }
+    response = client.post(f"{tenant.url}/roster/single-change", json=body)
+    assert response.status_code == 409 and "避免丢失汇报关系" in response.text
+    with pytest.raises(service.RosterError) as error:
+        propose(db, tenant, body)
+    assert error.value.status_code == 409
+    db.expire_all()
+    line = db.exec(
+        select(ReportingLine).where(
+            ReportingLine.org_id == tenant.org_id,
+            ReportingLine.employee_id == roster["B"].id,
+            col(ReportingLine.valid_to).is_(None),
+        )
+    ).one()
+    assert line.manager_employee_id == roster["A"].id
 
 
 @pytest.mark.parametrize("protected", ["shared", "superuser"])

@@ -80,6 +80,13 @@ def current_roster(db: Session, p: Principal) -> ParsedRoster:
             )
         ).all()
     }
+    if any(
+        not code and by_id[id].employment_status == EmploymentStatus.ACTIVE
+        for id, code in managers.items()
+    ):
+        raise service.RosterError(
+            409, "有上级尚未填写工号，请先完善名单，避免丢失汇报关系"
+        )
     return ParsedRoster(
         column_mapping={h: h for h in HEADERS},
         # shortcut: unkeyed employees follow import exclusions; revisit if roster keys change.
