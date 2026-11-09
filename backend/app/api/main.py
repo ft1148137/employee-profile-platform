@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.routes import (
     access_tokens,
     accounts,
+    admin_overview,
     appeals,
     approval_policy,
     audit,
@@ -40,6 +41,7 @@ from app.api.routes import (
 from app.core.config import settings
 
 api_router = APIRouter()
+api_router.include_router(admin_overview.router)
 api_router.include_router(review_delegations.router)
 api_router.include_router(appeals.router)
 api_router.include_router(approval_policy.router)
