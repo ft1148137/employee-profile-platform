@@ -100,7 +100,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
         启用模型
       </label>
       <p className="text-sm text-muted-foreground">
-        起草必须启用模型；关闭后不再生成初始画像，可以让员工用 JSON 导入画像。
+        打开后可根据工作记录起草画像并使用机器人；关闭后仍可在网页上填写或导入画像文件。
       </p>
       {saved.kind &&
         saved.kind !== "chatgpt_subscription" &&
@@ -131,12 +131,15 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
           }}
         >
           <option value="">请选择类型</option>
-          <option value="cloud_api">云端 API</option>
+          <option value="cloud_api">云端模型服务</option>
           <option value="local">本地模型</option>
-          <option value="openai_compatible">通用 OpenAI 兼容接口</option>
+          <option value="openai_compatible">其他兼容模型服务</option>
           <option value="chatgpt_subscription">ChatGPT 订阅</option>
         </select>
       </label>
+      <p className="text-sm text-muted-foreground">
+        选择企业使用的模型服务；云端服务按厂商规则计费，订阅方式共用所连接账号的额度。
+      </p>
       {current.kind && (
         <>
           <label htmlFor="model-name" className="block space-y-2">
@@ -146,35 +149,48 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
               required={current.enabled}
               value={current.model ?? ""}
               placeholder={
-                chatgpt ? "chatgpt/gpt-6.1-sol" : "模型 ID，不带提供方前缀"
+                chatgpt ? "chatgpt/gpt-6.1-sol" : "填写厂商提供的模型名称"
               }
               onChange={(e) => change({ model: e.target.value })}
             />
           </label>
+          <p className="text-sm text-muted-foreground">
+            填写模型服务中实际可用的名称，保存后可用「测试连接」确认。
+          </p>
           {chatgpt && (
             <p className="text-sm text-muted-foreground">
-              可以填写 Pi 目录中的模型，也可以手填新的模型 ID，保留 chatgpt/
-              前缀。目录外模型支持 minimal、low、medium、high，不支持
-              xhigh；是否可用以你的订阅为准。
+              模型名保留 chatgpt/ 前缀；能使用哪些模型，以所连接账号的订阅为准。
             </p>
           )}
-          <label className="block space-y-2">
-            <span>推理强度</span>
-            <select
-              className={selectClass}
-              value={current.reasoning_effort ?? "off"}
-              onChange={(e) =>
-                change({
-                  reasoning_effort: e.target
-                    .value as ModelSettingUpdateWritable["reasoning_effort"],
-                })
-              }
-            >
-              {["off", "minimal", "low", "medium", "high", "xhigh"].map((v) => (
-                <option key={v}>{v}</option>
-              ))}
-            </select>
-          </label>
+          <details className="space-y-3 rounded-lg border p-4">
+            <summary className="cursor-pointer font-medium">
+              高级设置：模型思考深度
+            </summary>
+            <label className="block space-y-2">
+              <span>推理强度</span>
+              <select
+                className={selectClass}
+                value={current.reasoning_effort ?? "off"}
+                onChange={(e) =>
+                  change({
+                    reasoning_effort: e.target
+                      .value as ModelSettingUpdateWritable["reasoning_effort"],
+                  })
+                }
+              >
+                {(
+                  ["off", "minimal", "low", "medium", "high", "xhigh"] as const
+                ).map((v, i) => (
+                  <option key={v} value={v}>
+                    {["默认", "极少", "较少", "适中", "较深", "最深"][i]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="text-sm text-muted-foreground">
+              思考越深通常等待越久、消耗额度越多；保留默认值即可，不同模型支持的深度可能不同。
+            </p>
+          </details>
           {chatgpt ? (
             <ChatGptConnect orgId={orgId} />
           ) : (
@@ -206,8 +222,12 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                       ))}
                     </select>
                   </label>
+                  <p className="text-sm text-muted-foreground">
+                    选择实际提供模型服务的厂商，密钥也必须由同一厂商提供。
+                  </p>
                   <p className="text-sm">
-                    Claude 需要 Anthropic API key，不支持用 Claude 订阅登录。
+                    Claude 需要 Anthropic API
+                    key（由模型厂商提供的连接密钥），不支持用 Claude 订阅登录。
                   </p>
                   {current.provider === "qwen" && (
                     <label className="block space-y-2">
@@ -246,6 +266,12 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                   />
                 </label>
               )}
+              {current.kind !== "cloud_api" && (
+                <p className="text-sm text-muted-foreground">
+                  base URL
+                  是模型服务的连接地址，请向服务提供方索取；它不是聊天网页的网址。
+                </p>
+              )}
               <label htmlFor="model-key" className="block space-y-2">
                 <span>密钥{current.kind !== "cloud_api" && "（可选）"}</span>
                 <Input
@@ -271,16 +297,24 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                   }}
                 />
               </label>
+              <p className="text-sm text-muted-foreground">
+                密钥用于连接模型服务，加密保存；已保存时留空即可保留。
+              </p>
               {changedDestination && <p role="status">需要重新填写密钥</p>}
               {saved.has_api_key && (
-                <label className="flex gap-2">
-                  <input
-                    type="checkbox"
-                    checked={clearKey}
-                    onChange={(e) => setClearKey(e.target.checked)}
-                  />
-                  清除密钥
-                </label>
+                <div className="space-y-2">
+                  <label className="flex gap-2">
+                    <input
+                      type="checkbox"
+                      checked={clearKey}
+                      onChange={(e) => setClearKey(e.target.checked)}
+                    />
+                    清除密钥
+                  </label>
+                  <p className="text-sm text-muted-foreground">
+                    勾选并保存后删除已保存的密钥，需要重新填写才能连接。
+                  </p>
+                </div>
               )}
             </>
           )}

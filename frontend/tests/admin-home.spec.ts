@@ -159,7 +159,7 @@ test("admin home shows status and appeal todo through resubmission", async ({
     page.getByRole("article", { name: "合成能力", exact: true }),
   ).toContainText("存在争议")
   await expectChineseCopy(page)
-  await enter(admin.access_token, "/admin/progress")
+  await enter(admin.access_token, "/admin")
   const today = page.getByRole("region", { name: "今天要处理的事" })
   for (const name of ["飞书", "AI 模型", "数据同步", "自动起草"]) {
     await expect(
@@ -173,7 +173,7 @@ test("admin home shows status and appeal todo through resubmission", async ({
     .filter({ hasText: "1 个争议待处理" })
     .getByRole("link", { name: "去处理" })
     .click()
-  await expect(page).toHaveURL(/\/admin\/(appeals|people\?tab=appeals)$/)
+  await expect(page).toHaveURL("/admin/people?tab=appeals")
   await expect(
     page.getByRole("heading", { name: "争议", exact: true }),
   ).toBeVisible()
@@ -187,7 +187,7 @@ test("admin home shows status and appeal todo through resubmission", async ({
   await expectChineseCopy(page)
   await page.getByRole("button", { name: "允许重新提交" }).click()
   await expect(page.getByRole("status")).toContainText("0 项待处理申诉")
-  await page.goto("/admin/progress")
+  await page.goto("/admin")
   await expect(
     page.getByRole("region", { name: "今天要处理的事" }),
   ).not.toContainText("个争议待处理")

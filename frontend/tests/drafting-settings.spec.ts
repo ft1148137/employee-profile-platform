@@ -46,7 +46,8 @@ test("drafting settings and personal choice persist with role boundaries", async
     await request.get(`${base}/me/auto-draft`, { headers: employeeHeaders })
   ).json()
   try {
-    await page.getByRole("link", { name: "自动起草设置", exact: true }).click()
+    await page.getByRole("link", { name: "能力与规则", exact: true }).click()
+    await page.getByRole("tab", { name: "自动起草设置", exact: true }).click()
     await expect(
       page.getByRole("heading", { name: "自动起草设置" }),
     ).toBeVisible()
@@ -97,7 +98,7 @@ test("drafting settings and personal choice persist with role boundaries", async
     await employeePage.reload()
     await expect(toggle).not.toBeChecked()
     await expect(
-      employeePage.getByRole("link", { name: "自动起草设置", exact: true }),
+      employeePage.getByRole("link", { name: "能力与规则", exact: true }),
     ).toHaveCount(0)
     await expectChineseCopy(employeePage)
     await employeePage.screenshot({
@@ -111,7 +112,7 @@ test("drafting settings and personal choice persist with role boundaries", async
     ).toBeVisible()
     await expect(managerPage.getByRole("switch")).toHaveCount(0)
     await expect(
-      managerPage.getByRole("link", { name: "自动起草设置", exact: true }),
+      managerPage.getByRole("link", { name: "能力与规则", exact: true }),
     ).toHaveCount(0)
   } finally {
     expect(

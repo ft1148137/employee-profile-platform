@@ -101,52 +101,37 @@ export function AppSidebar() {
       <SidebarContent>
         <Main items={items} />
         {roles.includes("org_admin") && (
-          <div>
+          <nav aria-label="管理菜单">
             <SidebarGroup>
               <SidebarGroupLabel>管理</SidebarGroupLabel>
             </SidebarGroup>
             <Main
               items={[
-                { icon: ListChecks, title: "争议", path: "/admin/appeals" },
-                { icon: Users, title: "导入名单", path: "/admin/roster" },
-                {
-                  icon: Users,
-                  title: "批量导入画像",
-                  path: "/admin/profile-imports",
-                },
-                { icon: Users, title: "员工与账号", path: "/admin/accounts" },
-                { icon: Users, title: "角色", path: "/admin/roles" },
-                { icon: Users, title: "账号对应", path: "/admin/identities" },
-                {
-                  icon: Settings,
-                  title: "自动起草设置",
-                  path: "/admin/drafting",
-                },
-                {
-                  icon: ListChecks,
-                  title: "同步与起草进度",
-                  path: "/admin/progress",
-                },
-                { icon: Settings, title: "数据来源", path: "/admin/sources" },
-
-                {
-                  icon: Settings,
-                  title: "外部 AI 助手",
-                  path: "/admin/assistants",
-                },
-                { icon: Settings, title: "模型", path: "/admin/model" },
-                { icon: Settings, title: "内置机器人", path: "/admin/bot" },
-                { icon: Settings, title: "IM 入口", path: "/admin/im" },
-                { icon: ScrollText, title: "审计日志", path: "/admin/audit" },
-                {
-                  icon: ListChecks,
-                  title: "首次设置",
-                  path: "/setup-wizard",
-                  badge: setup.data?.completed === false ? "待完成" : undefined,
-                },
+                { icon: ListChecks, title: "首页", path: "/admin" },
+                { icon: Users, title: "人员", path: "/admin/people" },
+                { icon: ListChecks, title: "能力与规则", path: "/admin/rules" },
+                { icon: Settings, title: "数据与 AI", path: "/admin/data-ai" },
+                { icon: Settings, title: "连接", path: "/admin/connections" },
               ]}
             />
-          </div>
+            <details className="group mx-2">
+              <summary className="cursor-pointer rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-sidebar-accent">
+                更多
+              </summary>
+              <Main
+                items={[
+                  { icon: ScrollText, title: "审计日志", path: "/admin/audit" },
+                  {
+                    icon: ListChecks,
+                    title: "首次设置",
+                    path: "/setup-wizard",
+                    badge:
+                      setup.data?.completed === false ? "待完成" : undefined,
+                  },
+                ]}
+              />
+            </details>
+          </nav>
         )}
       </SidebarContent>
       <SidebarFooter>

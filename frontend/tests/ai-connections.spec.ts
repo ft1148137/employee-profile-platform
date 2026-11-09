@@ -28,7 +28,8 @@ test("enterprise switch and personal token lifecycle", async ({
   let id = ""
   let employeeHeaders = {}
   try {
-    await page.getByRole("link", { name: "外部 AI 助手", exact: true }).click()
+    await page.getByRole("link", { name: "连接", exact: true }).click()
+    await page.getByRole("tab", { name: "外部 AI 助手", exact: true }).click()
     await expect(
       page.getByText(
         "打开后，员工的画像、证据和自述会发给外部助手的厂商。请先确认企业允许这些数据外发。",

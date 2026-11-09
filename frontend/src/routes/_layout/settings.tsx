@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
-import { ApprovalPolicy } from "@/components/Admin/ApprovalPolicy"
 import { Appearance } from "@/components/Common/Appearance"
-import { CapabilityDictionary } from "@/components/Setup/CapabilityDictionary"
 import { AiConnections } from "@/components/UserSettings/AiConnections"
 import ChangePassword from "@/components/UserSettings/ChangePassword"
 import { ImBindings } from "@/components/UserSettings/ImBindings"
@@ -9,7 +7,6 @@ import { ReviewDelegation } from "@/components/UserSettings/ReviewDelegation"
 import UserInformation from "@/components/UserSettings/UserInformation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import useAuth from "@/hooks/useAuth"
-import { useOrg } from "@/hooks/useOrg"
 
 const tabsConfig = [
   { value: "my-profile", title: "个人信息", component: UserInformation },
@@ -22,7 +19,6 @@ const tabsConfig = [
     title: "代理审批",
     component: ReviewDelegation,
   },
-  { value: "dictionary", title: "能力词典", component: CapabilityDictionary },
 ]
 
 export const Route = createFileRoute("/_layout/settings")({
@@ -38,8 +34,6 @@ export const Route = createFileRoute("/_layout/settings")({
 
 function UserSettings() {
   const { user: currentUser } = useAuth()
-  const { org, roles } = useOrg()
-  const admin = roles.includes("org_admin")
 
   if (!currentUser) {
     return null
@@ -52,6 +46,12 @@ function UserSettings() {
         <p className="text-muted-foreground">
           查看个人信息、修改密码和调整外观
         </p>
+        <a
+          className="text-sm text-primary underline"
+          href="/admin/rules?tab=dictionary"
+        >
+          查看企业能力词典
+        </a>
       </div>
 
       <Tabs defaultValue="my-profile">
@@ -61,18 +61,12 @@ function UserSettings() {
               {tab.title}
             </TabsTrigger>
           ))}
-          {admin && <TabsTrigger value="approval-policy">审批规则</TabsTrigger>}
         </TabsList>
         {tabsConfig.map((tab) => (
           <TabsContent key={tab.value} value={tab.value}>
             <tab.component />
           </TabsContent>
         ))}
-        {admin && org && (
-          <TabsContent value="approval-policy">
-            <ApprovalPolicy key={org.id} orgId={org.id} />
-          </TabsContent>
-        )}
       </Tabs>
     </div>
   )

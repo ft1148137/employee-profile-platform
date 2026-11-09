@@ -11,17 +11,6 @@ const levels = {
   error: { label: "需要处理", color: "border-l-destructive" },
 }
 
-// shortcut: use legacy pages until NERE-259 merges, then remove this mapping
-const legacyPages: Record<string, string> = {
-  "/admin/connections?tab=im": "/admin/im",
-  "/admin/data-ai?tab=model": "/admin/model",
-  "/admin/data-ai?tab=sources": "/admin/sources",
-  "/admin/rules?tab=drafting": "/admin/drafting",
-  "/admin/people?tab=appeals": "/admin/appeals",
-  "/admin/rules?tab=approval": "/settings",
-  "/admin/people?tab=identities": "/admin/identities",
-}
-
 export function TodayPanel({ orgId }: { orgId: string }) {
   const overview = useQuery({
     queryKey: ["admin-overview", orgId],
@@ -64,7 +53,7 @@ export function TodayPanel({ orgId }: { orgId: string }) {
                       ))}
                     </ul>
                     <Button variant="link" asChild className="self-start px-0">
-                      <a href={legacyPages[card.page] ?? card.page}>去处理</a>
+                      <a href={card.page}>去处理</a>
                     </Button>
                   </>
                 )}
@@ -82,7 +71,7 @@ export function TodayPanel({ orgId }: { orgId: string }) {
               >
                 <span>{todo.title}</span>
                 <Button variant="link" asChild>
-                  <a href={legacyPages[todo.page] ?? todo.page}>去处理</a>
+                  <a href={todo.page}>去处理</a>
                 </Button>
               </li>
             ))}

@@ -126,6 +126,10 @@ function JiraForm({
               </label>
             ))}
           </div>
+          <p className="text-xs text-muted-foreground">
+            按企业正在使用的 Jira
+            版本选择，云端版与企业自行部署的版本需要不同的连接方式。
+          </p>
           <div className="space-y-2">
             <Label htmlFor="jira-url">站点地址</Label>
             <Input
@@ -137,6 +141,9 @@ function JiraForm({
               value={config.base_url}
               onChange={(e) => change({ base_url: e.target.value })}
             />
+            <p className="text-xs text-muted-foreground">
+              填写企业 Jira 首页的网址，用于读取已授权的工作记录。
+            </p>
           </div>
           {config.deployment === "data_center" && (
             <div className="space-y-2">
@@ -193,9 +200,13 @@ function JiraForm({
                 test.reset()
               }}
             />
+            <p className="text-xs text-muted-foreground">
+              这是授权平台读取工作记录的连接凭据，加密保存；已有凭据时留空表示不修改。
+            </p>
             {config.deployment === "cloud" && (
               <p className="text-xs text-muted-foreground">
-                在 Atlassian 账号设置的「安全」中创建 API token，再填写到这里。
+                在 Atlassian 账号设置的「安全」中创建 API
+                token（连接密钥），再填写到这里。
               </p>
             )}
           </div>
@@ -208,6 +219,9 @@ function JiraForm({
               value={config.start_date}
               onChange={(e) => change({ start_date: e.target.value })}
             />
+            <p className="text-xs text-muted-foreground">
+              首次同步只读取这个日期之后的工作记录，默认从一年前开始。
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="jira-schedule">同步周期</Label>
@@ -234,6 +248,9 @@ function JiraForm({
               <option value="quarterly">每季度</option>
               <option value="yearly">每年</option>
             </select>
+            <p className="text-xs text-muted-foreground">
+              开启周期后按时补充工作记录；关闭时仍可点击「立即同步」。
+            </p>
           </div>
           <label className="flex items-start gap-2 text-sm">
             <input

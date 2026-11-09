@@ -15,7 +15,8 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
     process.env.DEMO_USER_PASSWORD!,
   )
   await expect(page).toHaveURL("/setup-wizard")
-  await page.getByRole("link", { name: "员工与账号" }).click()
+  await page.getByRole("link", { name: "人员", exact: true }).click()
+  await page.getByRole("tab", { name: "员工与账号", exact: true }).click()
   const rows = page.getByRole("row")
   const row = (code: string) =>
     rows.filter({ has: page.getByRole("cell", { name: code, exact: true }) })
@@ -131,10 +132,10 @@ test("non-admin direct access preserves session and shows the backend reason", a
     "employee.platform@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
-  await expect(page.getByRole("link", { name: "员工与账号" })).toHaveCount(0)
+  await expect(page.getByRole("link", { name: "人员" })).toHaveCount(0)
   await page.goto("/admin/accounts")
   await expect(page.getByRole("alert")).toContainText("需要企业管理员权限")
-  await expect(page).toHaveURL(/\/admin\/accounts$/)
+  await expect(page).toHaveURL("/admin/people?tab=accounts")
   await expectChineseCopy(page)
 })
 

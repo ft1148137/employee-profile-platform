@@ -83,8 +83,14 @@ export function ApprovalPolicy({ orgId }: { orgId: string }) {
             />
             <span className="font-medium">全企业需要经理确认</span>
           </label>
+          <p className="text-sm text-muted-foreground">
+            打开后员工提交的判断须经经理批准才发布；关闭后由员工本人确认并标为暂定。
+          </p>
           <div className="space-y-3">
             <h3 className="font-medium">按能力类别设置</h3>
+            <p className="text-sm text-muted-foreground">
+              单独设置的类别优先于全企业要求；选择「跟随全企业」即可使用上面的规则。
+            </p>
             {policy.data.categories.length === 0 && (
               <p className="text-sm text-muted-foreground">
                 当前词典没有能力类别，使用全企业设置。

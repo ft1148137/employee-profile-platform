@@ -240,7 +240,7 @@ for (const username of ["manager.platform", "employee.platform"]) {
       process.env.DEMO_USER_PASSWORD!,
     )
     await expect(
-      page.getByRole("link", { name: "账号对应", exact: true }),
+      page.getByRole("link", { name: "人员", exact: true }),
     ).toHaveCount(0)
     await page.goto("/admin/identities")
     await expect(page.getByRole("alert")).toHaveText("需要企业管理员权限")
