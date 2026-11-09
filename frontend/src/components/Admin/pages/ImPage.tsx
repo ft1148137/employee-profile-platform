@@ -5,6 +5,7 @@ import {
   ImSettingsService,
   type ImSettingUpdate,
 } from "@/client"
+import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
@@ -257,6 +258,7 @@ function PlatformSetting({
           {test.data.data.message}
         </p>
       )}
+      <ChangeHistory targetType="im_setting" />
     </form>
   )
 }

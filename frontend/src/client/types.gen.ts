@@ -1383,6 +1383,14 @@ export type EmployeeAccount = {
      * Display Name
      */
     display_name: string;
+    /**
+     * Title
+     */
+    title: string | null;
+    /**
+     * Work Email
+     */
+    work_email: string | null;
     employment_status: EmploymentStatus;
     department: DepartmentSummary | null;
     account: AccountPublic | null;
@@ -4274,7 +4282,12 @@ export type appealsListDisputesData = {
          */
         org_id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Employee Id
+         */
+        employee_id?: string | null;
+    };
     url: '/api/v1/orgs/{org_id}/appeals';
 };
 
@@ -6308,6 +6321,10 @@ export type externalIdentitiesGetIdentitiesData = {
          * Limit
          */
         limit?: number;
+        /**
+         * Employee Id
+         */
+        employee_id?: string | null;
     };
     url: '/api/v1/orgs/{org_id}/external-identities';
 };
@@ -7753,6 +7770,10 @@ export type accountsReadAccountsData = {
          * Limit
          */
         limit?: number;
+        /**
+         * Employee Id
+         */
+        employee_id?: string | null;
     };
     url: '/api/v1/orgs/{org_id}/accounts';
 };
@@ -7940,6 +7961,18 @@ export type auditReadAuditEventsData = {
          * Limit
          */
         limit?: number;
+        /**
+         * Target Type
+         */
+        target_type?: string | null;
+        /**
+         * Target Id
+         */
+        target_id?: Array<string> | null;
+        /**
+         * Employee Id
+         */
+        employee_id?: string | null;
     };
     url: '/api/v1/orgs/{org_id}/audit-events';
 };

@@ -1,4 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  Outlet,
+  useChildMatches,
+} from "@tanstack/react-router"
 import { AdminTabs, tabSearch } from "@/components/Admin/AdminTabs"
 import { AccountsPage } from "@/components/Admin/pages/AccountsPage"
 import { AppealsPage } from "@/components/Admin/pages/AppealsPage"
@@ -23,6 +27,8 @@ export const Route = createFileRoute("/_layout/admin/people")({
 function People() {
   const { tab } = Route.useSearch()
   const navigate = Route.useNavigate()
+  const children = useChildMatches()
+  if (children.length) return <Outlet />
   return (
     <AdminTabs
       title="人员"

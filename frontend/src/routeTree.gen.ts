@@ -41,6 +41,7 @@ import { Route as LayoutEmployeesEmployeeIdRouteImport } from './routes/_layout/
 import { Route as LayoutOauthConsentRouteImport } from './routes/_layout/oauth/consent'
 import { Route as LayoutReviewsIndexRouteImport } from './routes/_layout/reviews.index'
 import { Route as LayoutReviewsRequestIdRouteImport } from './routes/_layout/reviews.$requestId'
+import { Route as LayoutAdminPeopleEmployeeIdRouteImport } from './routes/_layout/admin.people.$employeeId'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -203,6 +204,12 @@ const LayoutReviewsRequestIdRoute = LayoutReviewsRequestIdRouteImport.update({
   path: '/reviews/$requestId',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutAdminPeopleEmployeeIdRoute =
+  LayoutAdminPeopleEmployeeIdRouteImport.update({
+    id: '/$employeeId',
+    path: '/$employeeId',
+    getParentRoute: () => LayoutAdminPeopleRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -223,7 +230,7 @@ export interface FileRoutesByFullPath {
   '/admin/identities': typeof LayoutAdminIdentitiesRoute
   '/admin/im': typeof LayoutAdminImRoute
   '/admin/model': typeof LayoutAdminModelRoute
-  '/admin/people': typeof LayoutAdminPeopleRoute
+  '/admin/people': typeof LayoutAdminPeopleRouteWithChildren
   '/admin/profile-imports': typeof LayoutAdminProfileImportsRoute
   '/admin/progress': typeof LayoutAdminProgressRoute
   '/admin/roles': typeof LayoutAdminRolesRoute
@@ -236,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof LayoutAdminIndexRoute
   '/employees/': typeof LayoutEmployeesIndexRoute
   '/reviews/': typeof LayoutReviewsIndexRoute
+  '/admin/people/$employeeId': typeof LayoutAdminPeopleEmployeeIdRoute
 }
 export interface FileRoutesByTo {
   '/change-password': typeof ChangePasswordRoute
@@ -256,7 +264,7 @@ export interface FileRoutesByTo {
   '/admin/identities': typeof LayoutAdminIdentitiesRoute
   '/admin/im': typeof LayoutAdminImRoute
   '/admin/model': typeof LayoutAdminModelRoute
-  '/admin/people': typeof LayoutAdminPeopleRoute
+  '/admin/people': typeof LayoutAdminPeopleRouteWithChildren
   '/admin/profile-imports': typeof LayoutAdminProfileImportsRoute
   '/admin/progress': typeof LayoutAdminProgressRoute
   '/admin/roles': typeof LayoutAdminRolesRoute
@@ -269,6 +277,7 @@ export interface FileRoutesByTo {
   '/admin': typeof LayoutAdminIndexRoute
   '/employees': typeof LayoutEmployeesIndexRoute
   '/reviews': typeof LayoutReviewsIndexRoute
+  '/admin/people/$employeeId': typeof LayoutAdminPeopleEmployeeIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -291,7 +300,7 @@ export interface FileRoutesById {
   '/_layout/admin/identities': typeof LayoutAdminIdentitiesRoute
   '/_layout/admin/im': typeof LayoutAdminImRoute
   '/_layout/admin/model': typeof LayoutAdminModelRoute
-  '/_layout/admin/people': typeof LayoutAdminPeopleRoute
+  '/_layout/admin/people': typeof LayoutAdminPeopleRouteWithChildren
   '/_layout/admin/profile-imports': typeof LayoutAdminProfileImportsRoute
   '/_layout/admin/progress': typeof LayoutAdminProgressRoute
   '/_layout/admin/roles': typeof LayoutAdminRolesRoute
@@ -304,6 +313,7 @@ export interface FileRoutesById {
   '/_layout/admin/': typeof LayoutAdminIndexRoute
   '/_layout/employees/': typeof LayoutEmployeesIndexRoute
   '/_layout/reviews/': typeof LayoutReviewsIndexRoute
+  '/_layout/admin/people/$employeeId': typeof LayoutAdminPeopleEmployeeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -339,6 +349,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/employees/'
     | '/reviews/'
+    | '/admin/people/$employeeId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/change-password'
@@ -372,6 +383,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/employees'
     | '/reviews'
+    | '/admin/people/$employeeId'
   id:
     | '__root__'
     | '/_layout'
@@ -406,6 +418,7 @@ export interface FileRouteTypes {
     | '/_layout/admin/'
     | '/_layout/employees/'
     | '/_layout/reviews/'
+    | '/_layout/admin/people/$employeeId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -641,8 +654,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutReviewsRequestIdRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/admin/people/$employeeId': {
+      id: '/_layout/admin/people/$employeeId'
+      path: '/$employeeId'
+      fullPath: '/admin/people/$employeeId'
+      preLoaderRoute: typeof LayoutAdminPeopleEmployeeIdRouteImport
+      parentRoute: typeof LayoutAdminPeopleRoute
+    }
   }
 }
+
+interface LayoutAdminPeopleRouteChildren {
+  LayoutAdminPeopleEmployeeIdRoute: typeof LayoutAdminPeopleEmployeeIdRoute
+}
+
+const LayoutAdminPeopleRouteChildren: LayoutAdminPeopleRouteChildren = {
+  LayoutAdminPeopleEmployeeIdRoute: LayoutAdminPeopleEmployeeIdRoute,
+}
+
+const LayoutAdminPeopleRouteWithChildren =
+  LayoutAdminPeopleRoute._addFileChildren(LayoutAdminPeopleRouteChildren)
 
 interface LayoutRouteChildren {
   LayoutInboxRoute: typeof LayoutInboxRoute
@@ -660,7 +691,7 @@ interface LayoutRouteChildren {
   LayoutAdminIdentitiesRoute: typeof LayoutAdminIdentitiesRoute
   LayoutAdminImRoute: typeof LayoutAdminImRoute
   LayoutAdminModelRoute: typeof LayoutAdminModelRoute
-  LayoutAdminPeopleRoute: typeof LayoutAdminPeopleRoute
+  LayoutAdminPeopleRoute: typeof LayoutAdminPeopleRouteWithChildren
   LayoutAdminProfileImportsRoute: typeof LayoutAdminProfileImportsRoute
   LayoutAdminProgressRoute: typeof LayoutAdminProgressRoute
   LayoutAdminRolesRoute: typeof LayoutAdminRolesRoute
@@ -691,7 +722,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminIdentitiesRoute: LayoutAdminIdentitiesRoute,
   LayoutAdminImRoute: LayoutAdminImRoute,
   LayoutAdminModelRoute: LayoutAdminModelRoute,
-  LayoutAdminPeopleRoute: LayoutAdminPeopleRoute,
+  LayoutAdminPeopleRoute: LayoutAdminPeopleRouteWithChildren,
   LayoutAdminProfileImportsRoute: LayoutAdminProfileImportsRoute,
   LayoutAdminProgressRoute: LayoutAdminProgressRoute,
   LayoutAdminRolesRoute: LayoutAdminRolesRoute,

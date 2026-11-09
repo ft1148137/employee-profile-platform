@@ -27,11 +27,13 @@ import { roleLabels } from "./labels"
 
 export function RoleGrantDialog({
   orgId,
+  employeeId,
   departments,
   grants,
   onSuccess,
 }: {
   orgId: string
+  employeeId?: string
   departments: { id: string; name: string }[]
   grants: RolePublic[]
   onSuccess: () => void
@@ -43,12 +45,17 @@ export function RoleGrantDialog({
   const [departmentId, setDepartmentId] = useState("")
   const [message, setMessage] = useState("")
   const accounts = useQuery({
-    queryKey: ["accounts", orgId, "role-picker", search.trim()],
+    queryKey: ["accounts", orgId, "role-picker", search.trim(), employeeId],
     queryFn: async () =>
       (
         await AccountsService.readAccounts({
           path: { org_id: orgId },
-          query: { q: search.trim(), employment_status: "active", limit: 100 },
+          query: {
+            q: search.trim(),
+            employment_status: "active",
+            limit: 100,
+            employee_id: employeeId,
+          },
         })
       ).data,
     enabled: open,

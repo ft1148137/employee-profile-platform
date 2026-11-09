@@ -5,6 +5,7 @@ import {
   type ExternalIdentityPublic,
   type IdentityLink,
 } from "@/client"
+import { ConfirmActionDialog } from "@/components/Admin/ConfirmActionDialog"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -25,14 +26,18 @@ import { UnlinkDialog } from "./UnlinkDialog"
 export function IdentityTable({
   orgId,
   inWizard = false,
+  employeeId,
 }: {
   orgId: string
   inWizard?: boolean
+  employeeId?: string
 }) {
   const client = useQueryClient()
-  const [status, setStatus] = useState<"unlinked" | "linked">("unlinked")
+  const [status, setStatus] = useState<"unlinked" | "linked">(
+    employeeId ? "linked" : "unlinked",
+  )
   const [q, setQ] = useState("")
-  const [source, setSource] = useState("")
+  const [source, setSource] = useState(employeeId ? "jira" : "")
   const [skip, setSkip] = useState(0)
   const [selected, setSelected] = useState<string[]>([])
   const [picker, setPicker] = useState<ExternalIdentityPublic | null>(null)
@@ -41,12 +46,17 @@ export function IdentityTable({
   )
   const [message, setMessage] = useState("")
   const identities = useQuery({
-    queryKey: ["identities", orgId],
+    queryKey: ["identities", orgId, "summary", employeeId],
+    enabled: !employeeId,
     queryFn: async () => {
       const first = (
         await ExternalIdentitiesService.identitiesGetIdentities({
           path: { org_id: orgId },
-          query: { status: "all", limit: 200 },
+          query: {
+            status: "all",
+            limit: 200,
+            source: employeeId ? "jira" : undefined,
+          },
         })
       ).data
       const rows = [...first.data]
@@ -55,7 +65,12 @@ export function IdentityTable({
           ...(
             await ExternalIdentitiesService.identitiesGetIdentities({
               path: { org_id: orgId },
-              query: { status: "all", skip: offset, limit: 200 },
+              query: {
+                status: "all",
+                skip: offset,
+                limit: 200,
+                source: employeeId ? "jira" : undefined,
+              },
             })
           ).data.data,
         )
@@ -65,22 +80,38 @@ export function IdentityTable({
   })
   const rows = identities.data ?? []
   const unlinked = rows.filter((row) => !row.employee)
-  const linked = rows.filter((row) => row.employee)
+  const linked = rows.filter(
+    (row) => row.employee && (!employeeId || row.employee.id === employeeId),
+  )
   const page = useQuery({
-    queryKey: ["identities", orgId, status, source, q, skip],
+    queryKey: ["identities", orgId, status, source, q, skip, employeeId],
     queryFn: async () =>
       (
         await ExternalIdentitiesService.identitiesGetIdentities({
           path: { org_id: orgId },
-          query: { status, source: source || undefined, q, skip, limit: 50 },
+          query: {
+            status,
+            source: source || undefined,
+            q,
+            skip,
+            limit: 50,
+            employee_id: status === "linked" ? employeeId : undefined,
+          },
         })
       ).data,
   })
   const visible = page.data?.data ?? []
   const count = page.data?.count ?? 0
-  const candidates = visible.filter((row) => row.candidate)
+  const candidates = visible.filter(
+    (row) => row.candidate && (!employeeId || row.candidate.id === employeeId),
+  )
   const links = visible
-    .filter((row) => selected.includes(row.id) && row.candidate)
+    .filter(
+      (row) =>
+        selected.includes(row.id) &&
+        row.candidate &&
+        (!employeeId || row.candidate.id === employeeId),
+    )
     .map((row) => ({
       identity_id: row.id,
       employee_id: row.candidate!.id,
@@ -157,10 +188,10 @@ export function IdentityTable({
       >
         <TabsList aria-label="账号关联状态">
           <TabsTrigger value="unlinked" disabled={pending}>
-            未关联（{unlinked.length}）
+            未关联{!employeeId && `（${unlinked.length}）`}
           </TabsTrigger>
           <TabsTrigger value="linked" disabled={pending}>
-            已关联（{linked.length}）
+            已关联{!employeeId && `（${linked.length}）`}
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -176,27 +207,29 @@ export function IdentityTable({
             resetSelection()
           }}
         />
-        <select
-          aria-label="按来源筛选"
-          className="h-9 rounded-md border bg-background px-3 text-sm"
-          value={source}
-          disabled={pending}
-          onChange={(e) => {
-            setSource(e.target.value)
-            resetSelection()
-          }}
-        >
-          <option value="">全部来源</option>
-          {[
-            ...new Map(
-              rows.map((row) => [row.source, row.source_label]),
-            ).entries(),
-          ].map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+        {!employeeId && (
+          <select
+            aria-label="按来源筛选"
+            className="h-9 rounded-md border bg-background px-3 text-sm"
+            value={source}
+            disabled={pending}
+            onChange={(e) => {
+              setSource(e.target.value)
+              resetSelection()
+            }}
+          >
+            <option value="">全部来源</option>
+            {[
+              ...new Map(
+                rows.map((row) => [row.source, row.source_label]),
+              ).entries(),
+            ].map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        )}
         {status === "unlinked" && (
           <Button
             disabled={pending || !links.length}
@@ -206,7 +239,7 @@ export function IdentityTable({
           </Button>
         )}
       </div>
-      {identities.isPending || page.isPending ? (
+      {(!employeeId && identities.isPending) || page.isPending ? (
         <p role="status">正在加载账号…</p>
       ) : (
         <Table>
@@ -254,7 +287,11 @@ export function IdentityTable({
                   <TableCell>
                     <Checkbox
                       aria-label={`选择账号 ${row.external_id}`}
-                      disabled={pending || !row.candidate}
+                      disabled={
+                        pending ||
+                        !row.candidate ||
+                        (!!employeeId && row.candidate.id !== employeeId)
+                      }
                       checked={selected.includes(row.id)}
                       onCheckedChange={(checked) =>
                         setSelected(
@@ -331,7 +368,28 @@ export function IdentityTable({
                 )}
                 <TableCell>
                   <div className="flex gap-2">
-                    {status === "unlinked" ? (
+                    {status === "unlinked" && employeeId ? (
+                      <ConfirmActionDialog
+                        title="关联到此员工"
+                        description={`确认把账号「${row.external_id}」关联到当前员工？这个账号的工作记录将作为这名员工的证据。`}
+                        action={() =>
+                          ExternalIdentitiesService.identitiesPostLinks({
+                            path: { org_id: orgId },
+                            body: {
+                              links: [
+                                {
+                                  identity_id: row.id,
+                                  employee_id: employeeId,
+                                },
+                              ],
+                            },
+                          })
+                        }
+                        onSuccess={() => {
+                          refresh()
+                        }}
+                      />
+                    ) : status === "unlinked" ? (
                       <>
                         <Button
                           variant="outline"

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRef, useState } from "react"
 import { CapabilitiesService, type DictionaryPreview } from "@/client"
+import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { OrgState } from "@/components/Profile/OrgState"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
@@ -203,6 +204,7 @@ function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
       )}
       <SetupError error={error} />
       {saved && <p role="status">新词典已启用。</p>}
+      <ChangeHistory targetType="capability_schema_version" />
     </div>
   )
 }

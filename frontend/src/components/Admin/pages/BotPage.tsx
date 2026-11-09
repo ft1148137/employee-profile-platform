@@ -6,6 +6,7 @@ import {
   BotSettingsService,
   ModelSettingService,
 } from "@/client"
+import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
@@ -148,6 +149,7 @@ function Settings({ orgId }: { orgId: string }) {
         </Button>
         {save.isSuccess && <p role="status">机器人设置已保存</p>}
       </form>
+      <ChangeHistory targetType="bot_setting" />
     </div>
   )
 }

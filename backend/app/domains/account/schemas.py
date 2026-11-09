@@ -47,6 +47,8 @@ class EmployeeAccount(BaseModel):
     id: UUID
     employee_code: str | None
     display_name: str
+    title: str | None
+    work_email: str | None
     employment_status: EmploymentStatus
     department: DepartmentSummary | None
     account: AccountPublic | None

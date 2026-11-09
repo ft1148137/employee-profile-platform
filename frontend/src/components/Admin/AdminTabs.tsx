@@ -3,7 +3,7 @@ import { OrgState } from "@/components/Profile/OrgState"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useOrg } from "@/hooks/useOrg"
 
-export function tabSearch(search: Record<string, unknown>) {
+export function tabSearch(search: Record<string, unknown>): { tab?: string } {
   return { tab: typeof search.tab === "string" ? search.tab : undefined }
 }
 
