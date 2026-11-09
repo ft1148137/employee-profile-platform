@@ -86,6 +86,50 @@ export type ActiveSchemaPublic = {
 export type ActorKind = 'user' | 'system_worker' | 'agent' | 'seed' | 'cli';
 
 /**
+ * AdminOverviewPublic
+ */
+export type AdminOverviewPublic = {
+    /**
+     * Status Cards
+     */
+    status_cards: Array<app__domains__admin__overview__StatusCard>;
+    /**
+     * Todos
+     */
+    todos: Array<AdminTodo>;
+};
+
+/**
+ * AdminTodo
+ */
+export type AdminTodo = {
+    /**
+     * Kind
+     */
+    kind: 'appeals' | 'initial_overdue' | 'review_backlog' | 'unmatched_identities' | 'sync_failed' | 'setup_step';
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Oldest At
+     */
+    oldest_at: string | null;
+    /**
+     * Page
+     */
+    page: string;
+    /**
+     * Assistant Prompt
+     */
+    assistant_prompt: string;
+};
+
+/**
  * AnswerInput
  */
 export type AnswerInput = {
@@ -3503,36 +3547,6 @@ export type SetupTokenResult = {
 };
 
 /**
- * StatusCard
- */
-export type StatusCard = {
-    /**
-     * Id
-     */
-    id: string;
-    /**
-     * Revision
-     */
-    revision: number;
-    /**
-     * Status
-     */
-    status: string;
-    /**
-     * Items
-     */
-    items: Array<ChangeItem>;
-    /**
-     * Type
-     */
-    type?: 'status_card';
-    /**
-     * Actions
-     */
-    actions: Array<RequestAction>;
-};
-
-/**
  * SubmissionVia
  */
 export type SubmissionVia = 'web' | 'mcp' | 'import' | 'bot' | 'admin_handover';
@@ -3844,7 +3858,7 @@ export type TurnResponse = {
         type: 'preview_card';
     } & PreviewCard) | ({
         type: 'status_card';
-    } & StatusCard) | ({
+    } & app__domains__bot__schemas__StatusCard) | ({
         type: 'question_card';
     } & QuestionCard) | ({
         type: 'review_card';
@@ -4013,6 +4027,40 @@ export type WorkRecordIssue = {
 };
 
 /**
+ * StatusCard
+ */
+export type app__domains__admin__overview__StatusCard = {
+    /**
+     * Key
+     */
+    key: 'feishu' | 'model' | 'sync' | 'drafting';
+    /**
+     * Level
+     */
+    level: 'ok' | 'warn' | 'error' | 'off';
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Summary
+     */
+    summary: string;
+    /**
+     * Fix Steps
+     */
+    fix_steps: Array<string>;
+    /**
+     * Page
+     */
+    page: string;
+    /**
+     * Assistant Prompt
+     */
+    assistant_prompt: string;
+};
+
+/**
  * PreviewItem
  */
 export type app__domains__bot__schemas__PreviewItem = {
@@ -4046,6 +4094,36 @@ export type app__domains__bot__schemas__ReviewItem = {
      * Approval Blocked Reason
      */
     approval_blocked_reason: string | null;
+};
+
+/**
+ * StatusCard
+ */
+export type app__domains__bot__schemas__StatusCard = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Items
+     */
+    items: Array<ChangeItem>;
+    /**
+     * Type
+     */
+    type?: 'status_card';
+    /**
+     * Actions
+     */
+    actions: Array<RequestAction>;
 };
 
 /**
@@ -4179,6 +4257,36 @@ export type ModelSettingUpdateWritable = {
      */
     reasoning_effort?: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null;
 };
+
+export type adminGetOverviewData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/admin/overview';
+};
+
+export type adminGetOverviewErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminGetOverviewError = adminGetOverviewErrors[keyof adminGetOverviewErrors];
+
+export type adminGetOverviewResponses = {
+    /**
+     * Successful Response
+     */
+    200: AdminOverviewPublic;
+};
+
+export type adminGetOverviewResponse = adminGetOverviewResponses[keyof adminGetOverviewResponses];
 
 export type reviewDelegationsReadDelegationsData = {
     body?: never;

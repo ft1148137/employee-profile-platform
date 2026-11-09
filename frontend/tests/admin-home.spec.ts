@@ -3,7 +3,7 @@ import { expectChineseCopy } from "./utils/copy"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
-test("employee appeals and admin permits resubmission", async ({
+test("admin home shows status and appeal todo through resubmission", async ({
   page,
   request,
 }) => {
@@ -159,7 +159,21 @@ test("employee appeals and admin permits resubmission", async ({
     page.getByRole("article", { name: "合成能力", exact: true }),
   ).toContainText("存在争议")
   await expectChineseCopy(page)
-  await enter(admin.access_token, "/admin/appeals")
+  await enter(admin.access_token, "/admin")
+  const today = page.getByRole("region", { name: "今天要处理的事" })
+  for (const name of ["飞书", "AI 模型", "数据同步", "自动起草"]) {
+    await expect(
+      today.getByRole("article", { name, exact: true }),
+    ).toBeVisible()
+  }
+  await expect(today).not.toContainText(/[A-Za-z]{3,}/)
+  await page.screenshot({ path: "test-results/admin-home.png", fullPage: true })
+  await today
+    .getByRole("listitem")
+    .filter({ hasText: "1 个争议待处理" })
+    .getByRole("link", { name: "去处理" })
+    .click()
+  await expect(page).toHaveURL("/admin/people?tab=appeals")
   await expect(
     page.getByRole("heading", { name: "争议", exact: true }),
   ).toBeVisible()
@@ -173,6 +187,17 @@ test("employee appeals and admin permits resubmission", async ({
   await expectChineseCopy(page)
   await page.getByRole("button", { name: "允许重新提交" }).click()
   await expect(page.getByRole("status")).toContainText("0 项待处理申诉")
+  await page.goto("/admin")
+  await expect(
+    page.getByRole("region", { name: "今天要处理的事" }),
+  ).not.toContainText("个争议待处理")
+  await page.route("**/admin/overview", async (route) => {
+    const response = await route.fetch()
+    await route.fulfill({ json: { ...(await response.json()), todos: [] } })
+  })
+  await page.reload()
+  await expect(page.getByText("今天没有要处理的事")).toBeVisible()
+  await page.unroute("**/admin/overview")
   await enter(owner.access_token, "/inbox")
   await expect(
     page.getByText("申诉已处理：允许重新提交，请修改草稿"),
