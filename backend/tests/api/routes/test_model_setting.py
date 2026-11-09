@@ -6,10 +6,10 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from app.api.routes import model_setting as route
 from app.core.config import settings
 from app.core.secrets import SecretUnavailable, decrypt_secret, encrypt_secret
 from app.domains.audit.models import AuditEvent
+from app.domains.model import service as route
 from app.domains.model.client import (
     ModelOutputInvalid,
     ModelRateLimited,

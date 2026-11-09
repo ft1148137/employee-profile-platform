@@ -367,3 +367,47 @@ def list_capabilities(
             .order_by(col(CapabilityDefinition.position), col(CapabilityDefinition.id))
         ).all()
     )
+
+
+def _definitions(
+    session: Session,
+    principal: Principal,
+    schema: CapabilitySchemaVersion | None = None,
+) -> list[DictionaryDefinition]:
+    schema = schema or get_schema(session, principal.org_id)
+    setting = session.get(DraftingSetting, principal.org_id)
+    excluded = set(setting.excluded_capability_keys if setting else [])
+    return [
+        DictionaryDefinition.model_validate(
+            {
+                **c.model_dump(
+                    exclude={
+                        "id",
+                        "org_id",
+                        "created_at",
+                        "schema_version_id",
+                        "position",
+                    }
+                ),
+                "ai_inference": c.key not in excluded,
+            }
+        )
+        for c in list_capabilities(session, principal.org_id, schema.id)
+    ]
+
+
+def read_editor(session: Session, principal: Principal) -> DictionaryPreview:
+    try:
+        schema = get_schema(session, principal.org_id)
+    except SchemaNotFound:
+        return preview_version(session, principal, [], [])
+    return DictionaryPreview(
+        definitions=_definitions(session, principal, schema),
+        expected_version=schema.version,
+        added=[],
+        modified=[],
+        removed=[],
+        removed_claim_counts={},
+        removed_item_counts={},
+        errors=[],
+    )

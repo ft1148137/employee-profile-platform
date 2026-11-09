@@ -1,21 +1,32 @@
+from datetime import UTC, datetime, time
+from typing import Literal
 from urllib.parse import urlsplit
 from uuid import UUID
 
-from sqlmodel import Session, select
+from sqlalchemy import func
+from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
-from app.core.secrets import encrypt_secret
+from app.connectors.jira.client import (
+    RetryableSourceError,
+    SourceAuthError,
+    SourceUnreachable,
+    jira_client_for,
+)
+from app.core.secrets import SecretUnavailable, encrypt_secret
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.org.models import Organization
-from app.domains.source.models import SourceConnection
+from app.domains.source.models import SourceConnection, SyncRun
 from app.domains.source.schedule import next_sync_time
 from app.domains.source.schemas import (
     JiraConfig,
     JiraConnectionPublic,
+    JiraConnectionTest,
     JiraConnectionUpdate,
+    SyncRunsPublic,
 )
-from app.domains.source.sync import active_sync
+from app.domains.source.sync import active_sync, public_run
 
 
 class InvalidSourceSetting(Exception):
@@ -102,3 +113,51 @@ def save_jira(
     )
     session.commit()
     return public_jira(connection)
+
+
+def read_sync_runs(
+    session: Session,
+    principal: Principal,
+    skip: int = 0,
+    limit: int = 100,
+    kind: Literal["jira", "csv"] | None = None,
+) -> SyncRunsPublic:
+    query = (
+        select(SyncRun, SourceConnection.kind)
+        .join(
+            SourceConnection,
+            (col(SourceConnection.org_id) == SyncRun.org_id)
+            & (col(SourceConnection.id) == SyncRun.connection_id),
+        )
+        .where(SyncRun.org_id == principal.org_id)
+    )
+    if kind is not None:
+        query = query.where(SourceConnection.kind == kind)
+    count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    rows = session.exec(
+        query.order_by(col(SyncRun.created_at).desc(), col(SyncRun.id).desc())
+        .offset(skip)
+        .limit(limit)
+    ).all()
+    return SyncRunsPublic(
+        data=[public_run(run, kind) for run, kind in rows], count=count
+    )
+
+
+def check_jira(session: Session, principal: Principal) -> JiraConnectionTest:
+    connection = read_jira(session, principal.org_id)
+    if connection is None:
+        return JiraConnectionTest(ok=False, message="请先保存 Jira 配置")
+    try:
+        config = JiraConfig.model_validate(connection.config)
+        with jira_client_for(connection) as jira:
+            account = jira.current_account()
+            jira.search(datetime.combine(config.start_date, time.min, UTC), None, 1)
+    except (
+        SourceAuthError,
+        SourceUnreachable,
+        RetryableSourceError,
+        SecretUnavailable,
+    ) as error:
+        return JiraConnectionTest(ok=False, message=str(error))
+    return JiraConnectionTest(ok=True, message="Jira 连接成功", account_name=account)

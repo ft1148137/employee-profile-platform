@@ -12,7 +12,7 @@ from app.domains.im.schemas import (
 )
 from app.domains.im.settings import (
     InvalidImSetting,
-    public_setting,
+    list_settings,
     save_setting,
     test_connection,
 )
@@ -26,10 +26,7 @@ router = APIRouter(
 
 @router.get("", response_model=list[ImSettingPublic])
 def get_im_settings(db: SessionDep, principal: OrgAdminDep) -> list[ImSettingPublic]:
-    return [
-        public_setting(db, principal.org_id, platform)
-        for platform in ("feishu", "wecom", "telegram")
-    ]
+    return list_settings(db, principal.org_id)
 
 
 @router.put("/{platform}", response_model=ImSettingPublic)

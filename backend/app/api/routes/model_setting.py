@@ -6,11 +6,8 @@ from app.authz.deps import OrgAdminDep
 from app.core.secrets import SecretUnavailable
 from app.domains.model import chatgpt
 from app.domains.model.client import (
-    ModelOutputInvalid,
-    ModelRateLimited,
     ModelUnavailable,
 )
-from app.domains.model.pi_client import run_turn
 from app.domains.model.schemas import (
     ChatGPTCallback,
     ChatGPTLogin,
@@ -20,11 +17,10 @@ from app.domains.model.schemas import (
 )
 from app.domains.model.service import (
     InvalidModelSetting,
-    model_config,
+    check_connection,
     public_setting,
     read_setting,
     save_setting,
-    validate_capabilities,
 )
 
 router = APIRouter(
@@ -53,25 +49,7 @@ def put_model_setting(
 
 @router.post("/test", response_model=ConnectionTest)
 def test_model_setting(session: SessionDep, principal: OrgAdminDep) -> ConnectionTest:
-    try:
-        setting = read_setting(session, principal.org_id)
-        config = model_config(setting)
-        validate_capabilities(config.provider, config.id, config.thinkingLevel)
-        run_turn(
-            config,
-            system_prompt="请简短回复连接成功。",
-            input="连接测试",
-            tools=[],
-            on_tool_call=lambda _name, _args: None,
-        )
-    except (
-        SecretUnavailable,
-        ModelUnavailable,
-        ModelOutputInvalid,
-        ModelRateLimited,
-    ) as error:
-        return ConnectionTest(ok=False, message=str(error))
-    return ConnectionTest(ok=True, message="模型连接成功")
+    return check_connection(session, principal)
 
 
 @router.post("/chatgpt/login", response_model=ChatGPTLogin)

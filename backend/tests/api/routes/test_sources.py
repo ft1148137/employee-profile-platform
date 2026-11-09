@@ -7,7 +7,6 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from app.api.routes import sources as route
 from app.connectors.jira.client import (
     NETWORK_MESSAGE,
     RetryableSourceError,
@@ -17,6 +16,7 @@ from app.connectors.jira.text import adf_to_text, wiki_to_text
 from app.core.config import settings
 from app.core.secrets import decrypt_secret, encrypt_secret
 from app.domains.audit.models import AuditEvent
+from app.domains.source import service as route
 from app.domains.source.models import SourceConnection
 from app.domains.source.schemas import JiraConfig
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
