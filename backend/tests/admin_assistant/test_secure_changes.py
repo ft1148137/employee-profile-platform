@@ -5,7 +5,7 @@ from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 from sqlalchemy import Engine, inspect
 from sqlmodel import Session, select
 
@@ -362,3 +362,26 @@ def test_secure_columns_migration(migration_engine: Engine) -> None:
     assert {"secrets", "confirmed_once_at"} <= {
         c["name"] for c in inspect(migration_engine).get_columns("admin_change_set")
     }
+
+
+def test_applied_snapshot_excludes_secrets(
+    db: Session,
+    demo: tuple,
+    monkeypatch: pytest.MonkeyPatch,
+    secret_function: list[str],
+) -> None:
+    p = principal(db, demo)
+    canary = "sk-synthetic-applied-snapshot-canary"
+    entry = registry.FUNCTIONS["test_secret"]
+    monkeypatch.setitem(
+        registry.FUNCTIONS,
+        entry.name,
+        replace(entry, snapshot=lambda *_: RootModel({"api_key": canary})),
+    )
+    row = draft(db, demo, entry.name, {})
+    c.save_secret(db, p, row.id, "api_key", canary)
+    applied = c.apply(db, p, row.id, row.revision)
+    assert applied.status == "applied" and secret_function == [canary]
+    assert applied.items[0].after == {}
+    assert canary not in applied.model_dump_json()
+    assert canary not in json.dumps(c.get(db, p, row.id).items)

@@ -115,7 +115,11 @@ def read_settings(session: Session, org_id: UUID) -> DraftingSettingsPublic:
 
 
 def save_settings(
-    session: Session, principal: Principal, body: DraftingSettingsUpdate
+    session: Session,
+    principal: Principal,
+    body: DraftingSettingsUpdate,
+    *,
+    commit: bool = True,
 ) -> DraftingSettingsPublic:
     session.exec(
         select(Organization)
@@ -182,7 +186,10 @@ def save_settings(
                 ],
             },
         )
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     return read_settings(session, principal.org_id)
 
 

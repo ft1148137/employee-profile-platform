@@ -222,10 +222,16 @@ def apply(
         "change_set_id": str(row.id),
     }
     try:
-        for entry, args in prepared:
+        applied_items = public(row).items
+        for item, (entry, args) in zip(applied_items, prepared, strict=True):
             result = entry.handler(db, principal, args, commit=False)
             if not isinstance(result, BaseModel):
                 raise ChangeSetError("暂不支持这类改动")
+            if entry.snapshot:
+                item.after = entry.snapshot(db, principal, args).model_dump(
+                    mode="json", exclude=set(entry.secret_fields)
+                )
+        row.items = [item.model_dump(mode="json") for item in applied_items]
         row.status = "applied"
         row.secrets = None
         row.applied_at = row.updated_at = utc_now()
@@ -265,25 +271,31 @@ def undo(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
     if any(item.before is None for item in items):
         raise ChangeSetError("这份改动不能撤销")
     unchanged = True
+    reverse_items = []
     for item in items:
         entry, args = _entry(item.function, item.args)
         if entry.snapshot is None:
             raise ChangeSetError("这份改动不能撤销")
         unchanged &= (
-            entry.snapshot(db, principal, args).model_dump(mode="json") == item.after
+            entry.snapshot(db, principal, args).model_dump(
+                mode="json", exclude=set(entry.secret_fields)
+            )
+            == item.after
+        )
+        assert item.before is not None
+        function, body = (
+            entry.reverse(db, principal, item.before)
+            if entry.reverse
+            else (item.function, entry.input_model.model_validate(item.before))
+        )
+        reverse_items.append(
+            {"function": function, "args": body.model_dump(mode="json")}
         )
     reverse = propose(
         db,
         principal,
         row.session_id,
-        ProposeChanges.model_validate(
-            {
-                "items": [
-                    {"function": item.function, "args": item.before}
-                    for item in reversed(items)
-                ]
-            }
-        ),
+        ProposeChanges.model_validate({"items": list(reversed(reverse_items))}),
     )
     reverse.undo_of_id = row.id
     db.add(reverse)

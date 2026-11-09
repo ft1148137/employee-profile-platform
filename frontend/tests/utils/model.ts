@@ -96,18 +96,33 @@ export const test = base.extend<{ modelUrl: string }>({
                                 items: [
                                   {
                                     function: JSON.stringify(last).includes(
-                                      "关闭经理确认",
+                                      "关闭部门自动起草",
                                     )
-                                      ? "update_approval_policy"
-                                      : "update_update_settings",
+                                      ? "update_drafting_settings"
+                                      : JSON.stringify(last).includes(
+                                            "关闭经理确认",
+                                          )
+                                        ? "update_approval_policy"
+                                        : "update_update_settings",
                                     args: JSON.stringify(last).includes(
-                                      "关闭经理确认",
+                                      "关闭部门自动起草",
                                     )
-                                      ? { require_manager: false }
-                                      : {
-                                          reminder_schedule: "yearly",
-                                          stale_after_months: 36,
-                                        },
+                                      ? {
+                                          excluded_capability_keys: [],
+                                          disabled_department_ids: [
+                                            JSON.stringify(last).match(
+                                              /[0-9a-f]{8}-[0-9a-f-]{27,}/,
+                                            )?.[0],
+                                          ],
+                                        }
+                                      : JSON.stringify(last).includes(
+                                            "关闭经理确认",
+                                          )
+                                        ? { require_manager: false }
+                                        : {
+                                            reminder_schedule: "yearly",
+                                            stale_after_months: 36,
+                                          },
                                   },
                                 ],
                               }

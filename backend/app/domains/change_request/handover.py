@@ -20,7 +20,13 @@ from app.domains.review.policy import read_policy
 from app.domains.review.routing import notify_reviewers
 
 
-def hand_over(session: Session, principal: Principal, *, confirm: bool = False) -> int:
+def hand_over(
+    session: Session,
+    principal: Principal,
+    *,
+    confirm: bool = False,
+    commit: bool = True,
+) -> int:
     owner_review_days = read_policy(session, principal.org_id).owner_review_days
     scope = drafting_scope(session, principal.org_id)
     query = (
@@ -68,5 +74,8 @@ def hand_over(session: Session, principal: Principal, *, confirm: bool = False) 
                 InboxKind.SUBMITTED,
                 f"初始画像满 {owner_review_days} 天未处理，管理员已送交经理审批（员工未过目），批准前你可以撤回",
             )
-        session.commit()
+        if commit:
+            session.commit()
+        else:
+            session.flush()
     return len(requests)

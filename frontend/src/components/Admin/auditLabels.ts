@@ -17,6 +17,7 @@ export const auditLabels: Record<string, string> = {
   "review_delegation.revoked": "撤销代理审批人",
   "change_request.policy_published": "按审批规则发布",
   "initial_profiles.handed_over": "初始画像批量送审（员工未过目）",
+  "initial_profiles.queued": "安排初始画像起草",
   "initial_profiles.drafted": "生成初始画像",
   "incremental_profiles.drafted": "起草增量画像",
   "change_request.dictionary_changed": "词典调整后更新请求",
