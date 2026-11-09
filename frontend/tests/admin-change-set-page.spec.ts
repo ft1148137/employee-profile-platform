@@ -1,6 +1,6 @@
 import type { APIRequestContext } from "@playwright/test"
 import { expectChineseCopy } from "./utils/copy"
-import { expect, test } from "./utils/model"
+import { dictionaryDefinitions, expect, test } from "./utils/model"
 import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -137,6 +137,152 @@ test("approval page highlights assistant draft and requires both confirmations",
       .current.require_manager,
   ).toBe(false)
   await expectChineseCopy(page)
+})
+
+test("drafting page highlights a department draft and applies it after confirmation", async ({
+  page,
+  request,
+  modelUrl,
+}) => {
+  test.setTimeout(90000)
+  const { email, password, base, headers } = await createAdmin(
+    request,
+    modelUrl,
+  )
+  const imported = await request.post(`${base}/roster/imports`, {
+    headers,
+    multipart: {
+      file: {
+        name: "名单.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(
+          "工号,姓名,部门,职位,上级工号,邮箱\n001,合成员工,研发部,,,synthetic@example.com\n",
+        ),
+      },
+    },
+  })
+  expect(imported.ok()).toBeTruthy()
+  const preview = await imported.json()
+  expect(
+    (
+      await request.post(`${base}/roster/imports/${preview.id}/apply`, {
+        headers,
+        data: { base_revision: preview.base_revision },
+      })
+    ).ok(),
+  ).toBeTruthy()
+  const departments = await (
+    await request.get(`${base}/departments`, { headers })
+  ).json()
+  const departmentId = departments.data[0].id
+  await logInUser(page, email, password)
+  await page.goto("/admin/rules?tab=drafting")
+  const department = page.getByRole("checkbox", {
+    name: /^研发部\s*含下级部门$/,
+  })
+  await expect(department).not.toBeChecked()
+  await page.getByRole("button", { name: "打开管理助手" }).click()
+  const dialog = page.getByRole("dialog")
+  await dialog
+    .getByRole("textbox", { name: "发给管理助手的消息" })
+    .fill(`关闭部门自动起草 ${departmentId}`)
+  await dialog.getByRole("button", { name: "发送", exact: true }).click()
+  await expect(
+    dialog.getByRole("region", { name: "设置改动确认卡" }),
+  ).toBeVisible({ timeout: 30000 })
+  await page.keyboard.press("Escape")
+  await expect(department).toBeChecked()
+  const suggested = page.locator('[data-assistant-suggested="true"]')
+  await expect(suggested).toHaveCount(1)
+  await expect(suggested.getByText("助手建议", { exact: true })).toBeVisible()
+  await expect(
+    suggested.getByRole("checkbox", { name: /^研发部/ }),
+  ).toBeChecked()
+  await expect(
+    page.getByRole("button", { name: "保存", exact: true }),
+  ).toBeDisabled()
+  const read = async () =>
+    (await (await request.get(`${base}/drafting-settings`, { headers })).json())
+      .disabled_department_ids
+  expect(await read()).toEqual([])
+  const card = page.getByRole("region", { name: "页面草稿确认" })
+  await card.getByRole("button", { name: "确认应用", exact: true }).click()
+  await expect(card).toHaveCount(0)
+  await expect(suggested).toHaveCount(0)
+  await expect(department).toBeChecked()
+  expect(await read()).toEqual([departmentId])
+})
+
+test("dictionary page highlights a modified capability and publishes a new version", async ({
+  page,
+  request,
+  modelUrl,
+}) => {
+  test.setTimeout(90000)
+  const { email, password, base, headers } = await createAdmin(
+    request,
+    modelUrl,
+  )
+  const created = await request.put(`${base}/capabilities`, {
+    headers,
+    data: { definitions: dictionaryDefinitions, expected_version: 0 },
+  })
+  expect(created.ok()).toBeTruthy()
+  const original = await created.json()
+  await logInUser(page, email, password)
+  await page.goto("/admin/rules?tab=dictionary")
+  await page.getByRole("button", { name: "打开管理助手" }).click()
+  const dialog = page.getByRole("dialog")
+  await dialog
+    .getByRole("textbox", { name: "发给管理助手的消息" })
+    .fill("修改能力说明")
+  await dialog.getByRole("button", { name: "发送", exact: true }).click()
+  await expect(
+    dialog.getByRole("region", { name: "设置改动确认卡" }),
+  ).toBeVisible({ timeout: 30000 })
+  await page.keyboard.press("Escape")
+  const editor = page.getByRole("region", { name: "网页编辑能力词典" })
+  const suggested = editor.locator('[data-assistant-suggested="true"]')
+  await expect(suggested).toHaveCount(1)
+  await expect(
+    suggested.getByText("助手建议 · 修改", { exact: true }),
+  ).toBeVisible()
+  await expect(
+    suggested.getByRole("article", { name: "合成能力" }).getByLabel("能力说明"),
+  ).toHaveValue("助手修改后的能力说明")
+  await expect(editor.getByRole("button", { name: "预览改动" })).toBeDisabled()
+  const read = async () =>
+    (await request.get(`${base}/capabilities`, { headers })).json()
+  const before = await read()
+  expect(before.schema_version).toMatchObject(original)
+  expect(before.data[0].description).toBe("合成能力说明")
+  const card = page.getByRole("region", { name: "页面草稿确认" })
+  await card.getByRole("button", { name: "确认应用", exact: true }).click()
+  await expect(card).toHaveCount(0)
+  await expect(page.getByText("当前第 2 版 · 1 项能力")).toBeVisible()
+  await expect(suggested).toHaveCount(0)
+  const after = await read()
+  expect(after.schema_version.version).toBe(original.version + 1)
+  expect(after.schema_version.id).not.toBe(original.id)
+  expect(after.data[0].description).toBe("助手修改后的能力说明")
+  const history = await request.get(`${base}/audit-events`, {
+    headers,
+    params: { target_type: "capability_schema_version" },
+  })
+  expect(history.ok()).toBeTruthy()
+  // Labels resolve stored schema rows, so a deleted old version cannot pass this check.
+  expect((await history.json()).data).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        target_id: original.id,
+        target_label: `第 ${original.version} 版`,
+      }),
+      expect.objectContaining({
+        target_id: after.schema_version.id,
+        target_label: `第 ${after.schema_version.version} 版`,
+      }),
+    ]),
+  )
 })
 
 async function createAdmin(request: APIRequestContext, modelUrl: string) {

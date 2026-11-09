@@ -4,6 +4,19 @@ import { test as base, expect, type Page } from "@playwright/test"
 
 export { expect } from "@playwright/test"
 
+export const dictionaryDefinitions = [
+  {
+    key: "synthetic",
+    name: "合成能力",
+    category: "工程",
+    description: "合成能力说明",
+    ai_inference: true,
+    level_rubric: {
+      levels: [{ key: "basic", label: "基础", description: "在指导下完成" }],
+    },
+  },
+]
+
 // The worker calls this local transport; no external model is used in E2E.
 export const test = base.extend<{ modelUrl: string }>({
   modelUrl: async ({ baseURL }, use) => {
@@ -103,7 +116,11 @@ export const test = base.extend<{ modelUrl: string }>({
                                             "关闭经理确认",
                                           )
                                         ? "update_approval_policy"
-                                        : "update_update_settings",
+                                        : JSON.stringify(last).includes(
+                                              "修改能力说明",
+                                            )
+                                          ? "update_capability_dictionary"
+                                          : "update_update_settings",
                                     args: JSON.stringify(last).includes(
                                       "关闭部门自动起草",
                                     )
@@ -119,10 +136,25 @@ export const test = base.extend<{ modelUrl: string }>({
                                             "关闭经理确认",
                                           )
                                         ? { require_manager: false }
-                                        : {
-                                            reminder_schedule: "yearly",
-                                            stale_after_months: 36,
-                                          },
+                                        : JSON.stringify(last).includes(
+                                              "修改能力说明",
+                                            )
+                                          ? {
+                                              definitions:
+                                                dictionaryDefinitions.map(
+                                                  (definition) => ({
+                                                    ...definition,
+                                                    description:
+                                                      "助手修改后的能力说明",
+                                                  }),
+                                                ),
+                                              expected_version: 1,
+                                              redraft: false,
+                                            }
+                                          : {
+                                              reminder_schedule: "yearly",
+                                              stale_after_months: 36,
+                                            },
                                   },
                                 ],
                               }
