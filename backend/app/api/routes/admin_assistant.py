@@ -1,3 +1,4 @@
+import asyncio
 from typing import Literal
 from uuid import UUID
 
@@ -106,10 +107,10 @@ def apply_change_set(
 
 
 @change_router.post("/{id}/test")
-async def test_change_set(
+def test_change_set(
     principal: OrgAdminDep, session: SessionDep, id: UUID, body: TestConnection
 ) -> ConnectionTestResult:
-    return await change_set.test_connection(session, principal, id, body.item)
+    return asyncio.run(change_set.test_connection(session, principal, id, body.item))
 
 
 @change_router.post("/{id}/discard")

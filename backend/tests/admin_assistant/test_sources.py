@@ -1,4 +1,6 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 
 import pytest
 from fastapi.testclient import TestClient
@@ -188,6 +190,34 @@ def test_saved_credentials_and_applied_test_rejection(
     assert (
         client.post(url, headers=demo[2]["admin"], json={"item": 0}).status_code == 409
     )
+
+
+def test_slow_connection_does_not_block_other_requests(
+    db: Session, demo: tuple, client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    setup(db, demo)
+    row = draft(db, demo, {})
+    entered, release = Event(), Event()
+
+    def probe(_config: object, _secret: str) -> service.JiraConnectionTest:
+        entered.set()
+        assert release.wait(5)
+        return service.JiraConnectionTest(ok=True, message="成功")
+
+    monkeypatch.setattr(service, "test_jira", probe)
+    url = f"{demo[0]}/admin-assistant/change-sets/{row.id}"
+    headers = demo[2]["admin"]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        tested = pool.submit(
+            client.post, url + "/test", headers=headers, json={"item": 0}
+        )
+        try:
+            assert entered.wait(5)
+            read = pool.submit(client.get, url, headers=headers)
+            assert read.result(timeout=2).status_code == 200
+        finally:
+            release.set()
+        assert tested.result(timeout=5).json()["ok"]
 
 
 @pytest.mark.parametrize(
