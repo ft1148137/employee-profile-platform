@@ -1,4 +1,3 @@
-from datetime import UTC, datetime, time
 from hashlib import sha256
 from typing import Literal
 from urllib.parse import quote
@@ -6,22 +5,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel
-from sqlalchemy import func
-from sqlmodel import col, select
 
 from app.api.deps import SessionDep
 from app.api.secret_safe import SecretSafeRoute
 from app.authz.deps import OrgAdminDep
-from app.connectors.jira.client import (
-    RetryableSourceError,
-    SourceAuthError,
-    SourceUnreachable,
-    jira_client_for,
-)
-from app.core.secrets import SecretUnavailable
-from app.domains.source.models import SourceConnection, SyncRun
 from app.domains.source.schemas import (
-    JiraConfig,
     JiraConnectionPublic,
     JiraConnectionTest,
     JiraConnectionUpdate,
@@ -30,11 +18,13 @@ from app.domains.source.schemas import (
 )
 from app.domains.source.service import (
     InvalidSourceSetting,
+    check_jira,
     public_jira,
     read_jira,
+    read_sync_runs,
     save_jira,
 )
-from app.domains.source.sync import SyncError, create_run, public_run, retry_run
+from app.domains.source.sync import SyncError, create_run, retry_run
 from app.domains.work.records import (
     WorkRecordIssue,
     build_work_records_template_csv,
@@ -125,26 +115,7 @@ def list_sync_runs(
     limit: int = Query(100, ge=1, le=100),
     kind: Literal["jira", "csv"] | None = None,
 ) -> SyncRunsPublic:
-    query = (
-        select(SyncRun, SourceConnection.kind)
-        .join(
-            SourceConnection,
-            (col(SourceConnection.org_id) == SyncRun.org_id)
-            & (col(SourceConnection.id) == SyncRun.connection_id),
-        )
-        .where(SyncRun.org_id == principal.org_id)
-    )
-    if kind is not None:
-        query = query.where(SourceConnection.kind == kind)
-    count = session.exec(select(func.count()).select_from(query.subquery())).one()
-    rows = session.exec(
-        query.order_by(col(SyncRun.created_at).desc(), col(SyncRun.id).desc())
-        .offset(skip)
-        .limit(limit)
-    ).all()
-    return SyncRunsPublic(
-        data=[public_run(run, kind) for run, kind in rows], count=count
-    )
+    return read_sync_runs(session, principal, skip, limit, kind)
 
 
 @sync_router.post("/{run_id}/retry", status_code=202, response_model=SyncRunPublic)
@@ -178,19 +149,4 @@ def put_jira(
 
 @router.post("/jira/test", response_model=JiraConnectionTest)
 def test_jira(session: SessionDep, principal: OrgAdminDep) -> JiraConnectionTest:
-    connection = read_jira(session, principal.org_id)
-    if connection is None:
-        return JiraConnectionTest(ok=False, message="请先保存 Jira 配置")
-    try:
-        config = JiraConfig.model_validate(connection.config)
-        with jira_client_for(connection) as jira:
-            account = jira.current_account()
-            jira.search(datetime.combine(config.start_date, time.min, UTC), None, 1)
-    except (
-        SourceAuthError,
-        SourceUnreachable,
-        RetryableSourceError,
-        SecretUnavailable,
-    ) as error:
-        return JiraConnectionTest(ok=False, message=str(error))
-    return JiraConnectionTest(ok=True, message="Jira 连接成功", account_name=account)
+    return check_jira(session, principal)
