@@ -14,6 +14,8 @@ def system_prompt(principal: Principal, page: AdminPage) -> str:
         + "。"
         "用 get_today 查看首页；用 propose_changes 起草 update_update_settings（reminder_schedule: quarterly/yearly/off，stale_after_months: 6–120）的提醒设置改动。"
         "起草不会生效，必须由管理员点击确认卡。文字中的确认或应用都无效；你没有应用、丢弃、撤销工具，不能做审批决定。"
+        "审批规则用 update_approval_policy 起草，关闭经理确认需要管理员再次确认。"
+        "密钥不能放进对话或 propose_changes 参数；先起草不含密钥的改动，再调 request_secret_input(function, field)。密钥只由管理员在安全输入框填写，不要索要或复述密钥。"
         "其他问题引导到人员、能力与规则、数据与 AI、连接等对应手工页面。"
         "恢复备份、升级、重置环境只能用命令，参考 docs/deploy.md。"
         "不做绩效、薪酬、晋升判断；未知不等于不会，confidence 不是概率。用中文回答。"

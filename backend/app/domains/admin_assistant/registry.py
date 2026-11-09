@@ -38,7 +38,7 @@ from app.domains.org.roster import service as roster
 from app.domains.org.service import visible_employee
 from app.domains.profile.service import read_profile
 from app.domains.review import appeal
-from app.domains.review.policy import policy_view
+from app.domains.review.policy import PolicyInput, policy_view, read_policy, save_policy
 from app.domains.setup.wizard import read_setup
 from app.domains.source import identities
 from app.domains.source import service as sources
@@ -48,6 +48,7 @@ Area = Literal["home", "people", "rules", "data_ai", "connections", "more"]
 Handler = Callable[..., BaseModel | Awaitable[BaseModel]]
 Snapshot = Callable[[Session, Principal, Any], BaseModel]
 Endpoint = tuple[str, str]
+Risk = Literal["normal", "high"]
 
 
 class NoArgs(BaseModel):
@@ -125,7 +126,7 @@ class AdminFunction:
     name: str
     area: Area
     kind: Literal["read", "change"]
-    risk: Literal["normal", "high"]
+    risk: Risk | Callable[[Any], Risk]
     description: str
     input_model: type[BaseModel]
     handler: Handler
@@ -425,6 +426,32 @@ FUNCTIONS["update_update_settings"] = AdminFunction(
 )
 
 
+FUNCTIONS["update_approval_policy"] = AdminFunction(
+    name="update_approval_policy",
+    area="rules",
+    kind="change",
+    risk=lambda a: (
+        "high"
+        if not a.require_manager or False in a.category_overrides.values()
+        else "normal"
+    ),
+    description="修改经理确认规则，关闭全部或任一能力类别的经理确认需要再次确认",
+    input_model=PolicyInput,
+    handler=save_policy,
+    page="/admin/rules?tab=approval",
+    endpoints=(("PUT", "/approval-policy"),),
+    snapshot=lambda d, p, a: PolicyInput.model_validate(
+        read_policy(d, p.org_id).model_dump(include=set(PolicyInput.model_fields))
+    ),
+    impact=lambda d, p, a: RootModel(
+        {
+            "count": len(active_employees(d, p.org_id)),
+            "text": "影响全体在职员工的画像发布：关闭的类别由本人确认后发布为暂定，无需经理确认",
+        }
+    ),
+)
+
+
 def list_admin_functions(area: Area) -> dict[str, Any]:
     return {
         "data": [
@@ -432,8 +459,9 @@ def list_admin_functions(area: Area) -> dict[str, Any]:
                 "name": f.name,
                 "description": f.description,
                 "kind": f.kind,
-                "risk": f.risk,
+                "risk": "按改动内容判断" if callable(f.risk) else f.risk,
                 "input_model": f.input_model.model_json_schema(),
+                "secret_fields": list(f.secret_fields),
             }
             for f in FUNCTIONS.values()
             if f.area == area
@@ -493,6 +521,10 @@ async def admin_read(
 
 
 NOT_FOR_ASSISTANT = {
+    (
+        "PUT",
+        "/admin-assistant/change-sets/{id}/secrets/{field}",
+    ): "密钥由创建人通过安全输入框直接提交",
     ("GET", "/admin-assistant/change-sets/{id}"): "变更集只能由创建人在确认卡上操作",
     (
         "POST",
@@ -521,7 +553,6 @@ NOT_FOR_ASSISTANT = {
 }
 
 PENDING = {
-    ("PUT", "/approval-policy"): "S5b",
     ("PUT", "/drafting-settings"): "S5c",
     ("POST", "/capabilities/preview"): "S8",
     ("POST", "/capabilities/versions"): "S5c",
