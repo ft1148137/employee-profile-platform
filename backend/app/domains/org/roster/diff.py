@@ -256,6 +256,11 @@ def compute_roster_diff(
             and employee.employee_code.casefold() not in incoming
             and employee.employment_status == EmploymentStatus.ACTIVE
         ):
+            account = linked.get(employee.id)
+            if account and account.id in shared_accounts:
+                blockers.append(
+                    f"员工 {employee.employee_code} 的账号同时属于其他企业或是部署管理员，只能由部署人员处理离职"
+                )
             changes.append(
                 EmployeeChange(
                     kind="deactivated",

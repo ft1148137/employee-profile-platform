@@ -22,6 +22,7 @@ from app.domains.org.models import (
     Employee,
     EmploymentStatus,
     Organization,
+    OrgMembership,
     ReportingLine,
 )
 from app.domains.org.roster import single
@@ -29,7 +30,7 @@ from app.domains.org.roster.diff import compute_roster_diff
 from app.domains.org.roster.schemas import HEADERS
 from app.domains.org.service import EmployeeNotFound
 from app.models import User
-from tests.api.routes.test_roster import apply, employees, upload
+from tests.api.routes.test_roster import apply, employees, link, upload
 from tests.api.routes.test_roster import client as client
 from tests.api.routes.test_setup_steps import SetupTenant
 from tests.api.routes.test_setup_steps import tenant as tenant
@@ -39,6 +40,37 @@ FUNCTIONS = {
     "transfer": "transfer_employee",
     "offboard": "offboard_employees",
 }
+
+
+@pytest.mark.parametrize("protected", ["shared", "superuser"])
+@pytest.mark.parametrize("via", ["web", "assistant"])
+def test_offboard_cannot_disable_protected_account(
+    db: Session,
+    tenant: SetupTenant,
+    client: TestClient,
+    roster: dict,
+    protected: str,
+    via: str,
+) -> None:
+    account = link(db, tenant, roster["B"])
+    if protected == "shared":
+        db.add(OrgMembership(org_id=tenant.foreign_org_id, user_id=account.id))
+    else:
+        account.is_superuser = True
+        db.add(account)
+    db.commit()
+    body = {"kind": "offboard", "employee_ids": [str(roster["B"].id)]}
+    if via == "web":
+        preview = client.post(f"{tenant.url}/roster/single-change", json=body).json()
+        assert not preview["can_apply"]
+        assert apply(client, tenant, preview).status_code == 422
+    else:
+        row = propose(db, tenant, body)
+        with pytest.raises(c.ChangeSetError):
+            c.apply(db, principal(db, tenant), row.id, row.revision)
+    db.refresh(account)
+    assert account.is_active
+    assert employees(db, tenant)["B"].employment_status == EmploymentStatus.ACTIVE
 
 
 def test_personnel_rolls_back_with_later_failure(
