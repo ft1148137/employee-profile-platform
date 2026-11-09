@@ -183,6 +183,9 @@ function DraftingSettings({ orgId }: { orgId: string }) {
           <h2 id="department-title" className="text-lg font-semibold">
             不自动起草的部门
           </h2>
+          <p className="text-sm text-muted-foreground">
+            勾选后，该部门及其下级部门不再自动起草初始画像；员工仍可自己提出画像更新。
+          </p>
           {departmentOptions(rows).map((d) => {
             const ancestors = d.name.split(" / ").length - 1
             let parent = rows.find((r) => r.id === d.id)?.parent_department_id

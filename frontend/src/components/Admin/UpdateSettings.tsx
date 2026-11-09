@@ -87,6 +87,9 @@ export function UpdateSettings({ orgId }: { orgId: string }) {
                 <SelectItem value="off">关闭</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              选择周期后，员工会定期收到更新画像的提醒；关闭后不再定期提醒。
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="stale-months">证据较旧期限（月）</Label>
@@ -107,7 +110,8 @@ export function UpdateSettings({ orgId }: { orgId: string }) {
               }}
             />
             <p className="text-xs text-muted-foreground">
-              6–120 个月，默认 24 个月。
+              6–120 个月，默认 24
+              个月。超过期限的证据会标为较旧，提醒核对，不会自动降低能力等级。
             </p>
           </div>
         </div>
