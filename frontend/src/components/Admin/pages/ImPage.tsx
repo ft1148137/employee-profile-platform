@@ -165,7 +165,10 @@ function PlatformSetting({
                 test.reset()
               }}
             />
-            <p id={`${setting.platform}-${field}-help`} className="text-xs text-muted-foreground">
+            <p
+              id={`${setting.platform}-${field}-help`}
+              className="text-xs text-muted-foreground"
+            >
               从聊天工具的应用管理页面取得，用于连接企业自己的机器人；加密保存，留空表示不修改。
             </p>
           </div>
