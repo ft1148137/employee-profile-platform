@@ -78,7 +78,8 @@ test("admin imports three candidates, skips existing requests, employee edits an
     ],
   })
   await logInUser(page, adminEmail, password)
-  await page.getByRole("link", { name: "批量导入画像", exact: true }).click()
+  await page.getByRole("link", { name: "能力与规则", exact: true }).click()
+  await page.getByRole("tab", { name: "批量导入画像", exact: true }).click()
   await expect(
     page.getByRole("heading", { name: "批量导入画像", exact: true }),
   ).toBeVisible()

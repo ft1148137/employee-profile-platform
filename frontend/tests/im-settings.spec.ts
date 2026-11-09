@@ -14,7 +14,8 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
     process.env.DEMO_USER_PASSWORD!,
   )
   await page.waitForURL((url) => url.pathname !== "/")
-  await page.getByRole("link", { name: "IM 入口", exact: true }).click()
+  await page.getByRole("link", { name: "连接", exact: true }).click()
+  await page.getByRole("tab", { name: "IM 入口", exact: true }).click()
   await expect(page.getByRole("heading", { name: "IM 入口" })).toBeVisible()
   await expectChineseCopy(page, ["Telegram"])
   const token = await page.evaluate(() => localStorage.getItem("access_token"))
@@ -152,7 +153,7 @@ test("employees cannot open IM administration", async ({ page }) => {
     process.env.DEMO_USER_PASSWORD!,
   )
   await expect(
-    page.getByRole("link", { name: "IM 入口", exact: true }),
+    page.getByRole("link", { name: "连接", exact: true }),
   ).toHaveCount(0)
   await page.goto("/admin/im")
   await expect(page.getByRole("alert")).toContainText("需要企业管理员权限")

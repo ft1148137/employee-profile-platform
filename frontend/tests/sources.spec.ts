@@ -150,7 +150,7 @@ for (const account of ["manager.platform", "employee.platform"]) {
       process.env.DEMO_USER_PASSWORD!,
     )
     await expect(
-      page.getByRole("link", { name: "数据来源", exact: true }),
+      page.getByRole("link", { name: "数据与 AI", exact: true }),
     ).toHaveCount(0)
     await page.goto("/admin/sources")
     await expect(page.getByRole("alert")).toContainText(

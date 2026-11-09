@@ -174,7 +174,7 @@ for (const role of ["manager", "employee"])
       process.env.DEMO_USER_PASSWORD!,
     )
     await expect(
-      page.getByRole("link", { name: "模型", exact: true }),
+      page.getByRole("link", { name: "数据与 AI", exact: true }),
     ).toHaveCount(0)
     await page.goto("/admin/model")
     await expect(page.getByRole("alert")).toHaveText("需要企业管理员权限")

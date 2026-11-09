@@ -21,7 +21,7 @@ test("admin saves approval policy versions and category overrides", async ({
   const url = `/api/v1/orgs/${memberships[0].org.id}/approval-policy`
   const original = await (await request.get(url, { headers })).json()
   try {
-    await page.goto("/settings")
+    await page.goto("/admin/rules?tab=approval")
     await page.getByRole("tab", { name: "审批规则", exact: true }).click()
     const form = page.getByRole("form", { name: "审批规则", exact: true })
     await expect(form.getByLabel("全企业需要经理确认")).toBeVisible()

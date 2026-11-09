@@ -182,7 +182,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
   await expectChineseCopy(page)
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
   await expect(page.getByRole("heading", { name: "设置完成" })).toBeVisible()
-  await page.getByRole("link", { name: "同步与起草进度", exact: true }).click()
+  await page.getByRole("link", { name: "首页", exact: true }).click()
   const syncSection = page.getByRole("region", {
     name: "同步记录",
     exact: true,
@@ -476,7 +476,7 @@ for (const username of [
   test(`progress denies access to ${username}`, async ({ page }) => {
     await logInUser(page, username, process.env.DEMO_USER_PASSWORD!)
     await expect(
-      page.getByRole("link", { name: "同步与起草进度", exact: true }),
+      page.getByRole("link", { name: "首页", exact: true }),
     ).toHaveCount(0)
     await page.goto("/admin/progress")
     await expect(page.getByRole("alert")).toHaveText("需要企业管理员权限")

@@ -44,7 +44,8 @@ test("grant and revoke a department manager, preserve the last administrator", a
       ).ok(),
     ).toBeTruthy()
   }
-  await page.getByRole("link", { name: "角色", exact: true }).click()
+  await page.getByRole("link", { name: "人员", exact: true }).click()
+  await page.getByRole("tab", { name: "角色", exact: true }).click()
   await expect(
     page.getByRole("heading", { name: "角色", exact: true }),
   ).toBeVisible()
