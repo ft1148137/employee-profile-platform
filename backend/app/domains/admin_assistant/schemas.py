@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, JsonValue, SecretStr
 from app.domains.admin_assistant.registry import TableCard as TableCard
 from app.domains.bot.schemas import TextMessage
 from app.domains.change_request.schemas import ToolInput
+from app.domains.org.roster.schemas import RosterImportPreview
 
 AdminPage = Literal[
     "/admin",
@@ -93,6 +94,19 @@ class ChangeSetCard(BaseModel):
     change_set: ChangeSetPublic
 
 
+class RequestFile(ToolInput):
+    kind: Literal["roster"]
+
+
+class FileUploadCard(RequestFile):
+    type: Literal["file_upload"] = "file_upload"
+
+
+class FilePreviewCard(RequestFile):
+    type: Literal["file_preview"] = "file_preview"
+    preview: RosterImportPreview
+
+
 class ApplyChanges(ToolInput):
     revision: int = Field(ge=1, strict=True)
 
@@ -100,7 +114,13 @@ class ApplyChanges(ToolInput):
 class AdminTurnResponse(BaseModel):
     messages: list[
         Annotated[
-            TextMessage | LinkCard | TableCard | ChangeSetCard | SecretInputCard,
+            TextMessage
+            | LinkCard
+            | TableCard
+            | ChangeSetCard
+            | SecretInputCard
+            | FileUploadCard
+            | FilePreviewCard,
             Field(discriminator="type"),
         ]
     ]

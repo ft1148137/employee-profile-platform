@@ -4,13 +4,14 @@ from uuid import UUID
 from sqlmodel import Session
 
 from app.authz.principal import Principal
-from app.domains.admin_assistant import registry, store, tools
+from app.domains.admin_assistant import files, registry, store, tools
 from app.domains.admin_assistant.prompts import system_prompt
 from app.domains.admin_assistant.schemas import (
     AdminTurnInput,
     AdminTurnResponse,
     Availability,
     ChangeSetCard,
+    FileUploadCard,
     LinkCard,
     SecretInputCard,
     TableCard,
@@ -68,9 +69,11 @@ def turn(
     status = availability(db, principal)
     if not status.available:
         return _fallback(status.reason, body.page)
-    history = messages.load_history(db, row)
+    history = messages.load_history(db, row, transform=files.model_message)
     admitted = False
-    cards: list[LinkCard | TableCard | ChangeSetCard | SecretInputCard] = []
+    cards: list[
+        LinkCard | TableCard | ChangeSetCard | SecretInputCard | FileUploadCard
+    ] = []
     try:
         with begin_turn(db, principal, row, body.model_dump(mode="json")):
             admitted = True

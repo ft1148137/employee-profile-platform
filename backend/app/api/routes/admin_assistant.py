@@ -1,12 +1,12 @@
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Form, UploadFile
 
 from app.api.deps import SessionDep
 from app.api.secret_safe import SecretSafeRoute
 from app.authz.deps import OrgAdminDep, OrgPrincipalDep
-from app.domains.admin_assistant import change_set, core, store
+from app.domains.admin_assistant import change_set, core, files, store
 from app.domains.admin_assistant.schemas import (
     AdminSessionMessage,
     AdminTurnInput,
@@ -61,6 +61,17 @@ def turn(
 @router.get("/availability")
 def availability(principal: OrgAdminDep, session: SessionDep) -> Availability:
     return core.availability(session, principal)
+
+
+@router.post("/sessions/{session_id}/files")
+def upload_file(
+    principal: OrgAdminDep,
+    session: SessionDep,
+    session_id: UUID,
+    kind: Annotated[Literal["roster"], Form()],
+    file: UploadFile,
+) -> AdminTurnResponse:
+    return files.upload(session, principal, session_id, kind, file)
 
 
 change_router = APIRouter(

@@ -1,5 +1,5 @@
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta
 from typing import Literal
 from uuid import UUID
@@ -160,12 +160,17 @@ def messages_for(
 
 
 def load_history(
-    db: Session, session: BotSession | AdminAssistantSession
+    db: Session,
+    session: BotSession | AdminAssistantSession,
+    *,
+    transform: Callable[[str], str] | None = None,
 ) -> list[HistoryMessage]:
     history: list[HistoryMessage] = []
     remaining = HISTORY_CHARS
     for row in reversed(_messages(db, session, limit=HISTORY_MESSAGES)):
         text = decrypt_secret(row.ciphertext)
+        if transform:
+            text = transform(text)
         history.append(HistoryMessage(role=row.role, text=text[-remaining:]))
         remaining -= len(history[-1].text)
         if not remaining:

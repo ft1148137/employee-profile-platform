@@ -24,6 +24,7 @@ from app.domains.access_token import service as access
 from app.domains.account import service as accounts
 from app.domains.account.schemas import AccountStatus
 from app.domains.admin.overview import build_overview
+from app.domains.admin_assistant.files import register_files
 from app.domains.admin_assistant.rules import register_rules
 from app.domains.audit import service as audit
 from app.domains.bot import settings as bot
@@ -128,7 +129,7 @@ class AdminFunction:
     name: str
     area: Area
     kind: Literal["read", "change"]
-    risk: Risk | Callable[[Any], Risk]
+    risk: Risk | Callable[[Session, Principal, Any], Risk]
     description: str
     input_model: type[BaseModel]
     handler: Handler
@@ -433,7 +434,7 @@ FUNCTIONS["update_approval_policy"] = AdminFunction(
     name="update_approval_policy",
     area="rules",
     kind="change",
-    risk=lambda a: (
+    risk=lambda d, p, a: (
         "high"
         if not a.require_manager or False in a.category_overrides.values()
         else "normal"
@@ -548,6 +549,10 @@ NOT_FOR_ASSISTANT = {
     ("POST", "/admin-assistant/sessions"): "助手自身的会话接口",
     ("GET", "/admin-assistant/sessions/{session_id}/messages"): "助手自身的会话接口",
     ("POST", "/admin-assistant/sessions/{session_id}/turns"): "助手自身的会话接口",
+    (
+        "POST",
+        "/admin-assistant/sessions/{session_id}/files",
+    ): "管理员通过上传框提交文件，不由模型传入内容",
     ("GET", "/admin-assistant/availability"): "助手自身的会话接口",
     ("GET", "/sources/csv/template"): "模板下载由助手给页面链接",
     ("GET", "/roster/template"): "模板下载由助手给页面链接",
@@ -560,9 +565,10 @@ NOT_FOR_ASSISTANT = {
 }
 
 register_rules(FUNCTIONS)
+register_files(FUNCTIONS)
 
 PENDING = {
-    ("POST", "/capabilities/preview"): "S8",
+    ("POST", "/capabilities/preview"): "S8b",
     ("PUT", "/im-settings/{platform}"): "S6",
     ("PUT", "/mcp-setting"): "S6",
     ("PUT", "/bot-settings"): "S6",
@@ -579,8 +585,6 @@ PENDING = {
     ("POST", "/role-grants"): "S7",
     ("DELETE", "/role-grants/{grant_id}"): "S7",
     ("POST", "/appeals/{appeal_id}/resolve"): "S7",
-    ("POST", "/sources/csv/imports"): "S8",
-    ("POST", "/roster/imports"): "S8",
-    ("POST", "/roster/imports/{id}/apply"): "S8",
-    ("POST", "/profile-imports"): "S8",
+    ("POST", "/sources/csv/imports"): "S8b",
+    ("POST", "/profile-imports"): "S8b",
 }

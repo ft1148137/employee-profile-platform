@@ -137,7 +137,9 @@ def propose(
                 "impact": entry.impact(db, principal, args).model_dump(mode="json")
                 if entry.impact
                 else None,
-                "risk": entry.risk(args) if callable(entry.risk) else entry.risk,
+                "risk": entry.risk(db, principal, args)
+                if callable(entry.risk)
+                else entry.risk,
             }
         )
     if row:

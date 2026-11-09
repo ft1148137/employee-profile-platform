@@ -100,36 +100,44 @@ export function ChangeSetCard({
       {current.items.map((item, i) => (
         <div key={i} className="space-y-2">
           <p className="text-sm font-medium">
-            {item.function === "update_approval_policy"
-              ? "经理确认规则"
-              : "定期提醒设置"}
+            {item.function === "apply_roster_import"
+              ? "导入名单"
+              : item.function === "update_approval_policy"
+                ? "经理确认规则"
+                : "定期提醒设置"}
           </p>
-          {Object.keys(item.after).map((field) => (
-            <div key={field} className="rounded-lg bg-muted/40 p-3 text-sm">
-              <p className="mb-2 text-muted-foreground">
-                {labels[field] ?? "设置项"}
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { title: "修改前", value: item.before?.[field] },
-                  { title: "修改后", value: item.after[field] },
-                ].map(({ title, value }) => (
-                  <div key={title}>
-                    <p className="text-xs text-muted-foreground">{title}</p>
-                    <p
-                      className={
-                        title === "修改后" ? "font-semibold text-primary" : ""
-                      }
-                    >
-                      {value == null
-                        ? "未设置"
-                        : `${display(value)}${field === "stale_after_months" ? " 个月" : ""}`}
-                    </p>
-                  </div>
-                ))}
+          {item.function === "apply_roster_import" ? (
+            <p className="text-sm">
+              请核对上方名单预览。确认后更新员工信息，离职人员的账号会停用。
+            </p>
+          ) : (
+            Object.keys(item.after).map((field) => (
+              <div key={field} className="rounded-lg bg-muted/40 p-3 text-sm">
+                <p className="mb-2 text-muted-foreground">
+                  {labels[field] ?? "设置项"}
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { title: "修改前", value: item.before?.[field] },
+                    { title: "修改后", value: item.after[field] },
+                  ].map(({ title, value }) => (
+                    <div key={title}>
+                      <p className="text-xs text-muted-foreground">{title}</p>
+                      <p
+                        className={
+                          title === "修改后" ? "font-semibold text-primary" : ""
+                        }
+                      >
+                        {value == null
+                          ? "未设置"
+                          : `${display(value)}${field === "stale_after_months" ? " 个月" : ""}`}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
           {item.impact && (
             <p className="text-xs text-muted-foreground">
               影响 {item.impact.count} 人 · {item.impact.text}
@@ -171,7 +179,10 @@ export function ChangeSetCard({
         </div>
       )}
       {current.status === "applied" &&
-        current.items.every((item) => item.before !== null) && (
+        current.items.every(
+          (item) =>
+            item.before !== null && item.function !== "apply_roster_import",
+        ) && (
           <Button
             variant="outline"
             disabled={busy}

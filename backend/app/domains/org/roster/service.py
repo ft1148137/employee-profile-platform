@@ -35,6 +35,8 @@ from app.domains.source.linking import auto_link_identities
 from app.domains.work.ingest import rederive_identities
 from app.models import User, uses_email_login
 
+MAX_FILE_SIZE = 5 * 1024 * 1024
+
 
 class RosterError(HTTPException):
     pass
@@ -95,7 +97,12 @@ def create_import(
 
 
 def apply_import(
-    session: Session, principal: Principal, import_id: UUID, body: ApplyImport
+    session: Session,
+    principal: Principal,
+    import_id: UUID,
+    body: ApplyImport,
+    *,
+    commit: bool = True,
 ) -> RosterImportResult:
     org = lock_org(session, principal)
     record = session.exec(
@@ -116,7 +123,8 @@ def apply_import(
     ):
         record.status = "stale"
         session.add(record)
-        session.commit()
+        if commit:
+            session.commit()
         raise RosterError(409, stale_message)
     roster = ParsedRoster.model_validate(
         {"rows": record.rows, "column_mapping": record.column_mapping}
@@ -299,7 +307,8 @@ def apply_import(
         target_id=str(record.id),
         details={"id": str(record.id), **diff.summary},
     )
-    session.commit()
+    if commit:
+        session.commit()
     return RosterImportResult(
         id=record.id, status="applied", summary=record.summary, issues=issues
     )
