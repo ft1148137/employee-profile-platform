@@ -57,7 +57,7 @@ def turn(db: Session, p: Principal, session_id: UUID, text: str) -> s.TurnRespon
                 model_config(setting),
                 mode="chat",
                 history=history,
-                system_prompt=system_prompt(db, p),
+                system_prompt=system_prompt(db, p, session.channel),
                 input=text,
                 tools=tools.definitions(),
                 on_tool_call=lambda name, args: tools.call(
