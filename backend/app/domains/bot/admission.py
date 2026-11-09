@@ -8,6 +8,11 @@ from sqlalchemy import text
 from sqlmodel import Session, col, select, update
 
 from app.authz.principal import Principal
+from app.domains.admin_assistant import store as admin_store
+from app.domains.admin_assistant.models import (
+    AdminAssistantMessage,
+    AdminAssistantSession,
+)
 from app.domains.base import utc_now
 from app.domains.bot.models import BotMessage, BotSession
 from app.domains.bot.store import append_message, get_session
@@ -43,9 +48,15 @@ class BotQuotaPaused(Exception):
 
 @contextmanager
 def begin_turn(
-    db: Session, principal: Principal, session: BotSession, user_payload: JsonValue
-) -> Generator[BotSession]:
+    db: Session,
+    principal: Principal,
+    session: BotSession | AdminAssistantSession,
+    user_payload: JsonValue,
+) -> Generator[BotSession | AdminAssistantSession]:
     lease = None
+    admin = isinstance(session, AdminAssistantSession)
+    session_type = AdminAssistantSession if admin else BotSession
+    message_type = AdminAssistantMessage if admin else BotMessage
     try:
         key = int.from_bytes(
             blake2b(b"bot:" + principal.org_id.bytes, digest_size=8).digest(),
@@ -54,7 +65,11 @@ def begin_turn(
         db.connection().execute(
             text("SELECT pg_advisory_xact_lock(:key)"), {"key": key}
         )
-        row = get_session(db, principal, session.id, lock=True)
+        row = (
+            admin_store.get_session(db, principal, session.id, lock=True)
+            if admin
+            else get_session(db, principal, session.id, lock=True)
+        )
         now = utc_now()
         setting = db.get(ModelSetting, principal.org_id, populate_existing=True)
         if setting and setting.paused_until and setting.paused_until > now:
@@ -71,30 +86,36 @@ def begin_turn(
             raise BotBusy("起草任务正在排队，请稍后再试")
         if row.lease_until and row.lease_until > now:
             raise BotBusy("本会话已有一轮对话")
-        active = db.exec(
-            select(BotSession.id)
-            .where(
-                BotSession.org_id == principal.org_id,
-                col(BotSession.lease_until) > now,
+        active = sum(
+            len(
+                db.exec(
+                    select(model.id)
+                    .where(
+                        model.org_id == principal.org_id, col(model.lease_until) > now
+                    )
+                    .limit(ORG_TURNS)
+                ).all()
             )
-            .limit(ORG_TURNS)
-        ).all()
-        if len(active) == ORG_TURNS:
+            for model in (BotSession, AdminAssistantSession)
+        )
+        if active >= ORG_TURNS:
             raise BotBusy("本企业对话繁忙，请稍后再试")
         times = db.exec(
-            select(BotMessage.created_at)
+            select(message_type.created_at)
             .join(
-                BotSession,
-                (col(BotSession.org_id) == col(BotMessage.org_id))
-                & (col(BotSession.id) == col(BotMessage.session_id)),
+                session_type,
+                (col(session_type.org_id) == col(message_type.org_id))
+                & (col(session_type.id) == col(message_type.session_id)),
             )
             .where(
-                BotMessage.org_id == principal.org_id,
-                BotSession.employee_id == principal.employee_id,
-                BotMessage.role == "user",
-                BotMessage.created_at > now - timedelta(hours=1),
+                message_type.org_id == principal.org_id,
+                AdminAssistantSession.user_id == principal.user_id
+                if admin
+                else BotSession.employee_id == principal.employee_id,
+                message_type.role == "user",
+                message_type.created_at > now - timedelta(hours=1),
             )
-            .order_by(col(BotMessage.created_at))
+            .order_by(col(message_type.created_at))
             .limit(HOURLY_TURNS)
         ).all()
         if len(times) == HOURLY_TURNS:
@@ -138,11 +159,11 @@ def begin_turn(
         if lease is not None:
             # An expired turn must not release a successor's lease.
             db.exec(
-                update(BotSession)
+                update(session_type)
                 .where(
-                    col(BotSession.org_id) == principal.org_id,
-                    col(BotSession.id) == session.id,
-                    col(BotSession.lease_until) == lease,
+                    col(session_type.org_id) == principal.org_id,
+                    col(session_type.id) == session.id,
+                    col(session_type.lease_until) == lease,
                 )
                 .values(lease_until=None)
             )

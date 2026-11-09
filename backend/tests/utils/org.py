@@ -9,6 +9,10 @@ from app.domains.access_token.models import (
     OAuthRefreshToken,
     PersonalAccessToken,
 )
+from app.domains.admin_assistant.models import (
+    AdminAssistantMessage,
+    AdminAssistantSession,
+)
 from app.domains.audit.models import AuditEvent
 from app.domains.bot.models import BotMessage, BotSession, BotSetting
 from app.domains.capability.models import CapabilityDefinition, CapabilitySchemaVersion
@@ -66,6 +70,8 @@ ORG_MODELS = (
     OAuthRefreshToken,
     OAuthGrant,
     McpSetting,
+    AdminAssistantMessage,
+    AdminAssistantSession,
     BotMessage,
     BotSession,
     BotSetting,

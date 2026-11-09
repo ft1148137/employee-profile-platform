@@ -62,7 +62,13 @@ class BotSession(SQLModel, table=True):
     lease_until: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
 
-class BotMessage(TenantRecord, table=True):
+class ConversationMessage(TenantRecord):
+    session_id: UUID
+    role: Literal["user", "assistant"] = Field(sa_type=String)
+    ciphertext: str = Field(repr=False)
+
+
+class BotMessage(ConversationMessage, table=True):
     __tablename__ = "bot_message"
     __table_args__ = (
         ForeignKeyConstraint(
@@ -73,6 +79,3 @@ class BotMessage(TenantRecord, table=True):
         CheckConstraint("role IN ('user', 'assistant')"),
         Index("ix_bot_message_session_time", "org_id", "session_id", "created_at"),
     )
-    session_id: UUID
-    role: Literal["user", "assistant"] = Field(sa_type=String)
-    ciphertext: str = Field(repr=False)
