@@ -8,6 +8,7 @@ import {
   type DraftingSettingsUpdate,
   OrgsService,
 } from "@/client"
+import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { departmentOptions } from "@/components/Admin/departments"
 import { UpdateSettings } from "@/components/Admin/UpdateSettings"
 import { OrgState } from "@/components/Profile/OrgState"
@@ -229,6 +230,7 @@ function DraftingSettings({ orgId }: { orgId: string }) {
           {save.isPending ? "正在保存…" : "保存"}
         </Button>
       </form>
+      <ChangeHistory targetType="drafting_setting" />
     </div>
   )
 }

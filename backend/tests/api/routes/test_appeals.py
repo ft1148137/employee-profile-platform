@@ -58,6 +58,11 @@ def test_appeal_lifecycle(db: Session, demo: tuple, status: str) -> None:
         owner, db, request.id, request.items[0].id, "合成申诉原因"
     )
     db.commit()
+    assert [
+        item.id
+        for item in appeal.list_disputes(admin, db, employee_id=owner.employee_id)
+    ] == [row.id]
+    assert not appeal.list_disputes(admin, db, employee_id=uuid4())
     assert (
         next(
             i

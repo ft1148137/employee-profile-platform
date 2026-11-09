@@ -2,7 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import JsonValue
-from sqlalchemy import func
+from sqlalchemy import String, cast, func, or_
 from sqlmodel import Session, col, select
 
 from app.core.config import settings
@@ -68,8 +68,46 @@ def list_events(
     until: datetime | None = None,
     skip: int = 0,
     limit: int = 50,
+    *,
+    target_type: str | None = None,
+    target_ids: list[str] | None = None,
+    employee_id: UUID | None = None,
 ) -> AuditEventsPublic:
     query = select(AuditEvent).where(AuditEvent.org_id == org_id)
+    if target_type is not None:
+        query = query.where(col(AuditEvent.target_type) == target_type)
+    if target_ids is not None:
+        query = query.where(col(AuditEvent.target_id).in_(target_ids))
+    if employee_id is not None:
+        memberships = select(OrgMembership.id).where(
+            OrgMembership.org_id == org_id,
+            OrgMembership.employee_id == employee_id,
+        )
+        user_ids_query = select(cast(OrgMembership.user_id, String)).where(
+            OrgMembership.org_id == org_id,
+            OrgMembership.employee_id == employee_id,
+        )
+        grant_ids = select(cast(RoleGrant.id, String)).where(
+            RoleGrant.org_id == org_id,
+            col(RoleGrant.membership_id).in_(memberships),
+        )
+        # shortcut: deleted legacy grants without user_id cannot be attributed,
+        # revisit only if an authoritative historical mapping becomes available.
+        query = query.where(
+            or_(
+                (col(AuditEvent.target_type) == "employee")
+                & (col(AuditEvent.target_id) == str(employee_id)),
+                (col(AuditEvent.target_type) == "user")
+                & col(AuditEvent.target_id).in_(user_ids_query),
+                (col(AuditEvent.target_type) == "role_grant")
+                & or_(
+                    col(AuditEvent.details)["user_id"].astext.in_(user_ids_query),
+                    col(AuditEvent.target_id).in_(grant_ids),
+                ),
+                (col(AuditEvent.target_type) == "external_identity")
+                & (col(AuditEvent.details)["employee_id"].astext == str(employee_id)),
+            )
+        )
     if action:
         query = query.where(
             col(AuditEvent.action).startswith(action, autoescape=True)
@@ -91,7 +129,7 @@ def list_events(
         .offset(skip)
         .limit(limit)
     ).all()
-    target_ids = {parse_id(e.target_id) for e in events}
+    event_target_ids = {parse_id(e.target_id) for e in events}
     # Old role events only retain the grant id; resolve surviving grants in one query.
     grants = {
         str(g.id): (g, user_id)
@@ -101,7 +139,7 @@ def list_events(
             .where(
                 RoleGrant.org_id == org_id,
                 OrgMembership.org_id == org_id,
-                col(RoleGrant.id).in_(target_ids),
+                col(RoleGrant.id).in_(event_target_ids),
             )
         ).all()
     }
@@ -119,7 +157,7 @@ def list_events(
                     else None,
                 }
             role_details[e.id] = details
-    user_ids = target_ids | {
+    user_ids = event_target_ids | {
         parse_id(e.actor_id) for e in events if e.actor_type == ActorKind.USER
     }
     user_ids |= {parse_id(d.get("user_id")) for d in role_details.values()}
@@ -141,7 +179,7 @@ def list_events(
         o.id: o
         for o in session.exec(
             select(Organization).where(
-                Organization.id == org_id, col(Organization.id).in_(target_ids)
+                Organization.id == org_id, col(Organization.id).in_(event_target_ids)
             )
         ).all()
     }
@@ -150,7 +188,7 @@ def list_events(
         for v in session.exec(
             select(CapabilitySchemaVersion).where(
                 CapabilitySchemaVersion.org_id == org_id,
-                col(CapabilitySchemaVersion.id).in_(target_ids),
+                col(CapabilitySchemaVersion.id).in_(event_target_ids),
             )
         ).all()
     }
@@ -158,7 +196,8 @@ def list_events(
         r.id: r
         for r in session.exec(
             select(RosterImport).where(
-                RosterImport.org_id == org_id, col(RosterImport.id).in_(target_ids)
+                RosterImport.org_id == org_id,
+                col(RosterImport.id).in_(event_target_ids),
             )
         ).all()
     }

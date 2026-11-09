@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { ModelSettingForm } from "@/components/Model/ModelSettingForm"
 import { OrgState } from "@/components/Profile/OrgState"
 import { useOrg } from "@/hooks/useOrg"
@@ -18,6 +19,7 @@ function Page() {
         <h1 className="mt-2 text-3xl font-semibold">模型</h1>
       </header>
       <ModelSettingForm orgId={org.id} />
+      <ChangeHistory targetType="model_setting" />
     </div>
   )
 }

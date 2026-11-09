@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { ApprovalPolicyService, type PolicyInput } from "@/client"
+import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
@@ -191,6 +192,7 @@ export function ApprovalPolicy({ orgId }: { orgId: string }) {
           ))}
         </ol>
       </section>
+      <ChangeHistory targetType="approval_policy" />
     </div>
   )
 }

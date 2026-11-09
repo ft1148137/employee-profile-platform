@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query"
+import { Link } from "@tanstack/react-router"
 import type {
   CellContext,
   ColumnDef,
@@ -64,7 +65,19 @@ export function AccountTable({
       ),
     },
     { accessorKey: "employee_code", header: "工号" },
-    { accessorKey: "display_name", header: "姓名" },
+    {
+      accessorKey: "display_name",
+      header: "姓名",
+      cell: ({ row }) => (
+        <Link
+          className="text-primary underline underline-offset-4"
+          to="/admin/people/$employeeId"
+          params={{ employeeId: row.original.id }}
+        >
+          {row.original.display_name}
+        </Link>
+      ),
+    },
     {
       id: "department",
       header: "部门",
@@ -143,7 +156,7 @@ export function AccountTable({
   )
 }
 
-function AccountActions({
+export function AccountActions({
   employee: e,
   onResetPassword,
 }: {

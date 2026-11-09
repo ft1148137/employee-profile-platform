@@ -125,7 +125,9 @@ def read_appeal(
     return AppealPublic.model_validate(row)
 
 
-def list_disputes(principal: Principal, session: Session) -> list[AppealPublic]:
+def list_disputes(
+    principal: Principal, session: Session, *, employee_id: UUID | None = None
+) -> list[AppealPublic]:
     if not principal.is_org_admin:
         raise OrgAdminRequired()
     return [
@@ -135,6 +137,11 @@ def list_disputes(principal: Principal, session: Session) -> list[AppealPublic]:
             .where(
                 ReviewAppeal.org_id == principal.org_id,
                 ReviewAppeal.status == AppealStatus.OPEN,
+                *(
+                    [ReviewAppeal.employee_id == employee_id]
+                    if employee_id is not None
+                    else []
+                ),
             )
             .order_by(col(ReviewAppeal.created_at), col(ReviewAppeal.id))
         ).all()
