@@ -3,6 +3,8 @@ import { networkInterfaces } from "node:os"
 import { test as base, expect, type Page } from "@playwright/test"
 
 export { expect } from "@playwright/test"
+export const jiraTestUrl =
+  process.env.JIRA_TEST_URL ?? "http://mock-jira:8080/demo-org"
 
 export const dictionaryDefinitions = [
   {
@@ -46,6 +48,19 @@ export const test = base.extend<{ modelUrl: string }>({
       }
       const toolResult =
         request.messages.at(-1)?.role === "tool" || !request.tools?.length
+      const jiraRequest =
+        admin &&
+        request.messages.some(
+          (message: { role: string; content: unknown }) =>
+            message.role === "user" &&
+            JSON.stringify(message.content).includes("修改 Jira 站点"),
+        )
+      const jiraSecret =
+        jiraRequest &&
+        toolResult &&
+        JSON.stringify(last.content).includes("changes")
+      if (jiraRequest) expect(raw).not.toContain("mock-cloud-token")
+      const finish = toolResult && !jiraSecret
       const content = request.messages.find(
         (m: { role: string }) => m.role === "user",
       ).content
@@ -79,7 +94,7 @@ export const test = base.extend<{ modelUrl: string }>({
         choices: [
           {
             index: 0,
-            delta: toolResult
+            delta: finish
               ? {
                   role: "assistant",
                   content: admin
@@ -185,6 +200,31 @@ export const test = base.extend<{ modelUrl: string }>({
           },
         ],
       }
+      const calls = chunk.choices[0].delta.tool_calls
+      if (jiraRequest && calls) {
+        calls[0].id = jiraSecret ? "synthetic-secret" : "synthetic-jira"
+        calls[0].function = {
+          name: jiraSecret ? "request_secret_input" : "propose_changes",
+          arguments: JSON.stringify(
+            jiraSecret
+              ? { function: "update_jira_connection", field: "secret" }
+              : {
+                  items: [
+                    {
+                      function: "update_jira_connection",
+                      args: {
+                        deployment: "cloud",
+                        base_url: jiraTestUrl,
+                        auth_type: "api_token",
+                        username: "jira-admin@example.com",
+                        start_date: "2026-01-01",
+                      },
+                    },
+                  ],
+                },
+          ),
+        }
+      }
       res.write(`data: ${JSON.stringify(chunk)}\n\n`)
       const finished = {
         ...chunk,
@@ -192,7 +232,7 @@ export const test = base.extend<{ modelUrl: string }>({
           {
             index: 0,
             delta: {},
-            finish_reason: toolResult ? "stop" : "tool_calls",
+            finish_reason: finish ? "stop" : "tool_calls",
           },
         ],
       }

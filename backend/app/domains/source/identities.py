@@ -159,7 +159,7 @@ def list_identities(
 
 
 def link_identities(
-    session: Session, principal: Principal, body: IdentityLinks
+    session: Session, principal: Principal, body: IdentityLinks, *, commit: bool = True
 ) -> IdentityLinkResult:
     identities = {
         i.id: i
@@ -201,12 +201,15 @@ def link_identities(
         assign_identity(session, principal, identity, employee_id)
         linked.append(identity)
     counts = rederive_identities(session, org_id=principal.org_id, identities=linked)
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     return IdentityLinkResult(linked=len(linked), counts=counts)
 
 
 def unlink_identity(
-    session: Session, principal: Principal, identity_id: UUID
+    session: Session, principal: Principal, identity_id: UUID, *, commit: bool = True
 ) -> IdentityUnlinkResult:
     identity = session.exec(
         select(ExternalIdentity)
@@ -268,5 +271,8 @@ def unlink_identity(
     identity_audit(session, principal, identity, "unlinked")
     identity.employee_id = identity.linked_by = identity.linked_at = None
     identity.auto_link_blocked = True
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     return IdentityUnlinkResult(evidence_retracted=len(evidence))

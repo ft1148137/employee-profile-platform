@@ -2,6 +2,7 @@
 
 import json
 from datetime import timedelta
+from inspect import isawaitable
 from typing import Literal
 from uuid import UUID
 
@@ -17,11 +18,13 @@ from app.domains.admin_assistant.schemas import (
     AdminTurnResponse,
     ChangeSetCard,
     ChangeSetPublic,
+    Impact,
     ProposeChanges,
     SecretInputCard,
 )
 from app.domains.base import utc_now
 from app.domains.bot import store as messages
+from app.domains.bot.schemas import TextMessage
 from app.domains.org.models import Organization
 
 
@@ -59,7 +62,62 @@ def get(
 
 
 def public(row: AdminChangeSet) -> ChangeSetPublic:
-    return ChangeSetPublic.model_validate(row, from_attributes=True)
+    result = ChangeSetPublic.model_validate(row, from_attributes=True)
+    for item in result.items:
+        item.testable = registry.FUNCTIONS[item.function].test is not None
+    return result
+
+
+def _with_secrets(
+    entry: registry.AdminFunction, args: dict[str, JsonValue], values: dict[str, str]
+) -> BaseModel:
+    try:
+        return entry.input_model.model_validate(
+            {**args, **{f: values[f] for f in entry.secret_fields if f in values}}
+        )
+    except ValueError:
+        raise ChangeSetError("请先用安全输入框填写有效的密钥", 422) from None
+
+
+async def test_connection(
+    db: Session, principal: Principal, id: UUID, item: int
+) -> registry.ConnectionTestResult:
+    row = get(db, principal, id, lock=True)
+    if row.status != "draft":
+        raise ChangeSetError("这份改动已结束，请重新起草")
+    if item >= len(row.items):
+        raise ChangeSetError("找不到这项改动", 422)
+    change = public(row).items[item]
+    entry = registry.FUNCTIONS[change.function]
+    if entry.test is None:
+        raise ChangeSetError("这项改动不支持测试连接", 422)
+    try:
+        values = json.loads(decrypt_secret(row.secrets)) if row.secrets else {}
+        args = _with_secrets(entry, change.args, values)
+        result = entry.test(db, principal, args)
+        if isawaitable(result):
+            result = await result
+    except Exception:
+        # Test failures must never echo an upstream exception or secret value.
+        result = registry.ConnectionTestResult(
+            ok=False, message="连接失败，请检查配置或稍后重试"
+        )
+    messages.append_message(
+        db,
+        store.get_session(db, principal, row.session_id),
+        "assistant",
+        AdminTurnResponse(
+            messages=[
+                TextMessage(
+                    text="测试连接：成功"
+                    if result.ok
+                    else f"测试连接：失败，{result.message}"
+                )
+            ]
+        ).model_dump(mode="json"),
+    )
+    db.commit()
+    return result
 
 
 def list_drafts(
@@ -191,19 +249,17 @@ def apply(
         ):
             _stale(db, row)
         if entry.secret_fields:
-            try:
-                args = entry.input_model.model_validate(
-                    {
-                        **item.args,
-                        **{
-                            f: secret_values[f]
-                            for f in entry.secret_fields
-                            if f in secret_values
-                        },
-                    }
+            args = _with_secrets(entry, item.args, secret_values)
+            if (
+                entry.rebinds
+                and entry.snapshot
+                and entry.rebinds(
+                    entry.snapshot(db, principal, args).model_dump(mode="json") or {},
+                    item.args,
                 )
-            except ValueError:
-                raise ChangeSetError("请先用安全输入框填写有效的密钥", 422) from None
+                and not any(secret_values.get(f) for f in entry.secret_fields)
+            ):
+                raise ChangeSetError("更换了连接目标，请重新填写凭据", 422)
         prepared.append((entry, args))
     original = get(db, principal, row.undo_of_id) if row.undo_of_id else None
     if original and original.status != "applied":
@@ -271,17 +327,16 @@ def undo(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
     if any(item.before is None for item in items):
         raise ChangeSetError("这份改动不能撤销")
     unchanged = True
+    secret_cards: list[tuple[str, str]] = []
     reverse_items = []
     for item in items:
         entry, args = _entry(item.function, item.args)
         if entry.snapshot is None:
             raise ChangeSetError("这份改动不能撤销")
-        unchanged &= (
-            entry.snapshot(db, principal, args).model_dump(
-                mode="json", exclude=set(entry.secret_fields)
-            )
-            == item.after
+        current = entry.snapshot(db, principal, args).model_dump(
+            mode="json", exclude=set(entry.secret_fields)
         )
+        unchanged &= current == item.after
         assert item.before is not None
         function, body = (
             entry.reverse(db, principal, item.before)
@@ -289,8 +344,15 @@ def undo(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
             else (item.function, entry.input_model.model_validate(item.before))
         )
         reverse_items.append(
-            {"function": function, "args": body.model_dump(mode="json")}
+            {
+                "function": function,
+                "args": body.model_dump(
+                    mode="json", exclude=set(registry.FUNCTIONS[function].secret_fields)
+                ),
+            }
         )
+        if entry.rebinds and entry.rebinds(current, item.before):
+            secret_cards.extend((function, field) for field in entry.secret_fields)
     reverse = propose(
         db,
         principal,
@@ -299,19 +361,42 @@ def undo(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
     )
     reverse.undo_of_id = row.id
     db.add(reverse)
-    if not unchanged or any(item.risk == "high" for item in public(reverse).items):
+    if secret_cards:
+        items = public(reverse).items
+        for item in items:
+            if any(function == item.function for function, _ in secret_cards):
+                item.impact = Impact(
+                    count=item.impact.count if item.impact else 0,
+                    text="撤销会回到原来的站点，需要重新填写它的凭据；凭据不回滚",
+                )
+        reverse.items = [item.model_dump(mode="json") for item in items]
+    if (
+        not unchanged
+        or secret_cards
+        or any(item.risk == "high" for item in public(reverse).items)
+    ):
         messages.append_message(
             db,
             store.get_session(db, principal, row.session_id),
             "assistant",
             AdminTurnResponse(
-                messages=[ChangeSetCard(change_set=public(reverse))]
+                messages=[
+                    ChangeSetCard(change_set=public(reverse)),
+                    *[
+                        SecretInputCard(
+                            change_set_id=reverse.id,
+                            field=field,
+                            title="请重新填写原来站点的凭据",
+                        )
+                        for _, field in secret_cards
+                    ],
+                ]
             ).model_dump(mode="json"),
         )
     db.commit()
     return (
         apply(db, principal, reverse.id, reverse.revision)
-        if unchanged
+        if unchanged and not secret_cards
         else public(reverse)
     )
 

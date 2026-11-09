@@ -25,6 +25,7 @@ from app.domains.account import service as accounts
 from app.domains.account.schemas import AccountStatus
 from app.domains.admin.overview import build_overview
 from app.domains.admin_assistant.rules import register_rules
+from app.domains.admin_assistant.sources import register_sources
 from app.domains.audit import service as audit
 from app.domains.bot import settings as bot
 from app.domains.capability.service import read_editor
@@ -51,6 +52,17 @@ Snapshot = Callable[[Session, Principal, Any], BaseModel]
 Reverse = Callable[[Session, Principal, dict[str, JsonValue]], tuple[str, BaseModel]]
 Endpoint = tuple[str, str]
 Risk = Literal["normal", "high"]
+
+
+class ConnectionTestResult(BaseModel):
+    ok: bool
+    message: str
+
+
+ConnectionTest = Callable[
+    [Session, Principal, Any], ConnectionTestResult | Awaitable[ConnectionTestResult]
+]
+Rebinds = Callable[[dict[str, JsonValue], dict[str, JsonValue]], bool]
 
 
 class NoArgs(BaseModel):
@@ -138,6 +150,8 @@ class AdminFunction:
     impact: Snapshot | None = None
     secret_fields: tuple[str, ...] = ()
     reverse: Reverse | None = None
+    test: ConnectionTest | None = None
+    rebinds: Rebinds | None = None
 
 
 def _profile(db: Session, principal: Principal, args: EmployeeArgs) -> BaseModel:
@@ -525,6 +539,10 @@ async def admin_read(
 
 NOT_FOR_ASSISTANT = {
     (
+        "POST",
+        "/admin-assistant/change-sets/{id}/test",
+    ): "由创建人在确认卡上测试草稿连接",
+    (
         "GET",
         "/admin-assistant/change-sets",
     ): "手工页面读取本人当前会话的草稿，不作为模型工具",
@@ -560,6 +578,7 @@ NOT_FOR_ASSISTANT = {
 }
 
 register_rules(FUNCTIONS)
+register_sources(FUNCTIONS)
 
 PENDING = {
     ("POST", "/capabilities/preview"): "S8",
@@ -567,11 +586,6 @@ PENDING = {
     ("PUT", "/mcp-setting"): "S6",
     ("PUT", "/bot-settings"): "S6",
     ("PUT", "/model-setting"): "S6",
-    ("PUT", "/sources/jira"): "S6",
-    ("POST", "/sources/jira/sync"): "S6",
-    ("POST", "/sync-runs/{run_id}/retry"): "S6",
-    ("POST", "/external-identities/link"): "S6",
-    ("POST", "/external-identities/{identity_id}/unlink"): "S6",
     ("POST", "/accounts/issue"): "S7",
     ("POST", "/accounts/{user_id}/reset-password"): "S7",
     ("POST", "/accounts/{user_id}/disable"): "S7",

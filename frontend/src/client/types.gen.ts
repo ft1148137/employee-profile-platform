@@ -1035,6 +1035,20 @@ export type ConnectionTest = {
 };
 
 /**
+ * ConnectionTestResult
+ */
+export type ConnectionTestResult = {
+    /**
+     * Ok
+     */
+    ok: boolean;
+    /**
+     * Message
+     */
+    message: string;
+};
+
+/**
  * ConsentBody
  */
 export type ConsentBody = {
@@ -3859,6 +3873,16 @@ export type TemplateCapabilityPublic = {
 };
 
 /**
+ * TestConnection
+ */
+export type TestConnection = {
+    /**
+     * Item
+     */
+    item: number;
+};
+
+/**
  * TextMessage
  */
 export type TextMessage = {
@@ -4278,6 +4302,10 @@ export type app__domains__admin_assistant__schemas__ChangeItem = {
      * Risk
      */
     risk: 'normal' | 'high';
+    /**
+     * Testable
+     */
+    testable?: boolean;
 };
 
 /**
@@ -5861,6 +5889,40 @@ export type adminAssistantApplyChangeSetResponses = {
 };
 
 export type adminAssistantApplyChangeSetResponse = adminAssistantApplyChangeSetResponses[keyof adminAssistantApplyChangeSetResponses];
+
+export type adminAssistantTestChangeSetData = {
+    body: TestConnection;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/admin-assistant/change-sets/{id}/test';
+};
+
+export type adminAssistantTestChangeSetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantTestChangeSetError = adminAssistantTestChangeSetErrors[keyof adminAssistantTestChangeSetErrors];
+
+export type adminAssistantTestChangeSetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConnectionTestResult;
+};
+
+export type adminAssistantTestChangeSetResponse = adminAssistantTestChangeSetResponses[keyof adminAssistantTestChangeSetResponses];
 
 export type adminAssistantDiscardChangeSetData = {
     body?: never;

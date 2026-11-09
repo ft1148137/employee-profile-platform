@@ -83,6 +83,8 @@ def create_run(
     principal: Principal,
     kind: str,
     input_data: dict[str, JsonValue] | None = None,
+    *,
+    commit: bool = True,
 ) -> SyncRunPublic:
     assert principal.user_id is not None
     _lock_org(session, principal.org_id)
@@ -113,12 +115,27 @@ def create_run(
     )
     session.add(run)
     _enqueue(session, run)
-    session.commit()
-    session.refresh(run)
+    record_audit(
+        session,
+        org_id=principal.org_id,
+        actor_type=principal.actor_type,
+        actor_id=str(principal.user_id),
+        action="sync_run.queued",
+        target_type="sync_run",
+        target_id=str(run.id),
+        details={"trigger": run.trigger},
+    )
+    if commit:
+        session.commit()
+        session.refresh(run)
+    else:
+        session.flush()
     return public_run(run, kind)
 
 
-def retry_run(session: Session, principal: Principal, run_id: UUID) -> SyncRunPublic:
+def retry_run(
+    session: Session, principal: Principal, run_id: UUID, *, commit: bool = True
+) -> SyncRunPublic:
     _lock_org(session, principal.org_id)
     run = session.exec(
         select(SyncRun)
@@ -161,8 +178,21 @@ def retry_run(session: Session, principal: Principal, run_id: UUID) -> SyncRunPu
     run.finished_at, run.updated_at = None, utc_now()
     session.add(run)
     _enqueue(session, run)
-    session.commit()
-    session.refresh(run)
+    record_audit(
+        session,
+        org_id=principal.org_id,
+        actor_type=principal.actor_type,
+        actor_id=str(principal.user_id),
+        action="sync_run.queued",
+        target_type="sync_run",
+        target_id=str(run.id),
+        details={"trigger": run.trigger},
+    )
+    if commit:
+        session.commit()
+        session.refresh(run)
+    else:
+        session.flush()
     return public_run(run, connection.kind)
 
 

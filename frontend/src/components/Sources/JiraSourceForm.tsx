@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import {
   type JiraConfig,
   type JiraConnectionPublic,
   SourcesService,
 } from "@/client"
+import { DraftField } from "@/components/AdminAssistant/DraftField"
+import { PageDraft } from "@/components/AdminAssistant/PageDraft"
+import { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -42,7 +45,7 @@ function JiraForm({
     start.getDate(),
     new Date(year, start.getMonth() + 1, 0).getDate(),
   )
-  const [config, setConfig] = useState<JiraConfig>(
+  const [manualConfig, setConfig] = useState<JiraConfig>(
     connection.config ?? {
       deployment: "cloud",
       base_url: "",
@@ -56,6 +59,21 @@ function JiraForm({
   const [secret, setSecret] = useState("")
   const [hasSecret, setHasSecret] = useState(connection.has_secret)
   const [dirty, setDirty] = useState(false)
+  const assistant = usePageDraft(
+    orgId,
+    "update_jira_connection",
+    useCallback(() => {
+      if (connection.config) setConfig(connection.config)
+      setSchedule(connection.sync_schedule ?? "off")
+      setSecret("")
+      setHasSecret(connection.has_secret)
+      setDirty(false)
+    }, [connection]),
+  )
+  const config = assistant.values(manualConfig)
+  const displayedSchedule = assistant.values({
+    sync_schedule: schedule,
+  }).sync_schedule
   const runs = useSourceRuns(orgId, "jira")
   const latest = runs.data?.[0]
   const syncing = latest?.status === "queued" || latest?.status === "running"
@@ -98,6 +116,11 @@ function JiraForm({
       className="space-y-4 rounded-xl border p-4 sm:p-6"
     >
       <h3 className="text-lg font-semibold">连接 Jira</h3>
+      <PageDraft
+        orgId={orgId}
+        draft={assistant.draft}
+        error={assistant.error}
+      />
       <form
         className="space-y-4"
         onSubmit={(event) => {
@@ -105,32 +128,39 @@ function JiraForm({
           save.mutate()
         }}
       >
-        <fieldset disabled={busy || syncing} className="space-y-4">
+        <fieldset
+          disabled={busy || syncing || assistant.blocked}
+          className="space-y-4"
+        >
           <legend className="mb-2 text-sm font-medium">Jira 类型</legend>
-          <div className="flex flex-wrap gap-4">
-            {(["cloud", "data_center"] as const).map((type) => (
-              <label key={type} className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="deployment"
-                  checked={config.deployment === type}
-                  onChange={() =>
-                    change({
-                      deployment: type,
-                      auth_type: type === "cloud" ? "api_token" : "pat",
-                      username: "",
-                    })
-                  }
-                />
-                {type === "cloud" ? "Jira Cloud" : "Jira Data Center / Server"}
-              </label>
-            ))}
-          </div>
+          <DraftField changed={assistant.changed("deployment")}>
+            <div className="flex flex-wrap gap-4">
+              {(["cloud", "data_center"] as const).map((type) => (
+                <label key={type} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="deployment"
+                    checked={config.deployment === type}
+                    onChange={() =>
+                      change({
+                        deployment: type,
+                        auth_type: type === "cloud" ? "api_token" : "pat",
+                        username: "",
+                      })
+                    }
+                  />
+                  {type === "cloud"
+                    ? "Jira Cloud"
+                    : "Jira Data Center / Server"}
+                </label>
+              ))}
+            </div>
+          </DraftField>
           <p className="text-xs text-muted-foreground">
             按企业正在使用的 Jira
             版本选择，云端版与企业自行部署的版本需要不同的连接方式。
           </p>
-          <div className="space-y-2">
+          <DraftField changed={assistant.changed("base_url")}>
             <Label htmlFor="jira-url">站点地址</Label>
             <Input
               id="jira-url"
@@ -144,9 +174,9 @@ function JiraForm({
             <p className="text-xs text-muted-foreground">
               填写企业 Jira 首页的网址，用于读取已授权的工作记录。
             </p>
-          </div>
+          </DraftField>
           {config.deployment === "data_center" && (
-            <div className="space-y-2">
+            <DraftField changed={assistant.changed("auth_type")}>
               <Label htmlFor="jira-auth">认证方式</Label>
               <select
                 id="jira-auth"
@@ -161,10 +191,10 @@ function JiraForm({
                 <option value="pat">个人访问令牌（Jira 8.14 及以上）</option>
                 <option value="basic">用户名和密码（更老的版本）</option>
               </select>
-            </div>
+            </DraftField>
           )}
           {config.auth_type !== "pat" && (
-            <div className="space-y-2">
+            <DraftField changed={assistant.changed("username")}>
               <Label htmlFor="jira-user">
                 {config.deployment === "cloud" ? "账号邮箱" : "用户名"}
               </Label>
@@ -176,7 +206,7 @@ function JiraForm({
                 value={config.username ?? ""}
                 onChange={(e) => change({ username: e.target.value })}
               />
-            </div>
+            </DraftField>
           )}
           <div className="space-y-2">
             <Label htmlFor="jira-secret">
@@ -210,7 +240,7 @@ function JiraForm({
               </p>
             )}
           </div>
-          <div className="space-y-2">
+          <DraftField changed={assistant.changed("start_date")}>
             <Label htmlFor="jira-start">首次同步的起始日期</Label>
             <Input
               id="jira-start"
@@ -222,13 +252,13 @@ function JiraForm({
             <p className="text-xs text-muted-foreground">
               首次同步只读取这个日期之后的工作记录，默认从一年前开始。
             </p>
-          </div>
-          <div className="space-y-2">
+          </DraftField>
+          <DraftField changed={assistant.changed("sync_schedule")}>
             <Label htmlFor="jira-schedule">同步周期</Label>
             <select
               id="jira-schedule"
               className="h-9 w-full rounded-md border bg-background px-2 text-sm"
-              value={schedule}
+              value={displayedSchedule}
               onChange={(e) => {
                 const value = e.target.value
                 if (
@@ -251,35 +281,37 @@ function JiraForm({
             <p className="text-xs text-muted-foreground">
               开启周期后按时补充工作记录；关闭时仍可点击「立即同步」。
             </p>
-          </div>
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="mt-1"
-              checked={config.include_description}
-              onChange={(e) =>
-                change({ include_description: e.target.checked })
-              }
-            />
-            <span>
-              同步任务描述（description）
-              <span className="mt-1 block text-xs text-muted-foreground">
-                勾选后，任务描述会存进平台，并可能在起草时发给模型
+          </DraftField>
+          <DraftField changed={assistant.changed("include_description")}>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={config.include_description}
+                onChange={(e) =>
+                  change({ include_description: e.target.checked })
+                }
+              />
+              <span>
+                同步任务描述（description）
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  勾选后，任务描述会存进平台，并可能在起草时发给模型
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+          </DraftField>
         </fieldset>
         <p className="text-xs text-muted-foreground">
           修改后请先保存，再测试连接或立即同步。
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={busy || syncing}>
+          <Button type="submit" disabled={busy || syncing || assistant.blocked}>
             保存
           </Button>
           <Button
             type="button"
             variant="outline"
-            disabled={busy || dirty || !hasSecret}
+            disabled={busy || dirty || !hasSecret || assistant.blocked}
             onClick={() => test.mutate()}
           >
             测试连接
@@ -293,7 +325,8 @@ function JiraForm({
               !hasSecret ||
               syncing ||
               runs.isPending ||
-              runs.isError
+              runs.isError ||
+              assistant.blocked
             }
             onClick={() => sync.mutate()}
           >

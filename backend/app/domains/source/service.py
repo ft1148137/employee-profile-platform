@@ -8,6 +8,9 @@ from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.connectors.jira.client import (
+    CloudJiraClient,
+    DataCenterJiraClient,
+    JiraClient,
     RetryableSourceError,
     SourceAuthError,
     SourceUnreachable,
@@ -56,7 +59,11 @@ def public_jira(connection: SourceConnection | None) -> JiraConnectionPublic:
 
 
 def save_jira(
-    session: Session, principal: Principal, body: JiraConnectionUpdate
+    session: Session,
+    principal: Principal,
+    body: JiraConnectionUpdate,
+    *,
+    commit: bool = True,
 ) -> JiraConnectionPublic:
     assert principal.user_id is not None
     session.exec(
@@ -111,7 +118,10 @@ def save_jira(
             "secret_changed": body.secret is not None,
         },
     )
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     return public_jira(connection)
 
 
@@ -149,8 +159,22 @@ def check_jira(session: Session, principal: Principal) -> JiraConnectionTest:
     if connection is None:
         return JiraConnectionTest(ok=False, message="请先保存 Jira 配置")
     try:
+        if not connection.secret_ciphertext:
+            return JiraConnectionTest(ok=False, message="请先保存 Jira 凭据")
         config = JiraConfig.model_validate(connection.config)
-        with jira_client_for(connection) as jira:
+        return _probe_jira(config, jira_client_for(connection))
+    except SecretUnavailable as error:
+        return JiraConnectionTest(ok=False, message=str(error))
+
+
+def test_jira(config: JiraConfig, secret: str) -> JiraConnectionTest:
+    client = CloudJiraClient if config.deployment == "cloud" else DataCenterJiraClient
+    return _probe_jira(config, client(config, secret, None))
+
+
+def _probe_jira(config: JiraConfig, client: JiraClient) -> JiraConnectionTest:
+    try:
+        with client as jira:
             account = jira.current_account()
             jira.search(datetime.combine(config.start_date, time.min, UTC), None, 1)
     except (
