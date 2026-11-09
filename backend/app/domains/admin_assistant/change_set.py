@@ -180,8 +180,15 @@ def propose(
     if row and (row.session_id != session_id or row.status != "draft"):
         raise ChangeSetError("这份改动已结束，请重新起草")
     items: list[dict[str, JsonValue]] = []
+    secret_fields: set[str] = set()
     for item in body.items:
         entry, args = _entry(item.function, item.args)
+        # Secrets are stored by field for the whole change set; each needs one target.
+        if secret_fields.intersection(entry.secret_fields):
+            raise ChangeSetError(
+                "同一份改动不能重复配置连接，请合并连接设置后重新起草", 422
+            )
+        secret_fields.update(entry.secret_fields)
         items.append(
             {
                 "function": entry.name,

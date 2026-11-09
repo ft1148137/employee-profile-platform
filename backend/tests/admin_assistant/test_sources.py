@@ -55,6 +55,29 @@ def draft(db: Session, demo: tuple, args: dict) -> AdminChangeSet:
     )
 
 
+def test_duplicate_credential_targets_are_rejected(db: Session, demo: tuple) -> None:
+    with pytest.raises(c.ChangeSetError, match="不能重复配置连接"):
+        proposal(
+            db,
+            demo,
+            items=[
+                {"function": "update_jira_connection", "args": CONFIG},
+                {
+                    "function": "update_jira_connection",
+                    "args": CONFIG | {"base_url": "https://other.example.com"},
+                },
+            ],
+        )
+    assert (
+        db.exec(
+            select(AdminChangeSet).where(
+                AdminChangeSet.org_id == principal(db, demo).org_id
+            )
+        ).all()
+        == []
+    )
+
+
 @pytest.mark.parametrize("rebind", [False, True])
 def test_credential_undo(db: Session, demo: tuple, rebind: bool) -> None:
     setup(db, demo)
