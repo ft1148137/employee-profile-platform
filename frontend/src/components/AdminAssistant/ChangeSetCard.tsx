@@ -1,8 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
-import { AdminAssistantService, type ChangeSetPublic } from "@/client"
+import {
+  AdminAssistantService,
+  type ChangeSetApplied,
+  type ChangeSetPublic,
+} from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 
 const labels: Record<string, string> = {
   reminder_schedule: "提醒周期",
@@ -50,7 +55,11 @@ export function ChangeSetCard({
   disabled: boolean
   inline?: boolean
 }) {
+  const [, copy] = useCopyToClipboard()
   const client = useQueryClient()
+  const [oneTime, setOneTime] = useState<
+    NonNullable<ChangeSetApplied["one_time"]>
+  >([])
   const [reverse, setReverse] = useState<ChangeSetPublic | null>(null)
   const path = { org_id: orgId, id: changeSet.id }
   const key = ["admin-change-set", orgId, changeSet.id]
@@ -65,13 +74,16 @@ export function ChangeSetCard({
     current.status === "draft" && Boolean(current.confirmed_once_at)
   const action = useMutation({
     mutationFn: async (kind: "apply" | "discard" | "undo") => {
-      if (kind === "apply")
-        return (
+      if (kind === "apply") {
+        const { one_time, ...data } = (
           await AdminAssistantService.assistantApplyChangeSet({
             path,
             body: { revision: current.revision },
           })
         ).data
+        setOneTime(one_time ?? [])
+        return data
+      }
       if (kind === "discard")
         return (await AdminAssistantService.assistantDiscardChangeSet({ path }))
           .data
@@ -99,37 +111,34 @@ export function ChangeSetCard({
       </div>
       {current.items.map((item, i) => (
         <div key={i} className="space-y-2">
-          <p className="text-sm font-medium">
-            {item.function === "update_approval_policy"
-              ? "经理确认规则"
-              : "定期提醒设置"}
-          </p>
-          {Object.keys(item.after).map((field) => (
-            <div key={field} className="rounded-lg bg-muted/40 p-3 text-sm">
-              <p className="mb-2 text-muted-foreground">
-                {labels[field] ?? "设置项"}
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { title: "修改前", value: item.before?.[field] },
-                  { title: "修改后", value: item.after[field] },
-                ].map(({ title, value }) => (
-                  <div key={title}>
-                    <p className="text-xs text-muted-foreground">{title}</p>
-                    <p
-                      className={
-                        title === "修改后" ? "font-semibold text-primary" : ""
-                      }
-                    >
-                      {value == null
-                        ? "未设置"
-                        : `${display(value)}${field === "stale_after_months" ? " 个月" : ""}`}
-                    </p>
-                  </div>
-                ))}
+          <p className="text-sm font-medium">{item.title}</p>
+          {item.undoable &&
+            Object.keys(item.after).map((field) => (
+              <div key={field} className="rounded-lg bg-muted/40 p-3 text-sm">
+                <p className="mb-2 text-muted-foreground">
+                  {labels[field] ?? "设置项"}
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { title: "修改前", value: item.before?.[field] },
+                    { title: "修改后", value: item.after[field] },
+                  ].map(({ title, value }) => (
+                    <div key={title}>
+                      <p className="text-xs text-muted-foreground">{title}</p>
+                      <p
+                        className={
+                          title === "修改后" ? "font-semibold text-primary" : ""
+                        }
+                      >
+                        {value == null
+                          ? "未设置"
+                          : `${display(value)}${field === "stale_after_months" ? " 个月" : ""}`}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
           {item.impact && (
             <p className="text-xs text-muted-foreground">
               影响 {item.impact.count} 人 · {item.impact.text}
@@ -155,6 +164,55 @@ export function ChangeSetCard({
             ))}
         </div>
       )}
+      {oneTime.map((output, i) => (
+        <div key={i} className="space-y-2 rounded-lg border p-3 text-sm">
+          <p>初始密码和账号表只显示这一次，请妥善保管。</p>
+          {output.type === "initial_password" ? (
+            <>
+              <p>
+                {output.display_name} · {output.username}
+              </p>
+              <label className="block">
+                初始密码
+                <input
+                  aria-label="初始密码"
+                  readOnly
+                  value={output.initial_password}
+                  className="ml-2 rounded border p-2"
+                />
+              </label>
+              <Button
+                variant="outline"
+                onClick={() => copy(output.initial_password)}
+              >
+                复制初始密码
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => {
+                const bytes = Uint8Array.from(
+                  atob(output.content_base64),
+                  (c) => c.charCodeAt(0),
+                )
+                const url = URL.createObjectURL(
+                  new Blob([bytes], {
+                    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                  }),
+                )
+                const link = document.createElement("a")
+                link.href = url
+                link.download = output.filename
+                link.click()
+                URL.revokeObjectURL(url)
+              }}
+            >
+              下载账号表
+            </Button>
+          )}
+        </div>
+      ))}
       <SetupError error={action.error ?? query.error} />
       {current.status === "draft" && (
         <div className="flex gap-2">
@@ -171,7 +229,9 @@ export function ChangeSetCard({
         </div>
       )}
       {current.status === "applied" &&
-        current.items.every((item) => item.before !== null) && (
+        current.items.every(
+          (item) => item.undoable && item.before !== null,
+        ) && (
           <Button
             variant="outline"
             disabled={busy}
