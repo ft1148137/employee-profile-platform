@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useRef, useState } from "react"
 import { CapabilitiesService, type DictionaryPreview } from "@/client"
 import { ChangeHistory } from "@/components/Admin/ChangeHistory"
+import { PageDraft } from "@/components/AdminAssistant/PageDraft"
+import { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
 import { OrgState } from "@/components/Profile/OrgState"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
@@ -24,6 +26,7 @@ export function CapabilityDictionary() {
 
 function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
   const client = useQueryClient()
+  const suggestion = usePageDraft(orgId, "update_capability_dictionary")
   const fileInput = useRef<HTMLInputElement>(null)
   const [editing, setEditing] = useState(false)
   const [filename, setFilename] = useState("")
@@ -94,7 +97,7 @@ function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
     },
     onError: setError,
   })
-  const busy = upload.isPending || save.isPending
+  const busy = upload.isPending || save.isPending || suggestion.blocked
   return (
     <div className="max-w-4xl space-y-6 py-6">
       <header className="border-l-4 border-primary pl-4">
@@ -131,6 +134,11 @@ function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
             </Button>
           ))}
       </div>
+      <PageDraft
+        orgId={orgId}
+        draft={suggestion.draft}
+        error={suggestion.error}
+      />
       {admin && (
         <section
           className="space-y-4 rounded-xl border p-6"
@@ -180,7 +188,7 @@ function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
             </p>
           )}
           {upload.isPending && <p role="status">正在分析词典…</p>}
-          {preview && (
+          {preview && !suggestion.draft && (
             <DictionaryPreviewPanel
               preview={preview}
               busy={busy}
@@ -191,9 +199,15 @@ function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
           )}
         </section>
       )}
-      {admin && editing && (
+      {admin && (editing || suggestion.draft) && (
         <DictionaryEditor
+          key={
+            suggestion.draft
+              ? `${suggestion.draft.id}:${suggestion.draft.revision}`
+              : "manual"
+          }
           orgId={orgId}
+          suggestion={suggestion}
           onClose={() => setEditing(false)}
           onSaved={() => {
             setEditing(false)

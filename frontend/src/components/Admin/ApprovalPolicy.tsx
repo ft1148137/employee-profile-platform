@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { ApprovalPolicyService, type PolicyInput } from "@/client"
 import { ChangeHistory } from "@/components/Admin/ChangeHistory"
+import { DraftField } from "@/components/AdminAssistant/DraftField"
+import { PageDraft } from "@/components/AdminAssistant/PageDraft"
+import { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
@@ -24,6 +27,11 @@ const fieldLabels: Record<string, string> = {
 export function ApprovalPolicy({ orgId }: { orgId: string }) {
   const client = useQueryClient()
   const [changes, setChanges] = useState<PolicyInput | null>(null)
+  const suggestion = usePageDraft(
+    orgId,
+    "update_approval_policy",
+    useCallback(() => setChanges(null), []),
+  )
   const policy = useQuery({
     queryKey: ["approval-policy", orgId],
     queryFn: async () =>
@@ -47,7 +55,7 @@ export function ApprovalPolicy({ orgId }: { orgId: string }) {
   })
   if (policy.isPending) return <ProfileLoading />
   if (policy.isError) return <ProfileError retry={() => policy.refetch()} />
-  const current = changes ?? policy.data.current
+  const current = suggestion.values(changes ?? policy.data.current)
   return (
     <div className="space-y-6">
       <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-2">
@@ -57,11 +65,17 @@ export function ApprovalPolicy({ orgId }: { orgId: string }) {
           14 天。
         </p>
       </div>
+      <PageDraft
+        orgId={orgId}
+        draft={suggestion.draft}
+        error={suggestion.error}
+      />
       <form
         aria-label="审批规则"
         className="space-y-5"
         onSubmit={(event) => {
           event.preventDefault()
+          if (suggestion.blocked) return
           save.mutate({
             require_manager: current.require_manager,
             category_overrides: current.category_overrides,
@@ -69,89 +83,99 @@ export function ApprovalPolicy({ orgId }: { orgId: string }) {
           })
         }}
       >
-        <fieldset disabled={save.isPending} className="space-y-5">
-          <label className="flex items-center gap-3 rounded-lg border p-4">
-            <input
-              type="checkbox"
-              checked={current.require_manager}
-              onChange={(event) =>
-                setChanges({
-                  ...current,
-                  require_manager: event.target.checked,
-                })
-              }
-            />
-            <span className="font-medium">全企业需要经理确认</span>
-          </label>
+        <fieldset
+          disabled={save.isPending || suggestion.blocked}
+          className="space-y-5"
+        >
+          <DraftField changed={suggestion.changed("require_manager")}>
+            <label className="flex items-center gap-3 rounded-lg border p-4">
+              <input
+                type="checkbox"
+                checked={current.require_manager}
+                onChange={(event) =>
+                  setChanges({
+                    ...current,
+                    require_manager: event.target.checked,
+                  })
+                }
+              />
+              <span className="font-medium">全企业需要经理确认</span>
+            </label>
+          </DraftField>
+
           <p className="text-sm text-muted-foreground">
             打开后员工提交的判断须经经理批准才发布；关闭后由员工本人确认并标为暂定。
           </p>
-          <div className="space-y-3">
-            <h3 className="font-medium">按能力类别设置</h3>
-            <p className="text-sm text-muted-foreground">
-              单独设置的类别优先于全企业要求；选择「跟随全企业」即可使用上面的规则。
-            </p>
-            {policy.data.categories.length === 0 && (
+          <DraftField changed={suggestion.changed("category_overrides")}>
+            <div className="space-y-3">
+              <h3 className="font-medium">按能力类别设置</h3>
               <p className="text-sm text-muted-foreground">
-                当前词典没有能力类别，使用全企业设置。
+                单独设置的类别优先于全企业要求；选择「跟随全企业」即可使用上面的规则。
               </p>
-            )}
-            {policy.data.categories.map((category, index) => (
-              <div
-                key={category}
-                className="grid items-center gap-2 sm:grid-cols-2"
-              >
-                <Label htmlFor={`policy-category-${index}`}>{category}</Label>
-                <Select
-                  value={
-                    current.category_overrides?.[category] === undefined
-                      ? "inherit"
-                      : current.category_overrides[category]
-                        ? "required"
-                        : "optional"
-                  }
-                  onValueChange={(value) => {
-                    const overrides = { ...current.category_overrides }
-                    if (value === "inherit") delete overrides[category]
-                    else overrides[category] = value === "required"
-                    setChanges({ ...current, category_overrides: overrides })
-                  }}
+              {policy.data.categories.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  当前词典没有能力类别，使用全企业设置。
+                </p>
+              )}
+              {policy.data.categories.map((category, index) => (
+                <div
+                  key={category}
+                  className="grid items-center gap-2 sm:grid-cols-2"
                 >
-                  <SelectTrigger id={`policy-category-${index}`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="inherit">跟随全企业</SelectItem>
-                    <SelectItem value="required">需要</SelectItem>
-                    <SelectItem value="optional">不需要</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
-          </div>
-          <div className="space-y-2 max-w-sm">
-            <Label htmlFor="owner-review-days">员工过目期限（天）</Label>
-            <Input
-              id="owner-review-days"
-              type="number"
-              min={1}
-              max={90}
-              step={1}
-              required
-              value={current.owner_review_days}
-              onChange={(event) =>
-                setChanges({
-                  ...current,
-                  owner_review_days: Number(event.target.value),
-                })
-              }
-            />
-            <p className="text-xs text-muted-foreground">
-              1–90 天。到期后管理员可以批量送审。
-            </p>
-          </div>
+                  <Label htmlFor={`policy-category-${index}`}>{category}</Label>
+                  <Select
+                    value={
+                      current.category_overrides?.[category] === undefined
+                        ? "inherit"
+                        : current.category_overrides[category]
+                          ? "required"
+                          : "optional"
+                    }
+                    onValueChange={(value) => {
+                      const overrides = { ...current.category_overrides }
+                      if (value === "inherit") delete overrides[category]
+                      else overrides[category] = value === "required"
+                      setChanges({ ...current, category_overrides: overrides })
+                    }}
+                  >
+                    <SelectTrigger id={`policy-category-${index}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inherit">跟随全企业</SelectItem>
+                      <SelectItem value="required">需要</SelectItem>
+                      <SelectItem value="optional">不需要</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+          </DraftField>
+          <DraftField changed={suggestion.changed("owner_review_days")}>
+            <div className="space-y-2 max-w-sm">
+              <Label htmlFor="owner-review-days">员工过目期限（天）</Label>
+              <Input
+                id="owner-review-days"
+                type="number"
+                min={1}
+                max={90}
+                step={1}
+                required
+                value={current.owner_review_days}
+                onChange={(event) =>
+                  setChanges({
+                    ...current,
+                    owner_review_days: Number(event.target.value),
+                  })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                1–90 天。到期后管理员可以批量送审。
+              </p>
+            </div>
+          </DraftField>
           <SetupError error={save.error} />
-          <Button type="submit" disabled={!changes}>
+          <Button type="submit" disabled={suggestion.blocked || !changes}>
             {save.isPending ? "正在保存…" : "保存审批规则"}
           </Button>
         </fieldset>

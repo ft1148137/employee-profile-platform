@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { isAxiosError } from "axios"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import {
   CapabilitiesService,
   DraftingSettingsService,
@@ -9,6 +9,9 @@ import {
 } from "@/client"
 import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { departmentOptions } from "@/components/Admin/departments"
+import { DraftField } from "@/components/AdminAssistant/DraftField"
+import { PageDraft } from "@/components/AdminAssistant/PageDraft"
+import { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
@@ -27,6 +30,11 @@ export function DraftingPage() {
 function DraftingSettings({ orgId }: { orgId: string }) {
   const client = useQueryClient()
   const [changes, setChanges] = useState<DraftingSettingsUpdate | null>(null)
+  const suggestion = usePageDraft(
+    orgId,
+    "update_drafting_settings",
+    useCallback(() => setChanges(null), []),
+  )
   const [message, setMessage] = useState("")
   const settings = useQuery({
     queryKey: ["drafting-settings", orgId],
@@ -89,7 +97,9 @@ function DraftingSettings({ orgId }: { orgId: string }) {
         }}
       />
     )
-  const current: DraftingSettingsUpdate = changes ?? settings.data
+  const current: DraftingSettingsUpdate = suggestion.values(
+    changes ?? settings.data,
+  )
   const keys = current.excluded_capability_keys
   const ids = current.disabled_department_ids
   const rows = departments.data?.data ?? []
@@ -121,107 +131,120 @@ function DraftingSettings({ orgId }: { orgId: string }) {
         目前共有 {settings.data?.excluded_employee_count} 名员工不自动起草，其中{" "}
         {settings.data?.opted_out_count} 人是本人选择。
       </p>
+      <PageDraft
+        orgId={orgId}
+        draft={suggestion.draft}
+        error={suggestion.error}
+      />
       <form
         className="space-y-6"
         onSubmit={(e) => {
           e.preventDefault()
+          if (suggestion.blocked) return
           save.mutate({
             excluded_capability_keys: keys,
             disabled_department_ids: ids,
           })
         }}
       >
-        <section
-          className="rounded-xl border p-6 space-y-4"
-          aria-labelledby="capability-title"
-        >
-          <h2 id="capability-title" className="text-lg font-semibold">
-            不由系统自动推断的能力
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            勾选的能力，系统起草时一律跳过，画像上显示为「未知」，员工可以自己提出。
-          </p>
-          {noDictionary && <p>企业管理员还没有选择能力词典</p>}
-          {[
-            ...new Set(
-              (capabilities.data?.data ?? []).map(
-                (c) => c.category ?? "未分类",
+        <DraftField changed={suggestion.changed("excluded_capability_keys")}>
+          <section
+            className="rounded-xl border p-6 space-y-4"
+            aria-labelledby="capability-title"
+          >
+            <h2 id="capability-title" className="text-lg font-semibold">
+              不由系统自动推断的能力
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              勾选的能力，系统起草时一律跳过，画像上显示为「未知」，员工可以自己提出。
+            </p>
+            {noDictionary && <p>企业管理员还没有选择能力词典</p>}
+            {[
+              ...new Set(
+                (capabilities.data?.data ?? []).map(
+                  (c) => c.category ?? "未分类",
+                ),
               ),
-            ),
-          ].map((category) => (
-            <fieldset key={category} className="space-y-3">
-              <legend className="mb-3 text-sm font-medium text-muted-foreground">
-                {category}
-              </legend>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {capabilities.data?.data
-                  .filter((c) => (c.category ?? "未分类") === category)
-                  .map((c) => (
-                    <label
-                      key={c.key}
-                      htmlFor={`cap-${c.key}`}
-                      className="flex items-center gap-3 text-sm"
-                    >
-                      <Checkbox
-                        id={`cap-${c.key}`}
-                        checked={keys.includes(c.key)}
-                        disabled={save.isPending}
-                        onCheckedChange={() =>
-                          toggle("excluded_capability_keys", c.key)
-                        }
-                      />
-                      {c.name}
-                    </label>
-                  ))}
-              </div>
-            </fieldset>
-          ))}
-        </section>
-        <section
-          className="rounded-xl border p-6 space-y-4"
-          aria-labelledby="department-title"
-        >
-          <h2 id="department-title" className="text-lg font-semibold">
-            不自动起草的部门
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            勾选后，该部门及其下级部门不再自动起草初始画像；员工仍可自己提出画像更新。
-          </p>
-          {departmentOptions(rows).map((d) => {
-            const ancestors = d.name.split(" / ").length - 1
-            let parent = rows.find((r) => r.id === d.id)?.parent_department_id
-            const visited = new Set([d.id])
-            let included = false
-            while (parent && !visited.has(parent)) {
-              visited.add(parent)
-              if (ids.includes(parent)) included = true
-              parent = rows.find((r) => r.id === parent)?.parent_department_id
-            }
-            return (
-              <label
-                key={d.id}
-                htmlFor={`dept-${d.id}`}
-                className="flex items-center gap-3 text-sm"
-                style={{ paddingLeft: ancestors * 20 }}
-              >
-                <Checkbox
-                  id={`dept-${d.id}`}
-                  checked={included || ids.includes(d.id)}
-                  disabled={included || save.isPending}
-                  onCheckedChange={() =>
-                    toggle("disabled_department_ids", d.id)
-                  }
-                />
-                {rows.find((r) => r.id === d.id)?.name}
-                <span className="text-xs text-muted-foreground">
-                  {included ? "已包含在上级部门中" : "含下级部门"}
-                </span>
-              </label>
-            )
-          })}
-        </section>
+            ].map((category) => (
+              <fieldset key={category} className="space-y-3">
+                <legend className="mb-3 text-sm font-medium text-muted-foreground">
+                  {category}
+                </legend>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {capabilities.data?.data
+                    .filter((c) => (c.category ?? "未分类") === category)
+                    .map((c) => (
+                      <label
+                        key={c.key}
+                        htmlFor={`cap-${c.key}`}
+                        className="flex items-center gap-3 text-sm"
+                      >
+                        <Checkbox
+                          id={`cap-${c.key}`}
+                          checked={keys.includes(c.key)}
+                          disabled={save.isPending || suggestion.blocked}
+                          onCheckedChange={() =>
+                            toggle("excluded_capability_keys", c.key)
+                          }
+                        />
+                        {c.name}
+                      </label>
+                    ))}
+                </div>
+              </fieldset>
+            ))}
+          </section>
+        </DraftField>
+        <DraftField changed={suggestion.changed("disabled_department_ids")}>
+          <section
+            className="rounded-xl border p-6 space-y-4"
+            aria-labelledby="department-title"
+          >
+            <h2 id="department-title" className="text-lg font-semibold">
+              不自动起草的部门
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              勾选后，该部门及其下级部门不再自动起草初始画像；员工仍可自己提出画像更新。
+            </p>
+            {departmentOptions(rows).map((d) => {
+              const ancestors = d.name.split(" / ").length - 1
+              let parent = rows.find((r) => r.id === d.id)?.parent_department_id
+              const visited = new Set([d.id])
+              let included = false
+              while (parent && !visited.has(parent)) {
+                visited.add(parent)
+                if (ids.includes(parent)) included = true
+                parent = rows.find((r) => r.id === parent)?.parent_department_id
+              }
+              return (
+                <label
+                  key={d.id}
+                  htmlFor={`dept-${d.id}`}
+                  className="flex items-center gap-3 text-sm"
+                  style={{ paddingLeft: ancestors * 20 }}
+                >
+                  <Checkbox
+                    id={`dept-${d.id}`}
+                    checked={included || ids.includes(d.id)}
+                    disabled={included || save.isPending || suggestion.blocked}
+                    onCheckedChange={() =>
+                      toggle("disabled_department_ids", d.id)
+                    }
+                  />
+                  {rows.find((r) => r.id === d.id)?.name}
+                  <span className="text-xs text-muted-foreground">
+                    {included ? "已包含在上级部门中" : "含下级部门"}
+                  </span>
+                </label>
+              )
+            })}
+          </section>
+        </DraftField>
         {message && <p role={save.isError ? "alert" : "status"}>{message}</p>}
-        <Button type="submit" disabled={save.isPending || !changes}>
+        <Button
+          type="submit"
+          disabled={save.isPending || suggestion.blocked || !changes}
+        >
           {save.isPending ? "正在保存…" : "保存"}
         </Button>
       </form>

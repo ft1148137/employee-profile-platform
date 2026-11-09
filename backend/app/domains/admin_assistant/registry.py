@@ -522,6 +522,10 @@ async def admin_read(
 
 NOT_FOR_ASSISTANT = {
     (
+        "GET",
+        "/admin-assistant/change-sets",
+    ): "手工页面读取本人当前会话的草稿，不作为模型工具",
+    (
         "PUT",
         "/admin-assistant/change-sets/{id}/secrets/{field}",
     ): "密钥由创建人通过安全输入框直接提交",

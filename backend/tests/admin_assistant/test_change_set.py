@@ -360,7 +360,13 @@ def test_private_changes(db: Session, demo: tuple, client: TestClient) -> None:
     )
     db.commit()
     url = f"{demo[0]}/admin-assistant/change-sets/{row.id}"
+    listing = f"{demo[0]}/admin-assistant/change-sets?status=draft&function=update_update_settings"
     for role in ("manager", "employee", "foreign"):
+        response = client.get(listing, headers=demo[2][role])
+        if role == "manager":
+            assert response.status_code == 200 and response.json() == []
+        else:
+            assert response.status_code == 404
         for suffix in ("", "/apply", "/discard", "/undo"):
             result = client.request(
                 "GET" if not suffix else "POST",
@@ -377,6 +383,66 @@ def test_private_changes(db: Session, demo: tuple, client: TestClient) -> None:
         with pytest.raises(c.ChangeSetError) as error:
             c.get(db, wrong, row.id)
         assert error.value.status_code == 404
+    other = replace(p, user_id=membership.user_id)
+    sid = store.create_session(db, other).id
+    other_draft = c.propose(
+        db,
+        other,
+        sid,
+        ProposeChanges.model_validate(
+            {
+                "items": [
+                    {
+                        "function": "update_update_settings",
+                        "args": {"reminder_schedule": "off"},
+                    }
+                ]
+            }
+        ),
+    )
+    db.commit()
+    own = client.get(listing, headers=demo[2]["admin"])
+    theirs = client.get(listing, headers=demo[2]["manager"])
+    assert [item["id"] for item in own.json()] == [str(row.id)]
+    assert [item["id"] for item in theirs.json()] == [str(other_draft.id)]
+
+
+def test_list_current_drafts(db: Session, demo: tuple, client: TestClient) -> None:
+    p = principal(db, demo)
+    old = proposal(db, demo)
+    current = proposal(db, demo)
+    for status in ("applied", "discarded", "stale", "undone"):
+        db.add(
+            AdminChangeSet(
+                org_id=p.org_id,
+                created_by_user_id=p.user_id,
+                session_id=current.session_id,
+                status=status,
+                items=current.items,
+            )
+        )
+    db.commit()
+    url = f"{demo[0]}/admin-assistant/change-sets"
+    params = {"status": "draft", "function": "update_update_settings"}
+    response = client.get(url, params=params, headers=demo[2]["admin"])
+    assert response.status_code == 200
+    assert response.json() == [c.public(current).model_dump(mode="json")]
+    assert c.get(db, p, old.id).status == "draft"
+    assert (
+        client.get(
+            url, params={**params, "function": "unknown"}, headers=demo[2]["admin"]
+        ).json()
+        == []
+    )
+    assert (
+        client.get(
+            url, params={**params, "status": "applied"}, headers=demo[2]["admin"]
+        ).status_code
+        == 422
+    )
+    assert c.list_drafts(db, replace(p, org_id=uuid4()), params["function"]) == []
+    store.create_session(db, p)
+    assert client.get(url, params=params, headers=demo[2]["admin"]).json() == []
 
 
 def test_migration(migration_engine: Engine) -> None:

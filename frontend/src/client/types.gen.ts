@@ -5715,6 +5715,47 @@ export type loginTestTokenResponses = {
 
 export type loginTestTokenResponse = loginTestTokenResponses[keyof loginTestTokenResponses];
 
+export type adminAssistantListChangeSetsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query: {
+        /**
+         * Function
+         */
+        function: string;
+        /**
+         * Status
+         */
+        status: 'draft';
+    };
+    url: '/api/v1/orgs/{org_id}/admin-assistant/change-sets';
+};
+
+export type adminAssistantListChangeSetsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantListChangeSetsError = adminAssistantListChangeSetsErrors[keyof adminAssistantListChangeSetsErrors];
+
+export type adminAssistantListChangeSetsResponses = {
+    /**
+     * Response Admin-Assistant-List Change Sets
+     *
+     * Successful Response
+     */
+    200: Array<ChangeSetPublic>;
+};
+
+export type adminAssistantListChangeSetsResponse = adminAssistantListChangeSetsResponses[keyof adminAssistantListChangeSetsResponses];
+
 export type adminAssistantSaveChangeSetSecretData = {
     body: SecretInput;
     path: {

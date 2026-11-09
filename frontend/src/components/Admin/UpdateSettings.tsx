@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { DraftingSettingsService, type UpdateSettingsInput } from "@/client"
 import { ChangeHistory } from "@/components/Admin/ChangeHistory"
+import { DraftField } from "@/components/AdminAssistant/DraftField"
+import { PageDraft } from "@/components/AdminAssistant/PageDraft"
+import { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +21,11 @@ import { handleError } from "@/utils"
 export function UpdateSettings({ orgId }: { orgId: string }) {
   const client = useQueryClient()
   const [changes, setChanges] = useState<UpdateSettingsInput | null>(null)
+  const suggestion = usePageDraft(
+    orgId,
+    "update_update_settings",
+    useCallback(() => setChanges(null), []),
+  )
   const [message, setMessage] = useState("")
   const settings = useQuery({
     queryKey: ["update-settings", orgId],
@@ -44,7 +52,7 @@ export function UpdateSettings({ orgId }: { orgId: string }) {
   })
   if (settings.isPending) return <ProfileLoading />
   if (settings.isError) return <ProfileError retry={() => settings.refetch()} />
-  const current = changes ?? settings.data
+  const current = suggestion.values(changes ?? settings.data)
   return (
     <section
       className="rounded-xl border p-6 space-y-4"
@@ -56,10 +64,16 @@ export function UpdateSettings({ orgId }: { orgId: string }) {
       <p className="text-sm text-muted-foreground">
         到期时在员工收件箱中询问一两个问题；回答只保存为本人自述。证据较旧只作提醒，判断状态保持不变。
       </p>
+      <PageDraft
+        orgId={orgId}
+        draft={suggestion.draft}
+        error={suggestion.error}
+      />
       <form
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault()
+          if (suggestion.blocked) return
           save.mutate({
             reminder_schedule: current.reminder_schedule,
             stale_after_months: current.stale_after_months,
@@ -67,11 +81,11 @@ export function UpdateSettings({ orgId }: { orgId: string }) {
         }}
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
+          <DraftField changed={suggestion.changed("reminder_schedule")}>
             <Label htmlFor="reminder-schedule">提醒周期</Label>
             <Select
               value={current.reminder_schedule}
-              disabled={save.isPending}
+              disabled={save.isPending || suggestion.blocked}
               onValueChange={(
                 value: NonNullable<UpdateSettingsInput["reminder_schedule"]>,
               ) => {
@@ -91,8 +105,8 @@ export function UpdateSettings({ orgId }: { orgId: string }) {
             <p className="text-xs text-muted-foreground">
               选择周期后，员工会定期收到更新画像的提醒；关闭后不再定期提醒。
             </p>
-          </div>
-          <div className="space-y-2">
+          </DraftField>
+          <DraftField changed={suggestion.changed("stale_after_months")}>
             <Label htmlFor="stale-months">证据较旧期限（月）</Label>
             <Input
               id="stale-months"
@@ -101,7 +115,7 @@ export function UpdateSettings({ orgId }: { orgId: string }) {
               max={120}
               required
               value={current.stale_after_months}
-              disabled={save.isPending}
+              disabled={save.isPending || suggestion.blocked}
               onChange={(e) => {
                 setChanges({
                   ...current,
@@ -114,10 +128,13 @@ export function UpdateSettings({ orgId }: { orgId: string }) {
               6–120 个月，默认 24
               个月。超过期限的证据会标为较旧，提醒核对，不会自动降低能力等级。
             </p>
-          </div>
+          </DraftField>
         </div>
         {message && <p role={save.isError ? "alert" : "status"}>{message}</p>}
-        <Button disabled={save.isPending || !changes} type="submit">
+        <Button
+          disabled={save.isPending || suggestion.blocked || !changes}
+          type="submit"
+        >
           {save.isPending ? "正在保存…" : "保存提醒设置"}
         </Button>
       </form>

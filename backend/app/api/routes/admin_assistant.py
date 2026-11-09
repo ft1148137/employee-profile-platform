@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -68,6 +69,16 @@ change_router = APIRouter(
     tags=["admin-assistant"],
     dependencies=[Depends(require_admin)],
 )
+
+
+@change_router.get("")
+def list_change_sets(
+    principal: OrgAdminDep,
+    session: SessionDep,
+    function: str,
+    status: Literal["draft"],
+) -> list[ChangeSetPublic]:
+    return change_set.list_drafts(session, principal, function, status)
 
 
 @change_router.put("/{id}/secrets/{field}")
