@@ -4,12 +4,14 @@ from fastapi import APIRouter, Depends
 
 from app.api.deps import SessionDep
 from app.authz.deps import OrgAdminDep, OrgPrincipalDep
-from app.domains.admin_assistant import core, store
+from app.domains.admin_assistant import change_set, core, store
 from app.domains.admin_assistant.schemas import (
     AdminSessionMessage,
     AdminTurnInput,
     AdminTurnResponse,
+    ApplyChanges,
     Availability,
+    ChangeSetPublic,
 )
 from app.domains.bot.schemas import SessionCreated
 from app.domains.bot.store import BotSessionNotFound, messages_for
@@ -55,3 +57,38 @@ def turn(
 @router.get("/availability")
 def availability(principal: OrgAdminDep, session: SessionDep) -> Availability:
     return core.availability(session, principal)
+
+
+change_router = APIRouter(
+    prefix="/orgs/{org_id}/admin-assistant/change-sets",
+    tags=["admin-assistant"],
+    dependencies=[Depends(require_admin)],
+)
+
+
+@change_router.get("/{id}")
+def get_change_set(
+    principal: OrgAdminDep, session: SessionDep, id: UUID
+) -> ChangeSetPublic:
+    return change_set.public(change_set.get(session, principal, id))
+
+
+@change_router.post("/{id}/apply")
+def apply_change_set(
+    principal: OrgAdminDep, session: SessionDep, id: UUID, body: ApplyChanges
+) -> ChangeSetPublic:
+    return change_set.apply(session, principal, id, body.revision)
+
+
+@change_router.post("/{id}/discard")
+def discard_change_set(
+    principal: OrgAdminDep, session: SessionDep, id: UUID
+) -> ChangeSetPublic:
+    return change_set.discard(session, principal, id)
+
+
+@change_router.post("/{id}/undo")
+def undo_change_set(
+    principal: OrgAdminDep, session: SessionDep, id: UUID
+) -> ChangeSetPublic:
+    return change_set.undo(session, principal, id)

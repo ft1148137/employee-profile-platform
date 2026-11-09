@@ -9,6 +9,7 @@ from app.domains.admin_assistant.schemas import (
     AdminTurnInput,
     AdminTurnResponse,
     Availability,
+    ChangeSetCard,
     LinkCard,
 )
 from app.domains.base import utc_now
@@ -50,7 +51,7 @@ def turn(
     try:
         with begin_turn(db, principal, row, body.model_dump(mode="json")):
             admitted = True
-            cards: list[LinkCard] = []
+            cards: list[LinkCard | ChangeSetCard] = []
             result = pi_client.run_turn(
                 model_config(read_setting(db, principal.org_id)),
                 mode="chat",
@@ -59,7 +60,7 @@ def turn(
                 input=body.text,
                 tools=tools.definitions(),
                 on_tool_call=lambda name, args: tools.call(
-                    db, principal, cards, name, args
+                    db, principal, cards, name, args, session_id=row.id
                 ),
             )
             if result.stop_reason != "stop":

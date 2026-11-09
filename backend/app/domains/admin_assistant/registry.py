@@ -29,7 +29,7 @@ from app.domains.bot import settings as bot
 from app.domains.capability.service import read_editor
 from app.domains.drafting import settings as drafting
 from app.domains.drafting import update_settings as updates
-from app.domains.drafting.service import DraftProgress, read_progress
+from app.domains.drafting.service import DraftProgress, active_employees, read_progress
 from app.domains.im import settings as im
 from app.domains.im.schemas import Platform
 from app.domains.model import service as model
@@ -45,7 +45,8 @@ from app.domains.source import service as sources
 from app.domains.source.schemas import SyncRunsPublic
 
 Area = Literal["home", "people", "rules", "data_ai", "connections", "more"]
-Handler = Callable[[Session, Principal, Any], BaseModel | Awaitable[BaseModel]]
+Handler = Callable[..., BaseModel | Awaitable[BaseModel]]
+Snapshot = Callable[[Session, Principal, Any], BaseModel]
 Endpoint = tuple[str, str]
 
 
@@ -130,8 +131,8 @@ class AdminFunction:
     handler: Handler
     page: str
     endpoints: tuple[Endpoint, ...]
-    snapshot: Handler | None = None
-    impact: Handler | None = None
+    snapshot: Snapshot | None = None
+    impact: Snapshot | None = None
     secret_fields: tuple[str, ...] = ()
 
 
@@ -400,6 +401,29 @@ FUNCTIONS = {
     ]
 }
 
+FUNCTIONS["update_update_settings"] = AdminFunction(
+    name="update_update_settings",
+    area="rules",
+    kind="change",
+    risk="normal",
+    description="修改定期提醒周期和证据较旧期限",
+    input_model=updates.UpdateSettingsInput,
+    handler=updates.save_update_settings,
+    page="/admin/rules?tab=reminders",
+    endpoints=(("PUT", "/update-settings"),),
+    snapshot=lambda d, p, a: updates.UpdateSettingsInput.model_validate(
+        updates.read_update_settings(d, p.org_id).model_dump(
+            include=set(updates.UpdateSettingsInput.model_fields)
+        )
+    ),
+    impact=lambda d, p, a: RootModel(
+        {
+            "count": len(active_employees(d, p.org_id)),
+            "text": "影响在职员工的定期提醒和证据期限",
+        }
+    ),
+)
+
 
 def list_admin_functions(area: Area) -> dict[str, Any]:
     return {
@@ -469,6 +493,19 @@ async def admin_read(
 
 
 NOT_FOR_ASSISTANT = {
+    ("GET", "/admin-assistant/change-sets/{id}"): "变更集只能由创建人在确认卡上操作",
+    (
+        "POST",
+        "/admin-assistant/change-sets/{id}/apply",
+    ): "变更集只能由创建人在确认卡上操作",
+    (
+        "POST",
+        "/admin-assistant/change-sets/{id}/discard",
+    ): "变更集只能由创建人在确认卡上操作",
+    (
+        "POST",
+        "/admin-assistant/change-sets/{id}/undo",
+    ): "变更集只能由创建人在确认卡上操作",
     ("POST", "/admin-assistant/sessions"): "助手自身的会话接口",
     ("GET", "/admin-assistant/sessions/{session_id}/messages"): "助手自身的会话接口",
     ("POST", "/admin-assistant/sessions/{session_id}/turns"): "助手自身的会话接口",
@@ -484,14 +521,13 @@ NOT_FOR_ASSISTANT = {
 }
 
 PENDING = {
-    ("PUT", "/approval-policy"): "S5",
-    ("PUT", "/drafting-settings"): "S5",
-    ("PUT", "/update-settings"): "S5",
+    ("PUT", "/approval-policy"): "S5b",
+    ("PUT", "/drafting-settings"): "S5c",
     ("POST", "/capabilities/preview"): "S8",
-    ("POST", "/capabilities/versions"): "S5",
-    ("POST", "/capabilities/editor/preview"): "S5",
-    ("PUT", "/capabilities"): "S5",
-    ("POST", "/capability-schema"): "S5",
+    ("POST", "/capabilities/versions"): "S5c",
+    ("POST", "/capabilities/editor/preview"): "S5c",
+    ("PUT", "/capabilities"): "S5c",
+    ("POST", "/capability-schema"): "S5c",
     ("PUT", "/im-settings/{platform}"): "S6",
     ("PUT", "/mcp-setting"): "S6",
     ("PUT", "/bot-settings"): "S6",
@@ -501,12 +537,12 @@ PENDING = {
     ("POST", "/sync-runs/{run_id}/retry"): "S6",
     ("POST", "/external-identities/link"): "S6",
     ("POST", "/external-identities/{identity_id}/unlink"): "S6",
-    ("POST", "/initial-profiles/draft"): "S6",
-    ("POST", "/initial-profiles/hand-over"): "S6",
-    ("GET", "/initial-profiles/hand-over"): "S6（交付前预览）",
-    ("PATCH", ""): "S6",
-    ("POST", "/setup/steps/{key}/complete"): "S6",
-    ("POST", "/setup/steps/{key}/skip"): "S6",
+    ("POST", "/initial-profiles/draft"): "S5c",
+    ("POST", "/initial-profiles/hand-over"): "S5c",
+    ("GET", "/initial-profiles/hand-over"): "S5c（交付前预览）",
+    ("PATCH", ""): "S5c",
+    ("POST", "/setup/steps/{key}/complete"): "S5c",
+    ("POST", "/setup/steps/{key}/skip"): "S5c",
     ("POST", "/accounts/issue"): "S7",
     ("POST", "/accounts/{user_id}/reset-password"): "S7",
     ("POST", "/accounts/{user_id}/disable"): "S7",

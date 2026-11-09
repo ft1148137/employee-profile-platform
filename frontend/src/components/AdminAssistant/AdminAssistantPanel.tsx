@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sheet"
 import useAuth from "@/hooks/useAuth"
 import { useOrg } from "@/hooks/useOrg"
+import { ChangeSetCard } from "./ChangeSetCard"
 
 const pages: AdminTurnInput["page"][] = [
   "/admin",
@@ -156,7 +157,7 @@ function AdminAssistantPanel({
         <SheetHeader className="border-b pr-12">
           <SheetTitle>管理助手</SheetTitle>
           <SheetDescription>
-            查看今天要处理的事和运行状态。当前只提供查看，所有设置请到对应页面修改。聊天默认在闲置两小时后清除；开启保留时按企业设置清理。
+            查看今天要处理的事，也能起草提醒设置改动；点确认卡后才会生效。聊天默认在闲置两小时后清除；开启保留时按企业设置清理。
           </SheetDescription>
         </SheetHeader>
         <div
@@ -186,6 +187,13 @@ function AdminAssistantPanel({
                       >
                         {message.title}
                       </a>
+                    ) : message.type === "admin_change_set" ? (
+                      <ChangeSetCard
+                        key={i}
+                        orgId={orgId}
+                        changeSet={message.change_set}
+                        disabled={busy}
+                      />
                     ) : (
                       <BotMessage
                         key={i}

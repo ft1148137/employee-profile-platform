@@ -117,7 +117,7 @@ def test_turn_and_private_sessions(
 
     def reply(_config: object, **kwargs: object) -> TurnResult:
         assert body["page"] in kwargs["system_prompt"]
-        assert [t.name for t in kwargs["tools"]] == ["get_today"]
+        assert [t.name for t in kwargs["tools"]] == ["get_today", "propose_changes"]
         assert kwargs["on_tool_call"]("get_today", {}) == {"data": expected}
         assert "error" in kwargs["on_tool_call"]("get_today", {"org_id": str(org_id)})
         assert "error" in kwargs["on_tool_call"]("write_settings", {})

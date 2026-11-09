@@ -1,16 +1,20 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
+from pydantic import JsonValue
 from sqlalchemy import (
     CheckConstraint,
+    Column,
     DateTime,
     ForeignKeyConstraint,
     Index,
+    String,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
-from app.domains.base import utc_now
+from app.domains.base import TenantRecord, tenant_fk, utc_now
 from app.domains.bot.models import ConversationMessage
 
 
@@ -52,4 +56,32 @@ class AdminAssistantMessage(ConversationMessage, table=True):
             "session_id",
             "created_at",
         ),
+    )
+
+
+class AdminChangeSet(TenantRecord, table=True):
+    __tablename__ = "admin_change_set"
+    __table_args__ = (
+        UniqueConstraint("org_id", "id"),
+        tenant_fk("session_id", "admin_assistant_session"),
+        tenant_fk("undo_of_id", "admin_change_set"),
+        ForeignKeyConstraint(
+            ["org_id", "created_by_user_id"],
+            ["org_membership.org_id", "org_membership.user_id"],
+        ),
+        CheckConstraint("status IN ('draft','applied','discarded','stale','undone')"),
+        CheckConstraint("revision >= 1"),
+        CheckConstraint(
+            "jsonb_typeof(items) = 'array' AND jsonb_array_length(items) BETWEEN 1 AND 50"
+        ),
+    )
+    session_id: UUID
+    created_by_user_id: UUID
+    status: str = Field(default="draft", sa_type=String)
+    revision: int = 1
+    items: list[dict[str, JsonValue]] = Field(sa_column=Column(JSONB, nullable=False))
+    applied_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    undo_of_id: UUID | None = None
+    updated_at: datetime = Field(
+        default_factory=utc_now, sa_type=DateTime(timezone=True)
     )
