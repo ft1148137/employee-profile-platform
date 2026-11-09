@@ -2,6 +2,7 @@
 
 from app.domains.access_token import models as access_token
 from app.domains.account import models as account
+from app.domains.admin_assistant import models as admin_assistant
 from app.domains.audit import models as audit
 from app.domains.bot import models as bot
 from app.domains.capability import models as capability
@@ -21,6 +22,7 @@ from app.domains.work import models as work
 __all__ = [
     "access_token",
     "account",
+    "admin_assistant",
     "audit",
     "bot",
     "capability",

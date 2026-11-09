@@ -100,6 +100,28 @@ export type AdminOverviewPublic = {
 };
 
 /**
+ * AdminSessionMessage
+ */
+export type AdminSessionMessage = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Role
+     */
+    role: 'user' | 'assistant';
+    /**
+     * Payload
+     */
+    payload: AdminTurnInput | AdminTurnResponse;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
  * AdminTodo
  */
 export type AdminTodo = {
@@ -127,6 +149,34 @@ export type AdminTodo = {
      * Assistant Prompt
      */
     assistant_prompt: string;
+};
+
+/**
+ * AdminTurnInput
+ */
+export type AdminTurnInput = {
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Page
+     */
+    page: '/admin' | '/admin/people' | '/admin/people/$employeeId' | '/admin/people?tab=accounts' | '/admin/people?tab=roster' | '/admin/people?tab=roles' | '/admin/people?tab=identities' | '/admin/people?tab=appeals' | '/admin/rules' | '/admin/rules?tab=dictionary' | '/admin/rules?tab=approval' | '/admin/rules?tab=drafting' | '/admin/rules?tab=reminders' | '/admin/rules?tab=profile-import' | '/admin/data-ai' | '/admin/data-ai?tab=sources' | '/admin/data-ai?tab=model' | '/admin/data-ai?tab=bot' | '/admin/connections' | '/admin/connections?tab=im' | '/admin/connections?tab=mcp' | '/admin/audit' | '/setup-wizard';
+};
+
+/**
+ * AdminTurnResponse
+ */
+export type AdminTurnResponse = {
+    /**
+     * Messages
+     */
+    messages: Array<({
+        type: 'text';
+    } & TextMessage) | ({
+        type: 'link';
+    } & LinkCard)>;
 };
 
 /**
@@ -323,6 +373,20 @@ export type AutoDraftUpdate = {
      * Enabled
      */
     enabled: boolean;
+};
+
+/**
+ * Availability
+ */
+export type Availability = {
+    /**
+     * Available
+     */
+    available: boolean;
+    /**
+     * Reason
+     */
+    reason: string;
 };
 
 /**
@@ -2364,6 +2428,24 @@ export type JiraConnectionUpdate = {
 export type JsonValue = unknown;
 
 /**
+ * LinkCard
+ */
+export type LinkCard = {
+    /**
+     * Type
+     */
+    type?: 'link';
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Page
+     */
+    page: '/admin' | '/admin/people' | '/admin/people/$employeeId' | '/admin/people?tab=accounts' | '/admin/people?tab=roster' | '/admin/people?tab=roles' | '/admin/people?tab=identities' | '/admin/people?tab=appeals' | '/admin/rules' | '/admin/rules?tab=dictionary' | '/admin/rules?tab=approval' | '/admin/rules?tab=drafting' | '/admin/rules?tab=reminders' | '/admin/rules?tab=profile-import' | '/admin/data-ai' | '/admin/data-ai?tab=sources' | '/admin/data-ai?tab=model' | '/admin/data-ai?tab=bot' | '/admin/connections' | '/admin/connections?tab=im' | '/admin/connections?tab=mcp' | '/admin/audit' | '/setup-wizard';
+};
+
+/**
  * McpSettingPublic
  */
 export type McpSettingPublic = {
@@ -4257,6 +4339,138 @@ export type ModelSettingUpdateWritable = {
      */
     reasoning_effort?: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null;
 };
+
+export type adminAssistantCreateSessionData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/admin-assistant/sessions';
+};
+
+export type adminAssistantCreateSessionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantCreateSessionError = adminAssistantCreateSessionErrors[keyof adminAssistantCreateSessionErrors];
+
+export type adminAssistantCreateSessionResponses = {
+    /**
+     * Successful Response
+     */
+    201: SessionCreated;
+};
+
+export type adminAssistantCreateSessionResponse = adminAssistantCreateSessionResponses[keyof adminAssistantCreateSessionResponses];
+
+export type adminAssistantListMessagesData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/admin-assistant/sessions/{session_id}/messages';
+};
+
+export type adminAssistantListMessagesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantListMessagesError = adminAssistantListMessagesErrors[keyof adminAssistantListMessagesErrors];
+
+export type adminAssistantListMessagesResponses = {
+    /**
+     * Response Admin-Assistant-List Messages
+     *
+     * Successful Response
+     */
+    200: Array<AdminSessionMessage>;
+};
+
+export type adminAssistantListMessagesResponse = adminAssistantListMessagesResponses[keyof adminAssistantListMessagesResponses];
+
+export type adminAssistantTurnData = {
+    body: AdminTurnInput;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/admin-assistant/sessions/{session_id}/turns';
+};
+
+export type adminAssistantTurnErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantTurnError = adminAssistantTurnErrors[keyof adminAssistantTurnErrors];
+
+export type adminAssistantTurnResponses = {
+    /**
+     * Successful Response
+     */
+    200: AdminTurnResponse;
+};
+
+export type adminAssistantTurnResponse = adminAssistantTurnResponses[keyof adminAssistantTurnResponses];
+
+export type adminAssistantAvailabilityData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/admin-assistant/availability';
+};
+
+export type adminAssistantAvailabilityErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantAvailabilityError = adminAssistantAvailabilityErrors[keyof adminAssistantAvailabilityErrors];
+
+export type adminAssistantAvailabilityResponses = {
+    /**
+     * Successful Response
+     */
+    200: Availability;
+};
+
+export type adminAssistantAvailabilityResponse = adminAssistantAvailabilityResponses[keyof adminAssistantAvailabilityResponses];
 
 export type adminGetOverviewData = {
     body?: never;

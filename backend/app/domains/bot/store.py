@@ -1,4 +1,5 @@
 import json
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Literal
 from uuid import UUID
@@ -9,8 +10,12 @@ from sqlmodel import Session, col, delete, select
 
 from app.authz.principal import Principal
 from app.core.secrets import decrypt_secret, encrypt_secret
+from app.domains.admin_assistant.models import (
+    AdminAssistantMessage,
+    AdminAssistantSession,
+)
 from app.domains.base import utc_now
-from app.domains.bot.models import BotMessage, BotSession
+from app.domains.bot.models import BotMessage, BotSession, ConversationMessage
 from app.domains.bot.settings import read_settings
 from app.domains.model.pi_client import HistoryMessage
 from app.domains.org.models import Organization
@@ -76,20 +81,25 @@ def get_session(
 
 def append_message(
     db: Session,
-    session: BotSession,
+    session: BotSession | AdminAssistantSession,
     role: Literal["user", "assistant"],
     payload: JsonValue,
-) -> BotMessage:
+) -> ConversationMessage:
+    message_type: type[ConversationMessage] = (
+        AdminAssistantMessage
+        if isinstance(session, AdminAssistantSession)
+        else BotMessage
+    )
     if not read_settings(
         db, session.org_id
     ).retention_days and session.last_activity_at <= utc_now() - timedelta(hours=2):
         db.exec(
-            delete(BotMessage).where(
-                col(BotMessage.org_id) == session.org_id,
-                col(BotMessage.session_id) == session.id,
+            delete(message_type).where(
+                col(message_type.org_id) == session.org_id,
+                col(message_type.session_id) == session.id,
             )
         )
-    row = BotMessage(
+    row = message_type(
         org_id=session.org_id,
         session_id=session.id,
         role=role,
@@ -103,26 +113,40 @@ def append_message(
 
 
 def _messages(
-    db: Session, session: BotSession, *, limit: int | None = None
-) -> list[BotMessage]:
+    db: Session,
+    session: BotSession | AdminAssistantSession,
+    *,
+    limit: int | None = None,
+) -> Sequence[ConversationMessage]:
+    message_type: type[ConversationMessage] = (
+        AdminAssistantMessage
+        if isinstance(session, AdminAssistantSession)
+        else BotMessage
+    )
     days = read_settings(db, session.org_id).retention_days
     now = utc_now()
     if not days and session.last_activity_at <= now - timedelta(hours=2):
         return []
     query = (
-        select(BotMessage)
+        select(message_type)
         .where(
-            BotMessage.org_id == session.org_id,
-            BotMessage.session_id == session.id,
-            BotMessage.created_at > now - timedelta(days=days) if days else True,
+            message_type.org_id == session.org_id,
+            message_type.session_id == session.id,
+            message_type.created_at > now - timedelta(days=days) if days else True,
         )
-        .order_by(col(BotMessage.created_at).desc(), col(BotMessage.id).desc())
+        .order_by(col(message_type.created_at).desc(), col(message_type.id).desc())
     )
     return list(db.exec(query.limit(limit) if limit else query).all())[::-1]
 
 
 def list_messages(
     db: Session, principal: Principal, session_id: UUID
+) -> list[MessagePublic]:
+    return messages_for(db, get_session(db, principal, session_id))
+
+
+def messages_for(
+    db: Session, session: BotSession | AdminAssistantSession
 ) -> list[MessagePublic]:
     return [
         MessagePublic(
@@ -131,11 +155,13 @@ def list_messages(
             payload=json.loads(decrypt_secret(row.ciphertext)),
             created_at=row.created_at,
         )
-        for row in _messages(db, get_session(db, principal, session_id))
+        for row in _messages(db, session)
     ]
 
 
-def load_history(db: Session, session: BotSession) -> list[HistoryMessage]:
+def load_history(
+    db: Session, session: BotSession | AdminAssistantSession
+) -> list[HistoryMessage]:
     history: list[HistoryMessage] = []
     remaining = HISTORY_CHARS
     for row in reversed(_messages(db, session, limit=HISTORY_MESSAGES)):
@@ -150,16 +176,20 @@ def load_history(db: Session, session: BotSession) -> list[HistoryMessage]:
 def cleanup_messages(db: Session, now: datetime) -> None:
     for org_id in db.exec(select(Organization.id)).all():
         days = read_settings(db, org_id).retention_days
-        expired = select(BotSession.id).where(
-            BotSession.org_id == org_id,
-            BotSession.last_activity_at <= now - timedelta(hours=2),
-        )
-        db.exec(
-            delete(BotMessage).where(
-                col(BotMessage.org_id) == org_id,
-                col(BotMessage.created_at) <= now - timedelta(days=days)
-                if days
-                else col(BotMessage.session_id).in_(expired),
+        for session_type, message_type in (
+            (BotSession, BotMessage),
+            (AdminAssistantSession, AdminAssistantMessage),
+        ):
+            expired = select(session_type.id).where(
+                session_type.org_id == org_id,
+                session_type.last_activity_at <= now - timedelta(hours=2),
             )
-        )
+            db.exec(
+                delete(message_type).where(
+                    col(message_type.org_id) == org_id,
+                    col(message_type.created_at) <= now - timedelta(days=days)
+                    if days
+                    else col(message_type.session_id).in_(expired),
+                )
+            )
     db.commit()

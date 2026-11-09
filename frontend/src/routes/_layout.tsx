@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 import axios, { AxiosError } from "axios"
 import { UsersService } from "@/client"
-import { BotPanel } from "@/components/Bot/BotPanel"
+import { AssistantEntry } from "@/components/AdminAssistant/AdminAssistantPanel"
 import AppSidebar from "@/components/Sidebar/AppSidebar"
 import {
   SidebarInset,
@@ -59,7 +59,7 @@ function Layout() {
           </div>
         </main>
       </SidebarInset>
-      <BotPanel />
+      <AssistantEntry />
     </SidebarProvider>
   )
 }

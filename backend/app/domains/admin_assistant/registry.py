@@ -469,6 +469,10 @@ async def admin_read(
 
 
 NOT_FOR_ASSISTANT = {
+    ("POST", "/admin-assistant/sessions"): "助手自身的会话接口",
+    ("GET", "/admin-assistant/sessions/{session_id}/messages"): "助手自身的会话接口",
+    ("POST", "/admin-assistant/sessions/{session_id}/turns"): "助手自身的会话接口",
+    ("GET", "/admin-assistant/availability"): "助手自身的会话接口",
     ("GET", "/sources/csv/template"): "模板下载由助手给页面链接",
     ("GET", "/roster/template"): "模板下载由助手给页面链接",
     ("GET", "/capabilities/template"): "模板下载由助手给页面链接",
