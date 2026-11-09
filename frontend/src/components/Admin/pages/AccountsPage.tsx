@@ -14,6 +14,7 @@ import {
   accountLabels,
   employmentLabels,
 } from "@/components/Admin/labels"
+import { PersonnelDialog } from "@/components/Admin/PersonnelDialog"
 import { ResetPasswordDialog } from "@/components/Admin/ResetPasswordDialog"
 import { OrgState } from "@/components/Profile/OrgState"
 import { Button } from "@/components/ui/button"
@@ -126,6 +127,7 @@ function AccountsList({ orgId }: { orgId: string }) {
           />
         )}
       </div>
+      {roles.includes("org_admin") && <PersonnelDialog orgId={orgId} />}
       {passwordTarget?.account && (
         <ResetPasswordDialog
           orgId={orgId}
