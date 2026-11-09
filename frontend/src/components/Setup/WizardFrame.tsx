@@ -17,7 +17,11 @@ export function WizardFrame({ orgId }: { orgId: string }) {
     steps.find((item) => item.key === selected) ??
     steps.find((item) => item.key === setup.data?.next_step_key) ??
     steps[0]
-  const index = steps.findIndex((item) => item.key === step?.key)
+  const navigation = step?.required
+    ? steps.filter((item) => item.required)
+    : steps
+  const previous =
+    navigation[navigation.findIndex((item) => item.key === step?.key) - 1]
   const Component = step ? setupSteps[step.key] : undefined
   const showCompleted = setup.data?.completed && !selected
   const update = useMutation({
@@ -155,9 +159,9 @@ export function WizardFrame({ orgId }: { orgId: string }) {
                 <div className="flex flex-wrap gap-2 border-t pt-4">
                   <Button
                     variant="outline"
-                    disabled={index <= 0 || update.isPending}
+                    disabled={!previous || update.isPending}
                     onClick={() => {
-                      setSelected(steps[index - 1].key)
+                      if (previous) setSelected(previous.key)
                       update.reset()
                     }}
                   >

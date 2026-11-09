@@ -364,6 +364,14 @@ test("skip model setup and enter the manual home", async ({
   await expect(
     page.getByRole("heading", { name: "配置模型", exact: true }),
   ).toBeVisible()
+  await page.getByRole("button", { name: "上一步", exact: true }).click()
+  await expect(
+    page.getByRole("heading", { name: "企业信息与管理员账号", exact: true }),
+  ).toBeVisible()
+  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await expect(
+    page.getByRole("heading", { name: "配置模型", exact: true }),
+  ).toBeVisible()
   await page.getByRole("button", { name: "跳过", exact: true }).click()
   await expect(page.getByRole("heading", { name: "设置完成" })).toBeVisible()
   await page.getByRole("link", { name: "进入首页", exact: true }).click()
