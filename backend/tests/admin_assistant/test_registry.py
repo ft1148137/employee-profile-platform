@@ -38,7 +38,9 @@ def call(
     return asyncio.run(r.admin_read(db, p, name, args or {}))
 
 
-@pytest.mark.parametrize("name", list(r.FUNCTIONS))
+@pytest.mark.parametrize(
+    "name", [n for n, f in r.FUNCTIONS.items() if f.kind == "read"]
+)
 def test_web_parity(
     db: Session, shared_demo: tuple, client: TestClient, name: str
 ) -> None:
@@ -81,6 +83,9 @@ def test_boundaries(
     p = principal(db, shared_demo)
     for name in r.FUNCTIONS:
         assert "error" in call(db, principal(db, shared_demo, "employee"), name)["data"]
+        if r.FUNCTIONS[name].kind != "read":
+            assert "不是只读" in call(db, p, name)["data"]["error"]
+            continue
         for key in ("org_id", "user_id"):
             assert (
                 "参数不正确" in call(db, p, name, {key: str(uuid4())})["data"]["error"]

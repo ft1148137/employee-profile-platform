@@ -3,12 +3,13 @@ from uuid import UUID
 from sqlmodel import Session
 
 from app.authz.principal import Principal
-from app.domains.admin_assistant import store, tools
+from app.domains.admin_assistant import registry, store, tools
 from app.domains.admin_assistant.prompts import system_prompt
 from app.domains.admin_assistant.schemas import (
     AdminTurnInput,
     AdminTurnResponse,
     Availability,
+    ChangeSetCard,
     LinkCard,
     TableCard,
 )
@@ -55,7 +56,7 @@ def turn(
         return _fallback(status.reason, body.page)
     history = messages.load_history(db, row)
     admitted = False
-    cards: list[LinkCard | TableCard] = []
+    cards: list[LinkCard | TableCard | ChangeSetCard] = []
     try:
         with begin_turn(db, principal, row, body.model_dump(mode="json")):
             admitted = True
@@ -67,7 +68,7 @@ def turn(
                 input=body.text,
                 tools=tools.definitions(),
                 on_tool_call=lambda name, args: tools.call(
-                    db, principal, cards, name, args
+                    db, principal, cards, name, args, session_id=row.id
                 ),
             )
             if result.stop_reason != "stop":
@@ -87,7 +88,13 @@ def turn(
         text = f"暂时无法对话，请在 {error.retry_at.isoformat()} 后重试。"
     except ModelServiceError, ModelUnavailable:
         text = "模型暂时不可用，请稍后重试，也可以继续使用手工页面。"
-    response = _fallback(text, cards[-1].page if cards else body.page)
+    page: str = body.page
+    for card in cards:
+        if isinstance(card, LinkCard | TableCard):
+            page = card.page
+        elif card.change_set.items:
+            page = registry.FUNCTIONS[card.change_set.items[-1].function].page
+    response = _fallback(text, page)
     if admitted:
         messages.append_message(db, row, "assistant", response.model_dump(mode="json"))
         db.commit()

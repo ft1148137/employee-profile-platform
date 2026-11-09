@@ -368,7 +368,13 @@ test("skip model setup and enter the manual home", async ({
   await expect(page.getByRole("heading", { name: "设置完成" })).toBeVisible()
   await page.getByRole("link", { name: "进入首页", exact: true }).click()
   await expect(page).toHaveURL(/\/admin\/?$/)
-  await expect(page.getByRole("link", { name: "去配置模型" })).toBeVisible()
+  const fallback = page
+    .getByRole("status")
+    .filter({ hasText: "请先在模型设置里配置模型" })
+  await expect(fallback.getByRole("link", { name: "去配置模型" })).toBeVisible()
+  await expect(
+    fallback.getByRole("link", { name: "去配置模型" }),
+  ).toHaveAttribute("href", "/admin/data-ai?tab=model")
   await expect(
     page.getByRole("region", { name: "今天要处理的事" }),
   ).toContainText("步首次设置没完成")

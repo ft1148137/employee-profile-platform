@@ -40,7 +40,7 @@ def record_audit(
         action=action,
         target_type=target_type,
         target_id=target_id,
-        details=details,
+        details={**details, **session.info.get("audit_context", {})},
     )
     session.add(event)
     if flush:

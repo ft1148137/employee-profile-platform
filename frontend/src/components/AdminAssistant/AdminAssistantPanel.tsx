@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/sheet"
 import useAuth from "@/hooks/useAuth"
 import { useOrg } from "@/hooks/useOrg"
+import { ChangeSetCard } from "./ChangeSetCard"
 
 const labels: Record<string, string> = {
   id: "编号",
@@ -293,6 +294,13 @@ export function AdminAssistantPanel({
                     >
                       {message.title}
                     </a>
+                  ) : message.type === "admin_change_set" ? (
+                    <ChangeSetCard
+                      key={i}
+                      orgId={orgId}
+                      changeSet={message.change_set}
+                      disabled={busy}
+                    />
                   ) : message.type === "table" ? (
                     <div
                       key={i}
@@ -354,7 +362,7 @@ export function AdminAssistantPanel({
         <div className="flex flex-wrap gap-2">
           {[
             "查看同步与起草进度",
-            "查看提醒周期",
+            "修改提醒周期",
             "查看员工名单和账号",
             "查看离职人员",
             "检查飞书连接",
@@ -371,7 +379,7 @@ export function AdminAssistantPanel({
           ))}
         </div>
         <p className="text-muted-foreground">
-          当前只能查看。备份恢复、升级、重置请联系部署人员；不做绩效和薪酬判断。
+          可以查看信息、起草提醒设置改动，点确认卡后才会生效。备份恢复、升级、重置请联系部署人员；不做绩效和薪酬判断。
         </p>
       </div>
       <form
@@ -436,7 +444,7 @@ export function AdminAssistantPanel({
         <SheetHeader className="border-b pr-12">
           <SheetTitle>管理助手</SheetTitle>
           <SheetDescription>
-            当前只提供查看。聊天默认在闲置两小时后清除；开启保留时按企业设置清理。
+            查看今天要处理的事，也能起草提醒设置改动；点确认卡后才会生效。聊天默认在闲置两小时后清除；开启保留时按企业设置清理。
           </SheetDescription>
           <a href="/admin/assistant" className="text-sm underline">
             全屏打开

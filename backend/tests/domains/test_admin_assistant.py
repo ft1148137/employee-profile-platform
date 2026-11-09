@@ -122,13 +122,11 @@ def test_turn_and_private_sessions(
             "get_today",
             "list_admin_functions",
             "admin_read",
+            "propose_changes",
         ]
         assert kwargs["on_tool_call"]("get_today", {}) == {"data": expected}
-        assert (
-            "error"
-            in kwargs["on_tool_call"]("get_today", {"org_id": str(org_id)})["data"]
-        )
-        assert "error" in kwargs["on_tool_call"]("write_settings", {})["data"]
+        assert "error" in kwargs["on_tool_call"]("get_today", {"org_id": str(org_id)})
+        assert "error" in kwargs["on_tool_call"]("write_settings", {})
         return TurnResult(
             text="请查看首页待办。", stop_reason="stop", model_calls=1, tool_calls=1
         )
@@ -328,7 +326,7 @@ def test_migration_roundtrip(migration_engine: Engine) -> None:
 
 
 @pytest.mark.parametrize(
-    "function", ["get_progress", "list_accounts", "update_approval_policy", "missing"]
+    "function", ["get_progress", "list_accounts", "update_update_settings", "missing"]
 )
 def test_registry_wired_to_turn(
     demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch, function: str
@@ -344,7 +342,7 @@ def test_registry_wired_to_turn(
         assert callback("list_admin_functions", {"area": "people"})["data"]
         data = callback("admin_read", {"function": function, "args": {}})
         assert set(data) == {"data"}
-        if function in {"missing", "update_approval_policy"}:
+        if function in {"missing", "update_update_settings"}:
             assert "只读" in data["data"]["error"]
         return TurnResult(
             text="查询完成", stop_reason="stop", model_calls=1, tool_calls=2
@@ -363,6 +361,28 @@ def test_registry_wired_to_turn(
         assert cards[1].type == "table" and len(cards[1].rows) <= 20
     else:
         assert cards == []
+
+
+def test_failed_proposal_links_to_manual_topic(
+    demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = admin(db, demo[1]["E02"].org_id)
+    enable(db, p.org_id)
+    row = store.create_session(db, p)
+
+    def fail(_config: object, **kwargs: object) -> TurnResult:
+        kwargs["on_tool_call"](
+            "propose_changes",
+            {"items": [{"function": "update_update_settings", "args": {}}]},
+        )
+        raise ModelUnavailable()
+
+    monkeypatch.setattr(core.pi_client, "run_turn", fail)
+    response = core.turn(
+        db, p, row.id, AdminTurnInput(text="修改提醒周期", page="/admin")
+    )
+    assert response.messages[1].type == "link"
+    assert response.messages[1].page == "/admin/rules?tab=reminders"
 
 
 @pytest.mark.parametrize(

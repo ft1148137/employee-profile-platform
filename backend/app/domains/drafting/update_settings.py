@@ -47,7 +47,11 @@ def read_update_settings(session: Session, org_id: UUID) -> UpdateSettingsPublic
 
 
 def save_update_settings(
-    session: Session, principal: Principal, body: UpdateSettingsInput
+    session: Session,
+    principal: Principal,
+    body: UpdateSettingsInput,
+    *,
+    commit: bool = True,
 ) -> UpdateSettingsPublic:
     session.exec(
         select(Organization)
@@ -86,5 +90,8 @@ def save_update_settings(
                 "after": body.model_dump(mode="json"),
             },
         )
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     return read_update_settings(session, principal.org_id)

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, JsonValue
 
 from app.domains.admin_assistant.registry import TableCard as TableCard
 from app.domains.bot.schemas import TextMessage
@@ -46,9 +46,51 @@ class AdminTurnInput(ToolInput):
     page: AdminPage
 
 
+class ChangeSpec(ToolInput):
+    function: str
+    args: dict[str, JsonValue]
+
+
+class ProposeChanges(ToolInput):
+    items: list[ChangeSpec] = Field(min_length=1, max_length=50)
+    change_set_id: UUID | None = None
+
+
+class Impact(BaseModel):
+    count: int = Field(ge=0)
+    text: str
+
+
+class ChangeItem(ChangeSpec):
+    before: dict[str, JsonValue] | None
+    after: dict[str, JsonValue]
+    impact: Impact | None = None
+    risk: Literal["normal", "high"]
+
+
+class ChangeSetPublic(BaseModel):
+    id: UUID
+    revision: int
+    status: Literal["draft", "applied", "discarded", "stale", "undone"]
+    items: list[ChangeItem]
+    undo_of_id: UUID | None
+
+
+class ChangeSetCard(BaseModel):
+    type: Literal["admin_change_set"] = "admin_change_set"
+    change_set: ChangeSetPublic
+
+
+class ApplyChanges(ToolInput):
+    revision: int = Field(ge=1, strict=True)
+
+
 class AdminTurnResponse(BaseModel):
     messages: list[
-        Annotated[TextMessage | LinkCard | TableCard, Field(discriminator="type")]
+        Annotated[
+            TextMessage | LinkCard | TableCard | ChangeSetCard,
+            Field(discriminator="type"),
+        ]
     ]
 
 

@@ -31,3 +31,4 @@
 - [ADR-0027：CI 隔离并行与异步自动合并](0027-ci-and-asynchronous-merge.md)
 - [ADR-0028：管理助手只读功能登记表](0028-admin-function-registry.md)
 - [ADR-0029：管理助手会话与共享对话准入](0029-admin-assistant-conversations.md)
+- [ADR-0030：管理助手的普通变更集](0030-admin-change-sets.md)

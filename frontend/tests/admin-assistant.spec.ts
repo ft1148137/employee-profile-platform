@@ -116,7 +116,10 @@ for (const available of [true, false]) {
         page.getByText("请先配置模型，可以继续使用手工页面。", { exact: true }),
       ).toBeVisible()
       await expect(
-        page.getByRole("link", { name: "去配置模型" }),
+        page
+          .getByRole("status")
+          .filter({ hasText: "请先配置模型，可以继续使用手工页面。" })
+          .getByRole("link", { name: "去配置模型" }),
       ).toHaveAttribute("href", "/admin/data-ai?tab=model")
     } else {
       await expect(
