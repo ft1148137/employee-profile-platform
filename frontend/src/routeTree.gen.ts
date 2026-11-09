@@ -36,6 +36,7 @@ import { Route as LayoutEmployeesEmployeeIdRouteImport } from './routes/_layout/
 import { Route as LayoutOauthConsentRouteImport } from './routes/_layout/oauth/consent'
 import { Route as LayoutReviewsIndexRouteImport } from './routes/_layout/reviews.index'
 import { Route as LayoutReviewsRequestIdRouteImport } from './routes/_layout/reviews.$requestId'
+import { Route as LayoutAdminPeopleEmployeeIdRouteImport } from './routes/_layout/admin.people.$employeeId'
 
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
@@ -173,6 +174,12 @@ const LayoutReviewsRequestIdRoute = LayoutReviewsRequestIdRouteImport.update({
   path: '/reviews/$requestId',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutAdminPeopleEmployeeIdRoute =
+  LayoutAdminPeopleEmployeeIdRouteImport.update({
+    id: '/admin/people/$employeeId',
+    path: '/admin/people/$employeeId',
+    getParentRoute: () => LayoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof LayoutIndexRoute
@@ -201,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/reviews/$requestId': typeof LayoutReviewsRequestIdRoute
   '/employees/': typeof LayoutEmployeesIndexRoute
   '/reviews/': typeof LayoutReviewsIndexRoute
+  '/admin/people/$employeeId': typeof LayoutAdminPeopleEmployeeIdRoute
 }
 export interface FileRoutesByTo {
   '/change-password': typeof ChangePasswordRoute
@@ -229,6 +237,7 @@ export interface FileRoutesByTo {
   '/reviews/$requestId': typeof LayoutReviewsRequestIdRoute
   '/employees': typeof LayoutEmployeesIndexRoute
   '/reviews': typeof LayoutReviewsIndexRoute
+  '/admin/people/$employeeId': typeof LayoutAdminPeopleEmployeeIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -259,6 +268,7 @@ export interface FileRoutesById {
   '/_layout/reviews/$requestId': typeof LayoutReviewsRequestIdRoute
   '/_layout/employees/': typeof LayoutEmployeesIndexRoute
   '/_layout/reviews/': typeof LayoutReviewsIndexRoute
+  '/_layout/admin/people/$employeeId': typeof LayoutAdminPeopleEmployeeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -289,6 +299,7 @@ export interface FileRouteTypes {
     | '/reviews/$requestId'
     | '/employees/'
     | '/reviews/'
+    | '/admin/people/$employeeId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/change-password'
@@ -317,6 +328,7 @@ export interface FileRouteTypes {
     | '/reviews/$requestId'
     | '/employees'
     | '/reviews'
+    | '/admin/people/$employeeId'
   id:
     | '__root__'
     | '/_layout'
@@ -346,6 +358,7 @@ export interface FileRouteTypes {
     | '/_layout/reviews/$requestId'
     | '/_layout/employees/'
     | '/_layout/reviews/'
+    | '/_layout/admin/people/$employeeId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -546,6 +559,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutReviewsRequestIdRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/admin/people/$employeeId': {
+      id: '/_layout/admin/people/$employeeId'
+      path: '/admin/people/$employeeId'
+      fullPath: '/admin/people/$employeeId'
+      preLoaderRoute: typeof LayoutAdminPeopleEmployeeIdRouteImport
+      parentRoute: typeof LayoutRoute
+    }
   }
 }
 
@@ -573,6 +593,7 @@ interface LayoutRouteChildren {
   LayoutReviewsRequestIdRoute: typeof LayoutReviewsRequestIdRoute
   LayoutEmployeesIndexRoute: typeof LayoutEmployeesIndexRoute
   LayoutReviewsIndexRoute: typeof LayoutReviewsIndexRoute
+  LayoutAdminPeopleEmployeeIdRoute: typeof LayoutAdminPeopleEmployeeIdRoute
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
@@ -599,6 +620,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutReviewsRequestIdRoute: LayoutReviewsRequestIdRoute,
   LayoutEmployeesIndexRoute: LayoutEmployeesIndexRoute,
   LayoutReviewsIndexRoute: LayoutReviewsIndexRoute,
+  LayoutAdminPeopleEmployeeIdRoute: LayoutAdminPeopleEmployeeIdRoute,
 }
 
 const LayoutRouteWithChildren =

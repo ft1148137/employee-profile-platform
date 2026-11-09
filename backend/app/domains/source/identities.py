@@ -49,8 +49,11 @@ def list_identities(
     q: str | None,
     skip: int,
     limit: int,
+    employee_id: UUID | None = None,
 ) -> ExternalIdentitiesPublic:
     query = select(ExternalIdentity).where(ExternalIdentity.org_id == org_id)
+    if employee_id is not None:
+        query = query.where(ExternalIdentity.employee_id == employee_id)
     if status != "all":
         query = query.where(
             col(ExternalIdentity.employee_id).is_(None)

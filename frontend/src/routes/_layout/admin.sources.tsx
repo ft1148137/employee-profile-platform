@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { OrgState } from "@/components/Profile/OrgState"
 import { SourcesStep } from "@/components/Setup/steps/SourcesStep"
 import { useOrg } from "@/hooks/useOrg"
@@ -25,6 +26,7 @@ function SourcesPage() {
         </p>
       </div>
       <SourcesStep key={org.id} orgId={org.id} onComplete={() => {}} />
+      <ChangeHistory targetType="source_connection" />
     </div>
   )
 }

@@ -460,6 +460,7 @@ def list_accounts(
     skip: int,
     limit: int,
     employment_status: EmploymentStatus | None = None,
+    employee_id: UUID | None = None,
 ) -> AccountsPublic:
     require_admin(p)
     account_status = case(
@@ -484,6 +485,8 @@ def list_accounts(
     )
     if employment_status:
         query = query.where(Employee.employment_status == employment_status)
+    if employee_id is not None:
+        query = query.where(Employee.id == employee_id)
     if department_id:
         query = query.where(Employee.department_id == department_id)
     if status:
@@ -508,7 +511,14 @@ def list_accounts(
         data=[
             EmployeeAccount(
                 **e.model_dump(
-                    include={"id", "employee_code", "display_name", "employment_status"}
+                    include={
+                        "id",
+                        "employee_code",
+                        "display_name",
+                        "employment_status",
+                        "title",
+                        "work_email",
+                    }
                 ),
                 department=DepartmentSummary.model_validate(d) if d else None,
                 account=AccountPublic(

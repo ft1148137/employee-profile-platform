@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { DraftingSettingsService, type UpdateSettingsInput } from "@/client"
+import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -116,6 +117,7 @@ export function UpdateSettings({ orgId }: { orgId: string }) {
           {save.isPending ? "正在保存…" : "保存提醒设置"}
         </Button>
       </form>
+      <ChangeHistory targetType="update_setting" />
     </section>
   )
 }

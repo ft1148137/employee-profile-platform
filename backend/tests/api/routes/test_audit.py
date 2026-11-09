@@ -13,7 +13,13 @@ from app.domains.audit.service import list_events
 from app.domains.base import utc_now
 from app.domains.capability.models import CapabilitySchemaVersion
 from app.domains.capability.templates import get_template
-from app.domains.org.models import OrgMembership, Role, RoleGrant, RosterImport
+from app.domains.org.models import (
+    ExternalIdentity,
+    OrgMembership,
+    Role,
+    RoleGrant,
+    RosterImport,
+)
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
 
 
@@ -247,3 +253,157 @@ def test_query_count(audit_data: tuple, db: Session) -> None:
         assert len(page.data) == limit and page.count == 50
         counts.append(len(statements))
     assert counts == [8, 8]
+
+
+def test_object_filters(audit_data: tuple, client: TestClient, db: Session) -> None:
+    orgs, _, users, url, add, get = audit_data
+    first, second = str(uuid4()), str(uuid4())
+    expected = add(kind="model_setting", target=first)
+    add(kind="model_setting", target=second)
+    add(kind="employee", target=first)
+    add(kind="model_setting", target=first, org_id=orgs[1].id)
+    assert get(target_type="model_setting", target_id=first).json()["data"][0][
+        "id"
+    ] == str(expected.id)
+    assert get(target_type="model_setting", target_id=first).json()["count"] == 1
+    db.commit()
+    response = client.get(
+        f"{url}/audit-events",
+        headers=headers(users[0]),
+        params=[
+            ("target_type", "model_setting"),
+            ("target_id", first),
+            ("target_id", second),
+        ],
+    )
+    assert response.json()["count"] == 2
+    assert get(target_id=str(uuid4())).json()["count"] == 0
+    assert (
+        client.get(
+            f"{url}/audit-events",
+            headers=headers(users[0]),
+            params=[("target_id", first)] * 21,
+        ).status_code
+        == 422
+    )
+
+
+def test_employee_history(
+    audit_data: tuple, request: pytest.FixtureRequest, db: Session, client: TestClient
+) -> None:
+    orgs, depts, users, url, add, get = audit_data
+    _, _, employees, _ = request.getfixturevalue("tenant_data")
+    employee_id = str(employees[2].id)
+    user_id = str(users[2].id)
+    auth = headers(users[0])
+    account_event = add(kind="user", target=user_id)
+    employee_event = add(kind="employee", target=employee_id)
+    add(kind="user", target=users[1].id)
+    add(kind="employee", target=employee_id, org_id=orgs[1].id)
+    add(kind="review_appeal", target=employee_id)
+    identity = ExternalIdentity(
+        org_id=orgs[0].id, source="jira", external_id="synthetic"
+    )
+    db.add(identity)
+    db.commit()
+    granted = client.post(
+        f"{url}/role-grants",
+        headers=auth,
+        json={
+            "user_id": user_id,
+            "role": "dept_manager",
+            "department_id": str(depts[0].id),
+        },
+    )
+    assert granted.status_code == 200
+    grant_id = granted.json()["id"]
+    legacy = add(kind="role_grant", target=grant_id)
+    db.commit()
+    assert str(legacy.id) in {
+        e["id"] for e in get(employee_id=employee_id).json()["data"]
+    }
+    assert (
+        client.delete(f"{url}/role-grants/{grant_id}", headers=auth).status_code == 200
+    )
+    assert db.get(RoleGrant, UUID(grant_id)) is None
+    assert (
+        client.post(
+            f"{url}/external-identities/link",
+            headers=auth,
+            json={
+                "links": [
+                    {"identity_id": str(identity.id), "employee_id": employee_id}
+                ],
+            },
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            f"{url}/external-identities/{identity.id}/unlink", headers=auth
+        ).status_code
+        == 200
+    )
+    add(kind="role_grant", details={"user_id": user_id}, org_id=orgs[1].id)
+    add(
+        kind="external_identity",
+        details={"employee_id": employee_id},
+        org_id=orgs[1].id,
+    )
+    result = get(employee_id=employee_id).json()
+    assert result["count"] == 6
+    assert {e["action"] for e in result["data"]} == {
+        "test",
+        "role.granted",
+        "role.revoked",
+        "external_identity.linked",
+        "external_identity.unlinked",
+    }
+    assert {str(account_event.id), str(employee_event.id)} <= {
+        e["id"] for e in result["data"]
+    }
+    assert str(legacy.id) not in {e["id"] for e in result["data"]}
+    assert get(employee_id=employee_id, action="role.").json()["count"] == 2
+    assert (
+        get(employee_id=employee_id, target_type="user", target_id=user_id).json()[
+            "count"
+        ]
+        == 1
+    )
+    assert get(employee_id=str(employees[0].id)).json()["count"] == 0
+    for foreign_id in (str(employees[5].id), str(uuid4())):
+        assert get(employee_id=foreign_id).status_code == 404
+    for user in (users[1], users[2], users[3]):
+        assert client.get(
+            f"{url}/audit-events",
+            headers=headers(user),
+            params={
+                "employee_id": employee_id,
+            },
+        ).status_code in (403, 404)
+    filtered = client.get(
+        f"{url}/accounts", headers=auth, params={"employee_id": employee_id}
+    )
+    assert [row["id"] for row in filtered.json()["data"]] == [employee_id]
+    assert {"work_email", "title"} <= filtered.json()["data"][0].keys()
+    assert (
+        client.get(
+            f"{url}/accounts",
+            headers=auth,
+            params={
+                "employee_id": str(employees[5].id),
+            },
+        ).json()["count"]
+        == 0
+    )
+    assert (
+        client.get(
+            f"{url}/external-identities",
+            headers=auth,
+            params={
+                "employee_id": employee_id,
+                "status": "all",
+            },
+        ).json()["count"]
+        == 0
+    )
