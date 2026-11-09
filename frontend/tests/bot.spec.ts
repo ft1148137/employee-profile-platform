@@ -109,6 +109,7 @@ for (const width of [1440, 390]) {
     ).toHaveCount(0)
     await page.goto("/admin/bot")
     await page.getByLabel("提问指南").fill("请询问具体合作经历")
+    await page.getByText("高级设置：聊天原文保留", { exact: true }).click()
     await page.getByLabel("聊天原文保留天数").fill("3")
     await page.getByRole("button", { name: "保存", exact: true }).click()
     await expect(page.getByRole("status")).toContainText("机器人设置已保存")

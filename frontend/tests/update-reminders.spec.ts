@@ -21,7 +21,7 @@ test("reminder settings persist and stale badges follow profile data", async ({
   const url = `/api/v1/orgs/${memberships[0].org.id}/update-settings`
   const original = await (await request.get(url, { headers })).json()
   try {
-    await page.goto("/admin/drafting")
+    await page.goto("/admin/rules?tab=reminders")
     const section = page.getByRole("region", { name: "持续更新提醒" })
     for (const label of ["每年", "关闭", "每季度"]) {
       await section.getByRole("combobox", { name: "提醒周期" }).click()

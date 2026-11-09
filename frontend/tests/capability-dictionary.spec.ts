@@ -23,7 +23,7 @@ test("admin uploads, previews and confirms a dictionary version", async ({
   })
   expect(initialized.ok()).toBeTruthy()
   await logInUser(page, email, password)
-  await page.goto("/settings")
+  await page.goto("/admin/rules?tab=dictionary")
   await page.getByRole("tab", { name: "能力词典", exact: true }).click()
   await expectChineseCopy(page, ["YAML", "AI"])
   const download = page.waitForEvent("download")
@@ -76,7 +76,7 @@ for (const email of [
 ]) {
   test(`${email} can export but cannot edit`, async ({ page }) => {
     await logInUser(page, email, process.env.DEMO_USER_PASSWORD!)
-    await page.goto("/settings")
+    await page.goto("/admin/rules?tab=dictionary")
     await page.getByRole("tab", { name: "能力词典", exact: true }).click()
     await expect(
       page.getByRole("button", { name: "导出当前词典" }),
@@ -158,7 +158,7 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
   const employeeId = (await employees.json()).data[0].id
   await logInUser(page, email, "synthetic-password-2026")
   await page.setViewportSize({ width: 375, height: 812 })
-  await page.goto("/settings")
+  await page.goto("/admin/rules?tab=dictionary")
   await page.getByRole("tab", { name: "能力词典", exact: true }).click()
   await page.getByRole("button", { name: "在网页上编辑" }).click()
   const editor = page.getByRole("region", { name: "网页编辑能力词典" })

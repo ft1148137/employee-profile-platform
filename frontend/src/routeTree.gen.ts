@@ -17,19 +17,24 @@ import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutInboxRouteImport } from './routes/_layout/inbox'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutSetupWizardRouteImport } from './routes/_layout/setup-wizard'
+import { Route as LayoutAdminIndexRouteImport } from './routes/_layout/admin.index'
 import { Route as LayoutAdminAccountsRouteImport } from './routes/_layout/admin.accounts'
 import { Route as LayoutAdminAppealsRouteImport } from './routes/_layout/admin.appeals'
 import { Route as LayoutAdminAssistantsRouteImport } from './routes/_layout/admin.assistants'
 import { Route as LayoutAdminAuditRouteImport } from './routes/_layout/admin.audit'
 import { Route as LayoutAdminBotRouteImport } from './routes/_layout/admin.bot'
+import { Route as LayoutAdminConnectionsRouteImport } from './routes/_layout/admin.connections'
+import { Route as LayoutAdminDataAiRouteImport } from './routes/_layout/admin.data-ai'
 import { Route as LayoutAdminDraftingRouteImport } from './routes/_layout/admin.drafting'
 import { Route as LayoutAdminIdentitiesRouteImport } from './routes/_layout/admin.identities'
 import { Route as LayoutAdminImRouteImport } from './routes/_layout/admin.im'
 import { Route as LayoutAdminModelRouteImport } from './routes/_layout/admin.model'
+import { Route as LayoutAdminPeopleRouteImport } from './routes/_layout/admin.people'
 import { Route as LayoutAdminProfileImportsRouteImport } from './routes/_layout/admin.profile-imports'
 import { Route as LayoutAdminProgressRouteImport } from './routes/_layout/admin.progress'
 import { Route as LayoutAdminRolesRouteImport } from './routes/_layout/admin.roles'
 import { Route as LayoutAdminRosterRouteImport } from './routes/_layout/admin.roster'
+import { Route as LayoutAdminRulesRouteImport } from './routes/_layout/admin.rules'
 import { Route as LayoutAdminSourcesRouteImport } from './routes/_layout/admin.sources'
 import { Route as LayoutEmployeesIndexRouteImport } from './routes/_layout/employees.index'
 import { Route as LayoutEmployeesEmployeeIdRouteImport } from './routes/_layout/employees.$employeeId'
@@ -76,6 +81,11 @@ const LayoutSetupWizardRoute = LayoutSetupWizardRouteImport.update({
   path: '/setup-wizard',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutAdminIndexRoute = LayoutAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutAdminAccountsRoute = LayoutAdminAccountsRouteImport.update({
   id: '/admin/accounts',
   path: '/admin/accounts',
@@ -101,6 +111,16 @@ const LayoutAdminBotRoute = LayoutAdminBotRouteImport.update({
   path: '/admin/bot',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutAdminConnectionsRoute = LayoutAdminConnectionsRouteImport.update({
+  id: '/admin/connections',
+  path: '/admin/connections',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutAdminDataAiRoute = LayoutAdminDataAiRouteImport.update({
+  id: '/admin/data-ai',
+  path: '/admin/data-ai',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutAdminDraftingRoute = LayoutAdminDraftingRouteImport.update({
   id: '/admin/drafting',
   path: '/admin/drafting',
@@ -119,6 +139,11 @@ const LayoutAdminImRoute = LayoutAdminImRouteImport.update({
 const LayoutAdminModelRoute = LayoutAdminModelRouteImport.update({
   id: '/admin/model',
   path: '/admin/model',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutAdminPeopleRoute = LayoutAdminPeopleRouteImport.update({
+  id: '/admin/people',
+  path: '/admin/people',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutAdminProfileImportsRoute =
@@ -140,6 +165,11 @@ const LayoutAdminRolesRoute = LayoutAdminRolesRouteImport.update({
 const LayoutAdminRosterRoute = LayoutAdminRosterRouteImport.update({
   id: '/admin/roster',
   path: '/admin/roster',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutAdminRulesRoute = LayoutAdminRulesRouteImport.update({
+  id: '/admin/rules',
+  path: '/admin/rules',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutAdminSourcesRoute = LayoutAdminSourcesRouteImport.update({
@@ -187,18 +217,23 @@ export interface FileRoutesByFullPath {
   '/admin/assistants': typeof LayoutAdminAssistantsRoute
   '/admin/audit': typeof LayoutAdminAuditRoute
   '/admin/bot': typeof LayoutAdminBotRoute
+  '/admin/connections': typeof LayoutAdminConnectionsRoute
+  '/admin/data-ai': typeof LayoutAdminDataAiRoute
   '/admin/drafting': typeof LayoutAdminDraftingRoute
   '/admin/identities': typeof LayoutAdminIdentitiesRoute
   '/admin/im': typeof LayoutAdminImRoute
   '/admin/model': typeof LayoutAdminModelRoute
+  '/admin/people': typeof LayoutAdminPeopleRoute
   '/admin/profile-imports': typeof LayoutAdminProfileImportsRoute
   '/admin/progress': typeof LayoutAdminProgressRoute
   '/admin/roles': typeof LayoutAdminRolesRoute
   '/admin/roster': typeof LayoutAdminRosterRoute
+  '/admin/rules': typeof LayoutAdminRulesRoute
   '/admin/sources': typeof LayoutAdminSourcesRoute
   '/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
   '/oauth/consent': typeof LayoutOauthConsentRoute
   '/reviews/$requestId': typeof LayoutReviewsRequestIdRoute
+  '/admin/': typeof LayoutAdminIndexRoute
   '/employees/': typeof LayoutEmployeesIndexRoute
   '/reviews/': typeof LayoutReviewsIndexRoute
 }
@@ -215,18 +250,23 @@ export interface FileRoutesByTo {
   '/admin/assistants': typeof LayoutAdminAssistantsRoute
   '/admin/audit': typeof LayoutAdminAuditRoute
   '/admin/bot': typeof LayoutAdminBotRoute
+  '/admin/connections': typeof LayoutAdminConnectionsRoute
+  '/admin/data-ai': typeof LayoutAdminDataAiRoute
   '/admin/drafting': typeof LayoutAdminDraftingRoute
   '/admin/identities': typeof LayoutAdminIdentitiesRoute
   '/admin/im': typeof LayoutAdminImRoute
   '/admin/model': typeof LayoutAdminModelRoute
+  '/admin/people': typeof LayoutAdminPeopleRoute
   '/admin/profile-imports': typeof LayoutAdminProfileImportsRoute
   '/admin/progress': typeof LayoutAdminProgressRoute
   '/admin/roles': typeof LayoutAdminRolesRoute
   '/admin/roster': typeof LayoutAdminRosterRoute
+  '/admin/rules': typeof LayoutAdminRulesRoute
   '/admin/sources': typeof LayoutAdminSourcesRoute
   '/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
   '/oauth/consent': typeof LayoutOauthConsentRoute
   '/reviews/$requestId': typeof LayoutReviewsRequestIdRoute
+  '/admin': typeof LayoutAdminIndexRoute
   '/employees': typeof LayoutEmployeesIndexRoute
   '/reviews': typeof LayoutReviewsIndexRoute
 }
@@ -245,18 +285,23 @@ export interface FileRoutesById {
   '/_layout/admin/assistants': typeof LayoutAdminAssistantsRoute
   '/_layout/admin/audit': typeof LayoutAdminAuditRoute
   '/_layout/admin/bot': typeof LayoutAdminBotRoute
+  '/_layout/admin/connections': typeof LayoutAdminConnectionsRoute
+  '/_layout/admin/data-ai': typeof LayoutAdminDataAiRoute
   '/_layout/admin/drafting': typeof LayoutAdminDraftingRoute
   '/_layout/admin/identities': typeof LayoutAdminIdentitiesRoute
   '/_layout/admin/im': typeof LayoutAdminImRoute
   '/_layout/admin/model': typeof LayoutAdminModelRoute
+  '/_layout/admin/people': typeof LayoutAdminPeopleRoute
   '/_layout/admin/profile-imports': typeof LayoutAdminProfileImportsRoute
   '/_layout/admin/progress': typeof LayoutAdminProgressRoute
   '/_layout/admin/roles': typeof LayoutAdminRolesRoute
   '/_layout/admin/roster': typeof LayoutAdminRosterRoute
+  '/_layout/admin/rules': typeof LayoutAdminRulesRoute
   '/_layout/admin/sources': typeof LayoutAdminSourcesRoute
   '/_layout/employees/$employeeId': typeof LayoutEmployeesEmployeeIdRoute
   '/_layout/oauth/consent': typeof LayoutOauthConsentRoute
   '/_layout/reviews/$requestId': typeof LayoutReviewsRequestIdRoute
+  '/_layout/admin/': typeof LayoutAdminIndexRoute
   '/_layout/employees/': typeof LayoutEmployeesIndexRoute
   '/_layout/reviews/': typeof LayoutReviewsIndexRoute
 }
@@ -275,18 +320,23 @@ export interface FileRouteTypes {
     | '/admin/assistants'
     | '/admin/audit'
     | '/admin/bot'
+    | '/admin/connections'
+    | '/admin/data-ai'
     | '/admin/drafting'
     | '/admin/identities'
     | '/admin/im'
     | '/admin/model'
+    | '/admin/people'
     | '/admin/profile-imports'
     | '/admin/progress'
     | '/admin/roles'
     | '/admin/roster'
+    | '/admin/rules'
     | '/admin/sources'
     | '/employees/$employeeId'
     | '/oauth/consent'
     | '/reviews/$requestId'
+    | '/admin/'
     | '/employees/'
     | '/reviews/'
   fileRoutesByTo: FileRoutesByTo
@@ -303,18 +353,23 @@ export interface FileRouteTypes {
     | '/admin/assistants'
     | '/admin/audit'
     | '/admin/bot'
+    | '/admin/connections'
+    | '/admin/data-ai'
     | '/admin/drafting'
     | '/admin/identities'
     | '/admin/im'
     | '/admin/model'
+    | '/admin/people'
     | '/admin/profile-imports'
     | '/admin/progress'
     | '/admin/roles'
     | '/admin/roster'
+    | '/admin/rules'
     | '/admin/sources'
     | '/employees/$employeeId'
     | '/oauth/consent'
     | '/reviews/$requestId'
+    | '/admin'
     | '/employees'
     | '/reviews'
   id:
@@ -332,18 +387,23 @@ export interface FileRouteTypes {
     | '/_layout/admin/assistants'
     | '/_layout/admin/audit'
     | '/_layout/admin/bot'
+    | '/_layout/admin/connections'
+    | '/_layout/admin/data-ai'
     | '/_layout/admin/drafting'
     | '/_layout/admin/identities'
     | '/_layout/admin/im'
     | '/_layout/admin/model'
+    | '/_layout/admin/people'
     | '/_layout/admin/profile-imports'
     | '/_layout/admin/progress'
     | '/_layout/admin/roles'
     | '/_layout/admin/roster'
+    | '/_layout/admin/rules'
     | '/_layout/admin/sources'
     | '/_layout/employees/$employeeId'
     | '/_layout/oauth/consent'
     | '/_layout/reviews/$requestId'
+    | '/_layout/admin/'
     | '/_layout/employees/'
     | '/_layout/reviews/'
   fileRoutesById: FileRoutesById
@@ -413,6 +473,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSetupWizardRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/admin/': {
+      id: '/_layout/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof LayoutAdminIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/admin/accounts': {
       id: '/_layout/admin/accounts'
       path: '/admin/accounts'
@@ -448,6 +515,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAdminBotRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/admin/connections': {
+      id: '/_layout/admin/connections'
+      path: '/admin/connections'
+      fullPath: '/admin/connections'
+      preLoaderRoute: typeof LayoutAdminConnectionsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/admin/data-ai': {
+      id: '/_layout/admin/data-ai'
+      path: '/admin/data-ai'
+      fullPath: '/admin/data-ai'
+      preLoaderRoute: typeof LayoutAdminDataAiRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/admin/drafting': {
       id: '/_layout/admin/drafting'
       path: '/admin/drafting'
@@ -476,6 +557,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAdminModelRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/admin/people': {
+      id: '/_layout/admin/people'
+      path: '/admin/people'
+      fullPath: '/admin/people'
+      preLoaderRoute: typeof LayoutAdminPeopleRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/admin/profile-imports': {
       id: '/_layout/admin/profile-imports'
       path: '/admin/profile-imports'
@@ -502,6 +590,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/roster'
       fullPath: '/admin/roster'
       preLoaderRoute: typeof LayoutAdminRosterRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/admin/rules': {
+      id: '/_layout/admin/rules'
+      path: '/admin/rules'
+      fullPath: '/admin/rules'
+      preLoaderRoute: typeof LayoutAdminRulesRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/admin/sources': {
@@ -559,18 +654,23 @@ interface LayoutRouteChildren {
   LayoutAdminAssistantsRoute: typeof LayoutAdminAssistantsRoute
   LayoutAdminAuditRoute: typeof LayoutAdminAuditRoute
   LayoutAdminBotRoute: typeof LayoutAdminBotRoute
+  LayoutAdminConnectionsRoute: typeof LayoutAdminConnectionsRoute
+  LayoutAdminDataAiRoute: typeof LayoutAdminDataAiRoute
   LayoutAdminDraftingRoute: typeof LayoutAdminDraftingRoute
   LayoutAdminIdentitiesRoute: typeof LayoutAdminIdentitiesRoute
   LayoutAdminImRoute: typeof LayoutAdminImRoute
   LayoutAdminModelRoute: typeof LayoutAdminModelRoute
+  LayoutAdminPeopleRoute: typeof LayoutAdminPeopleRoute
   LayoutAdminProfileImportsRoute: typeof LayoutAdminProfileImportsRoute
   LayoutAdminProgressRoute: typeof LayoutAdminProgressRoute
   LayoutAdminRolesRoute: typeof LayoutAdminRolesRoute
   LayoutAdminRosterRoute: typeof LayoutAdminRosterRoute
+  LayoutAdminRulesRoute: typeof LayoutAdminRulesRoute
   LayoutAdminSourcesRoute: typeof LayoutAdminSourcesRoute
   LayoutEmployeesEmployeeIdRoute: typeof LayoutEmployeesEmployeeIdRoute
   LayoutOauthConsentRoute: typeof LayoutOauthConsentRoute
   LayoutReviewsRequestIdRoute: typeof LayoutReviewsRequestIdRoute
+  LayoutAdminIndexRoute: typeof LayoutAdminIndexRoute
   LayoutEmployeesIndexRoute: typeof LayoutEmployeesIndexRoute
   LayoutReviewsIndexRoute: typeof LayoutReviewsIndexRoute
 }
@@ -585,18 +685,23 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminAssistantsRoute: LayoutAdminAssistantsRoute,
   LayoutAdminAuditRoute: LayoutAdminAuditRoute,
   LayoutAdminBotRoute: LayoutAdminBotRoute,
+  LayoutAdminConnectionsRoute: LayoutAdminConnectionsRoute,
+  LayoutAdminDataAiRoute: LayoutAdminDataAiRoute,
   LayoutAdminDraftingRoute: LayoutAdminDraftingRoute,
   LayoutAdminIdentitiesRoute: LayoutAdminIdentitiesRoute,
   LayoutAdminImRoute: LayoutAdminImRoute,
   LayoutAdminModelRoute: LayoutAdminModelRoute,
+  LayoutAdminPeopleRoute: LayoutAdminPeopleRoute,
   LayoutAdminProfileImportsRoute: LayoutAdminProfileImportsRoute,
   LayoutAdminProgressRoute: LayoutAdminProgressRoute,
   LayoutAdminRolesRoute: LayoutAdminRolesRoute,
   LayoutAdminRosterRoute: LayoutAdminRosterRoute,
+  LayoutAdminRulesRoute: LayoutAdminRulesRoute,
   LayoutAdminSourcesRoute: LayoutAdminSourcesRoute,
   LayoutEmployeesEmployeeIdRoute: LayoutEmployeesEmployeeIdRoute,
   LayoutOauthConsentRoute: LayoutOauthConsentRoute,
   LayoutReviewsRequestIdRoute: LayoutReviewsRequestIdRoute,
+  LayoutAdminIndexRoute: LayoutAdminIndexRoute,
   LayoutEmployeesIndexRoute: LayoutEmployeesIndexRoute,
   LayoutReviewsIndexRoute: LayoutReviewsIndexRoute,
 }
