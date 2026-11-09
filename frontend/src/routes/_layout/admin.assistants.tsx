@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
 import { AccessTokensService } from "@/client"
+import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
@@ -105,6 +106,7 @@ function Settings({ orgId }: { orgId: string }) {
         </Button>
         {message && <p role="status">{message}</p>}
       </form>
+      <ChangeHistory targetType="mcp_setting" />
     </div>
   )
 }

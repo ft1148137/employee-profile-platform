@@ -32,6 +32,7 @@ def get_identities(
     q: str | None = None,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    employee_id: UUID | None = None,
 ) -> ExternalIdentitiesPublic:
     return list_identities(
         session,
@@ -41,6 +42,7 @@ def get_identities(
         q=q,
         skip=skip,
         limit=limit,
+        employee_id=employee_id,
     )
 
 

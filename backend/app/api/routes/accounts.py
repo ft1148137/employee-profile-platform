@@ -30,9 +30,18 @@ def read_accounts(
     employment_status: EmploymentStatus | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
+    employee_id: UUID | None = None,
 ) -> AccountsPublic:
     return service.list_accounts(
-        session, principal, department_id, status, q, skip, limit, employment_status
+        session,
+        principal,
+        department_id,
+        status,
+        q,
+        skip,
+        limit,
+        employment_status,
+        employee_id=employee_id,
     )
 
 

@@ -27,8 +27,10 @@ def create_appeal(
 
 
 @router.get("")
-def list_disputes(principal: OrgAdminDep, session: SessionDep) -> list[AppealPublic]:
-    return appeal.list_disputes(principal, session)
+def list_disputes(
+    principal: OrgAdminDep, session: SessionDep, employee_id: UUID | None = None
+) -> list[AppealPublic]:
+    return appeal.list_disputes(principal, session, employee_id=employee_id)
 
 
 @router.get("/{appeal_id}")
