@@ -3,8 +3,8 @@ from sqlmodel import col, select
 
 from app.api.deps import SessionDep
 from app.authz.deps import OrgAdminDep, OrgPrincipalDep
-from app.domains.audit.service import record_audit
-from app.domains.org.models import Department, Organization
+from app.domains.org import service
+from app.domains.org.models import Department
 from app.domains.org.schemas import (
     DepartmentPublic,
     DepartmentsPublic,
@@ -19,27 +19,7 @@ router = APIRouter(prefix="/orgs/{org_id}", tags=["orgs"])
 def rename_organization(
     body: OrganizationUpdate, session: SessionDep, principal: OrgAdminDep
 ) -> OrganizationPublic:
-    organization = session.exec(
-        select(Organization)
-        .where(Organization.id == principal.org_id)
-        .with_for_update()
-    ).one()
-    old_name = organization.name
-    organization.name = body.name
-    session.add(organization)
-    record_audit(
-        session,
-        org_id=principal.org_id,
-        actor_type=principal.actor_type,
-        actor_id=str(principal.user_id),
-        action="org.renamed",
-        target_type="organization",
-        target_id=str(principal.org_id),
-        details={"old_name": old_name, "new_name": body.name},
-    )
-    session.commit()
-    session.refresh(organization)
-    return OrganizationPublic.model_validate(organization)
+    return service.rename_organization(session, principal, body.name)
 
 
 @router.get("/departments", response_model=DepartmentsPublic)

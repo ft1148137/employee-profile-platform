@@ -7,12 +7,14 @@ from sqlmodel import Session, col, select
 
 from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
+from app.domains.audit.service import record_audit
 from app.domains.change_request.service import review_statuses
-from app.domains.org.models import Department, Employee
+from app.domains.org.models import Department, Employee, Organization
 from app.domains.org.schemas import (
     DepartmentSummary,
     EmployeesPublic,
     EmployeeSummary,
+    OrganizationPublic,
     ProgressPublic,
     PublishedSummary,
 )
@@ -175,3 +177,32 @@ def list_employees(
     return EmployeesPublic(
         data=[_employee_summary(*row, statuses[row[0].id]) for row in rows], count=count
     )
+
+
+def rename_organization(
+    session: Session, principal: Principal, name: str, *, commit: bool = True
+) -> OrganizationPublic:
+    organization = session.exec(
+        select(Organization)
+        .where(Organization.id == principal.org_id)
+        .with_for_update()
+    ).one()
+    old_name = organization.name
+    organization.name = name
+    session.add(organization)
+    record_audit(
+        session,
+        org_id=principal.org_id,
+        actor_type=principal.actor_type,
+        actor_id=str(principal.user_id),
+        action="org.renamed",
+        target_type="organization",
+        target_id=str(principal.org_id),
+        details={"old_name": old_name, "new_name": name},
+    )
+    if commit:
+        session.commit()
+        session.refresh(organization)
+    else:
+        session.flush()
+    return OrganizationPublic.model_validate(organization)

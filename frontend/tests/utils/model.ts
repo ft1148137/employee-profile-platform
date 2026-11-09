@@ -95,11 +95,26 @@ export const test = base.extend<{ modelUrl: string }>({
                             ? {
                                 items: [
                                   {
-                                    function: "update_update_settings",
-                                    args: {
-                                      reminder_schedule: "yearly",
-                                      stale_after_months: 36,
-                                    },
+                                    function: JSON.stringify(last).includes(
+                                      "关闭部门自动起草",
+                                    )
+                                      ? "update_drafting_settings"
+                                      : "update_update_settings",
+                                    args: JSON.stringify(last).includes(
+                                      "关闭部门自动起草",
+                                    )
+                                      ? {
+                                          excluded_capability_keys: [],
+                                          disabled_department_ids: [
+                                            JSON.stringify(last).match(
+                                              /[0-9a-f]{8}-[0-9a-f-]{27,}/,
+                                            )?.[0],
+                                          ],
+                                        }
+                                      : {
+                                          reminder_schedule: "yearly",
+                                          stale_after_months: 36,
+                                        },
                                   },
                                 ],
                               }

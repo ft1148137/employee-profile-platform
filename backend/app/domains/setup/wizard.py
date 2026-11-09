@@ -54,7 +54,12 @@ def read_setup(session: Session, org_id: UUID) -> SetupPublic:
 
 
 def update_step(
-    session: Session, principal: Principal, key: str, status: SetupStatus
+    session: Session,
+    principal: Principal,
+    key: str,
+    status: SetupStatus,
+    *,
+    commit: bool = True,
 ) -> SetupPublic:
     step = next((s for s in steps.STEPS if s.key == key), None)
     if step is None:
@@ -107,5 +112,8 @@ def update_step(
             target_id=key,
             details={"step_key": key},
         )
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     return read_setup(session, principal.org_id)

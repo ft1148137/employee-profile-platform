@@ -1,8 +1,46 @@
+import type { APIRequestContext } from "@playwright/test"
 import { expectChineseCopy } from "./utils/copy"
 import { expect, test } from "./utils/model"
 import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
+
+async function createOrg(request: APIRequestContext, modelUrl: string) {
+  const email = `admin-change-${crypto.randomUUID()}@example.com`
+  const password = "synthetic-password-2026"
+  const token = await request.post("/api/v1/private/setup-tokens", {
+    data: { purpose: "new_org" },
+  })
+  const initialized = await request.post("/api/v1/setup/initialize", {
+    data: {
+      token: (await token.json()).token,
+      org_name: "提醒设置合成企业",
+      admin_username: email,
+      admin_password: password,
+      admin_full_name: "管理员",
+    },
+  })
+  expect(initialized.ok()).toBeTruthy()
+  const { org_id: orgId, access_token: accessToken } = await initialized.json()
+  const base = `/api/v1/orgs/${orgId}`
+  const headers = { Authorization: `Bearer ${accessToken}` }
+  expect(
+    (
+      await request.put(`${base}/model-setting`, {
+        headers,
+        data: {
+          enabled: true,
+          kind: "openai_compatible",
+          provider: "openai-compatible",
+          model: "synthetic",
+          base_url: modelUrl,
+          api_key: "synthetic-key",
+        },
+      })
+    ).ok(),
+  ).toBeTruthy()
+  return { email, password, base, headers }
+}
 
 for (const width of [1440, 390]) {
   test(`reminder change is previewed, applied and undone at ${width}px`, async ({
@@ -11,40 +49,10 @@ for (const width of [1440, 390]) {
     modelUrl,
   }, testInfo) => {
     test.setTimeout(90000)
-    const email = `admin-change-${crypto.randomUUID()}@example.com`
-    const password = "synthetic-password-2026"
-    const token = await request.post("/api/v1/private/setup-tokens", {
-      data: { purpose: "new_org" },
-    })
-    const initialized = await request.post("/api/v1/setup/initialize", {
-      data: {
-        token: (await token.json()).token,
-        org_name: "提醒设置合成企业",
-        admin_username: email,
-        admin_password: password,
-        admin_full_name: "管理员",
-      },
-    })
-    expect(initialized.ok()).toBeTruthy()
-    const { org_id: orgId, access_token: accessToken } =
-      await initialized.json()
-    const base = `/api/v1/orgs/${orgId}`
-    const headers = { Authorization: `Bearer ${accessToken}` }
-    expect(
-      (
-        await request.put(`${base}/model-setting`, {
-          headers,
-          data: {
-            enabled: true,
-            kind: "openai_compatible",
-            provider: "openai-compatible",
-            model: "synthetic",
-            base_url: modelUrl,
-            api_key: "synthetic-key",
-          },
-        })
-      ).ok(),
-    ).toBeTruthy()
+    const { email, password, base, headers } = await createOrg(
+      request,
+      modelUrl,
+    )
     await page.setViewportSize({ width: 1440, height: 900 })
     await logInUser(page, email, password)
     await page.setViewportSize({ width, height: 900 })
@@ -131,3 +139,56 @@ for (const width of [1440, 390]) {
     ).toBe("quarterly")
   })
 }
+
+test("department drafting change shows affected people and can be undone", async ({
+  page,
+  request,
+  modelUrl,
+}) => {
+  test.setTimeout(90000)
+  const { email, password, base, headers } = await createOrg(request, modelUrl)
+  const imported = await request.post(`${base}/roster/imports`, {
+    headers,
+    multipart: {
+      file: {
+        name: "名单.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(
+          "工号,姓名,部门,职位,上级工号,邮箱\n001,合成员工,研发部,,,synthetic@example.com\n",
+        ),
+      },
+    },
+  })
+  expect(imported.ok()).toBeTruthy()
+  const preview = await imported.json()
+  expect(
+    (
+      await request.post(`${base}/roster/imports/${preview.id}/apply`, {
+        headers,
+        data: { base_revision: preview.base_revision },
+      })
+    ).ok(),
+  ).toBeTruthy()
+  const departments = await (
+    await request.get(`${base}/departments`, { headers })
+  ).json()
+  const departmentId = departments.data[0].id
+  await logInUser(page, email, password)
+  await page.goto("/admin/assistant")
+  await page
+    .getByRole("textbox", { name: "发给管理助手的消息" })
+    .fill(`关闭部门自动起草 ${departmentId}`)
+  await page.getByRole("button", { name: "发送", exact: true }).click()
+  const card = page.getByRole("region", { name: "设置改动确认卡" })
+  await expect(card.getByText(/影响 1 人/)).toBeVisible({ timeout: 30000 })
+  const read = async () =>
+    (await (await request.get(`${base}/drafting-settings`, { headers })).json())
+      .disabled_department_ids
+  expect(await read()).toEqual([])
+  await card.getByRole("button", { name: "确认应用" }).click()
+  await expect(card.getByRole("status")).toHaveText("已应用")
+  expect(await read()).toEqual([departmentId])
+  await card.getByRole("button", { name: "撤销", exact: true }).click()
+  await expect(card.getByRole("status")).toHaveText("已撤销")
+  expect(await read()).toEqual([])
+})

@@ -452,28 +452,13 @@ def drafting_jobs(
     )
 
 
-def queue_drafting(
+def drafting_employee_ids(
     session: Session,
     org_id: UUID,
     scope: Literal["all", "failed"],
     *,
     pending_owner_only: bool = False,
-) -> int:
-    from app.worker.tasks import draft_initial
-
-    session.exec(
-        select(Organization).where(Organization.id == org_id).with_for_update()
-    ).one()
-    setting = read_setting(session, org_id)
-    if setting is None or not setting.enabled:
-        raise ModelRequired()
-    try:
-        get_schema(session, org_id)
-    except SchemaNotFound:
-        raise HTTPException(422, "请先启用能力词典") from None
-    # Opting out after queueing preserves pending progress after its job finishes.
-    if drafting_jobs(session, org_id):
-        raise HTTPException(409, "已有起草任务正在排队或执行")
+) -> list[UUID]:
     failed = set(
         session.exec(
             select(ProfileProgress.employee_id).where(
@@ -496,13 +481,41 @@ def queue_drafting(
         if pending_owner_only
         else None
     )
-    ids = [
+    return [
         e.id
         for e in active_employees(session, org_id)
         if e.id not in excluded
         and (scope == "all" or e.id in failed)
         and (pending is None or e.id in pending)
     ]
+
+
+def queue_drafting(
+    session: Session,
+    org_id: UUID,
+    scope: Literal["all", "failed"],
+    *,
+    pending_owner_only: bool = False,
+    commit: bool = True,
+) -> int:
+    from app.worker.tasks import draft_initial
+
+    session.exec(
+        select(Organization).where(Organization.id == org_id).with_for_update()
+    ).one()
+    setting = read_setting(session, org_id)
+    if setting is None or not setting.enabled:
+        raise ModelRequired()
+    try:
+        get_schema(session, org_id)
+    except SchemaNotFound:
+        raise HTTPException(422, "请先启用能力词典") from None
+    # Opting out after queueing preserves pending progress after its job finishes.
+    if drafting_jobs(session, org_id):
+        raise HTTPException(409, "已有起草任务正在排队或执行")
+    ids = drafting_employee_ids(
+        session, org_id, scope, pending_owner_only=pending_owner_only
+    )
     for id_ in ids:
         progress_row(session, org_id, id_, InferenceStatus.PENDING)
     session.flush()
@@ -511,7 +524,8 @@ def queue_drafting(
         draft_initial.configure(
             connection=connection, lock=f"initial-profiles:{org_id}"
         ).defer(org_id=str(org_id), employee_ids=[str(id_) for id_ in ids])
-    session.commit()
+    if commit:
+        session.commit()
     return len(ids)
 
 

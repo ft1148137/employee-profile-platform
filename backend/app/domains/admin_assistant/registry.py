@@ -24,6 +24,7 @@ from app.domains.access_token import service as access
 from app.domains.account import service as accounts
 from app.domains.account.schemas import AccountStatus
 from app.domains.admin.overview import build_overview
+from app.domains.admin_assistant.rules import register_rules
 from app.domains.audit import service as audit
 from app.domains.bot import settings as bot
 from app.domains.capability.service import read_editor
@@ -47,6 +48,7 @@ from app.domains.source.schemas import SyncRunsPublic
 Area = Literal["home", "people", "rules", "data_ai", "connections", "more"]
 Handler = Callable[..., BaseModel | Awaitable[BaseModel]]
 Snapshot = Callable[[Session, Principal, Any], BaseModel]
+Reverse = Callable[[Session, Principal, dict[str, JsonValue]], tuple[str, BaseModel]]
 Endpoint = tuple[str, str]
 
 
@@ -134,6 +136,7 @@ class AdminFunction:
     snapshot: Snapshot | None = None
     impact: Snapshot | None = None
     secret_fields: tuple[str, ...] = ()
+    reverse: Reverse | None = None
 
 
 def _profile(db: Session, principal: Principal, args: EmployeeArgs) -> BaseModel:
@@ -520,14 +523,11 @@ NOT_FOR_ASSISTANT = {
     ("DELETE", "/model-setting/chatgpt"): "订阅登录在浏览器里完成",
 }
 
+register_rules(FUNCTIONS)
+
 PENDING = {
     ("PUT", "/approval-policy"): "S5b",
-    ("PUT", "/drafting-settings"): "S5c",
     ("POST", "/capabilities/preview"): "S8",
-    ("POST", "/capabilities/versions"): "S5c",
-    ("POST", "/capabilities/editor/preview"): "S5c",
-    ("PUT", "/capabilities"): "S5c",
-    ("POST", "/capability-schema"): "S5c",
     ("PUT", "/im-settings/{platform}"): "S6",
     ("PUT", "/mcp-setting"): "S6",
     ("PUT", "/bot-settings"): "S6",
@@ -537,12 +537,6 @@ PENDING = {
     ("POST", "/sync-runs/{run_id}/retry"): "S6",
     ("POST", "/external-identities/link"): "S6",
     ("POST", "/external-identities/{identity_id}/unlink"): "S6",
-    ("POST", "/initial-profiles/draft"): "S5c",
-    ("POST", "/initial-profiles/hand-over"): "S5c",
-    ("GET", "/initial-profiles/hand-over"): "S5c（交付前预览）",
-    ("PATCH", ""): "S5c",
-    ("POST", "/setup/steps/{key}/complete"): "S5c",
-    ("POST", "/setup/steps/{key}/skip"): "S5c",
     ("POST", "/accounts/issue"): "S7",
     ("POST", "/accounts/{user_id}/reset-password"): "S7",
     ("POST", "/accounts/{user_id}/disable"): "S7",

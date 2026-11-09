@@ -9,6 +9,7 @@ from app.domains.capability.files import (
     dictionary_yaml,
     parse_dictionary,
 )
+from app.domains.capability.publish import save_dictionary as publish_dictionary
 from app.domains.capability.schemas import (
     ActiveSchemaPublic,
     CapabilitiesPublic,
@@ -24,10 +25,8 @@ from app.domains.capability.service import (
     list_capabilities,
     preview_version,
     read_editor,
-    save_version,
 )
 from app.domains.capability.templates import get_template
-from app.domains.drafting.service import queue_drafting
 
 router = APIRouter(prefix="/orgs/{org_id}/capabilities", tags=["capabilities"])
 
@@ -91,7 +90,7 @@ def preview_dictionary(
 def save_dictionary(
     body: SaveDictionary, session: SessionDep, principal: OrgAdminDep
 ) -> ActiveSchemaPublic:
-    return _save_dictionary(body, session, principal, sync_ai_inference=False)
+    return publish_dictionary(session, principal, body, sync_ai_inference=False)
 
 
 @router.get("/editor", response_model=DictionaryPreview)
@@ -117,29 +116,7 @@ def preview_dictionary_editor(
 def update_dictionary(
     body: SaveDictionary, session: SessionDep, principal: OrgAdminDep
 ) -> ActiveSchemaPublic:
-    return _save_dictionary(body, session, principal, sync_ai_inference=True)
-
-
-def _save_dictionary(
-    body: SaveDictionary,
-    session: SessionDep,
-    principal: OrgAdminDep,
-    *,
-    sync_ai_inference: bool,
-) -> ActiveSchemaPublic:
-    schema = save_version(
-        session,
-        principal,
-        body.definitions,
-        expected_version=body.expected_version,
-        sync_ai_inference=sync_ai_inference,
-    )
-    result = ActiveSchemaPublic.model_validate(schema)
-    if body.redraft:
-        queue_drafting(session, principal.org_id, "all", pending_owner_only=True)
-    else:
-        session.commit()
-    return result
+    return publish_dictionary(session, principal, body, sync_ai_inference=True)
 
 
 class DictionaryTooLarge(HTTPException):
