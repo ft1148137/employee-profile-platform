@@ -176,7 +176,9 @@ export type AdminTurnResponse = {
         type: 'text';
     } & TextMessage) | ({
         type: 'link';
-    } & LinkCard)>;
+    } & LinkCard) | ({
+        type: 'admin_change_set';
+    } & ChangeSetCard)>;
 };
 
 /**
@@ -261,6 +263,16 @@ export type AppealResolution = {
  * AppealStatus
  */
 export type AppealStatus = 'open' | 'upheld' | 'reopened';
+
+/**
+ * ApplyChanges
+ */
+export type ApplyChanges = {
+    /**
+     * Revision
+     */
+    revision: number;
+};
 
 /**
  * ApplyImport
@@ -663,34 +675,6 @@ export type CapabilityTemplatePublic = {
 };
 
 /**
- * ChangeItem
- */
-export type ChangeItem = {
-    /**
-     * Op
-     */
-    op: string;
-    capability: Capability;
-    after: Claim | null;
-    /**
-     * Explanation
-     */
-    explanation: string | null;
-    /**
-     * Uncertainty
-     */
-    uncertainty: string | null;
-    /**
-     * Owner Statement
-     */
-    owner_statement: string | null;
-    /**
-     * Objection
-     */
-    objection: string | null;
-};
-
-/**
  * ChangeItemPublic
  */
 export type ChangeItemPublic = {
@@ -803,6 +787,43 @@ export type ChangeRequestsPublic = {
      * Count
      */
     count: number;
+};
+
+/**
+ * ChangeSetCard
+ */
+export type ChangeSetCard = {
+    /**
+     * Type
+     */
+    type?: 'admin_change_set';
+    change_set: ChangeSetPublic;
+};
+
+/**
+ * ChangeSetPublic
+ */
+export type ChangeSetPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Status
+     */
+    status: 'draft' | 'applied' | 'discarded' | 'stale' | 'undone';
+    /**
+     * Items
+     */
+    items: Array<app__domains__admin_assistant__schemas__ChangeItem>;
+    /**
+     * Undo Of Id
+     */
+    undo_of_id: string | null;
 };
 
 /**
@@ -2045,6 +2066,20 @@ export type ImSettingUpdate = {
      * Data Transfer Acknowledged
      */
     data_transfer_acknowledged?: boolean;
+};
+
+/**
+ * Impact
+ */
+export type Impact = {
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Text
+     */
+    text: string;
 };
 
 /**
@@ -4143,11 +4178,72 @@ export type app__domains__admin__overview__StatusCard = {
 };
 
 /**
+ * ChangeItem
+ */
+export type app__domains__admin_assistant__schemas__ChangeItem = {
+    /**
+     * Function
+     */
+    function: string;
+    /**
+     * Args
+     */
+    args: {
+        [key: string]: JsonValue;
+    };
+    /**
+     * Before
+     */
+    before: {
+        [key: string]: JsonValue;
+    } | null;
+    /**
+     * After
+     */
+    after: {
+        [key: string]: JsonValue;
+    };
+    impact?: Impact | null;
+    /**
+     * Risk
+     */
+    risk: 'normal' | 'high';
+};
+
+/**
+ * ChangeItem
+ */
+export type app__domains__bot__schemas__ChangeItem = {
+    /**
+     * Op
+     */
+    op: string;
+    capability: Capability;
+    after: Claim | null;
+    /**
+     * Explanation
+     */
+    explanation: string | null;
+    /**
+     * Uncertainty
+     */
+    uncertainty: string | null;
+    /**
+     * Owner Statement
+     */
+    owner_statement: string | null;
+    /**
+     * Objection
+     */
+    objection: string | null;
+};
+
+/**
  * PreviewItem
  */
 export type app__domains__bot__schemas__PreviewItem = {
     before: Claim | null;
-    after: ChangeItem;
+    after: app__domains__bot__schemas__ChangeItem;
     /**
      * Warning
      */
@@ -4197,7 +4293,7 @@ export type app__domains__bot__schemas__StatusCard = {
     /**
      * Items
      */
-    items: Array<ChangeItem>;
+    items: Array<app__domains__bot__schemas__ChangeItem>;
     /**
      * Type
      */
@@ -5548,6 +5644,142 @@ export type loginTestTokenResponses = {
 };
 
 export type loginTestTokenResponse = loginTestTokenResponses[keyof loginTestTokenResponses];
+
+export type adminAssistantGetChangeSetData = {
+    body?: never;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/admin-assistant/change-sets/{id}';
+};
+
+export type adminAssistantGetChangeSetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantGetChangeSetError = adminAssistantGetChangeSetErrors[keyof adminAssistantGetChangeSetErrors];
+
+export type adminAssistantGetChangeSetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChangeSetPublic;
+};
+
+export type adminAssistantGetChangeSetResponse = adminAssistantGetChangeSetResponses[keyof adminAssistantGetChangeSetResponses];
+
+export type adminAssistantApplyChangeSetData = {
+    body: ApplyChanges;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/admin-assistant/change-sets/{id}/apply';
+};
+
+export type adminAssistantApplyChangeSetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantApplyChangeSetError = adminAssistantApplyChangeSetErrors[keyof adminAssistantApplyChangeSetErrors];
+
+export type adminAssistantApplyChangeSetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChangeSetPublic;
+};
+
+export type adminAssistantApplyChangeSetResponse = adminAssistantApplyChangeSetResponses[keyof adminAssistantApplyChangeSetResponses];
+
+export type adminAssistantDiscardChangeSetData = {
+    body?: never;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/admin-assistant/change-sets/{id}/discard';
+};
+
+export type adminAssistantDiscardChangeSetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantDiscardChangeSetError = adminAssistantDiscardChangeSetErrors[keyof adminAssistantDiscardChangeSetErrors];
+
+export type adminAssistantDiscardChangeSetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChangeSetPublic;
+};
+
+export type adminAssistantDiscardChangeSetResponse = adminAssistantDiscardChangeSetResponses[keyof adminAssistantDiscardChangeSetResponses];
+
+export type adminAssistantUndoChangeSetData = {
+    body?: never;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/admin-assistant/change-sets/{id}/undo';
+};
+
+export type adminAssistantUndoChangeSetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantUndoChangeSetError = adminAssistantUndoChangeSetErrors[keyof adminAssistantUndoChangeSetErrors];
+
+export type adminAssistantUndoChangeSetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ChangeSetPublic;
+};
+
+export type adminAssistantUndoChangeSetResponse = adminAssistantUndoChangeSetResponses[keyof adminAssistantUndoChangeSetResponses];
 
 export type usersUpdatePasswordMeData = {
     body: UpdatePassword;

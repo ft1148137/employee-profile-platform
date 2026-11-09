@@ -12,6 +12,7 @@ from app.domains.access_token.models import (
 from app.domains.admin_assistant.models import (
     AdminAssistantMessage,
     AdminAssistantSession,
+    AdminChangeSet,
 )
 from app.domains.audit.models import AuditEvent
 from app.domains.bot.models import BotMessage, BotSession, BotSetting
@@ -70,6 +71,7 @@ ORG_MODELS = (
     OAuthRefreshToken,
     OAuthGrant,
     McpSetting,
+    AdminChangeSet,
     AdminAssistantMessage,
     AdminAssistantSession,
     BotMessage,

@@ -12,12 +12,17 @@ export const test = base.extend<{ modelUrl: string }>({
       let raw = ""
       for await (const chunk of req) raw += chunk
       const request = JSON.parse(raw)
-      const chat = request.tools?.some(
+      const admin = request.tools?.some(
         (tool: { function: { name: string } }) =>
-          tool.function.name === "get_my_requests",
+          tool.function.name === "propose_changes",
       )
+      const chat =
+        request.tools?.some(
+          (tool: { function: { name: string } }) =>
+            tool.function.name === "get_my_requests",
+        ) || admin
       const last = request.messages.at(-1)
-      if (chat && last?.role === "tool") {
+      if (chat && !admin && last?.role === "tool") {
         const result = JSON.parse(last.content)
         if (result.data) {
           botRequestId = result.data.find(
@@ -62,7 +67,14 @@ export const test = base.extend<{ modelUrl: string }>({
           {
             index: 0,
             delta: toolResult
-              ? { role: "assistant", content: chat ? "已提交" : "已完成" }
+              ? {
+                  role: "assistant",
+                  content: admin
+                    ? "请核对确认卡，点击后才生效。"
+                    : chat
+                      ? "已提交"
+                      : "已完成",
+                }
               : {
                   role: "assistant",
                   tool_calls: [
@@ -71,30 +83,44 @@ export const test = base.extend<{ modelUrl: string }>({
                       id: "synthetic-draft",
                       type: "function",
                       function: {
-                        name: chat
-                          ? JSON.stringify(last).includes("补充")
-                            ? "draft_update_request"
-                            : "get_my_requests"
-                          : "submit_draft",
-                        arguments: JSON.stringify(
-                          chat
+                        name: admin
+                          ? "propose_changes"
+                          : chat
                             ? JSON.stringify(last).includes("补充")
-                              ? {
-                                  ...(botRequestId
-                                    ? { request_id: botRequestId }
-                                    : {}),
-                                  items: [
-                                    {
-                                      op: "add",
-                                      capability_key: "automated_testing",
-                                      statement: "我补充了一段合成项目经历",
-                                      owner_statement:
-                                        "本人完成了合成项目的验证",
+                              ? "draft_update_request"
+                              : "get_my_requests"
+                            : "submit_draft",
+                        arguments: JSON.stringify(
+                          admin
+                            ? {
+                                items: [
+                                  {
+                                    function: "update_update_settings",
+                                    args: {
+                                      reminder_schedule: "yearly",
+                                      stale_after_months: 36,
                                     },
-                                  ],
-                                }
-                              : {}
-                            : { items },
+                                  },
+                                ],
+                              }
+                            : chat
+                              ? JSON.stringify(last).includes("补充")
+                                ? {
+                                    ...(botRequestId
+                                      ? { request_id: botRequestId }
+                                      : {}),
+                                    items: [
+                                      {
+                                        op: "add",
+                                        capability_key: "automated_testing",
+                                        statement: "我补充了一段合成项目经历",
+                                        owner_statement:
+                                          "本人完成了合成项目的验证",
+                                      },
+                                    ],
+                                  }
+                                : {}
+                              : { items },
                         ),
                       },
                     },
@@ -121,12 +147,14 @@ export const test = base.extend<{ modelUrl: string }>({
     const address = server.address()
     if (!address || typeof address === "string")
       throw new Error("Missing mock address")
-    const host = baseURL?.includes("backend:")
-      ? Object.values(networkInterfaces())
-          .flat()
-          .find((network) => network?.family === "IPv4" && !network.internal)
-          ?.address
-      : "localhost"
+    const host =
+      process.env.MODEL_TEST_HOST ??
+      (baseURL?.includes("backend:")
+        ? Object.values(networkInterfaces())
+            .flat()
+            .find((network) => network?.family === "IPv4" && !network.internal)
+            ?.address
+        : "localhost")
     try {
       await use(`http://${host}:${address.port}/v1`)
     } finally {
