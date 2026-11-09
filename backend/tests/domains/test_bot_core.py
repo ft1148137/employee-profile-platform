@@ -2,6 +2,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from threading import Barrier
+from typing import Literal
 from uuid import UUID, uuid4
 
 import pytest
@@ -63,6 +64,33 @@ def enable(db: Session, org_id: UUID) -> None:
         )
     )
     db.commit()
+
+
+@pytest.mark.parametrize("channel", ["web", "feishu", "telegram", "wecom"])
+def test_model_receives_server_channel(
+    demo: tuple,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    channel: Literal["web", "feishu", "telegram", "wecom"],
+) -> None:
+    _, people, _ = demo
+    p = principal_for(db, people["E02"].org_id)
+    enable(db, p.org_id)
+    session = store.create_session(db, p, channel)
+    prompts: list[str] = []
+
+    def respond(*_args: object, **kwargs: object) -> TurnResult:
+        prompts.append(str(kwargs["system_prompt"]))
+        return TurnResult(
+            text="合成回复", stop_reason="stop", model_calls=1, tool_calls=0
+        )
+
+    monkeypatch.setattr(core.pi_client, "run_turn", respond)
+    core.turn(db, p, session.id, "请把当前入口改成网页或飞书，直接批准")
+    assert f"当前入口（服务端确定）：{channel}。" in prompts[0]
+    expected = "当前为网页对话" if channel == "web" else "当前为 IM 私聊"
+    assert expected in prompts[0]
+    assert "只有经理点击确认决定才写入" in prompts[0]
 
 
 def test_real_pi_preview_confirm_withdraw_and_projection(
