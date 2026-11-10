@@ -577,6 +577,7 @@ NOT_FOR_ASSISTANT = {
         "POST",
         "/admin-assistant/change-sets/{id}/undo",
     ): "变更集只能由创建人在确认卡上操作",
+    ("GET", "/admin-assistant/sessions"): "助手自身的会话接口",
     ("POST", "/admin-assistant/sessions"): "助手自身的会话接口",
     ("GET", "/admin-assistant/sessions/{session_id}/messages"): "助手自身的会话接口",
     ("POST", "/admin-assistant/sessions/{session_id}/turns"): "助手自身的会话接口",

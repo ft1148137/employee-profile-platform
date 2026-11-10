@@ -17,6 +17,11 @@ from app.domains.bot.schemas import (
 router = APIRouter(prefix="/bot/sessions", tags=["bot"])
 
 
+@router.get("")
+def list_sessions(principal: OrgPrincipalDep, session: SessionDep) -> store.SessionList:
+    return store.list_sessions(session, principal)
+
+
 @router.post("", status_code=201)
 def create_session(principal: OrgPrincipalDep, session: SessionDep) -> SessionCreated:
     return SessionCreated(session_id=store.create_session(session, principal).id)
@@ -26,10 +31,11 @@ def create_session(principal: OrgPrincipalDep, session: SessionDep) -> SessionCr
 def list_messages(
     principal: OrgPrincipalDep, session: SessionDep, session_id: UUID
 ) -> list[SessionMessage]:
-    return [
-        SessionMessage.model_validate(message.model_dump())
-        for message in store.list_messages(session, principal, session_id)
-    ]
+    row = store.get_session(session, principal, session_id)
+    messages = store.messages_for(session, row)
+    if not messages and row.turn_count:
+        raise store.BotSessionNotFound()
+    return [SessionMessage.model_validate(message.model_dump()) for message in messages]
 
 
 @router.post("/{session_id}/turns")

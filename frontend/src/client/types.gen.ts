@@ -3823,6 +3823,20 @@ export type SessionCreated = {
 };
 
 /**
+ * SessionList
+ */
+export type SessionList = {
+    /**
+     * Data
+     */
+    data: Array<SessionSummary>;
+    /**
+     * Retention Days
+     */
+    retention_days: number;
+};
+
+/**
  * SessionMessage
  */
 export type SessionMessage = {
@@ -3842,6 +3856,32 @@ export type SessionMessage = {
      * Created At
      */
     created_at: string;
+};
+
+/**
+ * SessionSummary
+ */
+export type SessionSummary = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Started At
+     */
+    started_at: string;
+    /**
+     * Last Activity At
+     */
+    last_activity_at: string;
+    /**
+     * Turn Count
+     */
+    turn_count: number;
+    /**
+     * Preview
+     */
+    preview: string;
 };
 
 /**
@@ -4778,6 +4818,36 @@ export type ModelSettingUpdateWritable = {
     reasoning_effort?: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | null;
 };
 
+export type adminAssistantListSessionsData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/admin-assistant/sessions';
+};
+
+export type adminAssistantListSessionsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantListSessionsError = adminAssistantListSessionsErrors[keyof adminAssistantListSessionsErrors];
+
+export type adminAssistantListSessionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: SessionList;
+};
+
+export type adminAssistantListSessionsResponse = adminAssistantListSessionsResponses[keyof adminAssistantListSessionsResponses];
+
 export type adminAssistantCreateSessionData = {
     body?: never;
     path?: never;
@@ -5494,6 +5564,36 @@ export type imSettingsTestImConnectionResponses = {
 
 export type imSettingsTestImConnectionResponse = imSettingsTestImConnectionResponses[keyof imSettingsTestImConnectionResponses];
 
+export type botListSessionsData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/bot/sessions';
+};
+
+export type botListSessionsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type botListSessionsError = botListSessionsErrors[keyof botListSessionsErrors];
+
+export type botListSessionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: SessionList;
+};
+
+export type botListSessionsResponse = botListSessionsResponses[keyof botListSessionsResponses];
+
 export type botCreateSessionData = {
     body?: never;
     path?: never;
@@ -6039,6 +6139,10 @@ export type adminAssistantListChangeSetsData = {
          * Status
          */
         status: 'draft';
+        /**
+         * Session Id
+         */
+        session_id?: string | null;
     };
     url: '/api/v1/orgs/{org_id}/admin-assistant/change-sets';
 };

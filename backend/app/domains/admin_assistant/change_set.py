@@ -142,10 +142,16 @@ async def test_connection(
 
 
 def list_drafts(
-    db: Session, principal: Principal, function: str, status: Literal["draft"] = "draft"
+    db: Session,
+    principal: Principal,
+    function: str,
+    status: Literal["draft"] = "draft",
+    session_id: UUID | None = None,
 ) -> list[ChangeSetPublic]:
     if not principal.is_org_admin:
         raise ChangeSetError("找不到这份改动", 404)
+    if session_id is not None:
+        store.get_session(db, principal, session_id)
     current_session = (
         select(AdminAssistantSession.id)
         .where(
@@ -164,7 +170,8 @@ def list_drafts(
         .where(
             AdminChangeSet.org_id == principal.org_id,
             AdminChangeSet.created_by_user_id == principal.user_id,
-            AdminChangeSet.session_id == current_session,
+            AdminChangeSet.session_id
+            == (session_id if session_id is not None else current_session),
             AdminChangeSet.status == status,
         )
         .order_by(col(AdminChangeSet.updated_at).desc(), col(AdminChangeSet.id).desc())

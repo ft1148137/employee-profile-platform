@@ -37,7 +37,7 @@ export function FileSummaryPreview({ preview }: { preview: FileSummary }) {
         </div>
       ) : (
         <p className="text-muted-foreground">
-          尚未导入，请在下方确认卡中核对并确认应用。
+          请核对以上统计，导入状态显示在下方确认卡中。
         </p>
       )}
     </section>

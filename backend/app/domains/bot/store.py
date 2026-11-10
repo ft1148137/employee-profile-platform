@@ -37,6 +37,89 @@ class MessagePublic(BaseModel):
     created_at: datetime
 
 
+class SessionSummary(BaseModel):
+    id: UUID
+    started_at: datetime
+    last_activity_at: datetime
+    turn_count: int
+    preview: str
+
+
+class SessionList(BaseModel):
+    data: list[SessionSummary]
+    retention_days: int
+
+
+def list_sessions(
+    db: Session, principal: Principal, *, administrator: bool = False
+) -> SessionList:
+    days = read_settings(db, principal.org_id).retention_days
+    session_type: type[BotSession] | type[AdminAssistantSession]
+    message_type: type[BotMessage] | type[AdminAssistantMessage]
+    if administrator:
+        if not principal.is_org_admin or principal.user_id is None:
+            raise BotSessionNotFound()
+        session_type = AdminAssistantSession
+        message_type = AdminAssistantMessage
+        owner = col(AdminAssistantSession.user_id) == principal.user_id
+    else:
+        if principal.employee_id is None:
+            raise BotSessionNotFound()
+        visible_employee(db, principal, principal.employee_id)
+        session_type = BotSession
+        message_type = BotMessage
+        owner = (col(BotSession.employee_id) == principal.employee_id) & (
+            col(BotSession.channel) == "web"
+        )
+    now = utc_now()
+    retained = select(message_type.id).where(
+        message_type.org_id == principal.org_id,
+        message_type.session_id == session_type.id,
+        message_type.created_at > now - timedelta(days=days) if days else True,
+    )
+    first_user = (
+        select(message_type.ciphertext)
+        .where(
+            message_type.org_id == principal.org_id,
+            message_type.session_id == session_type.id,
+            message_type.role == "user",
+            message_type.created_at > now - timedelta(days=days) if days else True,
+        )
+        .order_by(col(message_type.created_at), col(message_type.id))
+        .limit(1)
+        .scalar_subquery()
+    )
+    rows = db.exec(
+        select(session_type, first_user)
+        .where(
+            col(session_type.org_id) == principal.org_id,
+            owner,
+            retained.exists(),
+            col(session_type.last_activity_at) > now - timedelta(hours=2)
+            if not days
+            else True,
+        )
+        .order_by(
+            col(session_type.last_activity_at).desc(), col(session_type.id).desc()
+        )
+        .limit(20)
+    ).all()
+    return SessionList(
+        retention_days=days,
+        data=[
+            SessionSummary(
+                **row.model_dump(
+                    include={"id", "started_at", "last_activity_at", "turn_count"}
+                ),
+                preview=json.loads(decrypt_secret(ciphertext))["text"][:40]
+                if ciphertext
+                else "",
+            )
+            for row, ciphertext in rows
+        ],
+    )
+
+
 def create_session(
     db: Session,
     principal: Principal,
@@ -67,7 +150,7 @@ def get_session(
         select(BotSession)
         .where(
             BotSession.org_id == principal.org_id,
-            BotSession.employee_id == principal.employee_id,
+            col(BotSession.employee_id) == principal.employee_id,
             BotSession.id == session_id,
         )
         .execution_options(populate_existing=True)
