@@ -29,6 +29,7 @@ import {
 import useAuth from "@/hooks/useAuth"
 import { useOrg } from "@/hooks/useOrg"
 import { ChangeSetCard } from "./ChangeSetCard"
+import { FileSummaryPreview } from "./FileSummaryPreview"
 import { FileUploadCard } from "./FileUploadCard"
 import { SecretInputCard } from "./SecretInputCard"
 
@@ -331,7 +332,11 @@ export function AdminAssistantPanel({
                       key={i}
                       className="rounded-xl border bg-background p-4"
                     >
-                      <RosterPreview preview={message.preview} />
+                      {"counts" in message.preview ? (
+                        <FileSummaryPreview preview={message.preview} />
+                      ) : (
+                        <RosterPreview preview={message.preview} />
+                      )}
                     </div>
                   ) : message.type === "admin_change_set" ? (
                     <ChangeSetCard

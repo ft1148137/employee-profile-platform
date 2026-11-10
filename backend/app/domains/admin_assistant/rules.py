@@ -164,6 +164,7 @@ def register_rules(functions: dict[str, AdminFunction]) -> None:
             save_dictionary,
             "/admin/rules?tab=dictionary",
             (
+                ("POST", "/capabilities/preview"),
                 ("POST", "/capabilities/editor/preview"),
                 ("PUT", "/capabilities"),
                 ("POST", "/capabilities/versions"),

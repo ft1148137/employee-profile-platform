@@ -120,3 +120,59 @@ test("upload a sample roster in chat, restore preview and confirm import", async
     fullPage: true,
   })
 })
+
+test("preview work records in chat, repair errors and confirm", async ({
+  page,
+}, testInfo) => {
+  await logInUser(
+    page,
+    "admin@demo.example.com",
+    process.env.DEMO_USER_PASSWORD ?? "demo-password-2026",
+  )
+  await page.route(/\/admin-assistant\/sessions\/[^/]+\/turns/, (route) =>
+    route.fulfill({
+      json: { messages: [{ type: "file_upload", kind: "work_csv" }] },
+    }),
+  )
+  await page.goto("/admin/assistant")
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page
+    .getByRole("textbox", { name: "发给管理助手的消息" })
+    .fill("导入工作记录")
+  await page.getByRole("button", { name: "发送", exact: true }).click()
+  const input = page.getByLabel("选择工作记录")
+  const csv =
+    "记录编号,来源,发生时间,执行人账号,标题\n合成记录,合成系统,2026-01-01T09:00:00+08:00,合成账号,合成工作\n"
+  await input.setInputFiles({
+    name: "工作记录.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(csv.replace("合成账号", "")),
+  })
+  await page.getByRole("button", { name: "上传并预览" }).click()
+  await expect(
+    page.getByRole("region", { name: "文件预览" }).getByRole("alert"),
+  ).toContainText("不能为空")
+  await expect(
+    page.getByRole("region", { name: "设置改动确认卡" }),
+  ).toHaveCount(0)
+  await input.setInputFiles({
+    name: "工作记录.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(csv),
+  })
+  await page.getByRole("button", { name: "上传并预览" }).click()
+  const preview = page.getByRole("region", { name: "文件预览" }).last()
+  await expect(preview).toContainText("记录条数")
+  await expect(preview).toContainText("尚未导入")
+  const card = page.getByRole("region", { name: "设置改动确认卡" })
+  await expect(card.getByRole("status")).toHaveText("待确认")
+  await page.reload()
+  await expect(preview).toContainText("涉及人数")
+  await card.getByRole("button", { name: "确认应用" }).click()
+  await expect(card.getByRole("status")).toHaveText("已应用")
+  await expectChineseCopy(page)
+  await page.screenshot({
+    path: testInfo.outputPath("work-preview.png"),
+    fullPage: true,
+  })
+})

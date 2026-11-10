@@ -488,7 +488,7 @@ export type Body_admin_assistant_upload_file = {
     /**
      * Kind
      */
-    kind: 'roster';
+    kind: 'roster' | 'profile_json' | 'work_csv' | 'capabilities';
     /**
      * File
      */
@@ -1942,18 +1942,51 @@ export type FieldChange = {
 };
 
 /**
+ * FileError
+ */
+export type FileError = {
+    /**
+     * Location
+     */
+    location: string;
+    /**
+     * Message
+     */
+    message: string;
+};
+
+/**
  * FilePreviewCard
  */
 export type FilePreviewCard = {
     /**
      * Kind
      */
-    kind: 'roster';
+    kind: 'roster' | 'profile_json' | 'work_csv' | 'capabilities';
     /**
      * Type
      */
     type?: 'file_preview';
-    preview: RosterImportPreview;
+    /**
+     * Preview
+     */
+    preview: RosterImportPreview | FileSummary;
+};
+
+/**
+ * FileSummary
+ */
+export type FileSummary = {
+    /**
+     * Counts
+     */
+    counts: {
+        [key: string]: number;
+    };
+    /**
+     * Errors
+     */
+    errors?: Array<FileError>;
 };
 
 /**
@@ -1963,7 +1996,7 @@ export type FileUploadCard = {
     /**
      * Kind
      */
-    kind: 'roster';
+    kind: 'roster' | 'profile_json' | 'work_csv' | 'capabilities';
     /**
      * Type
      */

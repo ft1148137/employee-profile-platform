@@ -8,6 +8,7 @@ from app.api.deps import SessionDep
 from app.api.secret_safe import SecretSafeRoute
 from app.authz.deps import OrgAdminDep, OrgPrincipalDep
 from app.domains.admin_assistant import change_set, core, files, store
+from app.domains.admin_assistant.files import FileKind
 from app.domains.admin_assistant.registry import ConnectionTestResult
 from app.domains.admin_assistant.schemas import (
     AdminSessionMessage,
@@ -72,7 +73,7 @@ def upload_file(
     principal: OrgAdminDep,
     session: SessionDep,
     session_id: UUID,
-    kind: Annotated[Literal["roster"], Form()],
+    kind: Annotated[FileKind, Form()],
     file: UploadFile,
 ) -> AdminTurnResponse:
     return files.upload(session, principal, session_id, kind, file)

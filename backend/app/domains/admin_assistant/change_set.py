@@ -34,10 +34,13 @@ from app.domains.admin_assistant.schemas import (
 from app.domains.base import utc_now
 from app.domains.bot import store as messages
 from app.domains.bot.schemas import TextMessage
+from app.domains.capability.service import DictionaryConflict
+from app.domains.change_request.import_json import InvalidImport
 from app.domains.org.models import Organization
 from app.domains.org.roster.service import RosterError
 from app.domains.org.roster.single import Offboard
 from app.domains.source.identities import IdentityConflict, InvalidIdentityEmployee
+from app.domains.source.import_records import InvalidWorkRecords
 from app.domains.source.service import InvalidSourceSetting
 from app.domains.source.sync import SyncError
 
@@ -87,9 +90,11 @@ def public(row: AdminChangeSet) -> ChangeSetPublic:
 def _with_secrets(
     entry: registry.AdminFunction, args: dict[str, JsonValue], values: dict[str, str]
 ) -> BaseModel:
+    if entry.file_field and not values.get(entry.file_field):
+        raise ChangeSetError("文件已失效，请重新上传", 422)
     try:
         return entry.input_model.model_validate(
-            {**args, **{f: values[f] for f in entry.secret_fields if f in values}}
+            {**args, **{f: values[f] for f in entry.private_fields if f in values}}
         )
     except ValueError:
         raise ChangeSetError("请先用安全输入框填写有效的密钥", 422) from None
@@ -181,12 +186,14 @@ def _entry(
         or ("user_id" in args and "user_id" not in entry.input_model.model_fields)
     ):
         raise ChangeSetError("改动功能或参数不正确，不能指定身份或企业", 422)
+    if entry.file_field and entry.file_field in args:
+        raise ChangeSetError("文件内容只能通过上传框提交", 422)
     if set(entry.secret_fields) & args.keys():
         raise ChangeSetError("请用安全输入框填写密钥", 422)
     # Validate ordinary fields now; secret values are validated again at application.
     try:
         return entry, entry.input_model.model_validate(
-            {**args, **dict.fromkeys(entry.secret_fields, "pending-secure-input")}
+            {**args, **dict.fromkeys(entry.private_fields, "pending-secure-input")}
         )
     except ValueError:
         raise ChangeSetError("参数不正确，请按功能说明填写", 422) from None
@@ -211,11 +218,11 @@ def propose(
     for item in body.items:
         entry, args = _entry(item.function, item.args)
         # Secrets are stored by field for the whole change set; each needs one target.
-        if secret_fields.intersection(entry.secret_fields):
+        if secret_fields.intersection(entry.private_fields):
             raise ChangeSetError(
-                "同一份改动不能重复配置连接，请合并连接设置后重新起草", 422
+                "同一份改动不能重复配置连接或导入文件，请分开起草", 422
             )
-        secret_fields.update(entry.secret_fields)
+        secret_fields.update(entry.private_fields)
         if isinstance(args, DisableArgs):
             disabled_users.update(args.user_ids)
         elif isinstance(args, Offboard):
@@ -228,14 +235,14 @@ def propose(
             {
                 "function": entry.name,
                 "args": args.model_dump(
-                    mode="json", exclude=set(entry.secret_fields), exclude_unset=True
+                    mode="json", exclude=entry.private_fields, exclude_unset=True
                 ),
                 "before": entry.snapshot(db, principal, args).model_dump(
-                    mode="json", exclude=set(entry.secret_fields)
+                    mode="json", exclude=entry.private_fields
                 )
                 if entry.snapshot
                 else None,
-                "after": args.model_dump(mode="json", exclude=set(entry.secret_fields)),
+                "after": args.model_dump(mode="json", exclude=entry.private_fields),
                 "impact": entry.impact(db, principal, args).model_dump(mode="json")
                 if entry.impact
                 else None,
@@ -290,6 +297,12 @@ def apply(
     _lock_org(db, principal)
     row = get(db, principal, id, lock=True)
     if row.status != "draft":
+        if any(
+            entry.file_field
+            for item in row.items
+            if (entry := registry.FUNCTIONS.get(str(item["function"])))
+        ):
+            raise ChangeSetError("文件已失效，请重新上传", 422)
         raise ChangeSetError("这份改动已结束，请重新起草")
     if row.revision != revision:
         _stale(db, row)
@@ -300,7 +313,7 @@ def apply(
         try:
             snapshot = (
                 entry.snapshot(db, principal, args).model_dump(
-                    mode="json", exclude=set(entry.secret_fields)
+                    mode="json", exclude=entry.private_fields
                 )
                 if entry.snapshot
                 else None
@@ -311,7 +324,7 @@ def apply(
             _stale(db, row)
         if entry.snapshot and snapshot != item.before:
             _stale(db, row)
-        if entry.secret_fields:
+        if entry.private_fields:
             args = _with_secrets(entry, item.args, secret_values)
             if (
                 entry.rebinds
@@ -359,7 +372,7 @@ def apply(
                 )
             if entry.snapshot and entry.undoable:
                 item.after = entry.snapshot(db, principal, args).model_dump(
-                    mode="json", exclude=set(entry.secret_fields)
+                    mode="json", exclude=entry.private_fields
                 )
         row.items = [
             item.model_dump(mode="json", exclude={"title"}) for item in applied_items
@@ -380,8 +393,22 @@ def apply(
                 AdminTurnResponse(messages=[*notices]).model_dump(mode="json"),
             )
         db.commit()
+    except InvalidImport as error:
+        db.rollback()
+        raise ChangeSetError(
+            "；".join(error.messages) + "；所有改动均已回滚", error.status_code
+        ) from None
+    except InvalidWorkRecords as error:
+        db.rollback()
+        reason = "；".join(
+            (f"第 {i.row_number} 行：" if i.row_number else "") + i.message
+            for i in error.issues
+            if i.level == "error"
+        )
+        raise ChangeSetError(reason + "；所有改动均已回滚", error.status_code) from None
     except (
         AccountError,
+        DictionaryConflict,
         IdentityConflict,
         InvalidIdentityEmployee,
         RosterError,
@@ -444,7 +471,7 @@ def undo(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
         if entry.snapshot is None:
             raise ChangeSetError("这份改动不能撤销")
         current = entry.snapshot(db, principal, args).model_dump(
-            mode="json", exclude=set(entry.secret_fields)
+            mode="json", exclude=entry.private_fields
         )
         unchanged &= current == item.after
         assert item.before is not None
@@ -457,7 +484,7 @@ def undo(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
             {
                 "function": function,
                 "args": body.model_dump(
-                    mode="json", exclude=set(registry.FUNCTIONS[function].secret_fields)
+                    mode="json", exclude=registry.FUNCTIONS[function].private_fields
                 ),
             }
         )
@@ -516,7 +543,7 @@ def request_secret_input(
 ) -> SecretInputCard:
     store.get_session(db, principal, session_id)
     entry = registry.FUNCTIONS.get(function)
-    if entry is None or field not in entry.secret_fields:
+    if entry is None or field == entry.file_field or field not in entry.secret_fields:
         raise ChangeSetError("这个字段不接受安全输入", 422)
     rows = db.exec(
         select(AdminChangeSet)
@@ -545,7 +572,8 @@ def save_secret(
     if row.status != "draft":
         raise ChangeSetError("这份改动已结束")
     if not any(
-        field in registry.FUNCTIONS[item.function].secret_fields
+        field != registry.FUNCTIONS[item.function].file_field
+        and field in registry.FUNCTIONS[item.function].secret_fields
         for item in public(row).items
     ):
         raise ChangeSetError("这个字段不接受安全输入", 422)

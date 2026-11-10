@@ -9,6 +9,41 @@ import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
+const fileKinds = {
+  roster: {
+    title: "员工名单",
+    form: "上传名单",
+    accept: ".xlsx,.csv",
+    limit: 5,
+    format: "Excel、CSV",
+    result: "更新名单",
+  },
+  profile_json: {
+    title: "批量画像",
+    form: "上传批量画像",
+    accept: ".json",
+    limit: 1,
+    format: "画像文件",
+    result: "交员工本人过目",
+  },
+  work_csv: {
+    title: "工作记录",
+    form: "上传工作记录",
+    accept: ".csv,.xlsx",
+    limit: 5,
+    format: "Excel、CSV",
+    result: "导入工作记录",
+  },
+  capabilities: {
+    title: "能力词典",
+    form: "上传能力词典",
+    accept: ".xlsx",
+    limit: 2,
+    format: "Excel",
+    result: "发布新版本",
+  },
+} as const
+
 export function FileUploadCard({
   orgId,
   sessionId,
@@ -26,12 +61,13 @@ export function FileUploadCard({
 }) {
   const input = useRef<HTMLInputElement>(null)
   const id = useId()
+  const kind = fileKinds[card.kind]
   const upload = useMutation({
     onMutate: () => onUploading(true),
     onSettled: () => onUploading(false),
     mutationFn: async () => {
       const file = input.current?.files?.[0]
-      if (!file) throw new Error("请先选择名单文件")
+      if (!file) throw new Error("请先选择文件")
       return (
         await AdminAssistantService.assistantUploadFile({
           query: { org_id: orgId },
@@ -47,7 +83,7 @@ export function FileUploadCard({
   })
   return (
     <form
-      aria-label="上传名单"
+      aria-label={kind.form}
       className="space-y-3 rounded-xl border border-primary/25 bg-background p-4"
       onSubmit={(event) => {
         event.preventDefault()
@@ -55,16 +91,17 @@ export function FileUploadCard({
       }}
     >
       <label htmlFor={id} className="font-semibold">
-        选择员工名单
+        选择{kind.title}
       </label>
       <p className="text-sm text-muted-foreground">
-        支持 Excel、CSV，最多 5 MB。上传后先核对预览，点击确认才会更新名单。
+        支持{kind.format}，最多 {kind.limit} MB。上传后先核对预览，点击确认才会
+        {kind.result}。
       </p>
       <Input
         id={id}
         ref={input}
         type="file"
-        accept=".xlsx,.csv"
+        accept={kind.accept}
         required
         disabled={disabled || upload.isPending}
       />
