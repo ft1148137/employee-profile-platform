@@ -36,6 +36,7 @@ from app.domains.bot import store as messages
 from app.domains.bot.schemas import TextMessage
 from app.domains.capability.service import DictionaryConflict
 from app.domains.change_request.import_json import InvalidImport
+from app.domains.model.service import InvalidModelSetting
 from app.domains.org.models import Organization
 from app.domains.org.roster.service import RosterError
 from app.domains.org.roster.single import Offboard
@@ -433,7 +434,7 @@ def apply(
     except SyncError as error:
         db.rollback()
         raise ChangeSetError(error.message, error.status) from None
-    except InvalidSourceSetting as error:
+    except (InvalidSourceSetting, InvalidModelSetting) as error:
         db.rollback()
         raise ChangeSetError(str(error), 422) from None
     except Exception:

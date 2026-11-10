@@ -20,6 +20,7 @@ from app.domains.admin_assistant.schemas import (
     FilePreviewCard,
     ProposeChanges,
 )
+from app.domains.bot import store as messages
 from app.domains.capability.files import dictionary_xlsx
 from app.domains.capability.service import get_schema, read_editor
 from app.domains.change_request.batch_import import import_profiles
@@ -301,7 +302,8 @@ def test_file_fields_and_lifecycle(
         params={"org_id": p.org_id},
         headers=demo[2]["admin"],
     )
-    projected = files.model_message(json.dumps(history.json()[-1]["payload"]))
+    assert history.status_code == 200
+    projected = json.dumps(files.model_context(db, store.get_session(db, p, sid)))
     assert (
         "content" not in projected and "synthetic-private-content-280" not in projected
     )
@@ -425,7 +427,7 @@ def test_nested_profile_preview_keeps_outer_writes(db: Session, demo: tuple) -> 
     )
 
 
-def test_summary_error_limit() -> None:
+def test_summary_error_limit(db: Session, demo: tuple) -> None:
     preview = files.FileSummary(
         counts={},
         errors=[
@@ -435,5 +437,6 @@ def test_summary_error_limit() -> None:
     payload = AdminTurnResponse(
         messages=[FilePreviewCard(kind="profile_json", preview=preview)]
     )
-    projected = json.loads(files.model_message(payload.model_dump_json()))
-    assert len(projected["messages"][0]["preview"]["errors"]) == 20
+    session = store.create_session(db, principal(db, demo))
+    messages.append_message(db, session, "assistant", payload.model_dump(mode="json"))
+    assert len(files.model_context(db, session)[0]["preview"]["errors"]) == 20

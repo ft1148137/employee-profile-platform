@@ -35,9 +35,6 @@ def _save(
 def turn(db: Session, p: Principal, session_id: UUID, text: str) -> s.TurnResponse:
     session = store.get_session(db, p, session_id)
     setting = read_setting(db, p.org_id)
-    history = store.load_history(db, session)
-    for previous in history:
-        previous.text = tools.redact_text(previous.text)
     admitted = False
     try:
         with begin_turn(db, p, session, {"text": text}):
@@ -56,9 +53,9 @@ def turn(db: Session, p: Principal, session_id: UUID, text: str) -> s.TurnRespon
             result = pi_client.run_turn(
                 model_config(setting),
                 mode="chat",
-                history=history,
+                session_state=store.load_state(db, session),
                 system_prompt=system_prompt(db, p, session.channel),
-                input=text,
+                input=tools.redact_text(text),
                 tools=tools.definitions(),
                 on_tool_call=lambda name, args: tools.call(
                     db, p, session, cards, name, args
@@ -67,6 +64,7 @@ def turn(db: Session, p: Principal, session_id: UUID, text: str) -> s.TurnRespon
             # Only completed model turns may leave drafts or replies behind.
             if result.stop_reason != "stop":
                 raise ModelUnavailable()
+            store.save_state(db, session, result.session_state)
             messages: list[s.Message] = (
                 [s.TextMessage(text=result.text)] if result.text else []
             )
@@ -81,6 +79,8 @@ def turn(db: Session, p: Principal, session_id: UUID, text: str) -> s.TurnRespon
     except BotQuotaPaused as error:
         message = f"模型额度暂时用完，预计 {error.retry_at.isoformat()} 恢复"
     except ModelServiceError as error:
+        message = str(error)
+    except pi_client.PiSessionInvalid as error:
         message = str(error)
     except ModelUnavailable:
         message = "模型服务暂时不可用，请稍后再试"

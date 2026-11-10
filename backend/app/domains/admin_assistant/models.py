@@ -38,6 +38,7 @@ class AdminAssistantSession(SQLModel, table=True):
     last_activity_at: datetime = Field(
         default_factory=utc_now, sa_type=DateTime(timezone=True)
     )
+    state_ciphertext: str | None = Field(default=None, repr=False)
     turn_count: int = 0
     lease_until: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 

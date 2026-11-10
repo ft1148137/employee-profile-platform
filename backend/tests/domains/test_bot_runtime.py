@@ -49,7 +49,7 @@ def test_storage_ciphertext_scope_and_history(demo: tuple, db: Session) -> None:
         ).one()
     )
     assert store.list_messages(db, p, session.id)[0].payload == {"text": "合成私密经历"}
-    assert "合成私密经历" in store.load_history(db, session)[0].text
+    assert store.load_state(db, session) is None
     for wrong in (
         replace(p, employee_id=people["E01"].id),
         replace(p, org_id=uuid4()),
@@ -63,9 +63,7 @@ def test_storage_ciphertext_scope_and_history(demo: tuple, db: Session) -> None:
     for _ in range(25):
         store.append_message(db, session, "assistant", "x" * 2000)
     db.commit()
-    history = store.load_history(db, session)
-    assert len(history) <= 20 and sum(len(m.text) for m in history) == 24000
-    assert all(m.role == "assistant" for m in history)
+    assert len(store.list_messages(db, p, session.id)) == 26
     db.delete(session)
     db.commit()
     assert (

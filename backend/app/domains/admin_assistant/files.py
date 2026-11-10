@@ -13,6 +13,7 @@ from sqlmodel import Session, select
 from app.authz.principal import Principal
 from app.core.secrets import encrypt_secret
 from app.domains.admin_assistant import store
+from app.domains.admin_assistant.models import AdminAssistantSession
 from app.domains.bot import store as messages
 from app.domains.capability.files import parse_dictionary
 from app.domains.capability.schemas import SaveDictionary
@@ -213,20 +214,25 @@ def summary(preview: RosterImportPreview) -> dict[str, JsonValue]:
     }
 
 
-def model_message(text: str) -> str:
-    payload = json.loads(text)
-    if isinstance(payload, dict):
-        for card in payload.get("messages", []):
-            if card.get("type") == "file_preview":
-                if card["kind"] == "roster":
-                    card["preview"] = summary(
-                        RosterImportPreview.model_validate(card["preview"])
-                    )
+def model_context(
+    db: Session, session: AdminAssistantSession
+) -> list[dict[str, JsonValue]]:
+    for message in reversed(messages.messages_for(db, session, limit=20)):
+        if message.role != "assistant" or not isinstance(message.payload, dict):
+            continue
+        cards = message.payload.get("messages")
+        if not isinstance(cards, list):
+            continue
+        for card in cards:
+            if isinstance(card, dict) and card.get("type") == "file_preview":
+                if card.get("kind") == "roster":
+                    data = summary(RosterImportPreview.model_validate(card["preview"]))
                 else:
                     preview = FileSummary.model_validate(card["preview"])
                     preview.errors = preview.errors[:20]
-                    card["preview"] = preview.model_dump(mode="json")
-    return json.dumps(payload, ensure_ascii=False)
+                    data = preview.model_dump(mode="json")
+                return [{"type": "file_preview", "preview": data}]
+    return []
 
 
 def upload(

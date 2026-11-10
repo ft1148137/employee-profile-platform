@@ -1,12 +1,12 @@
 import json
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
 from fastapi import HTTPException
 from pydantic import BaseModel, JsonValue
-from sqlmodel import Session, col, delete, select
+from sqlmodel import Session, col, delete, select, update
 
 from app.authz.principal import Principal
 from app.core.secrets import decrypt_secret, encrypt_secret
@@ -17,12 +17,8 @@ from app.domains.admin_assistant.models import (
 from app.domains.base import utc_now
 from app.domains.bot.models import BotMessage, BotSession, ConversationMessage
 from app.domains.bot.settings import read_settings
-from app.domains.model.pi_client import HistoryMessage
 from app.domains.org.models import Organization
 from app.domains.org.service import visible_employee
-
-HISTORY_MESSAGES = 20
-HISTORY_CHARS = 24000
 
 
 class BotSessionNotFound(HTTPException):
@@ -176,6 +172,7 @@ def append_message(
     if not read_settings(
         db, session.org_id
     ).retention_days and session.last_activity_at <= utc_now() - timedelta(hours=2):
+        session.state_ciphertext = None
         db.exec(
             delete(message_type).where(
                 col(message_type.org_id) == session.org_id,
@@ -229,7 +226,10 @@ def list_messages(
 
 
 def messages_for(
-    db: Session, session: BotSession | AdminAssistantSession
+    db: Session,
+    session: BotSession | AdminAssistantSession,
+    *,
+    limit: int | None = None,
 ) -> list[MessagePublic]:
     return [
         MessagePublic(
@@ -238,27 +238,52 @@ def messages_for(
             payload=json.loads(decrypt_secret(row.ciphertext)),
             created_at=row.created_at,
         )
-        for row in _messages(db, session)
+        for row in _messages(db, session, limit=limit)
     ]
 
 
-def load_history(
+def load_state(
+    db: Session, session: BotSession | AdminAssistantSession
+) -> dict[str, JsonValue] | None:
+    days = read_settings(db, session.org_id).retention_days
+    if not days and session.last_activity_at <= utc_now() - timedelta(hours=2):
+        return None
+    message_type = (
+        AdminAssistantMessage
+        if isinstance(session, AdminAssistantSession)
+        else BotMessage
+    )
+    if (
+        days
+        and db.exec(
+            select(message_type.id)
+            .where(
+                message_type.org_id == session.org_id,
+                message_type.session_id == session.id,
+                message_type.created_at <= utc_now() - timedelta(days=days),
+            )
+            .limit(1)
+        ).first()
+    ):
+        return None
+    return (
+        json.loads(decrypt_secret(session.state_ciphertext))
+        if session.state_ciphertext
+        else None
+    )
+
+
+def save_state(
     db: Session,
     session: BotSession | AdminAssistantSession,
-    *,
-    transform: Callable[[str], str] | None = None,
-) -> list[HistoryMessage]:
-    history: list[HistoryMessage] = []
-    remaining = HISTORY_CHARS
-    for row in reversed(_messages(db, session, limit=HISTORY_MESSAGES)):
-        text = decrypt_secret(row.ciphertext)
-        if transform:
-            text = transform(text)
-        history.append(HistoryMessage(role=row.role, text=text[-remaining:]))
-        remaining -= len(history[-1].text)
-        if not remaining:
-            break
-    return history[::-1]
+    state: dict[str, JsonValue] | None,
+) -> None:
+    session.state_ciphertext = (
+        encrypt_secret(json.dumps(state, ensure_ascii=False))
+        if state is not None
+        else None
+    )
+    db.add(session)
 
 
 def cleanup_messages(db: Session, now: datetime) -> None:
@@ -271,6 +296,18 @@ def cleanup_messages(db: Session, now: datetime) -> None:
             expired = select(session_type.id).where(
                 session_type.org_id == org_id,
                 session_type.last_activity_at <= now - timedelta(hours=2),
+            )
+            expired_messages = select(message_type.session_id).where(
+                message_type.org_id == org_id,
+                message_type.created_at <= now - timedelta(days=days),
+            )
+            db.exec(
+                update(session_type)
+                .where(
+                    col(session_type.org_id) == org_id,
+                    col(session_type.id).in_(expired_messages if days else expired),
+                )
+                .values(state_ciphertext=None)
             )
             db.exec(
                 delete(message_type).where(
