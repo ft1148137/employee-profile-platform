@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from uuid import UUID
 
@@ -33,6 +34,7 @@ from app.domains.model.client import ModelServiceError, ModelUnavailable
 from app.domains.model.service import model_config, read_setting
 
 DRAFTING_REASON = "正在起草画像，期间管理助手暂停，可以继续使用手工页面。"
+logger = logging.getLogger(__name__)
 
 
 def looks_like_secret(text: str) -> bool:
@@ -106,8 +108,10 @@ def turn(
         text = "系统正忙，请稍后重试，也可以继续使用手工页面。"
     except (BotRateLimited, BotQuotaPaused) as error:
         text = f"暂时无法对话，请在 {error.retry_at.isoformat()} 后重试。"
-    except pi_client.PiSessionInvalid as error:
-        text = str(error)
+    except pi_client.PiSessionInvalid:
+        messages.save_state(db, row, None)
+        logger.warning("session_id=%s code=bad_request", row.id)
+        text = "之前的对话上下文已失效，已经重新开始，请再说一次"
     except ModelServiceError, ModelUnavailable:
         text = "模型暂时不可用，请稍后重试，也可以继续使用手工页面。"
     page: str = body.page

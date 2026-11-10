@@ -118,7 +118,9 @@ def test_bot_parity_undo_and_atomic_failure(
     assert (
         client.get(demo[0] + "/bot-settings", headers=demo[2]["admin"]).json() == body
     )
-    assert c.undo(db, p, row.id).status == "applied"
+    reverse = c.undo(db, p, row.id)
+    assert reverse.status == "draft"
+    assert c.apply(db, p, reverse.id, reverse.revision).status == "applied"
     assert bot.read_settings(db, p.org_id) == bot.BotSettings()
     # A later model business error must roll back the earlier bot settings and audit.
     items = [

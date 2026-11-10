@@ -160,6 +160,7 @@ class AdminFunction:
     preview_risk: Callable[[Session, Principal, Any], Risk] | None = None
     test: ConnectionTest | None = None
     rebinds: Rebinds | None = None
+    merge_settings: bool = False
 
     @property
     def private_fields(self) -> set[str]:
@@ -443,6 +444,7 @@ FUNCTIONS["update_update_settings"] = AdminFunction(
     handler=updates.save_update_settings,
     page="/admin/rules?tab=reminders",
     endpoints=(("PUT", "/update-settings"),),
+    merge_settings=True,
     snapshot=lambda d, p, a: updates.UpdateSettingsInput.model_validate(
         updates.read_update_settings(d, p.org_id).model_dump(
             include=set(updates.UpdateSettingsInput.model_fields)
@@ -471,6 +473,7 @@ FUNCTIONS["update_approval_policy"] = AdminFunction(
     handler=save_policy,
     page="/admin/rules?tab=approval",
     endpoints=(("PUT", "/approval-policy"),),
+    merge_settings=True,
     snapshot=lambda d, p, a: PolicyInput.model_validate(
         read_policy(d, p.org_id).model_dump(include=set(PolicyInput.model_fields))
     ),
@@ -493,6 +496,7 @@ FUNCTIONS["update_model_setting"] = AdminFunction(
     handler=model.save_setting,
     page="/admin/data-ai?tab=model",
     endpoints=(("PUT", "/model-setting"),),
+    merge_settings=True,
     snapshot=model_settings.snapshot,
     impact=model_settings.impact,
     secret_fields=("api_key",),
@@ -511,7 +515,25 @@ FUNCTIONS["update_bot_settings"] = AdminFunction(
     handler=bot.save_settings,
     page="/admin/data-ai?tab=bot",
     endpoints=(("PUT", "/bot-settings"),),
+    merge_settings=True,
     snapshot=lambda d, p, a: bot.read_settings(d, p.org_id),
+    preview_risk=lambda d, p, a: (
+        "high"
+        if a.retention_days < bot.read_settings(d, p.org_id).retention_days
+        else "normal"
+    ),
+    impact=lambda d, p, a: RootModel(
+        {
+            "count": len(active_employees(d, p.org_id)),
+            "text": (
+                f"会删除超过 {a.retention_days} 天的对话记录，删除后不能恢复"
+                + ("；0 天表示闲置 2 小时后清除" if a.retention_days == 0 else "")
+                if a.retention_days < bot.read_settings(d, p.org_id).retention_days
+                else "更新提问指南和对话保留时间"
+            )
+            + "；撤销不会恢复已删除的记录",
+        }
+    ),
 )
 
 

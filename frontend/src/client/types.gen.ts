@@ -1987,6 +1987,14 @@ export type FileSummary = {
      * Errors
      */
     errors?: Array<FileError>;
+    /**
+     * Warnings
+     */
+    warnings?: Array<FileError>;
+    /**
+     * Skipped
+     */
+    skipped?: Array<FileError>;
 };
 
 /**

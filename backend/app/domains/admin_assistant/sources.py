@@ -119,6 +119,7 @@ def register_sources(functions: dict[str, AdminFunction]) -> None:
             "/admin/data-ai?tab=sources",
             (("PUT", "/sources/jira"),),
             snapshot=jira_snapshot,
+            merge_settings=True,
             impact=lambda d, p, a: RootModel(
                 {
                     "count": 0,

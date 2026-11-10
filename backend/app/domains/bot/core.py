@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from sqlmodel import Session
@@ -22,6 +23,8 @@ from app.domains.inbox import service as inbox
 from app.domains.model import pi_client
 from app.domains.model.client import ModelServiceError, ModelUnavailable
 from app.domains.model.service import model_config, read_setting
+
+logger = logging.getLogger(__name__)
 
 
 def _save(
@@ -80,8 +83,10 @@ def turn(db: Session, p: Principal, session_id: UUID, text: str) -> s.TurnRespon
         message = f"模型额度暂时用完，预计 {error.retry_at.isoformat()} 恢复"
     except ModelServiceError as error:
         message = str(error)
-    except pi_client.PiSessionInvalid as error:
-        message = str(error)
+    except pi_client.PiSessionInvalid:
+        store.save_state(db, session, None)
+        logger.warning("session_id=%s code=bad_request", session.id)
+        message = "之前的对话上下文已失效，已经重新开始，请再说一次"
     except ModelUnavailable:
         message = "模型服务暂时不可用，请稍后再试"
     messages = [s.TextMessage(text=message)]

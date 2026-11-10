@@ -13,6 +13,29 @@ export function FileSummaryPreview({ preview }: { preview: FileSummary }) {
           </div>
         ))}
       </dl>
+      {!!preview.warnings?.length && (
+        <div role="alert" className="space-y-1 text-sm">
+          <p>
+            共有 {preview.counts.警告 ?? preview.warnings.length}{" "}
+            条警告，请核对后再确认。
+          </p>
+          {preview.warnings.map((warning, index) => (
+            <p key={index}>
+              {warning.location}：{warning.message}
+            </p>
+          ))}
+        </div>
+      )}
+      {!!preview.skipped?.length && (
+        <div className="space-y-1 text-sm">
+          <p>共跳过 {preview.counts.跳过} 人，最多列出前 20 人：</p>
+          {preview.skipped.map((person, index) => (
+            <p key={index}>
+              {person.location}：{person.message}
+            </p>
+          ))}
+        </div>
+      )}
       {errors.length ? (
         <div role="alert" className="overflow-x-auto text-destructive">
           <p>文件有错误，请修改后重新上传。</p>

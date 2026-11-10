@@ -59,7 +59,7 @@ def test_multiturn_state_and_failure(
     assert any(m["role"] == "assistant" and m.get("tool_calls") for m in sent)
     db.refresh(row)
     previous = row.state_ciphertext
-    for failure in (ModelUnavailable("超时"), PiSessionInvalid(), "length"):
+    for failure in (ModelUnavailable("超时"), "length", PiSessionInvalid()):
 
         def fail(
             *_args: object, failure: object = failure, **_kwargs: object
@@ -78,9 +78,72 @@ def test_multiturn_state_and_failure(
             patch.setattr(core.pi_client, "run_turn", fail)
             response = turn()
         if isinstance(failure, PiSessionInvalid):
-            assert "会话已失效，请新开对话" in str(response)
+            assert "之前的对话上下文已失效，已经重新开始，请再说一次" in str(response)
         db.refresh(row)
-        assert row.state_ciphertext == previous
+        if isinstance(failure, PiSessionInvalid):
+            assert row.state_ciphertext is None
+        else:
+            assert row.state_ciphertext == previous
+
+
+@pytest.mark.parametrize("channel", ["web", "admin", "im"])
+def test_invalid_state_recovers_next_turn(
+    db: Session,
+    demo: tuple,
+    pi_service: PiHarness,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    channel: str,
+) -> None:
+    from app.domains.im import actions, gateway
+    from tests.domains.test_im_conversation import setup
+    from tests.domains.test_im_gateway import event
+
+    org_id = demo[1]["E02"].org_id
+    if channel == "im":
+        p, setting = setup(db, demo)
+        incoming = event(org_id, "继续合成对话")
+        row = actions.conversation(db, p, incoming, "12345")
+    else:
+        p = admin(db, org_id) if channel == "admin" else principal_for(db, org_id)
+        row = (admin_store if channel == "admin" else store).create_session(db, p)
+    enable(db, org_id)
+    monkeypatch.setattr(
+        admin_core if channel == "admin" else core,
+        "model_config",
+        lambda _: pi_service.config,
+    )
+    store.save_state(
+        db,
+        row,
+        {"version": 999, "messages": [], "canary": "synthetic-private-bad-state"},
+    )
+    db.commit()
+
+    def turn() -> object:
+        if channel == "admin":
+            return admin_core.turn(
+                db, p, row.id, AdminTurnInput(text="继续", page="/admin")
+            )
+        if channel == "im":
+            reply = gateway.Gateway(db.get_bind()).dispatch(
+                event(org_id, "继续合成对话"), "12345", setting.credentials
+            )
+            assert isinstance(reply, actions.Reply) and reply.session_id == row.id
+            return reply.response
+        return core.turn(db, p, row.id, "继续")
+
+    assert "之前的对话上下文已失效，已经重新开始，请再说一次" in str(turn())
+    db.refresh(row)
+    assert row.state_ciphertext is None
+    assert f"session_id={row.id} code=bad_request" in caplog.text
+    assert "synthetic-private-bad-state" not in caplog.text
+    pi_service.replies = ["恢复完成"]
+    assert "恢复完成" in str(turn())
+    db.refresh(row)
+    assert row.state_ciphertext
+    sent = pi_service.requests[-1]["body"]["messages"]
+    assert sum(m["role"] == "user" for m in sent) == 1
 
 
 @pytest.mark.parametrize("is_admin", [False, True])
