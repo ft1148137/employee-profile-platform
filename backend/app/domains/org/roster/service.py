@@ -38,6 +38,8 @@ from app.domains.source.linking import auto_link_identities
 from app.domains.work.ingest import rederive_identities
 from app.models import User, uses_email_login
 
+MAX_FILE_SIZE = 5 * 1024 * 1024
+
 
 class RosterError(HTTPException):
     pass

@@ -24,6 +24,7 @@ from app.domains.access_token import service as access
 from app.domains.account import service as accounts
 from app.domains.account.schemas import AccountStatus
 from app.domains.admin.overview import build_overview
+from app.domains.admin_assistant.files import register_files
 from app.domains.admin_assistant.people import register_people
 from app.domains.admin_assistant.rules import register_rules
 from app.domains.audit import service as audit
@@ -141,6 +142,7 @@ class AdminFunction:
     secret_fields: tuple[str, ...] = ()
     reverse: Reverse | None = None
     undoable: bool = True
+    preview_risk: Callable[[Session, Principal, Any], Risk] | None = None
 
 
 def _profile(db: Session, principal: Principal, args: EmployeeArgs) -> BaseModel:
@@ -465,7 +467,9 @@ def list_admin_functions(area: Area) -> dict[str, Any]:
                 "name": f.name,
                 "description": f.description,
                 "kind": f.kind,
-                "risk": "按改动内容判断" if callable(f.risk) else f.risk,
+                "risk": "按改动内容判断"
+                if callable(f.risk) or f.preview_risk
+                else f.risk,
                 "input_model": f.input_model.model_json_schema(),
                 "secret_fields": list(f.secret_fields),
             }
@@ -551,6 +555,10 @@ NOT_FOR_ASSISTANT = {
     ("POST", "/admin-assistant/sessions"): "助手自身的会话接口",
     ("GET", "/admin-assistant/sessions/{session_id}/messages"): "助手自身的会话接口",
     ("POST", "/admin-assistant/sessions/{session_id}/turns"): "助手自身的会话接口",
+    (
+        "POST",
+        "/admin-assistant/sessions/{session_id}/files",
+    ): "管理员通过上传框提交文件，不由模型传入内容",
     ("GET", "/admin-assistant/availability"): "助手自身的会话接口",
     ("GET", "/sources/csv/template"): "模板下载由助手给页面链接",
     ("GET", "/roster/template"): "模板下载由助手给页面链接",
@@ -563,6 +571,7 @@ NOT_FOR_ASSISTANT = {
 }
 
 register_rules(FUNCTIONS)
+register_files(FUNCTIONS)
 register_people(FUNCTIONS)
 
 for name, title, input_type in (
@@ -593,7 +602,7 @@ for name, title, input_type in (
     )
 
 PENDING = {
-    ("POST", "/capabilities/preview"): "S8",
+    ("POST", "/capabilities/preview"): "S8b",
     ("PUT", "/im-settings/{platform}"): "S6",
     ("PUT", "/mcp-setting"): "S6",
     ("PUT", "/bot-settings"): "S6",
@@ -603,8 +612,6 @@ PENDING = {
     ("POST", "/sync-runs/{run_id}/retry"): "S6",
     ("POST", "/external-identities/link"): "S6",
     ("POST", "/external-identities/{identity_id}/unlink"): "S6",
-    ("POST", "/sources/csv/imports"): "S8",
-    ("POST", "/roster/imports"): "S8",
-    ("POST", "/roster/imports/{id}/apply"): "S8",
-    ("POST", "/profile-imports"): "S8",
+    ("POST", "/sources/csv/imports"): "S8b",
+    ("POST", "/profile-imports"): "S8b",
 }

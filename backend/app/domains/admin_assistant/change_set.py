@@ -160,7 +160,11 @@ def propose(
                 "impact": entry.impact(db, principal, args).model_dump(mode="json")
                 if entry.impact
                 else None,
-                "risk": entry.risk(args) if callable(entry.risk) else entry.risk,
+                "risk": entry.preview_risk(db, principal, args)
+                if entry.preview_risk
+                else entry.risk(args)
+                if callable(entry.risk)
+                else entry.risk,
                 "undoable": entry.undoable,
             }
         )

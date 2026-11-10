@@ -112,6 +112,11 @@ export function ChangeSetCard({
       {current.items.map((item, i) => (
         <div key={i} className="space-y-2">
           <p className="text-sm font-medium">{item.title}</p>
+          {item.function === "apply_roster_import" && (
+            <p className="text-sm">
+              请核对上方名单预览。确认后更新员工信息，离职人员的账号会停用。
+            </p>
+          )}
           {item.undoable &&
             Object.keys(item.after).map((field) => (
               <div key={field} className="rounded-lg bg-muted/40 p-3 text-sm">

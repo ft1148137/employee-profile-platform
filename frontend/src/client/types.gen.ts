@@ -204,7 +204,11 @@ export type AdminTurnResponse = {
         type: 'admin_change_set';
     } & ChangeSetCard) | ({
         type: 'secret_input';
-    } & SecretInputCard)>;
+    } & SecretInputCard) | ({
+        type: 'file_upload';
+    } & FileUploadCard) | ({
+        type: 'file_preview';
+    } & FilePreviewCard)>;
 };
 
 /**
@@ -475,6 +479,20 @@ export type BindingPublic = {
      * Active
      */
     active: boolean;
+};
+
+/**
+ * Body_admin-assistant-upload_file
+ */
+export type Body_admin_assistant_upload_file = {
+    /**
+     * Kind
+     */
+    kind: 'roster';
+    /**
+     * File
+     */
+    file: Blob | File;
 };
 
 /**
@@ -1907,6 +1925,35 @@ export type FieldChange = {
      * After
      */
     after: string | null;
+};
+
+/**
+ * FilePreviewCard
+ */
+export type FilePreviewCard = {
+    /**
+     * Kind
+     */
+    kind: 'roster';
+    /**
+     * Type
+     */
+    type?: 'file_preview';
+    preview: RosterImportPreview;
+};
+
+/**
+ * FileUploadCard
+ */
+export type FileUploadCard = {
+    /**
+     * Kind
+     */
+    kind: 'roster';
+    /**
+     * Type
+     */
+    type?: 'file_upload';
 };
 
 /**
@@ -4801,6 +4848,41 @@ export type adminAssistantAvailabilityResponses = {
 };
 
 export type adminAssistantAvailabilityResponse = adminAssistantAvailabilityResponses[keyof adminAssistantAvailabilityResponses];
+
+export type adminAssistantUploadFileData = {
+    body: Body_admin_assistant_upload_file;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/admin-assistant/sessions/{session_id}/files';
+};
+
+export type adminAssistantUploadFileErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantUploadFileError = adminAssistantUploadFileErrors[keyof adminAssistantUploadFileErrors];
+
+export type adminAssistantUploadFileResponses = {
+    /**
+     * Successful Response
+     */
+    200: AdminTurnResponse;
+};
+
+export type adminAssistantUploadFileResponse = adminAssistantUploadFileResponses[keyof adminAssistantUploadFileResponses];
 
 export type adminGetOverviewData = {
     body?: never;

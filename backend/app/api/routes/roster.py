@@ -49,8 +49,8 @@ def download_template(
 def upload_import(
     file: UploadFile, session: SessionDep, principal: OrgAdminDep
 ) -> RosterImportPreview:
-    content = file.file.read(5 * 1024 * 1024 + 1)
-    if len(content) > 5 * 1024 * 1024:
+    content = file.file.read(service.MAX_FILE_SIZE + 1)
+    if len(content) > service.MAX_FILE_SIZE:
         raise service.RosterError(413, "文件超过 5 MB，请拆分后再上传")
     return service.create_import(session, principal, content, file.filename or "")
 

@@ -211,6 +211,13 @@ export const test = base.extend<{ modelUrl: string }>({
           },
         ],
       }
+      if (admin && !toolResult && JSON.stringify(last).includes("导入名单")) {
+        const tool = chunk.choices[0].delta.tool_calls?.[0]
+        if (tool) {
+          tool.function.name = "request_file"
+          tool.function.arguments = JSON.stringify({ kind: "roster" })
+        }
+      }
       res.write(`data: ${JSON.stringify(chunk)}\n\n`)
       const finished = {
         ...chunk,

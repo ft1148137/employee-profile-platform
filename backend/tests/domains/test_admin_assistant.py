@@ -119,6 +119,7 @@ def test_turn_and_private_sessions(
     def reply(_config: object, **kwargs: object) -> TurnResult:
         assert body["page"] in kwargs["system_prompt"]
         assert [t.name for t in kwargs["tools"]] == [
+            "request_file",
             "request_secret_input",
             "get_today",
             "list_admin_functions",
