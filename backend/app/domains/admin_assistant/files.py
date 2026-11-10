@@ -356,7 +356,7 @@ def _upload_other(
             "涉及已发布判断": sum(dictionary.removed_claim_counts.values()),
         }
         preview.errors = [FileError(location="", message=e) for e in dictionary.errors]
-        function = "update_capability_dictionary"
+        function = "import_capability_dictionary"
         if not preview.errors:
             args = SaveDictionary(
                 definitions=definitions,

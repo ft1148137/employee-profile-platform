@@ -26,6 +26,7 @@ from app.domains.capability.service import get_schema, read_editor
 from app.domains.change_request.batch_import import import_profiles
 from app.domains.change_request.import_json import InvalidImport
 from app.domains.change_request.models import ChangeItem, ProfileChangeRequest
+from app.domains.drafting.models import DraftingSetting
 from app.domains.org.models import Organization, OrgMembership, Role, RoleGrant
 from app.domains.source.import_records import InvalidWorkRecords
 from app.domains.source.models import SyncRun
@@ -62,7 +63,16 @@ def file_case(
     else:
         definitions = read_editor(db, p).definitions
         definitions[0].name = "合成修改能力"
-        content, filename = dictionary_xlsx(definitions), "dictionary.xlsx"
+        content, filename = dictionary_xlsx(definitions[:-1]), "dictionary.xlsx"
+        setting = db.get(DraftingSetting, p.org_id) or DraftingSetting(
+            org_id=p.org_id, updated_by_user_id=p.user_id
+        )
+        setting.excluded_capability_keys = sorted(
+            set(setting.excluded_capability_keys)
+            | {definitions[0].key, definitions[-1].key, "previously-removed-capability"}
+        )
+        db.add(setting)
+        db.commit()
     try:
         yield kind, p, sid, filename, content
     finally:
@@ -111,6 +121,11 @@ def test_web_parity_and_confirmation(
 ) -> None:
     kind, p, _, filename, content = file_case
     before = state(db, p)
+    closed = (
+        set(db.get(DraftingSetting, p.org_id).excluded_capability_keys)
+        if kind == "capabilities"
+        else set()
+    )
     response = upload(client, demo, file_case)
     assert response.status_code == 200, response.text
     preview, card = response.json()["messages"]
@@ -130,6 +145,8 @@ def test_web_parity_and_confirmation(
             and args["expected_version"] == web["expected_version"]
         )
         assert preview["preview"]["counts"]["修改"] == len(web["modified"]) == 1
+        assert preview["preview"]["counts"]["删除"] == len(web["removed"]) == 1
+        assert row.items[0]["function"] == "import_capability_dictionary"
         assert row.secrets is None
     else:
         assert b64decode(json.loads(decrypt_secret(row.secrets))["content"]) == content
@@ -206,15 +223,25 @@ def test_web_parity_and_confirmation(
             and jobs(db, p.org_id) == before[-1] + 1
         )
     else:
+        expected = [
+            {**d, "ai_inference": d["key"] not in closed} for d in args["definitions"]
+        ]
         assert [
             d.model_dump(mode="json") for d in read_editor(db, p).definitions
-        ] == args["definitions"]
+        ] == expected
+        assert set(db.get(DraftingSetting, p.org_id).excluded_capability_keys) == closed
         assert get_schema(db, p.org_id).version == before[2]["expected_version"] + 1
         if assistant:
-            assert c.undo(db, p, row.id).status == "applied"
+            reverse = c.undo(db, p, row.id)
+            assert reverse.status == "applied"
+            assert reverse.items[0].function == "import_capability_dictionary"
             assert [d.model_dump() for d in read_editor(db, p).definitions] == before[
                 2
             ]["definitions"]
+            assert (
+                set(db.get(DraftingSetting, p.org_id).excluded_capability_keys)
+                == closed
+            )
 
 
 def test_invalid_limits_and_private_sessions(
