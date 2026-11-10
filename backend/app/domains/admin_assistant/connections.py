@@ -106,6 +106,7 @@ def register_connections(functions: dict[str, AdminFunction]) -> None:
         page="/admin/connections?tab=im",
         endpoints=(("PUT", "/im-settings/{platform}"),),
         snapshot=im_snapshot,
+        merge_settings=True,
         secret_fields=("app_id", "app_secret"),
         test=test_im,
         impact=lambda d, p, a: RootModel(
@@ -125,6 +126,7 @@ def register_connections(functions: dict[str, AdminFunction]) -> None:
         ),
         description="修改外部 AI 助手开关和允许的客户端；开启需再次确认数据外发",
         input_model=McpSettingUpdate,
+        merge_settings=True,
         handler=mcp.save_setting,
         page="/admin/connections?tab=mcp",
         endpoints=(("PUT", "/mcp-setting"),),

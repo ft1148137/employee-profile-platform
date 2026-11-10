@@ -13,6 +13,7 @@ from app.core.secrets import decrypt_secret, encrypt_secret
 from app.domains.admin_assistant.models import (
     AdminAssistantMessage,
     AdminAssistantSession,
+    AdminChangeSet,
 )
 from app.domains.base import utc_now
 from app.domains.bot.models import BotMessage, BotSession, ConversationMessage
@@ -309,6 +310,30 @@ def cleanup_messages(db: Session, now: datetime) -> None:
                 )
                 .values(state_ciphertext=None)
             )
+            if session_type is AdminAssistantSession:
+                db.exec(
+                    update(AdminChangeSet)
+                    .where(
+                        col(AdminChangeSet.org_id) == org_id,
+                        col(AdminChangeSet.session_id).in_(
+                            select(AdminAssistantSession.id).where(
+                                AdminAssistantSession.org_id == org_id,
+                                AdminAssistantSession.last_activity_at
+                                <= now
+                                - (
+                                    timedelta(days=days) if days else timedelta(hours=2)
+                                ),
+                            )
+                        ),
+                        col(AdminChangeSet.status) == "draft",
+                    )
+                    .values(
+                        secrets=None,
+                        status="stale",
+                        confirmed_once_at=None,
+                        updated_at=now,
+                    )
+                )
             db.exec(
                 delete(message_type).where(
                     col(message_type.org_id) == org_id,

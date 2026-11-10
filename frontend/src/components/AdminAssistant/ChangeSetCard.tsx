@@ -191,32 +191,40 @@ export function ChangeSetCard({
             </p>
           )}
           {item.undoable &&
-            Object.keys(item.after).map((field) => (
-              <div key={field} className="rounded-lg bg-muted/40 p-3 text-sm">
-                <p className="mb-2 text-muted-foreground">
-                  {labels[field] ?? "设置项"}
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { title: "修改前", value: item.before?.[field] },
-                    { title: "修改后", value: item.after[field] },
-                  ].map(({ title, value }) => (
-                    <div key={title}>
-                      <p className="text-xs text-muted-foreground">{title}</p>
-                      <p
-                        className={
-                          title === "修改后" ? "font-semibold text-primary" : ""
-                        }
-                      >
-                        {value == null
-                          ? "未设置"
-                          : `${display(value, field)}${field === "stale_after_months" ? " 个月" : ""}`}
-                      </p>
-                    </div>
-                  ))}
+            Object.keys(item.after)
+              .filter(
+                (field) =>
+                  JSON.stringify(item.before?.[field]) !==
+                  JSON.stringify(item.after[field]),
+              )
+              .map((field) => (
+                <div key={field} className="rounded-lg bg-muted/40 p-3 text-sm">
+                  <p className="mb-2 text-muted-foreground">
+                    {labels[field] ?? "设置项"}
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { title: "修改前", value: item.before?.[field] },
+                      { title: "修改后", value: item.after[field] },
+                    ].map(({ title, value }) => (
+                      <div key={title}>
+                        <p className="text-xs text-muted-foreground">{title}</p>
+                        <p
+                          className={
+                            title === "修改后"
+                              ? "font-semibold text-primary"
+                              : ""
+                          }
+                        >
+                          {value == null
+                            ? "未设置"
+                            : `${display(value, field)}${field === "stale_after_months" ? " 个月" : ""}`}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           {item.impact && (
             <p className="text-xs text-muted-foreground">
               影响 {item.impact.count} 人 · {item.impact.text}

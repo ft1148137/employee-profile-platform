@@ -75,6 +75,8 @@ def save_setting(
         for k, v in body.credentials.items()
         if v.get_secret_value()
     }
+    if platform == "feishu" and "app_id" in updates and "app_secret" not in updates:
+        raise InvalidImSetting("更换应用标识时请同时填写新的应用密钥")
     if updates or body.enabled:
         try:
             credentials = (

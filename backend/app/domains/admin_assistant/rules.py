@@ -215,6 +215,7 @@ def register_rules(functions: dict[str, AdminFunction]) -> None:
                 )
             ),
             impact=drafting_impact,
+            merge_settings=True,
         ),
         AdminFunction(
             "start_initial_drafting",

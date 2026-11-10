@@ -29,6 +29,7 @@ from app.domains.org.roster.schemas import (
     RosterImportPreview,
 )
 from app.domains.source.import_records import import_work_records, preview_work_records
+from app.domains.work.records import COLUMNS
 
 if TYPE_CHECKING:
     from app.domains.admin_assistant.registry import AdminFunction, Area, Handler, Risk
@@ -45,6 +46,8 @@ class FileError(BaseModel):
 class FileSummary(BaseModel):
     counts: dict[str, int]
     errors: list[FileError] = Field(default_factory=list)
+    warnings: list[FileError] = Field(default_factory=list)
+    skipped: list[FileError] = Field(default_factory=list)
 
 
 class FileArgs(BaseModel):
@@ -205,13 +208,37 @@ def register_files(functions: dict[str, AdminFunction]) -> None:
 
 
 def summary(preview: RosterImportPreview) -> dict[str, JsonValue]:
-    return {
-        "counts": dict[str, JsonValue](preview.summary),
-        "errors": [
-            {"row_number": i.row_number, "message": i.message}
-            for i in [i for i in preview.issues if i.severity == "error"][:20]
-        ],
-    }
+    return bounded_summary(
+        {
+            "counts": dict[str, JsonValue](preview.summary),
+            "error_count": sum(i.severity == "error" for i in preview.issues),
+            "errors": [
+                {"row_number": i.row_number, "message": i.message[:200]}
+                for i in [i for i in preview.issues if i.severity == "error"][:20]
+            ],
+        }
+    )
+
+
+def bounded_summary(data: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    # Bound serialized text too: escaped cell contents can be much larger than 200 characters.
+    for key in ("errors", "warnings"):
+        issues = data.get(key)
+        if isinstance(issues, list):
+            data[key] = [
+                {k: v[:200] if isinstance(v, str) else v for k, v in i.items()}
+                for i in issues[:20]
+                if isinstance(i, dict)
+            ]
+    while len(json.dumps(data, ensure_ascii=False)) > 7800:
+        for key in ("warnings", "errors"):
+            issues = data.get(key)
+            if isinstance(issues, list) and issues:
+                issues.pop()
+                break
+        else:
+            return {"counts": {}, "error": "摘要过长，请在预览卡中查看"}
+    return data
 
 
 def model_context(
@@ -229,8 +256,17 @@ def model_context(
                     data = summary(RosterImportPreview.model_validate(card["preview"]))
                 else:
                     preview = FileSummary.model_validate(card["preview"])
-                    preview.errors = preview.errors[:20]
-                    data = preview.model_dump(mode="json")
+                    data = bounded_summary(
+                        {
+                            **preview.model_dump(mode="json", exclude={"skipped"}),
+                            "error_count": preview.counts.get(
+                                "错误", len(preview.errors)
+                            ),
+                            "warning_count": preview.counts.get(
+                                "警告", len(preview.warnings)
+                            ),
+                        }
+                    )
                 return [{"type": "file_preview", "preview": data}]
     return []
 
@@ -315,6 +351,14 @@ def _upload_other(
                 "将创建": sum(i.status == "will_create" for i in people),
                 "跳过": sum(i.status == "skipped" for i in people),
             }
+            preview.skipped = [
+                FileError(
+                    location=f"{i.display_name}（{i.employee_email}）"[:200],
+                    message=(i.reason or "已有草稿，不覆盖")[:200],
+                )
+                for i in people
+                if i.status == "skipped"
+            ][:20]
         except InvalidImport as error:
             preview.errors = [
                 FileError(
@@ -337,14 +381,18 @@ def _upload_other(
                 }
             ),
         }
-        preview.errors = [
-            FileError(
-                location=f"第 {i.row_number} 行" if i.row_number else "",
-                message=i.message,
+        preview.counts["警告"] = sum(i.level == "warning" for i in parsed.issues)
+        for level, target in (("error", preview.errors), ("warning", preview.warnings)):
+            target.extend(
+                FileError(
+                    location=(f"第 {i.row_number} 行 " if i.row_number else "")
+                    + COLUMNS.get(i.column or "", i.column or "")[:200],
+                    message=i.message[:200],
+                )
+                for i in parsed.issues
+                if i.level == level
             )
-            for i in parsed.issues
-            if i.level == "error"
-        ]
+        preview.warnings = preview.warnings[:20]
     else:
         definitions, errors = parse_dictionary(content, filename)
         dictionary = preview_version(db, p, definitions, errors)
@@ -363,6 +411,12 @@ def _upload_other(
                 expected_version=dictionary.expected_version,
                 redraft=False,
             ).model_dump(mode="json")
+    if preview.errors:
+        preview.counts["错误"] = len(preview.errors)
+        preview.errors = [
+            FileError(location=e.location[:200], message=e.message[:200])
+            for e in preview.errors[:20]
+        ]
     response = AdminTurnResponse(messages=[FilePreviewCard(kind=kind, preview=preview)])
     if not preview.errors:
         row = change_set.propose(

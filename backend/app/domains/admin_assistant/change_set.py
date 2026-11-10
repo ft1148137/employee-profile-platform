@@ -7,7 +7,7 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import HTTPException
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel, JsonValue, RootModel
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
@@ -227,7 +227,20 @@ def propose(
     offboarded_employees: set[UUID] = set()
     imported_deactivations = 0
     for item in body.items:
-        entry, args = _entry(item.function, item.args)
+        entry = registry.FUNCTIONS.get(item.function)
+        supplied = item.args
+        if entry and entry.merge_settings and entry.snapshot:
+            before = entry.snapshot(db, principal, None).model_dump(
+                mode="json", exclude=entry.private_fields
+            )
+            # A new model kind needs its own destination and defaults, not the old provider.
+            if not (
+                entry.name == "update_model_setting"
+                and "kind" in supplied
+                and supplied["kind"] != (before or {}).get("kind")
+            ):
+                supplied = {**(before or {}), **supplied}
+        entry, args = _entry(item.function, supplied)
         # Secrets are stored by field for the whole change set; each needs one target.
         if secret_fields.intersection(entry.private_fields):
             raise ChangeSetError(
@@ -246,7 +259,9 @@ def propose(
             {
                 "function": entry.name,
                 "args": args.model_dump(
-                    mode="json", exclude=entry.private_fields, exclude_unset=True
+                    mode="json",
+                    exclude=entry.private_fields,
+                    exclude_unset=not entry.merge_settings,
                 ),
                 "before": entry.snapshot(db, principal, args).model_dump(
                     mode="json", exclude=entry.private_fields
@@ -372,6 +387,9 @@ def apply(
             result = entry.handler(db, principal, args, commit=False)
             if not isinstance(result, BaseModel):
                 raise ChangeSetError("暂不支持这类改动")
+            if item.function == "import_profiles" and isinstance(result, RootModel):
+                skipped = sum(i.status == "skipped" for i in result.root)
+                notices.append(TextMessage(text=f"批量画像导入完成，跳过 {skipped} 人"))
             if isinstance(result, PasswordOutput | AccountsOutput):
                 one_time.append(result)
                 notices.append(
