@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { AccessTokensService } from "@/client"
 import { ChangeHistory } from "@/components/Admin/ChangeHistory"
+import { DraftField } from "@/components/AdminAssistant/DraftField"
+import { PageDraft } from "@/components/AdminAssistant/PageDraft"
+import { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
@@ -23,6 +26,15 @@ function Settings({ orgId }: { orgId: string }) {
   const [enabled, setEnabled] = useState<boolean | null>(null)
   const [clients, setClients] = useState<string | null>(null)
   const [message, setMessage] = useState("")
+  const suggestion = usePageDraft(
+    orgId,
+    "update_mcp_setting",
+    useCallback(() => {
+      setEnabled(null)
+      setClients(null)
+      setMessage("")
+    }, []),
+  )
   const path = { org_id: orgId }
   const setting = useQuery({
     queryKey: ["mcp-setting", orgId],
@@ -55,6 +67,11 @@ function Settings({ orgId }: { orgId: string }) {
   })
   if (setting.isPending) return <ProfileLoading />
   if (setting.isError) return <ProfileError retry={() => setting.refetch()} />
+  const current = suggestion.values({
+    enabled: enabled ?? setting.data.enabled,
+    allowed_clients:
+      clients === null ? setting.data.allowed_clients : clients.split(/[,，]/),
+  })
   return (
     <div className="max-w-3xl space-y-6">
       <header className="border-l-4 border-primary pl-4">
@@ -66,40 +83,50 @@ function Settings({ orgId }: { orgId: string }) {
       <p className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-5">
         打开后，员工的画像、证据和自述会发给外部助手的厂商。请先确认企业允许这些数据外发。
       </p>
+      <PageDraft
+        orgId={orgId}
+        draft={suggestion.draft}
+        error={suggestion.error}
+      />
       <form
         className="space-y-6 rounded-xl border p-6"
         onSubmit={(event) => {
           event.preventDefault()
+          if (suggestion.blocked) return
           save.mutate()
         }}
       >
-        <label htmlFor="mcp-enabled" className="flex items-center gap-3">
-          <Checkbox
-            id="mcp-enabled"
-            checked={enabled ?? setting.data.enabled}
-            onCheckedChange={(value) => setEnabled(value === true)}
-            disabled={save.isPending}
-          />
-          允许外部 AI 助手
-        </label>
+        <DraftField changed={suggestion.changed("enabled")}>
+          <label htmlFor="mcp-enabled" className="flex items-center gap-3">
+            <Checkbox
+              id="mcp-enabled"
+              checked={current.enabled}
+              onCheckedChange={(value) => setEnabled(value === true)}
+              disabled={save.isPending || suggestion.blocked}
+            />
+            允许外部 AI 助手
+          </label>
+        </DraftField>
         <p className="text-sm text-muted-foreground">
           打开后，员工可授权自己的 AI
           助手访问平台；助手的权限始终不超过授权员工本人。
         </p>
-        <label htmlFor="mcp-clients" className="block space-y-2">
-          允许的客户端
-          <Input
-            id="mcp-clients"
-            value={clients ?? (setting.data.allowed_clients ?? []).join("，")}
-            onChange={(event) => setClients(event.target.value)}
-            placeholder="留空表示允许所有客户端，多个名称用逗号分隔"
-            disabled={save.isPending}
-          />
-        </label>
+        <DraftField changed={suggestion.changed("allowed_clients")}>
+          <label htmlFor="mcp-clients" className="block space-y-2">
+            允许的客户端
+            <Input
+              id="mcp-clients"
+              value={(current.allowed_clients ?? []).join("，")}
+              onChange={(event) => setClients(event.target.value)}
+              placeholder="留空表示允许所有客户端，多个名称用逗号分隔"
+              disabled={save.isPending || suggestion.blocked}
+            />
+          </label>
+        </DraftField>
         <p className="text-sm text-muted-foreground">
           按客户端自报的名称识别，不是安全边界，名称可以伪造。
         </p>
-        <Button disabled={save.isPending}>
+        <Button disabled={save.isPending || suggestion.blocked}>
           {save.isPending ? "正在保存…" : "保存"}
         </Button>
         {message && <p role="status">{message}</p>}

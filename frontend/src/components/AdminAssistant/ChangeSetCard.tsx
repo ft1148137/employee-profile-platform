@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/button"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 
 const labels: Record<string, string> = {
+  platform: "沟通渠道",
+  enabled: "开启",
+  email_auto_bind: "按企业邮箱自动绑定",
+  allowed_clients: "允许的客户端",
   reminder_schedule: "提醒周期",
   stale_after_months: "证据较旧期限",
   require_manager: "需要经理确认",
@@ -27,6 +31,7 @@ const labels: Record<string, string> = {
   run_id: "同步记录",
 }
 const values: Record<string, string> = {
+  feishu: "飞书",
   quarterly: "每季度",
   yearly: "每年",
   off: "不提醒",
@@ -41,6 +46,9 @@ const values: Record<string, string> = {
 }
 
 function display(value: unknown, field: string): string {
+  if (field === "enabled") return value ? "开启" : "关闭"
+  if (field === "allowed_clients" && Array.isArray(value))
+    return value.join("、") || "允许所有客户端"
   if (field === "sync_schedule" && value === "off") return "关闭"
   if (field === "include_description") return value ? "同步" : "不同步"
   if (field === "category_overrides" && value && typeof value === "object")

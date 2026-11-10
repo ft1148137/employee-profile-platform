@@ -41,7 +41,11 @@ def get_setting(session: Session, principal: Principal) -> McpSettingPublic:
 
 
 def save_setting(
-    session: Session, principal: Principal, body: McpSettingUpdate
+    session: Session,
+    principal: Principal,
+    body: McpSettingUpdate,
+    *,
+    commit: bool = True,
 ) -> McpSettingPublic:
     assert principal.user_id is not None
     session.exec(
@@ -71,6 +75,9 @@ def save_setting(
             "allowed_clients": list(row.allowed_clients),
         },
     )
+    session.flush()
+    if commit:
+        session.commit()
     return McpSettingPublic.model_validate(row, from_attributes=True)
 
 

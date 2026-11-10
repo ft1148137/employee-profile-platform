@@ -34,6 +34,7 @@ from app.domains.admin_assistant.schemas import (
 from app.domains.base import utc_now
 from app.domains.bot import store as messages
 from app.domains.bot.schemas import TextMessage
+from app.domains.im.settings import InvalidImSetting
 from app.domains.org.models import Organization
 from app.domains.org.roster.service import RosterError
 from app.domains.org.roster.single import Offboard
@@ -183,6 +184,8 @@ def _entry(
         raise ChangeSetError("改动功能或参数不正确，不能指定身份或企业", 422)
     if set(entry.secret_fields) & args.keys():
         raise ChangeSetError("请用安全输入框填写密钥", 422)
+    if name == "update_im_setting" and args.get("platform", "feishu") != "feishu":
+        raise ChangeSetError("助手只支持飞书，企业微信和 Telegram 请到网页上修改", 422)
     # Validate ordinary fields now; secret values are validated again at application.
     try:
         return entry, entry.input_model.model_validate(
@@ -399,7 +402,7 @@ def apply(
     except SyncError as error:
         db.rollback()
         raise ChangeSetError(error.message, error.status) from None
-    except InvalidSourceSetting as error:
+    except (InvalidSourceSetting, InvalidImSetting) as error:
         db.rollback()
         raise ChangeSetError(str(error), 422) from None
     except Exception:

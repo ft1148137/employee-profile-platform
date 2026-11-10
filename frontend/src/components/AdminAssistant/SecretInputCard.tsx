@@ -5,6 +5,11 @@ import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
+const titles: Record<string, string> = {
+  app_id: "安全填写飞书应用标识",
+  app_secret: "安全填写飞书应用密钥",
+}
+
 export function SecretInputCard({
   orgId,
   card,
@@ -51,7 +56,7 @@ export function SecretInputCard({
       }}
     >
       <label htmlFor={id} className="font-semibold">
-        {card.title}
+        {titles[card.field] ?? card.title}
       </label>
       <p className="text-sm text-muted-foreground">
         仅用于这份改动，不会发送给助手，也不会写入聊天记录。

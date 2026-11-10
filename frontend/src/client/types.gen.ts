@@ -2240,7 +2240,7 @@ export type ImportResult = {
 /**
  * InboxKind
  */
-export type InboxKind = 'initial_review' | 'submitted' | 'status_changed' | 'question' | 'dictionary_changed' | 'review_requested' | 'decided';
+export type InboxKind = 'initial_review' | 'submitted' | 'status_changed' | 'question' | 'dictionary_changed' | 'review_requested' | 'decided' | 'admin_todos';
 
 /**
  * InboxList

@@ -355,3 +355,61 @@ test("closing manager confirmation requires two clicks with impact", async ({
   ).toBe(false)
   await expectChineseCopy(page)
 })
+
+test("Feishu draft keeps credentials private and requires a second confirmation", async ({
+  page,
+  request,
+  modelUrl,
+}) => {
+  const { email, password, base, headers } = await createOrg(request, modelUrl)
+  await logInUser(page, email, password)
+  await page.goto("/admin/connections?tab=im")
+  await page.getByRole("button", { name: "打开管理助手" }).click()
+  const dialog = page.getByRole("dialog")
+  await dialog
+    .getByRole("textbox", { name: "发给管理助手的消息" })
+    .fill("连接飞书")
+  await dialog.getByRole("button", { name: "发送", exact: true }).click()
+  const secure = dialog.getByRole("form", { name: "安全输入框" })
+  await expect(secure).toHaveCount(2, { timeout: 30000 })
+  for (const [index, value] of [
+    "synthetic-feishu-id",
+    "sk-e2e-feishu-canary-283",
+  ].entries()) {
+    await secure.nth(index).locator('input[type="password"]').fill(value)
+    await secure.nth(index).getByRole("button", { name: "安全提交" }).click()
+    await expect(secure.nth(index).getByRole("status")).toHaveText("已填写")
+  }
+  // The backend tests exercise the adapter; this spec isolates confirmation UI from Feishu.
+  await page.route("**/change-sets/*/test", (route) =>
+    route.fulfill({ json: { ok: true, message: "连接成功" } }),
+  )
+  const card = dialog.getByRole("region", { name: "设置改动确认卡" })
+  await card.getByRole("button", { name: "测试连接" }).click()
+  await expect(card.getByText("测试连接：成功", { exact: true })).toBeVisible()
+  await page.keyboard.press("Escape")
+  const form = page.getByRole("form", { name: "飞书", exact: true })
+  await expect(form.getByRole("checkbox", { name: "启用入口" })).toBeChecked()
+  await expect(form.locator('[data-assistant-suggested="true"]')).toHaveCount(2)
+  await expect(
+    form.getByRole("button", { name: "保存", exact: true }),
+  ).toBeDisabled()
+  const read = async () =>
+    (await (await request.get(`${base}/im-settings`, { headers })).json()).find(
+      (row: { platform: string }) => row.platform === "feishu",
+    )
+  const confirmation = page.getByRole("region", { name: "页面草稿确认" })
+  await confirmation.getByRole("button", { name: "确认应用" }).click()
+  await expect(confirmation.getByRole("status")).toHaveText("请再次确认")
+  expect((await read()).enabled).toBe(false)
+  await expect(confirmation.getByRole("alert")).toContainText(
+    "消息会存在该平台的服务器上",
+  )
+  await confirmation
+    .getByRole("button", { name: "再次确认", exact: true })
+    .click()
+  await expect(confirmation).toHaveCount(0)
+  expect((await read()).enabled).toBe(true)
+  await expect(form.getByLabel("应用密钥", { exact: true })).toHaveValue("")
+  await expectChineseCopy(page, ["IM", "Telegram"])
+})

@@ -47,7 +47,12 @@ def public_setting(db: Session, org_id: UUID, platform: Platform) -> ImSettingPu
 
 
 def save_setting(
-    db: Session, principal: Principal, platform: Platform, body: ImSettingUpdate
+    db: Session,
+    principal: Principal,
+    platform: Platform,
+    body: ImSettingUpdate,
+    *,
+    commit: bool = True,
 ) -> ImSettingPublic:
     assert principal.user_id is not None
     allowed = REQUIRED[platform] | (
@@ -116,7 +121,9 @@ def save_setting(
             "fields": ["enabled", "email_auto_bind", *sorted(updates)],
         },
     )
-    db.commit()
+    db.flush()
+    if commit:
+        db.commit()
     return public_setting(db, principal.org_id, platform)
 
 
@@ -140,9 +147,20 @@ async def test_connection(
             )
             + ("" if healthy else "，请检查机器人进程及凭据"),
         )
-    adapter = None
     try:
         credentials = json.loads(decrypt_secret(row.credentials))
+    except SecretUnavailable:
+        return ImConnectionTest(ok=False, message="保存的密钥已失效，请重新填写")
+    except ValueError, TypeError:
+        return ImConnectionTest(ok=False, message="平台返回无效响应")
+    return await test_credentials(db, org_id, platform, credentials)
+
+
+async def test_credentials(
+    db: Session, org_id: UUID, platform: Platform, credentials: dict[str, str]
+) -> ImConnectionTest:
+    adapter = None
+    try:
         if (
             platform == "wecom"
             and db.exec(

@@ -24,6 +24,7 @@ from app.domains.access_token import service as access
 from app.domains.account import service as accounts
 from app.domains.account.schemas import AccountStatus
 from app.domains.admin.overview import build_overview
+from app.domains.admin_assistant.connections import register_connections
 from app.domains.admin_assistant.files import register_files
 from app.domains.admin_assistant.people import register_people
 from app.domains.admin_assistant.rules import register_rules
@@ -590,6 +591,7 @@ NOT_FOR_ASSISTANT = {
 
 register_rules(FUNCTIONS)
 register_sources(FUNCTIONS)
+register_connections(FUNCTIONS)
 register_files(FUNCTIONS)
 register_people(FUNCTIONS)
 
@@ -622,8 +624,6 @@ for name, title, input_type in (
 
 PENDING = {
     ("POST", "/capabilities/preview"): "S8b",
-    ("PUT", "/im-settings/{platform}"): "S6",
-    ("PUT", "/mcp-setting"): "S6",
     ("PUT", "/bot-settings"): "S6",
     ("PUT", "/model-setting"): "S6",
     ("POST", "/sources/csv/imports"): "S8b",
