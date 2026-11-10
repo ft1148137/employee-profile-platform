@@ -17,7 +17,7 @@ export function usePageDraft(
   )
   const query = useQuery({
     queryKey: ["admin-page-drafts", orgId, functionName, sessionId],
-    enabled: roles.includes("org_admin"),
+    enabled: !!user && roles.includes("org_admin"),
     queryFn: async () =>
       (
         await AdminAssistantService.assistantListChangeSets({
