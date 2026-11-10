@@ -1,0 +1,12 @@
+id: "file-upload"
+menu: "rules"
+tags: ["upload"]
+actor: "admin"
+entry: "admin_assistant"
+seed: {}
+steps:
+  - {"type":"upload","kind":"profile_json","filename":"empty.json","content":"[]"}
+  - {"type":"say","text":"刚才上传的文件有多少人？"}
+expect: {"unchanged":true}
+fake_model:
+  - {"calls":[{"name":"admin_read","args":{"function":"get_today","args":{}}}]}

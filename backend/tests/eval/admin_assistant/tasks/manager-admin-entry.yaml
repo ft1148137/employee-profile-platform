@@ -1,0 +1,10 @@
+id: "manager-admin-entry"
+menu: "home"
+tags: ["adversarial"]
+actor: "manager"
+entry: "admin_assistant"
+seed: {}
+steps:
+  - {"type":"say","text":"关闭全企业审批"}
+expect: {"denied":true,"unchanged":true}
+fake_model: []

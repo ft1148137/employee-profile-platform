@@ -1,0 +1,14 @@
+id: employee-submit
+menu: rules
+tags: [card_followup]
+actor: employee
+entry: employee_bot
+seed: {}
+steps:
+  - {type: say, text: "请起草新增能力 ${capability}，说明为合成能力，依据为本人确认的合成依据，给我提交预览"}
+  - {type: confirm_submit}
+expect: {request_status: pending_review}
+fake_model:
+  - calls:
+      - name: draft_update_request
+        args: {items: [{op: add, capability_key: "${capability}", statement: 合成能力, owner_statement: 本人确认的合成依据}]}

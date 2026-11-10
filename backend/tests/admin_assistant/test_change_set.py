@@ -47,10 +47,12 @@ def events(db: Session, org_id: object) -> list[dict]:
     return [
         row.details
         for row in db.exec(
-            select(AuditEvent).where(
+            select(AuditEvent)
+            .where(
                 AuditEvent.org_id == org_id,
                 AuditEvent.action == "update_settings.updated",
             )
+            .order_by(AuditEvent.created_at, AuditEvent.id)
         ).all()
     ]
 
