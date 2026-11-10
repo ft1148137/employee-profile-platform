@@ -42,6 +42,27 @@ def import_profiles(
     files: list[tuple[str, bytes]],
     *,
     confirm: bool,
+    commit: bool = True,
+) -> list[ImportResult]:
+    if not commit and not confirm:
+        # Preview must not roll back the assistant's surrounding transaction.
+        savepoint = session.begin_nested()
+        try:
+            return _import_profiles(
+                principal, session, files, confirm=False, commit=False
+            )
+        finally:
+            savepoint.rollback()
+    return _import_profiles(principal, session, files, confirm=confirm, commit=commit)
+
+
+def _import_profiles(
+    principal: Principal,
+    session: Session,
+    files: list[tuple[str, bytes]],
+    *,
+    confirm: bool,
+    commit: bool,
 ) -> list[ImportResult]:
     if not principal.is_org_admin:
         raise OrgAdminRequired()
@@ -205,8 +226,11 @@ def import_profiles(
             InboxKind.INITIAL_REVIEW,
             "管理员导入了 AI 生成的画像，请过目后提交",
         )
-    if confirm:
-        session.commit()
-    else:
-        session.rollback()
+    if commit:
+        if confirm:
+            session.commit()
+        else:
+            session.rollback()
+    elif confirm:
+        session.flush()
     return results

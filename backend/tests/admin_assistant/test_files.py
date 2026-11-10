@@ -262,7 +262,7 @@ def test_invalid_oversize_and_private_uploads(
         upload(client, tenant, sid, b"x" * (roster.MAX_FILE_SIZE + 1)).status_code
         == 413
     )
-    assert upload(client, tenant, sid, kind="profile_json").status_code == 422
+    assert upload(client, tenant, sid, kind="unknown").status_code == 422
     member = db.exec(
         select(OrgMembership).where(
             OrgMembership.org_id == tenant.org_id,

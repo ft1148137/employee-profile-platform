@@ -1,14 +1,19 @@
-from hashlib import sha256
 from typing import Literal
 from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Response, UploadFile
-from pydantic import BaseModel
 
 from app.api.deps import SessionDep
 from app.api.secret_safe import SecretSafeRoute
 from app.authz.deps import OrgAdminDep
+from app.domains.source.import_records import (
+    MAX_FILE_SIZE,
+    CsvImportPublic,
+)
+from app.domains.source.import_records import (
+    import_work_records as import_records,
+)
 from app.domains.source.schemas import (
     JiraConnectionPublic,
     JiraConnectionTest,
@@ -26,10 +31,8 @@ from app.domains.source.service import (
 )
 from app.domains.source.sync import SyncError, create_run, retry_run
 from app.domains.work.records import (
-    WorkRecordIssue,
     build_work_records_template_csv,
     build_work_records_template_xlsx,
-    parse_work_records,
 )
 
 router = APIRouter(
@@ -69,42 +72,15 @@ def work_records_template(
     )
 
 
-class CsvImportPublic(BaseModel):
-    run: SyncRunPublic
-    issues: list[WorkRecordIssue]
-
-
 @router.post("/csv/imports", status_code=202, response_model=CsvImportPublic)
 def import_work_records(
     file: UploadFile, session: SessionDep, principal: OrgAdminDep
 ) -> CsvImportPublic:
-    content = file.file.read(5 * 1024 * 1024 + 1)
-    if len(content) > 5 * 1024 * 1024:
-        raise HTTPException(413, "文件超过 5 MB，请拆分后再上传")
-    filename = file.filename or ""
-    parsed = parse_work_records(content, filename)
-    if parsed.has_errors:
-        raise HTTPException(
-            422,
-            {
-                "code": "work_records_invalid",
-                "issues": [i.model_dump() for i in parsed.issues],
-            },
-        )
+    content = file.file.read(MAX_FILE_SIZE + 1)
     try:
-        run = create_run(
-            session,
-            principal,
-            "csv",
-            {
-                "filename": filename,
-                "file_sha256": sha256(content).hexdigest(),
-                "rows": [r.model_dump(mode="json") for r in parsed.rows],
-            },
-        )
+        return import_records(session, principal, content, file.filename or "")
     except SyncError as error:
         raise _sync_error(error) from None
-    return CsvImportPublic(run=run, issues=parsed.issues)
 
 
 @sync_router.get("", response_model=SyncRunsPublic)
