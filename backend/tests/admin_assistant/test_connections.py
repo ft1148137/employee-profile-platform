@@ -3,7 +3,7 @@ import logging
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.secrets import decrypt_secret
 from app.domains.access_token import service as mcp
@@ -91,11 +91,13 @@ def test_confirm_undo_and_web_parity(
     assert c.apply(db, p, closed.id, closed.revision).status == "applied"
     assert not read().enabled
     details = db.exec(
-        select(AuditEvent).where(
+        select(AuditEvent)
+        .where(
             AuditEvent.org_id == p.org_id,
             AuditEvent.action
             == ("im_settings.updated" if is_im else "mcp_setting.updated"),
         )
+        .order_by(col(AuditEvent.created_at), col(AuditEvent.id))
     ).all()
     assert details[-1].details["via"] == "admin_assistant"
     assert CANARY not in str(details) and CANARY not in str(row.items)
