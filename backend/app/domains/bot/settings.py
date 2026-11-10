@@ -22,7 +22,9 @@ def read_settings(db: Session, org_id: UUID) -> BotSettings:
     )
 
 
-def save_settings(db: Session, principal: Principal, body: BotSettings) -> BotSettings:
+def save_settings(
+    db: Session, principal: Principal, body: BotSettings, *, commit: bool = True
+) -> BotSettings:
     db.exec(
         select(Organization)
         .where(Organization.id == principal.org_id)
@@ -41,5 +43,8 @@ def save_settings(db: Session, principal: Principal, body: BotSettings) -> BotSe
         target_id=str(principal.org_id),
         details={"retention_days": body.retention_days},
     )
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     return body

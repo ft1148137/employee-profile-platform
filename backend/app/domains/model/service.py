@@ -51,7 +51,11 @@ def public_setting(setting: ModelSetting | None) -> ModelSettingPublic:
 
 
 def save_setting(
-    session: Session, principal: Principal, body: ModelSettingUpdate
+    session: Session,
+    principal: Principal,
+    body: ModelSettingUpdate,
+    *,
+    commit: bool = True,
 ) -> ModelSettingPublic:
     assert principal.user_id is not None
     setting = chatgpt.locked_setting(session, principal)
@@ -126,12 +130,17 @@ def save_setting(
             "api_key_changed": changed,
         },
     )
-    session.commit()
-    session.refresh(setting)
+    if commit:
+        session.commit()
+        session.refresh(setting)
+    else:
+        session.flush()
     return public_setting(setting)
 
 
-def model_config(setting: ModelSetting | None) -> PiModelConfig:
+def model_config(
+    setting: ModelSetting | None, *, api_key: SecretStr | None = None
+) -> PiModelConfig:
     if setting is None or not setting.enabled or not setting.model:
         raise ModelUnavailable("模型已关闭，请先启用模型")
     if setting.kind != "chatgpt_subscription":
@@ -152,7 +161,9 @@ def model_config(setting: ModelSetting | None) -> PiModelConfig:
                 "api": api,
                 "id": setting.model,
                 "baseUrl": base_url,
-                "api_key": SecretStr(
+                "api_key": api_key
+                if api_key is not None
+                else SecretStr(
                     decrypt_secret(setting.api_key_ciphertext)
                     if setting.api_key_ciphertext
                     else ""
@@ -171,8 +182,10 @@ def model_config(setting: ModelSetting | None) -> PiModelConfig:
             "api": "openai-codex-responses",
             "id": setting.model.removeprefix("chatgpt/"),
             "baseUrl": "https://chatgpt.com/backend-api",
-            "api_key": SecretStr(chatgpt.access_token(setting.org_id)),
-            "org_id": setting.org_id,
+            "api_key": api_key
+            if api_key is not None
+            else SecretStr(chatgpt.access_token(setting.org_id)),
+            "org_id": setting.org_id if api_key is None else None,
             "thinkingLevel": setting.reasoning_effort or "high",
         }
     )
@@ -207,7 +220,14 @@ def validate_capabilities(
 def check_connection(session: Session, principal: Principal) -> ConnectionTest:
     try:
         setting = read_setting(session, principal.org_id)
-        config = model_config(setting)
+        return test_connection(model_config(setting))
+    except (SecretUnavailable, ModelUnavailable) as error:
+        return ConnectionTest(ok=False, message=str(error))
+
+
+def test_connection(config: PiModelConfig) -> ConnectionTest:
+    """Probe explicit model parameters and credentials."""
+    try:
         validate_capabilities(config.provider, config.id, config.thinkingLevel)
         run_turn(
             config,

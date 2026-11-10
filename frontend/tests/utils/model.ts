@@ -227,6 +227,28 @@ export const test = base.extend<{ modelUrl: string }>({
         ],
       }
       const calls = chunk.choices[0].delta.tool_calls
+      if (admin && !toolResult && JSON.stringify(last).includes("换模型")) {
+        const tool = calls?.[0]
+        if (tool) {
+          tool.function = {
+            name: "propose_changes",
+            arguments: JSON.stringify({
+              items: [
+                {
+                  function: "update_model_setting",
+                  args: {
+                    enabled: true,
+                    kind: "openai_compatible",
+                    provider: "openai-compatible",
+                    model: "synthetic-updated",
+                    base_url: `http://${req.headers.host}/v1`,
+                  },
+                },
+              ],
+            }),
+          }
+        }
+      }
       if (jiraRequest && calls) {
         calls[0].id = jiraSecret ? "synthetic-secret" : "synthetic-jira"
         calls[0].function = {
