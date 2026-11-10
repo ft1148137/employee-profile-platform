@@ -78,6 +78,83 @@ def test_duplicate_credential_targets_are_rejected(db: Session, demo: tuple) -> 
     )
 
 
+def test_unlink_rejects_employee_on_confirmation_card(db: Session, demo: tuple) -> None:
+    identity = setup(db, demo)
+    with pytest.raises(c.ChangeSetError) as error:
+        proposal(
+            db,
+            demo,
+            items=[
+                {
+                    "function": "unlink_identity",
+                    "args": {
+                        "identity_id": str(identity.id),
+                        "employee_id": str(demo[1]["E02"].id),
+                    },
+                }
+            ],
+        )
+    assert error.value.status_code == 422
+    db.refresh(identity)
+    assert identity.employee_id is None
+
+
+def test_running_sync_reports_business_reason(db: Session, demo: tuple) -> None:
+    setup(db, demo)
+    p = principal(db, demo)
+    db.add(
+        SyncRun(
+            org_id=p.org_id,
+            connection_id=service.read_jira(db, p.org_id).id,
+            requested_by_user_id=p.user_id,
+            status="running",
+        )
+    )
+    db.commit()
+    row = proposal(db, demo, items=[{"function": "start_jira_sync", "args": {}}])
+    with pytest.raises(c.ChangeSetError, match="同步") as error:
+        c.apply(db, p, row.id, row.revision)
+    assert error.value.status_code == 409
+    assert error.value.detail == "已有同步在进行"
+    assert c.get(db, p, row.id).status == "draft"
+
+
+def test_connection_test_does_not_lock_secret_input(
+    db: Session, demo: tuple, client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    setup(db, demo)
+    row = draft(db, demo, {})
+    entered, release = Event(), Event()
+
+    def probe(_config: object, _secret: str) -> service.JiraConnectionTest:
+        entered.set()
+        assert release.wait(10)
+        return service.JiraConnectionTest(ok=True, message="成功")
+
+    monkeypatch.setattr(service, "test_jira", probe)
+    url = f"{demo[0]}/admin-assistant/change-sets/{row.id}"
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        tested = pool.submit(
+            client.post, url + "/test", headers=demo[2]["admin"], json={"item": 0}
+        )
+        try:
+            assert entered.wait(5)
+
+            def save() -> None:
+                with Session(db.get_bind()) as other:
+                    other.execute(text("SET LOCAL lock_timeout = '1s'"))
+                    c.save_secret(
+                        other, principal(other, demo), row.id, "secret", CANARY
+                    )
+
+            pool.submit(save).result(timeout=3)
+        finally:
+            release.set()
+        assert tested.result(timeout=5).json()["ok"]
+    db.refresh(row)
+    assert decrypt_secret(row.secrets) == json.dumps({"secret": CANARY})
+
+
 @pytest.mark.parametrize("rebind", [False, True])
 def test_credential_undo(db: Session, demo: tuple, rebind: bool) -> None:
     setup(db, demo)

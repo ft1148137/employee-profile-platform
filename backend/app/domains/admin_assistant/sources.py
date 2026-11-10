@@ -24,6 +24,9 @@ class JiraArgs(JiraConnectionUpdate):
 class IdentityArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
     identity_id: UUID
+
+
+class IdentityState(IdentityArgs):
     employee_id: UUID | None = None
 
 
@@ -79,16 +82,15 @@ def identity_snapshot(db: Session, p: Principal, args: IdentityArgs) -> BaseMode
     ).one_or_none()
     if row is None:
         raise HTTPException(404, "账号不存在")
-    return IdentityArgs(identity_id=row.id, employee_id=row.employee_id)
+    return IdentityState(identity_id=row.id, employee_id=row.employee_id)
 
 
 def restore_identity(
     _db: Session, _p: Principal, before: dict[str, JsonValue]
 ) -> tuple[str, BaseModel]:
-    return (
-        "link_identity" if before["employee_id"] else "unlink_identity",
-        IdentityArgs.model_validate(before),
-    )
+    if before["employee_id"]:
+        return "link_identity", LinkArgs.model_validate(before)
+    return "unlink_identity", IdentityArgs(identity_id=UUID(str(before["identity_id"])))
 
 
 def link_identity(

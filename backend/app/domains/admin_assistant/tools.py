@@ -127,7 +127,12 @@ def call(
                     "id": str(row.id),
                     "revision": row.revision,
                     "changes": [
-                        item.model_dump(mode="json", exclude={"args"})
+                        item.model_dump(
+                            mode="json",
+                            exclude={"args", "impact"}
+                            if item.function == "issue_accounts"
+                            else {"args"},
+                        )
                         for item in card.change_set.items
                     ],
                 }

@@ -13,7 +13,7 @@ from app.authz.deps import get_org_principal
 from app.domains.account import service as accounts
 from app.domains.account.schemas import IssueAccounts
 from app.domains.admin_assistant import change_set as c
-from app.domains.admin_assistant import core, registry, store
+from app.domains.admin_assistant import core, registry, store, tools
 from app.domains.admin_assistant.models import AdminChangeSet
 from app.domains.admin_assistant.schemas import AdminTurnInput, ProposeChanges
 from app.domains.audit.models import AuditEvent
@@ -28,6 +28,70 @@ from tests.admin_assistant.test_registry import principal
 from tests.admin_assistant.test_secure_changes import draft
 from tests.api.routes.test_reviews import manager, pending, values
 from tests.domains.test_bot_core import enable
+
+
+def test_issue_conflict_has_employee_and_plain_reason(db: Session, demo: tuple) -> None:
+    p = principal(db, demo)
+    employee = Employee(
+        org_id=p.org_id,
+        employee_code="CONFLICT291",
+        display_name="合成冲突员工",
+        work_email=f"{uuid4()}@example.com",
+    )
+    db.add(employee)
+    db.commit()
+    row = draft(db, demo, "issue_accounts", {"employee_ids": [str(employee.id)]})
+    db.add(User(username=employee.work_email, hashed_password="synthetic"))
+    db.commit()
+    with pytest.raises(c.ChangeSetError) as error:
+        c.apply(db, p, row.id, row.revision)
+    assert error.value.status_code == 409
+    assert "合成冲突员工：邮箱已被占用" in error.value.detail
+    assert not any(char in error.value.detail for char in "[{")
+    assert c.get(db, p, row.id).status == "draft"
+
+
+def test_issue_all_snapshot_is_compact_and_candidates_stale(
+    db: Session, demo: tuple
+) -> None:
+    p = principal(db, demo)
+    employees = [
+        Employee(
+            org_id=p.org_id,
+            employee_code=f"BULK291-{i}",
+            display_name=f"合成批量员工{i}",
+            work_email=f"{uuid4()}@example.com",
+        )
+        for i in range(12)
+    ]
+    db.add_all(employees)
+    db.commit()
+    cards = []
+    result = tools.call(
+        db,
+        p,
+        cards,
+        "propose_changes",
+        {"items": [{"function": "issue_accounts", "args": {}}]},
+        session_id=store.create_session(db, p).id,
+    )
+    db.commit()
+    row = c.get(db, p, cards[0].change_set.id)
+    before = row.items[0]["before"]
+    assert set(before) == {"employee_ids", "count"}
+    assert {str(e.id) for e in employees} <= set(before["employee_ids"])
+    assert before["employee_ids"] == sorted(before["employee_ids"])
+    assert before["count"] == len(before["employee_ids"])
+    assert f"共 {before['count']} 人" in row.items[0]["impact"]["text"]
+    assert row.items[0]["impact"]["text"].count("、") == 9
+    for e in employees:
+        assert e.display_name not in json.dumps(result, ensure_ascii=False)
+        assert e.work_email not in json.dumps(result, ensure_ascii=False)
+    accounts.issue_accounts(db, p, IssueAccounts(employee_ids=[employees[0].id]))
+    db.commit()
+    with pytest.raises(c.ChangeSetError, match="内容已变化"):
+        c.apply(db, p, row.id, row.revision)
+    assert c.get(db, p, row.id).status == "stale"
 
 
 def user_ids(db: Session, demo: tuple) -> list[UUID]:

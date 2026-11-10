@@ -14,6 +14,7 @@ from app.authz.principal import Principal
 from app.core.secrets import decrypt_secret, encrypt_secret
 from app.domains.account.service import AccountError
 from app.domains.admin_assistant import registry, store
+from app.domains.admin_assistant.files import RosterArgs, _record
 from app.domains.admin_assistant.models import AdminAssistantSession, AdminChangeSet
 from app.domains.admin_assistant.outputs import (
     AccountsOutput,
@@ -34,6 +35,11 @@ from app.domains.base import utc_now
 from app.domains.bot import store as messages
 from app.domains.bot.schemas import TextMessage
 from app.domains.org.models import Organization
+from app.domains.org.roster.service import RosterError
+from app.domains.org.roster.single import Offboard
+from app.domains.source.identities import IdentityConflict, InvalidIdentityEmployee
+from app.domains.source.service import InvalidSourceSetting
+from app.domains.source.sync import SyncError
 
 
 class ChangeSetError(HTTPException):
@@ -92,7 +98,7 @@ def _with_secrets(
 async def test_connection(
     db: Session, principal: Principal, id: UUID, item: int
 ) -> registry.ConnectionTestResult:
-    row = get(db, principal, id, lock=True)
+    row = get(db, principal, id)
     if row.status != "draft":
         raise ChangeSetError("这份改动已结束，请重新起草")
     if item >= len(row.items):
@@ -178,9 +184,12 @@ def _entry(
     if set(entry.secret_fields) & args.keys():
         raise ChangeSetError("请用安全输入框填写密钥", 422)
     # Validate ordinary fields now; secret values are validated again at application.
-    return entry, entry.input_model.model_validate(
-        {**args, **dict.fromkeys(entry.secret_fields, "pending-secure-input")}
-    )
+    try:
+        return entry, entry.input_model.model_validate(
+            {**args, **dict.fromkeys(entry.secret_fields, "pending-secure-input")}
+        )
+    except ValueError:
+        raise ChangeSetError("参数不正确，请按功能说明填写", 422) from None
 
 
 def propose(
@@ -197,6 +206,8 @@ def propose(
     items: list[dict[str, JsonValue]] = []
     secret_fields: set[str] = set()
     disabled_users: set[UUID] = set()
+    offboarded_employees: set[UUID] = set()
+    imported_deactivations = 0
     for item in body.items:
         entry, args = _entry(item.function, item.args)
         # Secrets are stored by field for the whole change set; each needs one target.
@@ -207,6 +218,12 @@ def propose(
         secret_fields.update(entry.secret_fields)
         if isinstance(args, DisableArgs):
             disabled_users.update(args.user_ids)
+        elif isinstance(args, Offboard):
+            offboarded_employees.update(args.employee_ids)
+        elif isinstance(args, RosterArgs):
+            imported_deactivations += _record(db, principal, args).summary[
+                "deactivated"
+            ]
         items.append(
             {
                 "function": entry.name,
@@ -230,9 +247,13 @@ def propose(
                 "undoable": entry.undoable,
             }
         )
-    if len(disabled_users) >= 2:
+    if len(disabled_users) + len(offboarded_employees) + imported_deactivations >= 2:
         for saved_item in items:
-            if saved_item["function"] == "disable_accounts":
+            if saved_item["function"] in (
+                "disable_accounts",
+                "offboard_employees",
+                "apply_roster_import",
+            ):
                 saved_item["risk"] = "high"
     if row:
         row.items = items
@@ -359,9 +380,28 @@ def apply(
                 AdminTurnResponse(messages=[*notices]).model_dump(mode="json"),
             )
         db.commit()
-    except AccountError as error:
+    except (
+        AccountError,
+        IdentityConflict,
+        InvalidIdentityEmployee,
+        RosterError,
+    ) as error:
         db.rollback()
-        raise ChangeSetError(str(error.detail), error.status_code) from None
+        detail = error.detail
+        if isinstance(detail, list):
+            detail = "；".join(
+                f"{item['display_name']}：{item['reason']}"
+                if isinstance(item, dict)
+                else str(item)
+                for item in detail
+            )
+        raise ChangeSetError(f"{detail}；所有改动均已回滚", error.status_code) from None
+    except SyncError as error:
+        db.rollback()
+        raise ChangeSetError(error.message, error.status) from None
+    except InvalidSourceSetting as error:
+        db.rollback()
+        raise ChangeSetError(str(error), 422) from None
     except Exception:
         db.rollback()
         raise ChangeSetError("未能应用，所有改动均已回滚，请检查设置后重试") from None
