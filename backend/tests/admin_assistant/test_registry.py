@@ -1,7 +1,9 @@
 import asyncio
 import json
+import re
 from collections.abc import Iterator
 from dataclasses import replace
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -131,6 +133,7 @@ def test_endpoint_coverage() -> None:
     def admin(dep: Dependant) -> bool:
         return dep.call == get_org_admin or any(admin(d) for d in dep.dependencies)
 
+    assert not r.PENDING
     registered = [e for f in r.FUNCTIONS.values() for e in f.endpoints]
     classified = registered + list(r.NOT_FOR_ASSISTANT) + list(r.PENDING)
     assert len(classified) == len(set(classified))
@@ -151,6 +154,12 @@ def test_endpoint_coverage() -> None:
             for method in route.methods:
                 assert (method, route.path.removeprefix("/orgs/{org_id}")) in classified
     assert all(r.NOT_FOR_ASSISTANT.values()) and all(r.PENDING.values())
+
+
+def test_function_map_covers_registry() -> None:
+    guide = Path(__file__).resolve().parents[3] / "docs/admin-function-map.md"
+    documented = set(re.findall(r"`([a-z][a-z0-9_]*)`", guide.read_text()))
+    assert set(r.FUNCTIONS) <= documented
 
 
 def test_secret_and_title_canaries(
