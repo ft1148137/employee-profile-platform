@@ -24,6 +24,7 @@ from app.domains.access_token import service as access
 from app.domains.account import service as accounts
 from app.domains.account.schemas import AccountStatus
 from app.domains.admin.overview import build_overview
+from app.domains.admin_assistant.people import register_people
 from app.domains.admin_assistant.rules import register_rules
 from app.domains.audit import service as audit
 from app.domains.bot import settings as bot
@@ -562,6 +563,7 @@ NOT_FOR_ASSISTANT = {
 }
 
 register_rules(FUNCTIONS)
+register_people(FUNCTIONS)
 
 for name, title, input_type in (
     ("onboard_employee", "新增员工", single.Onboard),
@@ -601,13 +603,6 @@ PENDING = {
     ("POST", "/sync-runs/{run_id}/retry"): "S6",
     ("POST", "/external-identities/link"): "S6",
     ("POST", "/external-identities/{identity_id}/unlink"): "S6",
-    ("POST", "/accounts/issue"): "S7",
-    ("POST", "/accounts/{user_id}/reset-password"): "S7",
-    ("POST", "/accounts/{user_id}/disable"): "S7",
-    ("POST", "/accounts/{user_id}/enable"): "S7",
-    ("POST", "/role-grants"): "S7",
-    ("DELETE", "/role-grants/{grant_id}"): "S7",
-    ("POST", "/appeals/{appeal_id}/resolve"): "S7",
     ("POST", "/sources/csv/imports"): "S8",
     ("POST", "/roster/imports"): "S8",
     ("POST", "/roster/imports/{id}/apply"): "S8",

@@ -1,7 +1,7 @@
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 
 from app.api.deps import SessionDep
 from app.api.secret_safe import SecretSafeRoute
@@ -13,6 +13,7 @@ from app.domains.admin_assistant.schemas import (
     AdminTurnResponse,
     ApplyChanges,
     Availability,
+    ChangeSetApplied,
     ChangeSetPublic,
     SecretInput,
 )
@@ -98,8 +99,13 @@ def get_change_set(
 
 @change_router.post("/{id}/apply")
 def apply_change_set(
-    principal: OrgAdminDep, session: SessionDep, id: UUID, body: ApplyChanges
-) -> ChangeSetPublic:
+    principal: OrgAdminDep,
+    session: SessionDep,
+    id: UUID,
+    body: ApplyChanges,
+    response: Response,
+) -> ChangeSetApplied:
+    response.headers["Cache-Control"] = "no-store"
     return change_set.apply(session, principal, id, body.revision)
 
 
