@@ -15,6 +15,7 @@ import {
 } from "@/components/Admin/auditLabels"
 import { BotMessage } from "@/components/Bot/BotMessage"
 import { BotPanel } from "@/components/Bot/BotPanel"
+import { SessionHistory } from "@/components/Bot/SessionHistory"
 import { RosterPreview } from "@/components/Roster/RosterPreview"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
@@ -27,6 +28,10 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import useAuth from "@/hooks/useAuth"
+import {
+  rememberConversation,
+  useCurrentConversation,
+} from "@/hooks/useCurrentConversation"
 import { useOrg } from "@/hooks/useOrg"
 import { ChangeSetCard } from "./ChangeSetCard"
 import { FileUploadCard } from "./FileUploadCard"
@@ -198,6 +203,7 @@ export function AdminAssistantPanel({
   const client = useQueryClient()
   const [open, setOpen] = useState(false)
   const [sessionId, setSessionId] = useState("")
+  const remembered = useCurrentConversation(storageKey)
   const [uploading, setUploading] = useState(false)
   const [messages, setMessages] = useState<
     Pick<AdminSessionMessage, "role" | "payload">[]
@@ -206,19 +212,20 @@ export function AdminAssistantPanel({
   const bottom = useRef<HTMLDivElement>(null)
   const query = { org_id: orgId }
   const initialize = useMutation({
-    mutationFn: async (fresh: boolean) => {
-      let id = fresh ? null : sessionStorage.getItem(storageKey)
+    mutationFn: async (selection?: string) => {
+      let id =
+        selection === "new"
+          ? null
+          : (selection ?? localStorage.getItem(storageKey))
       if (id) {
         try {
-          return {
-            id,
-            messages: (
-              await AdminAssistantService.assistantListMessages({
-                query,
-                path: { session_id: id },
-              })
-            ).data,
-          }
+          const messages = (
+            await AdminAssistantService.assistantListMessages({
+              query,
+              path: { session_id: id },
+            })
+          ).data
+          return { id, messages }
         } catch (error) {
           if (!(error instanceof AxiosError) || error.response?.status !== 404)
             throw error
@@ -226,10 +233,12 @@ export function AdminAssistantPanel({
       }
       id = (await AdminAssistantService.assistantCreateSession({ query })).data
         .session_id
-      sessionStorage.setItem(storageKey, id)
       return { id, messages: [] }
     },
     onSuccess: (data) => {
+      rememberConversation(storageKey, data.id)
+      if (sessionId) setText("")
+      send.reset()
       setSessionId(data.id)
       setMessages(data.messages)
       client.invalidateQueries({ queryKey: ["admin-page-drafts", orgId] })
@@ -258,6 +267,16 @@ export function AdminAssistantPanel({
     },
   })
   const busy = initialize.isPending || send.isPending || uploading
+  useEffect(() => {
+    if (
+      (open || fullScreen) &&
+      sessionId &&
+      remembered &&
+      remembered !== sessionId &&
+      !busy
+    )
+      initialize.mutate(remembered)
+  }, [fullScreen, open, sessionId, remembered, busy, initialize.mutate])
   const uploaded = (response: AdminTurnResponse) => {
     setMessages((previous) => [
       ...previous,
@@ -267,14 +286,15 @@ export function AdminAssistantPanel({
   }
   useEffect(() => {
     if (
-      fullScreen &&
+      (fullScreen || remembered) &&
       !sessionId &&
       !initialize.isPending &&
       !initialize.isError
     )
-      initialize.mutate(false)
+      initialize.mutate()
   }, [
     fullScreen,
+    remembered,
     sessionId,
     initialize.isPending,
     initialize.isError,
@@ -289,6 +309,14 @@ export function AdminAssistantPanel({
   }, [messages.length, busy])
   const content = (
     <>
+      <SessionHistory
+        orgId={orgId}
+        administrator
+        currentId={sessionId}
+        disabled={busy}
+        onNew={() => initialize.mutate("new")}
+        onSelect={(id) => initialize.mutate(id)}
+      />
       <div
         className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 text-sm"
         role="log"
@@ -400,7 +428,7 @@ export function AdminAssistantPanel({
         {busy && <p role="status">正在处理，请稍候…</p>}
         <SetupError error={initialize.error ?? send.error} />
         {initialize.isError && (
-          <Button onClick={() => initialize.mutate(false)}>重试加载对话</Button>
+          <Button onClick={() => initialize.mutate()}>重试加载对话</Button>
         )}
       </div>
       <div className="space-y-2 border-t px-4 pt-3 text-xs">
@@ -451,14 +479,6 @@ export function AdminAssistantPanel({
           disabled={busy || !sessionId}
         />
         <div className="flex justify-between gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={busy}
-            onClick={() => initialize.mutate(true)}
-          >
-            新对话
-          </Button>
           <Button disabled={busy || !sessionId || !text.trim()}>发送</Button>
         </div>
       </form>
@@ -471,7 +491,7 @@ export function AdminAssistantPanel({
       open={open}
       onOpenChange={(value) => {
         setOpen(value)
-        if (value && !sessionId && !busy) initialize.mutate(false)
+        if (value && !sessionId && !busy) initialize.mutate()
       }}
     >
       <SheetTrigger asChild>
