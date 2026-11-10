@@ -42,6 +42,8 @@ def enqueue(db: Session, item: InboxItem) -> None:
             ImBinding.notify == True,  # noqa: E712
         )
     ).all():
+        if item.kind == InboxKind.ADMIN_TODOS and row.platform != "feishu":
+            continue
         db.add(
             ImNotification(
                 org_id=item.org_id,
@@ -132,7 +134,13 @@ async def send_pending(
                 )
                 if valid and bound:
                     try:
-                        principal_for(db, bound)
+                        principal = principal_for(db, bound)
+                        if item.kind == InboxKind.ADMIN_TODOS:
+                            valid = (
+                                principal.is_org_admin
+                                and row.platform == "feishu"
+                                and bool(item.admin_todo_count)
+                            )
                     except HTTPException:
                         valid = False
                 if not valid:
@@ -153,7 +161,9 @@ async def send_pending(
                     async with asyncio.timeout(10):
                         await connection[1].send_text(
                             bound.external_chat_id,
-                            REMINDERS[item.kind] + "，在网页或私聊我查看。",
+                            f"你有 {item.admin_todo_count} 条管理员待办，请在网页首页处理。"
+                            if item.kind == InboxKind.ADMIN_TODOS
+                            else REMINDERS[item.kind] + "，在网页或私聊我查看。",
                         )
                     row.status, row.sent_at, row.last_error_code = (
                         "sent",

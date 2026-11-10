@@ -5,7 +5,7 @@ from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from sqlmodel import Session, select
 
 from app.domains.admin_assistant import change_set as c
@@ -217,7 +217,9 @@ def test_later_failure_rolls_back(db: Session, demo: tuple, name: str) -> None:
             [
                 r.model_dump(mode="json")
                 for r in db.exec(
-                    select(model).where(model.org_id == p.org_id)
+                    select(model)
+                    .where(model.org_id == p.org_id)
+                    .order_by(*inspect(model).primary_key)
                     if model is not Organization
                     else select(model).where(model.id == p.org_id)
                 ).all()

@@ -21,6 +21,7 @@ const kindLabels: Record<InboxKind, string> = {
   question: "待确认问题",
   submitted: "提交通知",
   status_changed: "请求状态变化",
+  admin_todos: "管理员待办",
   dictionary_changed: "能力词典已更新",
   review_requested: "画像请求待审批",
   decided: "画像审批结果",

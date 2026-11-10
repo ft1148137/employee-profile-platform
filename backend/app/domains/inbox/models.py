@@ -1,9 +1,10 @@
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 from uuid import UUID
 
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKeyConstraint,
     Index,
@@ -22,12 +23,19 @@ class InboxKind(StrEnum):
     DICTIONARY_CHANGED = "dictionary_changed"
     REVIEW_REQUESTED = "review_requested"
     DECIDED = "decided"
+    ADMIN_TODOS = "admin_todos"
 
 
 class InboxItem(TenantRecord, table=True):
     __tablename__ = "inbox_item"
     __table_args__ = (
         UniqueConstraint("org_id", "id"),
+        UniqueConstraint(
+            "org_id",
+            "recipient_user_id",
+            "admin_todo_date",
+            name="uq_inbox_admin_todo_day",
+        ),
         tenant_fk("recipient_employee_id", "employee"),
         ForeignKeyConstraint(
             ["org_id", "recipient_user_id"],
@@ -48,6 +56,8 @@ class InboxItem(TenantRecord, table=True):
     request_id: UUID | None = None
     question_id: UUID | None = None
     message: str
+    admin_todo_date: date | None = Field(default=None, sa_type=Date)
+    admin_todo_count: int | None = None
     read_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     done_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 

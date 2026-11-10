@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 
 const labels: Record<string, string> = {
+  platform: "沟通渠道",
+  email_auto_bind: "按企业邮箱自动绑定",
+  allowed_clients: "允许的客户端",
   enabled: "启用状态",
   kind: "模型类型",
   provider: "模型服务商",
@@ -34,6 +37,7 @@ const labels: Record<string, string> = {
   run_id: "同步记录",
 }
 const values: Record<string, string> = {
+  feishu: "飞书",
   cloud_api: "云端模型服务",
   local: "本地模型",
   openai_compatible: "其他兼容模型服务",
@@ -74,6 +78,8 @@ function display(value: unknown, field: string): string {
         xhigh: "最深",
       }[String(value)] ?? "默认"
     )
+  if (field === "allowed_clients" && Array.isArray(value))
+    return value.join("、") || "允许所有客户端"
   if (field === "sync_schedule" && value === "off") return "关闭"
   if (field === "include_description") return value ? "同步" : "不同步"
   if (field === "category_overrides" && value && typeof value === "object")

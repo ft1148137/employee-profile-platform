@@ -280,6 +280,48 @@ export const test = base.extend<{ modelUrl: string }>({
           tool.function.arguments = JSON.stringify({ kind: "roster" })
         }
       }
+      const feishuRequest =
+        admin &&
+        request.messages.some(
+          (message: { role: string; content: unknown }) =>
+            message.role === "user" &&
+            JSON.stringify(message.content).includes("连接飞书"),
+        )
+      if (feishuRequest) {
+        expect(raw).not.toContain("sk-e2e-feishu-canary-283")
+        if (!toolResult) {
+          chunk.choices[0].delta.tool_calls = [
+            {
+              index: 0,
+              id: "feishu-draft",
+              type: "function",
+              function: {
+                name: "propose_changes",
+                arguments: JSON.stringify({
+                  items: [
+                    {
+                      function: "update_im_setting",
+                      args: { enabled: true, email_auto_bind: false },
+                    },
+                  ],
+                }),
+              },
+            },
+            ...["app_id", "app_secret"].map((field, index) => ({
+              index: index + 1,
+              id: `feishu-${field}`,
+              type: "function",
+              function: {
+                name: "request_secret_input",
+                arguments: JSON.stringify({
+                  function: "update_im_setting",
+                  field,
+                }),
+              },
+            })),
+          ]
+        }
+      }
       res.write(`data: ${JSON.stringify(chunk)}\n\n`)
       const finished = {
         ...chunk,

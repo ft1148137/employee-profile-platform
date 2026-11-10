@@ -12,6 +12,7 @@ from app.domains.bot.store import cleanup_messages
 from app.domains.drafting.incremental import run_incremental
 from app.domains.drafting.service import run_drafting
 from app.domains.im.binding import cleanup_events
+from app.domains.inbox.admin_todos import dispatch_admin_todos
 from app.domains.inbox.reminders import dispatch_due_reminders
 from app.domains.source.schedule import dispatch_due_syncs
 from app.domains.source.sync import execute_sync
@@ -82,3 +83,13 @@ def dispatch_scheduled(timestamp: int) -> None:  # noqa: ARG001
 def dispatch_reminders(timestamp: int) -> None:  # noqa: ARG001
     with Session(engine) as session:
         dispatch_due_reminders(session, utc_now())
+
+
+# shortcut: Fixed UTC 01:00 (09:00 in China); use organization timezones when configurable.
+@app.periodic(cron="0 1 * * *")
+@app.task(name="admin.dispatch_todos", queueing_lock="admin_dispatch_todos")
+def dispatch_admin_digest(timestamp: int) -> None:
+    from datetime import UTC, datetime
+
+    with Session(engine) as session:
+        dispatch_admin_todos(session, datetime.fromtimestamp(timestamp, UTC))

@@ -27,9 +27,7 @@ def read_mcp_setting(
 def update_mcp_setting(
     session: SessionDep, principal: OrgAdminDep, body: McpSettingUpdate
 ) -> McpSettingPublic:
-    result = service.save_setting(session, principal, body)
-    session.commit()
-    return result
+    return service.save_setting(session, principal, body)
 
 
 @router.get("/me/access-tokens")

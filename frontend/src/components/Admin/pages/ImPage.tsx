@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import {
   type ImSettingPublic,
   ImSettingsService,
   type ImSettingUpdate,
 } from "@/client"
 import { ChangeHistory } from "@/components/Admin/ChangeHistory"
+import { DraftField } from "@/components/AdminAssistant/DraftField"
+import { PageDraft } from "@/components/AdminAssistant/PageDraft"
+import { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
@@ -82,7 +85,18 @@ function PlatformSetting({
   const platform = platforms[setting.platform]
   const path = { org_id: orgId, platform: setting.platform }
   const [draft, setDraft] = useState<ImSettingUpdate | null>(null)
-  const value = draft ?? setting
+  const assistant = usePageDraft(
+    orgId,
+    "update_im_setting",
+    useCallback(() => {
+      if (setting.platform !== "feishu") return
+      setDraft(null)
+      setCredentials({})
+      setAcknowledged(false)
+    }, [setting.platform]),
+  )
+  const suggestion = setting.platform === "feishu" ? assistant : undefined
+  const value = suggestion?.values(draft ?? setting) ?? draft ?? setting
   const [credentials, setCredentials] = useState<Record<string, string>>({})
   const [acknowledged, setAcknowledged] = useState(false)
   const save = useMutation({
@@ -110,155 +124,181 @@ function PlatformSetting({
     mutationFn: () => ImSettingsService.settingsTestImConnection({ path }),
   })
   return (
-    <form
-      className="space-y-5 rounded-xl border p-6"
-      aria-label={platform.name}
-      onSubmit={(event) => {
-        event.preventDefault()
-        save.mutate()
-      }}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold">{platform.name}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {setting.has_credentials ? "凭据已设置" : "尚未设置凭据"}
-            {setting.updated_at &&
-              ` · 更新于 ${new Date(setting.updated_at).toLocaleString("zh-CN")}`}
-          </p>
-        </div>
-        <label
-          className="flex items-center gap-2 text-sm"
-          htmlFor={`${setting.platform}-enabled`}
+    <>
+      {suggestion && (
+        <PageDraft
+          orgId={orgId}
+          draft={suggestion.draft}
+          error={suggestion.error}
+        />
+      )}
+      <form
+        className="space-y-5 rounded-xl border p-6"
+        aria-label={platform.name}
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (suggestion?.blocked) return
+          save.mutate()
+        }}
+      >
+        <fieldset
+          disabled={save.isPending || suggestion?.blocked}
+          className="contents"
         >
-          <Checkbox
-            id={`${setting.platform}-enabled`}
-            checked={value.enabled}
-            disabled={save.isPending}
-            onCheckedChange={(checked) => {
-              setDraft({ ...value, enabled: checked === true })
-              setAcknowledged(false)
-              save.reset()
-            }}
-          />
-          启用入口
-        </label>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        打开入口后，员工可在对应聊天工具里绑定账号并使用机器人，消息会经过该平台。
-      </p>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {Object.entries(platform.fields).map(([field, label]) => (
-          <div key={field} className="space-y-2 text-sm">
-            <label htmlFor={`${setting.platform}-${field}`}>{label}</label>
-            <Input
-              id={`${setting.platform}-${field}`}
-              aria-describedby={`${setting.platform}-${field}-help`}
-              type="password"
-              autoComplete="new-password"
-              maxLength={4096}
-              value={credentials[field] ?? ""}
-              placeholder="留空表示不改"
-              disabled={save.isPending}
-              onChange={(event) => {
-                setCredentials({ ...credentials, [field]: event.target.value })
-                save.reset()
-                test.reset()
-              }}
-            />
-            <p
-              id={`${setting.platform}-${field}-help`}
-              className="text-xs text-muted-foreground"
-            >
-              从聊天工具的应用管理页面取得，用于连接企业自己的机器人；加密保存，留空表示不修改。
-            </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold">{platform.name}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {setting.has_credentials ? "凭据已设置" : "尚未设置凭据"}
+                {setting.updated_at &&
+                  ` · 更新于 ${new Date(setting.updated_at).toLocaleString("zh-CN")}`}
+              </p>
+            </div>
+            <DraftField changed={suggestion?.changed("enabled") ?? false}>
+              <label
+                className="flex items-center gap-2 text-sm"
+                htmlFor={`${setting.platform}-enabled`}
+              >
+                <Checkbox
+                  id={`${setting.platform}-enabled`}
+                  checked={value.enabled}
+                  disabled={save.isPending}
+                  onCheckedChange={(checked) => {
+                    setDraft({ ...value, enabled: checked === true })
+                    setAcknowledged(false)
+                    save.reset()
+                  }}
+                />
+                启用入口
+              </label>
+            </DraftField>
           </div>
-        ))}
-      </div>
-      {setting.platform !== "telegram" && (
-        <div className="space-y-2">
-          <label
-            className="flex items-center gap-2 text-sm"
-            htmlFor={`${setting.platform}-email`}
-          >
-            <Checkbox
-              id={`${setting.platform}-email`}
-              checked={value.email_auto_bind ?? setting.email_auto_bind}
-              disabled={save.isPending}
-              onCheckedChange={(checked) => {
-                setDraft({ ...value, email_auto_bind: checked === true })
-                save.reset()
-              }}
-            />
-            允许按企业邮箱自动绑定
-          </label>
           <p className="text-sm text-muted-foreground">
-            打开后，聊天账号的企业邮箱与唯一在职员工一致时自动绑定，无需输入绑定码。
+            打开入口后，员工可在对应聊天工具里绑定账号并使用机器人，消息会经过该平台。
           </p>
-        </div>
-      )}
-      {setting.platform === "wecom" && (
-        <p className="text-sm text-muted-foreground">
-          请使用智能机器人的长连接模式，无需公网回调地址。同一机器人只允许一个服务实例。
-          无法读取企业邮箱时，请使用网页个人设置中的绑定码；新建应用通常无法读取邮箱。
-          已启用时，连接测试读取最近心跳，不会另建连接。
-        </p>
-      )}
-      {value.enabled && (
-        <aside className="space-y-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
-          <p className="font-medium">数据外发提示</p>
-          <p>IM 里的消息会存在该平台的服务器上</p>
-          {setting.platform === "telegram" && (
-            <p>服务器在境外，中国大陆通常连不上</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {Object.entries(platform.fields).map(([field, label]) => (
+              <div key={field} className="space-y-2 text-sm">
+                <label htmlFor={`${setting.platform}-${field}`}>{label}</label>
+                <Input
+                  id={`${setting.platform}-${field}`}
+                  aria-describedby={`${setting.platform}-${field}-help`}
+                  type="password"
+                  autoComplete="new-password"
+                  maxLength={4096}
+                  value={credentials[field] ?? ""}
+                  placeholder="留空表示不改"
+                  disabled={save.isPending}
+                  onChange={(event) => {
+                    setCredentials({
+                      ...credentials,
+                      [field]: event.target.value,
+                    })
+                    save.reset()
+                    test.reset()
+                  }}
+                />
+                <p
+                  id={`${setting.platform}-${field}-help`}
+                  className="text-xs text-muted-foreground"
+                >
+                  从聊天工具的应用管理页面取得，用于连接企业自己的机器人；加密保存，留空表示不修改。
+                </p>
+              </div>
+            ))}
+          </div>
+          {setting.platform !== "telegram" && (
+            <DraftField
+              changed={suggestion?.changed("email_auto_bind") ?? false}
+            >
+              <label
+                className="flex items-center gap-2 text-sm"
+                htmlFor={`${setting.platform}-email`}
+              >
+                <Checkbox
+                  id={`${setting.platform}-email`}
+                  checked={value.email_auto_bind ?? setting.email_auto_bind}
+                  disabled={save.isPending}
+                  onCheckedChange={(checked) => {
+                    setDraft({ ...value, email_auto_bind: checked === true })
+                    save.reset()
+                  }}
+                />
+                允许按企业邮箱自动绑定
+              </label>
+              <p className="text-sm text-muted-foreground">
+                打开后，聊天账号的企业邮箱与唯一在职员工一致时自动绑定，无需输入绑定码。
+              </p>
+            </DraftField>
           )}
-          <label
-            className="flex items-center gap-2"
-            htmlFor={`${setting.platform}-acknowledged`}
-          >
-            <Checkbox
-              id={`${setting.platform}-acknowledged`}
-              checked={acknowledged}
-              disabled={save.isPending}
-              onCheckedChange={(checked) => setAcknowledged(checked === true)}
-            />
-            已知晓数据外发提示
-          </label>
-        </aside>
-      )}
-      <SetupError error={save.error ?? test.error} />
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          disabled={
-            save.isPending || test.isPending || (value.enabled && !acknowledged)
-          }
-        >
-          {save.isPending ? "正在保存…" : "保存"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={
-            !setting.has_credentials ||
-            save.isPending ||
-            test.isPending ||
-            Object.values(credentials).some(Boolean)
-          }
-          onClick={() => test.mutate()}
-        >
-          {test.isPending
-            ? "正在测试…"
-            : setting.platform === "wecom" && setting.enabled
-              ? "查看长连接最近心跳"
-              : "测试已保存的连接"}
-        </Button>
-      </div>
-      {save.isSuccess && <p role="status">设置已保存</p>}
-      {test.data && (
-        <p role={test.data.data.ok ? "status" : "alert"}>
-          {test.data.data.message}
-        </p>
-      )}
-      <ChangeHistory targetType="im_setting" />
-    </form>
+          {setting.platform === "wecom" && (
+            <p className="text-sm text-muted-foreground">
+              请使用智能机器人的长连接模式，无需公网回调地址。同一机器人只允许一个服务实例。
+              无法读取企业邮箱时，请使用网页个人设置中的绑定码；新建应用通常无法读取邮箱。
+              已启用时，连接测试读取最近心跳，不会另建连接。
+            </p>
+          )}
+          {value.enabled && (
+            <aside className="space-y-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+              <p className="font-medium">数据外发提示</p>
+              <p>IM 里的消息会存在该平台的服务器上</p>
+              {setting.platform === "telegram" && (
+                <p>服务器在境外，中国大陆通常连不上</p>
+              )}
+              <label
+                className="flex items-center gap-2"
+                htmlFor={`${setting.platform}-acknowledged`}
+              >
+                <Checkbox
+                  id={`${setting.platform}-acknowledged`}
+                  checked={acknowledged}
+                  disabled={save.isPending}
+                  onCheckedChange={(checked) =>
+                    setAcknowledged(checked === true)
+                  }
+                />
+                已知晓数据外发提示
+              </label>
+            </aside>
+          )}
+          <SetupError error={save.error ?? test.error} />
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              disabled={
+                save.isPending ||
+                test.isPending ||
+                (value.enabled && !acknowledged)
+              }
+            >
+              {save.isPending ? "正在保存…" : "保存"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={
+                !setting.has_credentials ||
+                save.isPending ||
+                test.isPending ||
+                Object.values(credentials).some(Boolean)
+              }
+              onClick={() => test.mutate()}
+            >
+              {test.isPending
+                ? "正在测试…"
+                : setting.platform === "wecom" && setting.enabled
+                  ? "查看长连接最近心跳"
+                  : "测试已保存的连接"}
+            </Button>
+          </div>
+          {save.isSuccess && <p role="status">设置已保存</p>}
+          {test.data && (
+            <p role={test.data.data.ok ? "status" : "alert"}>
+              {test.data.data.message}
+            </p>
+          )}
+        </fieldset>
+        <ChangeHistory targetType="im_setting" />
+      </form>
+    </>
   )
 }

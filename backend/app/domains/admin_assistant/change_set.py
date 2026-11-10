@@ -36,6 +36,7 @@ from app.domains.bot import store as messages
 from app.domains.bot.schemas import TextMessage
 from app.domains.capability.service import DictionaryConflict
 from app.domains.change_request.import_json import InvalidImport
+from app.domains.im.settings import InvalidImSetting
 from app.domains.model.service import InvalidModelSetting
 from app.domains.org.models import Organization
 from app.domains.org.roster.service import RosterError
@@ -198,6 +199,8 @@ def _entry(
         raise ChangeSetError("文件内容只能通过上传框提交", 422)
     if set(entry.secret_fields) & args.keys():
         raise ChangeSetError("请用安全输入框填写密钥", 422)
+    if name == "update_im_setting" and args.get("platform", "feishu") != "feishu":
+        raise ChangeSetError("助手只支持飞书，企业微信和 Telegram 请到网页上修改", 422)
     # Validate ordinary fields now; secret values are validated again at application.
     try:
         return entry, entry.input_model.model_validate(
@@ -434,7 +437,7 @@ def apply(
     except SyncError as error:
         db.rollback()
         raise ChangeSetError(error.message, error.status) from None
-    except (InvalidSourceSetting, InvalidModelSetting) as error:
+    except (InvalidSourceSetting, InvalidImSetting, InvalidModelSetting) as error:
         db.rollback()
         raise ChangeSetError(str(error), 422) from None
     except Exception:
