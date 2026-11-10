@@ -1,16 +1,12 @@
 import { readFileSync } from "node:fs"
+import type { APIRequestContext } from "@playwright/test"
 import { expectChineseCopy } from "./utils/copy"
 import { expect, test } from "./utils/model"
 import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
-test("upload a sample roster in chat, restore preview and confirm import", async ({
-  page,
-  request,
-  modelUrl,
-}, testInfo) => {
-  test.setTimeout(90000)
+async function createOrg(request: APIRequestContext) {
   const email = `roster-chat-${crypto.randomUUID()}@example.com`
   const password = "synthetic-password-2026"
   const token = await request.post("/api/v1/private/setup-tokens", {
@@ -29,6 +25,16 @@ test("upload a sample roster in chat, restore preview and confirm import", async
   const { org_id, access_token } = await initialized.json()
   const base = `/api/v1/orgs/${org_id}`
   const headers = { Authorization: `Bearer ${access_token}` }
+  return { email, password, base, headers }
+}
+
+test("upload a sample roster in chat, restore preview and confirm import", async ({
+  page,
+  request,
+  modelUrl,
+}, testInfo) => {
+  test.setTimeout(90000)
+  const { email, password, base, headers } = await createOrg(request)
   expect(
     (
       await request.put(`${base}/model-setting`, {
@@ -123,12 +129,10 @@ test("upload a sample roster in chat, restore preview and confirm import", async
 
 test("preview work records in chat, repair errors and confirm", async ({
   page,
+  request,
 }, testInfo) => {
-  await logInUser(
-    page,
-    "admin@demo.example.com",
-    process.env.DEMO_USER_PASSWORD ?? "demo-password-2026",
-  )
+  const { email, password } = await createOrg(request)
+  await logInUser(page, email, password)
   await page.route(/\/admin-assistant\/sessions\/[^/]+\/turns/, (route) =>
     route.fulfill({
       json: { messages: [{ type: "file_upload", kind: "work_csv" }] },
