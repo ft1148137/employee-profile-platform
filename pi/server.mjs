@@ -4,6 +4,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import { pathToFileURL } from 'node:url';
 
+import { contextMessages, validState } from './context.mjs';
 import { egress } from './egress.mjs';
 import { authLogins, authRefresh } from './auth.mjs';
 import { localCredentials } from './local-auth.mjs';
@@ -83,10 +84,12 @@ function upstreamCode(response) {
 }
 
 function validate(body) {
-  if (!only(body, ['version', 'run_id', 'mode', 'model', 'system_prompt', 'input', 'tools', 'history']) ||
-      body.version !== 1 || !uuid.test(body.run_id) || !['draft', 'chat'].includes(body.mode) ||
+  if (!only(body, ['version', 'run_id', 'mode', 'model', 'system_prompt', 'input', 'tools', 'history', 'session_state']) ||
+      !([1, 2].includes(body.version)) || (body.mode === 'draft' && body.version !== 1) || !uuid.test(body.run_id) || !['draft', 'chat'].includes(body.mode) ||
       typeof body.system_prompt !== 'string' || typeof body.input !== 'string' ||
       !Array.isArray(body.tools) || body.tools.length > 16) return false;
+  if (body.version === 2 && (body.mode !== 'chat' || Object.hasOwn(body, 'history') || !validState(body.session_state))) return false;
+  if (body.version === 1 && Object.hasOwn(body, 'session_state')) return false;
   if (Object.hasOwn(body, 'history') && (body.mode !== 'chat' || !Array.isArray(body.history) ||
       body.history.length > 20 || !body.history.every(m => only(m, ['role', 'text']) &&
         ['user', 'assistant'].includes(m.role) && typeof m.text === 'string') ||
@@ -249,6 +252,8 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
       let response = {};
       const usedCalls = new Set();
       const m = body.model;
+      const currentStart = body.session_state?.messages.filter(m => m.role === 'user').length ?? 0;
+      const context = (messages, persist = false) => contextMessages(messages, model, body.tools, currentStart, body.system_prompt, persist);
       const agent = new Agent({
         getApiKey: () => m.api_key || 'not-needed', transport: 'sse', toolExecution: 'sequential',
         streamFn: (model, context, options) => {
@@ -276,19 +281,21 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
         // Validation/unknown-tool errors from agent-core can contain raw arguments.
         transformContext: async messages => {
           // Count known submissions rejected by the SDK schema at the same Python validation boundary.
-          for (const message of messages) {
+          const current = messages.slice(messages.findLastIndex(m => m.role === 'user'));
+          for (const message of current) {
             if (message.role !== 'toolResult' || !message.isError || usedCalls.has(message.toolCallId)) continue;
             const tool = agent.state.tools.find(t => t.name === message.toolName);
-            const call = messages.flatMap(m => m.role === 'assistant' ? m.content : [])
+            const call = current.flatMap(m => m.role === 'assistant' ? m.content : [])
               .find(c => c.type === 'toolCall' && c.id === message.toolCallId);
             if (tool && call)
               await tool.execute(call.id, object(call.arguments) ? call.arguments : {}, run.signal);
           }
-          return messages.map(message => message.role === 'toolResult' && message.isError
+          const safe = messages.map(message => message.role === 'toolResult' && message.isError
             ? { ...message, content: [{ type: 'text', text: TOOL_ERROR }], details: {} } : message);
+          return body.version === 2 ? context(safe) : safe;
         },
         initialState: { model, systemPrompt: body.system_prompt, thinkingLevel: m.thinkingLevel ?? 'off',
-          messages: (body.history ?? []).map(message => message.role === 'user'
+          messages: body.session_state?.messages ?? (body.history ?? []).map(message => message.role === 'user'
             ? { role: 'user', content: message.text, timestamp: Date.now() }
             : { role: 'assistant', content: [{ type: 'text', text: message.text }], timestamp: Date.now(),
               api: model.api, provider: model.provider, model: model.id, stopReason: 'stop',
@@ -337,7 +344,8 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
           if (run.error) throw new Error('cancelled');
           await agent.prompt(body.input);
           send(run.error ? { type: 'error', ...run.error } : { type: 'done', stopReason: agent.state.messages.at(-1)?.stopReason ?? 'stop',
-            model_calls: run.calls, tool_calls: run.tools });
+            model_calls: run.calls, tool_calls: run.tools,
+            ...(body.version === 2 ? { session_state: { version: 1, messages: context(agent.state.messages, true) } } : {}) });
         } catch (error) { send({ type: 'error', ...(run.error ?? { code: error.message === 'local_auth_unavailable' ? error.message : upstreamCode(response) }) }); }
         finally {
           clearTimeout(timer);
