@@ -79,6 +79,7 @@ def current_roster(db: Session, p: Principal) -> ParsedRoster:
                 ReportingLine.org_id == p.org_id, col(ReportingLine.valid_to).is_(None)
             )
         ).all()
+        if by_id[line.manager_employee_id].employment_status == EmploymentStatus.ACTIVE
     }
     if any(
         not code and by_id[id].employment_status == EmploymentStatus.ACTIVE

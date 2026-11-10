@@ -190,6 +190,90 @@ def test_unchanged_roster(db: Session, tenant: SetupTenant, roster: dict) -> Non
     assert compute_roster_diff(db, tenant.org_id, rebuilt).changes == []
 
 
+@pytest.mark.parametrize(
+    "other", ["offboard_employees", "disable_accounts", "apply_roster_import"]
+)
+def test_split_deactivations_require_two_clicks(
+    db: Session, tenant: SetupTenant, roster: dict, other: str
+) -> None:
+    p = principal(db, tenant)
+    roster["C"].work_email = f"{uuid4()}@example.com"
+    db.add(roster["C"])
+    db.commit()
+    account = link(db, tenant, roster["C"])
+    items = [
+        {
+            "function": "offboard_employees",
+            "args": {"employee_ids": [str(roster["B"].id)]},
+        },
+        {"function": other, "args": {"employee_ids": [str(roster["C"].id)]}},
+    ]
+    if other == "disable_accounts":
+        items[1]["args"] = {"user_ids": [str(account.id)]}
+    elif other == "apply_roster_import":
+        preview = single.preview(db, p, single.Offboard(employee_ids=[roster["C"].id]))
+        items[1]["args"] = {
+            "import_id": str(preview.id),
+            "base_revision": preview.base_revision,
+        }
+        items.reverse()
+    row = c.propose(
+        db,
+        p,
+        store.create_session(db, p).id,
+        ProposeChanges.model_validate({"items": items}),
+    )
+    db.commit()
+    assert [item["risk"] for item in row.items] == ["high", "high"]
+    assert c.apply(db, p, row.id, row.revision).status == "draft"
+    assert employees(db, tenant)["B"].employment_status == EmploymentStatus.ACTIVE
+    db.refresh(account)
+    assert account.is_active
+    assert c.apply(db, p, row.id, row.revision).status == "applied"
+    assert employees(db, tenant)["B"].employment_status == EmploymentStatus.INACTIVE
+    db.refresh(account)
+    assert not account.is_active
+
+
+def test_inactive_manager_does_not_block_transfer(
+    db: Session, tenant: SetupTenant, client: TestClient, roster: dict
+) -> None:
+    preview = upload(
+        client,
+        tenant,
+        "工号,姓名,部门,邮箱\nB,乙,研发,b@example.com\nC,丙,运营,c@example.com\n".encode(),
+    )
+    assert apply(client, tenant, preview).status_code == 200
+    stale_line = db.exec(
+        select(ReportingLine).where(
+            ReportingLine.org_id == tenant.org_id,
+            ReportingLine.employee_id == roster["B"].id,
+            col(ReportingLine.valid_to).is_(None),
+        )
+    ).one()
+    assert stale_line.manager_employee_id == roster["A"].id
+    unchanged = ReportingLine(
+        org_id=tenant.org_id,
+        employee_id=roster["C"].id,
+        manager_employee_id=roster["B"].id,
+    )
+    db.add(unchanged)
+    db.commit()
+    row = propose(
+        db,
+        tenant,
+        {"kind": "transfer", "employee_id": str(roster["C"].id), "title": "新职位"},
+    )
+    assert c.apply(db, principal(db, tenant), row.id, row.revision).status == "applied"
+    db.refresh(stale_line)
+    db.refresh(unchanged)
+    assert stale_line.valid_to is not None
+    assert (
+        unchanged.valid_to is None and unchanged.manager_employee_id == roster["B"].id
+    )
+    assert employees(db, tenant)["C"].title == "新职位"
+
+
 @pytest.mark.parametrize("kind", ["onboard", "transfer", "offboard"])
 @pytest.mark.parametrize("via", ["web", "assistant"])
 def test_matches_complete_upload(

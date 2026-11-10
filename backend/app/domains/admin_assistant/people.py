@@ -114,30 +114,18 @@ def issue_snapshot(db: Session, p: Principal, args: IssueArgs) -> BaseModel:
         args.employee_ids
     ):
         raise accounts.AccountError(404, "本企业员工不存在")
-    linked = dict(
+    linked = set(
         db.exec(
-            select(OrgMembership.employee_id, OrgMembership.user_id).where(
-                OrgMembership.org_id == p.org_id,
-                col(OrgMembership.employee_id).in_([e.id for e in employees]),
-            )
+            select(OrgMembership.employee_id).where(OrgMembership.org_id == p.org_id)
         ).all()
     )
-    states = {
-        u["id"]: u
-        for u in _accounts(db, p, set(linked.values())).model_dump(mode="json")[
-            "accounts"
-        ]
-    }
-    result = [
-        {
-            "employee": e.model_dump(mode="json"),
-            "account": states.get(str(linked.get(e.id))),
-        }
+    ids = [
+        str(e.id)
         for e in employees
         if args.employee_ids is not None
         or (e.id not in linked and (e.employee_code or "").strip())
     ]
-    return RootModel({"employees": result})
+    return RootModel({"employee_ids": ids, "count": len(ids)})
 
 
 def revoke_snapshot(db: Session, p: Principal, args: RevokeArgs) -> RolePublic:
@@ -149,9 +137,20 @@ def revoke_snapshot(db: Session, p: Principal, args: RevokeArgs) -> RolePublic:
 
 def people_impact(db: Session, p: Principal, args: Any) -> BaseModel:
     if isinstance(args, IssueArgs):
-        rows = issue_snapshot(db, p, args).model_dump()["employees"]
-        names = [r["employee"]["display_name"] for r in rows]
+        snapshot = issue_snapshot(db, p, args).model_dump()
+        ids = snapshot["employee_ids"]
+        names = list(
+            db.exec(
+                select(Employee.display_name)
+                .where(Employee.org_id == p.org_id, col(Employee.id).in_(ids))
+                .order_by(col(Employee.id))
+                .limit(10)
+            ).all()
+        )
         text = "发放账号：" + "、".join(names)
+        if snapshot["count"] > 10:
+            text = f"发放账号：共 {snapshot['count']} 人（{'、'.join(names)}……）"
+        return RootModel({"count": snapshot["count"], "text": text})
     elif isinstance(args, RevokeArgs):
         role = revoke_snapshot(db, p, args)
         names = [role.display_name or role.username]

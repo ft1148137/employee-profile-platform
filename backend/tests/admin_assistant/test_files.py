@@ -39,6 +39,31 @@ tenant = file_tenant
 SAMPLE = Path(__file__).resolve().parents[3] / "examples/roster/sample-30.csv"
 
 
+def test_failed_proposal_does_not_leave_import(
+    db: Session,
+    client: TestClient,
+    tenant: SetupTenant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, sid = context(db, tenant)
+    before = db.exec(
+        select(RosterImport.id).where(RosterImport.org_id == tenant.org_id)
+    ).all()
+
+    def fail(*_args: object, **_kwargs: object) -> None:
+        raise change_set.ChangeSetError("名单已变化，请重新上传")
+
+    monkeypatch.setattr(change_set, "propose", fail)
+    assert upload(client, tenant, sid).status_code == 409
+    db.expire_all()
+    assert (
+        db.exec(
+            select(RosterImport.id).where(RosterImport.org_id == tenant.org_id)
+        ).all()
+        == before
+    )
+
+
 @pytest.mark.parametrize("protected", ["shared", "superuser"])
 @pytest.mark.parametrize("when", ["before_upload", "after_upload"])
 def test_protected_accounts_cannot_be_offboarded(

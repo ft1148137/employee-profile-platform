@@ -158,7 +158,7 @@ def upload(
     content = file.file.read(roster.MAX_FILE_SIZE + 1)
     if len(content) > roster.MAX_FILE_SIZE:
         raise roster.RosterError(413, "文件超过 5 MB，请拆分后再上传")
-    preview = roster.create_import(db, p, content, file.filename or "")
+    preview = roster.create_import(db, p, content, file.filename or "", commit=False)
     response = AdminTurnResponse(messages=[FilePreviewCard(kind=kind, preview=preview)])
     if preview.can_apply:
         row = change_set.propose(
