@@ -321,3 +321,56 @@ async function createAdmin(request: APIRequestContext, modelUrl: string) {
   ).toBeTruthy()
   return { email, password, base, headers }
 }
+
+test("model draft highlights fields and applies only after two confirmations", async ({
+  page,
+  request,
+  modelUrl,
+}) => {
+  test.setTimeout(90000)
+  const { email, password, base, headers } = await createAdmin(
+    request,
+    modelUrl,
+  )
+  await logInUser(page, email, password)
+  await page.goto("/admin/data-ai?tab=model")
+  await page.getByRole("button", { name: "打开管理助手" }).click()
+  const dialog = page.getByRole("dialog")
+  await dialog
+    .getByRole("textbox", { name: "发给管理助手的消息" })
+    .fill("换模型")
+  await dialog.getByRole("button", { name: "发送", exact: true }).click()
+  await expect(
+    dialog.getByRole("region", { name: "设置改动确认卡" }),
+  ).toBeVisible({ timeout: 30000 })
+  await page.keyboard.press("Escape")
+  const field = page.getByLabel("模型名", { exact: true })
+  await expect(field).toHaveValue("synthetic-updated")
+  const suggested = page.locator('[data-assistant-suggested="true"]')
+  await expect(suggested.getByLabel("模型名", { exact: true })).toHaveValue(
+    "synthetic-updated",
+  )
+  await expect(
+    page.getByRole("button", { name: "保存", exact: true }),
+  ).toBeDisabled()
+  const read = async () =>
+    (await (await request.get(`${base}/model-setting`, { headers })).json())
+      .model
+  expect(await read()).toBe("synthetic")
+  const card = page.getByRole("region", { name: "页面草稿确认" })
+  await expect(card.getByText(/数据将发送给/)).toBeVisible()
+  await expect(card.getByText(/密钥不回滚/)).toBeVisible()
+  await card.getByRole("button", { name: "测试连接", exact: true }).click()
+  await expect(card.getByText("测试连接：成功", { exact: true })).toBeVisible({
+    timeout: 30000,
+  })
+  expect(await read()).toBe("synthetic")
+  await card.getByRole("button", { name: "确认应用", exact: true }).click()
+  await expect(card.getByRole("status")).toHaveText("请再次确认")
+  expect(await read()).toBe("synthetic")
+  await card.getByRole("button", { name: "再次确认", exact: true }).click()
+  await expect(card).toHaveCount(0)
+  expect(await read()).toBe("synthetic-updated")
+  await expect(field).toHaveValue("synthetic-updated")
+  await expect(suggested).toHaveCount(0)
+})
