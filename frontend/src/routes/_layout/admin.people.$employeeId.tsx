@@ -12,6 +12,7 @@ import {
   employmentLabels,
   roleLabels,
 } from "@/components/Admin/labels"
+import { PersonnelDialog } from "@/components/Admin/PersonnelDialog"
 import { ResetPasswordDialog } from "@/components/Admin/ResetPasswordDialog"
 import { RoleGrantDialog } from "@/components/Admin/RoleGrantDialog"
 import { IdentityTable } from "@/components/Identities/IdentityTable"
@@ -126,6 +127,18 @@ function Person({ orgId, employeeId }: { orgId: string; employeeId: string }) {
         aria-label="人员操作"
         className="space-y-4 rounded-xl border p-5"
       >
+        {employee.employment_status === "active" && (
+          <div className="flex gap-3">
+            <PersonnelDialog
+              orgId={orgId}
+              employee={employee}
+              department={
+                options.find((d) => d.id === employee.department?.id)?.name
+              }
+            />
+            <PersonnelDialog orgId={orgId} employee={employee} offboard />
+          </div>
+        )}
         <h2 className="text-lg font-semibold">账号与角色</h2>
         <div className="flex flex-wrap items-center gap-3">
           <AccountActions

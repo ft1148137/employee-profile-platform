@@ -103,7 +103,7 @@ export function ChangeSetCard({
     >
       <div className="flex items-center justify-between gap-3 border-b pb-3">
         <h3 className="font-semibold">
-          {current.undo_of_id ? "撤销前请确认" : "请核对设置改动"}
+          {current.undo_of_id ? "撤销前请确认" : "请核对改动"}
         </h3>
         <span role="status" className="text-xs text-muted-foreground">
           {confirmAgain ? "请再次确认" : statuses[current.status]}
@@ -230,7 +230,7 @@ export function ChangeSetCard({
       )}
       {current.status === "applied" &&
         current.items.every(
-          (item) => item.undoable && item.before !== null,
+          (item) => item.before !== null && item.undoable,
         ) && (
           <Button
             variant="outline"

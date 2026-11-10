@@ -70,7 +70,8 @@ def get(
 def public(row: AdminChangeSet) -> ChangeSetPublic:
     result = ChangeSetPublic.model_validate(row, from_attributes=True)
     for item in result.items:
-        item.title = registry.FUNCTIONS[item.function].description
+        entry = registry.FUNCTIONS.get(item.function)
+        item.title = entry.description if entry else "管理改动"
     return result
 
 
@@ -147,7 +148,9 @@ def propose(
         items.append(
             {
                 "function": entry.name,
-                "args": args.model_dump(mode="json", exclude=set(entry.secret_fields)),
+                "args": args.model_dump(
+                    mode="json", exclude=set(entry.secret_fields), exclude_unset=True
+                ),
                 "before": entry.snapshot(db, principal, args).model_dump(
                     mode="json", exclude=set(entry.secret_fields)
                 )
@@ -322,7 +325,12 @@ def undo(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
     if row.status != "applied":
         raise ChangeSetError("这份改动尚未应用或已经撤销")
     items = public(row).items
-    if any(not item.undoable or item.before is None for item in items):
+    if any(
+        item.before is None
+        or not item.undoable
+        or not registry.FUNCTIONS[item.function].undoable
+        for item in items
+    ):
         raise ChangeSetError("这份改动不能撤销")
     unchanged = True
     reverse_items = []

@@ -8,6 +8,8 @@ HEADERS = ("工号", "姓名", "部门", "职位", "上级工号", "邮箱")
 
 
 class RosterRow(BaseModel):
+    # Internal reconstruction preserves departures; uploaded files cannot set this.
+    inactive: bool = False
     row_number: int
     employee_code: str
     display_name: str
@@ -28,6 +30,11 @@ class ParsedRoster(BaseModel):
     rows: list[RosterRow] = Field(default_factory=list)
     issues: list[RosterIssue] = Field(default_factory=list)
     column_mapping: dict[str, str] = Field(default_factory=dict)
+
+    def active(self) -> ParsedRoster:
+        return self.model_copy(
+            update={"rows": [r for r in self.rows if not r.inactive]}
+        )
 
     @computed_field  # type: ignore[prop-decorator]
     @property
