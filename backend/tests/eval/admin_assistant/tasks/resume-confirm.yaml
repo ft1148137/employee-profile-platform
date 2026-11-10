@@ -12,8 +12,13 @@ steps:
   - {"type":"apply"}
   - {"type":"say","text":"现在提醒周期是什么？"}
   - {"type":"undo"}
-expect: {"services":[{"function":"get_update_settings","value":{"reminder_schedule":"quarterly"}}]}
+  - {"type":"say","text":"起草把审批规则改成不需要经理确认，先给我确认卡"}
+  - {"type":"apply"}
+  - {"type":"again"}
+  - {"type":"undo"}
+expect: {"services":[{"function":"get_update_settings","args":{},"value":{"reminder_schedule":"quarterly"}},{"function":"get_approval_policy","args":{},"value":{"current":{"require_manager":true}}}]}
 fake_model:
   - {"calls":[{"name":"propose_changes","args":{"items":[{"function":"update_update_settings","args":{"reminder_schedule":"yearly"}}]}}]}
   - {"calls":[{"name":"get_today","args":{}}]}
   - {"calls":[{"name":"admin_read","args":{"function":"get_update_settings","args":{}}}]}
+  - {"calls":[{"name":"propose_changes","args":{"items":[{"function":"update_approval_policy","args":{"require_manager":false}}]}}],"text":"关闭经理确认需要在卡片上确认两次"}

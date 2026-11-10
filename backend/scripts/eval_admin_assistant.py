@@ -95,12 +95,6 @@ def contains(actual: Any, expected: Any) -> bool:
         return isinstance(actual, dict) and all(
             k in actual and contains(actual[k], v) for k, v in expected.items()
         )
-    if isinstance(expected, list):
-        return (
-            isinstance(actual, list)
-            and len(actual) == len(expected)
-            and all(contains(a, e) for a, e in zip(actual, expected, strict=True))
-        )
     return actual == expected
 
 
@@ -484,7 +478,7 @@ class Run:
                 if kind == "say":
                     body = {"text": step["text"]}
                     if self.task.entry == "admin_assistant":
-                        body["page"] = step.get("page", "/admin")
+                        body["page"] = "/admin"
                     output = request("POST", url + "/turns", json=body)
                     self.cards.setdefault(self.current, []).extend(output["messages"])
                     text = json.dumps(output, ensure_ascii=False)
@@ -508,11 +502,7 @@ class Run:
                         prefix + "/" + self.sessions[self.current] + "/messages",
                     )
                 elif kind == "upload":
-                    content = (
-                        (ROOT / step["path"]).read_bytes()
-                        if "path" in step
-                        else step["content"].encode()
-                    )
+                    content = step["content"].encode()
                     output = request(
                         "POST",
                         url + "/files",
@@ -522,7 +512,7 @@ class Run:
                     self.cards[self.current] = output["messages"]
                 else:
                     cards = self.cards.get(self.current, [])
-                    if kind in ("apply", "again", "undo", "secret", "discard"):
+                    if kind in ("apply", "again", "undo", "secret"):
                         card = next(
                             c["change_set"]
                             for c in reversed(cards)
@@ -595,15 +585,13 @@ class Run:
             return
         if self.task.expect.get("unchanged"):
             assert final == before, "Expected unchanged business data and audit"
-        for table in self.task.expect.get("unchanged_tables", []):
-            assert before[table] == final[table], "Expected unchanged object: " + table
         for oracle in self.expand(self.task.expect.get("services", [])):
             value = asyncio.run(
                 registry.admin_read(
                     db,
                     principals["admin"],
                     oracle["function"],
-                    oracle.get("args", {}),
+                    oracle["args"],
                 )
             )["data"]
             assert contains(value, oracle["value"]), "Final service state differs"
@@ -674,14 +662,6 @@ class Run:
             )
         )
         db.commit()
-        for spec in seed.get("services", []):
-            entry = registry.FUNCTIONS[spec["function"]]
-            entry.handler(
-                db,
-                principals["admin"],
-                entry.input_model.model_validate(spec.get("args", {})),
-                commit=True,
-            )
         if seed.get("request") or seed.get("appeal"):
             owner = principals["employee"]
             draft = employee.save_draft(
