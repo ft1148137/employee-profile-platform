@@ -1,6 +1,5 @@
 """File previews stay in encrypted UI messages; the model receives summaries."""
 
-import json
 from typing import TYPE_CHECKING, Literal
 from uuid import UUID
 
@@ -10,6 +9,7 @@ from sqlmodel import Session, select
 
 from app.authz.principal import Principal
 from app.domains.admin_assistant import store
+from app.domains.admin_assistant.models import AdminAssistantSession
 from app.domains.bot import store as messages
 from app.domains.org.models import Organization, RosterImport
 from app.domains.org.roster import service as roster
@@ -128,15 +128,26 @@ def summary(preview: RosterImportPreview) -> dict[str, JsonValue]:
     }
 
 
-def model_message(text: str) -> str:
-    payload = json.loads(text)
-    if isinstance(payload, dict):
-        for card in payload.get("messages", []):
-            if card.get("type") == "file_preview":
-                card["preview"] = summary(
-                    RosterImportPreview.model_validate(card["preview"])
-                )
-    return json.dumps(payload, ensure_ascii=False)
+def model_context(
+    db: Session, session: AdminAssistantSession
+) -> list[dict[str, JsonValue]]:
+    for message in reversed(messages.messages_for(db, session, limit=20)):
+        if message.role != "assistant" or not isinstance(message.payload, dict):
+            continue
+        cards = message.payload.get("messages")
+        if not isinstance(cards, list):
+            continue
+        for card in cards:
+            if isinstance(card, dict) and card.get("type") == "file_preview":
+                return [
+                    {
+                        "type": "file_preview",
+                        "preview": summary(
+                            RosterImportPreview.model_validate(card["preview"])
+                        ),
+                    }
+                ]
+    return []
 
 
 def upload(

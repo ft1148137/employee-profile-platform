@@ -47,17 +47,17 @@ class ToolDefinition(BaseModel):
     parameters: dict[str, JsonValue]
 
 
-class HistoryMessage(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    role: Literal["user", "assistant"]
-    text: str = Field(max_length=24000)
-
-
 class PiBusy(ModelUnavailable):
     pass
 
 
+class PiSessionInvalid(ModelUnavailable):
+    def __init__(self) -> None:
+        super().__init__("会话已失效，请新开对话")
+
+
 class TurnResult(BaseModel):
+    session_state: dict[str, JsonValue] | None = Field(default=None, repr=False)
     text: str
     stop_reason: Literal["stop", "length", "toolUse", "aborted"]
     model_calls: int = Field(ge=0, le=8)
@@ -100,7 +100,7 @@ def run_turn(
     config: PiModelConfig,
     *,
     mode: Literal["draft", "chat"] = "draft",
-    history: list[HistoryMessage] | None = None,
+    session_state: dict[str, JsonValue] | None = None,
     system_prompt: str,
     input: str,
     tools: list[ToolDefinition],
@@ -111,7 +111,7 @@ def run_turn(
     model = config.model_dump(mode="json", exclude={"api_key"}, exclude_unset=True)
     model["api_key"] = config.api_key.get_secret_value()
     body = {
-        "version": 1,
+        "version": 2 if mode == "chat" else 1,
         "run_id": run_id,
         "mode": mode,
         "model": model,
@@ -119,14 +119,14 @@ def run_turn(
         "input": input,
         "tools": [tool.model_dump(mode="json") for tool in tools],
     }
-    if history is not None:
-        if (
-            mode != "chat"
-            or len(history) > 20
-            or sum(len(m.text) for m in history) > 24000
-        ):
-            raise ValueError("Invalid conversation history")
-        body["history"] = [m.model_dump(mode="json") for m in history]
+    if mode == "chat":
+        body["session_state"] = (
+            session_state
+            if session_state is not None
+            else {"version": 1, "messages": []}
+        )
+    elif session_state is not None:
+        raise ValueError("Session state requires chat mode")
     terminal = False
     names = {tool.name for tool in tools}
     try:
@@ -143,7 +143,10 @@ def run_turn(
                     if response.status_code != 200:
                         terminal = True
                         response.read()
-                        _error(response.json())
+                        event = response.json()
+                        if mode == "chat" and event.get("code") == "bad_request":
+                            raise PiSessionInvalid()
+                        _error(event)
                     chunks: list[str] = []
                     lines = response.iter_lines()
                     for line in lines:
@@ -182,7 +185,14 @@ def run_turn(
                                 _error(event)
                             case "done":
                                 terminal = True
+                                if mode == "chat" and not isinstance(
+                                    event.get("session_state"), dict
+                                ):
+                                    raise ValueError("Missing chat state")
                                 return TurnResult(
+                                    session_state=event["session_state"]
+                                    if mode == "chat"
+                                    else None,
                                     text="".join(chunks),
                                     stop_reason=event["stopReason"],
                                     model_calls=event["model_calls"],

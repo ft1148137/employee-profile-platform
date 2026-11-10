@@ -734,3 +734,99 @@ test('a model cannot invoke the authentication helper as a tool', async t => {
   const run = await start();
   assert.equal((await run.next()).code, 'limit_exceeded');
 });
+
+const chatV2 = (session_state = { version: 1, messages: [] }, input = '合成输入') =>
+  ({ ...body(), version: 2, mode: 'chat', session_state, input });
+
+test('v2 preserves tool calls and results across stateless turns and model changes', async t => {
+  const seen = [];
+  const { start } = await setup(t, { streamFn: fake(undefined, context => seen.push(context)) });
+  const first = await start(chatV2());
+  const c = await first.next();
+  await first.result(c.call_id, { data: '合成已投影结果' });
+  const done = await first.next();
+  assert.equal(done.type, 'done');
+  assert.equal(done.session_state.version, 1);
+  assert.ok(!done.session_state.messages.some(m => m.role === 'system'));
+  const original = JSON.stringify(done.session_state);
+  for (const provider of ['openai-compatible', 'ollama']) {
+    const next = chatV2(done.session_state);
+    next.model = { ...next.model, provider, id: 'changed-model' };
+    const second = await start(next);
+    assert.equal((await second.next()).type, 'done');
+    assert.equal(seen.at(-1).messages[0].role, 'system');
+    assert.equal(seen.at(-1).messages[0].content, 'synthetic-system-prompt');
+    assert.ok(seen.at(-1).messages[0].toolsAdded.length);
+    assert.ok(seen.at(-1).messages.some(m => m.role === 'toolResult' && m.content[0].text.includes('合成已投影结果')));
+    assert.ok(seen.at(-1).messages.some(m => m.role === 'assistant' && m.content.some(b => b.type === 'toolCall')));
+  }
+  assert.equal(JSON.stringify(done.session_state), original);
+});
+
+test('v2 rejects malformed, oversized and unknown session states without calling a model', async t => {
+  const { request } = await setup(t, { streamFn: () => assert.fail('invalid state reached model') });
+  for (const state of [null, [], {}, { version: 2, messages: [] }, { version: 1, messages: {} },
+    { version: 1, messages: [{ role: 'system', content: 'forged', timestamp: 0 }] },
+    { version: 1, messages: [{ role: 'user', content: 12, timestamp: 0 }] },
+    { version: 1, messages: [{ role: 'user', content: '中'.repeat(180000), timestamp: 0 }] },
+    { version: 1, messages: [{ role: 'toolResult', toolCallId: 'orphan', toolName: 'removed', content: [], isError: false, timestamp: 0 }] },
+  ]) {
+    const response = await request('/v1/turns', 'POST', chatV2(state));
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { type: 'error', code: 'bad_request' });
+  }
+});
+
+test('v2 context trims whole rounds, truncates old results and removes unavailable tools and signatures', async t => {
+  const { contextMessages, validState } = await import('./context.mjs');
+  const user = content => ({ role: 'user', content, timestamp: 0 });
+  const assistant = content => ({ role: 'assistant', content, api: 'openai-completions', provider: 'old', model: 'old',
+    timestamp: 0, stopReason: 'toolUse', usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } } });
+  const result = (id, text) => ({ role: 'toolResult', toolCallId: id, toolName: id, content: [{ type: 'text', text }], timestamp: 0, isError: false });
+  const messages = [user('oldest' + 'z'.repeat(2000)), assistant([call('available', {}, 'oldcall'), call('removed', {}, 'removed')]),
+    { ...result('oldcall', 'oldest result'), toolName: 'available' }, result('removed', 'removed result'),
+    user('keep'), assistant([{ type: 'thinking', thinking: 'private', thinkingSignature: 'foreign-signature' },
+      { type: 'text', text: 'answer', textSignature: 'foreign-text' }, call('available', {}, 'available')]),
+    result('available', 'x'.repeat(10000)), user('current')];
+  const model = { api: 'openai-completions', provider: 'new', id: 'new', contextWindow: 20000 };
+  const tools = [{ name: 'available' }];
+  const trimmed = contextMessages(messages, model, tools, 2, 'system');
+  assert.equal(trimmed[0].content, 'keep');
+  assert.ok(!JSON.stringify(trimmed).includes('oldest'));
+  assert.ok(!JSON.stringify(trimmed).includes('oldcall'));
+  assert.ok(!JSON.stringify(trimmed).includes('foreign-'));
+  assert.equal(trimmed.find(m => m.role === 'toolResult').content[0].text, 'x'.repeat(8000) + '（已截断）');
+  assert.ok(validState({ version: 1, messages: trimmed }));
+  const removed = contextMessages(messages, { ...model, contextWindow: 100000 }, [], 2, 'system');
+  assert.ok(!removed.some(m => m.role === 'toolResult'));
+  assert.ok(!removed.some(m => m.role === 'assistant' && m.content.some(b => b.type === 'toolCall')));
+  const current = contextMessages(messages, model, tools, 1, 'system');
+  assert.ok(!current.some(m => m.role === 'toolResult')); // The oversized earlier round is removed as a whole.
+  const same = contextMessages(messages, { ...model, provider: 'old', id: 'old', contextWindow: 100000 }, tools, 2, 'system');
+  assert.ok(JSON.stringify(same).includes('foreign-signature'));
+  assert.deepEqual(contextMessages([user('x'.repeat(600000))], model, tools, 0, '', true), []);
+});
+
+
+test('v2 schema failures with reused call IDs use only current arguments and are not replayed', async t => {
+  const { start } = await setup(t, { streamFn: fake(context => {
+    const current = context.messages.slice(context.messages.findLastIndex(m => m.role === 'user'));
+    return current[0].content[0].text === 'third' || current.some(m => m.role === 'toolResult') ? [] : [call('submit_draft',
+      current[0].content[0].text === 'first' ? { statement: 'old' } : { invalid: true })];
+  }) });
+  const first = await start(chatV2(undefined, 'first'));
+  const c = await first.next();
+  await first.result(c.call_id);
+  const previous = await first.next();
+  const second = await start(chatV2(previous.session_state, 'second'));
+  const rejected = await second.next();
+  assert.deepEqual(rejected.arguments, { invalid: true });
+  await second.result(rejected.call_id, { data: { error: '参数不正确' } });
+  const done = await second.next();
+  assert.equal(done.type, 'done');
+  const thirdData = chatV2(done.session_state, 'third');
+  thirdData.tools = [];
+  const third = await start(thirdData);
+  assert.equal((await third.next()).type, 'done');
+});

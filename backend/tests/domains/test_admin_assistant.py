@@ -186,7 +186,7 @@ def test_retention_and_tenant_constraints(demo: tuple, db: Session, days: int) -
     db.add_all([old, row])
     db.commit()
     if not days:
-        assert messages.load_history(db, row) == []
+        assert messages.messages_for(db, row) == []
         messages.append_message(db, row, "user", {"text": "新的内容"})
         db.commit()
         assert len(messages.messages_for(db, row)) == 1
@@ -198,7 +198,7 @@ def test_retention_and_tenant_constraints(demo: tuple, db: Session, days: int) -
         select(AdminAssistantMessage).where(AdminAssistantMessage.session_id == row.id)
     ).all()
     assert [m.id for m in remaining] == ([recent.id] if days else [])
-    assert len(messages.load_history(db, row)) == (1 if days else 0)
+    assert len(messages.messages_for(db, row)) == (1 if days else 0)
     db.add(
         AdminAssistantMessage(
             org_id=uuid4(), session_id=row.id, role="user", ciphertext="synthetic"
