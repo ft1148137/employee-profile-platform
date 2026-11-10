@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query"
 import { useEffect } from "react"
 import { AdminAssistantService, type ChangeSetPublic } from "@/client"
+import useAuth from "@/hooks/useAuth"
+import { useCurrentConversation } from "@/hooks/useCurrentConversation"
 import { useOrg } from "@/hooks/useOrg"
 
 export function usePageDraft(
@@ -9,14 +11,22 @@ export function usePageDraft(
   reset?: (draft?: ChangeSetPublic) => void,
 ) {
   const { roles } = useOrg()
+  const { user } = useAuth()
+  const sessionId = useCurrentConversation(
+    `admin-assistant:${user?.id}:${orgId}`,
+  )
   const query = useQuery({
-    queryKey: ["admin-page-drafts", orgId, functionName],
+    queryKey: ["admin-page-drafts", orgId, functionName, sessionId],
     enabled: roles.includes("org_admin"),
     queryFn: async () =>
       (
         await AdminAssistantService.assistantListChangeSets({
           path: { org_id: orgId },
-          query: { status: "draft", function: functionName },
+          query: {
+            status: "draft",
+            function: functionName,
+            session_id: sessionId ?? undefined,
+          },
         })
       ).data,
   })
