@@ -1,3 +1,5 @@
+import type { BrowserContext, Page } from "@playwright/test"
+import type { SessionList } from "../src/client"
 import { expectChineseCopy } from "./utils/copy"
 import { expect, test } from "./utils/model"
 import { createUser } from "./utils/privateApi"
@@ -83,12 +85,17 @@ test("employee resumes either conversation after reload and in a new tab", async
   expect(
     await page.evaluate(() => JSON.stringify({ ...localStorage })),
   ).not.toContain("清理后继续对话")
+  await expect(
+    dialog.getByText("这段对话已过期被清除，已为你新开对话"),
+  ).toHaveCount(0)
+  await checkSwitching(page, context, false, "第二个合成对话")
 })
 
 test("admin resumes conversations across full screen and sidebar with matching page drafts", async ({
   page,
   request,
   modelUrl,
+  context,
 }) => {
   test.setTimeout(90000)
   const email = `admin-sessions-${crypto.randomUUID()}@example.com`
@@ -149,9 +156,27 @@ test("admin resumes conversations across full screen and sidebar with matching p
     .click()
   await expect(page.getByRole("log")).not.toContainText("第二个合成对话")
   await send("继续第一个对话")
+  const messageRequests: string[] = []
+  const draftRequests: string[] = []
+  page.on("request", (request) => {
+    const url = new URL(request.url())
+    if (/\/admin-assistant\/sessions\/[^/]+\/messages$/.test(url.pathname))
+      messageRequests.push(url.href)
+    if (url.pathname.endsWith("/admin-assistant/change-sets"))
+      draftRequests.push(url.searchParams.get("session_id") ?? "")
+  })
   await page.goto("/admin/rules?tab=reminders")
   const section = page.getByRole("region", { name: "持续更新提醒" })
   await expect(section.getByLabel("证据较旧期限（月）")).toHaveValue("36")
+  expect(messageRequests).toEqual([])
+  const currentId = await page.evaluate(
+    () =>
+      Object.entries(localStorage).find(([key]) =>
+        key.startsWith("admin-assistant:"),
+      )?.[1],
+  )
+  expect(draftRequests.length).toBeGreaterThan(0)
+  expect(draftRequests.every((id) => id === currentId)).toBe(true)
   await page.getByRole("button", { name: "打开管理助手" }).click()
   const dialog = page.getByRole("dialog")
   await expect(dialog.getByRole("log")).toContainText("继续第一个对话")
@@ -164,4 +189,87 @@ test("admin resumes conversations across full screen and sidebar with matching p
   await page.keyboard.press("Escape")
   await expect(section.getByLabel("证据较旧期限（月）")).toHaveValue("24")
   await expectChineseCopy(page)
+  await checkSwitching(page, context, true, "把提醒改成每年一次")
 })
+
+async function checkSwitching(
+  page: Page,
+  context: BrowserContext,
+  administrator: boolean,
+  expiredPreview: string,
+) {
+  const service = administrator ? "admin-assistant" : "bot"
+  const opener = administrator ? "打开管理助手" : "打开画像机器人"
+  const label = administrator ? "发给管理助手的消息" : "发给机器人的消息"
+  const dialog = page.getByRole("dialog")
+  if (!(await dialog.isVisible()))
+    await page.getByRole("button", { name: opener }).click()
+  const input = dialog.getByLabel(label)
+  await expect(input).toBeEnabled()
+  const tab = await context.newPage()
+  await tab.goto(page.url())
+  await tab.getByRole("button", { name: opener }).click()
+  await expect(tab.getByLabel(label)).toBeEnabled()
+  await input.fill("本页还没发出的合成文字")
+  const resumed = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/${service}/sessions/`) &&
+      response.url().includes("/messages?"),
+  )
+  await tab.getByRole("button", { name: "新对话", exact: true }).click()
+  await resumed
+  await expect(input).toBeEnabled()
+  await expect(input).toHaveValue("本页还没发出的合成文字")
+  await tab.close()
+  await dialog.getByRole("button", { name: "新对话", exact: true }).click()
+  await expect(input).toHaveValue("")
+  const listed = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      new URL(response.url()).pathname === `/api/v1/${service}/sessions`,
+  )
+  await dialog.getByRole("button", { name: "历史对话", exact: true }).click()
+  const history: SessionList = await (await listed).json()
+  const expired = history.data.find((entry) =>
+    entry.preview.includes(expiredPreview),
+  )
+  expect(expired).toBeTruthy()
+  // Simulate retention cleanup after the history list was already displayed.
+  let cleared = false
+  await page.route(
+    `**/${service}/sessions/${expired?.id}/messages?*`,
+    (route) => {
+      cleared = true
+      return route.fulfill({ status: 404, json: {} })
+    },
+  )
+  await page.route(`**/${service}/sessions?*`, async (route) => {
+    if (route.request().method() !== "GET") return route.continue()
+    const response = await route.fetch()
+    const list: SessionList = await response.json()
+    await route.fulfill({
+      response,
+      json: {
+        ...list,
+        data: list.data.filter((entry) => !cleared || entry.id !== expired?.id),
+      },
+    })
+  })
+  await input.fill("主动切换前的文字")
+  await dialog
+    .getByRole("region", { name: "历史对话" })
+    .getByRole("button", { name: new RegExp(expiredPreview) })
+    .click()
+  await expect(dialog.getByRole("status")).toHaveText(
+    "这段对话已过期被清除，已为你新开对话",
+  )
+  await expect(input).toBeEnabled()
+  await expect(input).toHaveValue("")
+  await dialog.getByRole("button", { name: "历史对话", exact: true }).click()
+  await expect(
+    dialog
+      .getByRole("region", { name: "历史对话" })
+      .getByRole("button", { name: new RegExp(expiredPreview) }),
+  ).toHaveCount(0)
+  await expectChineseCopy(page)
+}

@@ -54,11 +54,13 @@ function Panel({
     Pick<SessionMessage, "role" | "payload">[]
   >([])
   const [text, setText] = useState("")
+  const [expired, setExpired] = useState(false)
   const [conflict, setConflict] = useState(false)
   const bottom = useRef<HTMLDivElement>(null)
   const query = { org_id: orgId }
   const initialize = useMutation({
     mutationFn: async (selection?: string) => {
+      let expired = false
       let id =
         selection === "new"
           ? null
@@ -68,18 +70,24 @@ function Panel({
           const messages = (
             await BotService.listMessages({ query, path: { session_id: id } })
           ).data
-          return { id, messages }
+          return { id, messages, expired }
         } catch (error) {
           if (!(error instanceof AxiosError) || error.response?.status !== 404)
             throw error
+          expired = !!selection
         }
       }
       id = (await BotService.createSession({ query })).data.session_id
-      return { id, messages: [] }
+      return { id, messages: [], expired }
     },
-    onSuccess: (data) => {
+    onSuccess: (data, selection) => {
       rememberConversation(storageKey, data.id)
-      setText("")
+      if (selection) setText("")
+      setExpired(data.expired)
+      if (data.expired)
+        client.invalidateQueries({
+          queryKey: ["conversation-history", orgId, false],
+        })
       setConflict(false)
       send.reset()
       setSessionId(data.id)
@@ -112,7 +120,7 @@ function Panel({
   const busy = initialize.isPending || send.isPending
   useEffect(() => {
     if (open && sessionId && remembered && remembered !== sessionId && !busy)
-      initialize.mutate(remembered)
+      initialize.mutate()
   }, [open, sessionId, remembered, busy, initialize.mutate])
   useEffect(() => {
     if (open && messages.length)
@@ -207,6 +215,7 @@ function Panel({
             </p>
           )}
           <SetupError error={initialize.error ?? send.error} />
+          {expired && <p role="status">这段对话已过期被清除，已为你新开对话</p>}
           {initialize.isError && (
             <Button variant="outline" onClick={() => initialize.mutate()}>
               重试加载对话

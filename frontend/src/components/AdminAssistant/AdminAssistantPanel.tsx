@@ -210,10 +210,12 @@ export function AdminAssistantPanel({
     Pick<AdminSessionMessage, "role" | "payload">[]
   >([])
   const [text, setText] = useState(prefill?.text ?? "")
+  const [expired, setExpired] = useState(false)
   const bottom = useRef<HTMLDivElement>(null)
   const query = { org_id: orgId }
   const initialize = useMutation({
     mutationFn: async (selection?: string) => {
+      let expired = false
       let id =
         selection === "new"
           ? null
@@ -226,19 +228,25 @@ export function AdminAssistantPanel({
               path: { session_id: id },
             })
           ).data
-          return { id, messages }
+          return { id, messages, expired }
         } catch (error) {
           if (!(error instanceof AxiosError) || error.response?.status !== 404)
             throw error
+          expired = !!selection
         }
       }
       id = (await AdminAssistantService.assistantCreateSession({ query })).data
         .session_id
-      return { id, messages: [] }
+      return { id, messages: [], expired }
     },
-    onSuccess: (data) => {
+    onSuccess: (data, selection) => {
       rememberConversation(storageKey, data.id)
-      if (sessionId) setText("")
+      if (selection) setText("")
+      setExpired(data.expired)
+      if (data.expired)
+        client.invalidateQueries({
+          queryKey: ["conversation-history", orgId, true],
+        })
       send.reset()
       setSessionId(data.id)
       setMessages(data.messages)
@@ -276,7 +284,7 @@ export function AdminAssistantPanel({
       remembered !== sessionId &&
       !busy
     )
-      initialize.mutate(remembered)
+      initialize.mutate()
   }, [fullScreen, open, sessionId, remembered, busy, initialize.mutate])
   const uploaded = (response: AdminTurnResponse) => {
     setMessages((previous) => [
@@ -287,7 +295,7 @@ export function AdminAssistantPanel({
   }
   useEffect(() => {
     if (
-      (fullScreen || remembered) &&
+      (fullScreen || open) &&
       !sessionId &&
       !initialize.isPending &&
       !initialize.isError
@@ -295,7 +303,7 @@ export function AdminAssistantPanel({
       initialize.mutate()
   }, [
     fullScreen,
-    remembered,
+    open,
     sessionId,
     initialize.isPending,
     initialize.isError,
@@ -432,6 +440,7 @@ export function AdminAssistantPanel({
         <div ref={bottom} />
         {busy && <p role="status">正在处理，请稍候…</p>}
         <SetupError error={initialize.error ?? send.error} />
+        {expired && <p role="status">这段对话已过期被清除，已为你新开对话</p>}
         {initialize.isError && (
           <Button onClick={() => initialize.mutate()}>重试加载对话</Button>
         )}
