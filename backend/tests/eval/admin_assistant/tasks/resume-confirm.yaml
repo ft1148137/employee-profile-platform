@@ -1,0 +1,19 @@
+id: "resume-confirm"
+menu: "rules"
+tags: ["resume","multi_turn"]
+actor: "admin"
+entry: "admin_assistant"
+seed: {}
+steps:
+  - {"type":"say","text":"把提醒改为每年一次"}
+  - {"type":"new","name":"other"}
+  - {"type":"say","text":"今天有什么待办？"}
+  - {"type":"resume","name":"first"}
+  - {"type":"apply"}
+  - {"type":"say","text":"现在提醒周期是什么？"}
+  - {"type":"undo"}
+expect: {"services":[{"function":"get_update_settings","value":{"reminder_schedule":"quarterly"}}]}
+fake_model:
+  - {"calls":[{"name":"propose_changes","args":{"items":[{"function":"update_update_settings","args":{"reminder_schedule":"yearly"}}]}}]}
+  - {"calls":[{"name":"get_today","args":{}}]}
+  - {"calls":[{"name":"admin_read","args":{"function":"get_update_settings","args":{}}}]}
