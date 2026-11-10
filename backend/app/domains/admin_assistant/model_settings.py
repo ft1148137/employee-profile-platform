@@ -60,7 +60,7 @@ def risk(db: Session, p: Principal, args: ModelArgs) -> Risk:
             any(
                 before[k] != after[k] for k in ("kind", "provider", "model", "base_url")
             )
-            or (before["enabled"] and not args.enabled)
+            or (before["enabled"] and not args.enabled and before["kind"] != "local")
         )
         else "normal"
     )

@@ -36,11 +36,13 @@ def models(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(chatgpt, "local_auth", lambda: False)
 
 
-def setup(db: Session, demo: tuple) -> None:
+def setup(db: Session, demo: tuple, initial: dict | None = None) -> None:
     service.save_setting(
         db,
         principal(db, demo),
-        ModelSettingUpdate.model_validate(CONFIG | {"api_key": "old-synthetic-key"}),
+        ModelSettingUpdate.model_validate(
+            CONFIG | (initial or {}) | {"api_key": "old-synthetic-key"}
+        ),
     )
 
 
@@ -51,25 +53,36 @@ def draft(db: Session, demo: tuple, args: dict) -> AdminChangeSet:
 
 
 @pytest.mark.parametrize(
-    "update,high",
+    "initial,update,high",
     [
-        ({"model": "another"}, True),
-        ({"provider": "anthropic"}, True),
-        ({"enabled": False}, True),
-        ({"reasoning_effort": "high"}, False),
-        ({}, False),
+        ({}, {"model": "another"}, True),
+        ({}, {"provider": "anthropic"}, True),
+        ({}, {"enabled": False}, True),
+        ({}, {"reasoning_effort": "high"}, False),
+        ({}, {}, False),
+        ({"enabled": False}, {"enabled": True}, False),
+        (
+            {
+                "kind": "local",
+                "provider": "ollama",
+                "base_url": "http://localhost:11434",
+            },
+            {"enabled": False},
+            False,
+        ),
     ],
 )
 def test_model_parity_and_confirmation(
     db: Session,
     demo: tuple,
     client: TestClient,
+    initial: dict,
     update: dict,
     high: bool,
 ) -> None:
-    setup(db, demo)
+    setup(db, demo, initial)
     p = principal(db, demo)
-    row = draft(db, demo, CONFIG | update)
+    row = draft(db, demo, CONFIG | initial | update)
     c.save_secret(db, p, row.id, "api_key", CANARY)
     result = c.apply(db, p, row.id, row.revision)
     assert (result.status == "draft") == high
@@ -84,7 +97,7 @@ def test_model_parity_and_confirmation(
     manual = client.put(
         demo[0] + "/model-setting",
         headers=demo[2]["admin"],
-        json=CONFIG | update | {"api_key": CANARY},
+        json=CONFIG | initial | update | {"api_key": CANARY},
     )
     assert manual.status_code == 200
     assert actual.model_dump(mode="json", exclude={"updated_at"}) == {

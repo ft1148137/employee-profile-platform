@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 
 const labels: Record<string, string> = {
-  enabled: "启用模型",
+  enabled: "启用状态",
   kind: "模型类型",
   provider: "模型服务商",
   model: "模型名",
