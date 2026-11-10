@@ -42,6 +42,77 @@ async function createOrg(request: APIRequestContext, modelUrl: string) {
   return { email, password, base, headers }
 }
 
+test("reset password requires two clicks and disappears after reload", async ({
+  page,
+  request,
+  modelUrl,
+}) => {
+  const { email, password, base, headers } = await createOrg(request, modelUrl)
+  const imported = await request.post(`${base}/roster/imports`, {
+    headers,
+    multipart: {
+      file: {
+        name: "名单.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(
+          `工号,姓名,部门,职位,上级工号,邮箱\n001,合成员工,研发部,,,reset-${crypto.randomUUID()}@example.com\n`,
+        ),
+      },
+    },
+  })
+  expect(imported.ok()).toBeTruthy()
+  const preview = await imported.json()
+  expect(
+    (
+      await request.post(`${base}/roster/imports/${preview.id}/apply`, {
+        headers,
+        data: { base_revision: preview.base_revision },
+      })
+    ).ok(),
+  ).toBeTruthy()
+  expect(
+    (await request.post(`${base}/accounts/issue`, { headers, data: {} })).ok(),
+  ).toBeTruthy()
+  const { data: people } = await (
+    await request.get(`${base}/accounts`, { headers })
+  ).json()
+  await logInUser(page, email, password)
+  await page.goto("/admin/assistant")
+  await page
+    .getByRole("textbox", { name: "发给管理助手的消息" })
+    .fill(`重置密码 ${people[0].account.user_id}`)
+  await page.getByRole("button", { name: "发送", exact: true }).click()
+  const card = page.getByRole("region", { name: "设置改动确认卡" })
+  await expect(card.getByText("重置密码", { exact: true })).toBeVisible({
+    timeout: 30000,
+  })
+  await expect(card.getByText(/涉及账号：合成员工/)).toBeVisible()
+  await expect(card.getByText("修改前", { exact: true })).toHaveCount(0)
+  await card.getByRole("button", { name: "确认应用" }).click()
+  await expect(card.getByRole("status")).toHaveText("请再次确认")
+  await expect(card.getByLabel("初始密码", { exact: true })).toHaveCount(0)
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/apply") &&
+      response.request().method() === "POST",
+  )
+  await card.getByRole("button", { name: "再次确认", exact: true }).click()
+  const response = await responsePromise
+  expect(response.headers()["cache-control"]).toBe("no-store")
+  const secret = (await response.json()).one_time[0].initial_password
+  await expect(card.getByLabel("初始密码", { exact: true })).toHaveValue(secret)
+  await expect(card.getByRole("button", { name: "复制初始密码" })).toBeVisible()
+  await expect(
+    card.getByRole("button", { name: "撤销", exact: true }),
+  ).toHaveCount(0)
+  await expect(card).not.toContainText(people[0].account.user_id)
+  await expectChineseCopy(page, [people[0].account.user_id])
+  await page.reload()
+  await expect(card.getByRole("status")).toHaveText("已应用")
+  await expect(card.getByLabel("初始密码", { exact: true })).toHaveCount(0)
+  await expect(page.getByText(secret, { exact: true })).toHaveCount(0)
+})
+
 for (const width of [1440, 390]) {
   test(`reminder change is previewed, applied and undone at ${width}px`, async ({
     page,

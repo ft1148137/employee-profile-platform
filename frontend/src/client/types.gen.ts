@@ -35,6 +35,28 @@ export type AccountPublic = {
 };
 
 /**
+ * AccountsOutput
+ */
+export type AccountsOutput = {
+    /**
+     * Type
+     */
+    type?: 'accounts_file';
+    /**
+     * Filename
+     */
+    filename: string;
+    /**
+     * Content Base64
+     */
+    content_base64: string;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * AccountsPublic
  */
 export type AccountsPublic = {
@@ -809,6 +831,44 @@ export type ChangeRequestsPublic = {
      * Count
      */
     count: number;
+};
+
+/**
+ * ChangeSetApplied
+ */
+export type ChangeSetApplied = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Status
+     */
+    status: 'draft' | 'applied' | 'discarded' | 'stale' | 'undone';
+    /**
+     * Items
+     */
+    items: Array<app__domains__admin_assistant__schemas__ChangeItem>;
+    /**
+     * Undo Of Id
+     */
+    undo_of_id: string | null;
+    /**
+     * Confirmed Once At
+     */
+    confirmed_once_at?: string | null;
+    /**
+     * One Time
+     */
+    one_time?: Array<({
+        type: 'initial_password';
+    } & PasswordOutput) | ({
+        type: 'accounts_file';
+    } & AccountsOutput)>;
 };
 
 /**
@@ -2755,6 +2815,28 @@ export type OrganizationUpdate = {
      * Name
      */
     name: string;
+};
+
+/**
+ * PasswordOutput
+ */
+export type PasswordOutput = {
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Display Name
+     */
+    display_name: string | null;
+    /**
+     * Initial Password
+     */
+    initial_password: string;
+    /**
+     * Type
+     */
+    type?: 'initial_password';
 };
 
 /**
@@ -6021,7 +6103,7 @@ export type adminAssistantApplyChangeSetResponses = {
     /**
      * Successful Response
      */
-    200: ChangeSetPublic;
+    200: ChangeSetApplied;
 };
 
 export type adminAssistantApplyChangeSetResponse = adminAssistantApplyChangeSetResponses[keyof adminAssistantApplyChangeSetResponses];

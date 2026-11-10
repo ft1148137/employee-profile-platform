@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, JsonValue, SecretStr
 
+from app.domains.admin_assistant.outputs import OneTimeOutput
 from app.domains.admin_assistant.registry import TableCard as TableCard
 from app.domains.bot.schemas import TextMessage
 from app.domains.change_request.schemas import ToolInput
@@ -78,6 +79,10 @@ class ChangeSetPublic(BaseModel):
     items: list[ChangeItem]
     undo_of_id: UUID | None
     confirmed_once_at: datetime | None = None
+
+
+class ChangeSetApplied(ChangeSetPublic):
+    one_time: list[OneTimeOutput] = Field(default_factory=list)
 
 
 class SecretInputCard(BaseModel):
