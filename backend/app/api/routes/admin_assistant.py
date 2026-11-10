@@ -21,7 +21,8 @@ from app.domains.admin_assistant.schemas import (
     TestConnection,
 )
 from app.domains.bot.schemas import SessionCreated, TextMessage
-from app.domains.bot.store import BotSessionNotFound, messages_for
+from app.domains.bot.store import BotSessionNotFound, SessionList, messages_for
+from app.domains.bot.store import list_sessions as recent_sessions
 
 
 def require_admin(principal: OrgPrincipalDep) -> None:
@@ -38,6 +39,11 @@ router = APIRouter(
 )
 
 
+@router.get("/sessions")
+def list_sessions(principal: OrgAdminDep, session: SessionDep) -> SessionList:
+    return recent_sessions(session, principal, administrator=True)
+
+
 @router.post("/sessions", status_code=201)
 def create_session(principal: OrgAdminDep, session: SessionDep) -> SessionCreated:
     return SessionCreated(session_id=store.create_session(session, principal).id)
@@ -47,12 +53,11 @@ def create_session(principal: OrgAdminDep, session: SessionDep) -> SessionCreate
 def list_messages(
     principal: OrgAdminDep, session: SessionDep, session_id: UUID
 ) -> list[AdminSessionMessage]:
-    return [
-        AdminSessionMessage.model_validate(m.model_dump())
-        for m in messages_for(
-            session, store.get_session(session, principal, session_id)
-        )
-    ]
+    row = store.get_session(session, principal, session_id)
+    messages = messages_for(session, row)
+    if not messages and row.turn_count:
+        raise BotSessionNotFound()
+    return [AdminSessionMessage.model_validate(m.model_dump()) for m in messages]
 
 
 @router.post("/sessions/{session_id}/turns")
@@ -92,8 +97,9 @@ def list_change_sets(
     session: SessionDep,
     function: str,
     status: Literal["draft"],
+    session_id: UUID | None = None,
 ) -> list[ChangeSetPublic]:
-    return change_set.list_drafts(session, principal, function, status)
+    return change_set.list_drafts(session, principal, function, status, session_id)
 
 
 @change_router.put("/{id}/secrets/{field}")

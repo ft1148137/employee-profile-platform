@@ -239,3 +239,11 @@ API、Worker 和对话继续共用 `chatgpt.access_token`：独立事务取得�
 前端 OpenAPI 客户端重新生成后无类型差异；lint、TypeScript 和构建通过。中文界面、机器人、模型设置的 Playwright 16 项按 CI 的单 worker 配置全部通过（本机默认四 worker 首轮初始化企业发生竞争，重跑未改测试）。
 
 后端全量 891 passed / 3 skipped（既有跳过项未变），覆盖率 98%；mypy、ty、Ruff 全通过。现有迁移测试通过，`alembic heads` 仅 `a98e001bc001` 一个 head，无新增迁移。`git grep` 检查 pi、backend、.github、docs（排除本 ADR 历史）不含旧命名空间。
+
+## 会话上下文由 Pi 管理（NERE-286）
+
+聊天使用协议 v2：请求携带 `session_state: {version: 1, messages: AgentMessage[]}`，成功的 `done` 返回新的状态。画像起草仍使用协议 v1；Pi 保留 v1 文本历史输入的兼容支持，后端聊天只发送 v2。Pi 不保存会话，不添加数据库、文件、会话缓存或 coding-agent。
+
+Pi 的 `transformContext` 按当前模型的 `contextWindow` 留一半给本轮输出和工具结果，剩余预算扣除提示词与工具定义。以 UTF-8 字节数保守估计 token，从最早的完整用户轮次开始丢弃，调用及其结果一起删除；当前轮次保留。早于当前轮次的工具结果最多保留 8000 字并标注「已截断」。当前工具清单之外的调用及结果删除；切换模型或服务商时删除不兼容的 thinking 及文本、工具签名。返回状态也做同样处理；单轮状态仍超过 512 KiB 时返回空状态，下一轮重新开始（不拆分工具对）。单轮请求仍限制 8 次模型调用、16 次工具调用。
+
+Pi 校验版本、消息角色、内容结构、工具配对和 512 KiB 的 UTF-8 序列化大小，失败返回 `bad_request`。后端不解析或修改消息，只负责身份权限、执行平台工具和加密保存，错误提示「会话已失效，请新开对话」，不重试。

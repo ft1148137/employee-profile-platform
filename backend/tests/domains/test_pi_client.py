@@ -7,7 +7,7 @@ from pydantic import JsonValue
 
 from app.domains.model import pi_client
 from app.domains.model.client import ModelRateLimited, ModelUnavailable
-from app.domains.model.pi_client import HistoryMessage, PiBusy, ToolDefinition, run_turn
+from app.domains.model.pi_client import PiBusy, ToolDefinition, run_turn
 from tests.utils.pi import PiHarness
 
 TOOLS = [
@@ -24,26 +24,38 @@ TOOLS = [
 ]
 
 
-def test_chat_roundtrip_with_history(pi_service: PiHarness) -> None:
-    result = run_turn(
-        pi_service.config,
-        mode="chat",
-        history=[
-            HistoryMessage(role="user", text="合成旧问题"),
-            HistoryMessage(role="assistant", text="合成旧回答"),
-        ],
-        system_prompt="只用平台工具",
-        input="合成新输入",
-        tools=TOOLS,
-        on_tool_call=lambda *_: {"accepted": True},
+def test_chat_roundtrip_with_state(pi_service: PiHarness) -> None:
+    def turn(state: dict | None, text: str = "合成输入") -> pi_client.TurnResult:
+        return run_turn(
+            pi_service.config,
+            mode="chat",
+            session_state=state,
+            system_prompt="只用平台工具",
+            input=text,
+            tools=TOOLS,
+            on_tool_call=lambda *_: {"accepted": True},
+        )
+
+    first = turn(None)
+    assert first.text == "已完成" and first.session_state
+    pi_service.replies = ["引用上轮结果"]
+    second = turn(first.session_state, "后续问题")
+    assert second.text == "引用上轮结果"
+    assert pi_service.requests[-1]["body"]["tools"]
+    assert "只用平台工具" in json.dumps(
+        pi_service.requests[-1]["body"], ensure_ascii=False
     )
-    assert result.text == "已完成"
-    messages = pi_service.requests[0]["body"]["messages"]
+    messages = pi_service.requests[-1]["body"]["messages"]
     transcript = json.dumps(messages, ensure_ascii=False)
-    assert "合成旧问题" in transcript and "合成旧回答" in transcript
+    assert "合成输入" in transcript and "后续问题" in transcript
     assert any(
-        m["role"] == "assistant" and m["content"] == "合成旧回答" for m in messages
+        m["role"] == "assistant" and m.get("content") == "已完成" for m in messages
     )
+    assert any(
+        m["role"] == "tool" and json.loads(m["content"]) == {"accepted": True}
+        for m in messages
+    )
+    assert any(m["role"] == "assistant" and m.get("tool_calls") for m in messages)
 
 
 def test_chat_busy_has_typed_error_and_shorter_timeout(
@@ -68,28 +80,21 @@ def test_chat_busy_has_typed_error_and_shorter_timeout(
         run_turn(
             config,
             mode="chat",
-            history=[],
+            session_state={"version": 1, "messages": []},
             system_prompt="",
             input="",
             tools=[],
             on_tool_call=lambda *_: None,
         )
     assert seen[0].extensions["timeout"]["read"] == 70
-    assert json.loads(seen[0].content)["history"] == []
+    assert json.loads(seen[0].content)["session_state"] == {
+        "version": 1,
+        "messages": [],
+    }
     with pytest.raises(ValueError):
         run_turn(
             config,
-            history=[],
-            system_prompt="",
-            input="",
-            tools=[],
-            on_tool_call=lambda *_: None,
-        )
-    with pytest.raises(ValueError):
-        run_turn(
-            config,
-            mode="chat",
-            history=[HistoryMessage(role="user", text="x")] * 21,
+            session_state={"version": 1, "messages": []},
             system_prompt="",
             input="",
             tools=[],
@@ -350,3 +355,71 @@ def test_callback_interrupt_and_finish_race(
     assert methods == (
         ["POST", "DELETE"] if interrupted else ["POST", "POST", "DELETE"]
     )
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        {"version": 2, "messages": []},
+        {"version": 1, "messages": {}},
+        {
+            "version": 1,
+            "messages": [{"role": "user", "timestamp": 0, "content": "x" * 524288}],
+        },
+    ],
+)
+def test_invalid_chat_state_is_not_retried(pi_service: PiHarness, state: dict) -> None:
+    with pytest.raises(pi_client.PiSessionInvalid, match="会话已失效，请新开对话"):
+        run_turn(
+            pi_service.config,
+            mode="chat",
+            session_state=state,
+            system_prompt="",
+            input="",
+            tools=[],
+            on_tool_call=lambda *_: None,
+        )
+    assert pi_service.requests == []
+
+
+@pytest.mark.parametrize("state", [None, [], "invalid"])
+def test_malformed_done_does_not_clear_chat_state(
+    monkeypatch: pytest.MonkeyPatch, state: object
+) -> None:
+    real = httpx.Client
+    methods = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        methods.append(request.method)
+        return httpx.Response(
+            200,
+            text=json.dumps(
+                {
+                    "type": "done",
+                    "stopReason": "stop",
+                    "model_calls": 1,
+                    "tool_calls": 0,
+                    "session_state": state,
+                }
+            )
+            + "\n",
+        )
+
+    monkeypatch.setattr(
+        pi_client.httpx,
+        "Client",
+        lambda **kwargs: real(**kwargs, transport=httpx.MockTransport(handler)),
+    )
+    config = pi_client.PiModelConfig(
+        provider="test", api="openai-completions", id="test", baseUrl="http://test"
+    )
+    with pytest.raises(ModelUnavailable, match="模型服务连接失败或协议错误"):
+        run_turn(
+            config,
+            mode="chat",
+            system_prompt="",
+            input="",
+            tools=[],
+            on_tool_call=lambda *_: None,
+        )
+    assert methods == ["POST"]

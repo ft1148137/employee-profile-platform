@@ -35,6 +35,7 @@ from app.domains.base import utc_now
 from app.domains.bot import store as messages
 from app.domains.bot.schemas import TextMessage
 from app.domains.im.settings import InvalidImSetting
+from app.domains.model.service import InvalidModelSetting
 from app.domains.org.models import Organization
 from app.domains.org.roster.service import RosterError
 from app.domains.org.roster.single import Offboard
@@ -138,10 +139,16 @@ async def test_connection(
 
 
 def list_drafts(
-    db: Session, principal: Principal, function: str, status: Literal["draft"] = "draft"
+    db: Session,
+    principal: Principal,
+    function: str,
+    status: Literal["draft"] = "draft",
+    session_id: UUID | None = None,
 ) -> list[ChangeSetPublic]:
     if not principal.is_org_admin:
         raise ChangeSetError("找不到这份改动", 404)
+    if session_id is not None:
+        store.get_session(db, principal, session_id)
     current_session = (
         select(AdminAssistantSession.id)
         .where(
@@ -160,7 +167,8 @@ def list_drafts(
         .where(
             AdminChangeSet.org_id == principal.org_id,
             AdminChangeSet.created_by_user_id == principal.user_id,
-            AdminChangeSet.session_id == current_session,
+            AdminChangeSet.session_id
+            == (session_id if session_id is not None else current_session),
             AdminChangeSet.status == status,
         )
         .order_by(col(AdminChangeSet.updated_at).desc(), col(AdminChangeSet.id).desc())
@@ -402,7 +410,7 @@ def apply(
     except SyncError as error:
         db.rollback()
         raise ChangeSetError(error.message, error.status) from None
-    except (InvalidSourceSetting, InvalidImSetting) as error:
+    except (InvalidSourceSetting, InvalidImSetting, InvalidModelSetting) as error:
         db.rollback()
         raise ChangeSetError(str(error), 422) from None
     except Exception:

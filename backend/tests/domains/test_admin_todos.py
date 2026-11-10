@@ -161,7 +161,7 @@ def test_digest_skips_ineligible_recipients(
 
 
 def test_digest_migration_roundtrip(migration_engine: Engine) -> None:
-    migrate(migration_engine, "downgrade", "b274001bc001")
+    migrate(migration_engine, "downgrade", "b286001bc001")
     assert "admin_todo_date" not in {
         c["name"] for c in inspect(migration_engine).get_columns("inbox_item")
     }

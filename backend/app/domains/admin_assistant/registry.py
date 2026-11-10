@@ -24,6 +24,7 @@ from app.domains.access_token import service as access
 from app.domains.account import service as accounts
 from app.domains.account.schemas import AccountStatus
 from app.domains.admin.overview import build_overview
+from app.domains.admin_assistant import model_settings
 from app.domains.admin_assistant.connections import register_connections
 from app.domains.admin_assistant.files import register_files
 from app.domains.admin_assistant.people import register_people
@@ -475,6 +476,38 @@ FUNCTIONS["update_approval_policy"] = AdminFunction(
 )
 
 
+FUNCTIONS["update_model_setting"] = AdminFunction(
+    name="update_model_setting",
+    area="data_ai",
+    kind="change",
+    risk="normal",
+    description="修改模型设置；换模型、换服务商、关闭模型需要再次确认；密钥只用安全输入框填写",
+    input_model=model_settings.ModelArgs,
+    handler=model.save_setting,
+    page="/admin/data-ai?tab=model",
+    endpoints=(("PUT", "/model-setting"),),
+    snapshot=model_settings.snapshot,
+    impact=model_settings.impact,
+    secret_fields=("api_key",),
+    preview_risk=model_settings.risk,
+    test=model_settings.test_model,
+    rebinds=model_settings.rebinds,
+)
+
+FUNCTIONS["update_bot_settings"] = AdminFunction(
+    name="update_bot_settings",
+    area="data_ai",
+    kind="change",
+    risk="normal",
+    description="修改内置机器人的提问指南和聊天原文保留天数",
+    input_model=bot.BotSettings,
+    handler=bot.save_settings,
+    page="/admin/data-ai?tab=bot",
+    endpoints=(("PUT", "/bot-settings"),),
+    snapshot=lambda d, p, a: bot.read_settings(d, p.org_id),
+)
+
+
 def list_admin_functions(area: Area) -> dict[str, Any]:
     return {
         "data": [
@@ -571,6 +604,7 @@ NOT_FOR_ASSISTANT = {
         "POST",
         "/admin-assistant/change-sets/{id}/undo",
     ): "变更集只能由创建人在确认卡上操作",
+    ("GET", "/admin-assistant/sessions"): "助手自身的会话接口",
     ("POST", "/admin-assistant/sessions"): "助手自身的会话接口",
     ("GET", "/admin-assistant/sessions/{session_id}/messages"): "助手自身的会话接口",
     ("POST", "/admin-assistant/sessions/{session_id}/turns"): "助手自身的会话接口",
@@ -582,11 +616,11 @@ NOT_FOR_ASSISTANT = {
     ("GET", "/sources/csv/template"): "模板下载由助手给页面链接",
     ("GET", "/roster/template"): "模板下载由助手给页面链接",
     ("GET", "/capabilities/template"): "模板下载由助手给页面链接",
-    ("GET", "/model-setting/chatgpt/login"): "订阅登录在浏览器里完成",
-    ("POST", "/model-setting/chatgpt/login"): "订阅登录在浏览器里完成",
-    ("POST", "/model-setting/chatgpt/callback"): "订阅登录在浏览器里完成",
-    ("DELETE", "/model-setting/chatgpt/login"): "订阅登录在浏览器里完成",
-    ("DELETE", "/model-setting/chatgpt"): "订阅登录在浏览器里完成",
+    ("GET", "/model-setting/chatgpt/login"): "在模型页面操作",
+    ("POST", "/model-setting/chatgpt/login"): "在模型页面操作",
+    ("POST", "/model-setting/chatgpt/callback"): "在模型页面操作",
+    ("DELETE", "/model-setting/chatgpt/login"): "在模型页面操作",
+    ("DELETE", "/model-setting/chatgpt"): "在模型页面操作",
 }
 
 register_rules(FUNCTIONS)
@@ -624,8 +658,6 @@ for name, title, input_type in (
 
 PENDING = {
     ("POST", "/capabilities/preview"): "S8b",
-    ("PUT", "/bot-settings"): "S6",
-    ("PUT", "/model-setting"): "S6",
     ("POST", "/sources/csv/imports"): "S8b",
     ("POST", "/profile-imports"): "S8b",
 }

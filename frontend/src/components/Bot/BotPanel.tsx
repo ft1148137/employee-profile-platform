@@ -15,8 +15,13 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import useAuth from "@/hooks/useAuth"
+import {
+  rememberConversation,
+  useCurrentConversation,
+} from "@/hooks/useCurrentConversation"
 import { useOrg } from "@/hooks/useOrg"
 import { type BotAction, BotMessage } from "./BotMessage"
+import { SessionHistory } from "./SessionHistory"
 
 export function BotPanel() {
   const { org, employeeId } = useOrg()
@@ -44,6 +49,7 @@ function Panel({
   const client = useQueryClient()
   const [open, setOpen] = useState(false)
   const [sessionId, setSessionId] = useState("")
+  const remembered = useCurrentConversation(storageKey)
   const [messages, setMessages] = useState<
     Pick<SessionMessage, "role" | "payload">[]
   >([])
@@ -52,26 +58,30 @@ function Panel({
   const bottom = useRef<HTMLDivElement>(null)
   const query = { org_id: orgId }
   const initialize = useMutation({
-    mutationFn: async () => {
-      let id = sessionStorage.getItem(storageKey)
+    mutationFn: async (selection?: string) => {
+      let id =
+        selection === "new"
+          ? null
+          : (selection ?? localStorage.getItem(storageKey))
       if (id) {
         try {
-          return {
-            id,
-            messages: (
-              await BotService.listMessages({ query, path: { session_id: id } })
-            ).data,
-          }
+          const messages = (
+            await BotService.listMessages({ query, path: { session_id: id } })
+          ).data
+          return { id, messages }
         } catch (error) {
           if (!(error instanceof AxiosError) || error.response?.status !== 404)
             throw error
         }
       }
       id = (await BotService.createSession({ query })).data.session_id
-      sessionStorage.setItem(storageKey, id)
       return { id, messages: [] }
     },
     onSuccess: (data) => {
+      rememberConversation(storageKey, data.id)
+      setText("")
+      setConflict(false)
+      send.reset()
       setSessionId(data.id)
       setMessages(data.messages)
     },
@@ -89,6 +99,7 @@ function Panel({
         { role: "assistant", payload: data },
       ])
       setConflict(false)
+      client.invalidateQueries({ queryKey: ["conversation-history", orgId] })
       client.invalidateQueries({ queryKey: ["change-requests", orgId] })
       client.invalidateQueries({ queryKey: ["inbox", orgId] })
       client.invalidateQueries({ queryKey: ["profile", orgId] })
@@ -99,6 +110,10 @@ function Panel({
     },
   })
   const busy = initialize.isPending || send.isPending
+  useEffect(() => {
+    if (open && sessionId && remembered && remembered !== sessionId && !busy)
+      initialize.mutate(remembered)
+  }, [open, sessionId, remembered, busy, initialize.mutate])
   useEffect(() => {
     if (open && messages.length)
       bottom.current?.scrollIntoView({ block: "end" })
@@ -135,6 +150,13 @@ function Panel({
             只操作你本人的画像。画像不用于绩效、薪酬和晋升。聊天原文默认不保存；未开启保留时，会话闲置两小时后清除。
           </SheetDescription>
         </SheetHeader>
+        <SessionHistory
+          orgId={orgId}
+          currentId={sessionId}
+          disabled={busy}
+          onNew={() => initialize.mutate("new")}
+          onSelect={(id) => initialize.mutate(id)}
+        />
         <div
           className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 text-sm"
           role="log"

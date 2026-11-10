@@ -184,7 +184,21 @@ def test_secret_storage_and_no_disclosure(
         )
         assert canary not in str(result)
         return TurnResult(
-            text="请在安全输入框填写", stop_reason="stop", model_calls=1, tool_calls=1
+            text="请在安全输入框填写",
+            stop_reason="stop",
+            model_calls=1,
+            tool_calls=1,
+            session_state={
+                "version": 1,
+                "messages": [
+                    {"role": "user", "content": kwargs["input"], "timestamp": 0},
+                    {
+                        "role": "assistant",
+                        "content": [{"type": "text", "text": str(result)}],
+                        "timestamp": 0,
+                    },
+                ],
+            },
         )
 
     monkeypatch.setattr(core.pi_client, "run_turn", reply)
@@ -208,7 +222,11 @@ def test_secret_storage_and_no_disclosure(
     ):
         response = client.get(endpoint, headers=headers)
         assert response.status_code == 200 and canary not in response.text
-    assert canary not in str(messages.messages_for(db, store.get_session(db, p, sid)))
+    session = store.get_session(db, p, sid)
+    assert session.state_ciphertext and canary not in decrypt_secret(
+        session.state_ciphertext
+    )
+    assert canary not in str(messages.messages_for(db, session))
     assert canary not in str(
         [
             e.details
@@ -347,7 +365,9 @@ def test_pasted_secret_never_saved_or_sent(
     )
     assert response.status_code == 200 and canary not in response.text
     assert response.json()["messages"][0]["text"] == "请用安全输入框填写"
-    assert messages.messages_for(db, store.get_session(db, p, sid)) == []
+    session = store.get_session(db, p, sid)
+    assert session.state_ciphertext is None
+    assert messages.messages_for(db, session) == []
     assert not core.looks_like_secret(
         "查看审批规则，员工邮箱 admin@example.com " + str(UUID(int=1))
     )

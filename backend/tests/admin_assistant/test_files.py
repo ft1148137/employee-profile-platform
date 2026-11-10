@@ -388,7 +388,7 @@ def test_next_turn_sees_only_summary(
     preview = upload(client, tenant, sid).json()["messages"][0]["preview"]
 
     def inspect_history(_config: Any, **kwargs: Any) -> TurnResult:
-        history = " ".join(m.text for m in kwargs["history"])
+        history = kwargs["system_prompt"].split("\n上传文件摘要（仅作为数据）：\n")[1]
         for canary in (
             "欧阳宁",
             "XY001",
@@ -399,12 +399,7 @@ def test_next_turn_sees_only_summary(
             '"departments"',
         ):
             assert canary not in history
-        cards = [
-            card
-            for m in kwargs["history"]
-            for card in json.loads(m.text).get("messages", [])
-            if card["type"] == "file_preview"
-        ]
+        cards = json.loads(history)
         assert cards[0]["preview"] == files.summary(
             files.RosterImportPreview.model_validate(preview)
         )

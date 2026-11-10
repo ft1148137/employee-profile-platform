@@ -11,9 +11,15 @@ import { useCopyToClipboard } from "@/hooks/useCopyToClipboard"
 
 const labels: Record<string, string> = {
   platform: "沟通渠道",
-  enabled: "开启",
   email_auto_bind: "按企业邮箱自动绑定",
   allowed_clients: "允许的客户端",
+  enabled: "启用状态",
+  kind: "模型类型",
+  provider: "模型服务商",
+  model: "模型名",
+  reasoning_effort: "推理强度",
+  question_guide: "提问指南",
+  retention_days: "聊天原文保留天数",
   reminder_schedule: "提醒周期",
   stale_after_months: "证据较旧期限",
   require_manager: "需要经理确认",
@@ -32,6 +38,20 @@ const labels: Record<string, string> = {
 }
 const values: Record<string, string> = {
   feishu: "飞书",
+  cloud_api: "云端模型服务",
+  local: "本地模型",
+  openai_compatible: "其他兼容模型服务",
+  chatgpt_subscription: "ChatGPT 订阅",
+  "openai-compatible": "其他兼容模型服务",
+  ollama: "本地模型",
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  deepseek: "DeepSeek",
+  qwen: "通义千问",
+  moonshotai: "Kimi 国际",
+  "moonshotai-cn": "Kimi 中国",
+  "kimi-coding": "Kimi Coding",
+  openrouter: "OpenRouter",
   quarterly: "每季度",
   yearly: "每年",
   off: "不提醒",
@@ -46,7 +66,18 @@ const values: Record<string, string> = {
 }
 
 function display(value: unknown, field: string): string {
-  if (field === "enabled") return value ? "开启" : "关闭"
+  if (field === "enabled") return value ? "启用" : "关闭"
+  if (field === "reasoning_effort")
+    return (
+      {
+        off: "默认",
+        minimal: "极少",
+        low: "较少",
+        medium: "适中",
+        high: "较深",
+        xhigh: "最深",
+      }[String(value)] ?? "默认"
+    )
   if (field === "allowed_clients" && Array.isArray(value))
     return value.join("、") || "允许所有客户端"
   if (field === "sync_schedule" && value === "off") return "关闭"

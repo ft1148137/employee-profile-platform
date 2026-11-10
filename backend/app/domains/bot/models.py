@@ -57,6 +57,7 @@ class BotSession(SQLModel, table=True):
     last_activity_at: datetime = Field(
         default_factory=utc_now, sa_type=DateTime(timezone=True)
     )
+    state_ciphertext: str | None = Field(default=None, repr=False)
     turn_count: int = 0
     request_ids: list[UUID] = Field(default_factory=list, sa_type=ARRAY(Uuid))
     lease_until: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
