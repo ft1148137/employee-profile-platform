@@ -15,11 +15,13 @@ export function ConfirmActionDialog({
   description,
   action,
   onSuccess,
+  disabled = false,
 }: {
   title: string
   description: string
   action: () => Promise<unknown>
   onSuccess: () => void
+  disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const mutation = useMutation({
@@ -36,7 +38,12 @@ export function ConfirmActionDialog({
   }
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
-      <Button variant="outline" size="sm" onClick={() => changeOpen(true)}>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={disabled}
+        onClick={() => changeOpen(true)}
+      >
         {title}
       </Button>
       <DialogContent showCloseButton={!mutation.isPending}>
@@ -46,7 +53,7 @@ export function ConfirmActionDialog({
         </DialogHeader>
         <SetupError error={mutation.error} />
         <Button
-          disabled={mutation.isPending}
+          disabled={disabled || mutation.isPending}
           onClick={() => {
             mutation.mutate()
           }}

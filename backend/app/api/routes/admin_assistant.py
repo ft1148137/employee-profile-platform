@@ -1,3 +1,4 @@
+import asyncio
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -7,6 +8,7 @@ from app.api.deps import SessionDep
 from app.api.secret_safe import SecretSafeRoute
 from app.authz.deps import OrgAdminDep, OrgPrincipalDep
 from app.domains.admin_assistant import change_set, core, files, store
+from app.domains.admin_assistant.registry import ConnectionTestResult
 from app.domains.admin_assistant.schemas import (
     AdminSessionMessage,
     AdminTurnInput,
@@ -16,6 +18,7 @@ from app.domains.admin_assistant.schemas import (
     ChangeSetApplied,
     ChangeSetPublic,
     SecretInput,
+    TestConnection,
 )
 from app.domains.bot.schemas import SessionCreated, TextMessage
 from app.domains.bot.store import BotSessionNotFound, messages_for
@@ -118,6 +121,13 @@ def apply_change_set(
 ) -> ChangeSetApplied:
     response.headers["Cache-Control"] = "no-store"
     return change_set.apply(session, principal, id, body.revision)
+
+
+@change_router.post("/{id}/test")
+def test_change_set(
+    principal: OrgAdminDep, session: SessionDep, id: UUID, body: TestConnection
+) -> ConnectionTestResult:
+    return asyncio.run(change_set.test_connection(session, principal, id, body.item))
 
 
 @change_router.post("/{id}/discard")

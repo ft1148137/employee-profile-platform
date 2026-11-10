@@ -15,17 +15,35 @@ const labels: Record<string, string> = {
   require_manager: "需要经理确认",
   category_overrides: "各类能力的确认规则",
   owner_review_days: "本人过目期限（天）",
+  deployment: "Jira 类型",
+  base_url: "站点地址",
+  auth_type: "认证方式",
+  username: "账号",
+  start_date: "同步起始日期",
+  include_description: "同步任务描述",
+  sync_schedule: "同步周期",
+  identity_id: "工作记录账号",
+  employee_id: "关联员工",
+  run_id: "同步记录",
 }
 const values: Record<string, string> = {
   quarterly: "每季度",
   yearly: "每年",
   off: "不提醒",
+  monthly: "每月",
+  cloud: "云端版",
+  data_center: "企业自行部署版",
+  api_token: "连接密钥",
+  pat: "个人访问令牌",
+  basic: "用户名和密码",
   true: "需要",
   false: "不需要",
 }
 
-function display(value: unknown): string {
-  if (value && typeof value === "object")
+function display(value: unknown, field: string): string {
+  if (field === "sync_schedule" && value === "off") return "关闭"
+  if (field === "include_description") return value ? "同步" : "不同步"
+  if (field === "category_overrides" && value && typeof value === "object")
     return (
       Object.entries(value)
         .map(
@@ -34,6 +52,7 @@ function display(value: unknown): string {
         )
         .join("；") || "沿用总规则"
     )
+  if (typeof value === "object") return JSON.stringify(value)
   return values[String(value)] ?? String(value)
 }
 const statuses = {
@@ -95,7 +114,22 @@ export function ChangeSetCard({
     },
     onSettled: () => client.invalidateQueries(),
   })
-  const busy = disabled || action.isPending || query.isFetching || query.isError
+  const test = useMutation({
+    mutationFn: async (item: number) =>
+      (
+        await AdminAssistantService.assistantTestChangeSet({
+          path,
+          body: { item },
+        })
+      ).data,
+    onSuccess: () => client.invalidateQueries(),
+  })
+  const busy =
+    disabled ||
+    action.isPending ||
+    test.isPending ||
+    query.isFetching ||
+    query.isError
   return (
     <section
       aria-label={inline ? "页面草稿确认" : "设置改动确认卡"}
@@ -137,7 +171,7 @@ export function ChangeSetCard({
                       >
                         {value == null
                           ? "未设置"
-                          : `${display(value)}${field === "stale_after_months" ? " 个月" : ""}`}
+                          : `${display(value, field)}${field === "stale_after_months" ? " 个月" : ""}`}
                       </p>
                     </div>
                   ))}
@@ -148,6 +182,26 @@ export function ChangeSetCard({
             <p className="text-xs text-muted-foreground">
               影响 {item.impact.count} 人 · {item.impact.text}
             </p>
+          )}
+          {current.status === "draft" && item.testable && (
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() => test.mutate(i)}
+              >
+                {test.isPending && test.variables === i
+                  ? "正在测试…"
+                  : "测试连接"}
+              </Button>
+              {test.data && test.variables === i && (
+                <p role={test.data.ok ? "status" : "alert"} className="text-sm">
+                  {test.data.ok
+                    ? "测试连接：成功"
+                    : `测试连接：失败，${test.data.message}`}
+                </p>
+              )}
+            </div>
           )}
         </div>
       ))}
@@ -218,7 +272,7 @@ export function ChangeSetCard({
           )}
         </div>
       ))}
-      <SetupError error={action.error ?? query.error} />
+      <SetupError error={action.error ?? test.error ?? query.error} />
       {current.status === "draft" && (
         <div className="flex gap-2">
           <Button disabled={busy} onClick={() => action.mutate("apply")}>

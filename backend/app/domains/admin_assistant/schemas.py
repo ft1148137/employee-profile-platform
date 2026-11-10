@@ -70,6 +70,7 @@ class ChangeItem(ChangeSpec):
     after: dict[str, JsonValue]
     impact: Impact | None = None
     risk: Literal["normal", "high"]
+    testable: bool = False
 
 
 class ChangeSetPublic(BaseModel):
@@ -116,6 +117,10 @@ class FilePreviewCard(RequestFile):
 
 class ApplyChanges(ToolInput):
     revision: int = Field(ge=1, strict=True)
+
+
+class TestConnection(ToolInput):
+    item: int = Field(ge=0, strict=True)
 
 
 class AdminTurnResponse(BaseModel):

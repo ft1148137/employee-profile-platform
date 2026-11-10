@@ -1,6 +1,6 @@
 import type { APIRequestContext } from "@playwright/test"
 import { expectChineseCopy } from "./utils/copy"
-import { expect, test } from "./utils/model"
+import { expect, jiraTestUrl, test } from "./utils/model"
 import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -111,6 +111,64 @@ test("reset password requires two clicks and disappears after reload", async ({
   await expect(card.getByRole("status")).toHaveText("已应用")
   await expect(card.getByLabel("初始密码", { exact: true })).toHaveCount(0)
   await expect(page.getByText(secret, { exact: true })).toHaveCount(0)
+})
+
+test("Jira draft accepts a private token, tests it and highlights the source page", async ({
+  page,
+  request,
+  modelUrl,
+}) => {
+  test.setTimeout(90000)
+  const { email, password, base, headers } = await createOrg(request, modelUrl)
+  await logInUser(page, email, password)
+  await page.goto("/admin/data-ai?tab=sources")
+  await page.getByRole("button", { name: "打开管理助手" }).click()
+  const dialog = page.getByRole("dialog")
+  await dialog
+    .getByRole("textbox", { name: "发给管理助手的消息" })
+    .fill("修改 Jira 站点")
+  await dialog.getByRole("button", { name: "发送", exact: true }).click()
+  const card = dialog.getByRole("region", { name: "设置改动确认卡" })
+  await expect(card).toBeVisible({ timeout: 30000 })
+  const secure = dialog.getByRole("form", { name: "安全输入框" })
+  await secure.locator('input[type="password"]').fill("mock-cloud-token")
+  await secure.getByRole("button", { name: "安全提交" }).click()
+  await expect(secure.getByRole("status")).toHaveText("已填写")
+  await card.getByRole("button", { name: "测试连接" }).click()
+  await expect(card.getByText("测试连接：成功", { exact: true })).toBeVisible({
+    timeout: 30000,
+  })
+  expect(
+    (await (await request.get(`${base}/sources/jira`, { headers })).json())
+      .configured,
+  ).toBe(false)
+  await page.keyboard.press("Escape")
+  const section = page.getByRole("region", { name: "Jira 连接" })
+  await expect(section.getByLabel("站点地址")).toHaveValue(jiraTestUrl)
+  await expect(
+    section.locator('[data-assistant-suggested="true"]').first(),
+  ).toBeVisible()
+  await expect(
+    section.getByRole("button", { name: "保存", exact: true }),
+  ).toBeDisabled()
+  await section.getByRole("button", { name: "确认应用", exact: true }).click()
+  await expect(
+    section.getByRole("region", { name: "页面草稿确认" }),
+  ).toHaveCount(0)
+  expect(
+    (await (await request.get(`${base}/sources/jira`, { headers })).json())
+      .configured,
+  ).toBe(true)
+  await expectChineseCopy(page, [
+    "Cloud",
+    "Data Center",
+    "Server",
+    "token",
+    "description",
+    "Atlassian",
+    "PLM",
+    "Git",
+  ])
 })
 
 for (const width of [1440, 390]) {

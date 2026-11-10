@@ -6,6 +6,8 @@ import {
   type IdentityLink,
 } from "@/client"
 import { ConfirmActionDialog } from "@/components/Admin/ConfirmActionDialog"
+import { PageDraft } from "@/components/AdminAssistant/PageDraft"
+import { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -33,6 +35,14 @@ export function IdentityTable({
   employeeId?: string
 }) {
   const client = useQueryClient()
+  const linkDraft = usePageDraft(orgId, "link_identity")
+  const unlinkDraft = usePageDraft(orgId, "unlink_identity")
+  const drafts = [linkDraft, unlinkDraft].filter(
+    (entry, index, all) =>
+      entry.draft &&
+      all.findIndex((other) => other.draft?.id === entry.draft?.id) === index,
+  )
+  const draftItems = drafts.flatMap((entry) => entry.draft?.items ?? [])
   const [status, setStatus] = useState<"unlinked" | "linked">(
     employeeId ? "linked" : "unlinked",
   )
@@ -146,13 +156,23 @@ export function IdentityTable({
       await refresh()
     },
   })
-  const pending = link.isPending || unlink.isPending
+  const actionPending = link.isPending || unlink.isPending
+  const pending = actionPending || linkDraft.blocked || unlinkDraft.blocked
   function resetSelection() {
     setSelected([])
     setSkip(0)
   }
   return (
     <div className="min-w-0 space-y-5">
+      <SetupError error={linkDraft.error ?? unlinkDraft.error} />
+      {drafts.map((entry) => (
+        <PageDraft
+          key={entry.draft!.id}
+          orgId={orgId}
+          draft={entry.draft}
+          error={entry.error}
+        />
+      ))}
       <div className="space-y-1 rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
         <p>只有关联到员工的账号，它的记录才会算到这名员工头上。</p>
         <p>系统按邮箱或姓名给出候选，需要你确认；同名的人不会自动合并。</p>
@@ -187,10 +207,10 @@ export function IdentityTable({
         }}
       >
         <TabsList aria-label="账号关联状态">
-          <TabsTrigger value="unlinked" disabled={pending}>
+          <TabsTrigger value="unlinked" disabled={actionPending}>
             未关联{!employeeId && `（${unlinked.length}）`}
           </TabsTrigger>
-          <TabsTrigger value="linked" disabled={pending}>
+          <TabsTrigger value="linked" disabled={actionPending}>
             已关联{!employeeId && `（${linked.length}）`}
           </TabsTrigger>
         </TabsList>
@@ -201,7 +221,7 @@ export function IdentityTable({
           placeholder="搜索账号、名字或邮箱"
           className="sm:max-w-xs"
           value={q}
-          disabled={pending}
+          disabled={actionPending}
           onChange={(e) => {
             setQ(e.target.value)
             resetSelection()
@@ -212,7 +232,7 @@ export function IdentityTable({
             aria-label="按来源筛选"
             className="h-9 rounded-md border bg-background px-3 text-sm"
             value={source}
-            disabled={pending}
+            disabled={actionPending}
             onChange={(e) => {
               setSource(e.target.value)
               resetSelection()
@@ -282,7 +302,18 @@ export function IdentityTable({
           </TableHeader>
           <TableBody>
             {visible.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow
+                key={row.id}
+                data-assistant-suggested={
+                  draftItems.some((item) => item.args.identity_id === row.id) ||
+                  undefined
+                }
+                className={
+                  draftItems.some((item) => item.args.identity_id === row.id)
+                    ? "bg-primary/10"
+                    : undefined
+                }
+              >
                 {status === "unlinked" && (
                   <TableCell>
                     <Checkbox
@@ -306,6 +337,19 @@ export function IdentityTable({
                 <TableCell>{row.source_label}</TableCell>
                 <TableCell className="font-mono text-xs">
                   {row.external_id}
+                  {draftItems
+                    .filter((item) => item.args.identity_id === row.id)
+                    .map((item, i) => (
+                      <p
+                        key={i}
+                        className="mt-2 font-sans font-medium text-primary"
+                      >
+                        助手建议：
+                        {item.function === "link_identity"
+                          ? "关联到所选员工"
+                          : "解除关联"}
+                      </p>
+                    ))}
                 </TableCell>
                 {status === "unlinked" ? (
                   <>
@@ -370,6 +414,7 @@ export function IdentityTable({
                   <div className="flex gap-2">
                     {status === "unlinked" && employeeId ? (
                       <ConfirmActionDialog
+                        disabled={pending}
                         title="关联到此员工"
                         description={`确认把账号「${row.external_id}」关联到当前员工？这个账号的工作记录将作为这名员工的证据。`}
                         action={() =>
@@ -451,7 +496,7 @@ export function IdentityTable({
       <div className="flex items-center gap-3">
         <Button
           variant="outline"
-          disabled={pending || !skip}
+          disabled={actionPending || !skip}
           onClick={() => {
             setSkip(skip - 50)
             setSelected([])
@@ -462,7 +507,7 @@ export function IdentityTable({
         <span className="text-sm text-muted-foreground">共 {count} 个账号</span>
         <Button
           variant="outline"
-          disabled={pending || skip + 50 >= count}
+          disabled={actionPending || skip + 50 >= count}
           onClick={() => {
             setSkip(skip + 50)
             setSelected([])
@@ -480,7 +525,7 @@ export function IdentityTable({
         <EmployeePicker
           orgId={orgId}
           account={picker.external_id}
-          pending={link.isPending}
+          pending={pending}
           error={link.error}
           onSelect={(employeeId) =>
             link.mutate([{ identity_id: picker.id, employee_id: employeeId }])
@@ -494,7 +539,7 @@ export function IdentityTable({
       {unlinking && (
         <UnlinkDialog
           account={unlinking.external_id}
-          pending={unlink.isPending}
+          pending={pending}
           error={unlink.error}
           onConfirm={() => unlink.mutate(unlinking.id)}
           onClose={() => setUnlinking(null)}

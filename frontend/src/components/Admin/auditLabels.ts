@@ -26,6 +26,7 @@ export const auditLabels: Record<string, string> = {
   "change_request.decided": "审批画像请求",
   "change_request.withdrawn": "撤回画像请求",
   "sync_run.succeeded": "同步完成",
+  "sync_run.queued": "安排数据同步",
   "sync_run.failed": "同步失败",
   "source.jira_updated": "修改 Jira 连接",
   "external_identity.linked": "关联外部账号",
