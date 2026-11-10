@@ -7,11 +7,13 @@ from sqlmodel import Session
 
 from app.authz.principal import Principal
 from app.domains.admin.overview import build_overview
-from app.domains.admin_assistant import change_set, registry
+from app.domains.admin_assistant import change_set, registry, store
 from app.domains.admin_assistant.schemas import (
     ChangeSetCard,
+    FileUploadCard,
     LinkCard,
     ProposeChanges,
+    RequestFile,
     SecretInputCard,
 )
 from app.domains.change_request.schemas import ToolInput
@@ -34,6 +36,11 @@ class RequestSecretInput(ToolInput):
 
 def definitions() -> list[ToolDefinition]:
     return [
+        ToolDefinition(
+            name="request_file",
+            description="显示名单上传框；只接收文件种类，文件内容由管理员直接上传",
+            parameters=RequestFile.model_json_schema(),
+        ),
         ToolDefinition(
             name="request_secret_input",
             description="为已起草改动的密钥字段显示安全输入框，不能接收密钥值",
@@ -65,13 +72,21 @@ def definitions() -> list[ToolDefinition]:
 def call(
     db: Session,
     principal: Principal,
-    cards: list[LinkCard | registry.TableCard | ChangeSetCard | SecretInputCard],
+    cards: list[
+        LinkCard | registry.TableCard | ChangeSetCard | SecretInputCard | FileUploadCard
+    ],
     name: str,
     args: dict[str, JsonValue],
     *,
     session_id: UUID | None = None,
 ) -> JsonValue:
     try:
+        if name == "request_file" and session_id:
+            store.get_session(db, principal, session_id)
+            cards.append(
+                FileUploadCard(**RequestFile.model_validate(args).model_dump())
+            )
+            return {"data": {"message": "请在上传框选择名单，预览后点击确认才会导入"}}
         if name == "request_secret_input" and session_id:
             body_secret = RequestSecretInput.model_validate(args)
             cards.append(

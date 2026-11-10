@@ -13,9 +13,17 @@ from app.domains.org.roster.schemas import (
     RosterImportResult,
     RosterImportsPublic,
 )
+from app.domains.org.roster.single import SingleChange, preview
 from app.domains.org.roster.template import build_template_csv, build_template_xlsx
 
 router = APIRouter(prefix="/orgs/{org_id}/roster", tags=["roster"])
+
+
+@router.post("/single-change")
+def preview_single_change(
+    body: SingleChange, session: SessionDep, principal: OrgAdminDep
+) -> RosterImportPreview:
+    return preview(session, principal, body)
 
 
 @router.get("/template", response_class=Response)
@@ -41,8 +49,8 @@ def download_template(
 def upload_import(
     file: UploadFile, session: SessionDep, principal: OrgAdminDep
 ) -> RosterImportPreview:
-    content = file.file.read(5 * 1024 * 1024 + 1)
-    if len(content) > 5 * 1024 * 1024:
+    content = file.file.read(service.MAX_FILE_SIZE + 1)
+    if len(content) > service.MAX_FILE_SIZE:
         raise service.RosterError(413, "文件超过 5 MB，请拆分后再上传")
     return service.create_import(session, principal, content, file.filename or "")
 

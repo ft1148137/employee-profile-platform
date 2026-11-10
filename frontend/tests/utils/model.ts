@@ -124,52 +124,78 @@ export const test = base.extend<{ modelUrl: string }>({
                                 items: [
                                   {
                                     function: JSON.stringify(last).includes(
-                                      "关闭部门自动起草",
+                                      "重置密码",
                                     )
-                                      ? "update_drafting_settings"
+                                      ? "reset_password"
                                       : JSON.stringify(last).includes(
-                                            "关闭经理确认",
+                                            "办理离职",
                                           )
-                                        ? "update_approval_policy"
+                                        ? "offboard_employees"
                                         : JSON.stringify(last).includes(
-                                              "修改能力说明",
+                                              "关闭部门自动起草",
                                             )
-                                          ? "update_capability_dictionary"
-                                          : "update_update_settings",
+                                          ? "update_drafting_settings"
+                                          : JSON.stringify(last).includes(
+                                                "关闭经理确认",
+                                              )
+                                            ? "update_approval_policy"
+                                            : JSON.stringify(last).includes(
+                                                  "修改能力说明",
+                                                )
+                                              ? "update_capability_dictionary"
+                                              : "update_update_settings",
                                     args: JSON.stringify(last).includes(
-                                      "关闭部门自动起草",
+                                      "重置密码",
                                     )
                                       ? {
-                                          excluded_capability_keys: [],
-                                          disabled_department_ids: [
-                                            JSON.stringify(last).match(
-                                              /[0-9a-f]{8}-[0-9a-f-]{27,}/,
-                                            )?.[0],
-                                          ],
+                                          user_id: JSON.stringify(last).match(
+                                            /[0-9a-f]{8}-[0-9a-f-]{27,}/,
+                                          )?.[0],
                                         }
                                       : JSON.stringify(last).includes(
-                                            "关闭经理确认",
+                                            "办理离职",
                                           )
-                                        ? { require_manager: false }
+                                        ? {
+                                            employee_ids: [
+                                              JSON.stringify(last).match(
+                                                /[0-9a-f]{8}-[0-9a-f-]{27,}/,
+                                              )?.[0],
+                                            ],
+                                          }
                                         : JSON.stringify(last).includes(
-                                              "修改能力说明",
+                                              "关闭部门自动起草",
                                             )
                                           ? {
-                                              definitions:
-                                                dictionaryDefinitions.map(
-                                                  (definition) => ({
-                                                    ...definition,
-                                                    description:
-                                                      "助手修改后的能力说明",
-                                                  }),
-                                                ),
-                                              expected_version: 1,
-                                              redraft: false,
+                                              excluded_capability_keys: [],
+                                              disabled_department_ids: [
+                                                JSON.stringify(last).match(
+                                                  /[0-9a-f]{8}-[0-9a-f-]{27,}/,
+                                                )?.[0],
+                                              ],
                                             }
-                                          : {
-                                              reminder_schedule: "yearly",
-                                              stale_after_months: 36,
-                                            },
+                                          : JSON.stringify(last).includes(
+                                                "关闭经理确认",
+                                              )
+                                            ? { require_manager: false }
+                                            : JSON.stringify(last).includes(
+                                                  "修改能力说明",
+                                                )
+                                              ? {
+                                                  definitions:
+                                                    dictionaryDefinitions.map(
+                                                      (definition) => ({
+                                                        ...definition,
+                                                        description:
+                                                          "助手修改后的能力说明",
+                                                      }),
+                                                    ),
+                                                  expected_version: 1,
+                                                  redraft: false,
+                                                }
+                                              : {
+                                                  reminder_schedule: "yearly",
+                                                  stale_after_months: 36,
+                                                },
                                   },
                                 ],
                               }
@@ -223,6 +249,13 @@ export const test = base.extend<{ modelUrl: string }>({
                   ],
                 },
           ),
+        }
+      }
+      if (admin && !toolResult && JSON.stringify(last).includes("导入名单")) {
+        const tool = chunk.choices[0].delta.tool_calls?.[0]
+        if (tool) {
+          tool.function.name = "request_file"
+          tool.function.arguments = JSON.stringify({ kind: "roster" })
         }
       }
       res.write(`data: ${JSON.stringify(chunk)}\n\n`)

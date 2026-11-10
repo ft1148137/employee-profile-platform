@@ -4,9 +4,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, JsonValue, SecretStr
 
+from app.domains.admin_assistant.outputs import OneTimeOutput
 from app.domains.admin_assistant.registry import TableCard as TableCard
 from app.domains.bot.schemas import TextMessage
 from app.domains.change_request.schemas import ToolInput
+from app.domains.org.roster.schemas import RosterImportPreview
 
 AdminPage = Literal[
     "/admin",
@@ -62,6 +64,8 @@ class Impact(BaseModel):
 
 
 class ChangeItem(ChangeSpec):
+    title: str = ""
+    undoable: bool = True
     before: dict[str, JsonValue] | None
     after: dict[str, JsonValue]
     impact: Impact | None = None
@@ -76,6 +80,10 @@ class ChangeSetPublic(BaseModel):
     items: list[ChangeItem]
     undo_of_id: UUID | None
     confirmed_once_at: datetime | None = None
+
+
+class ChangeSetApplied(ChangeSetPublic):
+    one_time: list[OneTimeOutput] = Field(default_factory=list)
 
 
 class SecretInputCard(BaseModel):
@@ -94,6 +102,19 @@ class ChangeSetCard(BaseModel):
     change_set: ChangeSetPublic
 
 
+class RequestFile(ToolInput):
+    kind: Literal["roster"]
+
+
+class FileUploadCard(RequestFile):
+    type: Literal["file_upload"] = "file_upload"
+
+
+class FilePreviewCard(RequestFile):
+    type: Literal["file_preview"] = "file_preview"
+    preview: RosterImportPreview
+
+
 class ApplyChanges(ToolInput):
     revision: int = Field(ge=1, strict=True)
 
@@ -105,7 +126,13 @@ class TestConnection(ToolInput):
 class AdminTurnResponse(BaseModel):
     messages: list[
         Annotated[
-            TextMessage | LinkCard | TableCard | ChangeSetCard | SecretInputCard,
+            TextMessage
+            | LinkCard
+            | TableCard
+            | ChangeSetCard
+            | SecretInputCard
+            | FileUploadCard
+            | FilePreviewCard,
             Field(discriminator="type"),
         ]
     ]

@@ -6,6 +6,7 @@ import {
   AdminAssistantService,
   type AdminSessionMessage,
   type AdminTurnInput,
+  type AdminTurnResponse,
 } from "@/client"
 import {
   actorLabels,
@@ -14,6 +15,7 @@ import {
 } from "@/components/Admin/auditLabels"
 import { BotMessage } from "@/components/Bot/BotMessage"
 import { BotPanel } from "@/components/Bot/BotPanel"
+import { RosterPreview } from "@/components/Roster/RosterPreview"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import {
@@ -27,6 +29,7 @@ import {
 import useAuth from "@/hooks/useAuth"
 import { useOrg } from "@/hooks/useOrg"
 import { ChangeSetCard } from "./ChangeSetCard"
+import { FileUploadCard } from "./FileUploadCard"
 import { SecretInputCard } from "./SecretInputCard"
 
 const labels: Record<string, string> = {
@@ -195,6 +198,7 @@ export function AdminAssistantPanel({
   const client = useQueryClient()
   const [open, setOpen] = useState(false)
   const [sessionId, setSessionId] = useState("")
+  const [uploading, setUploading] = useState(false)
   const [messages, setMessages] = useState<
     Pick<AdminSessionMessage, "role" | "payload">[]
   >([])
@@ -253,7 +257,14 @@ export function AdminAssistantPanel({
       client.invalidateQueries()
     },
   })
-  const busy = initialize.isPending || send.isPending
+  const busy = initialize.isPending || send.isPending || uploading
+  const uploaded = (response: AdminTurnResponse) => {
+    setMessages((previous) => [
+      ...previous,
+      { role: "assistant", payload: response },
+    ])
+    client.invalidateQueries()
+  }
   useEffect(() => {
     if (
       fullScreen &&
@@ -305,6 +316,23 @@ export function AdminAssistantPanel({
                     >
                       {message.title}
                     </a>
+                  ) : message.type === "file_upload" ? (
+                    <FileUploadCard
+                      key={i}
+                      orgId={orgId}
+                      sessionId={sessionId}
+                      card={message}
+                      disabled={busy}
+                      onUploaded={uploaded}
+                      onUploading={setUploading}
+                    />
+                  ) : message.type === "file_preview" ? (
+                    <div
+                      key={i}
+                      className="rounded-xl border bg-background p-4"
+                    >
+                      <RosterPreview preview={message.preview} />
+                    </div>
                   ) : message.type === "admin_change_set" ? (
                     <ChangeSetCard
                       key={i}

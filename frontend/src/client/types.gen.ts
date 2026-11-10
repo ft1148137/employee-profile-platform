@@ -35,6 +35,28 @@ export type AccountPublic = {
 };
 
 /**
+ * AccountsOutput
+ */
+export type AccountsOutput = {
+    /**
+     * Type
+     */
+    type?: 'accounts_file';
+    /**
+     * Filename
+     */
+    filename: string;
+    /**
+     * Content Base64
+     */
+    content_base64: string;
+    /**
+     * Count
+     */
+    count: number;
+};
+
+/**
  * AccountsPublic
  */
 export type AccountsPublic = {
@@ -182,7 +204,11 @@ export type AdminTurnResponse = {
         type: 'admin_change_set';
     } & ChangeSetCard) | ({
         type: 'secret_input';
-    } & SecretInputCard)>;
+    } & SecretInputCard) | ({
+        type: 'file_upload';
+    } & FileUploadCard) | ({
+        type: 'file_preview';
+    } & FilePreviewCard)>;
 };
 
 /**
@@ -453,6 +479,20 @@ export type BindingPublic = {
      * Active
      */
     active: boolean;
+};
+
+/**
+ * Body_admin-assistant-upload_file
+ */
+export type Body_admin_assistant_upload_file = {
+    /**
+     * Kind
+     */
+    kind: 'roster';
+    /**
+     * File
+     */
+    file: Blob | File;
 };
 
 /**
@@ -791,6 +831,44 @@ export type ChangeRequestsPublic = {
      * Count
      */
     count: number;
+};
+
+/**
+ * ChangeSetApplied
+ */
+export type ChangeSetApplied = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Revision
+     */
+    revision: number;
+    /**
+     * Status
+     */
+    status: 'draft' | 'applied' | 'discarded' | 'stale' | 'undone';
+    /**
+     * Items
+     */
+    items: Array<app__domains__admin_assistant__schemas__ChangeItem>;
+    /**
+     * Undo Of Id
+     */
+    undo_of_id: string | null;
+    /**
+     * Confirmed Once At
+     */
+    confirmed_once_at?: string | null;
+    /**
+     * One Time
+     */
+    one_time?: Array<({
+        type: 'initial_password';
+    } & PasswordOutput) | ({
+        type: 'accounts_file';
+    } & AccountsOutput)>;
 };
 
 /**
@@ -1864,6 +1942,35 @@ export type FieldChange = {
 };
 
 /**
+ * FilePreviewCard
+ */
+export type FilePreviewCard = {
+    /**
+     * Kind
+     */
+    kind: 'roster';
+    /**
+     * Type
+     */
+    type?: 'file_preview';
+    preview: RosterImportPreview;
+};
+
+/**
+ * FileUploadCard
+ */
+export type FileUploadCard = {
+    /**
+     * Kind
+     */
+    kind: 'roster';
+    /**
+     * Type
+     */
+    type?: 'file_upload';
+};
+
+/**
  * FillStatus
  */
 export type FillStatus = 'not_started' | 'in_progress' | 'submitted';
@@ -2649,6 +2756,54 @@ export type ModelSettingUpdate = {
 };
 
 /**
+ * Offboard
+ */
+export type Offboard = {
+    /**
+     * Kind
+     */
+    kind?: 'offboard';
+    /**
+     * Employee Ids
+     */
+    employee_ids: Array<string>;
+};
+
+/**
+ * Onboard
+ */
+export type Onboard = {
+    /**
+     * Kind
+     */
+    kind?: 'onboard';
+    /**
+     * Employee Code
+     */
+    employee_code: string;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Department
+     */
+    department: string;
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Manager Id
+     */
+    manager_id?: string | null;
+};
+
+/**
  * OrganizationPublic
  */
 export type OrganizationPublic = {
@@ -2674,6 +2829,28 @@ export type OrganizationUpdate = {
      * Name
      */
     name: string;
+};
+
+/**
+ * PasswordOutput
+ */
+export type PasswordOutput = {
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Display Name
+     */
+    display_name: string | null;
+    /**
+     * Initial Password
+     */
+    initial_password: string;
+    /**
+     * Type
+     */
+    type?: 'initial_password';
 };
 
 /**
@@ -4047,6 +4224,32 @@ export type TokenPublic = {
 };
 
 /**
+ * Transfer
+ */
+export type Transfer = {
+    /**
+     * Kind
+     */
+    kind?: 'transfer';
+    /**
+     * Employee Id
+     */
+    employee_id: string;
+    /**
+     * Department
+     */
+    department?: string | null;
+    /**
+     * Title
+     */
+    title?: string | null;
+    /**
+     * Manager Id
+     */
+    manager_id?: string | null;
+};
+
+/**
  * TurnInput
  */
 export type TurnInput = {
@@ -4285,6 +4488,14 @@ export type app__domains__admin_assistant__schemas__ChangeItem = {
     args: {
         [key: string]: JsonValue;
     };
+    /**
+     * Title
+     */
+    title?: string;
+    /**
+     * Undoable
+     */
+    undoable?: boolean;
     /**
      * Before
      */
@@ -4665,6 +4876,41 @@ export type adminAssistantAvailabilityResponses = {
 };
 
 export type adminAssistantAvailabilityResponse = adminAssistantAvailabilityResponses[keyof adminAssistantAvailabilityResponses];
+
+export type adminAssistantUploadFileData = {
+    body: Body_admin_assistant_upload_file;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/admin-assistant/sessions/{session_id}/files';
+};
+
+export type adminAssistantUploadFileErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantUploadFileError = adminAssistantUploadFileErrors[keyof adminAssistantUploadFileErrors];
+
+export type adminAssistantUploadFileResponses = {
+    /**
+     * Successful Response
+     */
+    200: AdminTurnResponse;
+};
+
+export type adminAssistantUploadFileResponse = adminAssistantUploadFileResponses[keyof adminAssistantUploadFileResponses];
 
 export type adminGetOverviewData = {
     body?: never;
@@ -5885,7 +6131,7 @@ export type adminAssistantApplyChangeSetResponses = {
     /**
      * Successful Response
      */
-    200: ChangeSetPublic;
+    200: ChangeSetApplied;
 };
 
 export type adminAssistantApplyChangeSetResponse = adminAssistantApplyChangeSetResponses[keyof adminAssistantApplyChangeSetResponses];
@@ -8855,6 +9101,45 @@ export type rolesRevokeRoleResponses = {
 };
 
 export type rolesRevokeRoleResponse = rolesRevokeRoleResponses[keyof rolesRevokeRoleResponses];
+
+export type rosterPreviewSingleChangeData = {
+    /**
+     * Body
+     */
+    body: ({
+        kind: 'onboard';
+    } & Onboard) | ({
+        kind: 'transfer';
+    } & Transfer) | ({
+        kind: 'offboard';
+    } & Offboard);
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/roster/single-change';
+};
+
+export type rosterPreviewSingleChangeErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type rosterPreviewSingleChangeError = rosterPreviewSingleChangeErrors[keyof rosterPreviewSingleChangeErrors];
+
+export type rosterPreviewSingleChangeResponses = {
+    /**
+     * Successful Response
+     */
+    200: RosterImportPreview;
+};
+
+export type rosterPreviewSingleChangeResponse = rosterPreviewSingleChangeResponses[keyof rosterPreviewSingleChangeResponses];
 
 export type rosterDownloadTemplateData = {
     body?: never;

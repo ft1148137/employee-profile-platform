@@ -1,13 +1,13 @@
 import asyncio
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Form, Response, UploadFile
 
 from app.api.deps import SessionDep
 from app.api.secret_safe import SecretSafeRoute
 from app.authz.deps import OrgAdminDep, OrgPrincipalDep
-from app.domains.admin_assistant import change_set, core, store
+from app.domains.admin_assistant import change_set, core, files, store
 from app.domains.admin_assistant.registry import ConnectionTestResult
 from app.domains.admin_assistant.schemas import (
     AdminSessionMessage,
@@ -15,6 +15,7 @@ from app.domains.admin_assistant.schemas import (
     AdminTurnResponse,
     ApplyChanges,
     Availability,
+    ChangeSetApplied,
     ChangeSetPublic,
     SecretInput,
     TestConnection,
@@ -66,6 +67,17 @@ def availability(principal: OrgAdminDep, session: SessionDep) -> Availability:
     return core.availability(session, principal)
 
 
+@router.post("/sessions/{session_id}/files")
+def upload_file(
+    principal: OrgAdminDep,
+    session: SessionDep,
+    session_id: UUID,
+    kind: Annotated[Literal["roster"], Form()],
+    file: UploadFile,
+) -> AdminTurnResponse:
+    return files.upload(session, principal, session_id, kind, file)
+
+
 change_router = APIRouter(
     route_class=SecretSafeRoute,
     prefix="/orgs/{org_id}/admin-assistant/change-sets",
@@ -101,8 +113,13 @@ def get_change_set(
 
 @change_router.post("/{id}/apply")
 def apply_change_set(
-    principal: OrgAdminDep, session: SessionDep, id: UUID, body: ApplyChanges
-) -> ChangeSetPublic:
+    principal: OrgAdminDep,
+    session: SessionDep,
+    id: UUID,
+    body: ApplyChanges,
+    response: Response,
+) -> ChangeSetApplied:
+    response.headers["Cache-Control"] = "no-store"
     return change_set.apply(session, principal, id, body.revision)
 
 
