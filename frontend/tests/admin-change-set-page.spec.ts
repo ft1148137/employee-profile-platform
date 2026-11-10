@@ -366,7 +366,7 @@ test("model draft highlights fields and applies only after two confirmations", a
   })
   expect(await read()).toBe("synthetic")
   await card.getByRole("button", { name: "确认应用", exact: true }).click()
-  await expect(card.getByRole("status")).toHaveText("请再次确认")
+  await expect(card.getByText("请再次确认", { exact: true })).toBeVisible()
   expect(await read()).toBe("synthetic")
   await card.getByRole("button", { name: "再次确认", exact: true }).click()
   await expect(card).toHaveCount(0)
