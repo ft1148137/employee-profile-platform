@@ -153,11 +153,18 @@ class AdminFunction:
     snapshot: Snapshot | None = None
     impact: Snapshot | None = None
     secret_fields: tuple[str, ...] = ()
+    file_field: str | None = None
     reverse: Reverse | None = None
     undoable: bool = True
     preview_risk: Callable[[Session, Principal, Any], Risk] | None = None
     test: ConnectionTest | None = None
     rebinds: Rebinds | None = None
+
+    @property
+    def private_fields(self) -> set[str]:
+        return set(self.secret_fields) | (
+            {self.file_field} if self.file_field else set()
+        )
 
 
 def _profile(db: Session, principal: Principal, args: EmployeeArgs) -> BaseModel:
@@ -655,9 +662,6 @@ for name, title, input_type in (
     )
 
 PENDING = {
-    ("POST", "/capabilities/preview"): "S8b",
     ("PUT", "/im-settings/{platform}"): "S6",
     ("PUT", "/mcp-setting"): "S6",
-    ("POST", "/sources/csv/imports"): "S8b",
-    ("POST", "/profile-imports"): "S8b",
 }

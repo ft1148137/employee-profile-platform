@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, JsonValue, SecretStr
 
+from app.domains.admin_assistant.files import FileKind, FileSummary
 from app.domains.admin_assistant.outputs import OneTimeOutput
 from app.domains.admin_assistant.registry import TableCard as TableCard
 from app.domains.bot.schemas import TextMessage
@@ -103,7 +104,7 @@ class ChangeSetCard(BaseModel):
 
 
 class RequestFile(ToolInput):
-    kind: Literal["roster"]
+    kind: FileKind
 
 
 class FileUploadCard(RequestFile):
@@ -112,7 +113,7 @@ class FileUploadCard(RequestFile):
 
 class FilePreviewCard(RequestFile):
     type: Literal["file_preview"] = "file_preview"
-    preview: RosterImportPreview
+    preview: RosterImportPreview | FileSummary
 
 
 class ApplyChanges(ToolInput):

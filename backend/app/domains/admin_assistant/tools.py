@@ -38,7 +38,7 @@ def definitions() -> list[ToolDefinition]:
     return [
         ToolDefinition(
             name="request_file",
-            description="显示名单上传框；只接收文件种类，文件内容由管理员直接上传",
+            description="显示文件上传框；只接收文件种类，文件内容由管理员直接上传",
             parameters=RequestFile.model_json_schema(),
         ),
         ToolDefinition(
@@ -86,7 +86,7 @@ def call(
             cards.append(
                 FileUploadCard(**RequestFile.model_validate(args).model_dump())
             )
-            return {"data": {"message": "请在上传框选择名单，预览后点击确认才会导入"}}
+            return {"data": {"message": "请在上传框选择文件，预览后点击确认才会导入"}}
         if name == "request_secret_input" and session_id:
             body_secret = RequestSecretInput.model_validate(args)
             cards.append(
