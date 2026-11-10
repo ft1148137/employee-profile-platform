@@ -30,19 +30,25 @@ def save_settings(
         .where(Organization.id == principal.org_id)
         .with_for_update()
     ).one()
+    before = read_settings(db, principal.org_id)
     row = db.get(BotSetting, principal.org_id) or BotSetting(org_id=principal.org_id)
     row.sqlmodel_update(body.model_dump())
     db.add(row)
-    record_audit(
-        db,
-        org_id=principal.org_id,
-        actor_type=principal.actor_type,
-        actor_id=str(principal.user_id),
-        action="bot_settings.updated",
-        target_type="bot_setting",
-        target_id=str(principal.org_id),
-        details={"retention_days": body.retention_days},
-    )
+    if body != before:
+        record_audit(
+            db,
+            org_id=principal.org_id,
+            actor_type=principal.actor_type,
+            actor_id=str(principal.user_id),
+            action="bot_settings.updated",
+            target_type="bot_setting",
+            target_id=str(principal.org_id),
+            details={
+                "retention_days": body.retention_days,
+                "before": before.model_dump(mode="json"),
+                "after": body.model_dump(mode="json"),
+            },
+        )
     if commit:
         db.commit()
     else:
