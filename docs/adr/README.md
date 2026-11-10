@@ -32,4 +32,4 @@
 - [ADR-0028：管理助手只读功能登记表](0028-admin-function-registry.md)
 - [ADR-0029：管理助手会话与共享对话准入](0029-admin-assistant-conversations.md)
 - [ADR-0030：管理助手的普通变更集](0030-admin-change-sets.md)
-- [ADR-0032：管理助手的文件预览与模型摘要](0032-admin-assistant-file-previews.md)
+- [ADR-0033：管理助手的文件预览与模型摘要](0033-admin-assistant-file-previews.md)

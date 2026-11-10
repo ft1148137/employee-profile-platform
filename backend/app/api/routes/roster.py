@@ -13,9 +13,17 @@ from app.domains.org.roster.schemas import (
     RosterImportResult,
     RosterImportsPublic,
 )
+from app.domains.org.roster.single import SingleChange, preview
 from app.domains.org.roster.template import build_template_csv, build_template_xlsx
 
 router = APIRouter(prefix="/orgs/{org_id}/roster", tags=["roster"])
+
+
+@router.post("/single-change")
+def preview_single_change(
+    body: SingleChange, session: SessionDep, principal: OrgAdminDep
+) -> RosterImportPreview:
+    return preview(session, principal, body)
 
 
 @router.get("/template", response_class=Response)

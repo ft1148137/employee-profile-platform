@@ -98,12 +98,6 @@ def apply(
     )
 
 
-def cannot_undo(
-    _db: Session, _p: Principal, _before: dict[str, JsonValue]
-) -> tuple[str, BaseModel]:
-    raise roster.RosterError(409, "名单导入不能撤销，请重新上传完整名单")
-
-
 def register_files(functions: dict[str, AdminFunction]) -> None:
     from app.domains.admin_assistant.registry import AdminFunction
 
@@ -111,7 +105,7 @@ def register_files(functions: dict[str, AdminFunction]) -> None:
         "apply_roster_import",
         "people",
         "change",
-        risk,
+        "normal",
         "确认导入已上传的名单，不能撤销；离职两人及以上需要再次确认",
         RosterArgs,
         apply,
@@ -119,7 +113,8 @@ def register_files(functions: dict[str, AdminFunction]) -> None:
         (("POST", "/roster/imports"), ("POST", "/roster/imports/{id}/apply")),
         snapshot=snapshot,
         impact=impact,
-        reverse=cannot_undo,
+        undoable=False,
+        preview_risk=risk,
     )
 
 

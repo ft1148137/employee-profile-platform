@@ -30,12 +30,54 @@ from app.domains.org.models import (
 from app.domains.org.roster import service as roster
 from app.domains.org.roster.schemas import ApplyImport
 from app.models import User
+from tests.api.routes.test_roster import link
 from tests.api.routes.test_setup_steps import SetupTenant
 from tests.api.routes.test_setup_steps import tenant as file_tenant
 from tests.domains.roster.test_parser import xlsx_bytes
 
 tenant = file_tenant
 SAMPLE = Path(__file__).resolve().parents[3] / "examples/roster/sample-30.csv"
+
+
+@pytest.mark.parametrize("protected", ["shared", "superuser"])
+@pytest.mark.parametrize("when", ["before_upload", "after_upload"])
+def test_protected_accounts_cannot_be_offboarded(
+    db: Session, client: TestClient, tenant: SetupTenant, protected: str, when: str
+) -> None:
+    p, sid = context(db, tenant)
+    initial = roster.create_import(db, p, SAMPLE.read_bytes(), "名单.csv")
+    roster.apply_import(
+        db, p, initial.id, ApplyImport(base_revision=initial.base_revision)
+    )
+    employee = db.exec(
+        select(Employee).where(
+            Employee.org_id == p.org_id, Employee.employee_code == "XY030"
+        )
+    ).one()
+    account = link(db, tenant, employee)
+    content = b"\n".join(SAMPLE.read_bytes().splitlines()[:-1])
+    if when == "after_upload":
+        proposed = upload(client, tenant, sid, content).json()["messages"][1][
+            "change_set"
+        ]
+    if protected == "shared":
+        db.add(OrgMembership(org_id=tenant.foreign_org_id, user_id=account.id))
+    else:
+        account.is_superuser = True
+        db.add(account)
+    db.commit()
+    if when == "before_upload":
+        response = upload(client, tenant, sid, content)
+        assert response.status_code == 200
+        cards = response.json()["messages"]
+        assert len(cards) == 1 and not cards[0]["preview"]["can_apply"]
+        assert "只能由部署人员处理离职" in response.text
+    else:
+        with pytest.raises(change_set.ChangeSetError, match="均已回滚"):
+            change_set.apply(db, p, UUID(proposed["id"]), proposed["revision"])
+    db.refresh(account)
+    assert account.is_active
+    assert employees(db, tenant)["XY030"][1] == EmploymentStatus.ACTIVE
 
 
 def context(db: Session, tenant: SetupTenant) -> tuple[Principal, UUID]:

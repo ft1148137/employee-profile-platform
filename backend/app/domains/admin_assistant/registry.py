@@ -37,6 +37,7 @@ from app.domains.im.schemas import Platform
 from app.domains.model import service as model
 from app.domains.org.models import EmploymentStatus
 from app.domains.org.roster import service as roster
+from app.domains.org.roster import single
 from app.domains.org.service import visible_employee
 from app.domains.profile.service import read_profile
 from app.domains.review import appeal
@@ -129,7 +130,7 @@ class AdminFunction:
     name: str
     area: Area
     kind: Literal["read", "change"]
-    risk: Risk | Callable[[Session, Principal, Any], Risk]
+    risk: Risk | Callable[[Any], Risk]
     description: str
     input_model: type[BaseModel]
     handler: Handler
@@ -139,6 +140,8 @@ class AdminFunction:
     impact: Snapshot | None = None
     secret_fields: tuple[str, ...] = ()
     reverse: Reverse | None = None
+    undoable: bool = True
+    preview_risk: Callable[[Session, Principal, Any], Risk] | None = None
 
 
 def _profile(db: Session, principal: Principal, args: EmployeeArgs) -> BaseModel:
@@ -434,7 +437,7 @@ FUNCTIONS["update_approval_policy"] = AdminFunction(
     name="update_approval_policy",
     area="rules",
     kind="change",
-    risk=lambda d, p, a: (
+    risk=lambda a: (
         "high"
         if not a.require_manager or False in a.category_overrides.values()
         else "normal"
@@ -463,7 +466,9 @@ def list_admin_functions(area: Area) -> dict[str, Any]:
                 "name": f.name,
                 "description": f.description,
                 "kind": f.kind,
-                "risk": "按改动内容判断" if callable(f.risk) else f.risk,
+                "risk": "按改动内容判断"
+                if callable(f.risk) or f.preview_risk
+                else f.risk,
                 "input_model": f.input_model.model_json_schema(),
                 "secret_fields": list(f.secret_fields),
             }
@@ -566,6 +571,33 @@ NOT_FOR_ASSISTANT = {
 
 register_rules(FUNCTIONS)
 register_files(FUNCTIONS)
+
+for name, title, input_type in (
+    ("onboard_employee", "新增员工", single.Onboard),
+    ("transfer_employee", "员工调岗", single.Transfer),
+    ("offboard_employees", "办理离职", single.Offboard),
+):
+    FUNCTIONS[name] = AdminFunction(
+        name=name,
+        area="people",
+        kind="change",
+        risk=lambda a: (
+            "high"
+            if isinstance(a, single.Offboard) and len(set(a.employee_ids)) >= 2
+            else "normal"
+        ),
+        description=title,
+        input_model=input_type,
+        handler=single.apply,
+        page="/admin/people",
+        # All three operations share a discriminated route, classified once.
+        endpoints=(("POST", "/roster/single-change"),)
+        if name == "onboard_employee"
+        else (),
+        snapshot=single.snapshot,
+        impact=single.impact,
+        undoable=False,
+    )
 
 PENDING = {
     ("POST", "/capabilities/preview"): "S8b",
