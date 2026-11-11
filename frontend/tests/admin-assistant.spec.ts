@@ -1,6 +1,10 @@
-import { expect, type Page, test } from "@playwright/test"
+import { expect, test } from "@playwright/test"
 import type { MembershipPublic } from "../src/client"
-import { openAdminAssistant, returnToManualPage } from "./utils/adminAssistant"
+import {
+  mockAdminMessages,
+  openAdminAssistant,
+  returnToManualPage,
+} from "./utils/adminAssistant"
 import { expectChineseCopy } from "./utils/copy"
 import { logInUser } from "./utils/user"
 
@@ -21,7 +25,7 @@ for (const width of [1440, 390]) {
       route.fulfill({ json: { available: true, reason: "" } }),
     )
     const sent: string[] = []
-    const saveReply = await mockMessages(page)
+    const saveReply = await mockAdminMessages(page)
     await page.route("**/admin-assistant/sessions/*/turns?*", async (route) => {
       sent.push(route.request().postDataJSON().page)
       const reply = {
@@ -133,7 +137,7 @@ for (const available of [true, false]) {
       ).toBeVisible()
     }
     let sends = 0
-    const saveReply = await mockMessages(page)
+    const saveReply = await mockAdminMessages(page)
     await page.route("**/admin-assistant/sessions/*/turns?*", (route) => {
       sends++
       const reply = {
@@ -216,25 +220,3 @@ test("manager keeps employee landing page", async ({ page }) => {
   )
   await expect(page).toHaveURL("/employees")
 })
-
-async function mockMessages(page: Page) {
-  const replies = new Map<string, unknown>()
-  await page.route("**/admin-assistant/sessions/*/messages?*", (route) => {
-    const id = new URL(route.request().url()).pathname.split("/")[5]
-    const reply = replies.get(id)
-    return route.fulfill({
-      json: reply
-        ? [
-            {
-              id: crypto.randomUUID(),
-              role: "assistant",
-              payload: reply,
-              created_at: new Date().toISOString(),
-            },
-          ]
-        : [],
-    })
-  })
-  return (url: string, reply: unknown) =>
-    replies.set(new URL(url).pathname.split("/")[5], reply)
-}

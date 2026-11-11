@@ -1,5 +1,9 @@
 import type { APIRequestContext } from "@playwright/test"
-import { openAdminAssistant, returnToManualPage } from "./utils/adminAssistant"
+import {
+  mockAdminMessages,
+  openAdminAssistant,
+  returnToManualPage,
+} from "./utils/adminAssistant"
 import { expectChineseCopy } from "./utils/copy"
 import { expect, jiraTestUrl, test } from "./utils/model"
 import { logInUser } from "./utils/user"
@@ -439,21 +443,22 @@ test("saving credentials and retesting clear the previous apply error", async ({
       },
     ],
   }
-  await page.route("**/admin-assistant/sessions/*/turns?*", (route) =>
-    route.fulfill({
-      json: {
-        messages: [
-          { type: "admin_change_set", change_set: draft },
-          {
-            type: "secret_input",
-            change_set_id: id,
-            field: "app_secret",
-            title: "安全填写密钥",
-          },
-        ],
-      },
-    }),
-  )
+  const saveReply = await mockAdminMessages(page)
+  await page.route("**/admin-assistant/sessions/*/turns?*", (route) => {
+    const reply = {
+      messages: [
+        { type: "admin_change_set", change_set: draft },
+        {
+          type: "secret_input",
+          change_set_id: id,
+          field: "app_secret",
+          title: "安全填写密钥",
+        },
+      ],
+    }
+    saveReply(route.request().url(), reply)
+    return route.fulfill({ json: reply })
+  })
   await page.route(`**/change-sets/${id}`, (route) =>
     route.fulfill({ json: draft }),
   )

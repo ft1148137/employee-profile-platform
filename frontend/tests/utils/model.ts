@@ -273,11 +273,21 @@ export const test = base.extend<{ modelUrl: string }>({
           ),
         }
       }
-      if (admin && !toolResult && JSON.stringify(last).includes("导入名单")) {
+      if (
+        admin &&
+        !toolResult &&
+        ["导入名单", "导入工作记录"].some((text) =>
+          JSON.stringify(last).includes(text),
+        )
+      ) {
         const tool = chunk.choices[0].delta.tool_calls?.[0]
         if (tool) {
           tool.function.name = "request_file"
-          tool.function.arguments = JSON.stringify({ kind: "roster" })
+          tool.function.arguments = JSON.stringify({
+            kind: JSON.stringify(last).includes("导入工作记录")
+              ? "work_csv"
+              : "roster",
+          })
         }
       }
       const feishuRequest =

@@ -40,3 +40,25 @@ export async function returnToManualPage(page: Page) {
   if (await matching.count()) await matching.click()
   else await page.goto(target)
 }
+
+export async function mockAdminMessages(page: Page) {
+  const replies = new Map<string, unknown>()
+  await page.route("**/admin-assistant/sessions/*/messages?*", (route) => {
+    const id = new URL(route.request().url()).pathname.split("/")[5]
+    const reply = replies.get(id)
+    return route.fulfill({
+      json: reply
+        ? [
+            {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              payload: reply,
+              created_at: new Date().toISOString(),
+            },
+          ]
+        : [],
+    })
+  })
+  return (url: string, reply: unknown) =>
+    replies.set(new URL(url).pathname.split("/")[5], reply)
+}
