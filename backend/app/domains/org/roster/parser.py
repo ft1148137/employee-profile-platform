@@ -1,7 +1,8 @@
 import csv
 import re
 import unicodedata
-from collections.abc import Generator, Iterator
+from collections.abc import Collection, Generator, Iterator
+from datetime import date, datetime
 from io import BytesIO, StringIO
 from pathlib import Path
 from typing import Literal
@@ -12,6 +13,7 @@ from email_validator import EmailNotValidError, validate_email
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 
+from app.domains.org.employee_fields import FIELD_LABELS
 from app.domains.org.roster.schemas import (
     HEADERS,
     ParsedRoster,
@@ -27,6 +29,7 @@ ALIASES = {
     "上级工号": ("直属上级工号", "汇报对象工号", "上级"),
     "邮箱": ("工作邮箱", "电子邮箱", "邮件"),
 }
+ALIASES.update({label: (f"{label}（可选）",) for label in FIELD_LABELS.values()})
 STANDARD_COLUMNS = {
     alias: name for name, aliases in ALIASES.items() for alias in (name, *aliases)
 }
@@ -106,11 +109,26 @@ def read_xlsx_rows(content: bytes) -> Generator[FileRow]:
         workbook.close()
 
 
-def _headers(result: ParsedRoster, values: list[str], number: int) -> dict[str, int]:
+def _headers(
+    result: ParsedRoster,
+    values: list[str],
+    number: int,
+    enabled_fields: Collection[str],
+) -> dict[str, int]:
     columns: dict[str, int] = {}
     ignored = []
     for index, header in enumerate(values):
         standard = STANDARD_COLUMNS.get(header)
+        if standard in FIELD_LABELS.values() and standard not in {
+            FIELD_LABELS[f] for f in FIELD_LABELS if f in enabled_fields
+        }:
+            _issue(
+                result,
+                f"「{standard}」未开启，这一列已忽略",
+                number,
+                severity="warning",
+            )
+            continue
         if standard:
             result.column_mapping[header] = standard
             if standard in columns:
@@ -131,13 +149,17 @@ def _headers(result: ParsedRoster, values: list[str], number: int) -> dict[str, 
     return columns
 
 
-def _parse_rows(result: ParsedRoster, file_rows: Iterator[FileRow]) -> None:
+def _parse_rows(
+    result: ParsedRoster, file_rows: Iterator[FileRow], enabled_fields: Collection[str]
+) -> None:
     columns: dict[str, int] | None = None
     for number, raw, missing_formulas in file_rows:
         values = [_clean(value) for value in raw]
         if not any(values) and not missing_formulas:
             continue
         for index in sorted(missing_formulas):
+            if columns is not None and index not in columns.values():
+                continue
             column = next(
                 (
                     name
@@ -153,7 +175,7 @@ def _parse_rows(result: ParsedRoster, file_rows: Iterator[FileRow]) -> None:
                 column,
             )
         if columns is None:
-            columns = _headers(result, values, number)
+            columns = _headers(result, values, number, enabled_fields)
             if result.has_errors:
                 return
             continue
@@ -186,8 +208,34 @@ def _parse_rows(result: ParsedRoster, file_rows: Iterator[FileRow]) -> None:
                     name,
                     "warning",
                 )
+        hire_date = None
+        if "入职日期" in fields and fields["入职日期"]:
+            value = raw[columns["入职日期"]]
+            try:
+                if isinstance(value, datetime):
+                    hire_date = value.date()
+                elif isinstance(value, date):
+                    hire_date = value
+                elif re.fullmatch(r"\d{4}-\d{2}-\d{2}", fields["入职日期"]):
+                    hire_date = date.fromisoformat(fields["入职日期"])
+                else:
+                    raise ValueError("invalid date")
+            except ValueError:
+                _issue(
+                    result,
+                    "请填写 YYYY-MM-DD 日期或 Excel 日期单元格",
+                    number,
+                    "入职日期",
+                )
+        for label in ("岗位序列", "工作地点"):
+            if len(fields.get(label, "")) > 50:
+                _issue(result, "不能超过 50 字", number, label)
+                fields[label] = ""
         result.rows.append(
             RosterRow(
+                job_family=fields.get("岗位序列") or None,
+                work_location=fields.get("工作地点") or None,
+                hire_date=hire_date,
                 row_number=number,
                 employee_code=fields["工号"],
                 display_name=fields["姓名"],
@@ -273,7 +321,9 @@ def validate_roster(result: ParsedRoster) -> None:
         visited.update(path)
 
 
-def parse_roster(content: bytes, filename: str) -> ParsedRoster:
+def parse_roster(
+    content: bytes, filename: str, enabled_fields: Collection[str] = ()
+) -> ParsedRoster:
     result = ParsedRoster()
     extension = Path(filename).suffix.lower()
     if extension not in (".csv", ".xlsx"):
@@ -283,7 +333,7 @@ def parse_roster(content: bytes, filename: str) -> ParsedRoster:
         read_csv_rows(content) if extension == ".csv" else read_xlsx_rows(content)
     )
     try:
-        _parse_rows(result, file_rows)
+        _parse_rows(result, file_rows, enabled_fields)
     except (
         UnicodeError,
         csv.Error,

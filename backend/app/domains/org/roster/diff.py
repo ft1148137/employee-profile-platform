@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy import func, or_
 from sqlmodel import Session, col, select
 
+from app.domains.org.employee_fields import FIELD_LABELS
 from app.domains.org.models import (
     Department,
     Employee,
@@ -201,6 +202,16 @@ def compute_roster_diff(
             fields.append(
                 FieldChange(field="email", before=matched.work_email, after=row.email)
             )
+        for field, label in FIELD_LABELS.items():
+            before, after = getattr(matched, field), getattr(row, field)
+            if label in columns and before != after:
+                fields.append(
+                    FieldChange(
+                        field=field,
+                        before=str(before) if before is not None else None,
+                        after=str(after) if after is not None else None,
+                    )
+                )
         if fields:
             changes.append(
                 base.model_copy(update={"kind": "updated", "fields": fields})

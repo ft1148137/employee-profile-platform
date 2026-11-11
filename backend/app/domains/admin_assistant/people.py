@@ -13,6 +13,7 @@ from app.domains.account import service as accounts
 from app.domains.account.export import export_accounts
 from app.domains.account.schemas import GrantRole, IssueAccounts, RolePublic
 from app.domains.admin_assistant.outputs import AccountsOutput, PasswordOutput
+from app.domains.org.employee_fields import FIELD_LABELS
 from app.domains.org.models import Employee, EmploymentStatus, OrgMembership, Role
 from app.domains.review import appeal
 from app.domains.review.appeal_schemas import ResolveAppealInput
@@ -85,7 +86,11 @@ def _accounts(db: Session, p: Principal, ids: set[UUID]) -> BaseModel:
                             "password_changed_at",
                         },
                     ),
-                    "employee": e.model_dump(mode="json") if e else None,
+                    "employee": e.model_dump(
+                        mode="json", exclude={str(field) for field in FIELD_LABELS}
+                    )
+                    if e
+                    else None,
                     "roles": [
                         r.model_dump(mode="json") for r in roles if r.user_id == u.id
                     ],

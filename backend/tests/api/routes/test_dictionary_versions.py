@@ -18,7 +18,7 @@ from app.domains.evidence.models import Evidence
 from app.domains.model.models import ModelSetting
 from app.domains.org.models import OrgMembership
 from app.domains.profile.models import ProfileClaim, ProfileVersion
-from tests.utils.migrations import migrate
+from tests.utils.migrations import insert_historical_rows, migrate
 from tests.utils.pi import PiHarness
 
 
@@ -401,11 +401,9 @@ def test_dictionary_notification_migration(migration_engine: Engine) -> None:
         org = Organization(
             slug="notification-migration", name="Synthetic migration tenant"
         )
-        session.add(org)
-        session.flush()
+        insert_historical_rows(session, org)
         employee = Employee(org_id=org.id, display_name="Synthetic employee")
-        session.add(employee)
-        session.flush()
+        insert_historical_rows(session, employee)
         for kind in (InboxKind.DICTIONARY_CHANGED, InboxKind.SUBMITTED):
             session.execute(
                 text(

@@ -40,7 +40,8 @@ from app.domains.drafting.service import DraftProgress, active_employees, read_p
 from app.domains.im import settings as im
 from app.domains.im.schemas import Platform
 from app.domains.model import service as model
-from app.domains.org.models import EmploymentStatus
+from app.domains.org.employee_fields import EmployeeFields, save_employee_fields
+from app.domains.org.models import EmploymentStatus, Organization
 from app.domains.org.roster import service as roster
 from app.domains.org.roster import single
 from app.domains.org.service import visible_employee
@@ -436,6 +437,27 @@ FUNCTIONS = {
     ]
 }
 
+FUNCTIONS["update_employee_fields"] = AdminFunction(
+    name="update_employee_fields",
+    area="people",
+    kind="change",
+    risk="normal",
+    description="开启或关闭员工档案固定字段，不进入画像或 AI；关闭保留已有值",
+    input_model=EmployeeFields,
+    handler=save_employee_fields,
+    page="/admin/people?tab=roster",
+    endpoints=(("PUT", "/employee-fields"),),
+    snapshot=lambda d, p, a: EmployeeFields(
+        fields=d.get_one(Organization, p.org_id).employee_fields
+    ),
+    impact=lambda d, p, a: RootModel(
+        {
+            "count": len(active_employees(d, p.org_id)),
+            "text": "变更员工档案字段的显示及名单导入；已有预览失效",
+        }
+    ),
+)
+
 FUNCTIONS["update_update_settings"] = AdminFunction(
     name="update_update_settings",
     area="rules",
@@ -593,7 +615,13 @@ async def admin_read(
         result = entry.handler(db, principal, validated)
         if isawaitable(result):
             result = await result
-        data = result.model_dump(mode="json", exclude_unset=function == "get_sources")
+        data = result.model_dump(
+            mode="json",
+            exclude_unset=function == "get_sources",
+            exclude={"data": {"__all__": {"job_family", "work_location", "hire_date"}}}
+            if function == "list_accounts"
+            else None,
+        )
         card = _table(entry, data)
         return {"data": data, "cards": [card.model_dump(mode="json")] if card else []}
     except ValidationError:

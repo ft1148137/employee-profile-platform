@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -9,6 +9,9 @@ HEADERS = ("工号", "姓名", "部门", "职位", "上级工号", "邮箱")
 
 class RosterRow(BaseModel):
     # Internal reconstruction preserves departures; uploaded files cannot set this.
+    job_family: str | None = Field(default=None, max_length=50)
+    work_location: str | None = Field(default=None, max_length=50)
+    hire_date: date | None = None
     inactive: bool = False
     row_number: int
     employee_code: str
@@ -56,7 +59,16 @@ CHANGE_KINDS: tuple[ChangeKind, ...] = (
 
 
 class FieldChange(BaseModel):
-    field: Literal["display_name", "title", "email", "department", "manager"]
+    field: Literal[
+        "display_name",
+        "title",
+        "email",
+        "department",
+        "manager",
+        "job_family",
+        "work_location",
+        "hire_date",
+    ]
     before: str | None
     after: str | None
 
