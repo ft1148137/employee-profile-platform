@@ -453,7 +453,10 @@ test("saving credentials and retesting clear the previous apply error", async ({
       ],
     }
     saveReply(route.request().url(), reply)
-    return route.fulfill({ json: reply })
+    return route.fulfill({
+      contentType: "application/x-ndjson",
+      body: `${JSON.stringify({ type: "final", response: reply })}\n`,
+    })
   })
   await page.route(`**/change-sets/${id}`, (route) =>
     route.fulfill({ json: draft }),

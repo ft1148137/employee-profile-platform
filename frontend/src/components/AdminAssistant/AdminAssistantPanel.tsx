@@ -15,6 +15,12 @@ import {
 } from "@/components/Admin/auditLabels"
 import { TodayPanel } from "@/components/Admin/TodayPanel"
 import { BotMessage } from "@/components/Bot/BotMessage"
+import { ChatComposer } from "@/components/Chat/ChatComposer"
+import { ChatMessages } from "@/components/Chat/ChatMessages"
+import {
+  type ToolProgress,
+  useStreamingTurn,
+} from "@/components/Chat/useStreamingTurn"
 import { RosterPreview } from "@/components/Roster/RosterPreview"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
@@ -121,6 +127,14 @@ function cellText(value: unknown, field = ""): string {
     : String(value)
 }
 
+function displayInput(body: AdminTurnInput): AdminTurnInput {
+  return /(?<![A-Za-z0-9])sk-\S+|(?<![A-Za-z0-9])[A-Za-z0-9]{32,}(?![A-Za-z0-9])/.test(
+    body.text,
+  )
+    ? { ...body, text: "已隐藏可能的密钥，请用安全输入框填写" }
+    : body
+}
+
 export function AdminAssistantPanel({
   orgId,
   storageKey,
@@ -139,6 +153,10 @@ export function AdminAssistantPanel({
   const availability = useAdminAvailability()
   const available = availability.data?.available === true
   const [uploading, setUploading] = useState(false)
+  const [pendingMessage, setPendingMessage] = useState<AdminTurnInput | null>(
+    null,
+  )
+  const turnSession = useRef(sessionId)
   const [text, setText] = useState(prefill?.text ?? "")
   const bottom = useRef<HTMLDivElement>(null)
   const preserveText = useRef(false)
@@ -196,50 +214,54 @@ export function AdminAssistantPanel({
       })
     }
   }, [history.error, storageKey, orgId, client])
-  const send = useMutation({
-    mutationFn: async (body: AdminTurnInput) => {
+  const stream = useStreamingTurn<AdminTurnInput, AdminTurnResponse>(
+    `/api/v1/admin-assistant/sessions/${sessionId ?? ""}/turns?org_id=${orgId}`,
+    async (signal) => {
       const id =
         (!expired ? sessionId : undefined) ??
-        (await AdminAssistantService.assistantCreateSession({ query })).data
-          .session_id
-      const response = await AdminAssistantService.assistantTurn({
-        query,
-        path: { session_id: id },
-        body,
-        timeout: 75000,
-      })
-      return { id, data: response.data, navigationKey }
+        (await AdminAssistantService.assistantCreateSession({ query, signal }))
+          .data.session_id
+      if (!signal.aborted) turnSession.current = id
+      return `/api/v1/admin-assistant/sessions/${id}/turns?org_id=${orgId}`
     },
-    onSuccess: ({ id, data, navigationKey: startedAt }, body) => {
-      client.setQueryData<Pick<AdminSessionMessage, "role" | "payload">[]>(
-        ["admin-assistant-messages", orgId, id],
-        (previous = []) => [
-          ...previous,
-          ...(data.messages.some(
-            (message) =>
-              message.type === "text" && message.text === "请用安全输入框填写",
-          )
-            ? []
-            : [{ role: "user" as const, payload: body }]),
-          { role: "assistant", payload: data },
-        ],
-      )
-      if (!mounted.current || selection.current !== startedAt) {
-        client.invalidateQueries({
-          predicate: (query) =>
-            query.queryKey[0] !== "admin-assistant-messages",
+  )
+  const send = useMutation({
+    onMutate: () => navigationKey,
+    mutationFn: async (body: AdminTurnInput) => {
+      const result = await stream.mutateAsync(body)
+      return { id: turnSession.current!, result, navigationKey }
+    },
+    onSuccess: ({ id, result, navigationKey: startedAt }, body) => {
+      if (!result) return
+      const { response: data, tools } = result
+      client.setQueryData<
+        (Pick<AdminSessionMessage, "role" | "payload"> & {
+          tools?: ToolProgress[]
+        })[]
+      >(["admin-assistant-messages", orgId, id], (previous = []) => [
+        ...previous,
+        ...(data.messages.some(
+          (message) =>
+            message.type === "text" && message.text === "请用安全输入框填写",
+        )
+          ? []
+          : [{ role: "user" as const, payload: displayInput(body) }]),
+        { role: "assistant", payload: data, tools },
+      ])
+      if (mounted.current && selection.current === startedAt) {
+        rememberConversation(storageKey, id)
+        navigate({
+          to: "/admin/assistant",
+          search: { session: id },
+          replace: true,
         })
-        return
       }
-      rememberConversation(storageKey, id)
-      navigate({
-        to: "/admin/assistant",
-        search: { session: id },
-        replace: true,
-      })
       client.invalidateQueries({
         predicate: (query) => query.queryKey[0] !== "admin-assistant-messages",
       })
+    },
+    onSettled: (_data, _error, _body, startedAt) => {
+      if (selection.current === startedAt) setPendingMessage(null)
     },
   })
   const busy =
@@ -260,11 +282,15 @@ export function AdminAssistantPanel({
     if (!preserveText.current) setText(prefill?.text ?? "")
     preserveText.current = false
     send.reset()
+    setPendingMessage(null)
   }, [sessionId, storageKey, prefill, send.reset])
   useEffect(() => {
-    if (messages.length || busy)
+    if (messages.length || busy || stream.text || stream.tools.length)
       bottom.current?.scrollIntoView({ block: "end" })
-  }, [messages.length, busy])
+  }, [messages.length, busy, stream.text, stream.tools])
+  useEffect(() => {
+    if (navigationKey) return stream.stop
+  }, [navigationKey, stream.stop])
   const content = (
     <>
       <div
@@ -285,118 +311,131 @@ export function AdminAssistantPanel({
         <p className="rounded-xl border-l-4 border-primary bg-muted/40 p-4">
           试着问「今天有什么要处理的」。我会结合首页状态，帮你找到对应页面。
         </p>
-        {messages.map((entry, index) => (
-          <div
-            key={`${sessionId}:${index}`}
-            className={`space-y-3 ${entry.role === "user" ? "ml-8 rounded-xl bg-primary/10 p-3 whitespace-pre-wrap" : "mr-1"}`}
-          >
-            <p className="text-xs text-muted-foreground">
-              {entry.role === "user" ? "我" : "管理助手"}
-            </p>
-            {"messages" in entry.payload
-              ? entry.payload.messages.map((message, i) =>
-                  message.type === "link" ? (
-                    <Link
-                      key={i}
-                      to={message.page}
-                      className="block rounded-xl border p-4 underline"
-                    >
-                      {message.title}
-                    </Link>
-                  ) : message.type === "file_upload" ? (
-                    <FileUploadCard
-                      key={i}
-                      orgId={orgId}
-                      sessionId={sessionId!}
-                      card={message}
-                      disabled={busy}
-                      onUploaded={uploaded}
-                      onUploading={setUploading}
-                    />
-                  ) : message.type === "file_preview" ? (
-                    <div
-                      key={i}
-                      className="rounded-xl border bg-background p-4"
-                    >
-                      {"counts" in message.preview ? (
-                        <FileSummaryPreview preview={message.preview} />
-                      ) : (
-                        <RosterPreview preview={message.preview} />
-                      )}
-                    </div>
-                  ) : message.type === "admin_change_set" ? (
-                    <ChangeSetCard
-                      key={i}
-                      orgId={orgId}
-                      changeSet={message.change_set}
-                      disabled={busy}
-                    />
-                  ) : message.type === "secret_input" ? (
-                    <SecretInputCard
-                      key={i}
-                      orgId={orgId}
-                      card={message}
-                      disabled={busy}
-                    />
-                  ) : message.type === "table" ? (
-                    <div
-                      key={i}
-                      className="overflow-x-auto rounded-xl border p-3"
-                    >
-                      <p>
+        <ChatMessages
+          messages={
+            pendingMessage
+              ? [
+                  ...messages,
+                  { role: "user" as const, payload: pendingMessage },
+                ]
+              : messages
+          }
+          text={stream.text}
+          tools={stream.tools}
+          stopped={stream.stopped}
+          renderMessage={(entry, index) => (
+            <div
+              key={`${sessionId}:${index}`}
+              className={`space-y-3 ${entry.role === "user" ? "ml-8 rounded-xl bg-primary/10 p-3 whitespace-pre-wrap" : "mr-1"}`}
+            >
+              <p className="text-xs text-muted-foreground">
+                {entry.role === "user" ? "我" : "管理助手"}
+              </p>
+              {"messages" in entry.payload
+                ? entry.payload.messages.map((message, i) =>
+                    message.type === "link" ? (
+                      <Link
+                        key={i}
+                        to={message.page}
+                        className="block rounded-xl border p-4 underline"
+                      >
                         {message.title}
-                        {message.queried_at && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            查询于{" "}
-                            {new Date(message.queried_at).toLocaleTimeString(
-                              "zh-CN",
-                              { hour: "2-digit", minute: "2-digit" },
-                            )}
-                          </span>
+                      </Link>
+                    ) : message.type === "file_upload" ? (
+                      <FileUploadCard
+                        key={i}
+                        orgId={orgId}
+                        sessionId={sessionId!}
+                        card={message}
+                        disabled={busy}
+                        onUploaded={uploaded}
+                        onUploading={setUploading}
+                      />
+                    ) : message.type === "file_preview" ? (
+                      <div
+                        key={i}
+                        className="rounded-xl border bg-background p-4"
+                      >
+                        {"counts" in message.preview ? (
+                          <FileSummaryPreview preview={message.preview} />
+                        ) : (
+                          <RosterPreview preview={message.preview} />
                         )}
-                        （共 {message.total} 条，最多显示 20 条）
-                      </p>
-                      <table className="w-full text-left text-sm">
-                        <thead>
-                          <tr>
-                            {message.columns.map((column) => (
-                              <th key={column} className="p-2">
-                                {labels[column] ?? "信息"}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {message.rows.map((row, rowIndex) => (
-                            <tr key={rowIndex}>
-                              {row.map((cell, cellIndex) => (
-                                <td
-                                  key={cellIndex}
-                                  className="max-w-64 break-words p-2"
-                                >
-                                  {cellText(cell, message.columns[cellIndex])}
-                                </td>
+                      </div>
+                    ) : message.type === "admin_change_set" ? (
+                      <ChangeSetCard
+                        key={i}
+                        orgId={orgId}
+                        changeSet={message.change_set}
+                        disabled={busy}
+                      />
+                    ) : message.type === "secret_input" ? (
+                      <SecretInputCard
+                        key={i}
+                        orgId={orgId}
+                        card={message}
+                        disabled={busy}
+                      />
+                    ) : message.type === "table" ? (
+                      <div
+                        key={i}
+                        className="overflow-x-auto rounded-xl border p-3"
+                      >
+                        <p>
+                          {message.title}
+                          {message.queried_at && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              查询于{" "}
+                              {new Date(message.queried_at).toLocaleTimeString(
+                                "zh-CN",
+                                { hour: "2-digit", minute: "2-digit" },
+                              )}
+                            </span>
+                          )}
+                          （共 {message.total} 条，最多显示 20 条）
+                        </p>
+                        <table className="w-full text-left text-sm">
+                          <thead>
+                            <tr>
+                              {message.columns.map((column) => (
+                                <th key={column} className="p-2">
+                                  {labels[column] ?? "信息"}
+                                </th>
                               ))}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      <Link to={message.page} className="underline">
-                        打开对应页面
-                      </Link>
-                    </div>
-                  ) : (
-                    <BotMessage
-                      key={i}
-                      message={message}
-                      disabled={busy}
-                      onAction={() => {}}
-                    />
-                  ),
-                )
-              : entry.payload.text}
-          </div>
-        ))}
+                          </thead>
+                          <tbody>
+                            {message.rows.map((row, rowIndex) => (
+                              <tr key={rowIndex}>
+                                {row.map((cell, cellIndex) => (
+                                  <td
+                                    key={cellIndex}
+                                    className="max-w-64 break-words p-2"
+                                  >
+                                    {cellText(cell, message.columns[cellIndex])}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <Link to={message.page} className="underline">
+                          打开对应页面
+                        </Link>
+                      </div>
+                    ) : (
+                      <BotMessage
+                        key={i}
+                        message={message}
+                        disabled={busy}
+                        onAction={() => {}}
+                      />
+                    ),
+                  )
+                : entry.payload.text}
+            </div>
+          )}
+        />
         <div ref={bottom} />
         {busy && <p role="status">正在处理，请稍候…</p>}
         <SetupError error={(!expired ? history.error : null) ?? send.error} />
@@ -430,32 +469,22 @@ export function AdminAssistantPanel({
           可以查看信息、起草提醒设置改动，点确认卡后才会生效。备份恢复、升级、重置请联系部署人员；不做绩效和薪酬判断。
         </p>
       </div>
-      <form
-        className="space-y-3 border-t p-4"
-        onSubmit={(event) => {
-          event.preventDefault()
-          if (!text.trim() || busy || !available) return
+      <ChatComposer
+        id="admin-assistant-input"
+        label="发给管理助手的消息"
+        placeholder="今天有什么要处理的？"
+        text={text}
+        onChange={setText}
+        onSend={() => {
           const body = { text: text.trim(), page: "/admin" as const }
           setText("")
+          setPendingMessage(displayInput(body))
           send.mutate(body)
         }}
-      >
-        <label htmlFor="admin-assistant-input" className="sr-only">
-          发给管理助手的消息
-        </label>
-        <textarea
-          id="admin-assistant-input"
-          className="min-h-20 w-full rounded-lg border bg-background p-3 text-sm"
-          placeholder="今天有什么要处理的？"
-          maxLength={10000}
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          disabled={busy || !available}
-        />
-        <div className="flex justify-between gap-3">
-          <Button disabled={busy || !available || !text.trim()}>发送</Button>
-        </div>
-      </form>
+        busy={stream.isPending}
+        disabled={busy || !available}
+        onStop={stream.stop}
+      />
     </>
   )
   return <div className="flex h-full min-h-0 flex-col">{content}</div>

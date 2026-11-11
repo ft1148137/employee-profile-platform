@@ -2,7 +2,8 @@ import asyncio
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Form, Response, UploadFile
+from fastapi import APIRouter, Depends, Form, Request, Response, UploadFile
+from fastapi.responses import StreamingResponse
 
 from app.api.deps import SessionDep
 from app.api.secret_safe import SecretSafeRoute
@@ -21,6 +22,7 @@ from app.domains.admin_assistant.schemas import (
     SecretInput,
     TestConnection,
 )
+from app.domains.bot import streaming
 from app.domains.bot.schemas import SessionCreated, TextMessage
 from app.domains.bot.store import BotSessionNotFound, SessionList, messages_for
 from app.domains.bot.store import list_sessions as recent_sessions
@@ -61,11 +63,27 @@ def list_messages(
     return [AdminSessionMessage.model_validate(m.model_dump()) for m in messages]
 
 
-@router.post("/sessions/{session_id}/turns")
+@router.post(
+    "/sessions/{session_id}/turns",
+    status_code=200,
+    response_class=streaming.TurnStreamingResponse,
+    response_model=streaming.TextEvent
+    | streaming.ToolEvent
+    | streaming.FinalEvent[AdminTurnResponse],
+)
 def turn(
-    principal: OrgAdminDep, session: SessionDep, session_id: UUID, body: AdminTurnInput
-) -> AdminTurnResponse:
-    return core.turn(session, principal, session_id, body)
+    principal: OrgAdminDep,
+    session: SessionDep,
+    session_id: UUID,
+    body: AdminTurnInput,
+    request: Request,
+) -> StreamingResponse:
+    store.get_session(session, principal, session_id)
+    session.close()
+    return streaming.response(
+        lambda db, stream: core.turn(db, principal, session_id, body, stream=stream),
+        request,
+    )
 
 
 @router.get("/availability")

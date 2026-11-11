@@ -183,7 +183,7 @@ test("unconfigured model allows history and every manual menu", async ({
   }
 })
 
-test("reply arriving after a session switch stays in its original conversation", async ({
+test("session switch cancels the turn and preserves both conversation histories", async ({
   page,
 }) => {
   const ids = [crypto.randomUUID(), crypto.randomUUID()]
@@ -230,7 +230,8 @@ test("reply arriving after a session switch stays in its original conversation",
       finishTurn = resolve
     })
     await route.fulfill({
-      json: { messages: [{ type: "text", text: "第一段的新回复" }] },
+      contentType: "application/x-ndjson",
+      body: `${JSON.stringify({ type: "final", response: { messages: [{ type: "text", text: "第一段的新回复" }] } })}\n`,
     })
   })
   await logInUser(
@@ -242,18 +243,19 @@ test("reply arriving after a session switch stays in its original conversation",
   await page.getByLabel("发给管理助手的消息").fill("第一段的新问题")
   await page.getByRole("button", { name: "发送", exact: true }).click()
   await expect.poll(() => !!finishTurn).toBe(true)
+  const aborted = page.waitForEvent("requestfailed", (request) =>
+    request.url().includes("/turns?"),
+  )
   await page.getByRole("link", { name: "会话1", exact: true }).click()
   await expect(page.getByRole("log")).toContainText("第二段历史")
-  const replied = page.waitForResponse((response) =>
-    response.url().includes("/turns?"),
-  )
+  await aborted
   finishTurn!()
-  await replied
   await expect(page).toHaveURL(`/admin/assistant?session=${ids[1]}`)
   await page.getByRole("link", { name: "会话0", exact: true }).click()
   await expect.poll(() => !!finishReload).toBe(true)
   try {
-    await expect(page.getByRole("log")).toContainText("第一段的新回复")
+    await expect(page.getByRole("log")).toContainText("第一段历史")
+    await expect(page.getByRole("log")).not.toContainText("第一段的新回复")
     await expect(page.getByRole("log")).not.toContainText("第二段历史")
   } finally {
     finishReload!()

@@ -35,7 +35,10 @@ for (const width of [1440, 390]) {
         ],
       }
       saveReply(route.request().url(), reply)
-      await route.fulfill({ json: reply })
+      await route.fulfill({
+        contentType: "application/x-ndjson",
+        body: `${JSON.stringify({ type: "final", response: reply })}\n`,
+      })
     })
     for (const current of [
       "/admin/people?tab=roster",
@@ -161,7 +164,10 @@ for (const available of [true, false]) {
         ],
       }
       saveReply(route.request().url(), reply)
-      return route.fulfill({ json: reply })
+      return route.fulfill({
+        contentType: "application/x-ndjson",
+        body: `${JSON.stringify({ type: "final", response: reply })}\n`,
+      })
     })
     await page.goto("/admin")
     const action = page

@@ -35,6 +35,32 @@ class RequestSecretInput(ToolInput):
     field: str
 
 
+def title(name: str, args: dict[str, JsonValue]) -> str:
+    if name in ("admin_read", "propose_changes"):
+        function = args.get("function")
+        if name == "propose_changes":
+            items = args.get("items")
+            function = (
+                items[0].get("function")
+                if isinstance(items, list) and items and isinstance(items[0], dict)
+                else None
+            )
+        entry = registry.FUNCTIONS.get(function) if isinstance(function, str) else None
+        return (
+            entry.description
+            if entry
+            else "读取信息"
+            if name == "admin_read"
+            else "起草变更"
+        )
+    return {
+        "get_today": "查看今天要处理的事",
+        "list_admin_functions": "查看管理功能",
+        "request_file": "请求上传文件",
+        "request_secret_input": "请求安全输入",
+    }.get(name, "管理功能")
+
+
 def definitions() -> list[ToolDefinition]:
     return [
         ToolDefinition(

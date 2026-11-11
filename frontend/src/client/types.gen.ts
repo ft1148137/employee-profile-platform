@@ -2019,6 +2019,17 @@ export type FileUploadCard = {
 export type FillStatus = 'not_started' | 'in_progress' | 'submitted';
 
 /**
+ * FinalEvent[AdminTurnResponse]
+ */
+export type FinalEvent_AdminTurnResponse_ = {
+    /**
+     * Type
+     */
+    type: 'final';
+    response: AdminTurnResponse;
+};
+
+/**
  * FinalEvent[TurnResponse]
  */
 export type FinalEvent_TurnResponse_ = {
@@ -5010,7 +5021,7 @@ export type adminAssistantTurnResponses = {
     /**
      * Successful Response
      */
-    200: AdminTurnResponse;
+    200: string;
 };
 
 export type adminAssistantTurnResponse = adminAssistantTurnResponses[keyof adminAssistantTurnResponses];
