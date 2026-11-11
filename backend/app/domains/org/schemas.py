@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import StringConstraints
+from pydantic import Field, StringConstraints
 from sqlmodel import SQLModel
 
 from app.domains.org.models import EmploymentStatus, Role
@@ -61,6 +61,9 @@ class PublishedSummary(SQLModel):
 
 
 class EmployeeSummary(SQLModel):
+    job_family: str | None = Field(default=None, exclude_if=lambda v: v is None)
+    work_location: str | None = Field(default=None, exclude_if=lambda v: v is None)
+    hire_date: date | None = Field(default=None, exclude_if=lambda v: v is None)
     id: UUID
     display_name: str
     title: str | None

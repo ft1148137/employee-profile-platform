@@ -1,4 +1,9 @@
 import type { EmployeeSummary } from "@/client"
+import {
+  employeeFieldLabels,
+  tenureLabel,
+} from "@/components/Roster/EmployeeFields"
+import { useOrg } from "@/hooks/useOrg"
 import { StatusBadge } from "./StatusBadge"
 
 export function publishedLabel(value: EmployeeSummary["latest_published"]) {
@@ -12,6 +17,7 @@ export function EmployeeSummaryContent({
 }: {
   employee: EmployeeSummary
 }) {
+  const { org } = useOrg()
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -39,6 +45,18 @@ export function EmployeeSummaryContent({
             </dt>
             <dd>
               <StatusBadge kind={kind} value={employee.progress?.[kind]} />
+            </dd>
+          </div>
+        ))}
+        {(org?.employee_fields ?? []).map((field) => (
+          <div key={field}>
+            <dt className="mb-2 text-sm text-muted-foreground">
+              {field === "hire_date" ? "入职年限" : employeeFieldLabels[field]}
+            </dt>
+            <dd>
+              {field === "hire_date" && employee.hire_date
+                ? tenureLabel(employee.hire_date)
+                : (employee[field] ?? "—")}
             </dd>
           </div>
         ))}

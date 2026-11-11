@@ -168,6 +168,7 @@ test("manual console completes all fifteen tabs without a model", async ({
 
   await test.step("rules / dictionary: publish an imported dictionary", async () => {
     await page.getByRole("link", { name: "能力与规则", exact: true }).click()
+    await page.getByRole("button", { name: "编辑词典", exact: true }).click()
     await page
       .getByLabel("上传 YAML 或 Excel 词典（不超过 2 MB）")
       .setInputFiles({

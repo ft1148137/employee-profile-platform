@@ -9,7 +9,7 @@ from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
 from app.domains.audit.service import record_audit
 from app.domains.change_request.service import review_statuses
-from app.domains.org.models import Department, Employee, Organization
+from app.domains.org.models import Department, Employee, EmployeeField, Organization
 from app.domains.org.schemas import (
     DepartmentSummary,
     EmployeesPublic,
@@ -63,9 +63,15 @@ def visible_employee(
 
 
 def employee_summary(session: Session, employee: Employee) -> EmployeeSummary:
-    department, progress, version = session.exec(
-        select(Department, ProfileProgress, ProfileVersion)
+    department, progress, version, fields = session.exec(
+        select(
+            Department,
+            ProfileProgress,
+            ProfileVersion,
+            col(Organization.employee_fields),
+        )
         .select_from(Employee)
+        .join(Organization, col(Organization.id) == Employee.org_id)
         .outerjoin(
             Department,
             (col(Department.org_id) == Employee.org_id)
@@ -90,6 +96,7 @@ def employee_summary(session: Session, employee: Employee) -> EmployeeSummary:
         department,
         progress,
         version,
+        fields,
         review_statuses(
             session, employee.org_id, [employee.id], {employee.id} if version else set()
         )[employee.id],
@@ -101,9 +108,11 @@ def _employee_summary(
     department: Department | None,
     progress: ProfileProgress | None,
     version: ProfileVersion | None,
+    fields: list[EmployeeField],
     review_status: ProgressReviewStatus,
 ) -> EmployeeSummary:
     return EmployeeSummary(
+        **{f: getattr(employee, f) for f in fields},
         **employee.model_dump(
             include={"id", "display_name", "title", "employment_status"}
         ),
@@ -133,8 +142,15 @@ def list_employees(
         filters.append(col(Employee.department_id) == department_id)
     if q:
         filters.append(col(Employee.display_name).icontains(q, autoescape=True))
-    count = session.exec(
-        select(func.count()).select_from(Employee).where(*filters)
+    count, fields = session.exec(
+        select(
+            func.count(),
+            select(col(Organization.employee_fields))
+            .where(Organization.id == principal.org_id)
+            .scalar_subquery(),
+        )
+        .select_from(Employee)
+        .where(*filters)
     ).one()
     latest_version = aliased(
         ProfileVersion,
@@ -175,7 +191,8 @@ def list_employees(
         {e.id for e, _, _, version in rows if version},
     )
     return EmployeesPublic(
-        data=[_employee_summary(*row, statuses[row[0].id]) for row in rows], count=count
+        data=[_employee_summary(*row, fields, statuses[row[0].id]) for row in rows],
+        count=count,
     )
 
 

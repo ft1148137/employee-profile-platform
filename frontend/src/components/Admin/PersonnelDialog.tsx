@@ -6,6 +6,7 @@ import {
   type RosterImportPreview,
   RosterService,
 } from "@/client"
+import { employeeFieldLabels } from "@/components/Roster/EmployeeFields"
 import { RosterPreview } from "@/components/Roster/RosterPreview"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
@@ -18,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { useOrg } from "@/hooks/useOrg"
 
 export function PersonnelDialog({
   orgId,
@@ -30,6 +32,8 @@ export function PersonnelDialog({
   department?: string
   offboard?: boolean
 }) {
+  const { org } = useOrg()
+  const fields = org?.employee_fields ?? []
   const client = useQueryClient()
   const id = useId()
   const [open, setOpen] = useState(false)
@@ -51,6 +55,9 @@ export function PersonnelDialog({
   const create = useMutation({
     mutationFn: async (form: FormData) => {
       const shared = {
+        ...Object.fromEntries(
+          fields.map((field) => [field, String(form.get(field)) || null]),
+        ),
         department: String(form.get("department")),
         title: String(form.get("title")) || null,
         ...(manager === "keep"
@@ -178,6 +185,23 @@ export function PersonnelDialog({
                     disabled={busy}
                   />
                 </label>
+                {fields.map((field) => (
+                  <label
+                    className="block space-y-2 text-sm"
+                    key={field}
+                    htmlFor={`${id}-${field}`}
+                  >
+                    {employeeFieldLabels[field]}
+                    <Input
+                      id={`${id}-${field}`}
+                      name={field}
+                      type={field === "hire_date" ? "date" : "text"}
+                      maxLength={field === "hire_date" ? undefined : 50}
+                      defaultValue={employee?.[field] ?? ""}
+                      disabled={busy}
+                    />
+                  </label>
+                ))}
                 <label
                   className="block space-y-2 text-sm"
                   htmlFor={`${id}-search`}

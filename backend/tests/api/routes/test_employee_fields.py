@@ -67,7 +67,7 @@ def test_import_visibility_and_preservation(
     p = principal(db, tenant)
     result = asyncio.run(registry.admin_read(db, p, "list_accounts", {}))
     assert not set(FIELD_LABELS) & result["data"]["data"][0].keys()
-    assert not set(FIELD_LABELS) & EmployeeSummary.model_fields.keys()
+    assert set(FIELD_LABELS) <= EmployeeSummary.model_fields.keys()
     assert not set(FIELD_LABELS) & DraftInput.model_fields.keys()
     snapshots = db.exec(
         select(ProfileVersion).where(ProfileVersion.org_id == p.org_id)
@@ -283,6 +283,9 @@ def test_profile_snapshots_and_drafting_exclude_work_fields(
     import json
 
     employee = demo[1]["E02"]
+    org = db.get_one(Organization, employee.org_id)
+    org.employee_fields = list(FIELD_LABELS)
+    db.add(org)
     versions = db.exec(
         select(ProfileVersion).where(ProfileVersion.org_id == employee.org_id)
     ).all()
