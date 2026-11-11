@@ -18,6 +18,7 @@ class OrganizationPublic(SQLModel):
     id: UUID
     name: str
     slug: str
+    employee_fields: list[Literal["job_family", "work_location", "hire_date"]] = []
 
 
 class OrganizationUpdate(SQLModel):

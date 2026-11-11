@@ -1601,6 +1601,18 @@ export type DraftingSettingsUpdate = {
  */
 export type EmployeeAccount = {
     /**
+     * Job Family
+     */
+    job_family?: string | null;
+    /**
+     * Work Location
+     */
+    work_location?: string | null;
+    /**
+     * Hire Date
+     */
+    hire_date?: string | null;
+    /**
      * Id
      */
     id: string;
@@ -1657,6 +1669,16 @@ export type EmployeeChange = {
      * Fields
      */
     fields?: Array<FieldChange>;
+};
+
+/**
+ * EmployeeFields
+ */
+export type EmployeeFields = {
+    /**
+     * Fields
+     */
+    fields: Array<'job_family' | 'work_location' | 'hire_date'>;
 };
 
 /**
@@ -1930,7 +1952,7 @@ export type FieldChange = {
     /**
      * Field
      */
-    field: 'display_name' | 'title' | 'email' | 'department' | 'manager';
+    field: 'display_name' | 'title' | 'email' | 'department' | 'manager' | 'job_family' | 'work_location' | 'hire_date';
     /**
      * Before
      */
@@ -2871,6 +2893,10 @@ export type OrganizationPublic = {
      * Slug
      */
     slug: string;
+    /**
+     * Employee Fields
+     */
+    employee_fields?: Array<'job_family' | 'work_location' | 'hire_date'>;
 };
 
 /**
@@ -7677,6 +7703,36 @@ export type orgsReadDepartmentsResponses = {
 };
 
 export type orgsReadDepartmentsResponse = orgsReadDepartmentsResponses[keyof orgsReadDepartmentsResponses];
+
+export type orgsUpdateEmployeeFieldsData = {
+    body: EmployeeFields;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/employee-fields';
+};
+
+export type orgsUpdateEmployeeFieldsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type orgsUpdateEmployeeFieldsError = orgsUpdateEmployeeFieldsErrors[keyof orgsUpdateEmployeeFieldsErrors];
+
+export type orgsUpdateEmployeeFieldsResponses = {
+    /**
+     * Successful Response
+     */
+    200: EmployeeFields;
+};
+
+export type orgsUpdateEmployeeFieldsResponse = orgsUpdateEmployeeFieldsResponses[keyof orgsUpdateEmployeeFieldsResponses];
 
 export type setupReadSetupData = {
     body?: never;
