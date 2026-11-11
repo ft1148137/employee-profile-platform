@@ -1,0 +1,21 @@
+# Seed: isolated synthetic enterprise; defaults come from evaluate_drafts.enterprise.
+id: employee-fields-onboard
+menu: people
+steps:
+  - {type: say, text: 开启岗位序列、工作地点、入职日期三个员工档案字段，给我确认卡}
+  - {type: apply}
+  - {type: say, text: 新增员工，工号 EVAL001，姓名合成员工，邮箱 eval001@example.com，部门验收部，岗位序列研发，工作地点上海，入职日期2026-01-01，不设直属上级，给我确认卡}
+  - {type: apply}
+expect:
+  employee_fields: {employee_code: EVAL001, job_family: 研发, work_location: 上海, hire_date: "2026-01-01"}
+  services:
+    - {function: list_accounts, args: {q: EVAL001}, value: {count: 1}}
+fake_model:
+  - calls:
+      - {name: propose_changes, args: {items: [{function: update_employee_fields, args: {fields: [job_family, work_location, hire_date]}}]}}
+  - calls:
+      - name: propose_changes
+        args:
+          items:
+            - function: onboard_employee
+              args: {employee_code: EVAL001, display_name: 合成员工, email: eval001@example.com, department: 验收部, job_family: 研发, work_location: 上海, hire_date: '2026-01-01'}

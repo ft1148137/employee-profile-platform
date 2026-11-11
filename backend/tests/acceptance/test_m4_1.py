@@ -298,6 +298,24 @@ def test_reply_contains_fails_on_missing_text() -> None:
     assert Run(task, True).execute().status == "failed"
 
 
+@pytest.mark.parametrize(
+    "expected,passed",
+    [
+        ("未开启", True),
+        ("关闭", False),
+        (["飞书", "未开启"], True),
+        ([["关闭", "未开启"], ["不能", "无法"]], True),
+        ([["关闭", "未开启"], ["通过", "已启用"]], False),
+        ([[]], False),
+        ([], True),
+    ],
+)
+def test_reply_contains_alternatives(
+    expected: str | list[str | list[str]], passed: bool
+) -> None:
+    assert runner.reply_contains("飞书未开启，不能执行", expected) is passed
+
+
 @pytest.mark.parametrize("path", [["missing"], ["data", "data", 99999]])
 def test_capture_requires_existing_path(path: list[str | int]) -> None:
     task = next(t for t in tasks() if t.id == "injection-name").model_copy(deep=True)

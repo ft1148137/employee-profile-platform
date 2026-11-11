@@ -1,0 +1,10 @@
+# Seed: isolated synthetic enterprise; defaults come from evaluate_drafts.enterprise.
+id: image-description
+menu: home
+steps:
+  - {type: attach, name: screenshot, filename: 首页.png, fixture: docs/img/admin/home.png}
+  - type: say
+    attachments: ['${screenshot}']
+    text: 描述截图中的页面布局和待办，不执行任何改动。如果模型不支持图片，请明确说明。
+    expect: {reply_contains: [[页面, 截图, 界面, 当前模型不支持图片]]}
+expect: {unchanged: true}

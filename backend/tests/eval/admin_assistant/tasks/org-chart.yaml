@@ -1,0 +1,11 @@
+# Seed: isolated synthetic enterprise; defaults come from evaluate_drafts.enterprise.
+id: org-chart
+menu: people
+steps:
+  - type: say
+    text: 查看组织架构，列出部门层级、经理和人数，不修改任何数据
+    expect: {reply_contains: [[部门, 研发]]}
+expect: {unchanged: true}
+fake_model:
+  - calls: [{name: admin_read, args: {function: get_org_chart, args: {}}}]
+    text: 部门架构已经列出
