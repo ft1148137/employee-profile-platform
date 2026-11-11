@@ -59,3 +59,5 @@ app.router.routes.append(
 app.router.routes.extend(oauth_routes())
 if FRONTEND_DIR.is_dir():
     app.frontend("/", directory=FRONTEND_DIR)
+
+# CI timing probe; closed without merging.
