@@ -307,6 +307,8 @@ test("employee browses and searches without requesting statistics", async ({
     page.getByRole("button", { name: "编辑词典", exact: true }),
   ).toHaveCount(0)
   expect(statsRequests).toEqual([])
+  await page.goto("/admin/rules?tab=dictionary#dictionary-editor")
+  await expect(browser.getByRole("article").first()).toBeVisible()
 })
 
 test("draft proposals enter the dictionary through preview and save", async ({

@@ -213,6 +213,7 @@ def test_assistant_undo_guards(db: Session, demo: tuple, collision: bool) -> Non
         ],
     )
     assert row.status == "open" and change.items[0]["risk"] == "normal"
+    assert change.items[0]["before"]["name"] == row.name
     assert c.apply(db, p, change.id, change.revision).status == "applied"
     if collision:
         other = CapabilityProposal(

@@ -20,6 +20,7 @@ class ProposalArgs(BaseModel):
 
 
 class ProposalSnapshot(BaseModel):
+    name: str
     id: UUID
     status: str
     updated_at: str
@@ -32,7 +33,10 @@ class ProposalSummaries(BaseModel):
 def snapshot(db: Session, p: Principal, args: ProposalArgs) -> ProposalSnapshot:
     row = proposals.get_proposal(db, p, args.id)
     return ProposalSnapshot(
-        id=row.id, status=row.status, updated_at=row.updated_at.isoformat()
+        name=row.name,
+        id=row.id,
+        status=row.status,
+        updated_at=row.updated_at.isoformat(),
     )
 
 

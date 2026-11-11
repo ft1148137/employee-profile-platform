@@ -41,7 +41,7 @@ function Dictionary({
   const suggestion = usePageDraft(orgId, "update_capability_dictionary")
   const fileInput = useRef<HTMLInputElement>(null)
   const openEditor = useLocation({
-    select: (location) => location.hash === "dictionary-editor",
+    select: (location) => admin && location.hash === "dictionary-editor",
   })
   const [editing, setEditing] = useState(openEditor)
   const [managing, setManaging] = useState(openEditor)
