@@ -142,6 +142,36 @@ def test_unknown_item_with_one_record_is_dropped(
     assert not rows(db, CapabilityProposal, org) and not rows(db, ChangeItem, org)
 
 
+def test_excess_proposals_do_not_discard_valid_item(
+    request: pytest.FixtureRequest, db: Session, pi_service: PiHarness
+) -> None:
+    org, _, _, employees, _ = request.getfixturevalue("drafting")
+    pi_service.replies.append(
+        {
+            "items": json.loads(answer())["items"],
+            "proposals": [
+                proposal(evidence=["R1"]),
+                *[
+                    proposal(name=name)
+                    for name in ("建议甲", "建议乙", "建议丙", "建议丁")
+                ],
+            ],
+        }
+    )
+    service.run_drafting(Principal.system_worker(org), [str(employees[0].id)])
+    db.expire_all()
+    change = rows(db, ProfileChangeRequest, org)[0]
+    assert change.status == "pending_owner"
+    assert change.generated_by["proposals"] == 3
+    items = rows(db, ChangeItem, org)
+    assert len(items) == 1 and items[0].request_id == change.id
+    assert {r.name for r in rows(db, CapabilityProposal, org)} == {
+        "建议甲",
+        "建议乙",
+        "建议丙",
+    }
+
+
 def test_three_proposal_budget_includes_converted_items(
     request: pytest.FixtureRequest, db: Session, pi_service: PiHarness
 ) -> None:

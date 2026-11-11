@@ -38,6 +38,7 @@ END = "<<<用户上传的文件结束>>>"
 IMAGE_NOTICE = "当前模型不支持图片，图片没有发送给模型"
 TRUNCATED = "只读了前 20,000 字"
 TEXT_LIMIT = 20000
+UNZIPPED_LIMIT = 50 * 1024 * 1024
 MIME = {
     "png": "image/png",
     "jpg": "image/jpeg",
@@ -116,6 +117,9 @@ def _chunks(ext: str, data: bytes) -> Generator[str]:
         except UnicodeDecodeError:
             yield data.decode("gb18030")
     elif ext == "xlsx":
+        with ZipFile(BytesIO(data)) as archive:
+            if sum(info.file_size for info in archive.infolist()) > UNZIPPED_LIMIT:
+                raise AttachmentError()
         book = load_workbook(BytesIO(data), read_only=True, data_only=True)
         try:
             for sheet in book:

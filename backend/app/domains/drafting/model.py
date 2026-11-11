@@ -232,12 +232,12 @@ def draft(
     class DraftOutput(BaseModel):
         model_config = ConfigDict(extra="forbid")
         items: list[ModelItem]
-        proposals: list[Proposal] = Field(default_factory=list, max_length=3)
+        proposals: list[Proposal] = Field(default_factory=list)
 
         @field_validator("proposals", mode="before")
         @classmethod
         def discard_invalid_proposals(cls, value: JsonValue) -> object:
-            return valid_proposals(value) if isinstance(value, list) else value
+            return valid_proposals(value)[:3] if isinstance(value, list) else value
 
         @model_validator(mode="after")
         def validate_references(self) -> Self:

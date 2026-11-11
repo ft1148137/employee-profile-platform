@@ -5,7 +5,7 @@ from datetime import timedelta
 from io import BytesIO
 from threading import Event
 from uuid import UUID, uuid4
-from zipfile import ZipFile
+from zipfile import ZIP_DEFLATED, ZipFile
 
 import httpx
 import pytest
@@ -230,6 +230,48 @@ def test_invalid_uploads(
     db.rollback()
     assert not db.exec(
         select(BotAttachment).where(BotAttachment.org_id == p.org_id)
+    ).all()
+
+
+@pytest.mark.parametrize("member_count", [1, 2])
+def test_xlsx_unzipped_limit_rejects_before_decompression(
+    demo: tuple,
+    db: Session,
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    member_count: int,
+) -> None:
+    p = principal_for(db, demo[1]["E02"].org_id)
+    row = store.create_session(db, p)
+    bomb = BytesIO()
+    with ZipFile(bomb, "w", compression=ZIP_DEFLATED) as archive:
+        for index in range(member_count):
+            archive.writestr(
+                f"xl/sharedStrings{index}.xml",
+                b"x" * (60 * 1024 * 1024 // member_count),
+            )
+    assert len(bomb.getvalue()) < 10 * 1024 * 1024
+    opened = []
+
+    def reject_decompression(*args: object, **kwargs: object) -> None:
+        opened.append((args, kwargs))
+        raise AssertionError("Oversized XLSX must not be decompressed")
+
+    monkeypatch.setattr(ZipFile, "open", reject_decompression)
+    monkeypatch.setattr(a, "load_workbook", reject_decompression)
+    response = client.post(
+        f"/api/v1/bot/sessions/{row.id}/attachments",
+        params={"org_id": str(p.org_id)},
+        headers=demo[2]["employee"],
+        files={"file": ("oversized.xlsx", bomb.getvalue())},
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"] == "文件无法读取"
+    assert not opened
+    assert not db.exec(
+        select(BotAttachment).where(
+            BotAttachment.org_id == p.org_id, BotAttachment.session_id == row.id
+        )
     ).all()
 
 
