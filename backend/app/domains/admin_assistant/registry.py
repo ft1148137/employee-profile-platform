@@ -25,6 +25,7 @@ from app.domains.account import service as accounts
 from app.domains.account.schemas import AccountStatus
 from app.domains.admin.overview import build_overview
 from app.domains.admin_assistant import materials, model_settings
+from app.domains.admin_assistant.capability_proposals import register_proposals
 from app.domains.admin_assistant.connections import register_connections
 from app.domains.admin_assistant.files import register_files
 from app.domains.admin_assistant.people import register_people
@@ -703,6 +704,7 @@ NOT_FOR_ASSISTANT = {
 }
 
 register_rules(FUNCTIONS)
+register_proposals(FUNCTIONS)
 register_sources(FUNCTIONS)
 register_connections(FUNCTIONS)
 register_files(FUNCTIONS)

@@ -209,7 +209,14 @@ export function ChangeSetCard({
               请核对上方名单预览。确认后更新员工信息，离职人员的账号会停用。
             </p>
           )}
+          {item.function === "dismiss_capability_proposal" && (
+            <p className="text-sm">
+              {item.before?.status === "dismissed" ? "恢复待处理建议" : "忽略"}
+              「{String(item.before?.name ?? "能力建议")}」
+            </p>
+          )}
           {item.undoable &&
+            item.function !== "dismiss_capability_proposal" &&
             Object.keys(item.after)
               .filter(
                 (field) =>

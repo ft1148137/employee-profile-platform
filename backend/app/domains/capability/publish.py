@@ -3,6 +3,7 @@
 from sqlmodel import Session
 
 from app.authz.principal import Principal
+from app.domains.capability.proposals import accept_proposals
 from app.domains.capability.schemas import ActiveSchemaPublic, SaveDictionary
 from app.domains.capability.service import save_version
 from app.domains.drafting.service import queue_drafting
@@ -21,6 +22,7 @@ def save_dictionary(
         body.definitions,
         expected_version=body.expected_version,
     )
+    accept_proposals(session, principal, [d.name for d in body.definitions])
     result = ActiveSchemaPublic.model_validate(schema)
     if body.redraft:
         queue_drafting(

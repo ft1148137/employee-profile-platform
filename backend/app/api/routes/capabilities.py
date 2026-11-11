@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Response, UploadFile
 
@@ -9,10 +10,12 @@ from app.domains.capability.files import (
     dictionary_yaml,
     parse_dictionary,
 )
+from app.domains.capability.proposals import dismiss_proposal, list_proposals
 from app.domains.capability.publish import save_dictionary as publish_dictionary
 from app.domains.capability.schemas import (
     ActiveSchemaPublic,
     CapabilitiesPublic,
+    CapabilityProposalsPublic,
     CapabilityPublic,
     CapabilityStatsPublic,
     DictionaryDefinition,
@@ -129,3 +132,17 @@ def update_dictionary(
 class DictionaryTooLarge(HTTPException):
     def __init__(self) -> None:
         super().__init__(413, "文件超过 2 MB，请缩小后上传")
+
+
+@router.get("/proposals", response_model=CapabilityProposalsPublic)
+def read_capability_proposals(
+    session: SessionDep, principal: OrgAdminDep
+) -> CapabilityProposalsPublic:
+    return list_proposals(session, principal)
+
+
+@router.post("/proposals/{id}/dismiss", status_code=204)
+def dismiss_capability_proposal(
+    id: UUID, session: SessionDep, principal: OrgAdminDep
+) -> None:
+    dismiss_proposal(session, principal, id)

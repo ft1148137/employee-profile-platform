@@ -24,6 +24,38 @@ for (const width of [1440, 390]) {
     await page.route("**/admin-assistant/availability?*", (route) =>
       route.fulfill({ json: { available: true, reason: "" } }),
     )
+    const proposalId = crypto.randomUUID()
+    const changeSet = {
+      id: crypto.randomUUID(),
+      revision: 1,
+      status: "applied",
+      undo_of_id: null,
+      items: [
+        {
+          function: "dismiss_capability_proposal",
+          title: "忽略起草时提议的新能力（可撤销）",
+          args: { id: proposalId },
+          before: {
+            id: proposalId,
+            name: "合成能力建议",
+            status: "open",
+            updated_at: "2026-01-01T00:00:00Z",
+          },
+          after: {
+            id: proposalId,
+            name: "合成能力建议",
+            status: "dismissed",
+            updated_at: "2026-01-02T00:00:00Z",
+          },
+          risk: "normal",
+          undoable: true,
+        },
+      ],
+    }
+    await page.route(
+      `**/admin-assistant/change-sets/${changeSet.id}*`,
+      (route) => route.fulfill({ json: changeSet }),
+    )
     const sent: string[] = []
     const saveReply = await mockAdminMessages(page)
     await page.route("**/admin-assistant/sessions/*/turns?*", async (route) => {
@@ -31,6 +63,7 @@ for (const width of [1440, 390]) {
       const reply = {
         messages: [
           { type: "text", text: "请查看首页待办。" },
+          { type: "admin_change_set", change_set: changeSet },
           { type: "link", title: "打开管理首页", page: "/admin" },
         ],
       }
@@ -61,6 +94,9 @@ for (const width of [1440, 390]) {
         dialog.getByRole("link", { name: "打开管理首页" }).last(),
       ).toHaveAttribute("href", "/admin")
       expect(sent[sent.length - 1]).toBe("/admin")
+      await expect(
+        dialog.getByText("忽略「合成能力建议」", { exact: true }).last(),
+      ).toBeVisible()
       await expectChineseCopy(page)
       await page.screenshot({
         path: testInfo.outputPath(`admin-assistant-${sent.length}.png`),

@@ -1,7 +1,8 @@
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useId, useRef, useState } from "react"
 import {
   CapabilitiesService,
+  type CapabilityProposalPublic,
   type DictionaryDefinition,
   type DictionaryPreview,
 } from "@/client"
@@ -43,6 +44,28 @@ function Editor({
   initial,
   suggestion,
 }: Props & { initial: DictionaryPreview }) {
+  const [error, setError] = useState<Error | null>(null)
+  const client = useQueryClient()
+  const proposals = useQuery({
+    queryKey: ["capability-proposals", orgId],
+    queryFn: async () =>
+      (
+        await CapabilitiesService.readCapabilityProposals({
+          path: { org_id: orgId },
+        })
+      ).data,
+  })
+  const dismiss = useMutation({
+    mutationFn: (id: string) =>
+      CapabilitiesService.dismissCapabilityProposal({
+        path: { org_id: orgId, id },
+      }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["capability-proposals", orgId] })
+      client.invalidateQueries({ queryKey: ["admin-overview", orgId] })
+    },
+    onError: setError,
+  })
   const prefix = useId()
   const nextId = useRef(initial.definitions.length)
   const [baseVersion] = useState(initial.expected_version)
@@ -57,7 +80,6 @@ function Editor({
   )
   const [preview, setPreview] = useState<DictionaryPreview | null>(null)
   const [redraft, setRedraft] = useState(false)
-  const [error, setError] = useState<Error | null>(null)
   const body = {
     definitions: rows.map((r) => r.definition),
     expected_version: baseVersion,
@@ -83,7 +105,11 @@ function Editor({
     onSuccess: onSaved,
     onError: setError,
   })
-  const busy = check.isPending || save.isPending || !!suggestion?.blocked
+  const busy =
+    check.isPending ||
+    save.isPending ||
+    dismiss.isPending ||
+    !!suggestion?.blocked
   const proposed = suggestion?.item
     ? suggestion.values(initial).definitions
     : null
@@ -115,6 +141,32 @@ function Editor({
           : row,
       ),
     )
+  }
+  function addProposal(proposal: CapabilityProposalPublic) {
+    const levels = [
+      ...new Map(
+        initial.definitions
+          .flatMap((definition) => definition.level_rubric.levels)
+          .map((level) => [level.key, level]),
+      ).values(),
+    ]
+    setRows((values) => [
+      ...values,
+      {
+        id: nextId.current++,
+        locked: false,
+        definition: {
+          key: "",
+          name: proposal.name,
+          category: proposal.category ?? "未分类",
+          description: proposal.description,
+          level_rubric: {
+            levels: levels.map((level) => ({ ...level, description: "" })),
+          },
+        },
+      },
+    ])
+    setPreview(null)
   }
   function add() {
     const used = new Set(
@@ -149,9 +201,70 @@ function Editor({
         <h3 className="text-xl font-semibold">编辑能力与等级</h3>
         <p className="mt-2 text-sm text-muted-foreground">
           基于第 {baseVersion}{" "}
-          版。能力标识由系统生成，新能力保存前可以修改，保存后固定。编辑不会直接改变员工的判断。
+          版。手工新增的能力标识由系统生成，建议能力需自行填写；保存后固定。编辑不会直接改变员工的判断。
         </p>
       </header>
+      <SetupError error={proposals.error} />
+      {!!proposals.data?.data.length && (
+        <section
+          aria-label="起草时提议的能力"
+          className="space-y-3 rounded-lg border p-4"
+        >
+          <h3 className="font-semibold">起草时提议的能力</h3>
+          <p className="text-sm text-muted-foreground">
+            加入后请填写能力标识和等级描述，预览并保存才会更新词典。已有判断保持不变。
+          </p>
+          {proposals.data.data.map((proposal) => (
+            <article
+              key={proposal.id}
+              aria-label={`建议：${proposal.name}`}
+              className="space-y-2 border-t pt-3"
+            >
+              <h4 className="font-medium">
+                {proposal.name} · {proposal.category || "未分类"}
+              </h4>
+              <p>{proposal.description}</p>
+              <p>理由：{proposal.reason}</p>
+              <p className="text-sm">
+                {proposal.evidence_count} 条证据 · 涉及{" "}
+                {proposal.employee_count} 名员工 · 更新于{" "}
+                {new Date(proposal.updated_at).toLocaleString("zh-CN")}
+              </p>
+              <ul className="list-disc pl-5 text-sm">
+                {proposal.evidence_titles.map((title, i) => (
+                  <li key={i}>{title}</li>
+                ))}
+              </ul>
+              <div className="flex gap-2">
+                <Button
+                  disabled={
+                    busy ||
+                    rows.length >= 1000 ||
+                    rows.some((r) => r.definition.name === proposal.name)
+                  }
+                  onClick={() => addProposal(proposal)}
+                >
+                  加入词典
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `忽略「${proposal.name}」？之后起草不再提示同名建议。`,
+                      )
+                    )
+                      dismiss.mutate(proposal.id)
+                  }}
+                >
+                  忽略
+                </Button>
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
       <form
         onSubmit={(event) => {
           event.preventDefault()
