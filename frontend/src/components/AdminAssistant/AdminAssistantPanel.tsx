@@ -154,11 +154,15 @@ export function AdminAssistantPanel({
   const availability = useAdminAvailability()
   const available = availability.data?.available === true
   const [uploading, setUploading] = useState(false)
+  const [composerVersion, setComposerVersion] = useState(0)
   const [pendingMessage, setPendingMessage] = useState<AdminUserMessage | null>(
     null,
   )
   const turnSession = useRef(sessionId)
-  const creatingSession = useRef<Promise<string> | null>(null)
+  const creatingSession = useRef<{
+    navigationKey?: string
+    promise: Promise<string>
+  } | null>(null)
   const [text, setText] = useState(prefill?.text ?? "")
   const bottom = useRef<HTMLDivElement>(null)
   const preserveText = useRef(false)
@@ -192,7 +196,11 @@ export function AdminAssistantPanel({
   useEffect(() => {
     const follow = (event: Event) => {
       if (!(event instanceof StorageEvent)) {
-        if (!localStorage.getItem(storageKey)) setText("")
+        if (!localStorage.getItem(storageKey)) {
+          setText("")
+          creatingSession.current = null
+          setComposerVersion((version) => version + 1)
+        }
         return
       }
       if (event.key !== storageKey) return
@@ -218,20 +226,23 @@ export function AdminAssistantPanel({
   }, [history.error, storageKey, orgId, client])
   const ensureSession = async (signal?: AbortSignal) => {
     if (!expired && sessionId) return sessionId
-    if (!creatingSession.current) {
+    if (
+      !creatingSession.current ||
+      creatingSession.current.navigationKey !== navigationKey
+    ) {
       const promise = AdminAssistantService.assistantCreateSession({
         query,
         signal,
       })
         .then(({ data }) => data.session_id)
         .catch((error) => {
-          if (creatingSession.current === promise)
+          if (creatingSession.current?.promise === promise)
             creatingSession.current = null
           throw error
         })
-      creatingSession.current = promise
+      creatingSession.current = { navigationKey, promise }
     }
-    return creatingSession.current
+    return creatingSession.current.promise
   }
   const stream = useStreamingTurn<AdminTurnInput, AdminTurnResponse>(
     `/api/v1/admin-assistant/sessions/${sessionId ?? ""}/turns?org_id=${orgId}`,
@@ -342,7 +353,8 @@ export function AdminAssistantPanel({
               await AdminAssistantService.assistantDownloadAttachment({
                 query,
                 path: {
-                  session_id: turnSession.current ?? sessionId!,
+                  session_id:
+                    (!expired ? sessionId : undefined) ?? turnSession.current!,
                   attachment_id: id,
                 },
               })
@@ -506,7 +518,7 @@ export function AdminAssistantPanel({
         </p>
       </div>
       <ChatComposer
-        key={navigationKey}
+        key={`${navigationKey}:${composerVersion}`}
         id="admin-assistant-input"
         label="发给管理助手的消息"
         placeholder="今天有什么要处理的？"
@@ -514,6 +526,7 @@ export function AdminAssistantPanel({
         onChange={setText}
         onUpload={async (file) => {
           const id = await ensureSession()
+          if (selection.current === navigationKey) turnSession.current = id
           return (
             await AdminAssistantService.assistantUploadAttachment({
               query,

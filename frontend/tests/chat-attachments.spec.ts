@@ -75,6 +75,10 @@ async function openChat(page: Page, bot = false) {
     )
     await page.goto("/admin/assistant")
     await page.getByRole("link", { name: "新对话", exact: true }).click()
+    await expect(page).toHaveURL(/\/admin\/assistant$/)
+    await expect(
+      page.getByRole("heading", { name: "今天要处理的事", exact: true }),
+    ).toBeVisible()
   }
   const input = page.getByLabel(bot ? "发给机器人的消息" : "发给管理助手的消息")
   await expect(input).toBeEnabled()
@@ -297,4 +301,63 @@ test("keeps attachments on stop and sends them again", async ({ page }) => {
     page.getByRole("log").getByLabel(`附件：${file.name}`),
   ).toBeVisible()
   expect(turns[0].attachment_ids).toHaveLength(1)
+})
+
+test("new conversations do not reuse unsent uploads", async ({ page }) => {
+  await openChat(page)
+  const sessions: string[] = []
+  page.on("response", (response) => {
+    if (
+      response.request().method() === "POST" &&
+      response.url().split("?")[0].endsWith("/attachments")
+    )
+      sessions.push(response.url().split("/sessions/")[1].split("/")[0])
+  })
+  await upload(page, file)
+  await page.getByRole("link", { name: "新对话", exact: true }).click()
+  await expect(page).toHaveURL(/\/admin\/assistant$/)
+  await expect(
+    page.getByRole("heading", { name: "今天要处理的事", exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole("list", { name: "待发送附件" }).getByRole("listitem"),
+  ).toHaveCount(0)
+  await upload(page, file)
+  expect(sessions).toHaveLength(2)
+  expect(sessions[0]).not.toBe(sessions[1])
+})
+
+test("cached history downloads images from the selected session", async ({
+  page,
+}) => {
+  const { input } = await openChat(page)
+  await upload(page, image)
+  await input.fill("合成对话一")
+  await page.getByRole("button", { name: "发送", exact: true }).click()
+  await expect(page.getByRole("log").getByRole("img")).toBeVisible()
+  await expect(page).toHaveURL(/session=/)
+  const first = new URL(page.url()).searchParams.get("session")!
+  await page.getByRole("link", { name: "新对话", exact: true }).click()
+  await expect(page).toHaveURL(/\/admin\/assistant$/)
+  await expect(
+    page.getByRole("heading", { name: "今天要处理的事", exact: true }),
+  ).toBeVisible()
+  await upload(page, image)
+  await input.fill("合成对话二")
+  await page.getByRole("button", { name: "发送", exact: true }).click()
+  await expect(page.getByRole("log").getByRole("img")).toBeVisible()
+  const downloads: string[] = []
+  page.on("request", (request) => {
+    if (request.method() === "GET" && request.url().includes("/attachments/"))
+      downloads.push(request.url())
+  })
+  await page.goBack()
+  await expect(page).toHaveURL(new RegExp(`session=${first}$`))
+  await expect(page.getByRole("log")).toContainText("合成对话一")
+  await expect(page.getByRole("log")).not.toContainText("合成对话二")
+  await expect(page.getByRole("log").getByRole("img")).toBeVisible()
+  await expect.poll(() => downloads.length).toBeGreaterThan(0)
+  expect(
+    downloads.every((url) => url.includes(`/sessions/${first}/attachments/`)),
+  ).toBeTruthy()
 })
