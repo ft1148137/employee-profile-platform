@@ -6,7 +6,7 @@ from sqlmodel import select
 from app.api.deps import SessionDep
 from app.authz.deps import OrgPrincipalDep
 from app.authz.policies import employee_scope_clause
-from app.domains.org.models import Employee
+from app.domains.org.models import Employee, EmploymentStatus
 from app.domains.org.schemas import EmployeesPublic, EmployeeSummary
 from app.domains.org.service import employee_summary, list_employees
 
@@ -18,12 +18,19 @@ def read_employees(
     session: SessionDep,
     principal: OrgPrincipalDep,
     department_id: UUID | None = None,
+    employment_status: EmploymentStatus | None = None,
     q: str | None = None,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=100),
 ) -> EmployeesPublic:
     return list_employees(
-        session, principal, department_id=department_id, q=q, skip=skip, limit=limit
+        session,
+        principal,
+        department_id=department_id,
+        employment_status=employment_status,
+        q=q,
+        skip=skip,
+        limit=limit,
     )
 
 
@@ -38,4 +45,4 @@ def read_employee(
     ).first()
     if employee is None:
         raise HTTPException(status_code=404, detail="未找到该员工或你没有权限查看")
-    return employee_summary(session, employee)
+    return employee_summary(session, employee, principal)

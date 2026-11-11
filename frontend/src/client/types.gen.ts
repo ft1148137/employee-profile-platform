@@ -1320,6 +1320,20 @@ export type DelegationView = {
 };
 
 /**
+ * DepartmentManager
+ */
+export type DepartmentManager = {
+    /**
+     * Employee Id
+     */
+    employee_id: string | null;
+    /**
+     * Display Name
+     */
+    display_name: string;
+};
+
+/**
  * DepartmentNode
  */
 export type DepartmentNode = {
@@ -1662,6 +1676,20 @@ export type EmployeeFields = {
 };
 
 /**
+ * EmployeeReference
+ */
+export type EmployeeReference = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Display Name
+     */
+    display_name: string;
+};
+
+/**
  * EmployeeSummary
  */
 export type EmployeeSummary = {
@@ -1681,6 +1709,7 @@ export type EmployeeSummary = {
     department: DepartmentSummary | null;
     progress: ProgressPublic;
     latest_published: PublishedSummary | null;
+    manager?: EmployeeReference | null;
 };
 
 /**
@@ -2866,6 +2895,46 @@ export type Onboard = {
      * Manager Id
      */
     manager_id?: string | null;
+};
+
+/**
+ * OrgChartDepartment
+ */
+export type OrgChartDepartment = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Parent Department Id
+     */
+    parent_department_id: string | null;
+    /**
+     * Managers
+     */
+    managers?: Array<DepartmentManager>;
+    /**
+     * Direct Count
+     */
+    direct_count?: number;
+    /**
+     * Total Count
+     */
+    total_count?: number;
+};
+
+/**
+ * OrgChartPublic
+ */
+export type OrgChartPublic = {
+    /**
+     * Departments
+     */
+    departments: Array<OrgChartDepartment>;
 };
 
 /**
@@ -7635,6 +7704,36 @@ export type externalIdentitiesPostUnlinkResponses = {
 
 export type externalIdentitiesPostUnlinkResponse = externalIdentitiesPostUnlinkResponses[keyof externalIdentitiesPostUnlinkResponses];
 
+export type orgsReadOrgChartData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/org-chart';
+};
+
+export type orgsReadOrgChartErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type orgsReadOrgChartError = orgsReadOrgChartErrors[keyof orgsReadOrgChartErrors];
+
+export type orgsReadOrgChartResponses = {
+    /**
+     * Successful Response
+     */
+    200: OrgChartPublic;
+};
+
+export type orgsReadOrgChartResponse = orgsReadOrgChartResponses[keyof orgsReadOrgChartResponses];
+
 export type orgsRenameOrganizationData = {
     body: OrganizationUpdate;
     path: {
@@ -8016,6 +8115,10 @@ export type employeesReadEmployeesData = {
          * Department Id
          */
         department_id?: string | null;
+        /**
+         * Employment Status
+         */
+        employment_status?: EmploymentStatus | null;
         /**
          * Q
          */
