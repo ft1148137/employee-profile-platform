@@ -9,6 +9,7 @@ def test_audit_labels_cover_backend_events() -> None:
     root = Path(__file__).resolve().parents[3]
     labels = (root / "frontend/src/components/Admin/auditLabels.ts").read_text()
     expansions = {
+        "capability_proposal.{}": {"open", "accepted", "dismissed"},
         "review_delegation.{}": {"created", "revoked"},
         "appeal.{}": {"open", "upheld", "reopened"},
         "setup.step_{}": {"completed", "skipped"},

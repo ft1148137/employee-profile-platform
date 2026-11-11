@@ -34,6 +34,7 @@ from app.domains.admin_assistant.schemas import (
 from app.domains.base import utc_now
 from app.domains.bot import store as messages
 from app.domains.bot.schemas import TextMessage
+from app.domains.capability.proposals import ProposalConflict
 from app.domains.capability.service import DictionaryConflict
 from app.domains.change_request.import_json import InvalidImport
 from app.domains.im.settings import InvalidImSetting
@@ -411,6 +412,8 @@ def apply(
         "assistant_session_id": str(row.session_id),
         "change_set_id": str(row.id),
     }
+    if original:
+        db.info["audit_context"]["undo_of_id"] = str(original.id)
     try:
         applied_items = public(row).items
         for item, (entry, args) in zip(applied_items, prepared, strict=True):
@@ -472,6 +475,7 @@ def apply(
     except (
         AccountError,
         DictionaryConflict,
+        ProposalConflict,
         IdentityConflict,
         InvalidIdentityEmployee,
         RosterError,

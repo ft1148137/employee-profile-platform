@@ -124,3 +124,22 @@ class DictionaryPreview(BaseModel):
     removed_item_counts: dict[str, int]
     errors: list[str]
     warnings: list[str] = Field(default_factory=list)
+
+
+class CapabilityProposalSummary(BaseModel):
+    id: UUID
+    name: str
+    category: str | None
+    description: str
+    reason: str
+    evidence_count: int
+    updated_at: datetime
+
+
+class CapabilityProposalPublic(CapabilityProposalSummary):
+    evidence_titles: list[str]
+    employee_count: int
+
+
+class CapabilityProposalsPublic(BaseModel):
+    data: list[CapabilityProposalPublic]

@@ -7,6 +7,7 @@ from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.domains.base import utc_now
+from app.domains.capability.models import CapabilityProposal, ProposalStatus
 from app.domains.change_request.handover import hand_over
 from app.domains.change_request.models import ProfileChangeRequest, RequestStatus
 from app.domains.drafting.service import read_progress
@@ -38,6 +39,7 @@ TodoKind = Literal[
     "unmatched_identities",
     "sync_failed",
     "setup_step",
+    "capability_proposals",
 ]
 
 
@@ -191,6 +193,21 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
                 )
             )
 
+    proposal_count = session.exec(
+        select(func.count())
+        .select_from(CapabilityProposal)
+        .where(
+            CapabilityProposal.org_id == org_id,
+            CapabilityProposal.status == ProposalStatus.OPEN,
+        )
+    ).one()
+    add(
+        "capability_proposals",
+        proposal_count,
+        f"{proposal_count} 个起草时提议的新能力",
+        "/admin/rules?tab=dictionary#dictionary-editor",
+        "帮我查看起草时提议的新能力",
+    )
     disputes = list_disputes(principal, session)
     add(
         "appeals",

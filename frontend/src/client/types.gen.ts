@@ -150,7 +150,7 @@ export type AdminTodo = {
     /**
      * Kind
      */
-    kind: 'appeals' | 'initial_overdue' | 'review_backlog' | 'unmatched_identities' | 'sync_failed' | 'setup_step';
+    kind: 'appeals' | 'initial_overdue' | 'review_backlog' | 'unmatched_identities' | 'sync_failed' | 'setup_step' | 'capability_proposals';
     /**
      * Count
      */
@@ -678,6 +678,58 @@ export type Capability = {
      * Name
      */
     name: string;
+};
+
+/**
+ * CapabilityProposalPublic
+ */
+export type CapabilityProposalPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Category
+     */
+    category: string | null;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Evidence Count
+     */
+    evidence_count: number;
+    /**
+     * Updated At
+     */
+    updated_at: string;
+    /**
+     * Evidence Titles
+     */
+    evidence_titles: Array<string>;
+    /**
+     * Employee Count
+     */
+    employee_count: number;
+};
+
+/**
+ * CapabilityProposalsPublic
+ */
+export type CapabilityProposalsPublic = {
+    /**
+     * Data
+     */
+    data: Array<CapabilityProposalPublic>;
 };
 
 /**
@@ -8832,6 +8884,70 @@ export type capabilitiesPreviewDictionaryEditorResponses = {
 
 export type capabilitiesPreviewDictionaryEditorResponse = capabilitiesPreviewDictionaryEditorResponses[keyof capabilitiesPreviewDictionaryEditorResponses];
 
+export type capabilitiesReadCapabilityProposalsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/capabilities/proposals';
+};
+
+export type capabilitiesReadCapabilityProposalsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilitiesReadCapabilityProposalsError = capabilitiesReadCapabilityProposalsErrors[keyof capabilitiesReadCapabilityProposalsErrors];
+
+export type capabilitiesReadCapabilityProposalsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CapabilityProposalsPublic;
+};
+
+export type capabilitiesReadCapabilityProposalsResponse = capabilitiesReadCapabilityProposalsResponses[keyof capabilitiesReadCapabilityProposalsResponses];
+
+export type capabilitiesDismissCapabilityProposalData = {
+    body?: never;
+    path: {
+        /**
+         * Id
+         */
+        id: string;
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/capabilities/proposals/{id}/dismiss';
+};
+
+export type capabilitiesDismissCapabilityProposalErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilitiesDismissCapabilityProposalError = capabilitiesDismissCapabilityProposalErrors[keyof capabilitiesDismissCapabilityProposalErrors];
+
+export type capabilitiesDismissCapabilityProposalResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type capabilitiesDismissCapabilityProposalResponse = capabilitiesDismissCapabilityProposalResponses[keyof capabilitiesDismissCapabilityProposalResponses];
+
 export type capabilityTemplatesReadTemplatesData = {
     body?: never;
     path?: never;
@@ -10085,3 +10201,37 @@ export type privateCreateUserResponses = {
 };
 
 export type privateCreateUserResponse = privateCreateUserResponses[keyof privateCreateUserResponses];
+
+export type privateSeedCapabilityProposalData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+        /**
+         * Name
+         */
+        name: string;
+    };
+    url: '/api/v1/private/capability-proposals';
+};
+
+export type privateSeedCapabilityProposalErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type privateSeedCapabilityProposalError = privateSeedCapabilityProposalErrors[keyof privateSeedCapabilityProposalErrors];
+
+export type privateSeedCapabilityProposalResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type privateSeedCapabilityProposalResponse = privateSeedCapabilityProposalResponses[keyof privateSeedCapabilityProposalResponses];

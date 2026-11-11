@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useLocation } from "@tanstack/react-router"
 import { AxiosError } from "axios"
 import { useRef, useState } from "react"
 import { CapabilitiesService, type DictionaryPreview } from "@/client"
@@ -39,8 +40,11 @@ function Dictionary({
   const client = useQueryClient()
   const suggestion = usePageDraft(orgId, "update_capability_dictionary")
   const fileInput = useRef<HTMLInputElement>(null)
-  const [editing, setEditing] = useState(false)
-  const [managing, setManaging] = useState(false)
+  const openEditor = useLocation({
+    select: (location) => admin && location.hash === "dictionary-editor",
+  })
+  const [editing, setEditing] = useState(openEditor)
+  const [managing, setManaging] = useState(openEditor)
   const [filename, setFilename] = useState("")
   const [preview, setPreview] = useState<DictionaryPreview | null>(null)
   const [redraft, setRedraft] = useState(false)
