@@ -16,7 +16,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
 from app.domains.base import TenantRecord, tenant_fk, utc_now
-from app.domains.bot.models import ConversationMessage
+from app.domains.bot.models import ChatAttachment, ConversationMessage
 
 
 class AdminAssistantSession(SQLModel, table=True):
@@ -91,4 +91,23 @@ class AdminChangeSet(TenantRecord, table=True):
     undo_of_id: UUID | None = None
     updated_at: datetime = Field(
         default_factory=utc_now, sa_type=DateTime(timezone=True)
+    )
+
+
+class AdminAssistantAttachment(ChatAttachment, table=True):
+    __tablename__ = "admin_assistant_attachment"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["org_id", "session_id"],
+            ["admin_assistant_session.org_id", "admin_assistant_session.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("kind IN ('image', 'file')"),
+        CheckConstraint("size > 0"),
+        Index(
+            "ix_admin_assistant_attachment_session_time",
+            "org_id",
+            "session_id",
+            "created_at",
+        ),
     )

@@ -36,3 +36,5 @@
 - [ADR-0035：借鉴 NocoBase 架构的范围](0035-nocobase-reference.md)（已接受，2026-11-10，大古）
 
 - [ADR-0036：企业自动起草使用单一总开关](0036-auto-drafting-switch.md)
+
+- [ADR-0037：私有会话附件与文件输入边界](0037-chat-attachments.md)

@@ -22,7 +22,7 @@ from app.domains.admin_assistant.schemas import (
     SecretInput,
     TestConnection,
 )
-from app.domains.bot import streaming
+from app.domains.bot import attachments, streaming
 from app.domains.bot.schemas import SessionCreated, TextMessage
 from app.domains.bot.store import BotSessionNotFound, SessionList, messages_for
 from app.domains.bot.store import list_sessions as recent_sessions
@@ -52,7 +52,7 @@ def create_session(principal: OrgAdminDep, session: SessionDep) -> SessionCreate
     return SessionCreated(session_id=store.create_session(session, principal).id)
 
 
-@router.get("/sessions/{session_id}/messages")
+@router.get("/sessions/{session_id}/messages", response_model_exclude_unset=True)
 def list_messages(
     principal: OrgAdminDep, session: SessionDep, session_id: UUID
 ) -> list[AdminSessionMessage]:
@@ -79,6 +79,9 @@ def turn(
     request: Request,
 ) -> StreamingResponse:
     store.get_session(session, principal, session_id)
+    attachments.prepare(
+        session, principal, "admin", session_id, body.attachment_ids, body.text
+    )
     session.close()
     return streaming.response(
         lambda db, stream: core.turn(db, principal, session_id, body, stream=stream),
@@ -167,3 +170,32 @@ def undo_change_set(
     principal: OrgAdminDep, session: SessionDep, id: UUID
 ) -> ChangeSetPublic:
     return change_set.undo(session, principal, id)
+
+
+@router.post("/sessions/{session_id}/attachments")
+def upload_attachment(
+    principal: OrgPrincipalDep, session: SessionDep, session_id: UUID, file: UploadFile
+) -> attachments.AttachmentPublic:
+    return attachments.upload(session, principal, "admin", session_id, file)
+
+
+@router.get(
+    "/sessions/{session_id}/attachments/{attachment_id}",
+    response_class=Response,
+    responses={
+        200: {
+            "content": {
+                "application/octet-stream": {
+                    "schema": {"type": "string", "format": "binary"}
+                }
+            }
+        }
+    },
+)
+def download_attachment(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    session_id: UUID,
+    attachment_id: UUID,
+) -> Response:
+    return attachments.download(session, principal, "admin", session_id, attachment_id)

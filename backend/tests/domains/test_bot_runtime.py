@@ -15,6 +15,7 @@ from sqlmodel import Session, select
 from app.authz.deps import get_org_principal
 from app.core.db import engine
 from app.domains.admin_assistant.models import (
+    AdminAssistantAttachment,
     AdminAssistantMessage,
     AdminAssistantSession,
     AdminChangeSet,
@@ -28,7 +29,7 @@ from app.domains.bot.admission import (
     BotRateLimited,
     begin_turn,
 )
-from app.domains.bot.models import BotMessage, BotSession, BotSetting
+from app.domains.bot.models import BotAttachment, BotMessage, BotSession, BotSetting
 from app.domains.bot.settings import BotSettings
 from app.domains.model.client import ModelRateLimited
 from app.domains.model.models import ModelSetting
@@ -133,7 +134,22 @@ def test_cleanup_failure_isolated_per_org(
         ]
         db.add_all(sessions)
         db.flush()
-        for session in sessions:
+        for session, attachment_type in zip(
+            sessions, (BotAttachment, AdminAssistantAttachment), strict=True
+        ):
+            db.add(
+                attachment_type(
+                    org_id=org.id,
+                    session_id=session.id,
+                    kind="file",
+                    filename="synthetic.txt",
+                    mime_type="text/plain",
+                    size=1,
+                    ciphertext="synthetic-original",
+                    text_ciphertext="synthetic-extracted",
+                    created_at=now - timedelta(days=8),
+                )
+            )
             message = store.append_message(db, session, "user", "合成过期原文")
             message.created_at = now - timedelta(days=8)
             store.save_state(db, session, {"version": 1, "messages": []})
@@ -166,9 +182,23 @@ def test_cleanup_failure_isolated_per_org(
     for org_id in visited:
         sessions, draft = records[org_id]
         failed = org_id == visited[0]
-        for session, message_type in zip(
-            sessions, [BotMessage, AdminAssistantMessage], strict=True
+        for session, message_type, attachment_type in zip(
+            sessions,
+            [BotMessage, AdminAssistantMessage],
+            [BotAttachment, AdminAssistantAttachment],
+            strict=True,
         ):
+            assert (
+                bool(
+                    db.exec(
+                        select(attachment_type).where(
+                            attachment_type.org_id == org_id,
+                            attachment_type.session_id == session.id,
+                        )
+                    ).all()
+                )
+                == failed
+            )
             db.refresh(session)
             assert bool(session.state_ciphertext) == failed
             assert (

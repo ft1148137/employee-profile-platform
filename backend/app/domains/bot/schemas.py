@@ -2,8 +2,9 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.domains.bot.attachments import AttachmentPublic
 from app.domains.change_request.schemas import ToolInput
 from app.domains.profile.models import AssessmentStatus
 from app.domains.review.schemas import DecisionInput
@@ -202,6 +203,18 @@ class TurnResponse(BaseModel):
 
 class TurnInput(ToolInput):
     text: str = Field(min_length=1, max_length=10000, pattern=r"\S")
+    attachment_ids: list[UUID] = Field(default_factory=list, max_length=5)
+
+    @field_validator("attachment_ids", mode="before")
+    @classmethod
+    def limit_attachments(cls, value: object) -> object:
+        if isinstance(value, list) and len(value) > 5:
+            raise ValueError("每轮最多 5 个附件")
+        return value
+
+
+class UserMessage(TurnInput):
+    attachments: list[AttachmentPublic] = Field(default_factory=list)
 
 
 class SessionCreated(BaseModel):
@@ -211,5 +224,5 @@ class SessionCreated(BaseModel):
 class SessionMessage(BaseModel):
     id: UUID
     role: Literal["user", "assistant"]
-    payload: TurnInput | TurnResponse
+    payload: UserMessage | TurnResponse
     created_at: datetime

@@ -80,3 +80,28 @@ class BotMessage(ConversationMessage, table=True):
         CheckConstraint("role IN ('user', 'assistant')"),
         Index("ix_bot_message_session_time", "org_id", "session_id", "created_at"),
     )
+
+
+class ChatAttachment(TenantRecord):
+    session_id: UUID
+    kind: Literal["image", "file"] = Field(sa_type=String)
+    filename: str
+    mime_type: str
+    size: int
+    ciphertext: str = Field(repr=False)
+    text_ciphertext: str | None = Field(default=None, repr=False)
+    notice: str | None = None
+
+
+class BotAttachment(ChatAttachment, table=True):
+    __tablename__ = "bot_attachment"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["org_id", "session_id"],
+            ["bot_session.org_id", "bot_session.id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("kind IN ('image', 'file')"),
+        CheckConstraint("size > 0"),
+        Index("ix_bot_attachment_session_time", "org_id", "session_id", "created_at"),
+    )
