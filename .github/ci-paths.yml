@@ -1,0 +1,22 @@
+runtime:
+  - '**'
+  - '!**/*.md'
+  - '!docs/**'
+  - '!.github/ISSUE_TEMPLATE/**'
+playwright:
+  - '**'
+  - '!**/*.md'
+  - '!docs/**'
+  - '!.github/ISSUE_TEMPLATE/**'
+  - '!pi/**'
+unknown:
+  - '**'
+  - '!**/*.md'
+  - '!docs/**'
+  - '!.github/ISSUE_TEMPLATE/**'
+  - '!backend/**'
+  - '!frontend/**'
+  - '!pi/**'
+  - '!examples/**'
+  - '!templates/**'
+  - '!connectors/**'

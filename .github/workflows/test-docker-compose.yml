@@ -5,16 +5,44 @@ on:
     branches:
       - master
   pull_request:
+  schedule:
+    - cron: '17 19 * * *'
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  compose-changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      runtime: ${{ github.event_name != 'pull_request' || steps.filter.outputs.runtime == 'true' }}
+      production: ${{ github.event_name != 'pull_request' || steps.deploy.outputs.changed == 'true' || steps.filter.outputs.unknown == 'true' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        if: github.event_name == 'pull_request'
+        id: filter
+        with:
+          predicate-quantifier: every
+          filters: .github/ci-paths.yml
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        if: github.event_name == 'pull_request'
+        id: deploy
+        with:
+          filters: .github/ci-deploy-paths.yml
 
-  test-docker-compose:
+  compose-tests:
+    needs: compose-changes
+    if: needs.compose-changes.outputs.runtime == 'true'
     runs-on: ubuntu-latest
     env:
       COMPOSE_PROJECT_NAME: epp-compose-ci
@@ -45,7 +73,9 @@ jobs:
       - if: always()
         run: docker compose down -v --remove-orphans
 
-  test-production-install:
+  production-tests:
+    needs: compose-changes
+    if: needs.compose-changes.outputs.production == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -127,3 +157,35 @@ jobs:
       - name: Stop test stack
         if: always()
         run: docker compose down -v --rmi local --remove-orphans
+
+  test-docker-compose:
+    needs: [compose-changes, compose-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require tests or a successful path filter
+        env:
+          FILTER: ${{ needs.compose-changes.result }}
+          CHANGED: ${{ needs.compose-changes.outputs.runtime }}
+          TESTS: ${{ needs.compose-tests.result }}
+        run: bash .github/scripts/require-tests.sh "$FILTER" "$CHANGED" "$TESTS"
+
+  test-production-install:
+    needs: [compose-changes, production-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require tests or a successful path filter
+        env:
+          FILTER: ${{ needs.compose-changes.result }}
+          CHANGED: ${{ needs.compose-changes.outputs.production }}
+          TESTS: ${{ needs.production-tests.result }}
+        run: bash .github/scripts/require-tests.sh "$FILTER" "$CHANGED" "$TESTS"

@@ -1,13 +1,17 @@
 name: pre-commit
 
 on:
+  push:
+    branches: [master]
   pull_request:
+  schedule:
+    - cron: '17 19 * * *'
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   pre-commit:
@@ -38,6 +42,15 @@ jobs:
         run: uv sync --all-packages
       - name: Install frontend dependencies
         run: bun ci
+      - name: Check CI path filters and required gates
+        run: uv run python .github/scripts/test_ci.py
       - name: Run prek - pre-commit
         id: precommit
-        run: uv run prek run --from-ref origin/${GITHUB_BASE_REF} --to-ref HEAD --show-diff-on-failure
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            uv run prek run --from-ref "origin/$GITHUB_BASE_REF" --to-ref HEAD --show-diff-on-failure
+          else
+            uv run prek run --all-files --show-diff-on-failure
+          fi
