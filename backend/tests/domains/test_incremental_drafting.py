@@ -137,7 +137,7 @@ def test_attach_publishes_without_pending_or_notification(
         and request.decided_at
     )
     assert request.author == {"actor_type": "system_worker"}
-    assert request.generated_by["prompt_version"] == "incremental-draft-v1"
+    assert request.generated_by["prompt_version"] == "incremental-draft-v2"
     assert request.generated_by["schema_version_id"] == str(schema.id)
     assert request.generated_by["model"] == "synthetic"
     decision = rows(db, ReviewDecision, org)[0]
@@ -271,7 +271,7 @@ def test_jira_status_guard(
 @pytest.mark.parametrize(
     "change",
     [
-        {"capability_key": "missing"},
+        {"capability_key": "missing", "evidence": ["R999"]},
         {"evidence": ["E1"]},
         {"evidence": ["R999"]},
         {"evidence": ["R1", "R1"]},
@@ -556,7 +556,7 @@ def test_opt_out_during_model_call_prevents_publish(
     original = incremental.model.draft
     employee_id = incremental_context[3][0].id
 
-    def opt_out(*args: object, **kwargs: object) -> tuple:
+    def opt_out(*args: object, **kwargs: object) -> incremental.model.DraftResult:
         result = original(*args, **kwargs)
         with Session(engine) as session:
             employee = session.get(Employee, employee_id)

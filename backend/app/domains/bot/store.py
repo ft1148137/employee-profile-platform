@@ -288,6 +288,25 @@ def load_state(
         ).first()
     ):
         return None
+    attachment_type = (
+        AdminAssistantAttachment
+        if isinstance(session, AdminAssistantSession)
+        else BotAttachment
+    )
+    if (
+        session.state_ciphertext
+        and db.exec(
+            select(attachment_type.id)
+            .where(
+                attachment_type.org_id == session.org_id,
+                attachment_type.session_id == session.id,
+                attachment_type.created_at
+                <= utc_now() - (timedelta(days=days) if days else timedelta(hours=2)),
+            )
+            .limit(1)
+        ).first()
+    ):
+        return None
     return (
         json.loads(decrypt_secret(session.state_ciphertext))
         if session.state_ciphertext
@@ -322,6 +341,24 @@ def cleanup_messages(db: Session, now: datetime) -> None:
                     AdminAssistantAttachment,
                 ),
             ):
+                # Extracted file text can also exist in encrypted model context.
+                db.exec(
+                    update(session_type)
+                    .where(
+                        col(session_type.org_id) == org_id,
+                        col(session_type.id).in_(
+                            select(attachment_type.session_id).where(
+                                attachment_type.org_id == org_id,
+                                attachment_type.created_at
+                                <= now
+                                - (
+                                    timedelta(days=days) if days else timedelta(hours=2)
+                                ),
+                            )
+                        ),
+                    )
+                    .values(state_ciphertext=None)
+                )
                 db.exec(
                     delete(attachment_type).where(
                         col(attachment_type.org_id) == org_id,

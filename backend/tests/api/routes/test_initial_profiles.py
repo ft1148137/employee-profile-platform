@@ -21,7 +21,7 @@ from app.domains.change_request.models import (
 )
 from app.domains.drafting import service
 from app.domains.drafting.collect import CollectedRecord
-from app.domains.drafting.model import DraftItem
+from app.domains.drafting.model import DraftItem, DraftResult
 from app.domains.evidence.service import retract_evidence
 from app.domains.model.pi_client import PiModelConfig
 from app.domains.org.models import Employee, EmploymentStatus, ExternalIdentity
@@ -156,8 +156,9 @@ def test_queue_progress_retry(
         records: list[CollectedRecord],
         capabilities: list[CapabilityDefinition],
         config: PiModelConfig,
-    ) -> tuple[list[DraftItem], dict[str, JsonValue]]:
-        items, generated_by = original_draft(records, capabilities, config)
+    ) -> DraftResult:
+        result = original_draft(records, capabilities, config)
+        items = result.items
         if items and len(records) > 1:
             session = object_session(records[0].evidence)
             assert isinstance(session, Session)
@@ -168,7 +169,7 @@ def test_queue_progress_retry(
                 actor_type=Principal.system_worker(org).actor_type,
                 actor_id=None,
             )
-        return items, generated_by
+        return result
 
     monkeypatch.setattr(service.model, "draft", update_source)
 

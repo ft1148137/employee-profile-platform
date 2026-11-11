@@ -8,6 +8,7 @@ from app.authz.principal import Principal
 from app.core.db import engine
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
+from app.domains.capability.proposals import store_proposals
 from app.domains.capability.service import get_schema, list_capabilities
 from app.domains.change_request.models import (
     ChangeItem,
@@ -200,7 +201,7 @@ def draft_employee(session: Session, org_id: UUID, employee_id: UUID) -> None:
         raise ModelRateLimited(
             setting.paused_until, setting.pause_reason or "模型用量到上限"
         )
-    items, generated_by = model.draft(
+    result = model.draft(
         records,
         capabilities,
         model_config(setting),
@@ -214,6 +215,7 @@ def draft_employee(session: Session, org_id: UUID, employee_id: UUID) -> None:
             for key, claim in current.items()
         },
     )
+    items, generated_by = result.items, result.generated_by
     items = postprocess(session, org_id, employee, items, capabilities, groups)
     generated_by.update(
         schema_version_id=str(schema.id), incremental_from=lower.isoformat()
@@ -377,6 +379,7 @@ def draft_employee(session: Session, org_id: UUID, employee_id: UUID) -> None:
             "review_items": len(review),
         },
     )
+    store_proposals(session, org_id, employee_id, result.proposals)
     session.commit()
 
 

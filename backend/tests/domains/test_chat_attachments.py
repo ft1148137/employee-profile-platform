@@ -297,6 +297,31 @@ def test_cleanup_and_idle_upload(
 
 
 @pytest.mark.parametrize("kind", ["bot", "admin"])
+@pytest.mark.parametrize("days", [0, 7])
+def test_expired_attachment_cannot_survive_in_active_context(
+    demo: tuple, db: Session, kind: a.SessionKind, days: int
+) -> None:
+    p = (admin if kind == "admin" else principal_for)(db, demo[1]["E02"].org_id)
+    db.add(BotSetting(org_id=p.org_id, retention_days=days))
+    db.commit()
+    row = (admin_store if kind == "admin" else store).create_session(db, p)
+    item = a.upload(db, p, kind, row.id, file("x.txt", b"expired synthetic text"))
+    saved = a.get_session_attachment(db, p, kind, row.id, item.id)
+    saved.created_at = utc_now() - timedelta(days=8)
+    db.add(saved)
+    store.append_message(db, row, "user", {"text": "recent message"})
+    store.save_state(
+        db, row, {"version": 1, "messages": [{"text": "expired synthetic text"}]}
+    )
+    db.commit()
+    assert row.last_activity_at > utc_now() - timedelta(minutes=1)
+    assert store.load_state(db, row) is None
+    store.cleanup_messages(db, utc_now())
+    db.refresh(row)
+    assert row.state_ciphertext is None
+
+
+@pytest.mark.parametrize("kind", ["bot", "admin"])
 def test_turn_data_image_cancel_and_fallback(
     demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch, kind: a.SessionKind
 ) -> None:
@@ -358,7 +383,7 @@ def test_turn_data_image_cancel_and_fallback(
 
 
 def test_migration(migration_engine: Engine) -> None:
-    migrate(migration_engine, "downgrade", "b308001bc001")
+    migrate(migration_engine, "downgrade", "b315001bc001")
     assert "bot_attachment" not in inspect(migration_engine).get_table_names()
     migrate(migration_engine, "upgrade", "head")
     for table in ("bot_attachment", "admin_assistant_attachment"):

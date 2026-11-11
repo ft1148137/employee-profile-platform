@@ -3,18 +3,34 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import aliased
+from sqlalchemy.sql.selectable import Subquery
 from sqlmodel import Session, col, select
+from sqlmodel.sql.expression import Select
 
 from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
 from app.domains.audit.service import record_audit
 from app.domains.change_request.service import review_statuses
-from app.domains.org.models import Department, Employee, EmployeeField, Organization
+from app.domains.org.models import (
+    Department,
+    Employee,
+    EmployeeField,
+    EmploymentStatus,
+    Organization,
+    OrgMembership,
+    ReportingLine,
+    Role,
+    RoleGrant,
+)
 from app.domains.org.schemas import (
+    DepartmentManager,
     DepartmentSummary,
+    EmployeeReference,
     EmployeesPublic,
     EmployeeSummary,
     OrganizationPublic,
+    OrgChartDepartment,
+    OrgChartPublic,
     ProgressPublic,
     PublishedSummary,
 )
@@ -23,6 +39,107 @@ from app.domains.profile.models import (
     ProfileVersion,
     ProgressReviewStatus,
 )
+from app.models import User
+
+
+class OrgChartForbidden(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(403, "需要企业管理员或部门经理权限")
+
+
+def read_org_chart(session: Session, principal: Principal) -> OrgChartPublic:
+    if not principal.is_org_admin and not principal.managed_department_ids:
+        raise OrgChartForbidden()
+    departments = session.exec(
+        select(Department)
+        .where(
+            Department.org_id == principal.org_id,
+            True
+            if principal.is_org_admin
+            else col(Department.id).in_(principal.managed_department_ids),
+        )
+        .order_by(Department.name, col(Department.id))
+    ).all()
+    nodes = {d.id: OrgChartDepartment.model_validate(d) for d in departments}
+    for node in nodes.values():
+        if node.parent_department_id not in nodes:
+            node.parent_department_id = None
+        ancestor = node.parent_department_id
+        seen = {node.id}
+        while ancestor is not None and ancestor in nodes:
+            if ancestor in seen:
+                node.parent_department_id = None
+                break
+            seen.add(ancestor)
+            ancestor = nodes[ancestor].parent_department_id
+    counts = session.exec(
+        select(Employee.department_id, func.count())
+        .where(
+            employee_scope_clause(principal),
+            Employee.employment_status == EmploymentStatus.ACTIVE,
+        )
+        .group_by(col(Employee.department_id))
+    ).all()
+    for department_id, count in counts:
+        if department_id in nodes:
+            nodes[department_id].direct_count = count
+    for node in nodes.values():
+        ancestor = node.id
+        seen = set()
+        while ancestor is not None and ancestor in nodes and ancestor not in seen:
+            seen.add(ancestor)
+            nodes[ancestor].total_count += node.direct_count
+            ancestor = nodes[ancestor].parent_department_id
+    managers = session.exec(
+        select(RoleGrant.department_id, Employee, User)
+        .join(
+            OrgMembership,
+            (col(OrgMembership.id) == RoleGrant.membership_id)
+            & (OrgMembership.org_id == principal.org_id),
+        )
+        .join(User, col(User.id) == OrgMembership.user_id)
+        .outerjoin(
+            Employee,
+            (col(Employee.id) == OrgMembership.employee_id)
+            & (Employee.org_id == principal.org_id),
+        )
+        .where(
+            RoleGrant.org_id == principal.org_id,
+            RoleGrant.role == Role.DEPT_MANAGER,
+            col(RoleGrant.department_id).in_(nodes),
+        )
+        .order_by(User.username, col(User.id))
+    ).all()
+    for department_id, employee, user in managers:
+        if department_id in nodes:
+            nodes[department_id].managers.append(
+                DepartmentManager(
+                    employee_id=employee.id if employee else None,
+                    display_name=employee.display_name if employee else user.username,
+                )
+            )
+    return OrgChartPublic(departments=list(nodes.values()))
+
+
+def _reporting_managers(principal: Principal) -> Subquery:
+    return (
+        select(
+            ReportingLine.employee_id,
+            col(Employee.id).label("id"),
+            Employee.display_name,
+        )
+        .join(
+            Employee,
+            (col(Employee.id) == ReportingLine.manager_employee_id)
+            & (Employee.org_id == ReportingLine.org_id),
+        )
+        .where(
+            ReportingLine.org_id == principal.org_id,
+            col(ReportingLine.valid_to).is_(None),
+            employee_scope_clause(principal),
+        )
+        .subquery()
+    )
 
 
 def managed_scope(
@@ -62,16 +179,31 @@ def visible_employee(
     return employee
 
 
-def employee_summary(session: Session, employee: Employee) -> EmployeeSummary:
-    department, progress, version, fields = session.exec(
-        select(
+def employee_summary(
+    session: Session, employee: Employee, principal: Principal
+) -> EmployeeSummary:
+    managers = _reporting_managers(principal)
+    department, progress, version, manager_id, manager_name, fields = session.exec(
+        Select[
+            tuple[
+                Department | None,
+                ProfileProgress | None,
+                ProfileVersion | None,
+                UUID | None,
+                str | None,
+                list[EmployeeField],
+            ]
+        ](
             Department,
             ProfileProgress,
             ProfileVersion,
+            managers.c.id,
+            managers.c.display_name,
             col(Organization.employee_fields),
         )
         .select_from(Employee)
         .join(Organization, col(Organization.id) == Employee.org_id)
+        .outerjoin(managers, col(Employee.id) == managers.c.employee_id)
         .outerjoin(
             Department,
             (col(Department.org_id) == Employee.org_id)
@@ -87,7 +219,7 @@ def employee_summary(session: Session, employee: Employee) -> EmployeeSummary:
             (col(ProfileVersion.org_id) == Employee.org_id)
             & (col(ProfileVersion.subject_employee_id) == Employee.id),
         )
-        .where(Employee.org_id == employee.org_id, Employee.id == employee.id)
+        .where(col(Employee.org_id) == employee.org_id, col(Employee.id) == employee.id)
         .order_by(col(ProfileVersion.revision).desc())
         .limit(1)
     ).one()
@@ -100,6 +232,8 @@ def employee_summary(session: Session, employee: Employee) -> EmployeeSummary:
         review_statuses(
             session, employee.org_id, [employee.id], {employee.id} if version else set()
         )[employee.id],
+        manager_id,
+        manager_name,
     )
 
 
@@ -110,6 +244,8 @@ def _employee_summary(
     version: ProfileVersion | None,
     fields: list[EmployeeField],
     review_status: ProgressReviewStatus,
+    manager_id: UUID | None,
+    manager_name: str | None,
 ) -> EmployeeSummary:
     return EmployeeSummary(
         **{f: getattr(employee, f) for f in fields},
@@ -125,6 +261,9 @@ def _employee_summary(
             review_status=review_status,
         ),
         latest_published=PublishedSummary.model_validate(version) if version else None,
+        manager=EmployeeReference(id=manager_id, display_name=manager_name)
+        if manager_id and manager_name is not None
+        else None,
     )
 
 
@@ -136,8 +275,11 @@ def list_employees(
     q: str | None,
     skip: int,
     limit: int,
+    employment_status: EmploymentStatus | None = None,
 ) -> EmployeesPublic:
     filters = [employee_scope_clause(principal)]
+    if employment_status is not None:
+        filters.append(col(Employee.employment_status) == employment_status)
     if department_id is not None:
         filters.append(col(Employee.department_id) == department_id)
     if q:
@@ -162,9 +304,27 @@ def list_employees(
         )
         .subquery(),
     )
+    managers = _reporting_managers(principal)
     rows = session.exec(
-        select(Employee, Department, ProfileProgress, latest_version)
+        Select[
+            tuple[
+                Employee,
+                Department | None,
+                ProfileProgress | None,
+                ProfileVersion | None,
+                UUID | None,
+                str | None,
+            ]
+        ](
+            Employee,
+            Department,
+            ProfileProgress,
+            latest_version,
+            managers.c.id,
+            managers.c.display_name,
+        )
         .where(*filters)
+        .outerjoin(managers, col(Employee.id) == managers.c.employee_id)
         .outerjoin(
             Department,
             (col(Department.org_id) == Employee.org_id)
@@ -188,10 +348,15 @@ def list_employees(
         session,
         principal.org_id,
         [e.id for e, *_ in rows],
-        {e.id for e, _, _, version in rows if version},
+        {e.id for e, _, _, version, *_ in rows if version},
     )
     return EmployeesPublic(
-        data=[_employee_summary(*row, fields, statuses[row[0].id]) for row in rows],
+        data=[
+            _employee_summary(
+                e, d, p, v, fields, statuses[e.id], manager_id, manager_name
+            )
+            for e, d, p, v, manager_id, manager_name in rows
+        ],
         count=count,
     )
 

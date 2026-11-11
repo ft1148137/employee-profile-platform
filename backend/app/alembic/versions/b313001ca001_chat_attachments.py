@@ -1,13 +1,13 @@
 """Encrypted chat attachments for both private conversation types.
 
 Revision ID: b313001ca001
-Revises: b308001bc001
+Revises: b315001bc001
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "b313001ca001"
-down_revision = "b308001bc001"
+down_revision = "b315001bc001"
 branch_labels = None
 depends_on = None
 

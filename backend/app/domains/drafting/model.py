@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from collections.abc import Sequence
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Literal, Self
 from uuid import UUID
@@ -9,14 +10,16 @@ from pydantic import (
     Field,
     JsonValue,
     ValidationError,
+    field_validator,
     model_validator,
 )
 
 from app.domains.capability.models import CapabilityDefinition
+from app.domains.capability.proposals import name_key
 from app.domains.change_request.claim import ClaimAfter
 from app.domains.change_request.models import ChangeOp
 from app.domains.drafting.collect import CollectedRecord, relation
-from app.domains.evidence.models import Visibility
+from app.domains.evidence.models import EvidenceKind, Visibility
 from app.domains.model.client import (
     ModelOutputInvalid,
     ModelUnavailable,
@@ -35,12 +38,35 @@ class DraftItem:
     op: ChangeOp = ChangeOp.ADD
 
 
-PROMPT_VERSION = "initial-draft-v1"
+class Proposal(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    name: str = Field(min_length=1, max_length=40)
+    category: str | None = Field(default=None, max_length=40)
+    description: str = Field(min_length=1, max_length=300)
+    reason: str = Field(min_length=1, max_length=300)
+    evidence: list[str] = Field(min_length=2)
+
+
+@dataclass
+class DraftProposal:
+    proposal: Proposal
+    evidence_ids: list[UUID]
+
+
+@dataclass
+class DraftResult:
+    items: list[DraftItem]
+    generated_by: dict[str, JsonValue]
+    proposals: list[DraftProposal] = field(default_factory=list)
+
+
+PROMPT_VERSION = "initial-draft-v2"
 SYSTEM_PROMPT = """只根据给出的记录起草能力陈述，没有记录支持的能力不要输出，未知不等于不会。
 指派人或报告人不一定是实际完成人，要在 uncertainty 中说明。同一经验组只算一项经验。
 等级只能用该能力给出的等级 key，没有把握时为 null。不做绩效、薪酬、晋升判断。
 explanation 不要写证据条数、来源数和日期，系统会按实际证据补在开头。
-只返回规定格式的 JSON，evidence 使用本次记录的 ref。"""
+只返回规定格式的 JSON，evidence 使用本次记录的 ref。
+词典里没有合适的能力时，可以在 proposals 里提出，最多 3 条，不要在 items 里使用词典外的 key；proposals 不是判断，不写等级和员工陈述。"""
 
 
 class LevelInput(BaseModel):
@@ -107,7 +133,7 @@ def draft(
     config: PiModelConfig,
     current: dict[str, ProfileClaim] | None = None,
     claim_evidence: dict[str, list[str]] | None = None,
-) -> tuple[list[DraftItem], dict[str, JsonValue]]:
+) -> DraftResult:
     # shortcut: Initial drafts use the latest 80 records, increments use one whole window; batch by token budget when larger histories exceed model limits.
     records = sorted(
         (r for r in records if r.evidence.visibility == Visibility.STANDARD),
@@ -174,24 +200,58 @@ def draft(
     definitions = {c.key: c for c in capabilities}
     levels = {c.key: {level.key for level in c.levels} for c in body.capabilities}
 
+    existing_names = {
+        name_key(value) for c in capabilities for value in (c.key, c.name)
+    }
+
+    def valid_proposals(values: Sequence[object]) -> list[Proposal]:
+        accepted = []
+        for value in values:
+            try:
+                proposal = Proposal.model_validate(value)
+            except ValidationError:
+                continue
+            if (
+                not name_key(proposal.name)
+                or name_key(proposal.name) in existing_names
+                or len(set(proposal.evidence)) != len(proposal.evidence)
+                or not set(proposal.evidence) <= refs.keys()
+                or len(
+                    {
+                        refs[r].evidence.id
+                        for r in proposal.evidence
+                        if refs[r].evidence.kind == EvidenceKind.WORK_RECORD
+                    }
+                )
+                < 2
+            ):
+                continue
+            accepted.append(proposal)
+        return accepted
+
     class DraftOutput(BaseModel):
         model_config = ConfigDict(extra="forbid")
         items: list[ModelItem]
+        proposals: list[Proposal] = Field(default_factory=list, max_length=3)
+
+        @field_validator("proposals", mode="before")
+        @classmethod
+        def discard_invalid_proposals(cls, value: JsonValue) -> object:
+            return valid_proposals(value) if isinstance(value, list) else value
 
         @model_validator(mode="after")
         def validate_references(self) -> Self:
             seen: set[str] = set()
             for item in self.items:
-                if (
-                    item.capability_key not in definitions
-                    or item.capability_key in seen
-                ):
-                    raise ValueError("能力不在给定词典中或重复")
+                if item.capability_key in seen:
+                    raise ValueError("能力重复")
                 seen.add(item.capability_key)
                 if not set(item.evidence) <= refs.keys():
                     raise ValueError("证据 ref 不在本次记录中")
                 if len(set(item.evidence)) != len(item.evidence):
                     raise ValueError("证据引用重复")
+                if item.capability_key not in definitions:
+                    continue
                 if current is not None:
                     before = current.get(item.capability_key)
                     if (item.op == "add") != (before is None):
@@ -266,26 +326,61 @@ def draft(
         raise ModelOutputInvalid()
     provider, model_id, effort = config.provider, config.id, config.thinkingLevel
     assert output is not None
-    return [
-        DraftItem(
-            definitions[item.capability_key].id,
-            ClaimAfter(
-                statement=item.statement,
-                level=item.level,
-                assessment_status=AssessmentStatus.TENTATIVE,
-            ),
-            item.explanation,
-            item.uncertainty,
-            {refs[ref].evidence.id: relation(refs[ref]) for ref in item.evidence},
-            ChangeOp(item.op),
+    unknown = [item for item in output.items if item.capability_key not in definitions]
+    proposals = (
+        output.proposals
+        + valid_proposals(
+            [
+                {
+                    "name": item.capability_key,
+                    "category": None,
+                    "description": item.statement,
+                    "reason": item.explanation,
+                    "evidence": item.evidence,
+                }
+                for item in unknown
+            ]
         )
-        for item in output.items
-    ], {
-        "mode": "model",
-        "provider": provider,
-        "model": model_id,
-        "prompt_version": "incremental-draft-v1"
-        if current is not None
-        else PROMPT_VERSION,
-        "reasoning_effort": effort,
-    }
+    )[:3]
+    return DraftResult(
+        [
+            DraftItem(
+                definitions[item.capability_key].id,
+                ClaimAfter(
+                    statement=item.statement,
+                    level=item.level,
+                    assessment_status=AssessmentStatus.TENTATIVE,
+                ),
+                item.explanation,
+                item.uncertainty,
+                {refs[ref].evidence.id: relation(refs[ref]) for ref in item.evidence},
+                ChangeOp(item.op),
+            )
+            for item in output.items
+            if item.capability_key in definitions
+        ],
+        {
+            "mode": "model",
+            "provider": provider,
+            "model": model_id,
+            "prompt_version": "incremental-draft-v2"
+            if current is not None
+            else PROMPT_VERSION,
+            "reasoning_effort": effort,
+            "dropped_items": len(unknown),
+            "proposals": len(proposals),
+        },
+        [
+            DraftProposal(
+                p,
+                list(
+                    dict.fromkeys(
+                        refs[r].evidence.id
+                        for r in p.evidence
+                        if refs[r].evidence.kind == EvidenceKind.WORK_RECORD
+                    )
+                ),
+            )
+            for p in proposals
+        ],
+    )

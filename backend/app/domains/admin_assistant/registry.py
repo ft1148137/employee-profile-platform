@@ -44,7 +44,7 @@ from app.domains.org.employee_fields import EmployeeFields, save_employee_fields
 from app.domains.org.models import EmploymentStatus, Organization
 from app.domains.org.roster import service as roster
 from app.domains.org.roster import single
-from app.domains.org.service import visible_employee
+from app.domains.org.service import read_org_chart, visible_employee
 from app.domains.profile.service import read_profile
 from app.domains.review import appeal
 from app.domains.review.policy import PolicyInput, policy_view, read_policy, save_policy
@@ -253,6 +253,15 @@ FUNCTIONS = {
             lambda d, p, a: read_setup(d, p.org_id),
             "/admin/setup",
             "GET /setup",
+        ),
+        _f(
+            "get_org_chart",
+            "people",
+            "查看部门层级、部门经理和在职人数",
+            NoArgs,
+            lambda d, p, a: read_org_chart(d, p),
+            "/admin/people?tab=org-chart",
+            "GET /org-chart",
         ),
         _f(
             "list_accounts",
