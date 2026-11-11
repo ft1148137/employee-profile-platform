@@ -169,7 +169,9 @@ def get_review(
     )
     if evidence_ids != set(access):
         raise EvidenceNotFound()
-    details = evidence_details(session, principal, access)
+    details = evidence_details(
+        session, principal, access, review_subject_id=request.subject_employee_id
+    )
     result = []
     for row, capability in rows:
         evidence = evidence_by_item[row.id]

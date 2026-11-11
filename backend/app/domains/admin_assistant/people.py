@@ -165,6 +165,7 @@ def people_impact(db: Session, p: Principal, args: Any) -> BaseModel:
         )
     elif isinstance(args, ResolveArgs):
         row = appeal.read_appeal(p, db, args.appeal_id)
+        appeal.check_resolution_permission(p, row)
         employee = db.exec(
             select(Employee).where(
                 Employee.org_id == p.org_id, Employee.id == row.employee_id
@@ -317,7 +318,7 @@ def register_people(functions: dict[str, AdminFunction]) -> None:
         ),
         (
             "resolve_appeal",
-            "处理争议",
+            "处理争议（不能处理自己提出的申诉）",
             ResolveArgs,
             lambda d, p, a, **kw: appeal.resolve_appeal(p, d, a.appeal_id, a),
             lambda d, p, a: appeal.read_appeal(p, d, a.appeal_id),
