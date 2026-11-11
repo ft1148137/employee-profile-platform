@@ -1,5 +1,6 @@
 """Personnel changes use the same complete-roster validation and application."""
 
+from datetime import date
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -11,6 +12,7 @@ from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
 from app.domains.account.service import lock_org, require_admin
 from app.domains.change_request.models import ProfileChangeRequest, RequestStatus
+from app.domains.org.employee_fields import FIELD_LABELS
 from app.domains.org.models import (
     Department,
     Employee,
@@ -43,6 +45,9 @@ class Onboard(PersonnelInput):
     department: str = Field(min_length=1, max_length=1000)
     title: str | None = None
     manager_id: UUID | None = None
+    job_family: str | None = Field(default=None, max_length=50)
+    work_location: str | None = Field(default=None, max_length=50)
+    hire_date: date | None = None
 
 
 class Transfer(PersonnelInput):
@@ -51,6 +56,9 @@ class Transfer(PersonnelInput):
     department: str | None = Field(default=None, min_length=1, max_length=1000)
     title: str | None = None
     manager_id: UUID | None = None
+    job_family: str | None = Field(default=None, max_length=50)
+    work_location: str | None = Field(default=None, max_length=50)
+    hire_date: date | None = None
 
 
 class Offboard(PersonnelInput):
@@ -68,6 +76,7 @@ def current_roster(db: Session, p: Principal) -> ParsedRoster:
         .where(Employee.org_id == p.org_id)
         .order_by(Employee.employee_code)
     ).all()
+    fields = db.get_one(Organization, p.org_id).employee_fields
     by_id = {e.id: e for e in employees}
     paths = department_paths(
         db.exec(select(Department).where(Department.org_id == p.org_id)).all()
@@ -89,10 +98,11 @@ def current_roster(db: Session, p: Principal) -> ParsedRoster:
             409, "有上级尚未填写工号，请先完善名单，避免丢失汇报关系"
         )
     return ParsedRoster(
-        column_mapping={h: h for h in HEADERS},
+        column_mapping={h: h for h in (*HEADERS, *(FIELD_LABELS[f] for f in fields))},
         # shortcut: unkeyed employees follow import exclusions; revisit if roster keys change.
         rows=[
             RosterRow(
+                **{f: getattr(e, f) for f in fields},
                 row_number=i + 2,
                 employee_code=e.employee_code,
                 display_name=e.display_name,
@@ -158,6 +168,9 @@ def prepare(
             if not row.inactive and row.manager_code in codes:
                 row.manager_code = None
     else:
+        for field, label in FIELD_LABELS.items():
+            if field in args.model_fields_set and label not in roster.column_mapping:
+                raise service.RosterError(422, f"「{label}」未开启")
         manager_code = None
         if args.manager_id:
             manager = visible_employee(db, p, args.manager_id)
@@ -191,6 +204,9 @@ def prepare(
                 row.title = args.title
             if "manager_id" in args.model_fields_set:
                 row.manager_code = manager_code
+        for field in FIELD_LABELS:
+            if field in args.model_fields_set:
+                setattr(row, field, getattr(args, field))
         if args.department is not None:
             row.department_path = tuple(
                 part.strip()
@@ -281,6 +297,9 @@ def impact(db: Session, p: Principal, args: SingleChange) -> BaseModel:
             "无",
         )
         text = f"{row.display_name}；部门：{'/'.join(row.department_path)}；职位：{row.title or '未填写'}；上级：{manager}"
+        for field, label in FIELD_LABELS.items():
+            if field in args.model_fields_set:
+                text += f"；{label}：{getattr(row, field) or '清空'}"
     return RootModel(
         {"count": len(employees) if isinstance(args, Offboard) else 1, "text": text}
     )

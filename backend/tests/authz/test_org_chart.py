@@ -115,9 +115,13 @@ def test_chart_employee_and_tenant_boundaries(
 
 
 def test_department_people_and_current_reporting_scope(
-    chart_data: tuple, client: TestClient
+    chart_data: tuple, client: TestClient, db: Session
 ) -> None:
     orgs, departments, employees, users, _ = chart_data
+    orgs[0].employee_fields = ["job_family"]
+    employees[0][2].job_family = "合成岗位序列"
+    db.add_all([orgs[0], employees[0][2]])
+    db.commit()
     url = f"/api/v1/orgs/{orgs[0].id}"
     for actor in (0, 1):
         auth = headers(users[actor])
@@ -132,6 +136,7 @@ def test_department_people_and_current_reporting_scope(
         assert people["count"] == 1
         employee = people["data"][0]
         assert employee["id"] == str(employees[0][2].id)
+        assert employee["job_family"] == "合成岗位序列"
         assert employee["manager"] == {
             "id": str(employees[0][1].id),
             "display_name": employees[0][1].display_name,

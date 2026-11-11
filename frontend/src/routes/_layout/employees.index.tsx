@@ -16,6 +16,10 @@ import { OrgChart } from "@/components/OrgChart/OrgChart"
 import { publishedLabel } from "@/components/Profile/EmployeeSummary"
 import { OrgState } from "@/components/Profile/OrgState"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
+import {
+  employeeFieldLabels,
+  tenureLabel,
+} from "@/components/Roster/EmployeeFields"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -104,7 +108,7 @@ function EmployeesPage() {
 }
 
 function EmployeesList({ orgId }: { orgId: string }) {
-  const { roles, managedDepartmentIds } = useOrg()
+  const { org, roles, managedDepartmentIds } = useOrg()
   const navigate = useNavigate()
   const [department, setDepartment] = useState("all")
   const [search, setSearch] = useState("")
@@ -204,7 +208,20 @@ function EmployeesList({ orgId }: { orgId: string }) {
       ) : (
         <div className="overflow-hidden rounded-xl border">
           <DataTable
-            columns={columns}
+            columns={[
+              ...columns,
+              ...(org?.employee_fields ?? []).map((field) => ({
+                id: field,
+                header:
+                  field === "hire_date"
+                    ? "入职年限"
+                    : employeeFieldLabels[field],
+                cell: ({ row }: { row: { original: EmployeeSummary } }) =>
+                  field === "hire_date" && row.original.hire_date
+                    ? tenureLabel(row.original.hire_date)
+                    : (row.original[field] ?? "—"),
+              })),
+            ]}
             data={employees.data.data}
             pagination={pagination}
             onPaginationChange={setPagination}

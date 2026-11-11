@@ -146,3 +146,77 @@ test("onboard and transfer on the web, then offboard through the assistant", asy
     fullPage: true,
   })
 })
+
+test("work attributes in personnel form and employee pages", async ({
+  page,
+  request,
+}, testInfo) => {
+  const email = `fields-${crypto.randomUUID()}@example.com`
+  const password = "synthetic-password-2026"
+  const token = await request.post("/api/v1/private/setup-tokens", {
+    data: { purpose: "new_org" },
+  })
+  const initialized = await request.post("/api/v1/setup/initialize", {
+    data: {
+      token: (await token.json()).token,
+      org_name: "合成员工档案企业",
+      admin_username: email,
+      admin_password: password,
+    },
+  })
+  expect(initialized.ok()).toBeTruthy()
+  const { org_id: orgId, access_token: accessToken } = await initialized.json()
+  const base = `/api/v1/orgs/${orgId}`
+  const headers = { Authorization: `Bearer ${accessToken}` }
+  expect(
+    (
+      await request.put(`${base}/employee-fields`, {
+        headers,
+        data: { fields: ["job_family", "work_location", "hire_date"] },
+      })
+    ).ok(),
+  ).toBeTruthy()
+  await logInUser(page, email, password)
+  await page.goto("/admin/people?tab=accounts")
+  await page.getByRole("button", { name: "新增员工", exact: true }).click()
+  const dialog = page.getByRole("dialog")
+  await dialog.getByLabel("工号", { exact: true }).fill("FIELD01")
+  await dialog.getByLabel("姓名", { exact: true }).fill("合成档案员工")
+  await dialog
+    .getByLabel("邮箱", { exact: true })
+    .fill("fields-person@example.com")
+  await dialog.getByLabel("部门", { exact: true }).fill("研发部")
+  await dialog.getByLabel("岗位序列", { exact: true }).fill("技术")
+  await dialog.getByLabel("工作地点", { exact: true }).fill("上海")
+  const year = new Date().getFullYear() - 3
+  await dialog.getByLabel("入职日期", { exact: true }).fill(`${year}-01-01`)
+  await page.screenshot({
+    path: testInfo.outputPath("employee-fields-form.png"),
+    fullPage: true,
+  })
+  await dialog.getByRole("button", { name: "预览变动" }).click()
+  await expect(dialog.getByRole("region", { name: "名单预览" })).toContainText(
+    "合成档案员工",
+  )
+  await dialog.getByRole("button", { name: "确认新增员工" }).click()
+  await expect(dialog).toHaveCount(0)
+  await page.goto("/employees")
+  const row = page.getByRole("row").filter({ hasText: "合成档案员工" })
+  await expect(row).toContainText("技术")
+  await expect(row).toContainText("上海")
+  await expect(row).toContainText("入职 3 年")
+  await page.screenshot({
+    path: testInfo.outputPath("employee-fields-list.png"),
+    fullPage: true,
+  })
+  await page.getByRole("link", { name: "合成档案员工", exact: true }).click()
+  await expect(
+    page.getByRole("heading", { name: "合成档案员工", exact: true }),
+  ).toBeVisible()
+  await expect(page.getByText("入职 3 年", { exact: true })).toBeVisible()
+  await expect(page.getByText("上海", { exact: true })).toBeVisible()
+  await page.screenshot({
+    path: testInfo.outputPath("employee-fields-detail.png"),
+    fullPage: true,
+  })
+})

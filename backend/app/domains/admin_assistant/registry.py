@@ -629,6 +629,8 @@ async def admin_read(
             exclude_unset=function == "get_sources",
             exclude={"data": {"__all__": {"job_family", "work_location", "hire_date"}}}
             if function == "list_accounts"
+            else {"employee": {"job_family", "work_location", "hire_date"}}
+            if function == "get_employee_profile"
             else None,
         )
         card = _table(entry, data)

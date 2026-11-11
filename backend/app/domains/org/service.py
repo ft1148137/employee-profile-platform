@@ -14,6 +14,7 @@ from app.domains.change_request.service import review_statuses
 from app.domains.org.models import (
     Department,
     Employee,
+    EmployeeField,
     EmploymentStatus,
     Organization,
     OrgMembership,
@@ -182,7 +183,7 @@ def employee_summary(
     session: Session, employee: Employee, principal: Principal
 ) -> EmployeeSummary:
     managers = _reporting_managers(principal)
-    department, progress, version, manager_id, manager_name = session.exec(
+    department, progress, version, manager_id, manager_name, fields = session.exec(
         Select[
             tuple[
                 Department | None,
@@ -190,6 +191,7 @@ def employee_summary(
                 ProfileVersion | None,
                 UUID | None,
                 str | None,
+                list[EmployeeField],
             ]
         ](
             Department,
@@ -197,8 +199,10 @@ def employee_summary(
             ProfileVersion,
             managers.c.id,
             managers.c.display_name,
+            col(Organization.employee_fields),
         )
         .select_from(Employee)
+        .join(Organization, col(Organization.id) == Employee.org_id)
         .outerjoin(managers, col(Employee.id) == managers.c.employee_id)
         .outerjoin(
             Department,
@@ -224,6 +228,7 @@ def employee_summary(
         department,
         progress,
         version,
+        fields,
         review_statuses(
             session, employee.org_id, [employee.id], {employee.id} if version else set()
         )[employee.id],
@@ -237,11 +242,13 @@ def _employee_summary(
     department: Department | None,
     progress: ProfileProgress | None,
     version: ProfileVersion | None,
+    fields: list[EmployeeField],
     review_status: ProgressReviewStatus,
     manager_id: UUID | None,
     manager_name: str | None,
 ) -> EmployeeSummary:
     return EmployeeSummary(
+        **{f: getattr(employee, f) for f in fields},
         **employee.model_dump(
             include={"id", "display_name", "title", "employment_status"}
         ),
@@ -277,8 +284,15 @@ def list_employees(
         filters.append(col(Employee.department_id) == department_id)
     if q:
         filters.append(col(Employee.display_name).icontains(q, autoescape=True))
-    count = session.exec(
-        select(func.count()).select_from(Employee).where(*filters)
+    count, fields = session.exec(
+        select(
+            func.count(),
+            select(col(Organization.employee_fields))
+            .where(Organization.id == principal.org_id)
+            .scalar_subquery(),
+        )
+        .select_from(Employee)
+        .where(*filters)
     ).one()
     latest_version = aliased(
         ProfileVersion,
@@ -338,7 +352,9 @@ def list_employees(
     )
     return EmployeesPublic(
         data=[
-            _employee_summary(e, d, p, v, statuses[e.id], manager_id, manager_name)
+            _employee_summary(
+                e, d, p, v, fields, statuses[e.id], manager_id, manager_name
+            )
             for e, d, p, v, manager_id, manager_name in rows
         ],
         count=count,
