@@ -1,0 +1,10 @@
+changed:
+  - 'compose*.yml'
+  - '**/Dockerfile*'
+  - 'install.sh'
+  - 'upgrade.sh'
+  - 'backup.sh'
+  - 'restore.sh'
+  - 'deploy/**'
+  - '.env.example'
+  - '.github/workflows/test-docker-compose.yml'
