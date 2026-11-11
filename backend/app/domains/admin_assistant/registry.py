@@ -327,11 +327,11 @@ FUNCTIONS = {
         ),
         _f(
             "get_drafting_settings",
-            "rules",
-            "查看自动起草范围和周期",
+            "data_ai",
+            "查看企业自动起草总开关",
             NoArgs,
             lambda d, p, a: drafting.read_settings(d, p.org_id),
-            "/admin/rules?tab=drafting",
+            "/admin/data-ai?tab=model",
             "GET /drafting-settings",
         ),
         _f(

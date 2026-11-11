@@ -14,7 +14,6 @@ steps:
         - key: basic
           label: 基础
           description: 能完成合成协作
-      ai_inference: false
 - type: apply
 - type: say
   text: 重新查询当前能力词典，这次只有哪一项能力？
@@ -37,4 +36,3 @@ expect:
           - key: basic
             label: 基础
             description: 能完成合成协作
-        ai_inference: false

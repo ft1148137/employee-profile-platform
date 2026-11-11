@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | 同步与起草进度 | 今天要处理的事、运行状态 | 首页 | `get_today` |
 | 同步与起草进度 | 同步记录、起草计数与失败原因 | 首页 | `get_progress` |
-| 同步与起草进度 | 首次起草、重新起草全部、重试失败员工 | 首页 / 初始画像 | `start_initial_drafting` |
+| 同步与起草进度 | 开始起草、重试失败员工（需先打开总开关） | 数据与 AI / 模型、首页 / 初始画像 | `start_initial_drafting` |
 | 同步与起草进度 | 预览超期未过目人数 | 首页 / 初始画像 | `get_initial_handover` |
 | 同步与起草进度 | 确认批量送审 | 首页 / 初始画像 | `hand_over_initial_profiles` |
 | 同步与起草进度 | 重试失败的同步 | 首页 / 同步记录 | `retry_sync_run` |
@@ -34,8 +34,8 @@
 | 账号对应 | 列出、筛选账号和候选员工 | 人员 / Jira 账号匹配 | `list_identities` |
 | 账号对应 | 确认候选或选择员工关联（含所选候选） | 人员 / Jira 账号匹配、人员详情 | `link_identity`（多项可放同一确认卡） |
 | 账号对应 | 解除关联并撤销该账号独有证据 | 人员 / Jira 账号匹配、人员详情 | `unlink_identity` |
-| 自动起草设置 | 查看起草范围 | 能力与规则 / 自动起草设置 | `get_drafting_settings` |
-| 自动起草设置 | 按能力排除、按部门及下级部门关闭起草 | 能力与规则 / 自动起草设置 | `update_drafting_settings` |
+| 自动起草 | 查看企业总开关 | 数据与 AI / 模型 | `get_drafting_settings` |
+| 自动起草 | 打开或关闭企业自动起草（可撤销） | 数据与 AI / 模型 | `set_auto_drafting` |
 | 数据来源 | 读取脱敏的 Jira 配置 | 数据与 AI / 数据来源 | `get_sources` |
 | 数据来源 | 保存 Cloud / Data Center 凭据、日期、描述和定时同步周期 | 数据与 AI / 数据来源 | `update_jira_connection` |
 | 数据来源 | 测试已保存的 Jira 连接 | 数据与 AI / 数据来源 | `test_jira_connection` |
