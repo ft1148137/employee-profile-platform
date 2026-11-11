@@ -87,6 +87,7 @@ export const targetLabels: Record<string, string> = {
   employee: "员工",
   update_setting: "持续更新提醒设置",
   drafting_setting: "自动起草设置",
+  drafting_note: "起草补充说明",
   bot_setting: "机器人设置",
   im_setting: "IM 入口设置",
   user: "账号",
