@@ -6,7 +6,7 @@ from collections.abc import Generator
 from datetime import datetime, timedelta
 from io import BytesIO
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 from urllib.parse import quote
 from uuid import UUID
 from xml.etree import ElementTree
@@ -26,6 +26,7 @@ from app.domains.base import utc_now
 from app.domains.bot import store
 from app.domains.bot.models import BotAttachment, ChatAttachment
 from app.domains.bot.settings import read_settings
+from app.domains.model.pi_client import PiImage
 
 # Third-party PDF warnings may include untrusted document tokens.
 logging.getLogger("pypdf").addHandler(logging.NullHandler())
@@ -256,3 +257,27 @@ def prepare(
         text,
         IMAGE_NOTICE if any(r.kind == "image" for r in rows) else "",
     )
+
+
+def model_images(
+    db: Session,
+    p: Principal,
+    kind: SessionKind,
+    session_id: UUID,
+    snapshot: list[AttachmentPublic],
+) -> list[PiImage]:
+    images = []
+    for item in snapshot:
+        if item.kind == "image":
+            row = get_session_attachment(db, p, kind, session_id, item.id)
+            images.append(
+                PiImage(
+                    name=f"{row.filename}（附件 ID {row.id}）",
+                    data=decrypt_secret(row.ciphertext),
+                    mimeType=cast(
+                        Literal["image/png", "image/jpeg", "image/webp", "image/gif"],
+                        row.mime_type,
+                    ),
+                )
+            )
+    return images

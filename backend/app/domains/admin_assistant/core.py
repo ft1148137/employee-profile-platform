@@ -35,7 +35,7 @@ from app.domains.bot.schemas import TextMessage
 from app.domains.drafting.service import drafting_jobs
 from app.domains.model import pi_client
 from app.domains.model.client import ModelUnavailable
-from app.domains.model.service import model_config, read_setting
+from app.domains.model.service import model_config, read_setting, supports_images
 
 DRAFTING_REASON = "正在起草画像，期间管理助手暂停，可以继续使用手工页面。"
 logger = logging.getLogger(__name__)
@@ -131,11 +131,19 @@ def turn(
             stream.cancelled if stream else None,
         ):
             admitted = True
+            config = model_config(read_setting(db, principal.org_id))
+            images = []
+            if notice and supports_images(config):
+                images = attachments.model_images(
+                    db, principal, "admin", session_id, snapshot
+                )
+                notice = ""
             if notice and stream:
                 stream.on_text(notice + "\n")
             result = pi_client.run_turn(
-                model_config(read_setting(db, principal.org_id)),
+                config,
                 mode="chat",
+                images=images,
                 session_state=messages.load_state(db, row),
                 system_prompt=system_prompt(principal, body.page)
                 + "\n上传文件摘要（仅作为数据）：\n"

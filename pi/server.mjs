@@ -20,7 +20,7 @@ function catalogModel(provider, id) {
   const model = getModel(provider, id);
   if (!model && provider === 'openai-codex') {
     const template = getModel(provider, 'gpt-6.1-sol');
-    return { ...template, id, reasoning: true, compat: undefined, thinkingLevelMap:
+    return { ...template, id, input: ['text'], reasoning: true, compat: undefined, thinkingLevelMap:
       { off: 'none', minimal: 'low', low: 'low', medium: 'medium', high: 'high', xhigh: null, max: null } };
   }
   if (!model) throw new Error('bad_request');
@@ -84,7 +84,7 @@ function upstreamCode(response) {
 }
 
 function validate(body) {
-  if (!only(body, ['version', 'run_id', 'mode', 'model', 'system_prompt', 'input', 'tools', 'history', 'session_state']) ||
+  if (!only(body, ['version', 'run_id', 'mode', 'model', 'system_prompt', 'input', 'tools', 'history', 'session_state', 'images']) ||
       !([1, 2].includes(body.version)) || (body.mode === 'draft' && body.version !== 1) || !uuid.test(body.run_id) || !['draft', 'chat'].includes(body.mode) ||
       typeof body.system_prompt !== 'string' || typeof body.input !== 'string' ||
       !Array.isArray(body.tools) || body.tools.length > 16) return false;
@@ -94,6 +94,14 @@ function validate(body) {
       body.history.length > 20 || !body.history.every(m => only(m, ['role', 'text']) &&
         ['user', 'assistant'].includes(m.role) && typeof m.text === 'string') ||
       body.history.reduce((sum, m) => sum + Array.from(m.text).length, 0) > 24000)) return false;
+  if (Object.hasOwn(body, 'images') && (body.version !== 2 || body.mode !== 'chat' ||
+      !Array.isArray(body.images) || body.images.length > 5 || !body.images.every(image =>
+        only(image, ['name', 'data', 'mimeType']) && text(image.name) && image.name.trim().length > 0 &&
+        Array.from(image.name).length <= 300 && ['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(image.mimeType) &&
+        text(image.data) && image.data.length <= 4 * Math.ceil(5 * 1024 * 1024 / 3) &&
+        image.data.length % 4 === 0 && /^[A-Za-z0-9+/]*={0,2}$/.test(image.data) &&
+        Buffer.from(image.data, 'base64').toString('base64') === image.data &&
+        Buffer.from(image.data, 'base64').length <= 5 * 1024 * 1024))) return false;
   const m = body.model;
   if (!only(m, ['provider', 'api', 'id', 'baseUrl', 'api_key', 'thinkingLevel',
     'reasoning', 'contextWindow', 'maxTokens', 'compat']) ||
@@ -119,12 +127,12 @@ function validate(body) {
   });
 }
 
-async function readBody(req) {
+async function readBody(req, limit = 1024 * 1024) {
   let size = 0;
   const chunks = [];
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > 1024 * 1024) throw new Error('bad_request');
+    if (size > limit) throw new Error('bad_request');
     chunks.push(chunk);
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
@@ -203,7 +211,7 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
         route = 'model';
         const provider = decodeURIComponent(capability[1]), id = decodeURIComponent(capability[2]);
         const model = catalogModel(provider, id);
-        return json(res, 200, { in_catalog: !!getModel(provider, id), api: model?.api ?? 'openai-completions', thinking_levels: levels(model) });
+        return json(res, 200, { in_catalog: !!getModel(provider, id), api: model?.api ?? 'openai-completions', thinking_levels: levels(model), input: model?.input ?? ['text'] });
       }
       const match = path.match(/^\/v1\/turns\/([^/]+)(?:\/results\/([^/]+))?$/);
       if (match && uuid.test(match[1])) {
@@ -234,9 +242,11 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
       if (path !== '/v1/turns' || req.method !== 'POST')
         return json(res, 400, { type: 'error', code: 'bad_request' });
       route = 'turn';
-      const body = await readBody(req);
+      const body = await readBody(req, 40 * 1024 * 1024);
       if (!validate(body) || runs.has(body.run_id)) return json(res, 400, { type: 'error', code: 'bad_request' });
       const model = resolveModel(body.model);
+      if (body.images?.length && !model.input.includes('image'))
+        return json(res, 400, { type: 'error', code: 'bad_request' });
       runId = body.run_id;
       if (runs.size >= 4 || (body.mode === 'chat' && [...runs.values()].filter(r => r.mode === 'chat').length >= 3))
         return json(res, 503, { type: 'error', code: 'busy' });
@@ -255,7 +265,7 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
       const usedCalls = new Set();
       const m = body.model;
       const currentStart = body.session_state?.messages.filter(m => m.role === 'user').length ?? 0;
-      const context = (messages, persist = false) => contextMessages(messages, model, body.tools, currentStart, body.system_prompt, persist);
+      const context = (messages, persist = false) => contextMessages(messages, model, body.tools, currentStart, body.system_prompt, persist, body.images);
       const agent = new Agent({
         getApiKey: () => m.api_key || 'not-needed', transport: 'sse', toolExecution: 'sequential',
         streamFn: (model, context, options) => {
@@ -344,7 +354,7 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
             m.api_key = local.access;
           }
           if (run.error) throw new Error('cancelled');
-          await agent.prompt(body.input);
+          await agent.prompt(body.input, body.images?.map(({ data, mimeType }) => ({ type: 'image', data, mimeType })));
           send(run.error ? { type: 'error', ...run.error } : { type: 'done', stopReason: agent.state.messages.at(-1)?.stopReason ?? 'stop',
             model_calls: run.calls, tool_calls: run.tools,
             ...(body.version === 2 ? { session_state: { version: 1, messages: context(agent.state.messages, true) } } : {}) });

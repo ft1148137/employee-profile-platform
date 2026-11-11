@@ -24,7 +24,7 @@ from app.domains.change_request.models import ReviewVia
 from app.domains.inbox import service as inbox
 from app.domains.model import pi_client
 from app.domains.model.client import ModelServiceError, ModelUnavailable
-from app.domains.model.service import model_config, read_setting
+from app.domains.model.service import model_config, read_setting, supports_images
 
 logger = logging.getLogger(__name__)
 
@@ -79,12 +79,18 @@ def turn(
                         )
                     ],
                 )
+            config = model_config(setting)
+            images = []
+            if notice and supports_images(config):
+                images = attachments.model_images(db, p, "bot", session_id, snapshot)
+                notice = ""
             if notice and stream:
                 stream.on_text(notice + "\n")
             cards: list[s.Message] = []
             result = pi_client.run_turn(
-                model_config(setting),
+                config,
                 mode="chat",
+                images=images,
                 session_state=store.load_state(db, session),
                 system_prompt=system_prompt(db, p, session.channel),
                 input=tools.redact_text(model_input),

@@ -41,7 +41,7 @@ export function validState(state) {
 }
 
 // Token counts are estimates: one UTF-8 byte per token also covers Chinese text conservatively.
-export function contextMessages(messages, model, tools, currentStart, systemPrompt, persist = false) {
+export function contextMessages(messages, model, tools, currentStart, systemPrompt, persist = false, images = []) {
   const names = new Set(tools.map(t => t.name));
   const calls = new Map();
   let round = -1;
@@ -51,6 +51,14 @@ export function contextMessages(messages, model, tools, currentStart, systemProm
     if (message.role === 'user') { round++; rounds.push([]); calls.clear(); }
     if (!rounds.length) continue;
     let m = message;
+    if (Array.isArray(m.content) && (persist || round < currentStart)) {
+      let imageIndex = 0;
+      m = { ...m, content: m.content.map(b => {
+        if (b.type !== 'image') return b;
+        const image = m.role === 'user' && round === currentStart ? images[imageIndex++] : undefined;
+        return { type: 'text', text: image ? `[图片：${image.name}]` : '[图片已省略]' };
+      }) };
+    }
     if (m.role === 'assistant') {
       const same = m.api === model.api && m.provider === model.provider && m.model === model.id;
       m = { ...m, content: m.content.flatMap(b => {

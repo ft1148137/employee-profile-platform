@@ -426,3 +426,64 @@ def test_malformed_done_does_not_clear_chat_state(
             on_tool_call=lambda *_: None,
         )
     assert methods == ["POST"]
+
+
+def test_image_payload_is_chat_only_and_state_comes_from_pi(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real = httpx.Client
+    bodies = []
+    state = {"version": 1, "messages": []}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        bodies.append(json.loads(request.content))
+        return httpx.Response(
+            200,
+            text=json.dumps(
+                {
+                    "type": "done",
+                    "stopReason": "stop",
+                    "model_calls": 1,
+                    "tool_calls": 0,
+                    "session_state": state,
+                }
+            )
+            + "\n",
+        )
+
+    monkeypatch.setattr(
+        pi_client.httpx,
+        "Client",
+        lambda **kwargs: real(**kwargs, transport=httpx.MockTransport(handler)),
+    )
+    config = pi_client.PiModelConfig(
+        provider="openai",
+        api="openai-responses",
+        id="gpt-4o",
+        baseUrl="https://api.openai.com/v1",
+    )
+    image = pi_client.PiImage(
+        name="合成.png（附件 ID synthetic）", data="c3ludGhldGlj", mimeType="image/png"
+    )
+    for mode in ("chat", "draft"):
+        for images in ([], [image]):
+            kwargs = {
+                "config": config,
+                "mode": mode,
+                "images": images,
+                "system_prompt": "",
+                "input": "合成文字",
+                "tools": [],
+                "on_tool_call": lambda *_: None,
+            }
+            if mode == "draft" and images:
+                with pytest.raises(ValueError, match="Images require chat mode"):
+                    run_turn(**kwargs)
+            else:
+                result = run_turn(**kwargs)
+                assert bodies[-1].get("images") == (
+                    [image.model_dump()] if images else None
+                )
+                assert result.session_state == (state if mode == "chat" else None)
+    assert len(bodies) == 3
+    assert image.data not in repr(image)
