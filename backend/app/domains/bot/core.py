@@ -8,8 +8,8 @@ from sqlmodel import Session
 from app.authz.principal import Principal
 from app.domains import manager_tools
 from app.domains.base import utc_now
+from app.domains.bot import attachments, store, tools
 from app.domains.bot import schemas as s
-from app.domains.bot import store, tools
 from app.domains.bot.admission import (
     BotBusy,
     BotDraftingPriority,
@@ -43,15 +43,22 @@ def turn(
     session_id: UUID,
     text: str,
     *,
+    attachment_ids: list[UUID] | None = None,
     stream: pi_client.TurnStream | None = None,
 ) -> s.TurnResponse:
     session = store.get_session(db, p, session_id)
     setting = read_setting(db, p.org_id)
+    snapshot, model_input, notice = attachments.prepare(
+        db, p, "bot", session_id, attachment_ids or [], text
+    )
+    user_payload = s.UserMessage(text=text, attachments=snapshot).model_dump(
+        mode="json", exclude_defaults=True
+    )
     admitted = False
     started = monotonic()
     try:
         with begin_turn(
-            db, p, session, {"text": text}, stream.cancelled if stream else None
+            db, p, session, user_payload, stream.cancelled if stream else None
         ):
             admitted = True
             if setting is None or not setting.enabled or not setting.model:
@@ -60,17 +67,27 @@ def turn(
                     session,
                     [
                         s.TextMessage(
-                            text="机器人需要先配置模型，你也可以在画像页直接修改"
+                            text="\n".join(
+                                filter(
+                                    None,
+                                    [
+                                        notice,
+                                        "机器人需要先配置模型，你也可以在画像页直接修改",
+                                    ],
+                                )
+                            )
                         )
                     ],
                 )
+            if notice and stream:
+                stream.on_text(notice + "\n")
             cards: list[s.Message] = []
             result = pi_client.run_turn(
                 model_config(setting),
                 mode="chat",
                 session_state=store.load_state(db, session),
                 system_prompt=system_prompt(db, p, session.channel),
-                input=tools.redact_text(text),
+                input=tools.redact_text(model_input),
                 tools=tools.definitions(),
                 on_tool_call=lambda name, args: tools.call(
                     db, p, session, cards, name, args
@@ -91,7 +108,9 @@ def turn(
                 raise ModelUnavailable()
             store.save_state(db, session, result.session_state)
             messages: list[s.Message] = (
-                [s.TextMessage(text=result.text)] if result.text else []
+                [s.TextMessage(text="\n".join(filter(None, [notice, result.text])))]
+                if result.text or notice
+                else []
             )
             messages.extend(cards)
             if stream:
@@ -123,14 +142,14 @@ def turn(
             if isinstance(error, ModelServiceError)
             else "模型服务暂时不可用，请稍后再试"
         )
-    messages = [s.TextMessage(text=message)]
+    messages = [s.TextMessage(text="\n".join(filter(None, [notice, message])))]
     if stream and stream.cancelled.is_set():
         db.rollback()
         return s.TurnResponse(messages=[])
     if admitted:
         if stream:
             session.turn_count += 1
-            store.append_message(db, session, "user", {"text": text})
+            store.append_message(db, session, "user", user_payload)
         response = _save(db, session, messages)
         if stream and stream.cancelled.is_set():
             db.rollback()

@@ -12,12 +12,18 @@ from sqlmodel import Session, col, delete, select, update
 from app.authz.principal import Principal
 from app.core.secrets import decrypt_secret, encrypt_secret
 from app.domains.admin_assistant.models import (
+    AdminAssistantAttachment,
     AdminAssistantMessage,
     AdminAssistantSession,
     AdminChangeSet,
 )
 from app.domains.base import utc_now
-from app.domains.bot.models import BotMessage, BotSession, ConversationMessage
+from app.domains.bot.models import (
+    BotAttachment,
+    BotMessage,
+    BotSession,
+    ConversationMessage,
+)
 from app.domains.bot.settings import read_settings
 from app.domains.org.models import Organization
 from app.domains.org.service import visible_employee
@@ -177,6 +183,18 @@ def append_message(
         db, session.org_id
     ).retention_days and session.last_activity_at <= utc_now() - timedelta(hours=2):
         session.state_ciphertext = None
+        attachment_type = (
+            AdminAssistantAttachment
+            if isinstance(session, AdminAssistantSession)
+            else BotAttachment
+        )
+        db.exec(
+            delete(attachment_type).where(
+                col(attachment_type.org_id) == session.org_id,
+                col(attachment_type.session_id) == session.id,
+                col(attachment_type.created_at) <= utc_now() - timedelta(hours=2),
+            )
+        )
         db.exec(
             delete(message_type).where(
                 col(message_type.org_id) == session.org_id,
@@ -296,10 +314,21 @@ def cleanup_messages(db: Session, now: datetime) -> None:
     for org_id in org_ids:
         try:
             days = read_settings(db, org_id).retention_days
-            for session_type, message_type in (
-                (BotSession, BotMessage),
-                (AdminAssistantSession, AdminAssistantMessage),
+            for session_type, message_type, attachment_type in (
+                (BotSession, BotMessage, BotAttachment),
+                (
+                    AdminAssistantSession,
+                    AdminAssistantMessage,
+                    AdminAssistantAttachment,
+                ),
             ):
+                db.exec(
+                    delete(attachment_type).where(
+                        col(attachment_type.org_id) == org_id,
+                        col(attachment_type.created_at)
+                        <= now - (timedelta(days=days) if days else timedelta(hours=2)),
+                    )
+                )
                 expired = select(session_type.id).where(
                     session_type.org_id == org_id,
                     session_type.last_activity_at <= now - timedelta(hours=2),

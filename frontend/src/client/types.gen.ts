@@ -136,7 +136,7 @@ export type AdminSessionMessage = {
     /**
      * Payload
      */
-    payload: AdminTurnInput | AdminTurnResponse;
+    payload: AdminUserMessage | AdminTurnResponse;
     /**
      * Created At
      */
@@ -182,6 +182,10 @@ export type AdminTurnInput = {
      */
     text: string;
     /**
+     * Attachment Ids
+     */
+    attachment_ids?: Array<string>;
+    /**
      * Page
      */
     page: '/admin' | '/admin/people' | '/admin/people/$employeeId' | '/admin/people?tab=accounts' | '/admin/people?tab=roster' | '/admin/people?tab=roles' | '/admin/people?tab=identities' | '/admin/people?tab=appeals' | '/admin/rules' | '/admin/rules?tab=dictionary' | '/admin/rules?tab=approval' | '/admin/rules?tab=drafting' | '/admin/rules?tab=reminders' | '/admin/rules?tab=profile-import' | '/admin/data-ai' | '/admin/data-ai?tab=sources' | '/admin/data-ai?tab=model' | '/admin/data-ai?tab=bot' | '/admin/connections' | '/admin/connections?tab=im' | '/admin/connections?tab=mcp' | '/admin/audit' | '/setup-wizard';
@@ -209,6 +213,28 @@ export type AdminTurnResponse = {
     } & FileUploadCard) | ({
         type: 'file_preview';
     } & FilePreviewCard)>;
+};
+
+/**
+ * AdminUserMessage
+ */
+export type AdminUserMessage = {
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Attachment Ids
+     */
+    attachment_ids?: Array<string>;
+    /**
+     * Attachments
+     */
+    attachments?: Array<AttachmentPublic>;
+    /**
+     * Page
+     */
+    page: '/admin' | '/admin/people' | '/admin/people/$employeeId' | '/admin/people?tab=accounts' | '/admin/people?tab=roster' | '/admin/people?tab=roles' | '/admin/people?tab=identities' | '/admin/people?tab=appeals' | '/admin/rules' | '/admin/rules?tab=dictionary' | '/admin/rules?tab=approval' | '/admin/rules?tab=drafting' | '/admin/rules?tab=reminders' | '/admin/rules?tab=profile-import' | '/admin/data-ai' | '/admin/data-ai?tab=sources' | '/admin/data-ai?tab=model' | '/admin/data-ai?tab=bot' | '/admin/connections' | '/admin/connections?tab=im' | '/admin/connections?tab=mcp' | '/admin/audit' | '/setup-wizard';
 };
 
 /**
@@ -322,6 +348,36 @@ export type ApplyImport = {
  * AssessmentStatus
  */
 export type AssessmentStatus = 'confirmed' | 'tentative' | 'unknown' | 'disputed';
+
+/**
+ * AttachmentPublic
+ */
+export type AttachmentPublic = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Kind
+     */
+    kind: 'image' | 'file';
+    /**
+     * Filename
+     */
+    filename: string;
+    /**
+     * Size
+     */
+    size: number;
+    /**
+     * Mime Type
+     */
+    mime_type: string;
+    /**
+     * Notice
+     */
+    notice?: string | null;
+};
 
 /**
  * AuditActor
@@ -482,6 +538,16 @@ export type BindingPublic = {
 };
 
 /**
+ * Body_admin-assistant-upload_attachment
+ */
+export type Body_admin_assistant_upload_attachment = {
+    /**
+     * File
+     */
+    file: Blob | File;
+};
+
+/**
  * Body_admin-assistant-upload_file
  */
 export type Body_admin_assistant_upload_file = {
@@ -489,6 +555,16 @@ export type Body_admin_assistant_upload_file = {
      * Kind
      */
     kind: 'roster' | 'profile_json' | 'work_csv' | 'capabilities';
+    /**
+     * File
+     */
+    file: Blob | File;
+};
+
+/**
+ * Body_bot-upload_attachment
+ */
+export type Body_bot_upload_attachment = {
     /**
      * File
      */
@@ -3887,7 +3963,7 @@ export type SessionMessage = {
     /**
      * Payload
      */
-    payload: TurnInput | TurnResponse;
+    payload: UserMessage | TurnResponse;
     /**
      * Created At
      */
@@ -4406,6 +4482,10 @@ export type TurnInput = {
      * Text
      */
     text: string;
+    /**
+     * Attachment Ids
+     */
+    attachment_ids?: Array<string>;
 };
 
 /**
@@ -4476,6 +4556,24 @@ export type UpdateSettingsPublic = {
      * Updated At
      */
     updated_at: string | null;
+};
+
+/**
+ * UserMessage
+ */
+export type UserMessage = {
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Attachment Ids
+     */
+    attachment_ids?: Array<string>;
+    /**
+     * Attachments
+     */
+    attachments?: Array<AttachmentPublic>;
 };
 
 /**
@@ -5090,6 +5188,80 @@ export type adminAssistantUploadFileResponses = {
 };
 
 export type adminAssistantUploadFileResponse = adminAssistantUploadFileResponses[keyof adminAssistantUploadFileResponses];
+
+export type adminAssistantUploadAttachmentData = {
+    body: Body_admin_assistant_upload_attachment;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/admin-assistant/sessions/{session_id}/attachments';
+};
+
+export type adminAssistantUploadAttachmentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantUploadAttachmentError = adminAssistantUploadAttachmentErrors[keyof adminAssistantUploadAttachmentErrors];
+
+export type adminAssistantUploadAttachmentResponses = {
+    /**
+     * Successful Response
+     */
+    200: AttachmentPublic;
+};
+
+export type adminAssistantUploadAttachmentResponse = adminAssistantUploadAttachmentResponses[keyof adminAssistantUploadAttachmentResponses];
+
+export type adminAssistantDownloadAttachmentData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+        /**
+         * Attachment Id
+         */
+        attachment_id: string;
+    };
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/admin-assistant/sessions/{session_id}/attachments/{attachment_id}';
+};
+
+export type adminAssistantDownloadAttachmentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type adminAssistantDownloadAttachmentError = adminAssistantDownloadAttachmentErrors[keyof adminAssistantDownloadAttachmentErrors];
+
+export type adminAssistantDownloadAttachmentResponses = {
+    /**
+     * Successful Response
+     */
+    200: Blob | File;
+};
+
+export type adminAssistantDownloadAttachmentResponse = adminAssistantDownloadAttachmentResponses[keyof adminAssistantDownloadAttachmentResponses];
 
 export type adminGetOverviewData = {
     body?: never;
@@ -5809,6 +5981,80 @@ export type botActResponses = {
 };
 
 export type botActResponse = botActResponses[keyof botActResponses];
+
+export type botUploadAttachmentData = {
+    body: Body_bot_upload_attachment;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+    };
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/bot/sessions/{session_id}/attachments';
+};
+
+export type botUploadAttachmentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type botUploadAttachmentError = botUploadAttachmentErrors[keyof botUploadAttachmentErrors];
+
+export type botUploadAttachmentResponses = {
+    /**
+     * Successful Response
+     */
+    200: AttachmentPublic;
+};
+
+export type botUploadAttachmentResponse = botUploadAttachmentResponses[keyof botUploadAttachmentResponses];
+
+export type botDownloadAttachmentData = {
+    body?: never;
+    path: {
+        /**
+         * Session Id
+         */
+        session_id: string;
+        /**
+         * Attachment Id
+         */
+        attachment_id: string;
+    };
+    query: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    url: '/api/v1/bot/sessions/{session_id}/attachments/{attachment_id}';
+};
+
+export type botDownloadAttachmentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type botDownloadAttachmentError = botDownloadAttachmentErrors[keyof botDownloadAttachmentErrors];
+
+export type botDownloadAttachmentResponses = {
+    /**
+     * Successful Response
+     */
+    200: Blob | File;
+};
+
+export type botDownloadAttachmentResponse = botDownloadAttachmentResponses[keyof botDownloadAttachmentResponses];
 
 export type accessTokensReadMcpSettingData = {
     body?: never;

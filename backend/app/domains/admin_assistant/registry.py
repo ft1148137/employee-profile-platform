@@ -672,6 +672,14 @@ NOT_FOR_ASSISTANT = {
         "POST",
         "/admin-assistant/sessions/{session_id}/files",
     ): "管理员通过上传框提交文件，不由模型传入内容",
+    (
+        "POST",
+        "/admin-assistant/sessions/{session_id}/attachments",
+    ): "本人上传对话附件，模型不能上传",
+    (
+        "GET",
+        "/admin-assistant/sessions/{session_id}/attachments/{attachment_id}",
+    ): "本人读取附件原文，不向模型提供下载工具",
     ("GET", "/admin-assistant/availability"): "助手自身的会话接口",
     ("GET", "/sources/csv/template"): "模板下载由助手给页面链接",
     ("GET", "/roster/template"): "模板下载由助手给页面链接",

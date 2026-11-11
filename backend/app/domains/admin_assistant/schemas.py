@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, JsonValue, SecretStr
 from app.domains.admin_assistant.files import FileKind, FileSummary
 from app.domains.admin_assistant.outputs import OneTimeOutput
 from app.domains.admin_assistant.registry import TableCard as TableCard
-from app.domains.bot.schemas import TextMessage
+from app.domains.bot.schemas import TextMessage, TurnInput, UserMessage
 from app.domains.change_request.schemas import ToolInput
 from app.domains.org.roster.schemas import RosterImportPreview
 
@@ -44,9 +44,12 @@ class LinkCard(BaseModel):
     page: str
 
 
-class AdminTurnInput(ToolInput):
-    text: str = Field(min_length=1, max_length=10000, pattern=r"\S")
+class AdminTurnInput(TurnInput):
     page: AdminPage
+
+
+class AdminUserMessage(AdminTurnInput, UserMessage):
+    pass
 
 
 class ChangeSpec(ToolInput):
@@ -142,7 +145,7 @@ class AdminTurnResponse(BaseModel):
 class AdminSessionMessage(BaseModel):
     id: UUID
     role: Literal["user", "assistant"]
-    payload: AdminTurnInput | AdminTurnResponse
+    payload: AdminUserMessage | AdminTurnResponse
     created_at: datetime
 
 
