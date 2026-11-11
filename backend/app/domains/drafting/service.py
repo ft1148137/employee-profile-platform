@@ -15,6 +15,7 @@ from app.core.secrets import SecretUnavailable
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.capability.models import CapabilityDefinition
+from app.domains.capability.proposals import store_proposals
 from app.domains.capability.service import SchemaNotFound, get_schema, list_capabilities
 from app.domains.change_request.models import (
     ChangeItem,
@@ -357,9 +358,8 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                     raise ModelDisabled()
                 if capability_error:
                     raise capability_error
-                items, generated_by = model.draft(
-                    records, capabilities, model_config(setting)
-                )
+                result = model.draft(records, capabilities, model_config(setting))
+                items, generated_by = result.items, result.generated_by
                 items = postprocess(
                     session, org_id, employee, items, capabilities, groups
                 )
@@ -377,6 +377,7 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                 written = write_initial_request(
                     session, org_id, employee, items, generated_by
                 )
+                store_proposals(session, org_id, employee_id, result.proposals)
                 progress_row(session, org_id, employee_id, InferenceStatus.GENERATED)
                 session.commit()
                 counts["generated" if written else "handed_over"] += 1

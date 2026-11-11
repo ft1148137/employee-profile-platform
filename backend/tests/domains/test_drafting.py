@@ -102,11 +102,12 @@ def test_model_and_statistics(
     )
     records = collect(db, org, employee)
     assert not {stale.id, revoked.id} & {r.evidence.id for r in records}
-    items, generated_by = model.draft(
+    result = model.draft(
         [r for r in records if r.evidence.source_ref != "PUR-205"],
         capabilities,
         model_config(db.get(ModelSetting, org)),
     )
+    items, generated_by = result.items, result.generated_by
     assert len(items) == 1
     items = service.postprocess(db, org, employee, items, capabilities)
     item = items[0]
@@ -270,7 +271,7 @@ def test_seed_fallback_and_transitive_groups(
     assert stats.evidence_count == 1 and stats.latest_evidence_at is None
     schema = activate_template(db, Principal.system_worker(org), "tech-rnd")
     caps = list_capabilities(db, org, schema.id)
-    items, _ = model.draft(records, caps, model_config(db.get(ModelSetting, org)))
+    items = model.draft(records, caps, model_config(db.get(ModelSetting, org))).items
     items = service.postprocess(db, org, employee, items, caps)
     assert "最近一次的时间未知" in items[0].explanation
     assert records[0].task is not None

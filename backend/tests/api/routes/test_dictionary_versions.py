@@ -541,7 +541,9 @@ def test_redraft_only_queues_pending_owner_and_matches_published_key(
 
     seen: list[list[str]] = []
 
-    def draft(_records: object, capabilities: list, _config: object) -> tuple:
+    def draft(
+        _records: object, capabilities: list, _config: object
+    ) -> drafting.model.DraftResult:
         seen.append([c.key for c in capabilities])
         if len(seen) == 1:
             definitions[:] = [d for d in definitions if d["key"] != "automated_testing"]
@@ -554,7 +556,7 @@ def test_redraft_only_queues_pending_owner_and_matches_published_key(
                 ).status_code
                 == 200
             )
-        return [], {"actor_type": "agent"}
+        return drafting.model.DraftResult([], {"actor_type": "agent"})
 
     monkeypatch.setattr(drafting.model, "draft", draft)
     db.rollback()
