@@ -1,6 +1,5 @@
 id: "employee-admin-entry"
 menu: "home"
-tags: ["adversarial"]
 actor: "employee"
 entry: "admin_assistant"
 seed: {}

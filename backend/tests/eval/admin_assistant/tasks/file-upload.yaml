@@ -1,6 +1,5 @@
 id: "file-upload"
 menu: "rules"
-tags: ["upload"]
 actor: "admin"
 entry: "admin_assistant"
 seed: {}
