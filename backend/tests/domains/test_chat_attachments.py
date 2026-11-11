@@ -17,6 +17,7 @@ from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 from sqlalchemy import Engine, inspect
 from sqlmodel import Session, select
 
+from app.authz.deps import get_org_principal
 from app.core.secrets import decrypt_secret
 from app.domains.admin_assistant import core as admin_core
 from app.domains.admin_assistant import store as admin_store
@@ -29,6 +30,8 @@ from app.domains.bot.models import BotAttachment, BotSetting
 from app.domains.model import pi_client
 from app.domains.model import service as model_service
 from app.domains.model.client import ModelUnavailable
+from app.domains.org.models import OrgMembership, Role, RoleGrant
+from app.models import User
 from tests.api.routes.test_employee_requests import principal_for
 from tests.domains.test_admin_assistant import admin
 from tests.domains.test_bot_core import enable
@@ -273,6 +276,86 @@ def test_xlsx_unzipped_limit_rejects_before_decompression(
             BotAttachment.org_id == p.org_id, BotAttachment.session_id == row.id
         )
     ).all()
+
+
+@pytest.mark.parametrize("kind", ["bot", "admin"])
+@pytest.mark.parametrize("days", [0, 7])
+def test_user_total_limit(
+    demo: tuple,
+    db: Session,
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: a.SessionKind,
+    days: int,
+) -> None:
+    monkeypatch.setattr(a, "USER_LIMIT", 10)
+    p = (admin if kind == "admin" else principal_for)(db, demo[1]["E02"].org_id)
+    sessions = admin_store if kind == "admin" else store
+    table = AdminAssistantAttachment if kind == "admin" else BotAttachment
+    db.add(BotSetting(org_id=p.org_id, retention_days=days))
+    db.commit()
+    first = sessions.create_session(db, p)
+    old = a.upload(db, p, kind, first.id, file("old.txt", b"x" * 10))
+    saved = a.get_session_attachment(db, p, kind, first.id, old.id)
+    saved.created_at = utc_now() - (timedelta(days=8) if days else timedelta(hours=3))
+    db.add(saved)
+    db.commit()
+    a.upload(db, p, kind, first.id, file("first.txt", b"x" * 4))
+    second = sessions.create_session(db, p)
+    a.upload(db, p, kind, second.id, file("second.txt", b"x" * 5))
+    third = sessions.create_session(db, p)
+    a.upload(db, p, kind, third.id, file("boundary.txt", b"x"))
+    prefix = "admin-assistant" if kind == "admin" else "bot"
+    response = client.post(
+        f"/api/v1/{prefix}/sessions/{third.id}/attachments",
+        params={"org_id": str(p.org_id)},
+        headers=demo[2]["admin" if kind == "admin" else "employee"],
+        files={"file": ("excess.txt", b"x")},
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"] == "附件总量已达上限，请稍后再试"
+    assert (
+        len(
+            db.exec(
+                select(table).where(
+                    table.org_id == p.org_id, table.session_id == third.id
+                )
+            ).all()
+        )
+        == 1
+    )
+
+    user = db.exec(
+        select(User).where(User.email == "manager.platform@demo.example.com")
+    ).one()
+    if kind == "admin":
+        membership = db.exec(
+            select(OrgMembership).where(
+                OrgMembership.org_id == p.org_id, OrgMembership.user_id == user.id
+            )
+        ).one()
+        db.add(
+            RoleGrant(
+                org_id=p.org_id,
+                membership_id=membership.id,
+                role=Role.ORG_ADMIN,
+                granted_by_user_id=p.user_id,
+            )
+        )
+        db.commit()
+    other = get_org_principal(p.org_id, user, db)
+    foreign_org = db.exec(
+        select(OrgMembership.org_id).where(
+            OrgMembership.user_id == p.user_id, OrgMembership.org_id != p.org_id
+        )
+    ).first()
+    assert foreign_org is not None
+    foreign = (admin if kind == "admin" else principal_for)(db, foreign_org)
+    for separate in (other, foreign):
+        row = sessions.create_session(db, separate)
+        assert a.upload(db, separate, kind, row.id, file("ok.txt", b"x" * 10))
+        db.delete(row)
+        db.commit()
 
 
 def test_limits_and_safe_data(demo: tuple, db: Session) -> None:

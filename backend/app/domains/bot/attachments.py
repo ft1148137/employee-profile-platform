@@ -21,10 +21,13 @@ from sqlmodel import Session, col, func, select
 from app.authz.principal import Principal
 from app.core.secrets import decrypt_secret, encrypt_secret
 from app.domains.admin_assistant import store as admin_store
-from app.domains.admin_assistant.models import AdminAssistantAttachment
+from app.domains.admin_assistant.models import (
+    AdminAssistantAttachment,
+    AdminAssistantSession,
+)
 from app.domains.base import utc_now
 from app.domains.bot import store
-from app.domains.bot.models import BotAttachment, ChatAttachment
+from app.domains.bot.models import BotAttachment, BotSession, ChatAttachment
 from app.domains.bot.settings import read_settings
 from app.domains.model.pi_client import PiImage
 
@@ -39,6 +42,8 @@ IMAGE_NOTICE = "当前模型不支持图片，图片没有发送给模型"
 TRUNCATED = "只读了前 20,000 字"
 TEXT_LIMIT = 20000
 UNZIPPED_LIMIT = 50 * 1024 * 1024
+# shortcut: concurrent uploads can exceed this by concurrency × 10 MiB; lock if a strict cap is needed.
+USER_LIMIT = 200 * 1024 * 1024
 MIME = {
     "png": "image/png",
     "jpg": "image/jpeg",
@@ -190,6 +195,30 @@ def upload(
     data = file.file.read(limit + 1)
     if not data or len(data) > limit:
         raise AttachmentError("附件不能为空，图片最多 5 MiB，文件最多 10 MiB")
+    session_table: type[BotSession] | type[AdminAssistantSession]
+    if kind == "admin":
+        session_table = AdminAssistantSession
+        owner = col(AdminAssistantSession.user_id) == p.user_id
+    else:
+        session_table = BotSession
+        owner = col(BotSession.employee_id) == p.employee_id
+    total = db.exec(
+        select(func.coalesce(func.sum(table.size), 0))
+        .select_from(table)
+        .join(
+            session_table,
+            (col(table.org_id) == session_table.org_id)
+            & (col(table.session_id) == session_table.id),
+        )
+        .where(
+            table.org_id == p.org_id,
+            session_table.org_id == p.org_id,
+            owner,
+            col(table.created_at) > _cutoff(db, p),
+        )
+    ).one()
+    if total + len(data) > USER_LIMIT:
+        raise AttachmentError("附件总量已达上限，请稍后再试")
     if image:
         valid = {
             "png": data.startswith(b"\x89PNG\r\n\x1a\n"),
