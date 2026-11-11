@@ -1,5 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import {
+  useMutation,
+  useMutationState,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
+import { useEffect, useState } from "react"
 import {
   AdminAssistantService,
   type ChangeSetApplied,
@@ -153,7 +158,21 @@ export function ChangeSetCard({
     },
     onSettled: () => client.invalidateQueries(),
   })
+  const savedAt = Math.max(
+    0,
+    ...useMutationState({
+      filters: {
+        mutationKey: ["admin-change-set-secret", orgId, changeSet.id],
+        status: "success",
+      },
+      select: (mutation) => mutation.state.submittedAt,
+    }),
+  )
+  useEffect(() => {
+    if (savedAt > 0) action.reset()
+  }, [savedAt, action.reset])
   const test = useMutation({
+    onMutate: () => action.reset(),
     mutationFn: async (item: number) =>
       (
         await AdminAssistantService.assistantTestChangeSet({
@@ -319,7 +338,13 @@ export function ChangeSetCard({
           )}
         </div>
       ))}
-      <SetupError error={action.error ?? test.error ?? query.error} />
+      <SetupError
+        error={
+          (test.submittedAt > action.submittedAt
+            ? (test.error ?? action.error)
+            : (action.error ?? test.error)) ?? query.error
+        }
+      />
       {current.status === "draft" && (
         <div className="flex gap-2">
           <Button disabled={busy} onClick={() => action.mutate("apply")}>

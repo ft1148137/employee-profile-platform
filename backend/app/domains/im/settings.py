@@ -76,7 +76,9 @@ def save_setting(
         if v.get_secret_value()
     }
     if platform == "feishu" and "app_id" in updates and "app_secret" not in updates:
-        raise InvalidImSetting("更换应用标识时请同时填写新的应用密钥")
+        raise InvalidImSetting(
+            "只填了 App ID 还不够，请把同一个应用的 App Secret 一起填写（在飞书开放平台 → 开发者后台 → 这个应用 → 凭证与基础信息里）。"
+        )
     if updates or body.enabled:
         try:
             credentials = (
@@ -89,7 +91,11 @@ def save_setting(
         previous = dict(credentials)
         credentials.update(updates)
         if not REQUIRED[platform] <= credentials.keys():
-            raise InvalidImSetting("请填写完整的应用凭据")
+            raise InvalidImSetting(
+                "App ID 和 App Secret 两项都要填（都在飞书开放平台 → 开发者后台 → 这个应用 → 凭证与基础信息里）。"
+                if platform == "feishu"
+                else "请填写完整的应用凭据"
+            )
         if platform == "telegram" and not re.fullmatch(
             r"[0-9]+:[A-Za-z0-9_-]+", credentials["bot_token"]
         ):

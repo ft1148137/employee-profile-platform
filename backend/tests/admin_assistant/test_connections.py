@@ -79,11 +79,20 @@ def test_confirm_undo_and_web_parity(
         == 200
     )
     db.expire_all()
-    ordinary = proposal(
-        db, demo, items=[{"function": function, "args": {"enabled": True}}]
-    )
-    assert ordinary.items[0]["risk"] == "normal"
-    c.discard(db, p, ordinary.id)
+    if is_im:
+        ordinary = proposal(
+            db, demo, items=[{"function": function, "args": {"enabled": True}}]
+        )
+        assert ordinary.items[0]["risk"] == "normal"
+        c.discard(db, p, ordinary.id)
+    else:
+        with pytest.raises(
+            c.ChangeSetError, match="设置已经是这个值，不需要改动"
+        ) as error:
+            proposal(
+                db, demo, items=[{"function": function, "args": {"enabled": True}}]
+            )
+        assert error.value.status_code == 422
     closed = proposal(
         db, demo, items=[{"function": function, "args": {"enabled": False}}]
     )
@@ -116,7 +125,7 @@ def test_missing_im_credentials_roll_back_whole_set(db: Session, demo: tuple) ->
     c.apply(db, p, row.id, row.revision)
     with pytest.raises(c.ChangeSetError) as error:
         c.apply(db, p, row.id, row.revision)
-    assert "请填写完整的应用凭据" in error.value.detail
+    assert "App ID 和 App Secret 两项都要填" in error.value.detail
     assert "[" not in error.value.detail and "{" not in error.value.detail
     assert not mcp.get_setting(db, p).enabled
     assert not im.public_setting(db, p.org_id, "feishu").enabled

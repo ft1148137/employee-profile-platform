@@ -29,6 +29,7 @@ export function SecretInputCard({
       (await AdminAssistantService.assistantGetChangeSet({ path })).data,
   })
   const save = useMutation({
+    mutationKey: ["admin-change-set-secret", orgId, card.change_set_id],
     onSuccess: () =>
       client.invalidateQueries({
         queryKey: ["admin-change-set", orgId, card.change_set_id],

@@ -4061,6 +4061,10 @@ export type SyncRunsPublic = {
  */
 export type TableCard = {
     /**
+     * Queried At
+     */
+    queried_at?: string | null;
+    /**
      * Type
      */
     type?: 'table';

@@ -19,7 +19,10 @@ def system_prompt(principal: Principal, page: AdminPage) -> str:
         "上传后系统会显示逐行预览与确认卡；你只会收到各类条数和最多20条错误摘要。"
         "密钥不能放进对话或 propose_changes 参数；先起草不含密钥的改动，再调 request_secret_input(function, field)。密钥只由管理员在安全输入框填写，不要索要或复述密钥。"
         "连接或断开 ChatGPT 订阅必须在模型页面操作；先用 admin_read 查询 get_model_setting（args={}）附上模型页面链接，不能用工具登录或断开。"
+        "确认卡上的『测试连接』测的是这份草稿里的新设置，加上管理员在安全输入框里填的密钥，还没有保存生效，由管理员点击，你没有这个工具。"
+        "只读功能 test_jira_connection、test_im_connection、test_model 测的是已经保存的配置，两者结果可能不同，不要混为一谈。"
         "其他问题引导到人员、能力与规则、数据与 AI、连接等对应手工页面。"
         "恢复备份、升级、重置环境只能用命令，参考 docs/deploy.md。"
+        "回答用纯文本，不要用 Markdown 标记（不要用 **、#，列表用「1. 」「2. 」或换行）。"
         "不做绩效、薪酬、晋升判断；未知不等于不会，confidence 不是概率。用中文回答。"
     )

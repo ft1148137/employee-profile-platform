@@ -31,6 +31,7 @@ class SetupStep:
     skippable: bool
     check: Callable[[Session, UUID], list[str]]
     implicit: bool = False
+    auto: bool = False
 
 
 def check_org_profile(_session: Session, _org_id: UUID) -> list[str]:
@@ -111,8 +112,11 @@ def check_initial_profiles(session: Session, org_id: UUID) -> list[str]:
     from app.domains.drafting.settings import drafting_scope
     from app.domains.profile.models import InferenceStatus, ProfileProgress
 
+    employees = active_employees(session, org_id)
+    if not employees:
+        return ["还没有在职员工，请先导入员工名单"]
     excluded = drafting_scope(session, org_id).excluded_employee_ids
-    eligible = {e.id for e in active_employees(session, org_id)} - excluded
+    eligible = {e.id for e in employees} - excluded
     requested = set(
         session.exec(
             select(ProfileChangeRequest.subject_employee_id).where(
@@ -155,6 +159,7 @@ STEPS = [
         False,
         False,
         check_roster,
+        auto=True,
     ),
     SetupStep(
         "capabilities",
@@ -164,6 +169,7 @@ STEPS = [
         False,
         False,
         check_capabilities,
+        auto=True,
     ),
     SetupStep(
         "accounts",
@@ -173,6 +179,7 @@ STEPS = [
         False,
         False,
         check_accounts,
+        auto=True,
     ),
     SetupStep(
         "sources",
@@ -182,6 +189,7 @@ STEPS = [
         False,
         True,
         check_sources,
+        auto=True,
     ),
     SetupStep(
         "identities",
@@ -200,6 +208,7 @@ STEPS = [
         True,
         True,
         check_model,
+        auto=True,
     ),
     SetupStep(
         "approval_policy",
@@ -218,5 +227,6 @@ STEPS = [
         False,
         False,
         check_initial_profiles,
+        auto=True,
     ),
 ]

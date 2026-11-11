@@ -135,6 +135,7 @@ for (const available of [true, false]) {
             {
               type: "table",
               title: "账号列表",
+              queried_at: "2026-11-11T00:25:00Z",
               columns: ["display_name", "employment_status", "roles"],
               rows: [
                 [
@@ -174,6 +175,7 @@ for (const available of [true, false]) {
     await expect(
       page.getByRole("cell", { name: "部门经理", exact: true }),
     ).toBeVisible()
+    await expect(page.getByText(/查询于 \d{2}:\d{2}/)).toBeVisible()
     expect(sends).toBe(1)
     await page
       .getByRole("button", { name: "让助手处理", exact: true })
