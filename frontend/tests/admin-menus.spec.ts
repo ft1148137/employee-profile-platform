@@ -31,7 +31,6 @@ const groups = [
     tabs: [
       ["dictionary", "能力词典"],
       ["approval", "审批规则"],
-      ["drafting", "自动起草设置"],
       ["reminders", "定期提醒"],
       ["profile-import", "批量导入画像"],
     ],
@@ -162,7 +161,7 @@ test("legacy addresses redirect to their new locations", async ({ page }) => {
     ["roles", "/admin/people?tab=roles"],
     ["identities", "/admin/people?tab=identities"],
     ["appeals", "/admin/people?tab=appeals"],
-    ["drafting", "/admin/rules?tab=drafting"],
+    ["drafting", "/admin/data-ai?tab=model"],
     ["profile-imports", "/admin/rules?tab=profile-import"],
     ["sources", "/admin/data-ai?tab=sources"],
     ["model", "/admin/data-ai?tab=model"],

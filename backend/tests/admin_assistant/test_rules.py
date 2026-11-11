@@ -47,13 +47,13 @@ def args_for(db: Session, demo: tuple, name: str) -> dict[str, Any]:
         return {"definitions": definitions, "expected_version": editor.expected_version}
     if name == "apply_capability_template":
         return {"template_id": "saas-software"}
-    if name == "update_drafting_settings":
-        return {
-            "excluded_capability_keys": [],
-            "disabled_department_ids": [str(demo[1]["E02"].department_id)],
-        }
+    if name == "set_auto_drafting":
+        return {"enabled": True}
     if name == "start_initial_drafting":
         enable(db, p.org_id)
+        registry.drafting.save_settings(
+            db, p, registry.drafting.DraftingSettingsUpdate(enabled=True)
+        )
         return {"scope": "all"}
     if name == "hand_over_initial_profiles":
         row = db.exec(
@@ -73,7 +73,7 @@ def args_for(db: Session, demo: tuple, name: str) -> dict[str, Any]:
 ACTIONS = [
     "update_capability_dictionary",
     "apply_capability_template",
-    "update_drafting_settings",
+    "set_auto_drafting",
     "start_initial_drafting",
     "hand_over_initial_profiles",
     "complete_setup_step",
@@ -96,7 +96,7 @@ def test_manual_and_assistant_results(
     if assistant:
         row = proposal(db, demo, items=[{"function": name, "args": args}])
         if name in (
-            "update_drafting_settings",
+            "set_auto_drafting",
             "start_initial_drafting",
             "hand_over_initial_profiles",
         ):
@@ -117,13 +117,8 @@ def test_manual_and_assistant_results(
         assert get_schema(db, p.org_id).template_ref.startswith(
             args["template_id"] + "@"
         )
-    elif name == "update_drafting_settings":
-        assert (
-            str(
-                registry.drafting.read_settings(db, p.org_id).disabled_department_ids[0]
-            )
-            == args["disabled_department_ids"][0]
-        )
+    elif name == "set_auto_drafting":
+        assert registry.drafting.read_settings(db, p.org_id).enabled == args["enabled"]
     elif name == "start_initial_drafting":
         assert jobs(db, p.org_id) == 1
         assert read_progress(db, p.org_id).counts["pending"] > 0
@@ -192,7 +187,7 @@ def jobs(db: Session, org_id: UUID) -> int:
         "update_capability_dictionary",
         "hand_over_initial_profiles",
         "apply_capability_template",
-        "update_drafting_settings",
+        "set_auto_drafting",
         "complete_setup_step",
         "skip_setup_step",
         "update_org_profile",
@@ -203,6 +198,9 @@ def test_later_failure_rolls_back(db: Session, demo: tuple, name: str) -> None:
     args = args_for(db, demo, name)
     if name == "update_capability_dictionary":
         enable(db, p.org_id)
+        registry.drafting.save_settings(
+            db, p, registry.drafting.DraftingSettingsUpdate(enabled=True)
+        )
         args["redraft"] = True
     models = (
         CapabilitySchemaVersion,
@@ -251,7 +249,7 @@ def test_later_failure_rolls_back(db: Session, demo: tuple, name: str) -> None:
     [
         "update_capability_dictionary",
         "apply_capability_template",
-        "update_drafting_settings",
+        "set_auto_drafting",
         "update_org_profile",
     ],
 )
@@ -286,3 +284,39 @@ def test_undo_and_stale(db: Session, demo: tuple, name: str) -> None:
     with pytest.raises(c.ChangeSetError, match="内容已变化"):
         c.apply(db, p, stale.id, stale.revision)
     assert c.get(db, p, stale.id).status == "stale"
+
+
+def test_disabled_drafting_rejected_before_confirmation(
+    db: Session, demo: tuple
+) -> None:
+    p = principal(db, demo)
+    with pytest.raises(registry.drafting.AutoDraftDisabled, match="自动起草未打开"):
+        proposal(
+            db,
+            demo,
+            items=[{"function": "start_initial_drafting", "args": {"scope": "all"}}],
+        )
+    from app.domains.admin_assistant import store, tools
+
+    cards: list = []
+    result = tools.call(
+        db,
+        p,
+        cards,
+        "propose_changes",
+        {"items": [{"function": "start_initial_drafting", "args": {"scope": "all"}}]},
+        session_id=store.create_session(db, p).id,
+    )
+    assert result == {"error": "自动起草未打开，请先在「数据与 AI → 模型」里打开"}
+    assert not cards
+    assert "update_drafting_settings" not in registry.FUNCTIONS
+    assert registry.FUNCTIONS["get_drafting_settings"].handler(
+        db, p, registry.NoArgs()
+    ).model_dump() == {"enabled": False}
+    row = proposal(
+        db, demo, items=[{"function": "set_auto_drafting", "args": {"enabled": True}}]
+    )
+    assert row.items[0]["risk"] == "normal"
+    count = row.items[0]["impact"]["count"]
+    assert row.items[0]["impact"]["text"] == f"将为 {count} 名员工起草"
+    assert not registry.drafting.read_settings(db, p.org_id).enabled

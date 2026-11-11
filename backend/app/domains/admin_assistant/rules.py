@@ -1,7 +1,6 @@
 """Rules and home actions reuse the manual console's domain services."""
 
 from dataclasses import replace
-from functools import partial
 from typing import TYPE_CHECKING, Any, Literal
 
 from fastapi import HTTPException
@@ -23,7 +22,7 @@ from app.domains.drafting.service import (
 )
 from app.domains.org.models import Organization
 from app.domains.org.schemas import OrganizationUpdate
-from app.domains.org.service import managed_scope, rename_organization
+from app.domains.org.service import rename_organization
 from app.domains.setup.models import SetupStatus
 from app.domains.setup.wizard import update_step
 
@@ -120,30 +119,20 @@ def handover(
 def drafting_impact(
     db: Session, p: Principal, args: settings.DraftingSettingsUpdate
 ) -> BaseModel:
-    before = settings.drafting_scope(db, p.org_id)
-    departments = managed_scope(db, p.org_id, frozenset(args.disabled_department_ids))
-    count = sum(
-        not e.auto_draft_opt_out
-        and (
-            (e.id in before.excluded_employee_ids) != (e.department_id in departments)
-            or (
-                before.excluded_capability_keys
-                != frozenset(args.excluded_capability_keys)
-                and (
-                    e.id not in before.excluded_employee_ids
-                    or e.department_id not in departments
-                )
-            )
-        )
-        for e in active_employees(db, p.org_id)
+    count = sum(not e.auto_draft_opt_out for e in active_employees(db, p.org_id))
+    return RootModel(
+        {
+            "count": count if args.enabled else 0,
+            "text": f"将为 {count} 名员工起草" if args.enabled else "关闭自动起草",
+        }
     )
-    return RootModel({"count": count, "text": "影响这些员工的自动起草范围"})
 
 
 def draft_impact(db: Session, p: Principal, args: Any) -> BaseModel:
     redraft = isinstance(args, SaveDictionary)
     if redraft and not args.redraft:
         return RootModel({"count": 0, "text": "只更新能力词典，不重新起草"})
+    settings.require_auto_drafting(db, p.org_id)
     return RootModel(
         {
             "count": len(
@@ -200,14 +189,14 @@ def register_rules(functions: dict[str, AdminFunction]) -> None:
             reverse=restore_dictionary,
         ),
         AdminFunction(
-            "update_drafting_settings",
-            "rules",
+            "set_auto_drafting",
+            "data_ai",
             "change",
             "normal",
-            "修改能力和部门的自动起草开关",
+            "打开或关闭企业自动起草",
             settings.DraftingSettingsUpdate,
             settings.save_settings,
-            "/admin/rules?tab=drafting",
+            "/admin/data-ai?tab=model",
             (("PUT", "/drafting-settings"),),
             snapshot=lambda d, p, a: settings.DraftingSettingsUpdate.model_validate(
                 settings.read_settings(d, p.org_id).model_dump(
@@ -303,8 +292,7 @@ def register_rules(functions: dict[str, AdminFunction]) -> None:
     functions["import_capability_dictionary"] = replace(
         functions["update_capability_dictionary"],
         name="import_capability_dictionary",
-        description="导入能力词典，保留已关闭的 AI 推断；撤销时发布上一版内容",
-        handler=partial(save_dictionary, sync_ai_inference=False),
+        description="导入能力词典；撤销时发布上一版内容",
         endpoints=(
             ("POST", "/capabilities/preview"),
             ("POST", "/capabilities/versions"),

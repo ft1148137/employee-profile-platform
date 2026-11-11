@@ -8,7 +8,6 @@ import {
 import { DraftField } from "@/components/AdminAssistant/DraftField"
 import type { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { DictionaryPreviewPanel } from "./DictionaryPreviewPanel"
 import { SetupError } from "./SetupError"
@@ -133,7 +132,6 @@ function Editor({
           name: "",
           category: "未分类",
           description: "",
-          ai_inference: true,
           level_rubric: {
             levels: [{ key: "basic", label: "基础", description: "" }],
           },
@@ -233,19 +231,6 @@ function Editor({
                         </label>
                       ))}
                     </div>
-                    <label
-                      htmlFor={`${prefix}-${id}-ai`}
-                      className="flex items-center gap-3 text-sm"
-                    >
-                      <Checkbox
-                        id={`${prefix}-${id}-ai`}
-                        checked={d.ai_inference === false}
-                        onCheckedChange={(value) =>
-                          update(id, { ai_inference: value !== true })
-                        }
-                      />
-                      不由 AI 推断
-                    </label>
                     <fieldset className="min-w-0 space-y-3">
                       <legend className="mb-2 text-sm font-medium">等级</legend>
                       {d.level_rubric.levels.map((level, index) => (

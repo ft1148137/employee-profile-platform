@@ -52,6 +52,9 @@ test("admin uploads, previews and confirms a dictionary version", async ({
   await expect(
     page.getByRole("region", { name: "词典改动预览" }),
   ).toContainText("新增 1 项")
+  await expect(
+    page.getByRole("region", { name: "词典改动预览" }),
+  ).toContainText("AI 起草列已不再使用，已忽略")
   await expectChineseCopy(page, ["YAML", "AI", "custom"])
   await page.getByRole("button", { name: "确认保存新版本" }).click()
   await expect(
@@ -120,7 +123,6 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
     name: index ? "将删除的能力" : "保留的能力",
     category: "工程",
     description: "合成说明",
-    ai_inference: true,
     level_rubric: {
       levels: [{ key: "basic", label: "基础", description: "旧等级说明" }],
     },
@@ -177,7 +179,9 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
   await added.getByLabel("能力名称").fill("新合成能力")
   await added.getByLabel("能力说明").fill("用于验证未知状态")
   await added.getByLabel("等级描述").fill("能在指导下完成")
-  await added.getByRole("checkbox", { name: "不由 AI 推断" }).check()
+  await expect(
+    added.getByRole("checkbox", { name: "不由 AI 推断" }),
+  ).toHaveCount(0)
   await editor.getByRole("button", { name: "预览改动" }).click()
   const preview = editor.getByRole("region", { name: "词典改动预览" })
   for (const text of [
@@ -219,12 +223,13 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
     editor.getByRole("article", { name: "将删除的能力" }),
   ).toHaveCount(0)
   await expect(
-    editor.getByRole("article", { name: "新合成能力" }).getByRole("checkbox"),
-  ).toBeChecked()
+    editor.getByRole("article", { name: "新合成能力" }),
+  ).toBeVisible()
   await page.goto("/admin/drafting")
+  await expect(page).toHaveURL("/admin/data-ai?tab=model")
   await expect(
-    page.getByRole("checkbox", { name: "新合成能力", exact: true }),
-  ).toBeChecked()
+    page.getByRole("switch", { name: "自动起草", exact: true }),
+  ).toBeVisible()
   await page.goto(`/employees/${employeeId}`)
   await expect(
     page.getByRole("article", { name: "新合成能力", exact: true }),

@@ -67,10 +67,7 @@ def file_case(
         setting = db.get(DraftingSetting, p.org_id) or DraftingSetting(
             org_id=p.org_id, updated_by_user_id=p.user_id
         )
-        setting.excluded_capability_keys = sorted(
-            set(setting.excluded_capability_keys)
-            | {definitions[0].key, definitions[-1].key, "previously-removed-capability"}
-        )
+        setting.auto_draft_enabled = False
         db.add(setting)
         db.commit()
     try:
@@ -121,11 +118,6 @@ def test_web_parity_and_confirmation(
 ) -> None:
     kind, p, _, filename, content = file_case
     before = state(db, p)
-    closed = (
-        set(db.get(DraftingSetting, p.org_id).excluded_capability_keys)
-        if kind == "capabilities"
-        else set()
-    )
     response = upload(client, demo, file_case)
     assert response.status_code == 200, response.text
     preview, card = response.json()["messages"]
@@ -223,13 +215,11 @@ def test_web_parity_and_confirmation(
             and jobs(db, p.org_id) == before[-1] + 1
         )
     else:
-        expected = [
-            {**d, "ai_inference": d["key"] not in closed} for d in args["definitions"]
-        ]
+        expected = args["definitions"]
         assert [
             d.model_dump(mode="json") for d in read_editor(db, p).definitions
         ] == expected
-        assert set(db.get(DraftingSetting, p.org_id).excluded_capability_keys) == closed
+        assert not db.get(DraftingSetting, p.org_id).auto_draft_enabled
         assert get_schema(db, p.org_id).version == before[2]["expected_version"] + 1
         if assistant:
             reverse = c.undo(db, p, row.id)
@@ -238,10 +228,7 @@ def test_web_parity_and_confirmation(
             assert [d.model_dump() for d in read_editor(db, p).definitions] == before[
                 2
             ]["definitions"]
-            assert (
-                set(db.get(DraftingSetting, p.org_id).excluded_capability_keys)
-                == closed
-            )
+            assert not db.get(DraftingSetting, p.org_id).auto_draft_enabled
 
 
 def test_invalid_limits_and_private_sessions(

@@ -20,6 +20,7 @@ from app.domains.change_request.models import (
 from app.domains.drafting import model, service
 from app.domains.drafting.collect import collect
 from app.domains.drafting.models import DraftingSetting
+from app.domains.drafting.settings import AutoDraftDisabled
 from app.domains.evidence.models import Evidence, EvidenceKind, Visibility
 from app.domains.evidence.service import append_evidence, retract_evidence
 from app.domains.model.client import (
@@ -79,6 +80,11 @@ def drafting(
             model="synthetic",
             base_url=pi_service.config.baseUrl,
             reasoning_effort="low",
+        )
+    )
+    db.add(
+        DraftingSetting(
+            org_id=org, updated_by_user_id=users[0].id, auto_draft_enabled=True
         )
     )
     db.add_all(
@@ -267,72 +273,39 @@ def test_recent_records_and_restricted_input(
 
 @pytest.mark.parametrize("enabled", [True, False])
 def test_scope_filters(
-    drafting: tuple, db: Session, request: pytest.FixtureRequest, enabled: bool
+    drafting: tuple, db: Session, pi_service: PiHarness, enabled: bool
 ) -> None:
-    org, _, depts, employees, users = drafting
-    replies, calls = request.getfixturevalue("model_completions")
-    setting = db.get(ModelSetting, org)
-    setting.enabled = enabled
+    org, schema, depts, employees, _ = drafting
+    setting = db.get(DraftingSetting, org)
+    setting.auto_draft_enabled = enabled
     db.add(setting)
-    db.add(
-        DraftingSetting(
-            org_id=org,
-            excluded_capability_keys=["backend_api"],
-            updated_by_user_id=users[0].id,
-        )
-    )
     employees[0].auto_draft_opt_out = True
     employees[3].department_id = depts[2].id
-    depts[1].auto_draft_disabled = True
     depts[2].parent_department_id = depts[1].id
-    for row in [employees[0], employees[3], depts[1], depts[2]]:
-        db.add(row)
-    db.add(
-        ExternalIdentity(
-            org_id=org, employee_id=employees[1].id, source="jira", external_id="beta"
-        )
-    )
-    db.flush()
-    ingest(db, org, record(person("beta"), key="BETA-1", title="API"))
-    service.write_initial_request(db, org, employees[0], [], {"mode": "existing"})
+    db.add_all([employees[0], employees[3], depts[2]])
     db.commit()
-    existing_progress = db.get(ProfileProgress, (org, employees[0].id)).inference_status
-    replies.extend([answer(), '{"items":[]}', '{"items":[]}'])
+    pi_service.auto_draft = True
     if not enabled:
-        with pytest.raises(service.ModelRequired):
+        with pytest.raises(AutoDraftDisabled):
             service.queue_drafting(db, org, "all")
         db.rollback()
-        service.run_drafting(
-            Principal.system_worker(org), [str(e.id) for e in employees]
-        )
-        db.expire_all()
-        assert len(rows(db, ProfileChangeRequest, org)) == 1
-        assert service.read_progress(db, org).failed[0].error == "模型已关闭"
-        assert calls == []
-        return
-    assert service.queue_drafting(db, org, "all") == 1
-    # Explicit worker IDs must respect the same switches as queueing.
+    else:
+        assert service.queue_drafting(db, org, "all") == 4
     service.run_drafting(Principal.system_worker(org), [str(e.id) for e in employees])
     db.expire_all()
     requests = rows(db, ProfileChangeRequest, org)
-    assert len(requests) == 2
-    assert next(
-        r for r in requests if r.subject_employee_id == employees[0].id
-    ).generated_by == {"mode": "existing"}
-    assert (
-        db.get(ProfileProgress, (org, employees[0].id)).inference_status
-        == existing_progress
+    assert {r.subject_employee_id for r in requests} == (
+        {e.id for e in employees[:5]} - {employees[0].id} if enabled else set()
     )
-    progress = service.read_progress(db, org)
-    assert progress.counts["excluded"] == 4 and progress.counts["not_started"] == 0
-    assert not rows(db, ChangeItem, org)
     if enabled:
-        body = json.loads(calls[0]["body"]["messages"][-1]["content"][0]["text"])
-        assert "backend_api" not in {c["key"] for c in body["capabilities"]}
-        assert len(calls) == 3
+        body = json.loads(
+            pi_service.requests[0]["body"]["messages"][-1]["content"][0]["text"]
+        )
+        assert {c["key"] for c in body["capabilities"]} == {
+            c.key for c in list_capabilities(db, org, schema.id)
+        }
     else:
-        assert calls == []
-    # Finish the queued task so no worker job escapes this test.
+        assert not pi_service.requests
     work_queue()
 
 
@@ -696,3 +669,32 @@ def test_first_accepted_submission_wins(
     service.run_drafting(Principal.system_worker(org), [str(employees[0].id)])
     db.expire_all()
     assert rows(db, ChangeItem, org)[0].after["statement"] == "能开发接口"
+
+
+@pytest.mark.parametrize("change", ["org_disabled", "opt_out"])
+def test_scope_rechecked_after_model(
+    drafting: tuple, db: Session, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    from app.core.db import engine
+    from app.domains.org.models import Employee
+
+    org, _, _, employees, _ = drafting
+    employee_id = employees[0].id
+
+    def turn(*_args: object) -> tuple:
+        with Session(engine) as other:
+            if change == "org_disabled":
+                setting = other.get(DraftingSetting, org)
+                setting.auto_draft_enabled = False
+                other.add(setting)
+            else:
+                employee = other.get(Employee, employee_id)
+                employee.auto_draft_opt_out = True
+                other.add(employee)
+            other.commit()
+        return [], {"mode": "model"}
+
+    monkeypatch.setattr(service.model, "draft", turn)
+    db.rollback()
+    service.run_drafting(Principal.system_worker(org), [str(employee_id)])
+    assert not rows(db, ProfileChangeRequest, org)

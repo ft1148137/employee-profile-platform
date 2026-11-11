@@ -241,10 +241,17 @@ def test_schedule_migration(migration_engine: Engine) -> None:
     migrate(migration_engine, "upgrade", "head")
 
 
+@pytest.mark.parametrize("enabled", [True, False])
 def test_scheduled_sync_queues_incremental_for_manual_records(
-    request: pytest.FixtureRequest, client: TestClient, db: Session
+    request: pytest.FixtureRequest, client: TestClient, db: Session, enabled: bool
 ) -> None:
     org, base, auth, employees, _ = request.getfixturevalue("context")
+    assert (
+        client.put(
+            base + "/drafting-settings", headers=auth, json={"enabled": enabled}
+        ).status_code
+        == 200
+    )
     db.add(
         ExternalIdentity(
             org_id=org,
@@ -266,6 +273,9 @@ def test_scheduled_sync_queues_incremental_for_manual_records(
     ).one()
     result = run_sync(db, org, str(run.id))
     assert result.status == "succeeded" and result.counts["tasks_added"] == 0
+    if not enabled:
+        assert not db.execute(query, {"org": str(org)}).all()
+        return
     job = db.execute(query, {"org": str(org)}).one()
     assert str(employees[0].id) in job.args["employee_ids"]
     assert job.lock == f"initial-profiles:{org}"

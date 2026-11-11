@@ -265,6 +265,12 @@ def test_switches_pause_resume(
     assert synchronize(enterprise, client, "cloud")["status"] == "succeeded"
     link_candidates(enterprise, client)
     setting = db.get(ModelSetting, org.id)
+    assert (
+        client.put(
+            base + "/drafting-settings", headers=auth, json={"enabled": True}
+        ).status_code
+        == 200
+    )
     setting.enabled = model
     db.add(setting)
     db.commit()
@@ -323,25 +329,18 @@ def test_switches_pause_resume(
     response = client.put(
         base + "/drafting-settings",
         headers=auth,
-        json={
-            "excluded_capability_keys": ["backend_api"],
-            "disabled_department_ids": [str(departments[0].id)],
-        },
+        json={"enabled": True},
     )
     assert response.status_code == 200
     service.run_drafting(Principal.system_worker(org.id), None)
     requests = rows(db, ProfileChangeRequest, org.id)
-    excluded = {
-        e.id for e in people if e.department_id in {d.id for d in departments[:2]}
-    } | {opted.id}
-    assert {r.subject_employee_id for r in requests} == {
-        e.id for e in people
-    } - excluded
-    for item in rows(db, ChangeItem, org.id):
-        assert (
-            db.get(CapabilityDefinition, item.capability_definition_id).key
-            != "backend_api"
-        )
+    assert {r.subject_employee_id for r in requests} == {e.id for e in people} - {
+        opted.id
+    }
+    assert any(
+        db.get(CapabilityDefinition, item.capability_definition_id).key == "backend_api"
+        for item in rows(db, ChangeItem, org.id)
+    )
     assert snapshot == [
         [r.model_dump(mode="json") for r in rows(db, m, org.id)]
         for m in (Evidence, ProfileClaim)

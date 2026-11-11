@@ -10,6 +10,7 @@ from app.domains.base import utc_now
 from app.domains.change_request.handover import hand_over
 from app.domains.change_request.models import ProfileChangeRequest, RequestStatus
 from app.domains.drafting.service import read_progress
+from app.domains.drafting.settings import read_settings
 from app.domains.im.models import ImNotification, ImSetting
 from app.domains.model.models import ModelSetting
 from app.domains.review.appeal import list_disputes
@@ -146,11 +147,15 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
         key="drafting",
         title="自动起草",
         summary="起草运行正常",
-        page="/admin/rules?tab=drafting",
+        page="/admin/data-ai?tab=model",
         assistant_prompt="帮我检查自动起草",
     )
-    if progress.mode == "none":
+    if not read_settings(session, org_id).enabled:
         drafting.level, drafting.summary = "off", "自动起草尚未开启"
+        drafting.assistant_prompt = "帮我打开自动起草"
+    elif progress.mode == "none":
+        drafting.level, drafting.summary = "off", "自动起草已打开，模型尚未启用"
+        drafting.assistant_prompt = "帮我检查模型和额度"
     elif progress.paused_until and progress.paused_until > now:
         drafting.level, drafting.summary = (
             "warn",

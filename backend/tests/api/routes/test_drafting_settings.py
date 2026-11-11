@@ -2,17 +2,17 @@ from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, event, inspect
+from sqlalchemy import Engine, inspect, text
 from sqlmodel import Session, select
 
-from app.core.db import engine
 from app.domains.audit.models import AuditEvent
 from app.domains.change_request.models import ChangeItem, ProfileChangeRequest
-from app.domains.drafting.models import DraftingSetting
+from app.domains.drafting import incremental
 from app.domains.drafting.settings import drafting_scope
 from app.domains.evidence.models import Evidence
-from app.domains.org.models import Department, Employee
+from app.domains.org.models import Department, Employee, Organization, OrgMembership
 from app.domains.profile.models import ProfileClaim
+from app.models import User
 from tests.api.routes.test_roster import apply, upload
 from tests.api.routes.test_setup_steps import SetupTenant
 from tests.api.routes.test_setup_steps import tenant as tenant
@@ -35,85 +35,48 @@ def test_settings_and_own_choice(demo: tuple, client: TestClient, db: Session) -
     org_id, employee = people["E02"].org_id, people["E02"]
     settings_url, own_url = f"{url}/drafting-settings", f"{url}/me/auto-draft"
     before = snapshot(db, org_id)
-
-    def audits() -> list[AuditEvent]:
-        return list(
-            db.exec(
-                select(AuditEvent)
-                .where(
-                    AuditEvent.org_id == org_id,
-                    AuditEvent.action.in_(
-                        ["drafting_settings.updated", "employee.auto_draft_changed"]
-                    ),
-                )
-                .order_by(AuditEvent.created_at, AuditEvent.id)
-            ).all()
+    assert client.get(settings_url, headers=auth["admin"]).json() == {"enabled": False}
+    for enabled in (False, True, True, False):
+        result = client.put(
+            settings_url, headers=auth["admin"], json={"enabled": enabled}
         )
-
-    empty = {"excluded_capability_keys": [], "disabled_department_ids": []}
-    assert client.get(settings_url, headers=auth["admin"]).json() == {
-        **empty,
-        "excluded_employee_count": 0,
-        "opted_out_count": 0,
-        "updated_at": None,
-    }
-    assert (
-        client.put(settings_url, headers=auth["admin"], json=empty).status_code == 200
-    )
-    assert not audits()
-    body = {
-        "excluded_capability_keys": ["backend_api"],
-        "disabled_department_ids": [str(employee.department_id)],
-    }
-    response = client.put(settings_url, headers=auth["admin"], json=body)
-    assert response.status_code == 200, response.text
-    assert drafting_scope(db, org_id).excluded_capability_keys == {"backend_api"}
-    assert (
-        response.json()["updated_at"] and response.json()["excluded_employee_count"] > 0
-    )
-    assert (
-        client.put(settings_url, headers=auth["admin"], json=body).json()
-        == response.json()
-    )
-    assert len(audits()) == 1
-    assert audits()[0].details == {
-        "added_capability_keys": ["backend_api"],
-        "removed_capability_keys": [],
-        "added_department_ids": body["disabled_department_ids"],
-        "removed_department_ids": [],
-    }
-    assert client.get(own_url, headers=auth["employee"]).json() == {
-        "enabled": True,
-        "department_disabled": True,
-    }
+        assert result.status_code == 200 and result.json() == {"enabled": enabled}
+    audits = db.exec(
+        select(AuditEvent)
+        .where(
+            AuditEvent.org_id == org_id,
+            AuditEvent.action == "drafting_settings.updated",
+        )
+        .order_by(AuditEvent.created_at, AuditEvent.id)
+    ).all()
+    assert [a.details for a in audits] == [
+        {"before": {"enabled": False}, "after": {"enabled": True}},
+        {"before": {"enabled": True}, "after": {"enabled": False}},
+    ]
     for enabled in (False, False, True):
         result = client.put(
             own_url, headers=auth["employee"], json={"enabled": enabled}
         )
-        assert result.json() == {"enabled": enabled, "department_disabled": True}
+        assert result.json() == {"enabled": enabled, "org_disabled": True}
         assert client.get(own_url, headers=auth["employee"]).json() == result.json()
-        settings = client.get(settings_url, headers=auth["admin"]).json()
-        assert settings["opted_out_count"] == int(not enabled)
-        assert set(settings) == {
-            *empty,
-            "excluded_employee_count",
-            "opted_out_count",
-            "updated_at",
-        }
-    changes = [a for a in audits() if a.action == "employee.auto_draft_changed"]
-    assert [a.details for a in changes] == [{"enabled": False}, {"enabled": True}]
-    assert all(
-        a.target_id == str(employee.id) and a.target_type == "employee" for a in changes
-    )
-    assert (
-        client.put(settings_url, headers=auth["admin"], json=empty).status_code == 200
-    )
-    assert audits()[-1].details == {
-        "added_capability_keys": [],
-        "removed_capability_keys": ["backend_api"],
-        "added_department_ids": [],
-        "removed_department_ids": body["disabled_department_ids"],
+        assert (employee.id in drafting_scope(db, org_id).excluded_employee_ids) == (
+            not enabled
+        )
+    client.put(settings_url, headers=auth["admin"], json={"enabled": True})
+    assert client.get(own_url, headers=auth["employee"]).json() == {
+        "enabled": True,
+        "org_disabled": False,
     }
+    changes = db.exec(
+        select(AuditEvent)
+        .where(
+            AuditEvent.org_id == org_id,
+            AuditEvent.action == "employee.auto_draft_changed",
+        )
+        .order_by(AuditEvent.created_at, AuditEvent.id)
+    ).all()
+    assert [a.details for a in changes] == [{"enabled": False}, {"enabled": True}]
+    assert all(a.target_id == str(employee.id) for a in changes)
     assert snapshot(db, org_id) == before
 
 
@@ -126,11 +89,7 @@ def test_permissions(
     url = f"{tenant.url}/drafting-settings"
     assert client.get(url, headers=tenant.auth[role]).status_code == status
     assert (
-        client.put(
-            url,
-            headers=tenant.auth[role],
-            json={"excluded_capability_keys": [], "disabled_department_ids": []},
-        ).status_code
+        client.put(url, headers=tenant.auth[role], json={"enabled": True}).status_code
         == status
     )
     for method in ("get", "put"):
@@ -140,32 +99,27 @@ def test_permissions(
             headers=tenant.auth[role],
             **({"json": {"enabled": False}} if method == "put" else {}),
         )
-        assert response.status_code == 404  # No employee identity or foreign tenant.
+        assert response.status_code == 404
 
 
 def test_invalid_settings_are_atomic(
     demo: tuple, client: TestClient, db: Session
 ) -> None:
     url, people, auth = demo
-    org_id = people["E02"].org_id
-    foreign = db.exec(select(Department).where(Department.org_id != org_id)).first()
-    # Use a syntactically valid foreign id even if that test tenant has no departments.
-    foreign_id = str(foreign.id if foreign else people["E02"].id)
-    before = client.get(f"{url}/drafting-settings", headers=auth["admin"]).json()
-    response = client.put(
-        f"{url}/drafting-settings",
-        headers=auth["admin"],
-        json={
-            "excluded_capability_keys": ["unknown-key"],
-            "disabled_department_ids": [foreign_id],
-        },
-    )
-    assert response.status_code == 422
-    assert response.json()["detail"]["unknown_capability_keys"] == ["unknown-key"]
-    assert response.json()["detail"]["unknown_department_ids"] == [foreign_id]
+    path = f"{url}/drafting-settings"
+    before = client.get(path, headers=auth["admin"]).json()
     assert (
-        client.get(f"{url}/drafting-settings", headers=auth["admin"]).json() == before
+        client.put(
+            path,
+            headers=auth["admin"],
+            json={
+                "enabled": True,
+                "disabled_department_ids": [str(people["E03"].department_id)],
+            },
+        ).status_code
+        == 422
     )
+    assert client.get(path, headers=auth["admin"]).json() == before
     assert (
         client.put(
             f"{url}/me/auto-draft", headers=auth["admin"], json={"enabled": False}
@@ -184,140 +138,71 @@ def test_invalid_settings_are_atomic(
     assert not db.get(Employee, people["E03"].id).auto_draft_opt_out
 
 
-def test_settings_after_switching_templates(
-    tenant: SetupTenant, client: TestClient, db: Session
+def test_disabled_triggers_do_not_queue(
+    demo: tuple, client: TestClient, db: Session
 ) -> None:
-    url = f"{tenant.url}/drafting-settings"
-    headers = tenant.auth["admin"]
-    for template, keys in (("tech-rnd", ["backend_api"]), ("hospital", [])):
-        activated = client.post(
-            f"{tenant.url}/capability-schema",
-            headers=headers,
-            json={"template_id": template},
-        )
-        assert activated.status_code == 200
-        response = client.get(url, headers=headers)
-        assert response.status_code == 200
-        assert response.json()["excluded_capability_keys"] == []
-        if keys:
-            saved = client.put(
-                url,
-                headers=headers,
-                json={"excluded_capability_keys": keys, "disabled_department_ids": []},
-            )
-            assert saved.status_code == 200
-            assert saved.json()["excluded_capability_keys"] == keys
-    db.expire_all()
-    assert db.get(DraftingSetting, tenant.org_id).excluded_capability_keys == [
-        "backend_api"
-    ]  # Reading must leave persisted settings unchanged.
-    capabilities = client.get(f"{tenant.url}/capabilities", headers=headers).json()
-    key = capabilities["data"][0]["key"]
-    body = {
-        "excluded_capability_keys": [key],
-        "disabled_department_ids": [],
-    }
-    saved = client.put(url, headers=headers, json=body)
-    assert saved.status_code == 200
-    assert saved.json()["excluded_capability_keys"] == [key]
-    assert client.get(url, headers=headers).json() == saved.json()
-    db.expire_all()
-    assert db.get(DraftingSetting, tenant.org_id).excluded_capability_keys == [key]
-    audits = db.exec(
-        select(AuditEvent)
-        .where(
-            AuditEvent.org_id == tenant.org_id,
-            AuditEvent.action == "drafting_settings.updated",
-        )
-        .order_by(AuditEvent.created_at, AuditEvent.id)
-    ).all()
-    assert len(audits) == 2
-    assert audits[-1].details == {
-        "added_capability_keys": [key],
-        "removed_capability_keys": ["backend_api"],
-        "added_department_ids": [],
-        "removed_department_ids": [],
-    }
+    url, people, auth = demo
+    org = people["E02"].org_id
+    message = "自动起草未打开，请先在「数据与 AI → 模型」里打开"
+
+    def jobs() -> int:
+        return db.execute(
+            text("SELECT count(*) FROM procrastinate_jobs WHERE args->>'org_id'=:org"),
+            {"org": str(org)},
+        ).scalar_one()
+
+    before = jobs()
+    response = client.post(
+        f"{url}/initial-profiles/draft", headers=auth["admin"], json={"scope": "all"}
+    )
+    assert response.status_code == 422 and response.json()["detail"] == message
+    dictionary = client.get(f"{url}/capabilities/editor", headers=auth["admin"]).json()
+    response = client.put(
+        f"{url}/capabilities",
+        headers=auth["admin"],
+        json={
+            "definitions": dictionary["definitions"],
+            "expected_version": dictionary["expected_version"],
+            "redraft": True,
+        },
+    )
+    assert response.status_code == 422 and response.json()["detail"] == message
+    assert (
+        client.get(f"{url}/capabilities/editor", headers=auth["admin"]).json()
+        == dictionary
+    )
+    incremental.queue_incremental(db, org)
+    db.commit()
+    assert jobs() == before
 
 
-def test_scope_hierarchy_and_bounded_queries(tenant: SetupTenant, db: Session) -> None:
+def test_scope_all_departments_and_tenant_isolation(
+    tenant: SetupTenant, db: Session
+) -> None:
     root = Department(org_id=tenant.org_id, name="上级")
     db.add(root)
     db.flush()
-    closed = Department(
-        org_id=tenant.org_id,
-        name="关闭",
-        parent_department_id=root.id,
-        auto_draft_disabled=True,
-    )
-    sibling = Department(
-        org_id=tenant.org_id, name="兄弟", parent_department_id=root.id
-    )
-    db.add_all([closed, sibling])
-    db.flush()
-    child = Department(
-        org_id=tenant.org_id, name="下级", parent_department_id=closed.id
-    )
+    child = Department(org_id=tenant.org_id, name="下级", parent_department_id=root.id)
     db.add(child)
     db.flush()
     people = [
         Employee(org_id=tenant.org_id, display_name="合成员工", department_id=d.id)
-        for d in (root, closed, child, sibling)
+        for d in (root, child)
     ]
     opted = Employee(
         org_id=tenant.org_id, display_name="自主退出", auto_draft_opt_out=True
     )
     db.add_all([*people, opted])
-    db.commit()
-    assert drafting_scope(db, tenant.org_id).excluded_employee_ids == {
-        people[1].id,
-        people[2].id,
-        opted.id,
-    }
-    sibling.parent_department_id = closed.id
-    db.add(sibling)
-    db.commit()
-    counts = []
-    statements = []
-
-    def count(*args: object) -> None:
-        statements.append(args[2])
-
-    for size in (0, 100):
-        db.add_all(
-            Employee(
-                org_id=tenant.org_id, display_name="合成扩容", department_id=child.id
-            )
-            for _ in range(size)
-        )
-        db.commit()
-        statements.clear()
-        db.expire_all()
-        org_id = tenant.org_id
-        event.listen(engine, "before_cursor_execute", count)
-        try:
-            scope = drafting_scope(db, org_id)
-        finally:
-            event.remove(engine, "before_cursor_execute", count)
-        counts.append(len(statements))
-        assert (
-            people[0].id not in scope.excluded_employee_ids
-            and people[3].id in scope.excluded_employee_ids
-        )
-        assert len(scope.excluded_employee_ids) == 4 + size
-    assert counts == [4, 4]
     foreign = db.exec(
         select(Employee).where(
             Employee.org_id != tenant.org_id, Employee.employee_code == "FOREIGN"
         )
     ).one()
-    other_department = Department(org_id=foreign.org_id, name="关闭")
-    db.add(other_department)
-    db.flush()
-    foreign.department_id = other_department.id
+    foreign.auto_draft_opt_out = True
     db.add(foreign)
     db.commit()
-    assert not drafting_scope(db, foreign.org_id).excluded_employee_ids
+    assert drafting_scope(db, tenant.org_id).excluded_employee_ids == {opted.id}
+    assert drafting_scope(db, foreign.org_id).excluded_employee_ids == {foreign.id}
 
 
 def test_roster_preserves_preferences(
@@ -327,24 +212,97 @@ def test_roster_preserves_preferences(
     data = "工号,姓名,部门,邮箱\nSYN,合成员工,测试部门,syn@example.com\n".encode()
     assert apply(client, tenant, upload(client, tenant, data)).status_code == 200
     employee = db.exec(select(Employee).where(Employee.org_id == tenant.org_id)).one()
-    department = db.get(Department, employee.department_id)
-    employee.auto_draft_opt_out, department.auto_draft_disabled = True, True
-    db.add_all([employee, department])
+    employee.auto_draft_opt_out = True
+    db.add(employee)
     db.commit()
     assert apply(client, tenant, upload(client, tenant, data)).status_code == 200
     db.refresh(employee)
-    db.refresh(department)
-    assert employee.auto_draft_opt_out and department.auto_draft_disabled
+    assert employee.auto_draft_opt_out
 
 
 def test_migration_roundtrip(migration_engine: Engine) -> None:
-    migrate(migration_engine, "downgrade", "f69a901bc002")
-    assert "drafting_setting" not in inspect(migration_engine).get_table_names()
+    with Session(migration_engine) as db:
+        org = Organization(slug="synthetic-migration", name="合成企业")
+        user = User(
+            username="migration@example.com",
+            email="migration@example.com",
+            hashed_password="synthetic",
+        )
+        db.add_all([org, user])
+        db.flush()
+        db.add(OrgMembership(org_id=org.id, user_id=user.id))
+        department = Department(org_id=org.id, name="旧关闭部门")
+        employee = Employee(
+            org_id=org.id, display_name="本人退出", auto_draft_opt_out=True
+        )
+        db.add_all([department, employee])
+        db.commit()
+        org_id, user_id, dept_id, employee_id = (
+            org.id,
+            user.id,
+            department.id,
+            employee.id,
+        )
+    migrate(migration_engine, "downgrade", "b283001bc001")
+    with migration_engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO drafting_setting (org_id, updated_by_user_id, updated_at, excluded_capability_keys) VALUES (:org, :user, now(), '[\"backend_api\"]'::jsonb)"
+            ),
+            {"org": org_id, "user": user_id},
+        )
+        conn.execute(
+            text(
+                "UPDATE department SET auto_draft_disabled=true WHERE org_id=:org AND id=:id"
+            ),
+            {"org": org_id, "id": dept_id},
+        )
+    for _ in range(2):
+        migrate(migration_engine, "upgrade", "head")
+        assert "auto_draft_disabled" not in {
+            c["name"] for c in inspect(migration_engine).get_columns("department")
+        }
+        with migration_engine.connect() as conn:
+            assert (
+                conn.execute(
+                    text(
+                        "SELECT auto_draft_enabled FROM drafting_setting WHERE org_id=:org"
+                    ),
+                    {"org": org_id},
+                ).scalar_one()
+                is False
+            )
+            assert (
+                conn.execute(
+                    text(
+                        "SELECT auto_draft_opt_out FROM employee WHERE org_id=:org AND id=:id"
+                    ),
+                    {"org": org_id, "id": employee_id},
+                ).scalar_one()
+                is True
+            )
+            assert (
+                len(conn.execute(text("SELECT version_num FROM alembic_version")).all())
+                == 1
+            )
+        migrate(migration_engine, "downgrade", "b283001bc001")
+        with migration_engine.connect() as conn:
+            assert (
+                conn.execute(
+                    text(
+                        "SELECT excluded_capability_keys FROM drafting_setting WHERE org_id=:org"
+                    ),
+                    {"org": org_id},
+                ).scalar_one()
+                == []
+            )
+            assert (
+                conn.execute(
+                    text(
+                        "SELECT auto_draft_disabled FROM department WHERE org_id=:org AND id=:id"
+                    ),
+                    {"org": org_id, "id": dept_id},
+                ).scalar_one()
+                is False
+            )
     migrate(migration_engine, "upgrade", "head")
-    assert "drafting_setting" in inspect(migration_engine).get_table_names()
-    assert "auto_draft_disabled" in {
-        c["name"] for c in inspect(migration_engine).get_columns("department")
-    }
-    assert "auto_draft_opt_out" in {
-        c["name"] for c in inspect(migration_engine).get_columns("employee")
-    }
