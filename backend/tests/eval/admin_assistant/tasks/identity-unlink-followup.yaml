@@ -1,5 +1,5 @@
 id: identity-unlink-followup
-menu: data_ai
+menu: people
 seed: {jira_name: 合成账号}
 steps:
   - type: say
