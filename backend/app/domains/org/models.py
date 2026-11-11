@@ -44,9 +44,6 @@ class Department(TenantRecord, table=True):
         ),
         tenant_fk("parent_department_id", "department"),
     )
-    auto_draft_disabled: bool = Field(
-        default=False, sa_column_kwargs={"server_default": "false"}
-    )
     name: str
     parent_department_id: uuid.UUID | None = None
 

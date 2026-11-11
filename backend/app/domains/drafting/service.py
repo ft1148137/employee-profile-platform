@@ -33,7 +33,11 @@ from app.domains.drafting.collect import (
 )
 from app.domains.drafting.collect import relation as record_relation
 from app.domains.drafting.model import DraftItem
-from app.domains.drafting.settings import drafting_scope
+from app.domains.drafting.settings import (
+    drafting_scope,
+    read_settings,
+    require_auto_drafting,
+)
 from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
 from app.domains.model.client import (
@@ -286,6 +290,8 @@ def active_employees(session: Session, org_id: UUID) -> list[Employee]:
 def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
     org_id = principal.org_id
     with Session(engine, expire_on_commit=False) as session:
+        if not read_settings(session, org_id).enabled:
+            return
         scope = drafting_scope(session, org_id)
         ids = [
             e.id
@@ -339,11 +345,11 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                 ).one()
                 schema = get_schema(session, org_id)
                 current_scope = drafting_scope(session, org_id)
-                capabilities = [
-                    c
-                    for c in list_capabilities(session, org_id, schema.id)
-                    if c.key not in current_scope.excluded_capability_keys
-                ]
+                if not read_settings(session, org_id).enabled:
+                    return
+                if employee.id in current_scope.excluded_employee_ids:
+                    continue
+                capabilities = list_capabilities(session, org_id, schema.id)
                 groups = task_groups(session, org_id)
                 records = collect(session, org_id, employee, groups)
                 setting = read_setting(session, org_id)
@@ -358,6 +364,16 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                     session, org_id, employee, items, capabilities, groups
                 )
                 generated_by["schema_version_id"] = str(schema.id)
+                session.exec(
+                    select(Organization)
+                    .where(Organization.id == org_id)
+                    .with_for_update(read=True)
+                ).one()
+                if not read_settings(session, org_id).enabled:
+                    return
+                session.refresh(employee)
+                if employee.auto_draft_opt_out:
+                    continue
                 written = write_initial_request(
                     session, org_id, employee, items, generated_by
                 )
@@ -503,6 +519,7 @@ def queue_drafting(
     session.exec(
         select(Organization).where(Organization.id == org_id).with_for_update()
     ).one()
+    require_auto_drafting(session, org_id)
     setting = read_setting(session, org_id)
     if setting is None or not setting.enabled:
         raise ModelRequired()

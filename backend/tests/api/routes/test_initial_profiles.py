@@ -312,11 +312,17 @@ def test_migration(migration_engine: Engine) -> None:
 def test_no_model_never_queues(
     request: pytest.FixtureRequest, db: Session, client: TestClient, configured: bool
 ) -> None:
+    from app.domains.drafting.models import DraftingSetting
     from app.domains.model.models import ModelSetting
 
     orgs, _, _, users = request.getfixturevalue("tenant_data")
     org = orgs[0].id
     activate_template(db, Principal.system_worker(org), "tech-rnd")
+    db.add(
+        DraftingSetting(
+            org_id=org, updated_by_user_id=users[0].id, auto_draft_enabled=True
+        )
+    )
     if configured:
         db.add(ModelSetting(org_id=org, enabled=False, updated_by_user_id=users[0].id))
     db.commit()
