@@ -8,7 +8,7 @@ from dataclasses import asdict
 from multiprocessing.process import BaseProcess
 from multiprocessing.queues import Queue
 from queue import Empty
-from typing import Any
+from typing import Any, ClassVar
 from urllib.parse import quote
 from uuid import UUID
 
@@ -17,6 +17,7 @@ import sentry_sdk
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from app.domains.im.adapters.base import Event, ImError
+from app.domains.im.schemas import Platform
 
 
 def _listen(credentials: dict[str, str], events: Queue[tuple[str, str]]) -> None:
@@ -58,6 +59,8 @@ def _listen(credentials: dict[str, str], events: Queue[tuple[str, str]]) -> None
 
 
 class Feishu:
+    platform: ClassVar[Platform] = "feishu"
+
     def __init__(self, org_id: UUID, credentials: dict[str, str]) -> None:
         self.org_id, self.credentials = org_id, credentials
         self.client = httpx.AsyncClient(
