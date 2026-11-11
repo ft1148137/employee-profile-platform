@@ -34,11 +34,9 @@ class CIContractTests(unittest.TestCase):
             self.assertEqual(result.returncode == 0, expected)
 
     def test_actual_path_patterns(self) -> None:
-        action = yaml.safe_load(
-            (ROOT / ".github/actions/ci-changes/action.yml").read_text()
-        )
         filters = [
-            yaml.safe_load(step["with"]["filters"]) for step in action["runs"]["steps"]
+            yaml.safe_load((ROOT / path).read_text())
+            for path in (".github/ci-paths.yml", ".github/ci-deploy-paths.yml")
         ]
         cases = [
             (["docs/setup.md", "CHANGELOG.md"], [False, False, False]),
@@ -63,7 +61,7 @@ class CIContractTests(unittest.TestCase):
             "deploy/common.sh",
             ".env.example",
             ".github/workflows/test-docker-compose.yml",
-            ".github/actions/ci-changes/action.yml",
+            ".github/ci-paths.yml",
             "unknown/new.config",
         ):
             cases.append(([path], [True, True, True]))
