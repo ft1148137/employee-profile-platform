@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import timedelta
 from threading import Barrier, Event
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,6 +14,11 @@ from sqlmodel import Session, select
 
 from app.authz.deps import get_org_principal
 from app.core.db import engine
+from app.domains.admin_assistant.models import (
+    AdminAssistantMessage,
+    AdminAssistantSession,
+    AdminChangeSet,
+)
 from app.domains.base import utc_now
 from app.domains.bot import admission, store
 from app.domains.bot.admission import (
@@ -24,6 +29,7 @@ from app.domains.bot.admission import (
     begin_turn,
 )
 from app.domains.bot.models import BotMessage, BotSession, BotSetting
+from app.domains.bot.settings import BotSettings
 from app.domains.model.client import ModelRateLimited
 from app.domains.model.models import ModelSetting
 from app.domains.model.pi_client import PiBusy
@@ -104,6 +110,83 @@ def test_retention_and_no_resurrection(demo: tuple, db: Session, days: int) -> N
     assert [m.id for m in remaining] == ([recent.id] if days else [])
     assert store.get_session(db, p, session.id).id == session.id
     cleanup_bot_messages(0)
+
+
+@pytest.mark.parametrize("days", [0, 7])
+def test_cleanup_failure_isolated_per_org(
+    tenant_data: tuple,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    days: int,
+) -> None:
+    orgs, _, employees, users = tenant_data
+    now = utc_now()
+    records = {}
+    for org, employee, user in zip(
+        orgs, [employees[0], employees[-1]], [users[0], users[3]], strict=True
+    ):
+        db.add(BotSetting(org_id=org.id, retention_days=days))
+        sessions = [
+            BotSession(org_id=org.id, employee_id=employee.id),
+            AdminAssistantSession(org_id=org.id, user_id=user.id),
+        ]
+        db.add_all(sessions)
+        db.flush()
+        for session in sessions:
+            message = store.append_message(db, session, "user", "合成过期原文")
+            message.created_at = now - timedelta(days=8)
+            store.save_state(db, session, {"version": 1, "messages": []})
+            session.last_activity_at = now - timedelta(days=8)
+            db.add_all([message, session])
+        draft = AdminChangeSet(
+            org_id=org.id,
+            session_id=sessions[1].id,
+            created_by_user_id=user.id,
+            items=[{"function": "issue_accounts", "args": {}}],
+            secrets="synthetic-encrypted-upload",
+            confirmed_once_at=now,
+        )
+        db.add(draft)
+        records[org.id] = (sessions, draft)
+    db.commit()
+    visited = []
+    read_settings = store.read_settings
+
+    def fail_first(db: Session, org_id: UUID) -> BotSettings:
+        if org_id in records:
+            visited.append(org_id)
+            if len(visited) == 1:
+                db.exec(text("SELECT 1 / 0 /* synthetic-private-cleanup */"))
+        return read_settings(db, org_id)
+
+    monkeypatch.setattr(store, "read_settings", fail_first)
+    store.cleanup_messages(db, now)
+    assert len(visited) == 2
+    for org_id in visited:
+        sessions, draft = records[org_id]
+        failed = org_id == visited[0]
+        for session, message_type in zip(
+            sessions, [BotMessage, AdminAssistantMessage], strict=True
+        ):
+            db.refresh(session)
+            assert bool(session.state_ciphertext) == failed
+            assert (
+                bool(
+                    db.exec(
+                        select(message_type).where(
+                            message_type.session_id == session.id
+                        )
+                    ).all()
+                )
+                == failed
+            )
+        db.refresh(draft)
+        assert draft.status == ("draft" if failed else "stale")
+        assert bool(draft.secrets) == failed
+        assert bool(draft.confirmed_once_at) == failed
+    logs = [r.getMessage() for r in caplog.records if r.name == store.__name__]
+    assert logs == [f"org_id={visited[0]} error_type=DataError"]
 
 
 def test_settings_validation_and_auth(

@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from typing import Literal
@@ -20,6 +21,8 @@ from app.domains.bot.models import BotMessage, BotSession, ConversationMessage
 from app.domains.bot.settings import read_settings
 from app.domains.org.models import Organization
 from app.domains.org.service import visible_employee
+
+logger = logging.getLogger(__name__)
 
 
 class BotSessionNotFound(HTTPException):
@@ -288,58 +291,66 @@ def save_state(
 
 
 def cleanup_messages(db: Session, now: datetime) -> None:
-    for org_id in db.exec(select(Organization.id)).all():
-        days = read_settings(db, org_id).retention_days
-        for session_type, message_type in (
-            (BotSession, BotMessage),
-            (AdminAssistantSession, AdminAssistantMessage),
-        ):
-            expired = select(session_type.id).where(
-                session_type.org_id == org_id,
-                session_type.last_activity_at <= now - timedelta(hours=2),
-            )
-            expired_messages = select(message_type.session_id).where(
-                message_type.org_id == org_id,
-                message_type.created_at <= now - timedelta(days=days),
-            )
-            db.exec(
-                update(session_type)
-                .where(
-                    col(session_type.org_id) == org_id,
-                    col(session_type.id).in_(expired_messages if days else expired),
-                )
-                .values(state_ciphertext=None)
-            )
-            if session_type is AdminAssistantSession:
-                db.exec(
-                    update(AdminChangeSet)
-                    .where(
-                        col(AdminChangeSet.org_id) == org_id,
-                        col(AdminChangeSet.session_id).in_(
-                            select(AdminAssistantSession.id).where(
-                                AdminAssistantSession.org_id == org_id,
-                                AdminAssistantSession.last_activity_at
-                                <= now
-                                - (
-                                    timedelta(days=days) if days else timedelta(hours=2)
-                                ),
-                            )
-                        ),
-                        col(AdminChangeSet.status) == "draft",
-                    )
-                    .values(
-                        secrets=None,
-                        status="stale",
-                        confirmed_once_at=None,
-                        updated_at=now,
-                    )
-                )
-            db.exec(
-                delete(message_type).where(
-                    col(message_type.org_id) == org_id,
-                    col(message_type.created_at) <= now - timedelta(days=days)
-                    if days
-                    else col(message_type.session_id).in_(expired),
-                )
-            )
+    org_ids = db.exec(select(Organization.id)).all()
     db.commit()
+    for org_id in org_ids:
+        try:
+            days = read_settings(db, org_id).retention_days
+            for session_type, message_type in (
+                (BotSession, BotMessage),
+                (AdminAssistantSession, AdminAssistantMessage),
+            ):
+                expired = select(session_type.id).where(
+                    session_type.org_id == org_id,
+                    session_type.last_activity_at <= now - timedelta(hours=2),
+                )
+                expired_messages = select(message_type.session_id).where(
+                    message_type.org_id == org_id,
+                    message_type.created_at <= now - timedelta(days=days),
+                )
+                db.exec(
+                    update(session_type)
+                    .where(
+                        col(session_type.org_id) == org_id,
+                        col(session_type.id).in_(expired_messages if days else expired),
+                    )
+                    .values(state_ciphertext=None)
+                )
+                if session_type is AdminAssistantSession:
+                    db.exec(
+                        update(AdminChangeSet)
+                        .where(
+                            col(AdminChangeSet.org_id) == org_id,
+                            col(AdminChangeSet.session_id).in_(
+                                select(AdminAssistantSession.id).where(
+                                    AdminAssistantSession.org_id == org_id,
+                                    AdminAssistantSession.last_activity_at
+                                    <= now
+                                    - (
+                                        timedelta(days=days)
+                                        if days
+                                        else timedelta(hours=2)
+                                    ),
+                                )
+                            ),
+                            col(AdminChangeSet.status) == "draft",
+                        )
+                        .values(
+                            secrets=None,
+                            status="stale",
+                            confirmed_once_at=None,
+                            updated_at=now,
+                        )
+                    )
+                db.exec(
+                    delete(message_type).where(
+                        col(message_type.org_id) == org_id,
+                        col(message_type.created_at) <= now - timedelta(days=days)
+                        if days
+                        else col(message_type.session_id).in_(expired),
+                    )
+                )
+            db.commit()
+        except Exception as error:
+            db.rollback()
+            logger.error("org_id=%s error_type=%s", org_id, type(error).__name__)

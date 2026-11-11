@@ -121,6 +121,78 @@ def user_ids(db: Session, demo: tuple) -> list[UUID]:
     )
 
 
+def test_issue_all_tool_result_omits_snapshots(db: Session, demo: tuple) -> None:
+    p = principal(db, demo)
+    cards = []
+    result = tools.call(
+        db,
+        p,
+        cards,
+        "propose_changes",
+        {"items": [{"function": "issue_accounts", "args": {}}]},
+        session_id=store.create_session(db, p).id,
+    )
+    assert isinstance(result, dict)
+    change = result["data"]["changes"][0]
+    assert "before" not in change and "after" not in change
+    assert "employee_ids" not in json.dumps(result)
+    assert "employee_ids" in cards[0].change_set.items[0].before
+    db.commit()
+
+
+def test_propose_disable_does_not_lock_account(db: Session, demo: tuple) -> None:
+    p = principal(db, demo)
+    uid = user_ids(db, demo)[0]
+    sid = store.create_session(db, p).id
+    try:
+        c.propose(
+            db,
+            p,
+            sid,
+            ProposeChanges.model_validate(
+                {
+                    "items": [
+                        {
+                            "function": "disable_accounts",
+                            "args": {"user_ids": [str(uid)]},
+                        }
+                    ]
+                }
+            ),
+        )
+        with Session(db.get_bind()) as other:
+            assert (
+                other.exec(
+                    select(User.id).where(User.id == uid).with_for_update(nowait=True)
+                ).one()
+                == uid
+            )
+    finally:
+        db.rollback()
+
+
+def test_bulk_disable_impact_lists_only_ten_names(db: Session, demo: tuple) -> None:
+    p = principal(db, demo)
+    users = [
+        User(
+            username=f"{uuid4()}@example.com",
+            full_name=f"合成账号{i:02d}",
+            hashed_password="unused",
+        )
+        for i in range(12)
+    ]
+    db.add_all(users)
+    db.flush()
+    db.add_all([OrgMembership(org_id=p.org_id, user_id=u.id) for u in users])
+    db.commit()
+    row = draft(db, demo, "disable_accounts", {"user_ids": [str(u.id) for u in users]})
+    impact = row.items[0]["impact"]
+    ordered = sorted(users, key=lambda u: u.id)
+    assert impact["count"] == 12 and "共 12 人" in impact["text"]
+    assert all(u.full_name in impact["text"] for u in ordered[:10])
+    assert all(u.full_name not in impact["text"] for u in ordered[10:])
+
+
 def test_password_once_and_no_disclosure(
     db: Session, demo: tuple, client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:

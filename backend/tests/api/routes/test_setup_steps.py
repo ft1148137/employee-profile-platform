@@ -743,4 +743,29 @@ def test_roster_import_auto_completes_home_todo(
     )
     db.delete(db.get(SetupStepState, (tenant.org_id, "model")))
     db.commit()
-    assert read_setup(db, tenant.org_id).completed
+    setup = read_setup(db, tenant.org_id)
+    assert not setup.completed
+    assert next(s for s in setup.steps if s.key == "model").status == "pending"
+
+
+def test_completed_model_step_survives_disabling_model(
+    tenant: SetupTenant, client: TestClient, db: Session
+) -> None:
+    setting = ModelSetting(
+        org_id=tenant.org_id, enabled=True, updated_by_user_id=tenant.admin_id
+    )
+    db.add(setting)
+    db.commit()
+    result = client.post(
+        f"{tenant.url}/setup/steps/model/complete", headers=tenant.auth["admin"]
+    )
+    assert result.status_code == 200 and result.json()["completed"]
+    db.refresh(setting)
+    setting.enabled = False
+    db.add(setting)
+    db.commit()
+    setup = client.get(f"{tenant.url}/setup", headers=tenant.auth["admin"]).json()
+    assert setup["completed"]
+    assert (
+        next(s for s in setup["steps"] if s["key"] == "model")["status"] == "completed"
+    )
