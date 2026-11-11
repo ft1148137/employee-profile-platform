@@ -314,7 +314,8 @@ def test_report_counts_each_menu(
     assert error.value.code == 0
     text = report.read_text()
     for menu in ("home", "people", "rules", "data_ai", "connections"):
-        assert f"| {menu} | {sum(t.menu == menu for t in tasks())} |" in text
+        selected = [t for t in tasks() if t.fake_model is not None]
+        assert f"| {menu} | {sum(t.menu == menu for t in selected)} |" in text
 
 
 def test_employee_may_read_own_restricted_content(

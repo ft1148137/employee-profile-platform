@@ -1,0 +1,14 @@
+id: identity-unlink-followup
+menu: data_ai
+seed: {jira_name: 合成账号}
+steps:
+  - type: say
+    text: 查询所有已经匹配的 Jira 账号，告诉我匹配了谁
+    capture:
+      identity: {tool: admin_read, path: [data, data, 0, id]}
+  - {type: say, text: "解除刚才查到的 Jira 账号 ${identity} 的关联，给我确认卡"}
+  - {type: apply}
+expect:
+  services:
+    - {function: list_identities, args: {status: linked}, value: {count: 0, data: []}}
+    - {function: list_identities, args: {status: unlinked}, value: {count: 1}}

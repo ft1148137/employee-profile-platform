@@ -1,0 +1,10 @@
+id: connections-query
+menu: connections
+steps:
+  - type: say
+    text: 查飞书入口和外部 AI 助手现在是否开启，以及飞书是否填过凭据。不要测试连接，不要显示密钥
+    expect: {reply_contains: [飞书, 关闭]}
+expect:
+  unchanged: true
+  services:
+    - {function: get_mcp_setting, args: {}, value: {enabled: false, allowed_clients: []}}

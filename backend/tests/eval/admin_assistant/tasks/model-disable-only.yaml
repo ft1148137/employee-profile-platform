@@ -1,0 +1,11 @@
+id: model-disable-only
+menu: data_ai
+steps:
+  - {type: say, text: 把模型关掉，只改启用开关，保留模型类型、模型名、推理强度和其他全部设置，给我确认卡}
+  - {type: apply}
+  - {type: again}
+expect:
+  services:
+    - function: get_model_setting
+      args: {}
+      value: {enabled: false, kind: chatgpt_subscription, provider: null, model: chatgpt/gpt-6.1-sol, reasoning_effort: high, base_url: null, has_api_key: false}

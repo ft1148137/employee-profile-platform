@@ -1,0 +1,8 @@
+id: bot-guide-only
+menu: data_ai
+steps:
+  - {type: say, text: 只把内置机器人的提问指南改成“请先询问最近完成的协作任务”，其他字段保持原值，给我确认卡}
+  - {type: apply}
+expect:
+  services:
+    - {function: get_bot_settings, args: {}, value: {question_guide: 请先询问最近完成的协作任务, retention_days: 0}}

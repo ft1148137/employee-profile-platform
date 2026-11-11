@@ -1,0 +1,10 @@
+id: reminder-no-change
+menu: rules
+steps:
+  - type: say
+    text: 把提醒周期改成每季度。如果已经是每季度，请明确回复“不需要改动”，不要出确认卡
+    expect: {reply_contains: [不需要改动]}
+expect:
+  unchanged: true
+  services:
+    - {function: get_update_settings, args: {}, value: {reminder_schedule: quarterly}}

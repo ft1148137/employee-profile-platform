@@ -1,0 +1,11 @@
+id: model-and-bot-query
+menu: data_ai
+steps:
+  - type: say
+    text: 查询现在用什么模型、推理强度，以及内置机器人聊天保存多少天，只查询
+    expect: {reply_contains: [gpt-6.1-sol]}
+expect:
+  unchanged: true
+  services:
+    - {function: get_model_setting, args: {}, value: {enabled: true, kind: chatgpt_subscription, model: chatgpt/gpt-6.1-sol, reasoning_effort: high}}
+    - {function: get_bot_settings, args: {}, value: {question_guide: '', retention_days: 0}}
