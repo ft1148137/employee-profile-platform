@@ -3,7 +3,18 @@ import { Link } from "@tanstack/react-router"
 import { AxiosError } from "axios"
 import { Bot, LoaderCircle } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
-import { BotService, type SessionMessage } from "@/client"
+import {
+  BotService,
+  type SessionMessage,
+  type TurnInput,
+  type TurnResponse,
+} from "@/client"
+import { ChatComposer } from "@/components/Chat/ChatComposer"
+import { ChatMessages } from "@/components/Chat/ChatMessages"
+import {
+  type ToolProgress,
+  useStreamingTurn,
+} from "@/components/Chat/useStreamingTurn"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import {
@@ -51,7 +62,7 @@ function Panel({
   const [sessionId, setSessionId] = useState("")
   const remembered = useCurrentConversation(storageKey)
   const [messages, setMessages] = useState<
-    Pick<SessionMessage, "role" | "payload">[]
+    (Pick<SessionMessage, "role" | "payload"> & { tools?: ToolProgress[] })[]
   >([])
   const [text, setText] = useState("")
   const [expired, setExpired] = useState(false)
@@ -94,17 +105,27 @@ function Panel({
       setMessages(data.messages)
     },
   })
+  const stream = useStreamingTurn<TurnInput, TurnResponse>(
+    `/api/v1/bot/sessions/${sessionId}/turns?org_id=${orgId}`,
+  )
   const send = useMutation({
     mutationFn: async (input: string | BotAction) => {
       const options = { query, path: { session_id: sessionId } }
       return typeof input === "string"
-        ? BotService.turn({ ...options, body: { text: input }, timeout: 75000 })
-        : BotService.act({ ...options, body: input })
+        ? stream.mutateAsync({ text: input })
+        : {
+            response: (await BotService.act({ ...options, body: input })).data,
+            tools: [],
+          }
     },
-    onSuccess: ({ data }) => {
+    onSuccess: (result) => {
+      if (!result) {
+        setMessages((previous) => previous.slice(0, -1))
+        return
+      }
       setMessages((previous) => [
         ...previous,
-        { role: "assistant", payload: data },
+        { role: "assistant", payload: result.response, tools: result.tools },
       ])
       setConflict(false)
       client.invalidateQueries({ queryKey: ["conversation-history", orgId] })
@@ -123,9 +144,9 @@ function Panel({
       initialize.mutate()
   }, [open, sessionId, remembered, busy, initialize.mutate])
   useEffect(() => {
-    if (open && messages.length)
+    if (open && (messages.length || stream.text || stream.tools.length))
       bottom.current?.scrollIntoView({ block: "end" })
-  }, [open, messages])
+  }, [open, messages, stream.text, stream.tools])
   function sendText(value: string) {
     setMessages((previous) => [
       ...previous,
@@ -182,26 +203,32 @@ function Panel({
             </Link>
             直接修改。
           </p>
-          {messages.map((entry, index) => (
-            <div
-              key={index}
-              className={`space-y-3 break-words ${entry.role === "user" ? "ml-8 rounded-xl bg-primary/10 p-3 whitespace-pre-wrap" : "mr-1"}`}
-            >
-              <p className="text-xs text-muted-foreground">
-                {entry.role === "user" ? "我" : "画像机器人"}
-              </p>
-              {"messages" in entry.payload
-                ? entry.payload.messages.map((message, i) => (
-                    <BotMessage
-                      key={i}
-                      message={message}
-                      disabled={busy || conflict}
-                      onAction={(action) => send.mutate(action)}
-                    />
-                  ))
-                : entry.payload.text}
-            </div>
-          ))}
+          <ChatMessages
+            messages={messages}
+            text={stream.text}
+            tools={stream.tools}
+            stopped={stream.stopped}
+            renderMessage={(entry, index) => (
+              <div
+                key={index}
+                className={`space-y-3 break-words ${entry.role === "user" ? "ml-8 rounded-xl bg-primary/10 p-3 whitespace-pre-wrap" : "mr-1"}`}
+              >
+                <p className="text-xs text-muted-foreground">
+                  {entry.role === "user" ? "我" : "画像机器人"}
+                </p>
+                {"messages" in entry.payload
+                  ? entry.payload.messages.map((message, i) => (
+                      <BotMessage
+                        key={i}
+                        message={message}
+                        disabled={busy || conflict}
+                        onAction={(action) => send.mutate(action)}
+                      />
+                    ))
+                  : entry.payload.text}
+              </div>
+            )}
+          />
           {busy && (
             <p
               role="status"
@@ -234,32 +261,20 @@ function Panel({
           )}
           <div ref={bottom} />
         </div>
-        <form
-          className="shrink-0 space-y-3 border-t p-4"
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (text.trim()) sendText(text.trim())
-          }}
-        >
-          <label className="sr-only" htmlFor="bot-input">
-            发给机器人的消息
-          </label>
-          <textarea
-            id="bot-input"
-            className="min-h-20 max-h-40 w-full rounded-lg border bg-background p-3 text-sm focus-visible:outline-ring"
-            placeholder="说说你想补充的经历…"
-            maxLength={10000}
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            disabled={busy || !sessionId}
-          />
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs text-muted-foreground">
-              确认过的陈述作为受限自述证据保存。
-            </p>
-            <Button disabled={busy || !sessionId || !text.trim()}>发送</Button>
-          </div>
-        </form>
+        <ChatComposer
+          id="bot-input"
+          label="发给机器人的消息"
+          placeholder="说说你想补充的经历…"
+          text={text}
+          onChange={setText}
+          onSend={() => sendText(text.trim())}
+          busy={stream.isPending}
+          disabled={busy || !sessionId}
+          onStop={stream.stop}
+        />
+        <p className="px-4 pb-4 text-xs text-muted-foreground">
+          确认过的陈述作为受限自述证据保存。
+        </p>
       </SheetContent>
     </Sheet>
   )

@@ -269,7 +269,12 @@ test("disabled model keeps the entry and points to the form", async ({
     actions: ["answer_question"],
   }
   await page.route("**/bot/sessions/*/turns?*", (route) =>
-    route.fulfill({ json: { messages: [question] } }),
+    route.fulfill({
+      contentType: "application/x-ndjson",
+      body:
+        JSON.stringify({ type: "final", response: { messages: [question] } }) +
+        "\n",
+    }),
   )
   await panel.getByLabel("发给机器人的消息").fill("查看待确认问题")
   await panel.getByRole("button", { name: "发送", exact: true }).click()
@@ -298,23 +303,27 @@ test("web bot directs reviews to the review page without decision buttons", asyn
   await logInUser(page, email, password)
   await page.route("**/bot/sessions/*/turns?*", (route) =>
     route.fulfill({
-      json: {
-        messages: [
-          {
-            type: "text",
-            text: "请在网页审批页查看并决定",
-            review_link: "/reviews",
-          },
-          {
-            type: "review_card",
-            id: crypto.randomUUID(),
-            revision: 1,
-            items: [],
-            decisions: [],
-            actions: [],
-          },
-        ],
-      },
+      contentType: "application/x-ndjson",
+      body: `${JSON.stringify({
+        type: "final",
+        response: {
+          messages: [
+            {
+              type: "text",
+              text: "请在网页审批页查看并决定",
+              review_link: "/reviews",
+            },
+            {
+              type: "review_card",
+              id: crypto.randomUUID(),
+              revision: 1,
+              items: [],
+              decisions: [],
+              actions: [],
+            },
+          ],
+        },
+      })}\n`,
     }),
   )
   await page.getByRole("button", { name: "打开画像机器人" }).click()

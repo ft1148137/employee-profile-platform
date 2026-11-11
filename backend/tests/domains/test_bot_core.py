@@ -36,6 +36,7 @@ from app.domains.model.pi_client import TurnResult
 from tests.api.routes.test_employee_requests import payload, principal_for
 from tests.authz.test_tenant_access import headers as user_headers
 from tests.authz.test_tenant_access import tenant_data as tenant_data
+from tests.utils.bot import final_response
 from tests.utils.pi import PiHarness
 
 
@@ -149,7 +150,9 @@ def test_real_pi_preview_confirm_withdraw_and_projection(
     )
     assert response.status_code == 200, response.text
     card = next(
-        m for m in reversed(response.json()["messages"]) if m["type"] == "preview_card"
+        m
+        for m in reversed(final_response(response)["messages"])
+        if m["type"] == "preview_card"
     )
     request = db.get(ProfileChangeRequest, UUID(card["request_id"]))
     assert request.status == "draft"

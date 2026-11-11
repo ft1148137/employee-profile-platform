@@ -231,7 +231,7 @@ class Run:
                     **{
                         k: v
                         for k, v in kwargs.items()
-                        if k not in ("on_tool_call", "tools")
+                        if k not in ("on_tool_call", "tools", "stream")
                     },
                     "tools": [t.model_dump(mode="json") for t in kwargs["tools"]],
                 }
@@ -496,9 +496,15 @@ class Run:
             response = client.request(
                 method, path, headers=headers, params=params, **kwargs
             )
-            self.outputs.append(response.json())
+            if self.task.entry == "employee_bot" and path.endswith("/turns"):
+                final = json.loads(response.text.splitlines()[-1])
+                assert final["type"] == "final", "Missing final turn response"
+                output = final["response"]
+            else:
+                output = response.json()
+            self.outputs.append(output)
             assert response.status_code == 200, f"HTTP {response.status_code}"
-            return response.json()
+            return output
 
         response = client.post(prefix, headers=headers, params=params)
         self.outputs.append(response.json())

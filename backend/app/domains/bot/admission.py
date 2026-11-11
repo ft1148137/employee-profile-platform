@@ -2,6 +2,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from hashlib import blake2b
+from threading import Event
 
 from pydantic import JsonValue
 from sqlalchemy import text
@@ -19,7 +20,7 @@ from app.domains.bot.store import append_message, get_session
 from app.domains.drafting.service import drafting_jobs
 from app.domains.model.client import ModelRateLimited
 from app.domains.model.models import ModelSetting
-from app.domains.model.pi_client import PiBusy
+from app.domains.model.pi_client import PiBusy, TurnCancelled
 
 LEASE_SECONDS = 75
 ORG_TURNS = 2
@@ -52,6 +53,7 @@ def begin_turn(
     principal: Principal,
     session: BotSession | AdminAssistantSession,
     user_payload: JsonValue,
+    cancelled: Event | None = None,
 ) -> Generator[BotSession | AdminAssistantSession]:
     lease = None
     admin = isinstance(session, AdminAssistantSession)
@@ -100,6 +102,11 @@ def begin_turn(
         )
         if active >= ORG_TURNS:
             raise BotBusy("本企业对话繁忙，请稍后再试")
+        owner = (
+            AdminAssistantSession.user_id == principal.user_id
+            if admin
+            else BotSession.employee_id == principal.employee_id
+        )
         times = db.exec(
             select(message_type.created_at)
             .join(
@@ -109,24 +116,53 @@ def begin_turn(
             )
             .where(
                 message_type.org_id == principal.org_id,
-                AdminAssistantSession.user_id == principal.user_id
-                if admin
-                else BotSession.employee_id == principal.employee_id,
+                owner,
                 message_type.role == "user",
                 message_type.created_at > now - timedelta(hours=1),
             )
             .order_by(col(message_type.created_at))
             .limit(HOURLY_TURNS)
         ).all()
-        if len(times) == HOURLY_TURNS:
-            raise BotRateLimited(times[0] + timedelta(hours=1))
+        reservations = (
+            db.exec(
+                select(session_type.id).where(
+                    session_type.org_id == principal.org_id,
+                    owner,
+                    col(session_type.lease_until) > now,
+                    ~select(message_type.id)
+                    .where(
+                        message_type.org_id == principal.org_id,
+                        message_type.session_id == session_type.id,
+                        message_type.role == "user",
+                        message_type.created_at
+                        >= col(session_type.lease_until)
+                        - timedelta(seconds=LEASE_SECONDS),
+                    )
+                    .exists(),
+                )
+            ).all()
+            if active
+            else []
+        )
+        if len(times) + len(reservations) >= HOURLY_TURNS:
+            raise BotRateLimited(
+                times[0] + timedelta(hours=1)
+                if times
+                else now + timedelta(seconds=LEASE_SECONDS)
+            )
         new_lease = now + timedelta(seconds=LEASE_SECONDS)
         row.lease_until = new_lease
-        row.turn_count += 1
-        append_message(db, row, "user", user_payload)
+        if cancelled is None:
+            row.turn_count += 1
+            append_message(db, row, "user", user_payload)
         db.commit()
         lease = new_lease
+        if cancelled is not None:
+            row.turn_count += 1
+            append_message(db, row, "user", user_payload)
         yield row
+        if cancelled is not None and cancelled.is_set():
+            raise TurnCancelled()
         db.commit()
     except ModelRateLimited as error:
         db.rollback()

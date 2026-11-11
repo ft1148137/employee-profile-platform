@@ -1,10 +1,11 @@
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
 
 from app.api.deps import SessionDep
 from app.authz.deps import OrgPrincipalDep
-from app.domains.bot import core, store
+from app.domains.bot import core, store, streaming
 from app.domains.bot.schemas import (
     QuestionAction,
     RequestAction,
@@ -38,11 +39,29 @@ def list_messages(
     return [SessionMessage.model_validate(message.model_dump()) for message in messages]
 
 
-@router.post("/{session_id}/turns")
+@router.post(
+    "/{session_id}/turns",
+    status_code=200,
+    response_class=streaming.TurnStreamingResponse,
+    response_model=streaming.TextEvent
+    | streaming.ToolEvent
+    | streaming.FinalEvent[TurnResponse],
+)
 def turn(
-    principal: OrgPrincipalDep, session: SessionDep, session_id: UUID, body: TurnInput
-) -> TurnResponse:
-    return core.turn(session, principal, session_id, body.text)
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    session_id: UUID,
+    body: TurnInput,
+    request: Request,
+) -> StreamingResponse:
+    store.get_session(session, principal, session_id)
+    session.close()  # The worker owns its Session; release the preflight connection.
+    return streaming.response(
+        lambda db, stream: core.turn(
+            db, principal, session_id, body.text, stream=stream
+        ),
+        request,
+    )
 
 
 @router.post("/{session_id}/actions")
