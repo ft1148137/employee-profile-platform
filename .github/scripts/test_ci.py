@@ -41,6 +41,8 @@ class CIContractTests(unittest.TestCase):
         cases = [
             (["docs/setup.md", "CHANGELOG.md"], [False, False, False]),
             (["docs/diagram.svg"], [False, False, False]),
+            (["backend/README.md"], [False, False, False]),
+            (["templates/profile-import/SKILL.md"], [True, True, False]),
             ([".github/ISSUE_TEMPLATE/bug.yml"], [False, False, False]),
             (["pi/src/server.ts"], [True, False, False]),
             (["pi/Dockerfile"], [True, False, True]),

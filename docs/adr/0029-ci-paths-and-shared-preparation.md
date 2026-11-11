@@ -8,7 +8,7 @@
 
 ## 决定
 
-共享两份 YAML 路径规则，现有 paths-filter action 直接读取。文档与 issue 模板变更不启动后端、浏览器及 Compose 重任务；仅 Pi 目录变化不启动浏览器。生产安装覆盖 Compose、Dockerfile、安装/升级/备份/恢复、部署配置和自身 workflow；未识别的路径保守执行。没有 workflow 顶层 paths 过滤，原有八个必需检查名保留。汇总门禁只有在过滤成功，且测试全部成功或按过滤明确跳过时通过；空输出、过滤失败、测试失败和取消都不能通过。
+共享两份 YAML 路径规则，现有 paths-filter action 直接读取。`docs/`、根目录 Markdown、各目录 README 和 issue 模板变更不启动后端、浏览器及 Compose 重任务；仅 Pi 目录变化不启动浏览器。不能忽略全部 Markdown：`templates/profile-import/SKILL.md` 是 API 发布的运行时资源，仍触发测试。生产安装覆盖 Compose、Dockerfile、安装/升级/备份/恢复、部署配置和自身 workflow；未识别的路径保守执行。没有 workflow 顶层 paths 过滤，原有八个必需检查名保留。汇总门禁只有在过滤成功，且测试全部成功或按过滤明确跳过时通过；空输出、过滤失败、测试失败和取消都不能通过。
 
 所有工作流在 master push 和每日 UTC 19:17（北京时间次日 03:17）执行全量。PR 按编号共用并发组并取消旧运行；其他事件按 run ID 隔离，保证连续 push 时运行中和排队中的验证都不会被后续 push 替换。不引入 merge queue，不改变 agent 自动合并流程。
 

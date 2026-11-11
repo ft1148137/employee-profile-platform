@@ -1,17 +1,20 @@
 runtime:
   - '**'
-  - '!**/*.md'
+  - '!*.md'
+  - '!**/README.md'
   - '!docs/**'
   - '!.github/ISSUE_TEMPLATE/**'
 playwright:
   - '**'
-  - '!**/*.md'
+  - '!*.md'
+  - '!**/README.md'
   - '!docs/**'
   - '!.github/ISSUE_TEMPLATE/**'
   - '!pi/**'
 unknown:
   - '**'
-  - '!**/*.md'
+  - '!*.md'
+  - '!**/README.md'
   - '!docs/**'
   - '!.github/ISSUE_TEMPLATE/**'
   - '!backend/**'
