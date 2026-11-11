@@ -484,10 +484,14 @@ def list_accounts(
         (col(User.must_change_password).is_(True), "pending_first_login"),
         else_="active",
     )
-    query = select(Employee, User, Department).outerjoin(
-        OrgMembership,
-        (col(OrgMembership.org_id) == Employee.org_id)
-        & (col(OrgMembership.employee_id) == Employee.id),
+    query = (
+        select(Employee, User, Department, Organization.employee_fields)
+        .join(Organization, col(Organization.id) == Employee.org_id)
+        .outerjoin(
+            OrgMembership,
+            (col(OrgMembership.org_id) == Employee.org_id)
+            & (col(OrgMembership.employee_id) == Employee.id),
+        )
     )
     query = (
         query.outerjoin(User, col(User.id) == OrgMembership.user_id)
@@ -525,6 +529,7 @@ def list_accounts(
         count=count,
         data=[
             EmployeeAccount(
+                **e.model_dump(include={str(field) for field in enabled_fields}),
                 **e.model_dump(
                     include={
                         "id",
@@ -552,6 +557,6 @@ def list_accounts(
                 else None,
                 roles=roles.get(u.id, []) if u else [],
             )
-            for e, u, d in rows
+            for e, u, d, enabled_fields in rows
         ],
     )

@@ -1,4 +1,5 @@
 import { OrgState } from "@/components/Profile/OrgState"
+import { EmployeeFields } from "@/components/Roster/EmployeeFields"
 import { RosterImport } from "@/components/Roster/RosterImport"
 import { useOrg } from "@/hooks/useOrg"
 
@@ -15,6 +16,7 @@ export function RosterPage() {
           上传、核对，再更新企业人员名单。
         </p>
       </div>
+      <EmployeeFields org={org} />
       <RosterImport key={org.id} orgId={org.id} />
     </div>
   )

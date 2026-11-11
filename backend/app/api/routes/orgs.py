@@ -4,6 +4,7 @@ from sqlmodel import col, select
 from app.api.deps import SessionDep
 from app.authz.deps import OrgAdminDep, OrgPrincipalDep
 from app.domains.org import service
+from app.domains.org.employee_fields import EmployeeFields, save_employee_fields
 from app.domains.org.models import Department
 from app.domains.org.schemas import (
     DepartmentPublic,
@@ -35,3 +36,10 @@ def read_departments(
         data=[DepartmentPublic.model_validate(d) for d in departments],
         count=len(departments),
     )
+
+
+@router.put("/employee-fields", response_model=EmployeeFields)
+def update_employee_fields(
+    body: EmployeeFields, session: SessionDep, principal: OrgAdminDep
+) -> EmployeeFields:
+    return save_employee_fields(session, principal, body)

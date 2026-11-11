@@ -11,6 +11,9 @@ export const changeLabels = {
   reactivated: "恢复在职",
 }
 const fieldLabels = {
+  job_family: "岗位序列",
+  work_location: "工作地点",
+  hire_date: "入职日期",
   display_name: "姓名",
   title: "职位",
   email: "邮箱",

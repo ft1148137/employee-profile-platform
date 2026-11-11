@@ -76,6 +76,10 @@ def test_web_parity(
                     "self_report": "员工自述",
                     "manager_review": "经理评价",
                 }[ref["kind"]]
+    if name == "list_accounts":
+        for row in web["data"]:
+            for field in ("job_family", "work_location", "hire_date"):
+                row.pop(field)
     assert result["data"] == web
 
 

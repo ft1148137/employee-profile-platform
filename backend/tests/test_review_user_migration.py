@@ -12,7 +12,7 @@ from app.domains.change_request.models import (
 )
 from app.domains.org.models import Employee, Organization, OrgMembership
 from app.models import User
-from tests.utils.migrations import migrate
+from tests.utils.migrations import insert_historical_rows, migrate
 
 
 def test_review_user_migration_preserves_decision_identity(
@@ -27,12 +27,12 @@ def test_review_user_migration_preserves_decision_identity(
             email=f"{uuid4()}@example.com",
             hashed_password="unused",
         )
-        session.add_all([org, user])
+        insert_historical_rows(session, org)
+        session.add(user)
         session.flush()
         reviewer = Employee(org_id=org.id, display_name="Synthetic reviewer")
         subject = Employee(org_id=org.id, display_name="Synthetic subject")
-        session.add_all([reviewer, subject])
-        session.flush()
+        insert_historical_rows(session, reviewer, subject)
         member = OrgMembership(org_id=org.id, user_id=user.id, employee_id=reviewer.id)
         request = ProfileChangeRequest(
             org_id=org.id,

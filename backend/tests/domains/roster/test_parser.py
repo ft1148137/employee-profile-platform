@@ -263,7 +263,11 @@ def test_templates_round_trip(xlsx: bool) -> None:
     content = template.build_template_xlsx() if xlsx else template.build_template_csv()
     if not xlsx:
         assert content.startswith(b"\xef\xbb\xbf")
-    result = parse_roster(content, "模板.xlsx" if xlsx else "模板.csv")
+    result = parse_roster(
+        content,
+        "模板.xlsx" if xlsx else "模板.csv",
+        ["job_family", "work_location", "hire_date"],
+    )
     assert not result.issues
     assert len(result.rows) == 2
     assert result.rows[0].row_number == 2

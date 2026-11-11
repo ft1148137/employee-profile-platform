@@ -10,7 +10,7 @@ from app.core.db import init_db
 from app.core.security import get_password_hash
 from app.domains.org.models import Employee, Organization, OrgMembership
 from app.models import User
-from tests.utils.migrations import migrate
+from tests.utils.migrations import insert_historical_rows, migrate
 
 
 def test_bootstrap_email_normalization(
@@ -35,8 +35,7 @@ def test_email_login_migration_roundtrip(migration_engine: Engine) -> None:
     ids = dict(zip(original.values(), original, strict=True))
     with Session(migration_engine) as session:
         org = Organization(slug="email-migration", name="合成企业")
-        session.add(org)
-        session.flush()
+        insert_historical_rows(session, org)
         password_hash = get_password_hash("synthetic-password")
         for id, username in original.items():
             session.execute(
@@ -61,8 +60,7 @@ def test_email_login_migration_roundtrip(migration_engine: Engine) -> None:
                     "DUP2": "DUP@example.com",
                 }.get(username),
             )
-            session.add(employee)
-            session.flush()
+            insert_historical_rows(session, employee)
             session.add(
                 OrgMembership(org_id=org.id, user_id=id, employee_id=employee.id)
             )
