@@ -18,14 +18,6 @@ const fileKinds = {
     format: "Excel、CSV",
     result: "更新名单",
   },
-  profile_json: {
-    title: "批量画像",
-    form: "上传批量画像",
-    accept: ".json",
-    limit: 1,
-    format: "画像文件",
-    result: "交员工本人过目",
-  },
   work_csv: {
     title: "工作记录",
     form: "上传工作记录",

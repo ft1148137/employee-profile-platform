@@ -7,13 +7,13 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import HTTPException
-from pydantic import BaseModel, JsonValue, RootModel
+from pydantic import BaseModel, JsonValue, RootModel, ValidationError
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.core.secrets import decrypt_secret, encrypt_secret
 from app.domains.account.service import AccountError
-from app.domains.admin_assistant import registry, store
+from app.domains.admin_assistant import materials, registry, store
 from app.domains.admin_assistant.files import RosterArgs, _record
 from app.domains.admin_assistant.models import AdminAssistantSession, AdminChangeSet
 from app.domains.admin_assistant.outputs import (
@@ -207,7 +207,17 @@ def _entry(
         return entry, entry.input_model.model_validate(
             {**args, **dict.fromkeys(entry.private_fields, "pending-secure-input")}
         )
-    except ValueError:
+    except ValueError as error:
+        if name == "draft_profiles_from_material" and isinstance(
+            error, ValidationError
+        ):
+            raise ChangeSetError(
+                "；".join(
+                    f"{'.'.join(map(str, e['loc']))}：{e['type']}（请按功能参数说明修改）"
+                    for e in error.errors()
+                ),
+                422,
+            ) from None
         raise ChangeSetError("参数不正确，请按功能说明填写", 422) from None
 
 
@@ -247,6 +257,12 @@ def propose(
             ):
                 supplied = {**(before or {}), **supplied}
         entry, args = _entry(item.function, supplied)
+        if isinstance(args, materials.MaterialArgs):
+            if any(i["function"] == entry.name for i in items):
+                raise ChangeSetError(
+                    "同一份改动只能整理一批画像，请将人员合并在 people 中", 422
+                )
+            materials.validate_attachments(db, principal, args, session_id)
         # Secrets are stored by field for the whole change set; each needs one target.
         if secret_fields.intersection(entry.private_fields):
             raise ChangeSetError(
@@ -404,9 +420,13 @@ def apply(
             result = entry.handler(db, principal, args, commit=False)
             if not isinstance(result, BaseModel):
                 raise ChangeSetError("暂不支持这类改动")
-            if item.function == "import_profiles" and isinstance(result, RootModel):
+            if item.function == "draft_profiles_from_material" and isinstance(
+                result, RootModel
+            ):
                 skipped = sum(i.status == "skipped" for i in result.root)
-                notices.append(TextMessage(text=f"批量画像导入完成，跳过 {skipped} 人"))
+                notices.append(
+                    TextMessage(text=f"初始画像请求已整理，跳过 {skipped} 人")
+                )
             if isinstance(result, PasswordOutput | AccountsOutput):
                 one_time.append(result)
                 notices.append(
