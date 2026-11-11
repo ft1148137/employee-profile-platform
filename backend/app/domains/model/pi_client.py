@@ -49,6 +49,12 @@ class ToolDefinition(BaseModel):
     parameters: dict[str, JsonValue]
 
 
+class PiImage(BaseModel):
+    name: str
+    data: str = Field(repr=False)
+    mimeType: Literal["image/png", "image/jpeg", "image/webp", "image/gif"]
+
+
 class PiBusy(ModelUnavailable):
     pass
 
@@ -139,6 +145,7 @@ def run_turn(
     *,
     mode: Literal["draft", "chat"] = "draft",
     session_state: dict[str, JsonValue] | None = None,
+    images: list[PiImage] | None = None,
     system_prompt: str,
     input: str,
     tools: list[ToolDefinition],
@@ -166,6 +173,10 @@ def run_turn(
         )
     elif session_state is not None:
         raise ValueError("Session state requires chat mode")
+    if images:
+        if mode != "chat":
+            raise ValueError("Images require chat mode")
+        body["images"] = [image.model_dump(mode="json") for image in images]
     terminal = False
     names = {tool.name for tool in tools}
     if stream:

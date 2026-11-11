@@ -436,11 +436,11 @@ test('catalog capabilities, model identity, API and reasoning cannot be overridd
   const { request } = await setup(t);
   assert.equal((await request('/v1/models/openai/gpt-4o-mini', 'GET', undefined, {})).status, 401);
   assert.deepEqual(await (await request('/v1/models/openai/gpt-4o-mini')).json(),
-    { in_catalog: true, api: 'openai-responses', thinking_levels: ['off'] });
+    { in_catalog: true, api: 'openai-responses', thinking_levels: ['off'], input: ['text', 'image'] });
   assert.equal((await request('/v1/models/openai/not-in-catalog')).status, 400);
   assert.equal((await request('/v1/models/unknown/model')).status, 400);
   assert.deepEqual(await (await request('/v1/models/openai-codex/gpt-6.1-sol')).json(),
-    { in_catalog: true, api: 'openai-codex-responses', thinking_levels: ['minimal', 'low', 'medium', 'high', 'xhigh'] });
+    { in_catalog: true, api: 'openai-codex-responses', thinking_levels: ['minimal', 'low', 'medium', 'high', 'xhigh'], input: ['text', 'image'] });
   const supported = await (await request('/v1/models/openai-compatible/local%2Fmodel')).json();
   assert.equal(supported.in_catalog, false);
   assert.ok(supported.thinking_levels.includes('xhigh'));
@@ -457,7 +457,7 @@ test('uncataloged Codex models inherit transport and conservative reasoning, wit
   const model = { provider: 'openai-codex', api: 'openai-codex-responses', id: 'uncataloged-model',
     baseUrl: 'https://chatgpt.com/backend-api', thinkingLevel: 'high' };
   assert.deepEqual(await (await request('/v1/models/openai-codex/uncataloged-model')).json(),
-    { in_catalog: false, api: 'openai-codex-responses', thinking_levels: ['off', 'minimal', 'low', 'medium', 'high'] });
+    { in_catalog: false, api: 'openai-codex-responses', thinking_levels: ['off', 'minimal', 'low', 'medium', 'high'], input: ['text'] });
   for (const id of ['a'.repeat(100), 'Model_1.2-test'])
     assert.equal((await request('/v1/models/openai-codex/' + id)).status, 200);
   for (const id of ['a'.repeat(101), 'bad/model', 'bad?model', 'bad model', '模型']) {
@@ -834,4 +834,91 @@ test('v2 schema failures with reused call IDs use only current arguments and are
   thirdData.tools = [];
   const third = await start(thirdData);
   assert.equal((await third.next()).type, 'done');
+});
+
+const imageChat = () => ({ ...chatV2(),
+  model: { provider: 'openai', api: 'openai-responses', id: 'gpt-4o', baseUrl: 'https://api.openai.com/v1' },
+  images: [{ name: '合成.png（附件 ID synthetic）', data: Buffer.from('synthetic-image').toString('base64'), mimeType: 'image/png' }] });
+
+test('images reach only the current model turn and persist as named text before state limits', async t => {
+  const seen = [];
+  const { start, request, logs } = await setup(t, { streamFn: fake(() => [], context => seen.push(context)) });
+  const data = imageChat();
+  data.images = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/png'].map((mimeType, i) =>
+    ({ ...data.images[0], mimeType, name: `图片${i}`, data: Buffer.alloc(5 * 1024 * 1024, i).toString('base64') }));
+  const run = await start(data);
+  const done = await run.next();
+  assert.equal(done.type, 'done');
+  const sent = seen[0].messages.findLast(m => m.role === 'user').content.filter(b => b.type === 'image');
+  assert.equal(sent.length, 5);
+  assert.deepEqual(sent, data.images.map(({ data, mimeType }) => ({ type: 'image', data, mimeType })));
+  const state = JSON.stringify(done.session_state);
+  assert.ok(done.session_state.messages.length > 0);
+  assert.ok(!state.includes('"type":"image"'));
+  for (const img of data.images) assert.ok(state.includes(`[图片：${img.name}]`));
+  const next = await start({ ...imageChat(), images: [], session_state: done.session_state });
+  assert.equal((await next.next()).type, 'done');
+  assert.ok(!seen.at(-1).messages.some(m => Array.isArray(m.content) && m.content.some(b => b.type === 'image')));
+  for (const img of data.images) assert.ok(!JSON.stringify(logs).includes(img.data));
+  assert.ok(!JSON.stringify(logs).includes('图片0'));
+  for (const [provider, id, input] of [['openai', 'gpt-4o', ['text', 'image']],
+    ['openai-compatible', 'custom', ['text']], ['openai-codex', 'unknown-model', ['text']]]) {
+    const response = await request(`/v1/models/${provider}/${id}`);
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).input, input);
+  }
+});
+
+test('images validate size, encoding, names, types, version, mode and model capability', async t => {
+  const { request } = await setup(t, { streamFn: () => assert.fail('invalid images reached model') });
+  const valid = imageChat();
+  const image = valid.images[0];
+  const invalid = [
+    { ...valid, images: Array(6).fill(image) },
+    ...[null, {}, { ...image, data: Buffer.alloc(5 * 1024 * 1024 + 1).toString('base64') },
+      { ...image, mimeType: 'image/svg+xml' }, { ...image, data: 'not base64!' },
+      { ...image, data: '' }, { ...image, data: 'eA=' }, { ...image, data: 'eB==' },
+      { ...image, name: '' }, { ...image, name: ' ' }, { ...image, name: '中'.repeat(301) }]
+      .map(img => ({ ...valid, images: [img] })),
+    { ...chat(), images: [] }, { ...body(), images: [] }, { ...valid, mode: 'draft' },
+    { ...valid, model: body().model },
+    { ...valid, model: { provider: 'openai-codex', api: 'openai-codex-responses', id: 'unknown-model', baseUrl: 'https://chatgpt.com/backend-api' } },
+  ];
+  for (const data of invalid) {
+    const response = await request('/v1/turns', 'POST', data);
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).code, 'bad_request');
+  }
+});
+
+test('body limits are 40 MiB only for turns and 1 MiB on other body routes', async t => {
+  const { request, start } = await setup(t, { streamFn: fake(() => []) });
+  const accepted = await start({ ...chatV2(), input: 'x'.repeat(1024 * 1024) });
+  assert.equal((await accepted.next()).type, 'done');
+  for (const [path, data] of [
+    ['/v1/turns', { ...chatV2(), input: 'x'.repeat(40 * 1024 * 1024) }],
+    ['/v1/auth/openai-codex/logins', { padding: 'x'.repeat(1024 * 1024) }],
+    ['/v1/auth/openai-codex/refresh', { refresh: 'x'.repeat(1024 * 1024) }],
+    [`/v1/turns/${randomUUID()}/results/call`, { result: 'x'.repeat(1024 * 1024), is_error: false }],
+  ]) {
+    const response = await request(path, 'POST', data);
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).code, 'bad_request');
+  }
+});
+
+test('persist removes residual images from old user and tool messages without mutating live images', async () => {
+  const { contextMessages } = await import('./context.mjs');
+  const image = { type: 'image', data: 'c3ludGhldGlj', mimeType: 'image/png' };
+  const messages = [{ role: 'user', timestamp: 0, content: [image] },
+    { role: 'assistant', api: 'test', provider: 'test', model: 'test', content: [call('tool', {}, 'id')] },
+    { role: 'toolResult', toolCallId: 'id', toolName: 'tool', content: [image] },
+    { role: 'user', timestamp: 0, content: [image] }];
+  const model = { api: 'test', provider: 'test', id: 'test', contextWindow: 100000 };
+  const result = contextMessages(messages, model, [{ name: 'tool' }], 1, '', true, [{ name: 'current' }]);
+  assert.equal(result[0].content[0].text, '[图片已省略]');
+  assert.equal(result[2].content[0].text, '[图片已省略]');
+  assert.equal(result[3].content[0].text, '[图片：current]');
+  assert.ok(!JSON.stringify(result).includes('"type":"image"'));
+  assert.equal(messages[3].content[0], image);
 });

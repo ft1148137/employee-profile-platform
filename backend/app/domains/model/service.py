@@ -217,6 +217,24 @@ def validate_capabilities(
         raise ModelUnavailable("模型服务暂时不可用，请稍后再试") from None
 
 
+def supports_images(config: PiModelConfig) -> bool:
+    try:
+        response = httpx.get(
+            f"{settings.PI_URL}/v1/models/{quote(config.provider, safe='')}/{quote(config.id, safe='')}",
+            headers={
+                "Authorization": f"Bearer {settings.PI_SERVICE_TOKEN.get_secret_value()}"
+            },
+            timeout=5,
+            trust_env=False,
+        )
+        response.raise_for_status()
+        capabilities = response.json()
+        inputs = capabilities.get("input") if isinstance(capabilities, dict) else None
+        return isinstance(inputs, list) and "image" in inputs
+    except httpx.HTTPError, ValueError, TypeError:
+        return False
+
+
 def check_connection(session: Session, principal: Principal) -> ConnectionTest:
     try:
         setting = read_setting(session, principal.org_id)
