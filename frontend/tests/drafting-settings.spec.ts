@@ -21,10 +21,6 @@ test("drafting settings and personal choice persist with role boundaries", async
   const original = await (
     await request.get(`${base}/drafting-settings`, { headers })
   ).json()
-  const capabilities = await (
-    await request.get(`${base}/capabilities`, { headers })
-  ).json()
-  const capability = capabilities.data[0]
   const employeePage = await browser.newPage({
     baseURL: new URL(page.url()).origin,
     storageState: { cookies: [], origins: [] },
@@ -46,49 +42,69 @@ test("drafting settings and personal choice persist with role boundaries", async
     await request.get(`${base}/me/auto-draft`, { headers: employeeHeaders })
   ).json()
   try {
-    await page.getByRole("link", { name: "能力与规则", exact: true }).click()
-    await page.getByRole("tab", { name: "自动起草设置", exact: true }).click()
-    await expect(
-      page.getByRole("heading", { name: "自动起草设置" }),
-    ).toBeVisible()
-    await expectChineseCopy(page)
-    const capabilityBox = page.getByRole("checkbox", {
-      name: capability.name,
-      exact: true,
-    })
-    const departmentBox = page.getByRole("checkbox", {
-      name: /^平台研发部\s*含下级部门$/,
-      exact: true,
-    })
-    await capabilityBox.setChecked(
-      !original.excluded_capability_keys.includes(capability.key),
-    )
-    await departmentBox.check()
-    await page.route("**/drafting-settings", async (route) => {
-      if (route.request().method() === "PUT")
-        await route.fulfill({
-          status: 422,
-          json: { detail: { message: "不认识的能力 key 或部门：测试能力" } },
+    expect(
+      (
+        await request.put(`${base}/drafting-settings`, {
+          headers,
+          data: { enabled: false },
         })
-      else await route.continue()
+      ).ok(),
+    ).toBeTruthy()
+    let modelEnabled = false
+    await page.route("**/model-setting", async (route) => {
+      if (route.request().method() !== "GET") return route.continue()
+      const response = await route.fetch()
+      await route.fulfill({
+        json: { ...(await response.json()), enabled: modelEnabled },
+      })
     })
-    await page.getByRole("button", { name: "保存", exact: true }).click()
-    await expect(page.getByRole("alert")).toContainText("测试能力")
-    await page.unroute("**/drafting-settings")
-    await page.getByRole("button", { name: "保存", exact: true }).click()
-    await expect(page.getByRole("status")).toContainText("已保存")
+    for (const address of ["/admin/drafting", "/admin/rules?tab=drafting"]) {
+      await page.goto(address)
+      await expect(page).toHaveURL("/admin/data-ai?tab=model")
+      await expect(
+        page.getByRole("tab", { name: "自动起草设置", exact: true }),
+      ).toHaveCount(0)
+    }
+    const card = page.getByRole("region", { name: "自动起草", exact: true })
+    const switchButton = card.getByRole("switch", {
+      name: "自动起草",
+      exact: true,
+    })
+    await expect(switchButton).toBeDisabled()
+    await expect(card).toContainText("模型未启用")
+    modelEnabled = true
     await page.reload()
-    await expect(capabilityBox).toBeChecked({
-      checked: !original.excluded_capability_keys.includes(capability.key),
-    })
-    await expect(departmentBox).toBeChecked()
+    await expect(switchButton).toBeEnabled()
+    await switchButton.click()
+    await expect(switchButton).toBeChecked()
+    await page.reload()
+    await expect(switchButton).toBeChecked()
+    expect(
+      (
+        await (
+          await request.get(`${base}/drafting-settings`, { headers })
+        ).json()
+      ).enabled,
+    ).toBe(true)
+    await page.route("**/initial-profiles/draft", (route) =>
+      route.fulfill({ status: 202, json: { queued: 1 } }),
+    )
+    page.once("dialog", (dialog) => dialog.accept())
+    await card.getByRole("button", { name: "开始起草", exact: true }).click()
+    await expect(card).toContainText("已排队 1 名员工")
+    await switchButton.click()
+    await expect(switchButton).not.toBeChecked()
+    await expect(
+      card.getByRole("button", { name: "开始起草", exact: true }),
+    ).toBeDisabled()
+    await expectChineseCopy(page, ["ChatGPT"])
     await page.screenshot({
       path: "test-results/drafting-settings.png",
       fullPage: true,
     })
     await employeePage.reload()
     await expect(
-      employeePage.getByText("你所在的部门目前关闭了自动起草。"),
+      employeePage.getByText("企业目前没有打开自动起草。"),
     ).toBeVisible()
     const toggle = employeePage.getByRole("switch", {
       name: "让系统根据工作记录自动起草我的画像",
@@ -119,10 +135,7 @@ test("drafting settings and personal choice persist with role boundaries", async
       (
         await request.put(`${base}/drafting-settings`, {
           headers,
-          data: {
-            excluded_capability_keys: original.excluded_capability_keys,
-            disabled_department_ids: original.disabled_department_ids,
-          },
+          data: { enabled: original.enabled },
         })
       ).ok(),
     ).toBeTruthy()

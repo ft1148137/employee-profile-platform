@@ -83,6 +83,14 @@ for (const width of [1440, 390]) {
     ).toBeTruthy()
     expect(
       (
+        await request.put(`${base}/drafting-settings`, {
+          headers,
+          data: { enabled: true },
+        })
+      ).ok(),
+    ).toBeTruthy()
+    expect(
+      (
         await request.post(`${base}/initial-profiles/draft`, {
           headers,
           data: { scope: "all" },

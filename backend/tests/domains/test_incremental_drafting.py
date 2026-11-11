@@ -346,7 +346,7 @@ def test_pending_request_skips(
 
 @pytest.mark.parametrize(
     "reason",
-    ["opt_out", "department", "inactive", "no_records", "no_version", "sensitive"],
+    ["opt_out", "disabled", "inactive", "no_records", "no_version"],
 )
 def test_scope_and_empty_work(
     incremental_context: tuple, db: Session, pi_service: PiHarness, reason: str
@@ -355,9 +355,10 @@ def test_scope_and_empty_work(
     employee = employees[0]
     if reason == "opt_out":
         employee.auto_draft_opt_out = True
-    elif reason == "department":
-        depts[0].auto_draft_disabled = True
-        db.add(depts[0])
+    elif reason == "disabled":
+        setting = db.get(DraftingSetting, org)
+        setting.auto_draft_enabled = False
+        db.add(setting)
     elif reason == "inactive":
         employee.employment_status = "inactive"
     elif reason == "no_records":
@@ -373,21 +374,11 @@ def test_scope_and_empty_work(
         )
         db.flush()
         ingest(db, org, record(person("beta"), key="NOVERSION-1"))
-    else:
-        db.add(
-            DraftingSetting(
-                org_id=org,
-                updated_by_user_id=users[0].id,
-                excluded_capability_keys=["backend_api"],
-            )
-        )
-        pi_service.replies.extend([{"items": [answer()]}] * 3)
     db.add(employee)
     db.commit()
     incremental.run_incremental(Principal.system_worker(org), [str(employee.id)])
     assert not rows(db, ProfileChangeRequest, org)
-    if reason != "sensitive":
-        assert not pi_service.requests
+    assert not pi_service.requests
 
 
 @pytest.mark.parametrize("initial_queued", [False, True])

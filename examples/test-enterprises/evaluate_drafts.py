@@ -25,6 +25,7 @@ from app.core.secrets import encrypt_secret
 from app.domains.capability.models import CapabilityDefinition
 from app.domains.capability.service import activate_template
 from app.domains.change_request.models import ChangeItem, ProfileChangeRequest
+from app.domains.drafting.models import DraftingSetting
 from app.domains.drafting.service import read_progress, run_drafting
 from app.domains.model.client import ModelUnavailable
 from app.domains.model.models import ModelSetting
@@ -75,6 +76,13 @@ def enterprise(
                 db.flush()
                 db.add(OrgMembership(org_id=org.id, user_id=user.id))
                 db.flush()
+                db.add(
+                    DraftingSetting(
+                        org_id=org.id,
+                        updated_by_user_id=user.id,
+                        auto_draft_enabled=True,
+                    )
+                )
                 key = model.api_key.get_secret_value() if model.api_key else None
                 db.add(
                     ModelSetting(

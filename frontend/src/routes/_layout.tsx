@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-router"
 import axios, { AxiosError } from "axios"
 import { UsersService } from "@/client"
-import { AssistantEntry } from "@/components/AdminAssistant/AdminAssistantPanel"
+import { BotPanel } from "@/components/Bot/BotPanel"
 import AppSidebar from "@/components/Sidebar/AppSidebar"
 import {
   SidebarInset,
@@ -14,6 +14,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { isLoggedIn } from "@/hooks/useAuth"
+import { useOrg } from "@/hooks/useOrg"
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
@@ -52,12 +53,8 @@ export const Route = createFileRoute("/_layout")({
 
 function Layout() {
   const location = useLocation()
-  if (location.pathname.replace(/\/$/, "") === "/admin/assistant")
-    return (
-      <SidebarProvider>
-        <Outlet />
-      </SidebarProvider>
-    )
+  const { roles } = useOrg()
+  const assistant = location.pathname.replace(/\/$/, "") === "/admin/assistant"
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -65,13 +62,22 @@ function Layout() {
         <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
           <SidebarTrigger className="-ml-1 text-muted-foreground" />
         </header>
-        <main className="flex-1 p-6 md:p-8">
-          <div className="mx-auto max-w-7xl">
+        <main
+          className={
+            assistant ? "flex min-h-0 flex-1 flex-col" : "flex-1 p-6 md:p-8"
+          }
+        >
+          <div
+            className={
+              assistant ? "h-[calc(100dvh-4rem)] min-h-0" : "mx-auto max-w-7xl"
+            }
+          >
             <Outlet />
           </div>
         </main>
       </SidebarInset>
-      <AssistantEntry />
+      {(!roles.includes("org_admin") ||
+        !/^\/admin(?:\/|$)/.test(location.pathname)) && <BotPanel />}
     </SidebarProvider>
   )
 }

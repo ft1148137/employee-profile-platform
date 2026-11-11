@@ -112,7 +112,7 @@ def test_real_pi_preview_confirm_withdraw_and_projection(
         DraftingSetting(
             org_id=p.org_id,
             updated_by_user_id=p.user_id,
-            excluded_capability_keys=["automated_testing"],
+            auto_draft_enabled=True,
         )
     )
     db.commit()
@@ -158,10 +158,8 @@ def test_real_pi_preview_confirm_withdraw_and_projection(
     assert request.status == "draft"
     outgoing = pi_service.requests[-1]["body"]
     system = json.dumps(outgoing["messages"][0], ensure_ascii=False)
-    assert all(
-        s in system
-        for s in ("False", "automated_testing", "具体合作经历", "绩效", "薪酬", "晋升")
-    )
+    assert all(s in system for s in ("False", "具体合作经历", "绩效", "薪酬", "晋升"))
+    assert "不主动提议的敏感能力" not in system
     results = [m["content"] for m in outgoing["messages"] if m["role"] == "tool"]
     assert results and all(
         secret not in " ".join(results)
@@ -175,7 +173,7 @@ def test_real_pi_preview_confirm_withdraw_and_projection(
         )
     )
     assert '"auto_draft_enabled":false' in "".join(results).replace(" ", "")
-    assert '"proactive":false' in "".join(results).replace(" ", "")
+    assert '"proactive":true' in "".join(results).replace(" ", "")
     definitions = json.dumps(outgoing["tools"])
     assert all(
         v not in definitions

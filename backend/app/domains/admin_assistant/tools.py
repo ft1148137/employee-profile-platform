@@ -17,6 +17,7 @@ from app.domains.admin_assistant.schemas import (
     SecretInputCard,
 )
 from app.domains.change_request.schemas import ToolInput
+from app.domains.drafting.settings import AutoDraftDisabled
 from app.domains.model.pi_client import ToolDefinition
 
 
@@ -142,7 +143,7 @@ def call(
         except HTTPException as error:
             return {
                 "error": str(error.detail)
-                if isinstance(error, change_set.ChangeSetError)
+                if isinstance(error, (change_set.ChangeSetError, AutoDraftDisabled))
                 else "找不到这份改动或会话"
             }
     if name != "get_today" or args:

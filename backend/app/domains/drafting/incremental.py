@@ -31,7 +31,7 @@ from app.domains.drafting.service import (
     postprocess,
     progress_row,
 )
-from app.domains.drafting.settings import drafting_scope
+from app.domains.drafting.settings import drafting_scope, read_settings
 from app.domains.evidence.models import Evidence, Visibility
 from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
@@ -128,6 +128,8 @@ def write_items(
 
 
 def draft_employee(session: Session, org_id: UUID, employee_id: UUID) -> None:
+    if not read_settings(session, org_id).enabled:
+        return
     employee = session.exec(
         select(Employee).where(Employee.org_id == org_id, Employee.id == employee_id)
     ).one()
@@ -186,11 +188,7 @@ def draft_employee(session: Session, org_id: UUID, employee_id: UUID) -> None:
         lower = datetime.fromisoformat(str(pending.generated_by["incremental_from"]))
     records = [r for r in records if lower < r.evidence.created_at <= cutoff]
     schema = get_schema(session, org_id)
-    capabilities = [
-        c
-        for c in list_capabilities(session, org_id, schema.id)
-        if c.key not in scope.excluded_capability_keys
-    ]
+    capabilities = list_capabilities(session, org_id, schema.id)
     evidence_refs = {
         id_: f"E{i}"
         for i, id_ in enumerate(sorted({link.evidence_id for link in links}), 1)
@@ -244,7 +242,7 @@ def draft_employee(session: Session, org_id: UUID, employee_id: UUID) -> None:
         or (progress.incremental_drafted_at if progress else None) != watermark
         or employee.employment_status != EmploymentStatus.ACTIVE
         or employee.id in current_scope.excluded_employee_ids
-        or {c.key for c in capabilities} & current_scope.excluded_capability_keys
+        or not read_settings(session, org_id).enabled
     ):
         raise InvalidDraft("画像或起草设置已变化，请重新起草")
     current_by_id = {c.id: current[c.key] for c in capabilities if c.key in current}
@@ -415,6 +413,8 @@ def run_incremental(
 def queue_incremental(session: Session, org_id: UUID) -> None:
     from app.domains.evidence.models import EvidenceKind
 
+    if not read_settings(session, org_id).enabled:
+        return
     # Include earlier manual sync records, even when this scheduled sync found no changes.
     ids = list(
         session.exec(

@@ -245,7 +245,7 @@ def test_priority_dedup_and_answer(
 
 
 @pytest.mark.parametrize(
-    "excluded", ["opt_out", "inactive", "no_account", "disabled_account", "department"]
+    "excluded", ["opt_out", "inactive", "no_account", "disabled_account"]
 )
 def test_employee_eligibility(demo: tuple, db: Session, excluded: str) -> None:
     _, people, _ = demo
@@ -268,12 +268,6 @@ def test_employee_eligibility(demo: tuple, db: Session, excluded: str) -> None:
             account = db.get(User, membership.user_id)
             account.is_active = False
             db.add(account)
-        else:
-            from app.domains.org.models import Department
-
-            department = db.get(Department, employee.department_id)
-            department.auto_draft_disabled = True
-            db.add(department)
     db.add(employee)
     db.add(
         UpdateSetting(

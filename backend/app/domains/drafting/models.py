@@ -1,8 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKeyConstraint, text
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import CheckConstraint, DateTime, ForeignKeyConstraint
 from sqlmodel import Field, SQLModel
 
 from app.domains.base import utc_now
@@ -17,10 +16,8 @@ class DraftingSetting(SQLModel, table=True):
         ),
     )
     org_id: UUID = Field(primary_key=True, foreign_key="organization.id")
-    excluded_capability_keys: list[str] = Field(
-        default_factory=list,
-        sa_type=JSONB,
-        sa_column_kwargs={"server_default": text("'[]'::jsonb")},
+    auto_draft_enabled: bool = Field(
+        default=False, sa_column_kwargs={"server_default": "false"}
     )
     updated_by_user_id: UUID
     updated_at: datetime = Field(

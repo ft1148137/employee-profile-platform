@@ -25,7 +25,6 @@ from app.domains.change_request.models import (
     ProfileChangeRequest,
     RequestStatus,
 )
-from app.domains.drafting.models import DraftingSetting
 from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
 from app.domains.org.models import Organization
@@ -66,7 +65,7 @@ def preview_version(
     definitions: list[DictionaryDefinition],
     errors: list[str],
     *,
-    sync_ai_inference: bool = False,
+    warnings: list[str] | None = None,
 ) -> DictionaryPreview:
     try:
         active = get_schema(session, principal.org_id)
@@ -78,8 +77,6 @@ def preview_version(
         else {}
     )
     incoming = {c.key: c for c in definitions}
-    setting = session.get(DraftingSetting, principal.org_id)
-    excluded = set(setting.excluded_capability_keys if setting else [])
     removed = previous.keys() - incoming.keys()
     claim_counts = dict(
         session.exec(
@@ -129,15 +126,14 @@ def preview_version(
         modified=sorted(
             k
             for k in incoming.keys() & previous.keys()
-            if (not incoming[k].ai_inference and k not in excluded)
-            or (sync_ai_inference and incoming[k].ai_inference and k in excluded)
-            or incoming[k].model_dump(exclude={"ai_inference"})
+            if incoming[k].model_dump()
             != {
                 f: getattr(previous[k], f)
                 for f in ("key", "name", "category", "description", "level_rubric")
             }
         ),
         errors=errors,
+        warnings=warnings or [],
     )
 
 
@@ -148,7 +144,6 @@ def save_version(
     *,
     expected_version: int | None = None,
     template_ref: str | None = None,
-    sync_ai_inference: bool = False,
 ) -> CapabilitySchemaVersion:
     SaveDictionary(definitions=definitions, expected_version=expected_version or 0)
     org_id = principal.org_id
@@ -190,35 +185,12 @@ def save_version(
             org_id=org_id,
             schema_version_id=schema.id,
             position=position,
-            **definition.model_dump(mode="json", exclude={"ai_inference"}),
+            **definition.model_dump(mode="json"),
         )
         session.add(capability)
         new[definition.key] = capability
     session.flush()
     _remap_requests(session, principal, new)
-    excluded = {d.key for d in definitions if not d.ai_inference}
-    if excluded or sync_ai_inference:
-        assert principal.user_id is not None
-        setting = session.get(DraftingSetting, org_id) or DraftingSetting(
-            org_id=org_id, updated_by_user_id=principal.user_id
-        )
-        previous_excluded = set(setting.excluded_capability_keys)
-        if sync_ai_inference:
-            previous_excluded -= new.keys()
-        setting.excluded_capability_keys = sorted(previous_excluded | excluded)
-        setting.updated_by_user_id = principal.user_id
-        setting.updated_at = datetime.now(UTC)
-        session.add(setting)
-        record_audit(
-            session,
-            org_id=org_id,
-            actor_type=principal.actor_type,
-            actor_id=str(principal.user_id),
-            action="drafting_settings.updated",
-            target_type="drafting_setting",
-            target_id=str(org_id),
-            details={"excluded_capability_keys": [*setting.excluded_capability_keys]},
-        )
     details: dict[str, JsonValue] = {
         "template_ref": template_ref,
         "schema_version_id": str(schema.id),
@@ -375,8 +347,6 @@ def _definitions(
     schema: CapabilitySchemaVersion | None = None,
 ) -> list[DictionaryDefinition]:
     schema = schema or get_schema(session, principal.org_id)
-    setting = session.get(DraftingSetting, principal.org_id)
-    excluded = set(setting.excluded_capability_keys if setting else [])
     return [
         DictionaryDefinition.model_validate(
             {
@@ -389,7 +359,6 @@ def _definitions(
                         "position",
                     }
                 ),
-                "ai_inference": c.key not in excluded,
             }
         )
         for c in list_capabilities(session, principal.org_id, schema.id)

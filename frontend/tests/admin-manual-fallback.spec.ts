@@ -201,15 +201,14 @@ test("manual console completes all fifteen tabs without a model", async ({
     await expect(form.getByLabel("员工过目期限（天）")).toHaveValue("7")
   })
 
-  await test.step("rules / drafting: exclude a capability", async () => {
-    await page.getByRole("tab", { name: "自动起草设置", exact: true }).click()
-    await page.getByRole("checkbox", { name: "硬件设计", exact: true }).check()
-    await page.getByRole("button", { name: "保存", exact: true }).click()
-    await expect(page.getByRole("status")).toContainText("已保存")
-    await page.reload()
-    await expect(
-      page.getByRole("checkbox", { name: "硬件设计", exact: true }),
-    ).toBeChecked()
+  await test.step("model / drafting: disabled without a model", async () => {
+    await page.goto("/admin/data-ai?tab=model")
+    const card = page.getByRole("region", { name: "自动起草", exact: true })
+    await expect(card.getByRole("switch")).not.toBeChecked()
+    await expect(card.getByRole("switch")).toBeDisabled()
+    await expect(card).toContainText("模型未启用")
+    await screenshot("drafting-off")
+    await page.goto("/admin/rules?tab=reminders")
   })
 
   await test.step("rules / reminders: save a yearly reminder", async () => {

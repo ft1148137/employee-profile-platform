@@ -1,12 +1,17 @@
 import { expect, test } from "@playwright/test"
 import type { MembershipPublic } from "../src/client"
+import {
+  mockAdminMessages,
+  openAdminAssistant,
+  returnToManualPage,
+} from "./utils/adminAssistant"
 import { expectChineseCopy } from "./utils/copy"
 import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
 for (const width of [1440, 390]) {
-  test(`admin sidebar carries the current page at ${width}px`, async ({
+  test(`admin opens the unified conversation from a manual page at ${width}px`, async ({
     page,
   }, testInfo) => {
     await page.setViewportSize({ width: 1440, height: 900 })
@@ -16,25 +21,29 @@ for (const width of [1440, 390]) {
       process.env.DEMO_USER_PASSWORD!,
     )
     await page.setViewportSize({ width, height: 900 })
+    await page.route("**/admin-assistant/availability?*", (route) =>
+      route.fulfill({ json: { available: true, reason: "" } }),
+    )
     const sent: string[] = []
+    const saveReply = await mockAdminMessages(page)
     await page.route("**/admin-assistant/sessions/*/turns?*", async (route) => {
       sent.push(route.request().postDataJSON().page)
-      await route.fulfill({
-        json: {
-          messages: [
-            { type: "text", text: "请查看首页待办。" },
-            { type: "link", title: "打开管理首页", page: "/admin" },
-          ],
-        },
-      })
+      const reply = {
+        messages: [
+          { type: "text", text: "请查看首页待办。" },
+          { type: "link", title: "打开管理首页", page: "/admin" },
+        ],
+      }
+      saveReply(route.request().url(), reply)
+      await route.fulfill({ json: reply })
     })
     for (const current of [
       "/admin/people?tab=roster",
       "/admin/data-ai?tab=bot",
     ]) {
       await page.goto(current)
-      await page.getByRole("button", { name: "打开管理助手" }).click()
-      const dialog = page.getByRole("dialog")
+      await openAdminAssistant(page)
+      const dialog = page.getByRole("region", { name: "管理助手", exact: true })
       await expect(
         dialog.getByRole("heading", { name: "管理助手" }),
       ).toBeVisible()
@@ -43,17 +52,17 @@ for (const width of [1440, 390]) {
         .fill("今天有什么要处理的")
       await dialog.getByRole("button", { name: "发送", exact: true }).click()
       await expect(
-        dialog.getByText("请查看首页待办。", { exact: true }),
+        dialog.getByText("请查看首页待办。", { exact: true }).last(),
       ).toBeVisible()
       await expect(
-        dialog.getByRole("link", { name: "打开管理首页" }),
+        dialog.getByRole("link", { name: "打开管理首页" }).last(),
       ).toHaveAttribute("href", "/admin")
-      expect(sent[sent.length - 1]).toBe(current)
+      expect(sent[sent.length - 1]).toBe("/admin")
       await expectChineseCopy(page)
       await page.screenshot({
         path: testInfo.outputPath(`admin-assistant-${sent.length}.png`),
       })
-      await dialog.getByRole("button", { name: "关闭", exact: true }).click()
+      await returnToManualPage(page)
     }
     expect(sent).toHaveLength(2)
     await page.goto("/employees")
@@ -82,11 +91,12 @@ for (const available of [true, false]) {
   test(`admin lands on assistant when available=${available}`, async ({
     page,
   }, testInfo) => {
+    let modelAvailable = available
     await page.route("**/admin-assistant/availability?*", (route) =>
       route.fulfill({
         json: {
-          available,
-          reason: available ? "" : "请先配置模型，可以继续使用手工页面。",
+          available: modelAvailable,
+          reason: modelAvailable ? "" : "请先配置模型，可以继续使用手工页面。",
         },
       }),
     )
@@ -123,34 +133,35 @@ for (const available of [true, false]) {
       ).toHaveAttribute("href", "/admin/data-ai?tab=model")
     } else {
       await expect(
-        page.getByRole("link", { name: "切换到手工页面" }),
+        page.getByRole("link", { name: "首页", exact: true }),
       ).toBeVisible()
     }
     let sends = 0
+    const saveReply = await mockAdminMessages(page)
     await page.route("**/admin-assistant/sessions/*/turns?*", (route) => {
       sends++
-      return route.fulfill({
-        json: {
-          messages: [
-            {
-              type: "table",
-              title: "账号列表",
-              queried_at: "2026-11-11T00:25:00Z",
-              columns: ["display_name", "employment_status", "roles"],
-              rows: [
-                [
-                  "合成员工",
-                  "inactive",
-                  [{ display_name: "合成员工", role: "dept_manager" }],
-                ],
-                ["active", "active", []],
+      const reply = {
+        messages: [
+          {
+            type: "table",
+            title: "账号列表",
+            queried_at: "2026-11-11T00:25:00Z",
+            columns: ["display_name", "employment_status", "roles"],
+            rows: [
+              [
+                "合成员工",
+                "inactive",
+                [{ display_name: "合成员工", role: "dept_manager" }],
               ],
-              total: 2,
-              page: "/admin/people?tab=accounts",
-            },
-          ],
-        },
-      })
+              ["active", "active", []],
+            ],
+            total: 2,
+            page: "/admin/people?tab=accounts",
+          },
+        ],
+      }
+      saveReply(route.request().url(), reply)
+      return route.fulfill({ json: reply })
     })
     await page.goto("/admin")
     const action = page
@@ -165,6 +176,11 @@ for (const available of [true, false]) {
       page.getByRole("textbox", { name: "发给管理助手的消息" }),
     ).toHaveValue("查看账号")
     expect(sends).toBe(0)
+    if (!available) {
+      await expect(page.getByLabel("发给管理助手的消息")).toBeDisabled()
+      modelAvailable = true
+      await page.reload()
+    }
     await page.getByRole("button", { name: "发送", exact: true }).click()
     await expect(
       page.getByRole("cell", { name: "已离职", exact: true }),
@@ -177,6 +193,7 @@ for (const available of [true, false]) {
     ).toBeVisible()
     await expect(page.getByText(/查询于 \d{2}:\d{2}/)).toBeVisible()
     expect(sends).toBe(1)
+    await page.getByRole("link", { name: "新对话", exact: true }).click()
     await page
       .getByRole("button", { name: "让助手处理", exact: true })
       .first()

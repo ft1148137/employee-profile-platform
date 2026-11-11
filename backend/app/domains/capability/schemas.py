@@ -6,7 +6,6 @@ from pydantic import (
     ConfigDict,
     Field,
     JsonValue,
-    StrictBool,
     model_validator,
 )
 from sqlmodel import SQLModel
@@ -89,7 +88,6 @@ class DictionaryDefinition(BaseModel):
     category: str = Field(max_length=200)
     description: str = Field(max_length=4000)
     level_rubric: DictionaryRubric
-    ai_inference: StrictBool = True
 
 
 class SaveDictionary(BaseModel):
@@ -114,3 +112,4 @@ class DictionaryPreview(BaseModel):
     removed_claim_counts: dict[str, int]
     removed_item_counts: dict[str, int]
     errors: list[str]
+    warnings: list[str] = Field(default_factory=list)

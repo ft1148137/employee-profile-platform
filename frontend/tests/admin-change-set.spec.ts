@@ -1,4 +1,9 @@
 import type { APIRequestContext } from "@playwright/test"
+import {
+  mockAdminMessages,
+  openAdminAssistant,
+  returnToManualPage,
+} from "./utils/adminAssistant"
 import { expectChineseCopy } from "./utils/copy"
 import { expect, jiraTestUrl, test } from "./utils/model"
 import { logInUser } from "./utils/user"
@@ -122,8 +127,8 @@ test("Jira draft accepts a private token, tests it and highlights the source pag
   const { email, password, base, headers } = await createOrg(request, modelUrl)
   await logInUser(page, email, password)
   await page.goto("/admin/data-ai?tab=sources")
-  await page.getByRole("button", { name: "打开管理助手" }).click()
-  const dialog = page.getByRole("dialog")
+  await openAdminAssistant(page)
+  const dialog = page.getByRole("region", { name: "管理助手", exact: true })
   await dialog
     .getByRole("textbox", { name: "发给管理助手的消息" })
     .fill("修改 Jira 站点")
@@ -142,7 +147,7 @@ test("Jira draft accepts a private token, tests it and highlights the source pag
     (await (await request.get(`${base}/sources/jira`, { headers })).json())
       .configured,
   ).toBe(false)
-  await page.keyboard.press("Escape")
+  await returnToManualPage(page)
   const section = page.getByRole("region", { name: "Jira 连接" })
   await expect(section.getByLabel("站点地址")).toHaveValue(jiraTestUrl)
   await expect(
@@ -186,8 +191,8 @@ for (const width of [1440, 390]) {
     await logInUser(page, email, password)
     await page.setViewportSize({ width, height: 900 })
     await page.goto("/admin/rules?tab=reminders")
-    await page.getByRole("button", { name: "打开管理助手" }).click()
-    const dialog = page.getByRole("dialog")
+    await openAdminAssistant(page)
+    const dialog = page.getByRole("region", { name: "管理助手", exact: true })
     await dialog
       .getByRole("textbox", { name: "发给管理助手的消息" })
       .fill("把提醒改成每年一次，证据期限改为36个月")
@@ -221,12 +226,12 @@ for (const width of [1440, 390]) {
       path: testInfo.outputPath(`change-undone-${width}.png`),
     })
     await page.reload()
-    await page.getByRole("button", { name: "打开管理助手" }).click()
+    await openAdminAssistant(page)
     await expect(
       page.getByRole("region", { name: "设置改动确认卡" }).getByRole("status"),
     ).toHaveText("已撤销")
-    await page.getByRole("link", { name: "全屏打开", exact: true }).click()
-    await expect(page).toHaveURL("/admin/assistant")
+    await page.reload()
+    await expect(page).toHaveURL(/\/admin\/assistant\?session=/)
     await expect(
       page.getByRole("region", { name: "设置改动确认卡" }).getByRole("status"),
     ).toHaveText("已撤销")
@@ -269,7 +274,7 @@ for (const width of [1440, 390]) {
   })
 }
 
-test("department drafting change shows affected people and can be undone", async ({
+test("auto drafting switch shows affected people and can be undone", async ({
   page,
   request,
   modelUrl,
@@ -298,28 +303,24 @@ test("department drafting change shows affected people and can be undone", async
       })
     ).ok(),
   ).toBeTruthy()
-  const departments = await (
-    await request.get(`${base}/departments`, { headers })
-  ).json()
-  const departmentId = departments.data[0].id
   await logInUser(page, email, password)
   await page.goto("/admin/assistant")
   await page
     .getByRole("textbox", { name: "发给管理助手的消息" })
-    .fill(`关闭部门自动起草 ${departmentId}`)
+    .fill("打开自动起草")
   await page.getByRole("button", { name: "发送", exact: true }).click()
   const card = page.getByRole("region", { name: "设置改动确认卡" })
   await expect(card.getByText(/影响 1 人/)).toBeVisible({ timeout: 30000 })
   const read = async () =>
     (await (await request.get(`${base}/drafting-settings`, { headers })).json())
-      .disabled_department_ids
-  expect(await read()).toEqual([])
+      .enabled
+  expect(await read()).toBe(false)
   await card.getByRole("button", { name: "确认应用" }).click()
   await expect(card.getByRole("status")).toHaveText("已应用")
-  expect(await read()).toEqual([departmentId])
+  expect(await read()).toBe(true)
   await card.getByRole("button", { name: "撤销", exact: true }).click()
   await expect(card.getByRole("status")).toHaveText("已撤销")
-  expect(await read()).toEqual([])
+  expect(await read()).toBe(false)
 })
 
 test("closing manager confirmation requires two clicks with impact", async ({
@@ -364,8 +365,8 @@ test("Feishu draft keeps credentials private and requires a second confirmation"
   const { email, password, base, headers } = await createOrg(request, modelUrl)
   await logInUser(page, email, password)
   await page.goto("/admin/connections?tab=im")
-  await page.getByRole("button", { name: "打开管理助手" }).click()
-  const dialog = page.getByRole("dialog")
+  await openAdminAssistant(page)
+  const dialog = page.getByRole("region", { name: "管理助手", exact: true })
   await dialog
     .getByRole("textbox", { name: "发给管理助手的消息" })
     .fill("连接飞书")
@@ -387,7 +388,7 @@ test("Feishu draft keeps credentials private and requires a second confirmation"
   const card = dialog.getByRole("region", { name: "设置改动确认卡" })
   await card.getByRole("button", { name: "测试连接" }).click()
   await expect(card.getByText("测试连接：成功", { exact: true })).toBeVisible()
-  await page.keyboard.press("Escape")
+  await returnToManualPage(page)
   const form = page.getByRole("form", { name: "飞书", exact: true })
   await expect(form.getByRole("checkbox", { name: "启用入口" })).toBeChecked()
   await expect(form.locator('[data-assistant-suggested="true"]')).toHaveCount(2)
@@ -438,21 +439,22 @@ test("saving credentials and retesting clear the previous apply error", async ({
       },
     ],
   }
-  await page.route("**/admin-assistant/sessions/*/turns?*", (route) =>
-    route.fulfill({
-      json: {
-        messages: [
-          { type: "admin_change_set", change_set: draft },
-          {
-            type: "secret_input",
-            change_set_id: id,
-            field: "app_secret",
-            title: "安全填写密钥",
-          },
-        ],
-      },
-    }),
-  )
+  const saveReply = await mockAdminMessages(page)
+  await page.route("**/admin-assistant/sessions/*/turns?*", (route) => {
+    const reply = {
+      messages: [
+        { type: "admin_change_set", change_set: draft },
+        {
+          type: "secret_input",
+          change_set_id: id,
+          field: "app_secret",
+          title: "安全填写密钥",
+        },
+      ],
+    }
+    saveReply(route.request().url(), reply)
+    return route.fulfill({ json: reply })
+  })
   await page.route(`**/change-sets/${id}`, (route) =>
     route.fulfill({ json: draft }),
   )

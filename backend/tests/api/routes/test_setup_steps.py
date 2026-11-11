@@ -583,14 +583,15 @@ def test_initial_profiles_checks(
     excluded = Employee(
         org_id=tenant.org_id, display_name="本人退出", auto_draft_opt_out=True
     )
-    department = Department(
-        org_id=tenant.org_id, name="已关闭部门", auto_draft_disabled=True
-    )
+    department = Department(org_id=tenant.org_id, name="另一部门")
     db.add_all([employee, excluded, department])
     db.flush()
     db.add(
         Employee(
-            org_id=tenant.org_id, display_name="部门关闭", department_id=department.id
+            org_id=tenant.org_id,
+            display_name="本人退出另一部门",
+            department_id=department.id,
+            auto_draft_opt_out=True,
         )
     )
     foreign = db.exec(

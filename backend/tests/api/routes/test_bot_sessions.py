@@ -62,12 +62,12 @@ def test_recent_sessions(
         store.append_message(db, im, "user", {"text": "飞书对话"})
     db.commit()
     ids = []
-    for i in range(22):
+    for i in range(52):
         row = create(db, p)
         store.append_message(db, row, "user", {"text": str(i) + "合成消息" * 20})
         store.append_message(db, row, "assistant", {"messages": []})
         row.turn_count = i + 1
-        row.last_activity_at = utc_now() - timedelta(minutes=22 - i)
+        row.last_activity_at = utc_now() - timedelta(minutes=52 - i)
         db.add(row)
         db.commit()
         ids.append(str(row.id))
@@ -88,9 +88,9 @@ def test_recent_sessions(
     assert response.status_code == 200, response.text
     result = response.json()
     assert result["retention_days"] == days
-    assert [item["id"] for item in result["data"]] == ids[::-1][:20]
-    assert result["data"][0]["preview"] == ("21" + "合成消息" * 20)[:40]
-    assert result["data"][0]["turn_count"] == 22
+    assert [item["id"] for item in result["data"]] == ids[::-1][:50]
+    assert result["data"][0]["preview"] == ("51" + "合成消息" * 20)[:40]
+    assert result["data"][0]["turn_count"] == 52
     assert str(empty.id) not in {item["id"] for item in result["data"]}
     others = client.get(url, params=query, headers=auth["manager"])
     assert [item["id"] for item in others.json()["data"]] == [str(other.id)]

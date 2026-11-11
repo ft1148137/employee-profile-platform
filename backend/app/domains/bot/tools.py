@@ -9,7 +9,7 @@ from app.domains.bot import reviews
 from app.domains.bot import schemas as s
 from app.domains.bot.models import BotSession
 from app.domains.change_request import employee
-from app.domains.drafting.settings import drafting_scope, read_auto_draft
+from app.domains.drafting.settings import read_auto_draft
 from app.domains.employee_tools import EMPLOYEE_TOOLS
 from app.domains.model.pi_client import ToolDefinition
 
@@ -114,11 +114,7 @@ def call(
     result = PROJECTIONS[name].model_validate(tool.handler(p, db, **kwargs))
     if isinstance(result, s.Profile):
         auto = read_auto_draft(db, p)
-        result.auto_draft_enabled = auto.enabled and not auto.department_disabled
-    if isinstance(result, s.Dictionary):
-        excluded = drafting_scope(db, p.org_id).excluded_capability_keys
-        for cap in result.data:
-            cap.proactive = cap.key not in excluded
+        result.auto_draft_enabled = auto.enabled and not auto.org_disabled
     if isinstance(result, (s.Request, s.Preview)):
         request_id = result.id if isinstance(result, s.Request) else result.request_id
         if request_id not in session.request_ids:

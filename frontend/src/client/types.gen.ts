@@ -402,9 +402,9 @@ export type AutoDraftPublic = {
      */
     enabled: boolean;
     /**
-     * Department Disabled
+     * Org Disabled
      */
-    department_disabled: boolean;
+    org_disabled: boolean;
 };
 
 /**
@@ -1416,10 +1416,6 @@ export type DictionaryDefinition = {
      */
     description: string;
     level_rubric: DictionaryRubric;
-    /**
-     * Ai Inference
-     */
-    ai_inference?: boolean;
 };
 
 /**
@@ -1480,6 +1476,10 @@ export type DictionaryPreview = {
      * Errors
      */
     errors: Array<string>;
+    /**
+     * Warnings
+     */
+    warnings?: Array<string>;
 };
 
 /**
@@ -1561,25 +1561,9 @@ export type DraftQueued = {
  */
 export type DraftingSettingsPublic = {
     /**
-     * Excluded Capability Keys
+     * Enabled
      */
-    excluded_capability_keys: Array<string>;
-    /**
-     * Disabled Department Ids
-     */
-    disabled_department_ids: Array<string>;
-    /**
-     * Excluded Employee Count
-     */
-    excluded_employee_count: number;
-    /**
-     * Opted Out Count
-     */
-    opted_out_count: number;
-    /**
-     * Updated At
-     */
-    updated_at: string | null;
+    enabled: boolean;
 };
 
 /**
@@ -1587,13 +1571,9 @@ export type DraftingSettingsPublic = {
  */
 export type DraftingSettingsUpdate = {
     /**
-     * Excluded Capability Keys
+     * Enabled
      */
-    excluded_capability_keys: Array<string>;
-    /**
-     * Disabled Department Ids
-     */
-    disabled_department_ids: Array<string>;
+    enabled: boolean;
 };
 
 /**
