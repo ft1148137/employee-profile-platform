@@ -140,6 +140,8 @@ def test_model_request_and_privacy(
         "prompt_version": model.PROMPT_VERSION,
         "schema_version_id": str(schema.id),
         "reasoning_effort": "low",
+        "dropped_items": 0,
+        "proposals": 0,
     }
     payload = json.dumps(calls[0]["body"]["messages"], ensure_ascii=False)
     assert not re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-", payload)
@@ -162,7 +164,7 @@ def test_model_request_and_privacy(
     "change",
     [
         {"evidence": ["R999"]},
-        {"capability_key": "missing"},
+        {"capability_key": "missing", "evidence": ["R999"]},
         {"level": "expert"},
         {"evidence": []},
         {"statement": "x" * 201},
@@ -204,7 +206,7 @@ def test_duplicate_capability_and_reporter(
     duplicate = json.loads(answer())
     duplicate["items"] *= 2
     replies.extend([json.dumps(duplicate), answer()])
-    items, _ = model.draft([reporter], caps, model_config(db.get(ModelSetting, org)))
+    items = model.draft([reporter], caps, model_config(db.get(ModelSetting, org))).items
     assert len(calls) == 3 and list(items[0].evidence.values()) == ["context"]
     assert service.postprocess(db, org, employees[0], items, caps) == []
 
@@ -681,7 +683,7 @@ def test_scope_rechecked_after_model(
     org, _, _, employees, _ = drafting
     employee_id = employees[0].id
 
-    def turn(*_args: object) -> tuple:
+    def turn(*_args: object) -> model.DraftResult:
         with Session(engine) as other:
             if change == "org_disabled":
                 setting = other.get(DraftingSetting, org)
@@ -692,7 +694,7 @@ def test_scope_rechecked_after_model(
                 employee.auto_draft_opt_out = True
                 other.add(employee)
             other.commit()
-        return [], {"mode": "model"}
+        return model.DraftResult([], {"mode": "model"})
 
     monkeypatch.setattr(service.model, "draft", turn)
     db.rollback()

@@ -16,7 +16,12 @@ from app.domains.admin_assistant.models import (
 )
 from app.domains.audit.models import AuditEvent
 from app.domains.bot.models import BotMessage, BotSession, BotSetting
-from app.domains.capability.models import CapabilityDefinition, CapabilitySchemaVersion
+from app.domains.capability.models import (
+    CapabilityDefinition,
+    CapabilityProposal,
+    CapabilityProposalEvidence,
+    CapabilitySchemaVersion,
+)
 from app.domains.change_request.models import (
     ChangeItem,
     ChangeItemEvidence,
@@ -94,6 +99,8 @@ ORG_MODELS = (
     ProfileVersion,
     ProfileClaim,
     ProfileProgress,
+    CapabilityProposalEvidence,
+    CapabilityProposal,
     Evidence,
     WorkEvent,
     Task,
