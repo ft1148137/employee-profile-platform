@@ -7,6 +7,25 @@ from sqlmodel import Field, SQLModel
 from app.domains.base import utc_now
 
 
+class DraftingNote(SQLModel, table=True):
+    __tablename__ = "drafting_note"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["org_id", "created_by_user_id"],
+            ["org_membership.org_id", "org_membership.user_id"],
+        ),
+        CheckConstraint("version >= 1"),
+        CheckConstraint("length(text) <= 2000"),
+    )
+    org_id: UUID = Field(primary_key=True, foreign_key="organization.id")
+    version: int = Field(primary_key=True)
+    text: str = Field(max_length=2000)
+    created_by_user_id: UUID
+    created_at: datetime = Field(
+        default_factory=utc_now, sa_type=DateTime(timezone=True)
+    )
+
+
 class DraftingSetting(SQLModel, table=True):
     __tablename__ = "drafting_setting"
     __table_args__ = (

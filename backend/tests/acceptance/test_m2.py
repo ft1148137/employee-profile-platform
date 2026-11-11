@@ -354,7 +354,7 @@ def test_switches_pause_resume(
     if model:
         original = service.model.draft
 
-        def limited(*_args: Any) -> Any:
+        def limited(*_args: Any, **_kwargs: Any) -> Any:
             raise ModelRateLimited(utc_now() + timedelta(hours=1), "合成用量上限")
 
         monkeypatch.setattr(service.model, "draft", limited)
@@ -449,7 +449,7 @@ def test_baseline_rejects_incomplete_drafts(
     from app.domains.model.client import ModelUnavailable
     from app.domains.model.schemas import ModelSettingUpdate
 
-    def unavailable(*_args: Any) -> Any:
+    def unavailable(*_args: Any, **_kwargs: Any) -> Any:
         raise ModelUnavailable("Synthetic unavailable model")
 
     monkeypatch.setattr(service.model, "draft", unavailable)

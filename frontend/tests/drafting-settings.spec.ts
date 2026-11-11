@@ -21,6 +21,9 @@ test("drafting settings and personal choice persist with role boundaries", async
   const original = await (
     await request.get(`${base}/drafting-settings`, { headers })
   ).json()
+  const originalNote = await (
+    await request.get(`${base}/drafting-note`, { headers })
+  ).json()
   const employeePage = await browser.newPage({
     baseURL: new URL(page.url()).origin,
     storageState: { cookies: [], origins: [] },
@@ -66,6 +69,25 @@ test("drafting settings and personal choice persist with role boundaries", async
       ).toHaveCount(0)
     }
     const card = page.getByRole("region", { name: "自动起草", exact: true })
+    const note = card.getByLabel("起草补充说明", { exact: true })
+    const saveNote = card.getByRole("button", {
+      name: "保存补充说明",
+      exact: true,
+    })
+    await note.fill("标签说明工单主题，不单独证明能力。")
+    await saveNote.click()
+    await expect(card).toContainText("补充说明已保存")
+    await page.reload()
+    await expect(note).toHaveValue("标签说明工单主题，不单独证明能力。")
+    await expect(saveNote).toBeDisabled()
+    await expect(card).toContainText("当前版本：")
+    await note.fill("字".repeat(2001))
+    await expect(saveNote).toBeDisabled()
+    await note.fill("")
+    await saveNote.click()
+    await expect(card).toContainText("补充说明已保存")
+    await page.reload()
+    await expect(note).toHaveValue("")
     const switchButton = card.getByRole("switch", {
       name: "自动起草",
       exact: true,
@@ -131,6 +153,14 @@ test("drafting settings and personal choice persist with role boundaries", async
       managerPage.getByRole("link", { name: "能力与规则", exact: true }),
     ).toHaveCount(0)
   } finally {
+    expect(
+      (
+        await request.put(`${base}/drafting-note`, {
+          headers,
+          data: { text: originalNote.text },
+        })
+      ).ok(),
+    ).toBeTruthy()
     expect(
       (
         await request.put(`${base}/drafting-settings`, {

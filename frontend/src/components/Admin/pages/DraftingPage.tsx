@@ -10,6 +10,7 @@ import { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
+import { DraftingNoteForm } from "./DraftingNoteForm"
 
 export function DraftingPage({ orgId }: { orgId: string }) {
   const client = useQueryClient()
@@ -110,6 +111,7 @@ export function DraftingPage({ orgId }: { orgId: string }) {
       {start.isSuccess && (
         <p role="status">已排队 {start.data.data.queued} 名员工</p>
       )}
+      <DraftingNoteForm orgId={orgId} />
     </section>
   )
 }

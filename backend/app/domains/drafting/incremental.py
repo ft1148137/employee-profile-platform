@@ -24,6 +24,7 @@ from app.domains.change_request.models import (
 from app.domains.drafting import model
 from app.domains.drafting.collect import collect, task_groups
 from app.domains.drafting.model import DraftItem
+from app.domains.drafting.note import latest_note
 from app.domains.drafting.service import (
     InvalidDraft,
     ModelDisabled,
@@ -205,6 +206,7 @@ def draft_employee(session: Session, org_id: UUID, employee_id: UUID) -> None:
         records,
         capabilities,
         model_config(setting),
+        note=latest_note(session, org_id),
         current=current,
         claim_evidence={
             key: [

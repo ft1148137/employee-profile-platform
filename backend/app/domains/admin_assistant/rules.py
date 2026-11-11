@@ -15,6 +15,7 @@ from app.domains.capability.schemas import ActiveSchemaPublic, SaveDictionary
 from app.domains.capability.service import activate_template, read_editor
 from app.domains.change_request.handover import hand_over
 from app.domains.drafting import settings
+from app.domains.drafting.note import DraftingNoteInput, read_note, save_note
 from app.domains.drafting.service import (
     active_employees,
     drafting_employee_ids,
@@ -152,6 +153,20 @@ def register_rules(functions: dict[str, AdminFunction]) -> None:
     from app.domains.admin_assistant.registry import AdminFunction, NoArgs
 
     entries = [
+        AdminFunction(
+            "update_drafting_note",
+            "data_ai",
+            "change",
+            "normal",
+            "修改企业起草补充说明（最多 2000 字）；清空传空字符串，撤销时追加旧正文",
+            DraftingNoteInput,
+            save_note,
+            "/admin/data-ai?tab=model",
+            (("PUT", "/drafting-note"),),
+            snapshot=lambda d, p, a: DraftingNoteInput(
+                text=read_note(d, p.org_id).text
+            ),
+        ),
         AdminFunction(
             "update_capability_dictionary",
             "rules",
