@@ -32,7 +32,6 @@ const groups = [
       ["dictionary", "能力词典"],
       ["approval", "审批规则"],
       ["reminders", "定期提醒"],
-      ["profile-import", "批量导入画像"],
     ],
   },
   {
@@ -162,7 +161,7 @@ test("legacy addresses redirect to their new locations", async ({ page }) => {
     ["identities", "/admin/people?tab=identities"],
     ["appeals", "/admin/people?tab=appeals"],
     ["drafting", "/admin/data-ai?tab=model"],
-    ["profile-imports", "/admin/rules?tab=profile-import"],
+    ["profile-imports", "/admin/assistant"],
     ["sources", "/admin/data-ai?tab=sources"],
     ["model", "/admin/data-ai?tab=model"],
     ["bot", "/admin/data-ai?tab=bot"],
@@ -170,6 +169,8 @@ test("legacy addresses redirect to their new locations", async ({ page }) => {
     ["assistants", "/admin/connections?tab=mcp"],
     ["progress", "/admin"],
   ]
+  await page.goto("/admin/rules?tab=profile-import")
+  await expect(page).toHaveURL("/admin/assistant")
   for (const [old, target] of aliases) {
     await page.goto(`/admin/${old}`)
     await expect(page).toHaveURL(target)

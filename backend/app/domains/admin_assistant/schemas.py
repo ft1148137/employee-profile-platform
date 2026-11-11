@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, JsonValue, SecretStr
+from pydantic import BaseModel, Field, JsonValue, SecretStr, field_validator
 
 from app.domains.admin_assistant.files import FileKind, FileSummary
 from app.domains.admin_assistant.outputs import OneTimeOutput
@@ -25,7 +25,7 @@ AdminPage = Literal[
     "/admin/rules?tab=approval",
     "/admin/rules?tab=drafting",
     "/admin/rules?tab=reminders",
-    "/admin/rules?tab=profile-import",
+    "/admin/rules?tab=profile-import",  # Historical user messages retain their page.
     "/admin/data-ai",
     "/admin/data-ai?tab=sources",
     "/admin/data-ai?tab=model",
@@ -140,6 +140,24 @@ class AdminTurnResponse(BaseModel):
             Field(discriminator="type"),
         ]
     ]
+
+    @field_validator("messages", mode="before")
+    @classmethod
+    def retired_import_cards(cls, value: object) -> object:
+        # Old encrypted conversations remain readable after the upload kind is retired.
+        if isinstance(value, list):
+            return [
+                {
+                    "type": "text",
+                    "text": "批量画像导入已下线，请在管理助手按材料整理初始画像。",
+                }
+                if isinstance(card, dict)
+                and card.get("type") in ("file_upload", "file_preview")
+                and card.get("kind") == "profile_json"
+                else card
+                for card in value
+            ]
+        return value
 
 
 class AdminSessionMessage(BaseModel):

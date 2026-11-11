@@ -20,13 +20,15 @@ from app.domains.admin_assistant.schemas import (
     FilePreviewCard,
     ProposeChanges,
 )
+from app.domains.audit.models import AuditEvent
 from app.domains.bot import store as messages
 from app.domains.capability.files import dictionary_xlsx
 from app.domains.capability.service import get_schema, read_editor
-from app.domains.change_request.batch_import import import_profiles
 from app.domains.change_request.import_json import InvalidImport
 from app.domains.change_request.models import ChangeItem, ProfileChangeRequest
 from app.domains.drafting.models import DraftingSetting
+from app.domains.evidence.models import Evidence
+from app.domains.inbox.models import InboxItem
 from app.domains.org.models import Organization, OrgMembership, Role, RoleGrant
 from app.domains.source.import_records import InvalidWorkRecords
 from app.domains.source.models import SyncRun
@@ -37,7 +39,18 @@ from app.domains.work.records import (
 )
 from app.models import User
 from tests.admin_assistant.test_registry import principal
-from tests.api.routes.test_batch_profile_import import person, snapshot
+
+
+def snapshot(db: Session, org_id: UUID) -> list[list[dict]]:
+    return [
+        [
+            row.model_dump(mode="json")
+            for row in db.exec(
+                select(model).where(model.org_id == org_id).order_by(model.id)
+            ).all()
+        ]
+        for model in (ProfileChangeRequest, ChangeItem, InboxItem, AuditEvent, Evidence)
+    ]
 
 
 def jobs(db: Session, org: UUID) -> int:
@@ -47,18 +60,14 @@ def jobs(db: Session, org: UUID) -> int:
     ).scalar_one()
 
 
-@pytest.fixture(params=["profile_json", "work_csv", "capabilities"])
+@pytest.fixture(params=["work_csv", "capabilities"])
 def file_case(
     request: pytest.FixtureRequest, db: Session, demo: tuple
 ) -> Generator[tuple]:
     p = principal(db, demo)
     sid = store.create_session(db, p).id
     kind = request.param
-    if kind == "profile_json":
-        data = person(demo[1]["E03"])
-        data["items"][0]["statement"] = "synthetic-private-content-280"
-        content, filename = json.dumps(data).encode(), "profile.json"
-    elif kind == "work_csv":
+    if kind == "work_csv":
         content, filename = build_work_records_template_csv(), "work.csv"
     else:
         definitions = read_editor(db, p).definitions
@@ -144,17 +153,6 @@ def test_web_parity_and_confirmation(
         assert b64decode(json.loads(decrypt_secret(row.secrets))["content"]) == content
         assert row.items[0]["before"] is None and not row.items[0]["undoable"]
         assert "content" not in json.dumps(row.items)
-        if kind == "profile_json":
-            web = client.post(
-                demo[0] + "/profile-imports",
-                headers=demo[2]["admin"],
-                files={"files": (filename, content)},
-            ).json()
-            assert (
-                preview["preview"]["counts"]["将创建"]
-                == sum(r["status"] == "will_create" for r in web)
-                == 1
-            )
     if assistant:
         assert c.apply(db, p, row.id, row.revision).status == "applied"
         assert c.get(db, p, row.id).secrets is None
@@ -163,7 +161,6 @@ def test_web_parity_and_confirmation(
                 c.apply(db, p, row.id, row.revision)
     else:
         path = {
-            "profile_json": "/profile-imports?confirm=true",
             "work_csv": "/sources/csv/imports",
             "capabilities": "/capabilities/versions",
         }[kind]
@@ -175,7 +172,7 @@ def test_web_parity_and_confirmation(
                 if kind == "capabilities"
                 else {
                     "files": {
-                        "files" if kind == "profile_json" else "file": (
+                        "file": (
                             filename,
                             content,
                         )
@@ -185,24 +182,7 @@ def test_web_parity_and_confirmation(
         )
         assert response.status_code in (200, 202), response.text
     db.expire_all()
-    if kind == "profile_json":
-        created = db.exec(
-            select(ProfileChangeRequest).where(
-                ProfileChangeRequest.org_id == p.org_id,
-                ProfileChangeRequest.origin == "import",
-            )
-        ).one()
-        assert created.status == "pending_owner"
-        items = db.exec(
-            select(ChangeItem).where(
-                ChangeItem.org_id == p.org_id, ChangeItem.request_id == created.id
-            )
-        ).all()
-        assert len(items) == preview["preview"]["counts"]["改动条数"]
-        assert (
-            items[0].after["statement"] == json.loads(content)["items"][0]["statement"]
-        )
-    elif kind == "work_csv":
+    if kind == "work_csv":
         run = db.exec(select(SyncRun).where(SyncRun.org_id == p.org_id)).one()
         assert run.status == "queued"
         assert run.input["rows"] == [
@@ -243,7 +223,7 @@ def test_invalid_limits_and_private_sessions(
         db.exec(select(AdminChangeSet).where(AdminChangeSet.session_id == sid)).all()
         == []
     )
-    limit = {"profile_json": 1, "work_csv": 5, "capabilities": 2}[kind]
+    limit = {"work_csv": 5, "capabilities": 2}[kind]
     assert (
         upload(client, demo, file_case, b"x" * (limit * 1024 * 1024 + 1)).status_code
         == 413
@@ -279,7 +259,7 @@ def test_invalid_limits_and_private_sessions(
     assert state(db, p) == before
 
 
-@pytest.mark.parametrize("file_case", ["profile_json", "work_csv"], indirect=True)
+@pytest.mark.parametrize("file_case", ["work_csv"], indirect=True)
 @pytest.mark.parametrize("action", ["discard", "stale", "repropose", "missing"])
 def test_file_fields_and_lifecycle(
     db: Session, client: TestClient, demo: tuple, file_case: tuple, action: str
@@ -288,7 +268,7 @@ def test_file_fields_and_lifecycle(
     response = upload(client, demo, file_case)
     row = c.get(db, p, UUID(response.json()["messages"][1]["change_set"]["id"]))
     spec = {"function": row.items[0]["function"], "args": row.items[0]["args"]}
-    for function in ("import_profiles", "import_work_records"):
+    for function in ("import_work_records",):
         with pytest.raises(c.ChangeSetError, match="上传框"):
             c.propose(
                 db,
@@ -422,25 +402,6 @@ def test_business_reason_is_plain_and_rollback(
     assert state(db, p) == before
 
 
-def test_nested_profile_preview_keeps_outer_writes(db: Session, demo: tuple) -> None:
-    p = principal(db, demo)
-    org = db.get(Organization, p.org_id)
-    org.name = "外层事务必须保留"
-    db.add(org)
-    result = import_profiles(
-        p,
-        db,
-        [("one.json", json.dumps(person(demo[1]["E03"])).encode())],
-        confirm=False,
-        commit=False,
-    )
-    db.commit()
-    assert (
-        result[0].status == "will_create"
-        and db.get(Organization, p.org_id).name == "外层事务必须保留"
-    )
-
-
 def test_summary_error_limit(db: Session, demo: tuple) -> None:
     preview = files.FileSummary(
         counts={},
@@ -449,7 +410,7 @@ def test_summary_error_limit(db: Session, demo: tuple) -> None:
         ],
     )
     payload = AdminTurnResponse(
-        messages=[FilePreviewCard(kind="profile_json", preview=preview)]
+        messages=[FilePreviewCard(kind="work_csv", preview=preview)]
     )
     session = store.create_session(db, principal(db, demo))
     messages.append_message(db, session, "assistant", payload.model_dump(mode="json"))

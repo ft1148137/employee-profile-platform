@@ -554,7 +554,7 @@ export type Body_admin_assistant_upload_file = {
     /**
      * Kind
      */
-    kind: 'roster' | 'profile_json' | 'work_csv' | 'capabilities';
+    kind: 'roster' | 'work_csv' | 'capabilities';
     /**
      * File
      */
@@ -619,16 +619,6 @@ export type Body_profile_import_upload_profile_import = {
      * File
      */
     file: Blob | File;
-};
-
-/**
- * Body_profile-import-upload_profile_imports
- */
-export type Body_profile_import_upload_profile_imports = {
-    /**
-     * Files
-     */
-    files: Array<Blob | File>;
 };
 
 /**
@@ -2149,7 +2139,7 @@ export type FilePreviewCard = {
     /**
      * Kind
      */
-    kind: 'roster' | 'profile_json' | 'work_csv' | 'capabilities';
+    kind: 'roster' | 'work_csv' | 'capabilities';
     /**
      * Type
      */
@@ -2191,7 +2181,7 @@ export type FileUploadCard = {
     /**
      * Kind
      */
-    kind: 'roster' | 'profile_json' | 'work_csv' | 'capabilities';
+    kind: 'roster' | 'work_csv' | 'capabilities';
     /**
      * Type
      */
@@ -2459,32 +2449,6 @@ export type Impact = {
      * Text
      */
     text: string;
-};
-
-/**
- * ImportResult
- */
-export type ImportResult = {
-    /**
-     * Display Name
-     */
-    display_name: string;
-    /**
-     * Employee Email
-     */
-    employee_email: string;
-    /**
-     * Item Count
-     */
-    item_count: number;
-    /**
-     * Status
-     */
-    status: 'will_create' | 'created' | 'skipped';
-    /**
-     * Reason
-     */
-    reason?: string | null;
 };
 
 /**
@@ -9149,43 +9113,6 @@ export type reviewsDecideResponses = {
 };
 
 export type reviewsDecideResponse = reviewsDecideResponses[keyof reviewsDecideResponses];
-
-export type profileImportUploadProfileImportsData = {
-    body: Body_profile_import_upload_profile_imports;
-    path: {
-        /**
-         * Org Id
-         */
-        org_id: string;
-    };
-    query?: {
-        /**
-         * Confirm
-         */
-        confirm?: boolean;
-    };
-    url: '/api/v1/orgs/{org_id}/profile-imports';
-};
-
-export type profileImportUploadProfileImportsErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type profileImportUploadProfileImportsError = profileImportUploadProfileImportsErrors[keyof profileImportUploadProfileImportsErrors];
-
-export type profileImportUploadProfileImportsResponses = {
-    /**
-     * Response Profile-Import-Upload Profile Imports
-     *
-     * Successful Response
-     */
-    200: Array<ImportResult>;
-};
-
-export type profileImportUploadProfileImportsResponse = profileImportUploadProfileImportsResponses[keyof profileImportUploadProfileImportsResponses];
 
 export type profileImportDownloadImportFileData = {
     body?: never;

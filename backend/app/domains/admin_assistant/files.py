@@ -1,7 +1,6 @@
 """File previews stay in encrypted UI messages; the model receives summaries."""
 
 import json
-import re
 from base64 import b64decode, b64encode
 from typing import TYPE_CHECKING, Literal
 from uuid import UUID
@@ -18,8 +17,6 @@ from app.domains.bot import store as messages
 from app.domains.capability.files import parse_dictionary
 from app.domains.capability.schemas import SaveDictionary
 from app.domains.capability.service import preview_version
-from app.domains.change_request.batch_import import import_profiles
-from app.domains.change_request.import_json import InvalidImport
 from app.domains.org.models import Organization, RosterImport
 from app.domains.org.roster import service as roster
 from app.domains.org.roster.diff import compute_roster_diff
@@ -35,7 +32,7 @@ if TYPE_CHECKING:
     from app.domains.admin_assistant.registry import AdminFunction, Area, Handler, Risk
     from app.domains.admin_assistant.schemas import AdminTurnResponse
 
-FileKind = Literal["roster", "profile_json", "work_csv", "capabilities"]
+FileKind = Literal["roster", "work_csv", "capabilities"]
 
 
 class FileError(BaseModel):
@@ -54,20 +51,6 @@ class FileArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
     filename: str = Field(max_length=200)
     content: SecretStr
-
-
-def apply_profiles(
-    db: Session, p: Principal, args: FileArgs, *, commit: bool = True
-) -> BaseModel:
-    return RootModel(
-        import_profiles(
-            p,
-            db,
-            [(args.filename, b64decode(args.content.get_secret_value()))],
-            confirm=True,
-            commit=commit,
-        )
-    )
 
 
 def apply_work(
@@ -175,14 +158,6 @@ def register_files(functions: dict[str, AdminFunction]) -> None:
     )
     entries: list[tuple[str, str, Area, Handler, str, str]] = [
         (
-            "import_profiles",
-            "导入已上传的批量画像，先交本人过目，不能撤销",
-            "rules",
-            apply_profiles,
-            "/admin/rules?tab=profile-import",
-            "/profile-imports",
-        ),
-        (
             "import_work_records",
             "导入已上传的工作记录，不能撤销",
             "data_ai",
@@ -287,7 +262,7 @@ def upload(
     )
 
     session = store.get_session(db, p, session_id)
-    limit_mb = {"roster": 5, "profile_json": 1, "work_csv": 5, "capabilities": 2}[kind]
+    limit_mb = {"roster": 5, "work_csv": 5, "capabilities": 2}[kind]
     content = file.file.read(limit_mb * 1024 * 1024 + 1)
     if len(content) > limit_mb * 1024 * 1024:
         raise roster.RosterError(413, f"文件超过 {limit_mb} MB，请拆分后再上传")
@@ -339,37 +314,8 @@ def _upload_other(
     preview = FileSummary(counts={})
     filename = filename.replace("\\", "/").rsplit("/", 1)[-1][:200]
     args: dict[str, JsonValue] = {"filename": filename}
-    function = "import_profiles" if kind == "profile_json" else "import_work_records"
-    if kind == "profile_json":
-        try:
-            people = import_profiles(
-                p, db, [(filename, content)], confirm=False, commit=False
-            )
-            preview.counts = {
-                "涉及人数": len(people),
-                "改动条数": sum(i.item_count for i in people),
-                "将创建": sum(i.status == "will_create" for i in people),
-                "跳过": sum(i.status == "skipped" for i in people),
-            }
-            preview.skipped = [
-                FileError(
-                    location=f"{i.display_name}（{i.employee_email}）"[:200],
-                    message=(i.reason or "已有草稿，不覆盖")[:200],
-                )
-                for i in people
-                if i.status == "skipped"
-            ][:20]
-        except InvalidImport as error:
-            preview.errors = [
-                FileError(
-                    location=m.group()
-                    if (m := re.search(r"第 \d+ (?:个人|行)(?: 第 \d+ 项)?", text))
-                    else "",
-                    message=text,
-                )
-                for text in error.messages
-            ]
-    elif kind == "work_csv":
+    function = "import_work_records"
+    if kind == "work_csv":
         parsed = preview_work_records(content, filename)
         preview.counts = {
             "记录条数": len(parsed.rows),

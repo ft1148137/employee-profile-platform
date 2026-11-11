@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 from sqlmodel import Session, col, select
 
 from app.authz.deps import OrgAdminRequired
@@ -8,12 +8,7 @@ from app.authz.principal import Principal
 from app.domains.audit.service import record_audit
 from app.domains.capability.service import get_schema, level_exists, list_capabilities
 from app.domains.change_request.claim import ClaimAfter
-from app.domains.change_request.import_json import (
-    ImportPerson,
-    InvalidImport,
-    decode_import,
-    validate_person,
-)
+from app.domains.change_request.import_json import InvalidImport
 from app.domains.change_request.models import (
     ChangeItem,
     ChangeOp,
@@ -21,16 +16,31 @@ from app.domains.change_request.models import (
     RequestOrigin,
     RequestStatus,
 )
+from app.domains.change_request.schemas import ToolInput
 from app.domains.drafting.service import current_claim_ids
 from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
-from app.domains.org.models import Employee, EmploymentStatus, Organization
+from app.domains.org.models import Department, Employee, EmploymentStatus, Organization
 from app.domains.profile.models import AssessmentStatus, ProfileVersion
+
+
+class MaterialItem(ToolInput):
+    capability_key: str = Field(min_length=1, max_length=100)
+    statement: str = Field(min_length=1, max_length=200)
+    level: str | None = Field(default=None, min_length=1, max_length=100)
+    basis: str = Field(min_length=1, max_length=300)
+    uncertainty: str | None = Field(default=None, max_length=300)
+
+
+class MaterialPerson(ToolInput):
+    employee_email: Annotated[EmailStr, Field(max_length=254)]
+    items: list[MaterialItem] = Field(min_length=1, max_length=20)
 
 
 class ImportResult(BaseModel):
     display_name: str
     employee_email: str
+    department_name: str
     item_count: int
     status: Literal["will_create", "created", "skipped"]
     reason: str | None = None
@@ -39,66 +49,24 @@ class ImportResult(BaseModel):
 def import_profiles(
     principal: Principal,
     session: Session,
-    files: list[tuple[str, bytes]],
+    people: list[MaterialPerson],
     *,
+    material_names: list[str],
     confirm: bool,
     commit: bool = True,
-) -> list[ImportResult]:
-    if not commit and not confirm:
-        # Preview must not roll back the assistant's surrounding transaction.
-        savepoint = session.begin_nested()
-        try:
-            return _import_profiles(
-                principal, session, files, confirm=False, commit=False
-            )
-        finally:
-            savepoint.rollback()
-    return _import_profiles(principal, session, files, confirm=confirm, commit=commit)
-
-
-def _import_profiles(
-    principal: Principal,
-    session: Session,
-    files: list[tuple[str, bytes]],
-    *,
-    confirm: bool,
-    commit: bool,
 ) -> list[ImportResult]:
     if not principal.is_org_admin:
         raise OrgAdminRequired()
     errors: list[str] = []
-    people: list[tuple[str, str, ImportPerson]] = []
-    total = 0
-    for filename, content in files:
-        filename = (
-            filename.replace("\\", "/").rsplit("/", 1)[-1][:200] or "profile.json"
-        )
-        try:
-            raw = decode_import(content)
-        except InvalidImport as error:
-            errors.extend(f"{filename} {m}" for m in error.messages)
-            continue
-        entries = raw if isinstance(raw, list) else [raw]
-        total += len(entries)
-        if not entries:
-            errors.append(f"{filename} 文件：至少需要一个人")
-        if total > 200:
-            errors.append(f"{filename} 文件：所有文件合计最多 200 人")
-            continue
-        for index, entry in enumerate(entries, 1):
-            prefix = f"{filename} 第 {index} 个人"
-            try:
-                people.append((filename, prefix, validate_person(entry)))
-            except InvalidImport as error:
-                errors.extend(f"{prefix} {m}" for m in error.messages)
     org_id = principal.org_id
     # Match dictionary activation and drafting lock order before locking employees.
-    session.exec(
-        select(Organization).where(Organization.id == org_id).with_for_update()
-    ).one()
+    if confirm:
+        session.exec(
+            select(Organization).where(Organization.id == org_id).with_for_update()
+        ).one()
     schema = get_schema(session, org_id)
     capabilities = {c.key: c for c in list_capabilities(session, org_id, schema.id)}
-    emails = {p.employee_email.casefold() for _, _, p in people}
+    emails = {p.employee_email.casefold() for p in people}
     # SQL lower() does not implement the roster's Unicode casefold rules.
     employee_ids = {
         id_
@@ -110,23 +78,26 @@ def _import_profiles(
         ).all()
         if email and email.casefold() in emails
     }
+    employee_query = (
+        select(Employee)
+        .where(
+            Employee.org_id == org_id,
+            Employee.employment_status == EmploymentStatus.ACTIVE,
+            col(Employee.id).in_(employee_ids),
+        )
+        .order_by(col(Employee.id))
+        .execution_options(populate_existing=True)
+    )
     subjects = {
         e.work_email.casefold(): e
         for e in session.exec(
-            select(Employee)
-            .where(
-                Employee.org_id == org_id,
-                Employee.employment_status == EmploymentStatus.ACTIVE,
-                col(Employee.id).in_(employee_ids),
-            )
-            .order_by(col(Employee.id))
-            .with_for_update()
-            .execution_options(populate_existing=True)
+            employee_query.with_for_update() if confirm else employee_query
         ).all()
         if e.work_email
     }
     seen: set[str] = set()
-    for _, prefix, person in people:
+    for index, person in enumerate(people, 1):
+        prefix = f"第 {index} 个人"
         email = person.employee_email.casefold()
         if email in seen:
             errors.append(f"{prefix} employee_email：同一批里邮箱不能重复")
@@ -147,7 +118,14 @@ def _import_profiles(
     if errors:
         raise InvalidImport(errors)
     results = []
-    for filename, _, person in people:
+    departments = {
+        d.id: d.name
+        for d in session.exec(
+            select(Department).where(Department.org_id == org_id)
+        ).all()
+    }
+    filename = "、".join(material_names)[:200]
+    for person in people:
         subject = subjects[person.employee_email.casefold()]
         existing = session.exec(
             select(ProfileChangeRequest.id).where(
@@ -161,6 +139,9 @@ def _import_profiles(
         result = ImportResult(
             display_name=subject.display_name,
             employee_email=person.employee_email,
+            department_name=departments.get(subject.department_id, "未分配部门")
+            if subject.department_id
+            else "未分配部门",
             item_count=len(person.items),
             status="skipped" if existing else "created" if confirm else "will_create",
             reason="已有草稿或待本人过目的请求，不覆盖" if existing else None,
@@ -186,6 +167,10 @@ def _import_profiles(
                 "user_id": str(principal.user_id),
             },
             client_name=filename,
+            generated_by={
+                **session.info.get("audit_context", {}),
+                "materials": list(material_names),
+            },
             base_version_id=version.id if version else None,
         )
         session.add(request)
@@ -224,13 +209,8 @@ def _import_profiles(
             session,
             request,
             InboxKind.INITIAL_REVIEW,
-            "管理员导入了 AI 生成的画像，请过目后提交",
+            "管理员提供了材料并整理了画像，请过目后提交",
         )
-    if commit:
-        if confirm:
-            session.commit()
-        else:
-            session.rollback()
-    elif confirm:
-        session.flush()
+    if confirm:
+        session.commit() if commit else session.flush()
     return results

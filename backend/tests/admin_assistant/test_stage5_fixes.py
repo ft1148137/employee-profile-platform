@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 
 from app.core.secrets import decrypt_secret
 from app.domains.admin_assistant import change_set as c
-from app.domains.admin_assistant import core, files, registry, store, tools
+from app.domains.admin_assistant import core, files, registry, store
 from app.domains.admin_assistant.schemas import AdminTurnInput
 from app.domains.base import utc_now
 from app.domains.bot import settings as bot
@@ -32,7 +32,6 @@ from tests.admin_assistant.test_change_set import proposal
 from tests.admin_assistant.test_model_settings import CONFIG
 from tests.admin_assistant.test_registry import principal
 from tests.admin_assistant.test_sources import CONFIG as JIRA
-from tests.api.routes.test_batch_profile_import import person
 from tests.domains.test_admin_todos import bind_admin
 from tests.domains.test_bot_core import enable
 
@@ -249,7 +248,7 @@ def upload(
         data={"kind": kind},
         files={
             "file": (
-                "synthetic.json" if kind == "profile_json" else "synthetic.csv",
+                "synthetic.csv",
                 content,
             )
         },
@@ -320,23 +319,18 @@ def test_work_preview_shows_unknown_columns(
 
 
 @pytest.mark.parametrize("days", [0, 7])
-@pytest.mark.parametrize("kind", ["profile_json", "work_csv"])
 def test_retention_erases_abandoned_uploads(
     db: Session,
     demo: tuple,
     client: TestClient,
     days: int,
-    kind: str,
 ) -> None:
     p = principal(db, demo)
     bot.save_settings(db, p, bot.BotSettings(retention_days=days))
     session = store.create_session(db, p)
-    content = (
-        json.dumps(person(demo[1]["E03"])).encode()
-        if kind == "profile_json"
-        else build_work_records_template_csv()
+    response = upload(
+        client, demo, session.id, "work_csv", build_work_records_template_csv()
     )
-    response = upload(client, demo, session.id, kind, content)
     row = c.get(db, p, UUID(response["messages"][1]["change_set"]["id"]))
     assert row.secrets
     session.last_activity_at = utc_now() - timedelta(days=days, hours=3)
@@ -347,52 +341,6 @@ def test_retention_erases_abandoned_uploads(
     assert row.status == "stale" and row.secrets is None
     with pytest.raises(c.ChangeSetError, match="文件已失效，请重新上传"):
         c.apply(db, p, row.id, row.revision)
-
-
-def test_skipped_people_only_in_cards_and_actual_result(
-    db: Session,
-    demo: tuple,
-    client: TestClient,
-) -> None:
-    from app.domains.change_request.batch_import import import_profiles
-
-    p = principal(db, demo)
-    people = [person(demo[1][key]) for key in ("E03", "E04")]
-    import_profiles(
-        p, db, [("first.json", json.dumps(people[0]).encode())], confirm=True
-    )
-    sid = store.create_session(db, p).id
-    preview, card = upload(
-        client, demo, sid, "profile_json", json.dumps(people).encode()
-    )["messages"]
-    assert preview["preview"]["counts"]["跳过"] == 1
-    skipped = preview["preview"]["skipped"][0]
-    assert demo[1]["E03"].display_name in skipped["location"]
-    assert (
-        people[0]["employee_email"].casefold() in skipped["location"].casefold()
-        and "已有草稿" in skipped["message"]
-    )
-    projected = str(files.model_context(db, store.get_session(db, p, sid)))
-    specs = [
-        {"function": i["function"], "args": i["args"]}
-        for i in card["change_set"]["items"]
-    ]
-    projected += str(
-        tools.call(db, p, [], "propose_changes", {"items": specs}, session_id=sid)
-    )
-    assert (
-        skipped["location"] not in projected
-        and people[0]["employee_email"].casefold() not in projected.casefold()
-    )
-    assert demo[1]["E03"].display_name not in projected
-    import_profiles(
-        p, db, [("second.json", json.dumps(people[1]).encode())], confirm=True
-    )
-    row = c.get(db, p, UUID(card["change_set"]["id"]))
-    assert c.apply(db, p, row.id, row.revision).status == "applied"
-    assert "跳过 2 人" in str(
-        messages.messages_for(db, store.get_session(db, p, sid))[-1].payload
-    )
 
 
 def test_digest_failure_does_not_block_next_tenant(
