@@ -253,7 +253,7 @@ def test_employee_list_query_bound(tenant_data: tuple, db: Session) -> None:
     )
     db.commit()
     principal = Principal.system_worker(orgs[0].id)
-    expected = [employee_summary(db, employee) for employee in employees[:5]]
+    expected = [employee_summary(db, employee, principal) for employee in employees[:5]]
     statements: list[str] = []
 
     def count_query(*args: object) -> None:

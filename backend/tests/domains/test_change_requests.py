@@ -93,7 +93,9 @@ def test_review_priority_and_query_count(seed_path: Path) -> None:
         session.flush()
 
         def status() -> str:
-            return employee_summary(session, employees["E02"]).progress.review_status
+            return employee_summary(
+                session, employees["E02"], Principal.system_worker(org.id)
+            ).progress.review_status
 
         assert status() == "pending_employee"
         request.status = RequestStatus.DRAFT
@@ -112,7 +114,10 @@ def test_review_priority_and_query_count(seed_path: Path) -> None:
         session.add(claims["C02"])
         assert status() == "published"
         assert (
-            employee_summary(session, employees["E12"]).progress.review_status == "none"
+            employee_summary(
+                session, employees["E12"], Principal.system_worker(org.id)
+            ).progress.review_status
+            == "none"
         )
         session.add_all(
             [Employee(org_id=org.id, display_name=f"Synthetic {i}") for i in range(8)]

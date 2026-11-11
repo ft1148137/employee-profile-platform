@@ -11,9 +11,15 @@ from app.domains.org.schemas import (
     DepartmentsPublic,
     OrganizationPublic,
     OrganizationUpdate,
+    OrgChartPublic,
 )
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["orgs"])
+
+
+@router.get("/org-chart", response_model=OrgChartPublic)
+def read_org_chart(session: SessionDep, principal: OrgPrincipalDep) -> OrgChartPublic:
+    return service.read_org_chart(session, principal)
 
 
 @router.patch("", response_model=OrganizationPublic)

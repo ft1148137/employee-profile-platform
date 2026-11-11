@@ -152,7 +152,7 @@ def read_profile(
     session: Session, principal: Principal, employee_id: UUID
 ) -> ProfileView:
     employee = employee_summary(
-        session, visible_employee(session, principal, employee_id)
+        session, visible_employee(session, principal, employee_id), principal
     )
     try:
         schema = get_schema(session, principal.org_id)

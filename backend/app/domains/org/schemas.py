@@ -48,6 +48,26 @@ class DepartmentsPublic(SQLModel):
     count: int
 
 
+class EmployeeReference(SQLModel):
+    id: UUID
+    display_name: str
+
+
+class DepartmentManager(SQLModel):
+    employee_id: UUID | None
+    display_name: str
+
+
+class OrgChartDepartment(DepartmentPublic):
+    managers: list[DepartmentManager] = []
+    direct_count: int = 0
+    total_count: int = 0
+
+
+class OrgChartPublic(SQLModel):
+    departments: list[OrgChartDepartment]
+
+
 class ProgressPublic(SQLModel):
     fill_status: FillStatus
     inference_status: InferenceStatus
@@ -71,6 +91,7 @@ class EmployeeSummary(SQLModel):
     department: DepartmentSummary | None
     progress: ProgressPublic
     latest_published: PublishedSummary | None
+    manager: EmployeeReference | None = None
 
 
 class EmployeesPublic(SQLModel):
