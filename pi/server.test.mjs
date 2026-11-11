@@ -388,10 +388,15 @@ test('deadline interrupts real SDK network waiting, not only platform tools', as
   const upstream = createServer((_req, res) => res.on('close', closed));
   upstream.listen(0, '127.0.0.1'); await once(upstream, 'listening');
   t.after(async () => { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); });
-  const { request } = await setup(t, { streamFn: undefined, deadlineMs: 500 });
-  const data = body(); data.model.baseUrl = `http://127.0.0.1:${upstream.address().port}/v1`;
-  const response = await request('/v1/turns', 'POST', data);
-  assert.equal(JSON.parse((await response.text()).trim()).code, 'upstream_unavailable');
+  const { request, logs } = await setup(t, { streamFn: undefined, deadlineMs: 500 });
+  for (const data of [body(), chat()]) {
+    data.model.baseUrl = `http://127.0.0.1:${upstream.address().port}/v1`;
+    const response = await request('/v1/turns', 'POST', data);
+    assert.deepEqual(JSON.parse((await response.text()).trim()), { type: 'error', code: 'deadline' });
+  }
+  const failures = logs.filter(entry => entry.route === 'turn');
+  assert.equal(failures.length, 2);
+  assert.ok(failures.every(entry => entry.code === 'deadline' && entry.elapsed_ms >= 500));
   await disconnected;
   assert.equal((await request('/health')).status, 200);
 });

@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from time import monotonic
 from uuid import UUID
 
 from sqlmodel import Session
@@ -30,7 +31,7 @@ from app.domains.bot.admission import (
 from app.domains.bot.schemas import TextMessage
 from app.domains.drafting.service import drafting_jobs
 from app.domains.model import pi_client
-from app.domains.model.client import ModelServiceError, ModelUnavailable
+from app.domains.model.client import ModelUnavailable
 from app.domains.model.service import model_config, read_setting
 
 DRAFTING_REASON = "正在起草画像，期间管理助手暂停，可以继续使用手工页面。"
@@ -73,6 +74,7 @@ def turn(
     if not status.available:
         return _fallback(status.reason, body.page)
     admitted = False
+    started = monotonic()
     cards: list[
         LinkCard | TableCard | ChangeSetCard | SecretInputCard | FileUploadCard
     ] = []
@@ -112,7 +114,13 @@ def turn(
         messages.save_state(db, row, None)
         logger.warning("session_id=%s code=bad_request", row.id)
         text = "之前的对话上下文已失效，已经重新开始，请再说一次"
-    except ModelServiceError, ModelUnavailable:
+    except ModelUnavailable as error:
+        logger.warning(
+            "session_id=%s code=%s elapsed_ms=%d",
+            row.id,
+            error.code,
+            (monotonic() - started) * 1000,
+        )
         text = "模型暂时不可用，请稍后重试，也可以继续使用手工页面。"
     page: str = body.page
     for card in cards:

@@ -68,7 +68,7 @@ def _error(event: dict[str, JsonValue]) -> None:
     value = event.get("code")
     code = value if isinstance(value, str) else ""
     if code == "busy":
-        raise PiBusy("模型服务繁忙，请稍后再试")
+        raise PiBusy("模型服务繁忙，请稍后再试", code="busy")
 
     if code == "model_unauthorized":
         raise ModelAuthenticationError()
@@ -86,6 +86,9 @@ def _error(event: dict[str, JsonValue]) -> None:
     if code in ("unauthorized", "bad_request"):
         logger.error("Pi protocol failure: %s", code)
     messages = {
+        "unauthorized": "模型服务暂时不可用",
+        "bad_request": "模型服务暂时不可用",
+        "model_error": "模型服务暂时不可用",
         "model_forbidden": "密钥不对或没有权限",
         "busy": "模型服务繁忙，请稍后再试",
         "deadline": "模型调用超时",
@@ -93,7 +96,10 @@ def _error(event: dict[str, JsonValue]) -> None:
         "cancelled": "模型调用已取消",
         "local_auth_unavailable": "本机 Codex 授权不可用或有效期不足一小时，请在本机正常运行一次 codex 刷新",
     }
-    raise ModelUnavailable(messages.get(str(code), "模型服务暂时不可用"))
+    raise ModelUnavailable(
+        messages.get(code, "模型服务暂时不可用"),
+        code=code if code in messages else "unavailable",
+    )
 
 
 def run_turn(

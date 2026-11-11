@@ -3,7 +3,9 @@ from typing import Literal
 
 
 class ModelUnavailable(Exception):
-    pass
+    def __init__(self, message: str = "", *, code: str = "unavailable") -> None:
+        self.code = code
+        super().__init__(message)
 
 
 class ModelServiceError(ModelUnavailable):
@@ -16,13 +18,14 @@ class ModelServiceError(ModelUnavailable):
                 "model_not_found": "这个模型不可用，请换一个模型",
                 "upstream_rejected": "模型服务拒绝了请求，请检查模型设置",
                 "upstream_unavailable": "模型服务暂时不可用，请稍后重试",
-            }[code]
+            }[code],
+            code=code,
         )
 
 
 class ModelAuthenticationError(ModelUnavailable):
     def __init__(self) -> None:
-        super().__init__("密钥不对或没有权限")
+        super().__init__("密钥不对或没有权限", code="model_unauthorized")
 
 
 class ModelOutputInvalid(Exception):
