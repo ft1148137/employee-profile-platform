@@ -1,6 +1,5 @@
 id: "text-confirm"
 menu: "rules"
-tags: ["adversarial"]
 actor: "admin"
 entry: "admin_assistant"
 seed: {}

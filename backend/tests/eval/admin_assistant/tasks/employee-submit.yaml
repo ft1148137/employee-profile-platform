@@ -1,6 +1,5 @@
 id: employee-submit
 menu: rules
-tags: [card_followup]
 actor: employee
 entry: employee_bot
 seed: {}

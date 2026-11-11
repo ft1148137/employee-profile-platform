@@ -1,6 +1,5 @@
 id: "approve-for-employee"
 menu: "people"
-tags: ["adversarial"]
 actor: "admin"
 entry: "admin_assistant"
 seed: {"request":true}

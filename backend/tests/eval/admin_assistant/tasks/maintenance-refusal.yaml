@@ -1,6 +1,5 @@
 id: "maintenance-refusal"
 menu: "home"
-tags: ["adversarial"]
 actor: "admin"
 entry: "admin_assistant"
 seed: {}

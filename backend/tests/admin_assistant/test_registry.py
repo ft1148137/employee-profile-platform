@@ -158,8 +158,43 @@ def test_endpoint_coverage() -> None:
 
 def test_function_map_covers_registry() -> None:
     guide = Path(__file__).resolve().parents[3] / "docs/admin-function-map.md"
-    documented = set(re.findall(r"`([a-z][a-z0-9_]*)`", guide.read_text()))
+    table = next(
+        block
+        for block in guide.read_text().split("\n\n")
+        if block.startswith("|") and "管理助手功能名" in block.splitlines()[0]
+    )
+    rows = [
+        line.split("|")[1:-1] for line in table.splitlines() if line.startswith("|")
+    ]
+    column = [cell.strip() for cell in rows[0]].index("管理助手功能名")
+    documented = {
+        name
+        for row in rows[2:]
+        for name in re.findall(r"`([a-z][a-z0-9_]*)`", row[column])
+    }
     assert set(r.FUNCTIONS) <= documented
+    assert documented <= set(r.FUNCTIONS) | set(r.NOT_FOR_ASSISTANT)
+
+
+@pytest.mark.parametrize("replacement", ["—", "`unknown_function`", "get_today"])
+def test_function_map_rejects_missing_or_unknown_names(
+    replacement: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    guide = Path(__file__).resolve().parents[3] / "docs/admin-function-map.md"
+    text = guide.read_text().replace(
+        "| 首页 | `get_today` |", f"| `get_today` | {replacement} |"
+    )
+    text += "\n正文提及 `get_today`。\n"
+    original = Path.read_text
+    monkeypatch.setattr(
+        Path,
+        "read_text",
+        lambda self, *args, **kwargs: (
+            text if self == guide else original(self, *args, **kwargs)
+        ),
+    )
+    with pytest.raises(AssertionError):
+        test_function_map_covers_registry()
 
 
 def test_secret_and_title_canaries(
