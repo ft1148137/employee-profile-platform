@@ -2017,6 +2017,17 @@ export type FileUploadCard = {
 export type FillStatus = 'not_started' | 'in_progress' | 'submitted';
 
 /**
+ * FinalEvent[TurnResponse]
+ */
+export type FinalEvent_TurnResponse_ = {
+    /**
+     * Type
+     */
+    type: 'final';
+    response: TurnResponse;
+};
+
+/**
  * GeneratedBy
  */
 export type GeneratedBy = {
@@ -4145,6 +4156,20 @@ export type TestConnection = {
 };
 
 /**
+ * TextEvent
+ */
+export type TextEvent = {
+    /**
+     * Type
+     */
+    type: 'text';
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
  * TextMessage
  */
 export type TextMessage = {
@@ -4306,6 +4331,28 @@ export type TokenPublic = {
      * Revoked At
      */
     revoked_at: string | null;
+};
+
+/**
+ * ToolEvent
+ */
+export type ToolEvent = {
+    /**
+     * Type
+     */
+    type: 'tool';
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Phase
+     */
+    phase: 'start' | 'end';
+    /**
+     * Ok
+     */
+    ok: boolean;
 };
 
 /**
@@ -5703,7 +5750,7 @@ export type botTurnResponses = {
     /**
      * Successful Response
      */
-    200: TurnResponse;
+    200: string;
 };
 
 export type botTurnResponse = botTurnResponses[keyof botTurnResponses];

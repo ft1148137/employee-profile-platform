@@ -14,6 +14,11 @@ from app.domains.employee_tools import EMPLOYEE_TOOLS
 from app.domains.model.pi_client import ToolDefinition
 
 TOOLS = {t.name: t for t in EMPLOYEE_TOOLS if t.bot_allowed}
+TITLES = {t.name: t.description for t in TOOLS.values()} | {
+    "list_pending_reviews": "查看待审批请求",
+    "get_review": "查看审批详情",
+    "prepare_review_decision": "预览审批决定",
+}
 PROJECTIONS: dict[str, type[s.Projection]] = {
     "get_my_profile": s.Profile,
     "list_my_evidence": s.EvidenceList,

@@ -69,6 +69,7 @@ from tests.domains.test_sync_schedule import context, jira  # noqa: F401
 from tests.domains.test_sync_schedule import (
     test_concurrent_dispatch_and_missed_periods as test_concurrent_dispatch_and_missed_periods,
 )
+from tests.utils.bot import final_response
 from tests.utils.pi import PiHarness
 
 pytestmark = pytest.mark.xdist_group("model")
@@ -216,7 +217,9 @@ def test_one_employee_all_channels(
         json={"text": "过目初始画像，补充合成经历"},
     )
     assert turn.status_code == 200, turn.text
-    card = next(m for m in turn.json()["messages"] if m["type"] == "preview_card")
+    card = next(
+        m for m in final_response(turn)["messages"] if m["type"] == "preview_card"
+    )
     request_id = card["request_id"]
     pi_service.replies = [
         {

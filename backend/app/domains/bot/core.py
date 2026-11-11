@@ -1,4 +1,5 @@
 import logging
+from dataclasses import replace
 from time import monotonic
 from uuid import UUID
 
@@ -36,13 +37,22 @@ def _save(
     return response
 
 
-def turn(db: Session, p: Principal, session_id: UUID, text: str) -> s.TurnResponse:
+def turn(
+    db: Session,
+    p: Principal,
+    session_id: UUID,
+    text: str,
+    *,
+    stream: pi_client.TurnStream | None = None,
+) -> s.TurnResponse:
     session = store.get_session(db, p, session_id)
     setting = read_setting(db, p.org_id)
     admitted = False
     started = monotonic()
     try:
-        with begin_turn(db, p, session, {"text": text}):
+        with begin_turn(
+            db, p, session, {"text": text}, stream.cancelled if stream else None
+        ):
             admitted = True
             if setting is None or not setting.enabled or not setting.model:
                 return _save(
@@ -65,7 +75,17 @@ def turn(db: Session, p: Principal, session_id: UUID, text: str) -> s.TurnRespon
                 on_tool_call=lambda name, args: tools.call(
                     db, p, session, cards, name, args
                 ),
+                stream=replace(
+                    stream,
+                    on_tool=lambda name, phase, ok: stream.on_tool(
+                        tools.TITLES[name], phase, ok
+                    ),
+                )
+                if stream
+                else None,
             )
+            if stream:
+                stream.check()
             # Only completed model turns may leave drafts or replies behind.
             if result.stop_reason != "stop":
                 raise ModelUnavailable()
@@ -74,7 +94,11 @@ def turn(db: Session, p: Principal, session_id: UUID, text: str) -> s.TurnRespon
                 [s.TextMessage(text=result.text)] if result.text else []
             )
             messages.extend(cards)
+            if stream:
+                stream.check()
             return _save(db, session, messages)
+    except pi_client.TurnCancelled:
+        return s.TurnResponse(messages=[])
     except BotBusy:
         message = "忙，请稍后再试"
     except BotDraftingPriority:
@@ -100,8 +124,17 @@ def turn(db: Session, p: Principal, session_id: UUID, text: str) -> s.TurnRespon
             else "模型服务暂时不可用，请稍后再试"
         )
     messages = [s.TextMessage(text=message)]
+    if stream and stream.cancelled.is_set():
+        db.rollback()
+        return s.TurnResponse(messages=[])
     if admitted:
+        if stream:
+            session.turn_count += 1
+            store.append_message(db, session, "user", {"text": text})
         response = _save(db, session, messages)
+        if stream and stream.cancelled.is_set():
+            db.rollback()
+            return s.TurnResponse(messages=[])
         db.commit()
         return response
     return s.TurnResponse(messages=messages)

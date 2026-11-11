@@ -2,6 +2,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from hashlib import blake2b
+from threading import Event
 
 from pydantic import JsonValue
 from sqlalchemy import text
@@ -19,7 +20,7 @@ from app.domains.bot.store import append_message, get_session
 from app.domains.drafting.service import drafting_jobs
 from app.domains.model.client import ModelRateLimited
 from app.domains.model.models import ModelSetting
-from app.domains.model.pi_client import PiBusy
+from app.domains.model.pi_client import PiBusy, TurnCancelled
 
 LEASE_SECONDS = 75
 ORG_TURNS = 2
@@ -52,6 +53,7 @@ def begin_turn(
     principal: Principal,
     session: BotSession | AdminAssistantSession,
     user_payload: JsonValue,
+    cancelled: Event | None = None,
 ) -> Generator[BotSession | AdminAssistantSession]:
     lease = None
     admin = isinstance(session, AdminAssistantSession)
@@ -122,11 +124,17 @@ def begin_turn(
             raise BotRateLimited(times[0] + timedelta(hours=1))
         new_lease = now + timedelta(seconds=LEASE_SECONDS)
         row.lease_until = new_lease
-        row.turn_count += 1
-        append_message(db, row, "user", user_payload)
+        if cancelled is None:
+            row.turn_count += 1
+            append_message(db, row, "user", user_payload)
         db.commit()
         lease = new_lease
+        if cancelled is not None:
+            row.turn_count += 1
+            append_message(db, row, "user", user_payload)
         yield row
+        if cancelled is not None and cancelled.is_set():
+            raise TurnCancelled()
         db.commit()
     except ModelRateLimited as error:
         db.rollback()

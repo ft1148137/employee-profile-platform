@@ -9,6 +9,7 @@ from app.domains.change_request.models import ProfileChangeRequest
 from app.domains.model.pi_client import TurnResult
 from tests.api.routes.test_employee_requests import payload
 from tests.domains.test_bot_core import enable
+from tests.utils.bot import final_response
 
 
 def test_saved_guide_is_used_on_next_turn(
@@ -100,4 +101,7 @@ def test_manager_viewing_subordinate_still_drafts_for_self(
     request = db.get(ProfileChangeRequest, captured[0])
     assert request.subject_employee_id == people["E01"].id
     assert request.status == "draft"
-    assert response.json()["messages"][1]["actions"][0]["action"] == "confirm_submit"
+    assert (
+        final_response(response)["messages"][1]["actions"][0]["action"]
+        == "confirm_submit"
+    )

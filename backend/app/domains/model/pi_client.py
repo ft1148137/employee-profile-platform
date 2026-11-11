@@ -1,7 +1,9 @@
 import json
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
+from threading import Event
 from typing import Literal
 from urllib.parse import quote
 from uuid import UUID, uuid4
@@ -54,6 +56,36 @@ class PiBusy(ModelUnavailable):
 class PiSessionInvalid(ModelUnavailable):
     def __init__(self) -> None:
         super().__init__("会话已失效，请新开对话")
+
+
+class TurnCancelled(Exception):
+    pass
+
+
+@dataclass
+class TurnStream:
+    run_id: str
+    on_text: Callable[[str], None]
+    on_tool: Callable[[str, Literal["start", "end"], bool], None]
+    cancelled: Event
+
+    def check(self) -> None:
+        if self.cancelled.is_set():
+            raise TurnCancelled()
+
+
+def cancel_run(run_id: str) -> None:
+    with httpx.Client(
+        base_url=settings.PI_URL,
+        headers={
+            "Authorization": f"Bearer {settings.PI_SERVICE_TOKEN.get_secret_value()}"
+        },
+        timeout=5,
+        trust_env=False,
+    ) as client:
+        response = client.delete(f"/v1/turns/{quote(run_id, safe='')}")
+        if response.status_code != 404:
+            response.raise_for_status()
 
 
 class TurnResult(BaseModel):
@@ -111,8 +143,9 @@ def run_turn(
     input: str,
     tools: list[ToolDefinition],
     on_tool_call: Callable[[str, dict[str, JsonValue]], JsonValue],
+    stream: TurnStream | None = None,
 ) -> TurnResult:
-    run_id = str(uuid4())
+    run_id = stream.run_id if stream else str(uuid4())
     path = f"/v1/turns/{run_id}"
     model = config.model_dump(mode="json", exclude={"api_key"}, exclude_unset=True)
     model["api_key"] = config.api_key.get_secret_value()
@@ -135,6 +168,8 @@ def run_turn(
         raise ValueError("Session state requires chat mode")
     terminal = False
     names = {tool.name for tool in tools}
+    if stream:
+        stream.check()
     try:
         with httpx.Client(
             base_url=settings.PI_URL,
@@ -156,20 +191,28 @@ def run_turn(
                     chunks: list[str] = []
                     lines = response.iter_lines()
                     for line in lines:
+                        if stream:
+                            stream.check()
                         event = json.loads(line)
                         match event["type"]:
                             case "text":
                                 chunks.append(event["text"])
+                                if stream:
+                                    stream.on_text(event["text"])
                             case "tool_call":
                                 if event["name"] not in names or not isinstance(
                                     event["arguments"], dict
                                 ):
                                     raise ValueError("Invalid tool call")
                                 try:
+                                    if stream:
+                                        stream.on_tool(event["name"], "start", True)
                                     result = on_tool_call(
                                         event["name"], event["arguments"]
                                     )
                                 except Exception:
+                                    if stream:
+                                        stream.on_tool(event["name"], "end", False)
                                     client.post(
                                         path
                                         + "/results/"
@@ -180,6 +223,15 @@ def run_turn(
                                         },
                                     ).raise_for_status()
                                     raise ModelUnavailable("平台工具调用失败") from None
+                                if stream:
+                                    stream.on_tool(
+                                        event["name"],
+                                        "end",
+                                        not (
+                                            isinstance(result, dict)
+                                            and "error" in result
+                                        ),
+                                    )
                                 client.post(
                                     path
                                     + "/results/"
@@ -213,7 +265,7 @@ def run_turn(
                         cancelled = client.delete(path)
                         if cancelled.status_code == 404:
                             # The model may finish between a tool error and DELETE.
-                            if not any(
+                            if not (stream and stream.cancelled.is_set()) and not any(
                                 json.loads(line).get("type") in ("done", "error")
                                 for line in lines
                             ):

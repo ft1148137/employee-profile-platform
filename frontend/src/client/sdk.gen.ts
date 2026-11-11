@@ -476,7 +476,7 @@ export class BotService {
      */
     public static turn<ThrowOnError extends boolean = true>(options: Options<botTurnData, ThrowOnError>) {
         return (options.client ?? client).post<botTurnResponses, botTurnErrors, ThrowOnError>({
-            responseType: 'json',
+            responseType: 'blob',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/bot/sessions/{session_id}/turns',
             ...options,
