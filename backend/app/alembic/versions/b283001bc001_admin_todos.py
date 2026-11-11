@@ -18,6 +18,7 @@ def upgrade() -> None:
     op.create_check_constraint("inbox_item_kind_check", "inbox_item", f"kind IN ({KINDS},'admin_todos')")
 
 
+# Downgrade deletes administrator todo inbox items and their IM notifications to restore the narrower kind constraint.
 def downgrade() -> None:
     op.execute("DELETE FROM im_notification WHERE (org_id, inbox_item_id) IN (SELECT org_id, id FROM inbox_item WHERE kind='admin_todos')")
     op.execute("DELETE FROM inbox_item WHERE kind='admin_todos'")

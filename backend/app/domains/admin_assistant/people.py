@@ -66,7 +66,6 @@ def _accounts(db: Session, p: Principal, ids: set[UUID]) -> BaseModel:
         )
         .where(OrgMembership.org_id == p.org_id, col(User.id).in_(ids))
         .order_by(col(User.id))
-        .with_for_update(of=User)
     ).all()
     if {u.id for u, _ in rows} != ids:
         raise accounts.AccountError(404, "本企业成员不存在")
@@ -173,7 +172,9 @@ def people_impact(db: Session, p: Principal, args: Any) -> BaseModel:
     else:
         rows = account_snapshot(db, p, args).model_dump()["accounts"]
         names = [r["full_name"] or r["username"] for r in rows]
-        text = "涉及账号：" + "、".join(names)
+        text = "涉及账号：" + "、".join(names[:10])
+        if len(names) > 10:
+            text = f"涉及账号：共 {len(names)} 人（{'、'.join(names[:10])}……）"
         if isinstance(args, RoleArgs):
             from app.domains.org.models import Department
 

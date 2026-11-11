@@ -129,7 +129,7 @@ def call(
                     "changes": [
                         item.model_dump(
                             mode="json",
-                            exclude={"args", "impact"}
+                            exclude={"args", "impact", "before", "after"}
                             if item.function == "issue_accounts"
                             else {"args"},
                         )

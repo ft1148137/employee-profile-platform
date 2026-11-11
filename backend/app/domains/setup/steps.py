@@ -208,7 +208,6 @@ STEPS = [
         True,
         True,
         check_model,
-        auto=True,
     ),
     SetupStep(
         "approval_policy",
