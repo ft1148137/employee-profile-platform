@@ -65,7 +65,7 @@ from tests.domains.test_bot_core import enable
         (
             "update_drafting_settings",
             {"excluded_capability_keys": ["python"], "disabled_department_ids": []},
-            {"disabled_department_ids": []},
+            {"excluded_capability_keys": []},
         ),
         (
             "update_jira_connection",
@@ -216,9 +216,7 @@ def test_feishu_id_requires_new_secret(
     if assistant:
         row = proposal(db, demo, items=[{"function": "update_im_setting", "args": {}}])
         c.save_secret(db, p, row.id, "app_id", "new-id")
-        with pytest.raises(
-            c.ChangeSetError, match="更换应用标识时请同时填写新的应用密钥"
-        ):
+        with pytest.raises(c.ChangeSetError, match="只填了 App ID 还不够"):
             c.apply(db, p, row.id, row.revision)
         c.save_secret(db, p, row.id, "app_secret", "new-key")
     else:
@@ -227,7 +225,7 @@ def test_feishu_id_requires_new_secret(
             headers=demo[2]["admin"],
             json={"credentials": {"app_id": "new-id"}},
         )
-        assert response.status_code == 422 and "更换应用标识" in response.text
+        assert response.status_code == 422 and "只填了 App ID 还不够" in response.text
     db.expire_all()
     assert db.get(ImSetting, (p.org_id, "feishu")).model_dump() == before
     if assistant:

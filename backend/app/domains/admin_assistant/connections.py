@@ -78,12 +78,22 @@ async def test_im(db: Session, p: Principal, args: FeishuArgs) -> ConnectionTest
             if (value := getattr(args, field)) is not None and value.get_secret_value()
         }
     )
-    if not im.REQUIRED["feishu"] <= credentials.keys():
-        return ConnectionTestResult(ok=False, message="请先填写完整的应用凭据")
+    missing = [
+        label
+        for field, label in (("app_id", "App ID"), ("app_secret", "App Secret"))
+        if not credentials.get(field)
+    ]
+    if missing:
+        return ConnectionTestResult(
+            ok=False,
+            message=f"还缺少 {'、'.join(missing)}。请在飞书开放平台 → 开发者后台 → 打开这个应用 → 凭证与基础信息里复制，再填到上面的安全输入框。",
+        )
     result = await im.test_credentials(db, p.org_id, "feishu", credentials)
     return ConnectionTestResult(
         ok=result.ok,
-        message="连接成功" if result.ok else "飞书连接失败，请检查应用凭据、权限和网络",
+        message="连接成功"
+        if result.ok
+        else f"{result.message}。第一步：到飞书开放平台 → 开发者后台 → 打开这个应用 → 凭证与基础信息，核对 App ID 和 App Secret 是否和这里填的一致；都核对过还是失败，请部署人员确认服务器能访问飞书。",
     )
 
 

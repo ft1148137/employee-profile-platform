@@ -211,7 +211,12 @@ def _entry(
 
 
 def propose(
-    db: Session, principal: Principal, session_id: UUID, body: ProposeChanges
+    db: Session,
+    principal: Principal,
+    session_id: UUID,
+    body: ProposeChanges,
+    *,
+    allow_unchanged: bool = False,
 ) -> AdminChangeSet:
     store.get_session(db, principal, session_id)
     row = (
@@ -280,6 +285,15 @@ def propose(
                 "undoable": entry.undoable,
             }
         )
+    # shortcut: Secret settings still need cards for key rotation; tighten when proposals can declare it.
+    if not allow_unchanged and all(
+        registry.FUNCTIONS[str(item["function"])].merge_settings
+        and not registry.FUNCTIONS[str(item["function"])].secret_fields
+        and item["before"] is not None
+        and item["before"] == item["after"]
+        for item in items
+    ):
+        raise ChangeSetError("设置已经是这个值，不需要改动", 422)
     if len(disabled_users) + len(offboarded_employees) + imported_deactivations >= 2:
         for saved_item in items:
             if saved_item["function"] in (
@@ -524,6 +538,7 @@ def undo(db: Session, principal: Principal, id: UUID) -> ChangeSetPublic:
         principal,
         row.session_id,
         ProposeChanges.model_validate({"items": list(reversed(reverse_items))}),
+        allow_unchanged=True,
     )
     reverse.undo_of_id = row.id
     db.add(reverse)

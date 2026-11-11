@@ -413,3 +413,90 @@ test("Feishu draft keeps credentials private and requires a second confirmation"
   await expect(form.getByLabel("应用密钥", { exact: true })).toHaveValue("")
   await expectChineseCopy(page, ["IM", "Telegram"])
 })
+
+test("saving credentials and retesting clear the previous apply error", async ({
+  page,
+}) => {
+  await page.route("**/admin-assistant/availability?*", (route) =>
+    route.fulfill({ json: { available: true, reason: "" } }),
+  )
+  const id = crypto.randomUUID()
+  const draft = {
+    id,
+    revision: 1,
+    status: "draft",
+    undo_of_id: null,
+    items: [
+      {
+        function: "update_im_setting",
+        title: "修改飞书入口",
+        args: {},
+        before: { enabled: false },
+        after: { enabled: true },
+        risk: "high",
+        testable: true,
+      },
+    ],
+  }
+  await page.route("**/admin-assistant/sessions/*/turns?*", (route) =>
+    route.fulfill({
+      json: {
+        messages: [
+          { type: "admin_change_set", change_set: draft },
+          {
+            type: "secret_input",
+            change_set_id: id,
+            field: "app_secret",
+            title: "安全填写密钥",
+          },
+        ],
+      },
+    }),
+  )
+  await page.route(`**/change-sets/${id}`, (route) =>
+    route.fulfill({ json: draft }),
+  )
+  await page.route(`**/change-sets/${id}/apply`, (route) =>
+    route.fulfill({
+      status: 422,
+      json: { detail: "还缺少应用密钥，请先填写" },
+    }),
+  )
+  await page.route(`**/change-sets/${id}/secrets/app_secret`, (route) =>
+    route.fulfill({ json: {} }),
+  )
+  await page.route(`**/change-sets/${id}/test`, (route) =>
+    route.fulfill({
+      json: {
+        ok: false,
+        message: "应用凭据无效或没有权限。请到飞书开放平台核对。",
+      },
+    }),
+  )
+  await logInUser(
+    page,
+    "admin@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  await page.goto("/admin/assistant")
+  await page
+    .getByRole("textbox", { name: "发给管理助手的消息" })
+    .fill("连接飞书")
+  await page.getByRole("button", { name: "发送", exact: true }).click()
+  const card = page.getByRole("region", { name: "设置改动确认卡" })
+  const oldError = card.getByText("还缺少应用密钥，请先填写", { exact: true })
+  await card.getByRole("button", { name: "确认应用" }).click()
+  await expect(oldError).toBeVisible()
+  const secure = page.getByRole("form", { name: "安全输入框" })
+  await secure.locator('input[type="password"]').fill("synthetic-new-key")
+  await secure.getByRole("button", { name: "安全提交" }).click()
+  await expect(secure.getByRole("status")).toHaveText("已填写")
+  await expect(oldError).toHaveCount(0)
+  await card.getByRole("button", { name: "确认应用" }).click()
+  await expect(oldError).toBeVisible()
+  await card.getByRole("button", { name: "测试连接" }).click()
+  await expect(
+    card.getByText(/测试连接：失败，应用凭据无效或没有权限/),
+  ).toBeVisible()
+  await expect(oldError).toHaveCount(0)
+})

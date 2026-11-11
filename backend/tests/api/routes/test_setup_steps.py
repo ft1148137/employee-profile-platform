@@ -684,3 +684,63 @@ def test_two_step_completion_and_home_todos(
     assert (
         next(s for s in result["steps"] if s["key"] == "roster")["status"] == "pending"
     )
+
+
+def test_roster_import_auto_completes_home_todo(
+    tenant: SetupTenant, client: TestClient, db: Session
+) -> None:
+    from app.domains.setup.wizard import read_setup
+
+    auth = tenant.auth["admin"]
+    before = {s.key: s for s in read_setup(db, tenant.org_id).steps}
+    assert before["roster"].status == "pending" and before["roster"].blockers
+    assert before["initial_profiles"].status == "pending"
+    assert before["initial_profiles"].blockers == ["还没有在职员工，请先导入员工名单"]
+    uploaded = client.post(
+        f"{tenant.url}/roster/imports",
+        headers=auth,
+        files={
+            "file": (
+                "synthetic.csv",
+                "工号,姓名,部门,职位,上级工号,邮箱\n001,合成员工,研发部,,,synthetic@example.com\n".encode(),
+                "text/csv",
+            )
+        },
+    )
+    assert uploaded.status_code == 200
+    preview = uploaded.json()
+    assert (
+        client.post(
+            f"{tenant.url}/roster/imports/{preview['id']}/apply",
+            headers=auth,
+            json={"base_revision": preview["base_revision"]},
+        ).status_code
+        == 200
+    )
+    actual = {s.key: s for s in read_setup(db, tenant.org_id).steps}
+    assert actual["roster"].status == "completed" and not actual["roster"].blockers
+    assert actual["identities"].status == "pending"
+    assert actual["approval_policy"].status == "pending"
+    assert db.get(SetupStepState, (tenant.org_id, "roster")) is None
+    todo = next(
+        t
+        for t in client.get(f"{tenant.url}/admin/overview", headers=auth).json()[
+            "todos"
+        ]
+        if t["kind"] == "setup_step"
+    )
+    assert "导入员工名单" not in todo["title"]
+    client.post(f"{tenant.url}/setup/steps/model/skip", headers=auth)
+    db.add(
+        ModelSetting(
+            org_id=tenant.org_id, enabled=True, updated_by_user_id=tenant.admin_id
+        )
+    )
+    db.commit()
+    assert (
+        next(s for s in read_setup(db, tenant.org_id).steps if s.key == "model").status
+        == "skipped"
+    )
+    db.delete(db.get(SetupStepState, (tenant.org_id, "model")))
+    db.commit()
+    assert read_setup(db, tenant.org_id).completed

@@ -394,7 +394,17 @@ export function AdminAssistantPanel({
                       className="overflow-x-auto rounded-xl border p-3"
                     >
                       <p>
-                        {message.title}（共 {message.total} 条，最多显示 20 条）
+                        {message.title}
+                        {message.queried_at && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            查询于{" "}
+                            {new Date(message.queried_at).toLocaleTimeString(
+                              "zh-CN",
+                              { hour: "2-digit", minute: "2-digit" },
+                            )}
+                          </span>
+                        )}
+                        （共 {message.total} 条，最多显示 20 条）
                       </p>
                       <table className="w-full text-left text-sm">
                         <thead>

@@ -375,7 +375,14 @@ def test_failed_proposal_links_to_manual_topic(
     def fail(_config: object, **kwargs: object) -> TurnResult:
         kwargs["on_tool_call"](
             "propose_changes",
-            {"items": [{"function": "update_update_settings", "args": {}}]},
+            {
+                "items": [
+                    {
+                        "function": "update_update_settings",
+                        "args": {"reminder_schedule": "yearly"},
+                    }
+                ]
+            },
         )
         raise ModelUnavailable()
 

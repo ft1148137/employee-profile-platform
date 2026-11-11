@@ -31,6 +31,7 @@ from app.domains.admin_assistant.people import register_people
 from app.domains.admin_assistant.rules import register_rules
 from app.domains.admin_assistant.sources import register_sources
 from app.domains.audit import service as audit
+from app.domains.base import utc_now
 from app.domains.bot import settings as bot
 from app.domains.capability.service import read_editor
 from app.domains.drafting import settings as drafting
@@ -132,6 +133,7 @@ class ProgressPublic(BaseModel):
 
 
 class TableCard(BaseModel):
+    queried_at: AwareDatetime | None = None
     type: Literal["table"] = "table"
     title: str
     columns: list[str]
@@ -570,6 +572,7 @@ def _table(function: AdminFunction, data: Any) -> TableCard | None:
         return None
     columns = list(rows[0]) if rows else []
     return TableCard(
+        queried_at=utc_now(),
         title=function.description,
         columns=columns,
         rows=[[row.get(c) for c in columns] for row in rows[:20]],

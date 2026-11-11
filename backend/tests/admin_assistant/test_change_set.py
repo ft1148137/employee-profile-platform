@@ -263,7 +263,9 @@ def test_atomic_failure_and_validation(
         db,
         p,
         sid,
-        ProposeChanges.model_validate({"items": [{"function": "high", "args": {}}]}),
+        ProposeChanges.model_validate(
+            {"items": [{"function": "high", "args": {"reminder_schedule": "yearly"}}]}
+        ),
     )
     assert high.items[0]["risk"] == "high"
     db.commit()

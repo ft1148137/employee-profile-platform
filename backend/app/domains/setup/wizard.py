@@ -30,6 +30,8 @@ def read_setup(session: Session, org_id: UUID) -> SetupPublic:
             SetupStatus.COMPLETED if step.implicit else states.get(step.key, "pending")
         )
         blockers = step.check(session, org_id) if status == "pending" else []
+        if status == "pending" and step.auto and not blockers:
+            status = SetupStatus.COMPLETED
         result.append(
             SetupStepPublic(
                 key=step.key,
