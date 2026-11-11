@@ -7,6 +7,7 @@ import {
   type AdminSessionMessage,
   type AdminTurnInput,
   type AdminTurnResponse,
+  type AdminUserMessage,
 } from "@/client"
 import {
   actorLabels,
@@ -127,7 +128,7 @@ function cellText(value: unknown, field = ""): string {
     : String(value)
 }
 
-function displayInput(body: AdminTurnInput): AdminTurnInput {
+function displayInput(body: AdminUserMessage): AdminUserMessage {
   return /(?<![A-Za-z0-9])sk-\S+|(?<![A-Za-z0-9])[A-Za-z0-9]{32,}(?![A-Za-z0-9])/.test(
     body.text,
   )
@@ -153,10 +154,15 @@ export function AdminAssistantPanel({
   const availability = useAdminAvailability()
   const available = availability.data?.available === true
   const [uploading, setUploading] = useState(false)
-  const [pendingMessage, setPendingMessage] = useState<AdminTurnInput | null>(
+  const [composerVersion, setComposerVersion] = useState(0)
+  const [pendingMessage, setPendingMessage] = useState<AdminUserMessage | null>(
     null,
   )
   const turnSession = useRef(sessionId)
+  const creatingSession = useRef<{
+    navigationKey?: string
+    promise: Promise<string>
+  } | null>(null)
   const [text, setText] = useState(prefill?.text ?? "")
   const bottom = useRef<HTMLDivElement>(null)
   const preserveText = useRef(false)
@@ -190,7 +196,11 @@ export function AdminAssistantPanel({
   useEffect(() => {
     const follow = (event: Event) => {
       if (!(event instanceof StorageEvent)) {
-        if (!localStorage.getItem(storageKey)) setText("")
+        if (!localStorage.getItem(storageKey)) {
+          setText("")
+          creatingSession.current = null
+          setComposerVersion((version) => version + 1)
+        }
         return
       }
       if (event.key !== storageKey) return
@@ -214,21 +224,42 @@ export function AdminAssistantPanel({
       })
     }
   }, [history.error, storageKey, orgId, client])
+  const ensureSession = async (signal?: AbortSignal) => {
+    if (!expired && sessionId) return sessionId
+    if (
+      !creatingSession.current ||
+      creatingSession.current.navigationKey !== navigationKey
+    ) {
+      const promise = AdminAssistantService.assistantCreateSession({
+        query,
+        signal,
+      })
+        .then(({ data }) => data.session_id)
+        .catch((error) => {
+          if (creatingSession.current?.promise === promise)
+            creatingSession.current = null
+          throw error
+        })
+      creatingSession.current = { navigationKey, promise }
+    }
+    return creatingSession.current.promise
+  }
   const stream = useStreamingTurn<AdminTurnInput, AdminTurnResponse>(
     `/api/v1/admin-assistant/sessions/${sessionId ?? ""}/turns?org_id=${orgId}`,
     async (signal) => {
-      const id =
-        (!expired ? sessionId : undefined) ??
-        (await AdminAssistantService.assistantCreateSession({ query, signal }))
-          .data.session_id
+      const id = await ensureSession(signal)
       if (!signal.aborted) turnSession.current = id
       return `/api/v1/admin-assistant/sessions/${id}/turns?org_id=${orgId}`
     },
   )
   const send = useMutation({
     onMutate: () => navigationKey,
-    mutationFn: async (body: AdminTurnInput) => {
-      const result = await stream.mutateAsync(body)
+    mutationFn: async (body: AdminUserMessage) => {
+      const result = await stream.mutateAsync({
+        text: body.text,
+        page: body.page,
+        attachment_ids: body.attachment_ids,
+      })
       return { id: turnSession.current!, result, navigationKey }
     },
     onSuccess: ({ id, result, navigationKey: startedAt }, body) => {
@@ -257,7 +288,10 @@ export function AdminAssistantPanel({
         })
       }
       client.invalidateQueries({
-        predicate: (query) => query.queryKey[0] !== "admin-assistant-messages",
+        predicate: (query) =>
+          !["admin-assistant-messages", "chat-attachment"].includes(
+            String(query.queryKey[0]),
+          ),
       })
     },
     onSettled: (_data, _error, _body, startedAt) => {
@@ -281,6 +315,8 @@ export function AdminAssistantPanel({
       rememberConversation(storageKey, sessionId ?? "")
     if (!preserveText.current) setText(prefill?.text ?? "")
     preserveText.current = false
+    creatingSession.current = null
+    turnSession.current = sessionId
     send.reset()
     setPendingMessage(null)
   }, [sessionId, storageKey, prefill, send.reset])
@@ -312,6 +348,18 @@ export function AdminAssistantPanel({
           试着问「今天有什么要处理的」。我会结合首页状态，帮你找到对应页面。
         </p>
         <ChatMessages
+          onDownload={async (id) =>
+            (
+              await AdminAssistantService.assistantDownloadAttachment({
+                query,
+                path: {
+                  session_id:
+                    (!expired ? sessionId : undefined) ?? turnSession.current!,
+                  attachment_id: id,
+                },
+              })
+            ).data
+          }
           messages={
             pendingMessage
               ? [
@@ -470,16 +518,34 @@ export function AdminAssistantPanel({
         </p>
       </div>
       <ChatComposer
+        key={`${navigationKey}:${composerVersion}`}
         id="admin-assistant-input"
         label="发给管理助手的消息"
         placeholder="今天有什么要处理的？"
         text={text}
         onChange={setText}
-        onSend={() => {
-          const body = { text: text.trim(), page: "/admin" as const }
+        onUpload={async (file) => {
+          const id = await ensureSession()
+          if (selection.current === navigationKey) turnSession.current = id
+          return (
+            await AdminAssistantService.assistantUploadAttachment({
+              query,
+              path: { session_id: id },
+              body: { file },
+            })
+          ).data
+        }}
+        onSend={async (attachments) => {
+          const body = {
+            text: text.trim() || "请查看附件",
+            page: "/admin" as const,
+            attachments,
+            attachment_ids: attachments.map((item) => item.id),
+          }
           setText("")
           setPendingMessage(displayInput(body))
-          send.mutate(body)
+          const { result } = await send.mutateAsync(body)
+          return !!result
         }}
         busy={stream.isPending}
         disabled={busy || !available}

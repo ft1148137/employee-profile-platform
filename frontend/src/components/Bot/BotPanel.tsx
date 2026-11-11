@@ -4,6 +4,7 @@ import { AxiosError } from "axios"
 import { Bot, LoaderCircle } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import {
+  type AttachmentPublic,
   BotService,
   type SessionMessage,
   type TurnInput,
@@ -109,10 +110,10 @@ function Panel({
     `/api/v1/bot/sessions/${sessionId}/turns?org_id=${orgId}`,
   )
   const send = useMutation({
-    mutationFn: async (input: string | BotAction) => {
+    mutationFn: async (input: TurnInput | BotAction) => {
       const options = { query, path: { session_id: sessionId } }
-      return typeof input === "string"
-        ? stream.mutateAsync({ text: input })
+      return "text" in input
+        ? stream.mutateAsync(input)
         : {
             response: (await BotService.act({ ...options, body: input })).data,
             tools: [],
@@ -147,13 +148,17 @@ function Panel({
     if (open && (messages.length || stream.text || stream.tools.length))
       bottom.current?.scrollIntoView({ block: "end" })
   }, [open, messages, stream.text, stream.tools])
-  function sendText(value: string) {
+  async function sendText(value: string, attachments: AttachmentPublic[] = []) {
     setMessages((previous) => [
       ...previous,
-      { role: "user", payload: { text: value } },
+      { role: "user", payload: { text: value, attachments } },
     ])
     setText("")
-    send.mutate(value)
+    const result = await send.mutateAsync({
+      text: value,
+      attachment_ids: attachments.map((item) => item.id),
+    })
+    return !!result
   }
   return (
     <Sheet
@@ -205,6 +210,14 @@ function Panel({
           </p>
           <ChatMessages
             messages={messages}
+            onDownload={async (id) =>
+              (
+                await BotService.downloadAttachment({
+                  query,
+                  path: { session_id: sessionId, attachment_id: id },
+                })
+              ).data
+            }
             text={stream.text}
             tools={stream.tools}
             stopped={stream.stopped}
@@ -262,12 +275,24 @@ function Panel({
           <div ref={bottom} />
         </div>
         <ChatComposer
+          key={sessionId}
           id="bot-input"
           label="发给机器人的消息"
           placeholder="说说你想补充的经历…"
           text={text}
           onChange={setText}
-          onSend={() => sendText(text.trim())}
+          onSend={(attachments) =>
+            sendText(text.trim() || "请查看附件", attachments)
+          }
+          onUpload={async (file) =>
+            (
+              await BotService.uploadAttachment({
+                query,
+                path: { session_id: sessionId },
+                body: { file },
+              })
+            ).data
+          }
           busy={stream.isPending}
           disabled={busy || !sessionId}
           onStop={stream.stop}
