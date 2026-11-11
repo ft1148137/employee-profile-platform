@@ -1,0 +1,40 @@
+id: dictionary-upload
+menu: rules
+steps:
+- type: upload
+  kind: capabilities
+  filename: synthetic-capabilities.yaml
+  content: |
+    - key: eval_collaboration
+      name: 合成协作
+      category: 协作
+      description: 仅用于评测
+      level_rubric:
+        levels:
+        - key: basic
+          label: 基础
+          description: 能完成合成协作
+      ai_inference: false
+- type: apply
+- type: say
+  text: 重新查询当前能力词典，这次只有哪一项能力？
+  expect:
+    reply_contains:
+    - 合成协作
+expect:
+  services:
+  - function: get_capability_dictionary
+    args: {}
+    value:
+      expected_version: 2
+      definitions:
+      - key: eval_collaboration
+        name: 合成协作
+        category: 协作
+        description: 仅用于评测
+        level_rubric:
+          levels:
+          - key: basic
+            label: 基础
+            description: 能完成合成协作
+        ai_inference: false

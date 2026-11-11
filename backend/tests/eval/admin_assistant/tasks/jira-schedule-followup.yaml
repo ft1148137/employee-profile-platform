@@ -1,0 +1,18 @@
+id: jira-schedule-followup
+menu: data_ai
+steps:
+  - type: say
+    text: 查当前 Jira 站点地址和同步周期
+    capture:
+      site: {tool: admin_read, path: [data, config, base_url]}
+  - {type: say, text: "把刚才的站点 ${site} 改成每月同步，只改周期，账号和凭据等其他设置保持不变"}
+  - {type: apply}
+expect:
+  services:
+    - function: get_sources
+      args: {}
+      value:
+        configured: true
+        has_secret: true
+        sync_schedule: monthly
+        config: {deployment: cloud, base_url: "${site}", auth_type: api_token, username: eval@example.com, start_date: '2020-01-01', include_description: false}

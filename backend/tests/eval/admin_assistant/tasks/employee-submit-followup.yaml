@@ -1,0 +1,12 @@
+id: employee-submit-followup
+menu: rules
+actor: employee
+entry: employee_bot
+steps:
+  - type: say
+    text: "请起草新增能力 ${capability}，说明为合成能力，依据为本人确认的合成依据，给我提交预览"
+  - {type: confirm_submit}
+  - type: say
+    text: 我刚才点了确认提交，我提交的改动现在什么状态？请重新查请求后回答
+    expect: {reply_contains: [审批]}
+expect: {request_status: pending_review}

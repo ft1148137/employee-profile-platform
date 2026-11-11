@@ -1,0 +1,10 @@
+id: home-progress
+menu: home
+steps:
+  - type: say
+    text: 查询今天的待办和同步、初始画像起草进度，不要启动任何任务
+    expect: {reply_contains: [同步, 起草]}
+expect:
+  unchanged: true
+  services:
+    - {function: get_progress, args: {}, value: {sync_runs: {count: 0}, drafting: {counts: {pending: 0}}}}

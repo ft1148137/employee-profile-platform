@@ -1,0 +1,12 @@
+id: people-disable-followup
+menu: people
+steps:
+  - type: say
+    text: 请查工号 QG003 的员工账号，给我账号状态
+    capture:
+      target_user: {tool: admin_read, path: [data, data, 0, account, user_id]}
+  - {type: say, text: "把刚才查到的账号 ${target_user} 停用，其他人不动，给我确认卡"}
+  - {type: apply}
+expect:
+  services:
+    - {function: list_accounts, args: {q: QG003, status: disabled}, value: {count: 1}}

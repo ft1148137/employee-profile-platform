@@ -1,0 +1,9 @@
+# Keep this last: queueing drafts pauses further assistant turns in this enterprise.
+id: zzz-start-drafting
+menu: home
+steps:
+  - {type: say, text: 为全企业员工启动初始画像起草，先给我确认卡，我点按钮后才排队}
+  - {type: apply}
+expect:
+  services:
+    - {function: get_progress, args: {}, value: {drafting: {counts: {pending: 26, not_started: 0}}}}

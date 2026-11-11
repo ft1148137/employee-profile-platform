@@ -1,0 +1,13 @@
+id: mcp-enable-followup
+menu: connections
+steps:
+  - type: say
+    text: 查询外部 AI 助手目前的开关和允许客户端列表
+    capture:
+      clients: {tool: admin_read, path: [data, allowed_clients]}
+  - {type: say, text: "把刚才查询的外部 AI 助手打开，保留客户端列表 ${clients}，先给我确认卡"}
+  - {type: apply}
+  - {type: again}
+expect:
+  services:
+    - {function: get_mcp_setting, args: {}, value: {enabled: true, allowed_clients: []}}

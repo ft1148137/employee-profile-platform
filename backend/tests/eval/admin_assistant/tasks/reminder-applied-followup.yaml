@@ -1,0 +1,11 @@
+id: reminder-applied-followup
+menu: rules
+steps:
+  - {type: say, text: 把提醒周期改成每年一次，其他设置不动，给我确认卡}
+  - {type: apply}
+  - type: say
+    text: 我刚才点了确认应用，改成功了吗？现在提醒周期是多少？请重新查询再回答
+    expect: {reply_contains: [每年]}
+expect:
+  services:
+    - {function: get_update_settings, args: {}, value: {reminder_schedule: yearly}}
