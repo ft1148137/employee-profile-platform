@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, col, select
 
@@ -26,6 +27,20 @@ from app.domains.review.appeal_schemas import (
     ResolveAppealInput,
 )
 from app.domains.review.models import AppealStatus, ReviewAppeal
+
+
+class SelfAppealResolutionForbidden(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(403, "不能处理自己提出的申诉，请由另一位企业管理员处理")
+
+
+def check_resolution_permission(
+    principal: Principal, row: ReviewAppeal | AppealPublic
+) -> None:
+    if not principal.is_org_admin:
+        raise OrgAdminRequired()
+    if principal.employee_id == row.employee_id:
+        raise SelfAppealResolutionForbidden()
 
 
 def _audit(session: Session, principal: Principal, row: ReviewAppeal) -> None:
@@ -167,6 +182,7 @@ def resolve_appeal(
     ).one_or_none()
     if row is None:
         raise employee.EmployeeRecordNotFound()
+    check_resolution_permission(principal, row)
     if row.status != AppealStatus.OPEN:
         raise employee.RequestConflict("申诉已处理")
     request = session.exec(

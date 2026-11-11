@@ -203,26 +203,35 @@ def read_evidence(
         )
         .distinct()
     ).all()
+    permissions = {
+        request.id: review_access(session, principal, request) for request in requests
+    }
     access = evidence_access(
         session,
         principal,
         {evidence_id},
-        review_permissions={
-            request.id: review_access(session, principal, request)
-            for request in requests
-        },
+        review_permissions=permissions,
     )
     if evidence_id not in access:
         raise EvidenceNotFound()
-    return evidence_details(session, principal, access)[evidence_id]
+    return evidence_details(
+        session,
+        principal,
+        access,
+        review_subject_id=access[evidence_id][0].subject_employee_id
+        if any(permissions.values())
+        else None,
+    )[evidence_id]
 
 
 def evidence_details(
     session: Session,
     principal: Principal,
     access: dict[UUID, tuple[Evidence, bool]],
+    *,
+    review_subject_id: UUID | None = None,
 ) -> dict[UUID, EvidenceDetail]:
-    """Load details in batches after evidence_access has checked visibility."""
+    """Load details after visibility checks; review_subject_id requires review_access."""
     events = {
         event.id: event
         for event in session.exec(
@@ -275,7 +284,17 @@ def evidence_details(
         .where(
             ProfileClaim.org_id == principal.org_id,
             col(ClaimEvidence.evidence_id).in_(access),
-            employee_scope_clause(principal),
+            or_(
+                employee_scope_clause(principal),
+                (col(ProfileClaim.subject_employee_id) == review_subject_id)
+                & col(ClaimEvidence.evidence_id).in_(
+                    {
+                        e.id
+                        for e, _ in access.values()
+                        if e.subject_employee_id == review_subject_id
+                    }
+                ),
+            ),
             ~select(successor.id)
             .where(
                 successor.org_id == principal.org_id,

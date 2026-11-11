@@ -159,6 +159,30 @@ test("admin home shows status and appeal todo through resubmission", async ({
     page.getByRole("article", { name: "合成能力", exact: true }),
   ).toContainText("存在争议")
   await expectChineseCopy(page)
+  const grant = await request.post(`${base}/role-grants`, {
+    headers,
+    data: { user_id: subject.account.user_id, role: "org_admin" },
+  })
+  expect(grant.ok()).toBeTruthy()
+  await enter(owner.access_token, "/admin")
+  await expect(
+    page.getByRole("region", { name: "今天要处理的事" }),
+  ).toContainText("1 个争议待处理")
+  await page.goto("/admin/people?tab=appeals")
+  await expect(
+    page.getByText("不能处理自己提出的申诉，请由另一位企业管理员处理"),
+  ).toBeVisible()
+  await page.getByLabel("处理说明").fill("本人不能处理此申诉")
+  for (const name of ["维持原决定", "允许重新提交"]) {
+    await expect(page.getByRole("button", { name })).toBeDisabled()
+  }
+  expect(
+    (
+      await request.delete(`${base}/role-grants/${(await grant.json()).id}`, {
+        headers,
+      })
+    ).ok(),
+  ).toBeTruthy()
   await enter(admin.access_token, "/admin")
   const today = page.getByRole("region", { name: "今天要处理的事" })
   for (const name of ["飞书", "AI 模型", "数据同步", "自动起草"]) {
