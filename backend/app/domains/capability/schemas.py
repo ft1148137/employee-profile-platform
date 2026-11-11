@@ -37,6 +37,17 @@ class CapabilitiesPublic(SQLModel):
     data: list[CapabilityPublic]
 
 
+class CapabilityStats(SQLModel):
+    capability_key: str
+    employee_count: int
+    levels: dict[str, int]
+    statuses: dict[str, int]
+
+
+class CapabilityStatsPublic(SQLModel):
+    data: list[CapabilityStats]
+
+
 class CapabilityTemplatePublic(SQLModel):
     id: str
     name: str
