@@ -29,6 +29,7 @@ test("admin uploads, previews and confirms a dictionary version", async ({
   const download = page.waitForEvent("download")
   await page.getByRole("button", { name: "下载模板（Excel）" }).click()
   expect((await download).suggestedFilename()).toBe("能力词典模板.xlsx")
+  await page.getByRole("button", { name: "编辑词典", exact: true }).click()
   await page
     .getByLabel("上传 YAML 或 Excel 词典（不超过 2 MB）")
     .setInputFiles({
@@ -162,7 +163,7 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/admin/rules?tab=dictionary")
   await page.getByRole("tab", { name: "能力词典", exact: true }).click()
-  await page.getByRole("button", { name: "在网页上编辑" }).click()
+  await page.getByRole("button", { name: "编辑词典", exact: true }).click()
   const editor = page.getByRole("region", { name: "网页编辑能力词典" })
   const retained = editor.getByRole("article", {
     name: "保留的能力",
@@ -215,7 +216,7 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
   await page.reload()
   await page.getByRole("tab", { name: "能力词典", exact: true }).click()
   await expect(page.getByText("当前第 2 版 · 2 项能力")).toBeVisible()
-  await page.getByRole("button", { name: "在网页上编辑" }).click()
+  await page.getByRole("button", { name: "编辑词典", exact: true }).click()
   await expect(retained.getByLabel("等级描述")).toHaveValue(
     "可以独立完成合成任务",
   )
@@ -234,4 +235,76 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
   await expect(
     page.getByRole("article", { name: "新合成能力", exact: true }),
   ).toContainText("未知")
+})
+
+test("admin browses categories, levels, published counts and searches", async ({
+  page,
+}) => {
+  await logInUser(
+    page,
+    "admin@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  await page.goto("/admin/rules?tab=dictionary")
+  await page.getByRole("tab", { name: "能力词典", exact: true }).click()
+  const browser = page.getByRole("region", { name: "浏览能力词典" })
+  const first = browser.getByRole("article").first()
+  await expect(
+    first.getByRole("region", { name: "已发布判断统计" }),
+  ).toBeVisible()
+  await expect(first.getByRole("list", { name: "等级说明" })).toBeVisible()
+  await expect(first.getByRole("list", { name: "等级分布" })).toContainText(
+    "未定等级",
+  )
+  await expect(first.getByRole("list", { name: "判断状态分布" })).toContainText(
+    "存在争议",
+  )
+  const name = (await first.getByRole("heading").textContent())?.trim() ?? ""
+  expect(name).not.toBe("")
+  await browser.getByLabel("搜索能力").fill(name)
+  await expect(browser.getByRole("article")).toHaveCount(1)
+  const category = browser.locator("summary").first()
+  await category.click()
+  await expect(first).toBeHidden()
+  await category.click()
+  await browser.getByLabel("搜索能力").fill("不存在的合成能力")
+  await expect(browser.getByRole("article")).toHaveCount(0)
+  await expect(browser.getByRole("status")).toContainText("没有匹配的能力")
+  await browser.getByLabel("搜索能力").fill("")
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.screenshot({
+    path: "../docs/screenshots/m4.2/capability-browser-admin.png",
+    fullPage: true,
+  })
+})
+
+test("employee browses and searches without requesting statistics", async ({
+  page,
+}) => {
+  const statsRequests: string[] = []
+  page.on("request", (request) => {
+    if (request.url().includes("/capabilities/stats"))
+      statsRequests.push(request.url())
+  })
+  await logInUser(
+    page,
+    "employee.platform@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  await page.goto("/admin/rules?tab=dictionary")
+  await page.getByRole("tab", { name: "能力词典", exact: true }).click()
+  const browser = page.getByRole("region", { name: "浏览能力词典" })
+  const card = browser.getByRole("article").first()
+  await expect(card).toBeVisible()
+  const description = (await card.locator("header p").textContent()) ?? ""
+  expect(description).not.toBe("")
+  await browser.getByLabel("搜索能力").fill(description)
+  await expect(browser.getByRole("article")).toHaveCount(1)
+  await expect(
+    browser.getByRole("region", { name: "已发布判断统计" }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole("button", { name: "编辑词典", exact: true }),
+  ).toHaveCount(0)
+  expect(statsRequests).toEqual([])
 })

@@ -647,6 +647,42 @@ export type CapabilityPublic = {
 };
 
 /**
+ * CapabilityStats
+ */
+export type CapabilityStats = {
+    /**
+     * Capability Key
+     */
+    capability_key: string;
+    /**
+     * Employee Count
+     */
+    employee_count: number;
+    /**
+     * Levels
+     */
+    levels: {
+        [key: string]: number;
+    };
+    /**
+     * Statuses
+     */
+    statuses: {
+        [key: string]: number;
+    };
+};
+
+/**
+ * CapabilityStatsPublic
+ */
+export type CapabilityStatsPublic = {
+    /**
+     * Data
+     */
+    data: Array<CapabilityStats>;
+};
+
+/**
  * CapabilityTemplatePreview
  */
 export type CapabilityTemplatePreview = {
@@ -8186,6 +8222,36 @@ export type employeesReadEmployeeResponses = {
 };
 
 export type employeesReadEmployeeResponse = employeesReadEmployeeResponses[keyof employeesReadEmployeeResponses];
+
+export type capabilitiesReadCapabilityStatsData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/capabilities/stats';
+};
+
+export type capabilitiesReadCapabilityStatsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type capabilitiesReadCapabilityStatsError = capabilitiesReadCapabilityStatsErrors[keyof capabilitiesReadCapabilityStatsErrors];
+
+export type capabilitiesReadCapabilityStatsResponses = {
+    /**
+     * Successful Response
+     */
+    200: CapabilityStatsPublic;
+};
+
+export type capabilitiesReadCapabilityStatsResponse = capabilitiesReadCapabilityStatsResponses[keyof capabilitiesReadCapabilityStatsResponses];
 
 export type capabilitiesReadCapabilitiesData = {
     body?: never;
