@@ -16,6 +16,7 @@ from app.domains.admin_assistant.schemas import (
     RequestFile,
     SecretInputCard,
 )
+from app.domains.change_request.import_json import InvalidImport
 from app.domains.change_request.schemas import ToolInput
 from app.domains.drafting.settings import AutoDraftDisabled
 from app.domains.model.pi_client import ToolDefinition
@@ -166,6 +167,8 @@ def call(
             }
         except ValidationError:
             return {"error": "参数不正确，请按功能说明填写"}
+        except InvalidImport as error:
+            return {"error": "；".join(error.messages)}
         except HTTPException as error:
             return {
                 "error": str(error.detail)

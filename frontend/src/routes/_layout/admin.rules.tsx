@@ -1,7 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { AdminTabs, tabSearch } from "@/components/Admin/AdminTabs"
 import { ApprovalPolicy } from "@/components/Admin/ApprovalPolicy"
-import { ProfileImportsPage } from "@/components/Admin/pages/ProfileImportsPage"
 import { UpdateSettings } from "@/components/Admin/UpdateSettings"
 import { CapabilityDictionary } from "@/components/Setup/CapabilityDictionary"
 import { useOrg } from "@/hooks/useOrg"
@@ -20,17 +19,14 @@ const tabs = [
   { value: "dictionary", title: "能力词典", component: CapabilityDictionary },
   { value: "approval", title: "审批规则", component: Approval },
   { value: "reminders", title: "定期提醒", component: Reminders },
-  {
-    value: "profile-import",
-    title: "批量导入画像",
-    component: ProfileImportsPage,
-  },
 ]
 
 export const Route = createFileRoute("/_layout/admin/rules")({
   component: Rules,
   validateSearch: tabSearch,
   beforeLoad: ({ search }) => {
+    if (search.tab === "profile-import")
+      throw redirect({ to: "/admin/assistant", replace: true })
     if (search.tab === "drafting")
       throw redirect({
         to: "/admin/data-ai",
