@@ -65,6 +65,8 @@
 | 设置 / 能力词典 | 下载 YAML / Excel 模板 | 能力与规则 / 能力词典 | NOT_FOR_ASSISTANT：模板下载由助手给页面链接 |
 | 设置 / 能力词典 | 选择内置词典 | 更多 / 首次设置 → 稍后处理的事项 | `apply_capability_template` |
 | 设置 / 能力词典 | 上传、预览并发布词典 | 能力与规则 / 能力词典 | `import_capability_dictionary` |
+| 起草建议 | 查看名称、说明、理由和证据条数（助手不读取证据标题或正文） | 能力与规则 / 能力词典 | `list_capability_proposals` |
+| 起草建议 | 忽略建议，撤销时检查状态和同名建议 | 能力与规则 / 能力词典 | `dismiss_capability_proposal` |
 | 设置 / 能力词典 | 网页编辑、发布新版本，可选择重新起草 | 能力与规则 / 能力词典 | `update_capability_dictionary` |
 | 设置 / 审批规则 | 读取经理确认规则及历史 | 能力与规则 / 审批规则 | `get_approval_policy` |
 | 设置 / 审批规则 | 改全企业、分类规则和员工过目期限 | 能力与规则 / 审批规则 | `update_approval_policy` |

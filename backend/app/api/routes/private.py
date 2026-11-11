@@ -1,7 +1,11 @@
+from uuid import UUID
+
 from fastapi import APIRouter
 
 from app import crud
 from app.api.deps import SessionDep
+from app.domains.capability.models import CapabilityProposal
+from app.domains.capability.proposals import name_key
 from app.domains.org.models import Employee, Organization, OrgMembership
 from app.domains.setup.schemas import SetupTokenInput, SetupTokenResult
 from app.domains.setup.service import issue_token
@@ -53,3 +57,18 @@ def create_user(
     session.commit()
     session.refresh(user)
     return user
+
+
+@router.post("/capability-proposals", status_code=204)
+def seed_capability_proposal(org_id: UUID, name: str, session: SessionDep) -> None:
+    session.add(
+        CapabilityProposal(
+            org_id=org_id,
+            name=name,
+            name_key=name_key(name),
+            category="工程",
+            description="合成能力说明",
+            reason="多条合成工作记录涉及这项能力",
+        )
+    )
+    session.commit()

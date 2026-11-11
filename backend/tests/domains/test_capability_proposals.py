@@ -394,3 +394,23 @@ def test_proposal_migration_roundtrip(migration_engine: Engine) -> None:
             ).scalar_one()
             == 1
         )
+
+
+def test_dismissed_suggestion_stays_hidden_after_next_draft(
+    request: pytest.FixtureRequest, db: Session, pi_service: PiHarness
+) -> None:
+    from app.authz.deps import get_org_principal
+    from app.domains.capability.proposals import dismiss_proposal, list_proposals
+
+    org, _, _, employees, users = request.getfixturevalue("drafting")
+    pi_service.replies.append({"items": [], "proposals": [proposal()]})
+    service.run_drafting(Principal.system_worker(org), [str(employees[0].id)])
+    p = get_org_principal(org, users[0], db)
+    row = rows(db, CapabilityProposal, org)[0]
+    dismiss_proposal(db, p, row.id)
+    pi_service.replies.append({"items": [], "proposals": [proposal()]})
+    service.run_drafting(Principal.system_worker(org), [str(employees[0].id)])
+    db.expire_all()
+    assert not list_proposals(db, p).data
+    assert len(rows(db, CapabilityProposal, org)) == 1
+    assert rows(db, CapabilityProposal, org)[0].status == ProposalStatus.DISMISSED
