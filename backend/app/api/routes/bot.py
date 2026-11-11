@@ -55,6 +55,7 @@ def turn(
     request: Request,
 ) -> StreamingResponse:
     store.get_session(session, principal, session_id)
+    session.close()  # The worker owns its Session; release the preflight connection.
     return streaming.response(
         lambda db, stream: core.turn(
             db, principal, session_id, body.text, stream=stream
