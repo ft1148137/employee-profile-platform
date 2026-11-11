@@ -6,7 +6,7 @@ import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
-async function createOrg(request: APIRequestContext) {
+async function createOrg(request: APIRequestContext, modelUrl: string) {
   const email = `roster-chat-${crypto.randomUUID()}@example.com`
   const password = "synthetic-password-2026"
   const token = await request.post("/api/v1/private/setup-tokens", {
@@ -25,16 +25,6 @@ async function createOrg(request: APIRequestContext) {
   const { org_id, access_token } = await initialized.json()
   const base = `/api/v1/orgs/${org_id}`
   const headers = { Authorization: `Bearer ${access_token}` }
-  return { email, password, base, headers }
-}
-
-test("upload a sample roster in chat, restore preview and confirm import", async ({
-  page,
-  request,
-  modelUrl,
-}, testInfo) => {
-  test.setTimeout(90000)
-  const { email, password, base, headers } = await createOrg(request)
   expect(
     (
       await request.put(`${base}/model-setting`, {
@@ -50,6 +40,16 @@ test("upload a sample roster in chat, restore preview and confirm import", async
       })
     ).ok(),
   ).toBeTruthy()
+  return { email, password, base, headers }
+}
+
+test("upload a sample roster in chat, restore preview and confirm import", async ({
+  page,
+  request,
+  modelUrl,
+}, testInfo) => {
+  test.setTimeout(90000)
+  const { email, password, base, headers } = await createOrg(request, modelUrl)
   const initial = await request.post(`${base}/roster/imports`, {
     headers,
     multipart: {
@@ -130,14 +130,10 @@ test("upload a sample roster in chat, restore preview and confirm import", async
 test("preview work records in chat, repair errors and confirm", async ({
   page,
   request,
+  modelUrl,
 }, testInfo) => {
-  const { email, password } = await createOrg(request)
+  const { email, password } = await createOrg(request, modelUrl)
   await logInUser(page, email, password)
-  await page.route(/\/admin-assistant\/sessions\/[^/]+\/turns/, (route) =>
-    route.fulfill({
-      json: { messages: [{ type: "file_upload", kind: "work_csv" }] },
-    }),
-  )
   await page.goto("/admin/assistant")
   await page.setViewportSize({ width: 390, height: 844 })
   await page

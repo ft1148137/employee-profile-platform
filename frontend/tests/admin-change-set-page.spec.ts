@@ -1,4 +1,5 @@
 import type { APIRequestContext } from "@playwright/test"
+import { openAdminAssistant, returnToManualPage } from "./utils/adminAssistant"
 import { expectChineseCopy } from "./utils/copy"
 import { dictionaryDefinitions, expect, test } from "./utils/model"
 import { logInUser } from "./utils/user"
@@ -19,16 +20,19 @@ test("page shows assistant reminder draft and can apply or discard it", async ({
   await page.goto("/admin/rules?tab=reminders")
   const section = page.getByRole("region", { name: "持续更新提醒" })
   async function propose() {
-    await page.getByRole("button", { name: "打开管理助手" }).click()
-    const dialog = page.getByRole("dialog")
+    await openAdminAssistant(page)
+    const dialog = page.getByRole("region", { name: "管理助手", exact: true })
     await dialog
       .getByRole("textbox", { name: "发给管理助手的消息" })
       .fill("把提醒改成每年一次，证据期限改为36个月")
     await dialog.getByRole("button", { name: "发送", exact: true }).click()
+    await expect(dialog.getByLabel("发给管理助手的消息")).toBeEnabled({
+      timeout: 30000,
+    })
     await expect(
       dialog.getByRole("region", { name: "设置改动确认卡" }).last(),
     ).toBeVisible({ timeout: 30000 })
-    await page.keyboard.press("Escape")
+    await returnToManualPage(page)
     await expect(section.getByRole("combobox")).toHaveText("每年")
     await expect(section.getByLabel("证据较旧期限（月）")).toHaveValue("36")
     await expect(
@@ -79,9 +83,9 @@ test("page shows assistant reminder draft and can apply or discard it", async ({
   await expectChineseCopy(page)
   // A new conversation must stop showing drafts from the previous conversation.
   await propose()
-  await page.getByRole("button", { name: "打开管理助手" }).click()
-  await page.getByRole("button", { name: "新对话", exact: true }).click()
-  await page.keyboard.press("Escape")
+  await openAdminAssistant(page)
+  await page.getByRole("link", { name: "新对话", exact: true }).click()
+  await returnToManualPage(page)
   await expect(section.getByRole("combobox")).toHaveText("每季度")
   await expect(
     section.getByRole("region", { name: "页面草稿确认" }),
@@ -100,16 +104,19 @@ test("approval page highlights assistant draft and requires both confirmations",
   )
   await logInUser(page, email, password)
   await page.goto("/admin/rules?tab=approval")
-  await page.getByRole("button", { name: "打开管理助手" }).click()
-  const dialog = page.getByRole("dialog")
+  await openAdminAssistant(page)
+  const dialog = page.getByRole("region", { name: "管理助手", exact: true })
   await dialog
     .getByRole("textbox", { name: "发给管理助手的消息" })
     .fill("关闭经理确认")
   await dialog.getByRole("button", { name: "发送", exact: true }).click()
+  await expect(dialog.getByLabel("发给管理助手的消息")).toBeEnabled({
+    timeout: 30000,
+  })
   await expect(
     dialog.getByRole("region", { name: "设置改动确认卡" }),
   ).toBeVisible({ timeout: 30000 })
-  await page.keyboard.press("Escape")
+  await returnToManualPage(page)
   const form = page.getByRole("form", { name: "审批规则", exact: true })
   await expect(
     form.getByRole("checkbox", { name: "全企业需要经理确认" }),
@@ -175,16 +182,19 @@ test("model page highlights the auto drafting switch and applies it after confir
   await page.goto("/admin/data-ai?tab=model")
   const toggle = page.getByRole("switch", { name: "自动起草", exact: true })
   await expect(toggle).not.toBeChecked()
-  await page.getByRole("button", { name: "打开管理助手" }).click()
-  const dialog = page.getByRole("dialog")
+  await openAdminAssistant(page)
+  const dialog = page.getByRole("region", { name: "管理助手", exact: true })
   await dialog
     .getByRole("textbox", { name: "发给管理助手的消息" })
     .fill("打开自动起草")
   await dialog.getByRole("button", { name: "发送", exact: true }).click()
+  await expect(dialog.getByLabel("发给管理助手的消息")).toBeEnabled({
+    timeout: 30000,
+  })
   await expect(
     dialog.getByRole("region", { name: "设置改动确认卡" }),
   ).toBeVisible({ timeout: 30000 })
-  await page.keyboard.press("Escape")
+  await returnToManualPage(page)
   await expect(toggle).toBeChecked()
   const suggested = page.locator('[data-assistant-suggested="true"]')
   await expect(suggested).toHaveCount(1)
@@ -223,16 +233,19 @@ test("dictionary page highlights a modified capability and publishes a new versi
   const original = await created.json()
   await logInUser(page, email, password)
   await page.goto("/admin/rules?tab=dictionary")
-  await page.getByRole("button", { name: "打开管理助手" }).click()
-  const dialog = page.getByRole("dialog")
+  await openAdminAssistant(page)
+  const dialog = page.getByRole("region", { name: "管理助手", exact: true })
   await dialog
     .getByRole("textbox", { name: "发给管理助手的消息" })
     .fill("修改能力说明")
   await dialog.getByRole("button", { name: "发送", exact: true }).click()
+  await expect(dialog.getByLabel("发给管理助手的消息")).toBeEnabled({
+    timeout: 30000,
+  })
   await expect(
     dialog.getByRole("region", { name: "设置改动确认卡" }),
   ).toBeVisible({ timeout: 30000 })
-  await page.keyboard.press("Escape")
+  await returnToManualPage(page)
   const editor = page.getByRole("region", { name: "网页编辑能力词典" })
   const suggested = editor.locator('[data-assistant-suggested="true"]')
   await expect(suggested).toHaveCount(1)
@@ -326,16 +339,19 @@ test("model draft highlights fields and applies only after two confirmations", a
   )
   await logInUser(page, email, password)
   await page.goto("/admin/data-ai?tab=model")
-  await page.getByRole("button", { name: "打开管理助手" }).click()
-  const dialog = page.getByRole("dialog")
+  await openAdminAssistant(page)
+  const dialog = page.getByRole("region", { name: "管理助手", exact: true })
   await dialog
     .getByRole("textbox", { name: "发给管理助手的消息" })
     .fill("换模型")
   await dialog.getByRole("button", { name: "发送", exact: true }).click()
+  await expect(dialog.getByLabel("发给管理助手的消息")).toBeEnabled({
+    timeout: 30000,
+  })
   await expect(
     dialog.getByRole("region", { name: "设置改动确认卡" }),
   ).toBeVisible({ timeout: 30000 })
-  await page.keyboard.press("Escape")
+  await returnToManualPage(page)
   const field = page.getByLabel("模型名", { exact: true })
   await expect(field).toHaveValue("synthetic-updated")
   const suggested = page.locator('[data-assistant-suggested="true"]')

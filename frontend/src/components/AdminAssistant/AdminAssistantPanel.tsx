@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useLocation } from "@tanstack/react-router"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { AxiosError } from "axios"
 import { useEffect, useRef, useState } from "react"
 import {
@@ -13,26 +13,13 @@ import {
   auditLabels,
   targetLabels,
 } from "@/components/Admin/auditLabels"
+import { TodayPanel } from "@/components/Admin/TodayPanel"
 import { BotMessage } from "@/components/Bot/BotMessage"
-import { BotPanel } from "@/components/Bot/BotPanel"
-import { SessionHistory } from "@/components/Bot/SessionHistory"
 import { RosterPreview } from "@/components/Roster/RosterPreview"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
-import useAuth from "@/hooks/useAuth"
-import {
-  rememberConversation,
-  useCurrentConversation,
-} from "@/hooks/useCurrentConversation"
-import { useOrg } from "@/hooks/useOrg"
+import { useAdminAvailability } from "@/hooks/useAdminAvailability"
+import { rememberConversation } from "@/hooks/useCurrentConversation"
 import { ChangeSetCard } from "./ChangeSetCard"
 import { FileSummaryPreview } from "./FileSummaryPreview"
 import { FileUploadCard } from "./FileUploadCard"
@@ -134,210 +121,173 @@ function cellText(value: unknown, field = ""): string {
     : String(value)
 }
 
-const pages: AdminTurnInput["page"][] = [
-  "/admin",
-  "/admin/people",
-  "/admin/people/$employeeId",
-  "/admin/people?tab=accounts",
-  "/admin/people?tab=roster",
-  "/admin/people?tab=roles",
-  "/admin/people?tab=identities",
-  "/admin/people?tab=appeals",
-  "/admin/rules",
-  "/admin/rules?tab=dictionary",
-  "/admin/rules?tab=approval",
-  "/admin/rules?tab=drafting",
-  "/admin/rules?tab=reminders",
-  "/admin/rules?tab=profile-import",
-  "/admin/data-ai",
-  "/admin/data-ai?tab=sources",
-  "/admin/data-ai?tab=model",
-  "/admin/data-ai?tab=bot",
-  "/admin/connections",
-  "/admin/connections?tab=im",
-  "/admin/connections?tab=mcp",
-  "/admin/audit",
-]
-
-export function AssistantEntry() {
-  const { org, roles } = useOrg()
-  const { user } = useAuth()
-  const location = useLocation()
-  if (
-    !org ||
-    !user ||
-    !roles.includes("org_admin") ||
-    !/^\/admin(?:\/|$)/.test(location.pathname)
-  )
-    return <BotPanel />
-  const path = location.pathname.replace(/\/$/, "")
-  const tab = new URLSearchParams(location.searchStr).get("tab")
-  const current = path.startsWith("/admin/people/")
-    ? "/admin/people/$employeeId"
-    : path + (tab ? `?tab=${tab}` : "")
-  const page =
-    pages.find((value) => value === current) ??
-    pages.find((value) => value === path)
-  return page ? (
-    <AdminAssistantPanel
-      key={`${user.id}:${org.id}`}
-      orgId={org.id}
-      storageKey={`admin-assistant:${user.id}:${org.id}`}
-      page={page}
-    />
-  ) : null
-}
-
 export function AdminAssistantPanel({
   orgId,
   storageKey,
-  page,
-  fullScreen = false,
+  sessionId,
+  navigationKey,
   prefill,
 }: {
   orgId: string
   storageKey: string
-  page: AdminTurnInput["page"]
-  fullScreen?: boolean
+  sessionId?: string
+  navigationKey?: string
   prefill?: { text: string }
 }) {
   const client = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [sessionId, setSessionId] = useState("")
-  const remembered = useCurrentConversation(storageKey)
+  const navigate = useNavigate()
+  const availability = useAdminAvailability()
+  const available = availability.data?.available === true
   const [uploading, setUploading] = useState(false)
-  const [messages, setMessages] = useState<
-    Pick<AdminSessionMessage, "role" | "payload">[]
-  >([])
   const [text, setText] = useState(prefill?.text ?? "")
-  const [expired, setExpired] = useState(false)
   const bottom = useRef<HTMLDivElement>(null)
+  const preserveText = useRef(false)
+  const selection = useRef(navigationKey)
+  selection.current = navigationKey
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
   const query = { org_id: orgId }
-  const initialize = useMutation({
-    mutationFn: async (selection?: string) => {
-      let expired = false
-      let id =
-        selection === "new"
-          ? null
-          : (selection ?? localStorage.getItem(storageKey))
-      if (id) {
-        try {
-          const messages = (
-            await AdminAssistantService.assistantListMessages({
-              query,
-              path: { session_id: id },
-            })
-          ).data
-          return { id, messages, expired }
-        } catch (error) {
-          if (!(error instanceof AxiosError) || error.response?.status !== 404)
-            throw error
-          expired = !!selection
-        }
-      }
-      id = (await AdminAssistantService.assistantCreateSession({ query })).data
-        .session_id
-      return { id, messages: [], expired }
-    },
-    onSuccess: (data, selection) => {
-      rememberConversation(storageKey, data.id)
-      if (selection) setText("")
-      setExpired(data.expired)
-      if (data.expired)
-        client.invalidateQueries({
-          queryKey: ["conversation-history", orgId, true],
+  const messageKey = ["admin-assistant-messages", orgId, sessionId]
+  const history = useQuery({
+    queryKey: messageKey,
+    enabled: !!sessionId,
+    retry: false,
+    queryFn: async () =>
+      (
+        await AdminAssistantService.assistantListMessages({
+          query,
+          path: { session_id: sessionId! },
         })
-      send.reset()
-      setSessionId(data.id)
-      setMessages(data.messages)
-      client.invalidateQueries({ queryKey: ["admin-page-drafts", orgId] })
-    },
+      ).data,
   })
-  const send = useMutation({
-    mutationFn: (body: AdminTurnInput) =>
-      AdminAssistantService.assistantTurn({
-        query,
-        path: { session_id: sessionId },
-        body,
-        timeout: 75000,
-      }),
-    onSuccess: ({ data }, body) => {
-      setMessages((previous) => [
-        ...previous,
-        ...(data.messages.some(
-          (message) =>
-            message.type === "text" && message.text === "请用安全输入框填写",
-        )
-          ? []
-          : [{ role: "user" as const, payload: body }]),
-        { role: "assistant", payload: data },
-      ])
-      client.invalidateQueries()
-    },
-  })
-  const busy = initialize.isPending || send.isPending || uploading
+  const messages = history.data ?? []
+  const expired =
+    history.error instanceof AxiosError &&
+    history.error.response?.status === 404
+  useEffect(() => {
+    const follow = (event: Event) => {
+      if (!(event instanceof StorageEvent)) {
+        if (!localStorage.getItem(storageKey)) setText("")
+        return
+      }
+      if (event.key !== storageKey) return
+      preserveText.current = true
+      navigate({
+        to: "/admin/assistant",
+        search: { session: event.newValue || undefined },
+      })
+    }
+    window.addEventListener("storage", follow)
+    return () => window.removeEventListener("storage", follow)
+  }, [storageKey, navigate])
   useEffect(() => {
     if (
-      (open || fullScreen) &&
-      sessionId &&
-      remembered &&
-      remembered !== sessionId &&
-      !busy
-    )
-      initialize.mutate()
-  }, [fullScreen, open, sessionId, remembered, busy, initialize.mutate])
+      history.error instanceof AxiosError &&
+      history.error.response?.status === 404
+    ) {
+      rememberConversation(storageKey, "")
+      client.invalidateQueries({
+        queryKey: ["conversation-history", orgId, true],
+      })
+    }
+  }, [history.error, storageKey, orgId, client])
+  const send = useMutation({
+    mutationFn: async (body: AdminTurnInput) => {
+      const id =
+        (!expired ? sessionId : undefined) ??
+        (await AdminAssistantService.assistantCreateSession({ query })).data
+          .session_id
+      const response = await AdminAssistantService.assistantTurn({
+        query,
+        path: { session_id: id },
+        body,
+        timeout: 75000,
+      })
+      return { id, data: response.data, navigationKey }
+    },
+    onSuccess: ({ id, data, navigationKey: startedAt }, body) => {
+      client.setQueryData<Pick<AdminSessionMessage, "role" | "payload">[]>(
+        ["admin-assistant-messages", orgId, id],
+        (previous = []) => [
+          ...previous,
+          ...(data.messages.some(
+            (message) =>
+              message.type === "text" && message.text === "请用安全输入框填写",
+          )
+            ? []
+            : [{ role: "user" as const, payload: body }]),
+          { role: "assistant", payload: data },
+        ],
+      )
+      if (!mounted.current || selection.current !== startedAt) {
+        client.invalidateQueries({
+          predicate: (query) =>
+            query.queryKey[0] !== "admin-assistant-messages",
+        })
+        return
+      }
+      rememberConversation(storageKey, id)
+      navigate({
+        to: "/admin/assistant",
+        search: { session: id },
+        replace: true,
+      })
+      client.invalidateQueries({
+        predicate: (query) => query.queryKey[0] !== "admin-assistant-messages",
+      })
+    },
+  })
+  const busy =
+    (!!sessionId && history.isFetching) ||
+    (history.isError && !expired) ||
+    send.isPending ||
+    uploading
   const uploaded = (response: AdminTurnResponse) => {
-    setMessages((previous) => [
-      ...previous,
+    client.setQueryData(messageKey, [
+      ...messages,
       { role: "assistant", payload: response },
     ])
     client.invalidateQueries()
   }
   useEffect(() => {
-    if (
-      (fullScreen || open) &&
-      !sessionId &&
-      !initialize.isPending &&
-      !initialize.isError
-    )
-      initialize.mutate()
-  }, [
-    fullScreen,
-    open,
-    sessionId,
-    initialize.isPending,
-    initialize.isError,
-    initialize.mutate,
-  ])
-  useEffect(() => {
-    if (prefill) setText(prefill.text)
-  }, [prefill])
+    if (sessionId || !preserveText.current)
+      rememberConversation(storageKey, sessionId ?? "")
+    if (!preserveText.current) setText(prefill?.text ?? "")
+    preserveText.current = false
+    send.reset()
+  }, [sessionId, storageKey, prefill, send.reset])
   useEffect(() => {
     if (messages.length || busy)
       bottom.current?.scrollIntoView({ block: "end" })
   }, [messages.length, busy])
   const content = (
     <>
-      <SessionHistory
-        orgId={orgId}
-        administrator
-        currentId={sessionId}
-        disabled={busy}
-        onNew={() => initialize.mutate("new")}
-        onSelect={(id) => initialize.mutate(id)}
-      />
       <div
         className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 text-sm"
         role="log"
         aria-label="管理助手对话"
         aria-busy={busy}
       >
+        {!available && (
+          <p role="status" className="rounded-lg border bg-muted/40 p-4">
+            {availability.data?.reason || "正在检查管理助手…"}
+          </p>
+        )}
+        <SetupError error={availability.error} />
+        {!sessionId && (
+          <TodayPanel orgId={orgId} onPrompt={(text) => setText(text)} />
+        )}
         <p className="rounded-xl border-l-4 border-primary bg-muted/40 p-4">
           试着问「今天有什么要处理的」。我会结合首页状态，帮你找到对应页面。
         </p>
         {messages.map((entry, index) => (
           <div
-            key={index}
+            key={`${sessionId}:${index}`}
             className={`space-y-3 ${entry.role === "user" ? "ml-8 rounded-xl bg-primary/10 p-3 whitespace-pre-wrap" : "mr-1"}`}
           >
             <p className="text-xs text-muted-foreground">
@@ -346,18 +296,18 @@ export function AdminAssistantPanel({
             {"messages" in entry.payload
               ? entry.payload.messages.map((message, i) =>
                   message.type === "link" ? (
-                    <a
+                    <Link
                       key={i}
-                      href={message.page}
+                      to={message.page}
                       className="block rounded-xl border p-4 underline"
                     >
                       {message.title}
-                    </a>
+                    </Link>
                   ) : message.type === "file_upload" ? (
                     <FileUploadCard
                       key={i}
                       orgId={orgId}
-                      sessionId={sessionId}
+                      sessionId={sessionId!}
                       card={message}
                       disabled={busy}
                       onUploaded={uploaded}
@@ -431,9 +381,9 @@ export function AdminAssistantPanel({
                           ))}
                         </tbody>
                       </table>
-                      <a href={message.page} className="underline">
+                      <Link to={message.page} className="underline">
                         打开对应页面
-                      </a>
+                      </Link>
                     </div>
                   ) : (
                     <BotMessage
@@ -449,10 +399,10 @@ export function AdminAssistantPanel({
         ))}
         <div ref={bottom} />
         {busy && <p role="status">正在处理，请稍候…</p>}
-        <SetupError error={initialize.error ?? send.error} />
+        <SetupError error={(!expired ? history.error : null) ?? send.error} />
         {expired && <p role="status">这段对话已过期被清除，已为你新开对话</p>}
-        {initialize.isError && (
-          <Button onClick={() => initialize.mutate()}>重试加载对话</Button>
+        {history.isError && (
+          <Button onClick={() => history.refetch()}>重试加载对话</Button>
         )}
       </div>
       <div className="space-y-2 border-t px-4 pt-3 text-xs">
@@ -484,8 +434,8 @@ export function AdminAssistantPanel({
         className="space-y-3 border-t p-4"
         onSubmit={(event) => {
           event.preventDefault()
-          if (!text.trim() || busy || !sessionId) return
-          const body = { text: text.trim(), page }
+          if (!text.trim() || busy || !available) return
+          const body = { text: text.trim(), page: "/admin" as const }
           setText("")
           send.mutate(body)
         }}
@@ -500,44 +450,13 @@ export function AdminAssistantPanel({
           maxLength={10000}
           value={text}
           onChange={(event) => setText(event.target.value)}
-          disabled={busy || !sessionId}
+          disabled={busy || !available}
         />
         <div className="flex justify-between gap-3">
-          <Button disabled={busy || !sessionId || !text.trim()}>发送</Button>
+          <Button disabled={busy || !available || !text.trim()}>发送</Button>
         </div>
       </form>
     </>
   )
-  if (fullScreen)
-    return <div className="flex h-full min-h-0 flex-col">{content}</div>
-  return (
-    <Sheet
-      open={open}
-      onOpenChange={(value) => {
-        setOpen(value)
-        if (value && !sessionId && !busy) initialize.mutate()
-      }}
-    >
-      <SheetTrigger asChild>
-        <Button
-          className="fixed bottom-5 right-5 z-20 rounded-full shadow-lg"
-          aria-label="打开管理助手"
-        >
-          管理助手
-        </Button>
-      </SheetTrigger>
-      <SheetContent className="inset-0 h-dvh w-full gap-0 sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[min(740px,calc(100dvh-40px))] sm:w-[440px] sm:max-w-[440px] sm:rounded-2xl sm:border">
-        <SheetHeader className="border-b pr-12">
-          <SheetTitle>管理助手</SheetTitle>
-          <SheetDescription>
-            查看今天要处理的事，也能起草提醒设置改动；点确认卡后才会生效。聊天默认在闲置两小时后清除；开启保留时按企业设置清理。
-          </SheetDescription>
-          <a href="/admin/assistant" className="text-sm underline">
-            全屏打开
-          </a>
-        </SheetHeader>
-        {content}
-      </SheetContent>
-    </Sheet>
-  )
+  return <div className="flex h-full min-h-0 flex-col">{content}</div>
 }
