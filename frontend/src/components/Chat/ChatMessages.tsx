@@ -1,24 +1,40 @@
 import type { ReactNode } from "react"
+import type { AdminSessionMessage, SessionMessage } from "@/client"
+import { ChatAttachment } from "./ChatAttachment"
 import type { ToolProgress } from "./useStreamingTurn"
 
-export function ChatMessages<Message>({
+export function ChatMessages<
+  Message extends {
+    payload: SessionMessage["payload"] | AdminSessionMessage["payload"]
+  },
+>({
   messages,
   renderMessage,
   text,
   tools,
   stopped,
+  onDownload,
 }: {
   messages: (Message & { tools?: ToolProgress[] })[]
   renderMessage: (message: Message, index: number) => ReactNode
   text: string
   tools: ToolProgress[]
   stopped: boolean
+  onDownload: (id: string) => Promise<Blob>
 }) {
   return (
     <>
       {messages.map((message, index) => (
         <div key={index}>
           {renderMessage(message, index)}
+          {"attachments" in message.payload &&
+            (message.payload.attachments ?? []).map((attachment) => (
+              <ChatAttachment
+                key={attachment.id}
+                attachment={attachment}
+                onDownload={onDownload}
+              />
+            ))}
           <ToolCalls tools={message.tools ?? []} />
         </div>
       ))}
