@@ -349,6 +349,43 @@ def test_fixed_errors(
         assert db.get(ModelSetting, p.org_id).paused_until > utc_now()
 
 
+@pytest.mark.parametrize("code", ["deadline", "upstream_unavailable"])
+def test_model_failure_logs_only_metadata(
+    demo: tuple,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    code: str,
+) -> None:
+    _, people, _ = demo
+    p = principal_for(db, people["E02"].org_id)
+    enable(db, p.org_id)
+    session = store.create_session(db, p)
+
+    def fail(*_args: object, **_kwargs: object) -> None:
+        core.pi_client._error({"code": code, "text": "synthetic-reply-secret"})
+
+    monkeypatch.setattr(core.pi_client, "run_turn", fail)
+    response = core.turn(db, p, session.id, "synthetic-input-secret")
+    assert response.messages[0].type == "text"
+    assert response.messages[0].text == (
+        "模型服务暂时不可用，请稍后再试"
+        if code == "deadline"
+        else "模型服务暂时不可用，请稍后重试"
+    )
+    records = [r for r in caplog.records if r.name == core.__name__]
+    assert len(records) == 1
+    record = records[0]
+    assert record.levelname == "WARNING"
+    assert record.msg == "session_id=%s code=%s elapsed_ms=%d"
+    assert record.args[0:2] == (session.id, code)
+    assert record.args[2] >= 0
+    assert record.exc_info is None
+    assert "synthetic-input-secret" not in record.getMessage()
+    assert "synthetic-reply-secret" not in record.getMessage()
+    assert "synthetic-api-key" not in record.getMessage()
+
+
 def test_no_model_and_http_scope(
     demo: tuple, db: Session, client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -1,4 +1,5 @@
 import logging
+from time import monotonic
 from uuid import UUID
 
 from sqlmodel import Session
@@ -39,6 +40,7 @@ def turn(db: Session, p: Principal, session_id: UUID, text: str) -> s.TurnRespon
     session = store.get_session(db, p, session_id)
     setting = read_setting(db, p.org_id)
     admitted = False
+    started = monotonic()
     try:
         with begin_turn(db, p, session, {"text": text}):
             admitted = True
@@ -81,14 +83,22 @@ def turn(db: Session, p: Principal, session_id: UUID, text: str) -> s.TurnRespon
         message = f"每小时 30 轮已用完，{error.retry_at.isoformat()} 恢复"
     except BotQuotaPaused as error:
         message = f"模型额度暂时用完，预计 {error.retry_at.isoformat()} 恢复"
-    except ModelServiceError as error:
-        message = str(error)
     except pi_client.PiSessionInvalid:
         store.save_state(db, session, None)
         logger.warning("session_id=%s code=bad_request", session.id)
         message = "之前的对话上下文已失效，已经重新开始，请再说一次"
-    except ModelUnavailable:
-        message = "模型服务暂时不可用，请稍后再试"
+    except ModelUnavailable as error:
+        logger.warning(
+            "session_id=%s code=%s elapsed_ms=%d",
+            session.id,
+            error.code,
+            (monotonic() - started) * 1000,
+        )
+        message = (
+            str(error)
+            if isinstance(error, ModelServiceError)
+            else "模型服务暂时不可用，请稍后再试"
+        )
     messages = [s.TextMessage(text=message)]
     if admitted:
         response = _save(db, session, messages)

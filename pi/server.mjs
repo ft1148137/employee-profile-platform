@@ -174,7 +174,8 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
     const start = Date.now();
     let route = 'unknown';
     let runId;
-    res.on('close', () => log({ route, status: res.statusCode, elapsed_ms: Date.now() - start, ...(runId ? { run_id: runId } : {}) }));
+    let code;
+    res.on('close', () => log({ route, status: res.statusCode, elapsed_ms: Date.now() - start, ...(runId ? { run_id: runId } : {}), ...(code ? { code } : {}) }));
     try {
       if (!timingSafeEqual(expected, digest(req.headers.authorization ?? '')))
         return json(res, 401, { type: 'error', code: 'unauthorized' });
@@ -244,6 +245,7 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
       res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store' });
       res.flushHeaders();
       const send = event => {
+        if (event.type === 'error') code = event.code;
         if (!res.destroyed && !res.writableEnded) {
           if (res.writableLength > 1024 * 1024) run.cancel('cancelled');
           else res.write(`${JSON.stringify(event)}\n`);
@@ -330,7 +332,7 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
             : { code: upstreamCode(response) };
         }
       });
-      const timer = setTimeout(() => run.cancel(run.pending ? 'deadline' : 'upstream_unavailable'),
+      const timer = setTimeout(() => run.cancel('deadline'),
         body.mode === 'chat' ? Math.min(deadlineMs, chatDeadlineMs) : deadlineMs);
       res.on('close', () => { if (!res.writableEnded) run.cancel('cancelled'); });
       run.finished = (async () => {

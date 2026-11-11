@@ -93,7 +93,10 @@ def _error(event: dict[str, JsonValue]) -> None:
         "cancelled": "模型调用已取消",
         "local_auth_unavailable": "本机 Codex 授权不可用或有效期不足一小时，请在本机正常运行一次 codex 刷新",
     }
-    raise ModelUnavailable(messages.get(str(code), "模型服务暂时不可用"))
+    raise ModelUnavailable(
+        messages.get(code, "模型服务暂时不可用"),
+        code=code if code in messages else "unavailable",
+    )
 
 
 def run_turn(
