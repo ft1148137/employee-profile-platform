@@ -34,3 +34,5 @@
 - [ADR-0030：管理助手的普通变更集](0030-admin-change-sets.md)
 - [ADR-0034：管理助手的文件预览与模型摘要](0034-admin-assistant-file-previews.md)
 - [ADR-0035：借鉴 NocoBase 架构的范围](0035-nocobase-reference.md)（已接受，2026-11-10，大古）
+
+- [ADR-0036：企业自动起草使用单一总开关](0036-auto-drafting-switch.md)
