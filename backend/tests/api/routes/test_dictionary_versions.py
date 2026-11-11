@@ -352,11 +352,11 @@ def test_files_and_chinese_validation(shared_demo: tuple, client: TestClient) ->
     workbook = Workbook()
     sheet = workbook.active
     sheet.append(HEADERS)
-    sheet.append(("test", "", "", "", "x", "标签", "描述"))
+    sheet.append(("test", "=1+1", "", "", "x", "标签", "描述"))
     content = BytesIO()
     workbook.save(content)
     _, errors, _ = parse_dictionary(content.getvalue(), "bad.xlsx")
-    assert any("第 2 行" in e for e in errors)
+    assert any("第 2 行" in e and "公式没有计算结果" in e for e in errors)
     for content, filename in (
         (b"bad", "bad.zip"),
         (b"bad", "bad.xlsx"),
@@ -690,7 +690,7 @@ def test_legacy_ai_column_is_warning(
                     level["key"],
                     level["label"],
                     level["description"],
-                    "ignored",
+                    "=1+1",
                 )
             )
         buffer = BytesIO()

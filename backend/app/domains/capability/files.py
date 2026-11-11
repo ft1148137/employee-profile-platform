@@ -70,7 +70,7 @@ def parse_dictionary(
                     continue
                 if not any(v is not None for v in values):
                     continue
-                if missing:
+                if any(index < len(HEADERS) for index in missing):
                     errors.append(f"第 {number} 行：公式没有计算结果，请粘贴为值")
                 values += [None] * (len(HEADERS) - len(values))
                 key, name, category, description, level, label, detail = values[:7]
