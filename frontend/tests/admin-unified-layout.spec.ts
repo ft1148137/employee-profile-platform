@@ -96,6 +96,20 @@ for (const size of [
     await page.getByRole("link", { name: "新对话", exact: true }).click()
     await expect(page).toHaveURL("/admin/assistant")
     await expect(page.getByRole("log")).not.toContainText(entries[0].preview)
+    await sidebar
+      .getByRole("link", { name: entries[0].preview, exact: true })
+      .click()
+    await page.goto("/admin/assistant")
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            Object.entries(localStorage).find(([key]) =>
+              key.startsWith("admin-assistant:"),
+            )?.[1],
+        ),
+      )
+      .toBe("")
     await expect(
       page.getByRole("region", { name: "今天要处理的事" }),
     ).toBeVisible()
@@ -166,5 +180,82 @@ test("unconfigured model allows history and every manual menu", async ({
   for (const name of ["审计日志", "首次设置"]) {
     await page.getByRole("link", { name, exact: false }).click()
     await expect(page.getByRole("heading", { name, exact: true })).toBeVisible()
+  }
+})
+
+test("reply arriving after a session switch stays in its original conversation", async ({
+  page,
+}) => {
+  const ids = [crypto.randomUUID(), crypto.randomUUID()]
+  let finishTurn: (() => void) | undefined
+  let finishReload: (() => void) | undefined
+  let reads = 0
+  await page.route("**/admin-assistant/availability?*", (route) =>
+    route.fulfill({ json: { available: true, reason: "" } }),
+  )
+  await page.route("**/admin-assistant/sessions?*", (route) =>
+    route.fulfill({
+      json: {
+        data: ids.map((id, i) => ({
+          id,
+          preview: `会话${i}`,
+          started_at: new Date().toISOString(),
+          last_activity_at: new Date().toISOString(),
+          turn_count: 1,
+        })),
+        retention_days: 7,
+      },
+    }),
+  )
+  await page.route(
+    "**/admin-assistant/sessions/*/messages?*",
+    async (route) => {
+      const first = route.request().url().includes(ids[0])
+      if (first && reads++ > 0)
+        await new Promise<void>((resolve) => {
+          finishReload = resolve
+        })
+      await route.fulfill({
+        json: [
+          {
+            role: "user",
+            payload: { text: first ? "第一段历史" : "第二段历史" },
+          },
+        ],
+      })
+    },
+  )
+  await page.route("**/admin-assistant/sessions/*/turns?*", async (route) => {
+    await new Promise<void>((resolve) => {
+      finishTurn = resolve
+    })
+    await route.fulfill({
+      json: { messages: [{ type: "text", text: "第一段的新回复" }] },
+    })
+  })
+  await logInUser(
+    page,
+    "admin@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  await page.goto(`/admin/assistant?session=${ids[0]}`)
+  await page.getByLabel("发给管理助手的消息").fill("第一段的新问题")
+  await page.getByRole("button", { name: "发送", exact: true }).click()
+  await expect.poll(() => !!finishTurn).toBe(true)
+  await page.getByRole("link", { name: "会话1", exact: true }).click()
+  await expect(page.getByRole("log")).toContainText("第二段历史")
+  const replied = page.waitForResponse((response) =>
+    response.url().includes("/turns?"),
+  )
+  finishTurn!()
+  await replied
+  await expect(page).toHaveURL(`/admin/assistant?session=${ids[1]}`)
+  await page.getByRole("link", { name: "会话0", exact: true }).click()
+  await expect.poll(() => !!finishReload).toBe(true)
+  try {
+    await expect(page.getByRole("log")).toContainText("第一段的新回复")
+    await expect(page.getByRole("log")).not.toContainText("第二段历史")
+  } finally {
+    finishReload!()
   }
 })

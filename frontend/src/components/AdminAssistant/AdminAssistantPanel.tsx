@@ -211,17 +211,19 @@ export function AdminAssistantPanel({
       return { id, data: response.data, navigationKey }
     },
     onSuccess: ({ id, data, navigationKey: startedAt }, body) => {
-      const next: Pick<AdminSessionMessage, "role" | "payload">[] = [
-        ...messages,
-        ...(data.messages.some(
-          (message) =>
-            message.type === "text" && message.text === "请用安全输入框填写",
-        )
-          ? []
-          : [{ role: "user" as const, payload: body }]),
-        { role: "assistant", payload: data },
-      ]
-      client.setQueryData(["admin-assistant-messages", orgId, id], next)
+      client.setQueryData<Pick<AdminSessionMessage, "role" | "payload">[]>(
+        ["admin-assistant-messages", orgId, id],
+        (previous = []) => [
+          ...previous,
+          ...(data.messages.some(
+            (message) =>
+              message.type === "text" && message.text === "请用安全输入框填写",
+          )
+            ? []
+            : [{ role: "user" as const, payload: body }]),
+          { role: "assistant", payload: data },
+        ],
+      )
       if (!mounted.current || selection.current !== startedAt) {
         client.invalidateQueries({
           predicate: (query) =>
@@ -241,7 +243,10 @@ export function AdminAssistantPanel({
     },
   })
   const busy =
-    (!!sessionId && history.isFetching) || send.isPending || uploading
+    (!!sessionId && history.isFetching) ||
+    (history.isError && !expired) ||
+    send.isPending ||
+    uploading
   const uploaded = (response: AdminTurnResponse) => {
     client.setQueryData(messageKey, [
       ...messages,
@@ -250,7 +255,8 @@ export function AdminAssistantPanel({
     client.invalidateQueries()
   }
   useEffect(() => {
-    if (sessionId) rememberConversation(storageKey, sessionId)
+    if (sessionId || !preserveText.current)
+      rememberConversation(storageKey, sessionId ?? "")
     if (!preserveText.current) setText(prefill?.text ?? "")
     preserveText.current = false
     send.reset()
