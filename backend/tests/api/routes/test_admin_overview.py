@@ -70,6 +70,7 @@ def test_permissions(
         ("missing", "error", "off"),
         ("disabled", "error", "off"),
         ("enabled", "ok", "ok"),
+        ("auto_disabled", "ok", "off"),
         ("paused", "warn", "warn"),
         ("expired", "ok", "ok"),
         ("failed", "ok", "error"),
@@ -85,6 +86,14 @@ def test_model_and_drafting(
 ) -> None:
     employee = demo[1]["E02"]
     db.exec(delete(ProfileProgress).where(ProfileProgress.org_id == employee.org_id))
+    assert (
+        client.put(
+            demo[0] + "/drafting-settings",
+            headers=demo[2]["admin"],
+            json={"enabled": state != "auto_disabled"},
+        ).status_code
+        == 200
+    )
     if state != "missing":
         row = model_setting(db, demo)
         row.enabled = state != "disabled"
@@ -106,6 +115,10 @@ def test_model_and_drafting(
     data = overview(client, demo)
     model, drafting = data["status_cards"][1], data["status_cards"][3]
     assert (model["level"], drafting["level"]) == (model_level, draft_level)
+    assert drafting["page"] == "/admin/data-ai?tab=model"
+    if state == "auto_disabled":
+        assert drafting["assistant_prompt"] == "帮我打开自动起草"
+
     if state == "paused":
         assert "本月额度已用完" in model["summary"] and "恢复时间" in model["summary"]
     if state == "failed":

@@ -18,6 +18,10 @@ import { RoleGrantDialog } from "@/components/Admin/RoleGrantDialog"
 import { IdentityTable } from "@/components/Identities/IdentityTable"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
+import {
+  employeeFieldLabels,
+  tenureLabel,
+} from "@/components/Roster/EmployeeFields"
 import { useOrg } from "@/hooks/useOrg"
 
 export const Route = createFileRoute("/_layout/admin/people/$employeeId")({
@@ -41,6 +45,7 @@ function Page() {
 }
 
 function Person({ orgId, employeeId }: { orgId: string; employeeId: string }) {
+  const { org } = useOrg()
   const client = useQueryClient()
   const [resetPassword, setResetPassword] = useState(false)
   const person = useQuery({
@@ -81,6 +86,12 @@ function Person({ orgId, employeeId }: { orgId: string; employeeId: string }) {
   if (!employee) return <p role="alert">未找到该员工或你没有权限查看</p>
   const options = departmentOptions(departments.data.data)
   const fields = [
+    ...(org?.employee_fields ?? []).map((field) => [
+      field === "hire_date" ? "入职年限" : employeeFieldLabels[field],
+      field === "hire_date" && employee.hire_date
+        ? tenureLabel(employee.hire_date)
+        : employee[field],
+    ]),
     ["工号", employee.employee_code],
     ["部门", options.find((d) => d.id === employee.department?.id)?.name],
     ["职位", employee.title],

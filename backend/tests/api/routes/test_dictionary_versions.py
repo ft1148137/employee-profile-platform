@@ -18,7 +18,7 @@ from app.domains.evidence.models import Evidence
 from app.domains.model.models import ModelSetting
 from app.domains.org.models import OrgMembership
 from app.domains.profile.models import ProfileClaim, ProfileVersion
-from tests.utils.migrations import migrate
+from tests.utils.migrations import insert_historical_rows, migrate
 from tests.utils.pi import PiHarness
 
 
@@ -117,8 +117,6 @@ def test_versions_preserve_records_remap_requests_and_block_stale_levels(
             definition["level_rubric"]["levels"] = [
                 {"key": "new_level", "label": "新等级", "description": "新等级描述"}
             ]
-        if definition["key"] == "automated_testing":
-            definition["ai_inference"] = False
     previous_profile = client.get(f"{url}/me/profile", headers=auth["employee"]).json()
     # Remove a capability with a published claim as well as an initial request item.
     old_claim = next(i for i in previous_profile["items"] if i["claim"])
@@ -204,15 +202,8 @@ def test_versions_preserve_records_remap_requests_and_block_stale_levels(
         for n in notices
     )
     settings = client.get(f"{url}/drafting-settings", headers=auth["admin"]).json()
-    assert "automated_testing" in settings["excluded_capability_keys"]
-    assert (
-        next(
-            d
-            for d in exported(client, url, auth["employee"])
-            if d["key"] == "automated_testing"
-        )["ai_inference"]
-        is False
-    )
+    assert settings == {"enabled": False}
+    assert all("ai_inference" not in d for d in exported(client, url, auth["employee"]))
     assert save(client, url, auth["admin"], preview, method).status_code == 409
 
 
@@ -332,8 +323,10 @@ def test_files_and_chinese_validation(shared_demo: tuple, client: TestClient) ->
             f"{url}/capabilities/template?format={format}", headers=auth["admin"]
         )
         assert template.status_code == 200
-        parsed, errors = parse_dictionary(template.content, f"template.{format}")
-        assert parsed and not errors
+        parsed, errors, warnings = parse_dictionary(
+            template.content, f"template.{format}"
+        )
+        assert parsed and not errors and not warnings
     definitions = [
         DictionaryDefinition.model_validate(d)
         for d in exported(client, url, auth["admin"])
@@ -344,24 +337,26 @@ def test_files_and_chinese_validation(shared_demo: tuple, client: TestClient) ->
         files={"file": ("custom.xlsx", dictionary_xlsx(definitions))},
     )
     assert response.status_code == 200 and not response.json()["errors"]
-    parsed, errors = parse_dictionary(dictionary_xlsx(definitions), "custom.xlsx")
-    assert parsed == definitions and not errors
+    parsed, errors, warnings = parse_dictionary(
+        dictionary_xlsx(definitions), "custom.xlsx"
+    )
+    assert parsed == definitions and not errors and not warnings
     raw = definitions[0].model_dump()
     for data in (
         [raw, raw],
         [{**raw, "name": ""}],
         [{**raw, "level_rubric": {"levels": [raw["level_rubric"]["levels"][0]] * 2}}],
     ):
-        _, errors = parse_dictionary(yaml.safe_dump(data).encode(), "bad.yaml")
+        _, errors, _ = parse_dictionary(yaml.safe_dump(data).encode(), "bad.yaml")
         assert errors and all("第 " in e and "行" in e for e in errors)
     workbook = Workbook()
     sheet = workbook.active
     sheet.append(HEADERS)
-    sheet.append(("test", "", "", "", "x", "标签", "描述", True))
+    sheet.append(("test", "=1+1", "", "", "x", "标签", "描述"))
     content = BytesIO()
     workbook.save(content)
-    _, errors = parse_dictionary(content.getvalue(), "bad.xlsx")
-    assert any("第 2 行" in e for e in errors)
+    _, errors, _ = parse_dictionary(content.getvalue(), "bad.xlsx")
+    assert any("第 2 行" in e and "公式没有计算结果" in e for e in errors)
     for content, filename in (
         (b"bad", "bad.zip"),
         (b"bad", "bad.xlsx"),
@@ -401,11 +396,9 @@ def test_dictionary_notification_migration(migration_engine: Engine) -> None:
         org = Organization(
             slug="notification-migration", name="Synthetic migration tenant"
         )
-        session.add(org)
-        session.flush()
+        insert_historical_rows(session, org)
         employee = Employee(org_id=org.id, display_name="Synthetic employee")
-        session.add(employee)
-        session.flush()
+        insert_historical_rows(session, employee)
         for kind in (InboxKind.DICTIONARY_CHANGED, InboxKind.SUBMITTED):
             session.execute(
                 text(
@@ -466,6 +459,12 @@ def test_redraft_only_queues_pending_owner_and_matches_published_key(
         )
     )
     db.commit()
+    assert (
+        client.put(
+            f"{url}/drafting-settings", headers=auth["admin"], json={"enabled": True}
+        ).status_code
+        == 200
+    )
     definitions = exported(client, url, auth["admin"])
     preview = upload(client, url, auth["admin"], definitions)
     response = client.post(
@@ -545,9 +544,7 @@ def test_redraft_only_queues_pending_owner_and_matches_published_key(
     def draft(_records: object, capabilities: list, _config: object) -> tuple:
         seen.append([c.key for c in capabilities])
         if len(seen) == 1:
-            for definition in definitions:
-                if definition["key"] == "automated_testing":
-                    definition["ai_inference"] = False
+            definitions[:] = [d for d in definitions if d["key"] != "automated_testing"]
             assert (
                 save(
                     client,
@@ -617,7 +614,7 @@ def test_removing_all_items_keeps_request_and_failed_redraft_rolls_back(
             "redraft": True,
         },
     )
-    assert failed.status_code == 409
+    assert failed.status_code == 422
     assert (
         client.get(f"{url}/capabilities", headers=auth["admin"]).json()[
             "schema_version"
@@ -636,7 +633,7 @@ def test_removing_all_items_keeps_request_and_failed_redraft_rolls_back(
     assert empty["revision"] == initial["revision"] + 1
 
 
-def test_web_editor_exclusions_and_conflicts(demo: tuple, client: TestClient) -> None:
+def test_web_editor_changes_and_conflicts(demo: tuple, client: TestClient) -> None:
     url, _, auth = demo
     endpoint = f"{url}/capabilities"
     current = client.get(f"{endpoint}/editor", headers=auth["admin"]).json()
@@ -646,44 +643,66 @@ def test_web_editor_exclusions_and_conflicts(demo: tuple, client: TestClient) ->
     }
     definition = body["definitions"][0]
     key = definition["key"]
-    definition["ai_inference"] = False
+    definition["description"] += "合成修改"
     preview = client.post(
         f"{endpoint}/editor/preview", headers=auth["admin"], json=body
     )
     assert preview.status_code == 200 and key in preview.json()["modified"]
     assert client.put(endpoint, headers=auth["admin"], json=body).status_code == 200
-    settings = client.get(f"{url}/drafting-settings", headers=auth["admin"]).json()
-    assert key in settings["excluded_capability_keys"]
     conflict = client.post(
         f"{endpoint}/editor/preview", headers=auth["admin"], json=body
     )
     assert conflict.status_code == 409
     assert conflict.json()["detail"] == "词典已被别人修改，请刷新"
-    body["expected_version"] += 1
-    definition["ai_inference"] = True
-    preview = client.post(
-        f"{endpoint}/editor/preview", headers=auth["admin"], json=body
-    )
-    assert key in preview.json()["modified"]
-    assert client.put(endpoint, headers=auth["admin"], json=body).status_code == 200
-    settings = client.get(f"{url}/drafting-settings", headers=auth["admin"]).json()
-    assert key not in settings["excluded_capability_keys"]
-    # The existing settings page and the editor read the same exclusions.
-    assert (
-        client.put(
-            f"{url}/drafting-settings",
-            headers=auth["admin"],
-            json={
-                "excluded_capability_keys": [key],
-                "disabled_department_ids": settings["disabled_department_ids"],
-            },
-        ).status_code
-        == 200
-    )
-    current = client.get(f"{endpoint}/editor", headers=auth["admin"]).json()
-    assert current["definitions"][0]["ai_inference"] is False
-    body = {
-        "definitions": current["definitions"] * 2,
-        "expected_version": current["expected_version"],
+    assert client.get(f"{url}/drafting-settings", headers=auth["admin"]).json() == {
+        "enabled": False
     }
+    body["expected_version"] += 1
+    body["definitions"] *= 2
     assert client.put(endpoint, headers=auth["admin"], json=body).status_code == 422
+
+
+@pytest.mark.parametrize("format", ["yaml", "AI 起草", "允许 AI 推断"])
+def test_legacy_ai_column_is_warning(
+    demo: tuple, client: TestClient, format: str
+) -> None:
+    url, _, auth = demo
+    definitions = exported(client, url, auth["admin"])
+    if format == "yaml":
+        content = yaml.safe_dump(
+            [{**d, "ai_inference": "ignored old value"} for d in definitions]
+        ).encode()
+        filename = "legacy.yaml"
+    else:
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.append((*HEADERS, format))
+        d = definitions[0]
+        for level in d["level_rubric"]["levels"]:
+            sheet.append(
+                (
+                    d["key"],
+                    d["name"],
+                    d["category"],
+                    d["description"],
+                    level["key"],
+                    level["label"],
+                    level["description"],
+                    "=1+1",
+                )
+            )
+        buffer = BytesIO()
+        workbook.save(buffer)
+        content, filename = buffer.getvalue(), "legacy.xlsx"
+    preview = client.post(
+        f"{url}/capabilities/preview",
+        headers=auth["admin"],
+        files={"file": (filename, content)},
+    ).json()
+    assert preview["errors"] == []
+    assert preview["warnings"] == ["AI 起草列已不再使用，已忽略"]
+    assert all("ai_inference" not in d for d in preview["definitions"])
+    assert save(client, url, auth["admin"], preview).status_code == 200
+    assert client.get(f"{url}/drafting-settings", headers=auth["admin"]).json() == {
+        "enabled": False
+    }

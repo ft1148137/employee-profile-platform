@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import JsonValue
 from sqlalchemy import CheckConstraint, Column, DateTime, Index, UniqueConstraint, text
@@ -12,6 +12,9 @@ from app.domains.base import Record, TenantRecord, enum_type, tenant_fk, utc_now
 
 if TYPE_CHECKING:
     from app.models import User
+
+
+EmployeeField = Literal["job_family", "work_location", "hire_date"]
 
 
 class EmploymentStatus(StrEnum):
@@ -28,6 +31,10 @@ class Organization(Record, table=True):
     __tablename__ = "organization"
     slug: str = Field(unique=True)
     name: str
+    employee_fields: list[EmployeeField] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, server_default=text("'[]'::jsonb")),
+    )
     roster_revision: int = Field(default=0, sa_column_kwargs={"server_default": "0"})
 
 
@@ -43,9 +50,6 @@ class Department(TenantRecord, table=True):
             postgresql_nulls_not_distinct=True,
         ),
         tenant_fk("parent_department_id", "department"),
-    )
-    auto_draft_disabled: bool = Field(
-        default=False, sa_column_kwargs={"server_default": "false"}
     )
     name: str
     parent_department_id: uuid.UUID | None = None
@@ -66,6 +70,9 @@ class Employee(TenantRecord, table=True):
     display_name: str
     title: str | None = None
     work_email: str | None = None
+    job_family: str | None = Field(default=None, max_length=50)
+    work_location: str | None = Field(default=None, max_length=50)
+    hire_date: date | None = None
     employment_status: EmploymentStatus = Field(
         default=EmploymentStatus.ACTIVE, sa_type=enum_type(EmploymentStatus)
     )

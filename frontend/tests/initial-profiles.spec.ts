@@ -7,7 +7,7 @@ import type {
   SetupPublic,
 } from "../src/client"
 import { expectChineseCopy } from "./utils/copy"
-import { expect, test } from "./utils/model"
+import { enableAutoDrafting, expect, test } from "./utils/model"
 import { logInUser, logOutUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -140,6 +140,14 @@ test("employee reviews initial profile and updates on desktop and mobile", async
           base_url: modelUrl,
           api_key: "synthetic-key",
         },
+      })
+    ).ok(),
+  ).toBeTruthy()
+  expect(
+    (
+      await request.put(`${base}/drafting-settings`, {
+        headers,
+        data: { enabled: true },
       })
     ).ok(),
   ).toBeTruthy()
@@ -438,11 +446,11 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
     `预计 ${resumeAt} 自动继续`,
   )
   await expect(
-    page.getByText("3 名员工不自动起草", { exact: false }),
+    page.getByText("3 名员工本人选择不参与自动起草", { exact: false }),
   ).toBeVisible()
   await expect(
-    page.getByRole("link", { name: "自动起草设置", exact: true }).last(),
-  ).toHaveAttribute("href", "/admin/drafting")
+    page.getByText("可由员工在个人设置里修改", { exact: false }),
+  ).toBeVisible()
   await expect(page.getByText("合成员工：起草失败，请重试")).toBeVisible()
   for (const error of modelErrors) {
     await expect(page.getByText(error, { exact: false })).toBeVisible()
@@ -450,6 +458,8 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
   await expect(page.getByText("合成工作记录.csv")).toBeVisible()
   await expect(page.getByText("新增证据：8", { exact: true })).toBeVisible()
   await expectChineseCopy(page, ["ChatGPT"])
+  await enableAutoDrafting(page)
+  await page.reload()
   await page.route("**/initial-profiles/draft", (route) =>
     route.fulfill({ status: 202, json: { queued: 1 } }),
   )

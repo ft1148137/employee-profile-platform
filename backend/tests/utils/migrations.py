@@ -8,8 +8,9 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from psycopg import sql
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine, MetaData, Table, create_engine, inspect
 from sqlalchemy.engine import URL
+from sqlmodel import Session, SQLModel
 
 MIGRATION_TEMPLATE = pytest.StashKey[str]()
 
@@ -51,3 +52,22 @@ def migrate(
             command.upgrade(config, revision)
         else:
             command.downgrade(config, revision)
+
+
+def insert_historical_rows(session: Session, *rows: SQLModel) -> None:
+    """Seed an older migration using only columns that existed at that revision."""
+    for row in rows:
+        table = Table(
+            inspect(type(row)).local_table.name,
+            MetaData(),
+            autoload_with=session.connection(),
+        )
+        session.execute(
+            table.insert().values(
+                {
+                    key: value
+                    for key, value in row.model_dump().items()
+                    if key in table.c
+                }
+            )
+        )

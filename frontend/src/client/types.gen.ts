@@ -402,9 +402,9 @@ export type AutoDraftPublic = {
      */
     enabled: boolean;
     /**
-     * Department Disabled
+     * Org Disabled
      */
-    department_disabled: boolean;
+    org_disabled: boolean;
 };
 
 /**
@@ -1416,10 +1416,6 @@ export type DictionaryDefinition = {
      */
     description: string;
     level_rubric: DictionaryRubric;
-    /**
-     * Ai Inference
-     */
-    ai_inference?: boolean;
 };
 
 /**
@@ -1480,6 +1476,10 @@ export type DictionaryPreview = {
      * Errors
      */
     errors: Array<string>;
+    /**
+     * Warnings
+     */
+    warnings?: Array<string>;
 };
 
 /**
@@ -1561,25 +1561,9 @@ export type DraftQueued = {
  */
 export type DraftingSettingsPublic = {
     /**
-     * Excluded Capability Keys
+     * Enabled
      */
-    excluded_capability_keys: Array<string>;
-    /**
-     * Disabled Department Ids
-     */
-    disabled_department_ids: Array<string>;
-    /**
-     * Excluded Employee Count
-     */
-    excluded_employee_count: number;
-    /**
-     * Opted Out Count
-     */
-    opted_out_count: number;
-    /**
-     * Updated At
-     */
-    updated_at: string | null;
+    enabled: boolean;
 };
 
 /**
@@ -1587,19 +1571,27 @@ export type DraftingSettingsPublic = {
  */
 export type DraftingSettingsUpdate = {
     /**
-     * Excluded Capability Keys
+     * Enabled
      */
-    excluded_capability_keys: Array<string>;
-    /**
-     * Disabled Department Ids
-     */
-    disabled_department_ids: Array<string>;
+    enabled: boolean;
 };
 
 /**
  * EmployeeAccount
  */
 export type EmployeeAccount = {
+    /**
+     * Job Family
+     */
+    job_family?: string | null;
+    /**
+     * Work Location
+     */
+    work_location?: string | null;
+    /**
+     * Hire Date
+     */
+    hire_date?: string | null;
     /**
      * Id
      */
@@ -1657,6 +1649,16 @@ export type EmployeeChange = {
      * Fields
      */
     fields?: Array<FieldChange>;
+};
+
+/**
+ * EmployeeFields
+ */
+export type EmployeeFields = {
+    /**
+     * Fields
+     */
+    fields: Array<'job_family' | 'work_location' | 'hire_date'>;
 };
 
 /**
@@ -1930,7 +1932,7 @@ export type FieldChange = {
     /**
      * Field
      */
-    field: 'display_name' | 'title' | 'email' | 'department' | 'manager';
+    field: 'display_name' | 'title' | 'email' | 'department' | 'manager' | 'job_family' | 'work_location' | 'hire_date';
     /**
      * Before
      */
@@ -2860,6 +2862,10 @@ export type OrganizationPublic = {
      * Slug
      */
     slug: string;
+    /**
+     * Employee Fields
+     */
+    employee_fields?: Array<'job_family' | 'work_location' | 'hire_date'>;
 };
 
 /**
@@ -7630,6 +7636,36 @@ export type orgsReadDepartmentsResponses = {
 };
 
 export type orgsReadDepartmentsResponse = orgsReadDepartmentsResponses[keyof orgsReadDepartmentsResponses];
+
+export type orgsUpdateEmployeeFieldsData = {
+    body: EmployeeFields;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/employee-fields';
+};
+
+export type orgsUpdateEmployeeFieldsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type orgsUpdateEmployeeFieldsError = orgsUpdateEmployeeFieldsErrors[keyof orgsUpdateEmployeeFieldsErrors];
+
+export type orgsUpdateEmployeeFieldsResponses = {
+    /**
+     * Successful Response
+     */
+    200: EmployeeFields;
+};
+
+export type orgsUpdateEmployeeFieldsResponse = orgsUpdateEmployeeFieldsResponses[keyof orgsUpdateEmployeeFieldsResponses];
 
 export type setupReadSetupData = {
     body?: never;

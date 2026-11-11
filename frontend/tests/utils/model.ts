@@ -12,7 +12,6 @@ export const dictionaryDefinitions = [
     name: "合成能力",
     category: "工程",
     description: "合成能力说明",
-    ai_inference: true,
     level_rubric: {
       levels: [{ key: "basic", label: "基础", description: "在指导下完成" }],
     },
@@ -132,9 +131,9 @@ export const test = base.extend<{ modelUrl: string }>({
                                           )
                                         ? "offboard_employees"
                                         : JSON.stringify(last).includes(
-                                              "关闭部门自动起草",
+                                              "打开自动起草",
                                             )
-                                          ? "update_drafting_settings"
+                                          ? "set_auto_drafting"
                                           : JSON.stringify(last).includes(
                                                 "关闭经理确认",
                                               )
@@ -163,15 +162,10 @@ export const test = base.extend<{ modelUrl: string }>({
                                             ],
                                           }
                                         : JSON.stringify(last).includes(
-                                              "关闭部门自动起草",
+                                              "打开自动起草",
                                             )
                                           ? {
-                                              excluded_capability_keys: [],
-                                              disabled_department_ids: [
-                                                JSON.stringify(last).match(
-                                                  /[0-9a-f]{8}-[0-9a-f-]{27,}/,
-                                                )?.[0],
-                                              ],
+                                              enabled: true,
                                             }
                                           : JSON.stringify(last).includes(
                                                 "关闭经理确认",
@@ -378,4 +372,25 @@ export async function configureModel(page: Page, modelUrl: string) {
   await expect(
     page.getByText("模型设置已保存。", { exact: true }),
   ).toBeVisible()
+  await enableAutoDrafting(page)
+}
+
+export async function enableAutoDrafting(page: Page) {
+  const token = await page.evaluate(() => localStorage.getItem("access_token"))
+  const headers = { Authorization: `Bearer ${token}` }
+  const memberships = await (
+    await page.request.get("/api/v1/me/memberships", { headers })
+  ).json()
+  const current = await page.evaluate(() =>
+    localStorage.getItem("current_org_id"),
+  )
+  const orgId = current ?? memberships[0].org.id
+  expect(
+    (
+      await page.request.put(`/api/v1/orgs/${orgId}/drafting-settings`, {
+        headers,
+        data: { enabled: true },
+      })
+    ).ok(),
+  ).toBeTruthy()
 }

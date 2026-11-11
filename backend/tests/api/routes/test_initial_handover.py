@@ -14,12 +14,9 @@ from app.domains.change_request.models import (
     RequestStatus,
 )
 from app.domains.inbox.models import InboxItem
-from app.domains.org.models import Department
 
 
-@pytest.mark.parametrize(
-    "case", ["eligible", "13_days", "empty", "opted_out", "department", "draft"]
-)
+@pytest.mark.parametrize("case", ["eligible", "13_days", "empty", "opted_out", "draft"])
 def test_handover_eligibility(
     demo: tuple, db: Session, client: TestClient, case: str
 ) -> None:
@@ -54,10 +51,6 @@ def test_handover_eligibility(
         )
     elif case == "opted_out":
         employee.auto_draft_opt_out = True
-    elif case == "department":
-        department = db.get(Department, employee.department_id)
-        assert department
-        department.auto_draft_disabled = True
     elif case == "draft":
         row.status = RequestStatus.DRAFT
     db.commit()

@@ -6,7 +6,7 @@ from sqlmodel import Session
 
 from app.domains.org.models import Organization, OrgMembership
 from app.models import User
-from tests.utils.migrations import migrate
+from tests.utils.migrations import insert_historical_rows, migrate
 
 
 def test_provider_migration_roundtrip(migration_engine: Engine) -> None:
@@ -40,7 +40,8 @@ def test_provider_migration_roundtrip(migration_engine: Engine) -> None:
             user = User(
                 username=f"pi-{uuid4()}@example.com", hashed_password="synthetic-unused"
             )
-            session.add_all([org, user])
+            insert_historical_rows(session, org)
+            session.add(user)
             session.flush()
             session.add(OrgMembership(org_id=org.id, user_id=user.id))
             session.flush()

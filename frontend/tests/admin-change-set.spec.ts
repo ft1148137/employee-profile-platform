@@ -274,7 +274,7 @@ for (const width of [1440, 390]) {
   })
 }
 
-test("department drafting change shows affected people and can be undone", async ({
+test("auto drafting switch shows affected people and can be undone", async ({
   page,
   request,
   modelUrl,
@@ -303,28 +303,24 @@ test("department drafting change shows affected people and can be undone", async
       })
     ).ok(),
   ).toBeTruthy()
-  const departments = await (
-    await request.get(`${base}/departments`, { headers })
-  ).json()
-  const departmentId = departments.data[0].id
   await logInUser(page, email, password)
   await page.goto("/admin/assistant")
   await page
     .getByRole("textbox", { name: "发给管理助手的消息" })
-    .fill(`关闭部门自动起草 ${departmentId}`)
+    .fill("打开自动起草")
   await page.getByRole("button", { name: "发送", exact: true }).click()
   const card = page.getByRole("region", { name: "设置改动确认卡" })
   await expect(card.getByText(/影响 1 人/)).toBeVisible({ timeout: 30000 })
   const read = async () =>
     (await (await request.get(`${base}/drafting-settings`, { headers })).json())
-      .disabled_department_ids
-  expect(await read()).toEqual([])
+      .enabled
+  expect(await read()).toBe(false)
   await card.getByRole("button", { name: "确认应用" }).click()
   await expect(card.getByRole("status")).toHaveText("已应用")
-  expect(await read()).toEqual([departmentId])
+  expect(await read()).toBe(true)
   await card.getByRole("button", { name: "撤销", exact: true }).click()
   await expect(card.getByRole("status")).toHaveText("已撤销")
-  expect(await read()).toEqual([])
+  expect(await read()).toBe(false)
 })
 
 test("closing manager confirmation requires two clicks with impact", async ({

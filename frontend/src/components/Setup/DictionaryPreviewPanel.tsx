@@ -31,6 +31,11 @@ export function DictionaryPreviewPanel({
           {label} {keys.length} 项：{keys.join("、") || "无"}
         </p>
       ))}
+      {preview.warnings?.map((message) => (
+        <p key={message} role="status" className="text-sm text-amber-700">
+          {message}
+        </p>
+      ))}
       {preview.errors.length > 0 && (
         <ul role="alert" className="space-y-2 text-destructive">
           {preview.errors.map((message, index) => (

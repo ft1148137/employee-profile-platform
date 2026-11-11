@@ -123,7 +123,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
             </label>
           </DraftField>
           <p className="text-sm text-muted-foreground">
-            打开后可根据工作记录起草画像并使用机器人；关闭后仍可在网页上填写或导入画像文件。
+            启用后模型可供自动起草和内置机器人使用；是否自动起草由企业总开关控制。关闭模型后仍可在网页上填写或导入画像文件。
           </p>
           {saved.kind &&
             saved.kind !== "chatgpt_subscription" &&

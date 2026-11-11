@@ -282,7 +282,7 @@ erDiagram
     }
 ```
 
-所有业务引用带租户复合外键。ExternalIdentity 的员工关联可空；账号关联后按已存 Task 重新推导证据，解除时撤销。部门/员工各存自动起草开关；敏感能力 key 放 DraftingSetting。ProfileClaim 只保留正式判断，审核进度从请求/争议/版本推算，不再存 review_status，见 [ADR-0009](adr/0009-profile-change-requests.md)。
+所有业务引用带租户复合外键。ExternalIdentity 的员工关联可空；账号关联后按已存 Task 重新推导证据，解除时撤销。企业自动起草总开关放 DraftingSetting（默认关闭），员工可独立选择不参与；起草使用全部部门与词典能力，见 [ADR-0036](adr/0036-auto-drafting-switch.md)。ProfileClaim 只保留正式判断，审核进度从请求/争议/版本推算，不再存 review_status，见 [ADR-0009](adr/0009-profile-change-requests.md)。
 
 ```mermaid
 flowchart LR
@@ -290,7 +290,7 @@ flowchart LR
     B --> C[Worker 按页写 Task/WorkEvent/外部账号]
     C --> D[提交计数与游标，失败按断点重试]
     D --> E[管理员确认对应，追加本人 Evidence]
-    E --> F[drafting_scope 过滤部门/员工/能力]
+    E --> F[企业总开关检查与 drafting_scope 过滤本人退出的员工]
     F --> G[经验编号合并，Pi 模型起草]
     G --> H[输出校验，支持证据重算统计]
     H --> I[pending_owner 请求，员工过目与编辑]

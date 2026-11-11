@@ -394,8 +394,9 @@ def _upload_other(
             )
         preview.warnings = preview.warnings[:20]
     else:
-        definitions, errors = parse_dictionary(content, filename)
-        dictionary = preview_version(db, p, definitions, errors)
+        definitions, errors, warnings = parse_dictionary(content, filename)
+        dictionary = preview_version(db, p, definitions, errors, warnings=warnings)
+        preview.warnings = [FileError(location="", message=w) for w in warnings]
         preview.counts = {
             "能力条数": len(definitions),
             "新增": len(dictionary.added),

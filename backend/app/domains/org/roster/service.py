@@ -11,6 +11,7 @@ from app.authz.principal import Principal
 from app.domains.account.service import lock_org
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
+from app.domains.org.employee_fields import FIELD_LABELS
 from app.domains.org.models import (
     Department,
     Employee,
@@ -75,7 +76,7 @@ def create_import(
         roster = parse_roster(content, "人员变动.csv")
         roster.rows.extend(preserved)
     else:
-        roster = parse_roster(content, filename)
+        roster = parse_roster(content, filename, org.employee_fields)
     diff = (
         RosterDiff(
             summary=dict.fromkeys(
@@ -231,6 +232,9 @@ def apply_import(
             employee.title = row.title
         if "邮箱" in columns:
             employee.work_email = row.email
+        for field, label in FIELD_LABELS.items():
+            if label in columns:
+                setattr(employee, field, getattr(row, field))
         session.add(employee)
         account = accounts.get(employee.id)
         if account:

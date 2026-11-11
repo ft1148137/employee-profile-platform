@@ -63,9 +63,9 @@ from tests.domains.test_bot_core import enable
             {"owner_review_days": 60},
         ),
         (
-            "update_drafting_settings",
-            {"excluded_capability_keys": ["python"], "disabled_department_ids": []},
-            {"excluded_capability_keys": []},
+            "set_auto_drafting",
+            {"enabled": True},
+            {"enabled": False},
         ),
         (
             "update_jira_connection",
@@ -85,12 +85,6 @@ def test_partial_settings_preserve_other_fields(
     monkeypatch.setattr(model, "validate_capabilities", lambda *_: None)
     p = principal(db, demo)
     entry = registry.FUNCTIONS[name]
-    if name == "update_drafting_settings":
-        from app.domains.capability.service import read_editor
-
-        initial = initial | {
-            "excluded_capability_keys": [read_editor(db, p).definitions[0].key]
-        }
     values = initial | dict.fromkeys(entry.secret_fields, "synthetic-old-key")
     if name == "update_im_setting":
         im.save_setting(

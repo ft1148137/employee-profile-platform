@@ -109,7 +109,7 @@ def test_single_source(
     assert any(q.kind == "single_source" for q in questions(db, employee)) == expected
 
 
-def test_sensitive_capabilities_and_record_title(
+def test_all_capabilities_and_record_title(
     reminder_claim: tuple[Employee, ProfileClaim],
     demo: tuple,
     db: Session,
@@ -117,7 +117,6 @@ def test_sensitive_capabilities_and_record_title(
 ) -> None:
     employee, claim = reminder_claim
     base, _, auth = demo
-    capability = db.get(CapabilityDefinition, claim.capability_definition_id)
     now = utc_now()
     for ref, linked in [("LINKED-1", True), ("UNLINKED-1", False)]:
         evidence, _ = append_evidence(
@@ -147,18 +146,19 @@ def test_sensitive_capabilities_and_record_title(
         client.put(
             base + "/drafting-settings",
             headers=auth["admin"],
-            json={
-                "excluded_capability_keys": [capability.key],
-                "disabled_department_ids": [],
-            },
+            json={"enabled": False},
         ).status_code
         == 200
     )
     reminders.generate_questions(db, employee, now, 24, months_before(now, 3))
     db.commit()
     rows = questions(db, employee)
-    assert [q.kind for q in rows] == ["record", "general"]
-    assert rows[0].question == "「合成项目迁移」（UNLINKED-1）里你负责的是哪部分？"
+    assert [q.kind for q in rows] == ["conflict", "stale"]
+    reminders.generate_questions(db, employee, now, 24, months_before(now, 3))
+    db.commit()
+    rows = questions(db, employee)
+    assert [q.kind for q in rows] == ["conflict", "stale", "single_source", "record"]
+    assert rows[3].question == "「合成项目迁移」（UNLINKED-1）里你负责的是哪部分？"
 
 
 def test_evidence_loaded_once(

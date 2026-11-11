@@ -72,7 +72,6 @@ def generate_questions(
             )
         ).all()
     }
-    excluded_keys = drafting_scope(session, org_id).excluded_capability_keys
     evidence_by_claim: dict[UUID, list[tuple[ClaimEvidence, Evidence]]] = {}
     for link, evidence in session.exec(
         select(ClaimEvidence, Evidence)
@@ -93,8 +92,6 @@ def generate_questions(
         links = evidence_by_claim.get(claim.id, [])
         referenced.update(e.id for _, e in links)
         capability = capabilities[claim.capability_definition_id]
-        if capability.key in excluded_keys:
-            continue
         active = [(link, e) for link, e in links if e.status == EvidenceStatus.ACTIVE]
         name = capability.name
         latest = max((e.occurred_at for _, e in active if e.occurred_at), default=None)

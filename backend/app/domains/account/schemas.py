@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal, Self
 from uuid import UUID
 
@@ -44,6 +44,9 @@ class AccountPublic(BaseModel):
 
 
 class EmployeeAccount(BaseModel):
+    job_family: str | None = None
+    work_location: str | None = None
+    hire_date: date | None = None
     id: UUID
     employee_code: str | None
     display_name: str
