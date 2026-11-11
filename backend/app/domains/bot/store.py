@@ -102,7 +102,7 @@ def list_sessions(
         .order_by(
             col(session_type.last_activity_at).desc(), col(session_type.id).desc()
         )
-        .limit(20)
+        .limit(50)
     ).all()
     return SessionList(
         retention_days=days,

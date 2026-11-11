@@ -1,4 +1,5 @@
 import type { APIRequestContext } from "@playwright/test"
+import { openAdminAssistant, returnToManualPage } from "./utils/adminAssistant"
 import { expectChineseCopy } from "./utils/copy"
 import { expect, jiraTestUrl, test } from "./utils/model"
 import { logInUser } from "./utils/user"
@@ -122,8 +123,8 @@ test("Jira draft accepts a private token, tests it and highlights the source pag
   const { email, password, base, headers } = await createOrg(request, modelUrl)
   await logInUser(page, email, password)
   await page.goto("/admin/data-ai?tab=sources")
-  await page.getByRole("button", { name: "打开管理助手" }).click()
-  const dialog = page.getByRole("dialog")
+  await openAdminAssistant(page)
+  const dialog = page.getByRole("region", { name: "管理助手", exact: true })
   await dialog
     .getByRole("textbox", { name: "发给管理助手的消息" })
     .fill("修改 Jira 站点")
@@ -142,7 +143,7 @@ test("Jira draft accepts a private token, tests it and highlights the source pag
     (await (await request.get(`${base}/sources/jira`, { headers })).json())
       .configured,
   ).toBe(false)
-  await page.keyboard.press("Escape")
+  await returnToManualPage(page)
   const section = page.getByRole("region", { name: "Jira 连接" })
   await expect(section.getByLabel("站点地址")).toHaveValue(jiraTestUrl)
   await expect(
@@ -186,8 +187,8 @@ for (const width of [1440, 390]) {
     await logInUser(page, email, password)
     await page.setViewportSize({ width, height: 900 })
     await page.goto("/admin/rules?tab=reminders")
-    await page.getByRole("button", { name: "打开管理助手" }).click()
-    const dialog = page.getByRole("dialog")
+    await openAdminAssistant(page)
+    const dialog = page.getByRole("region", { name: "管理助手", exact: true })
     await dialog
       .getByRole("textbox", { name: "发给管理助手的消息" })
       .fill("把提醒改成每年一次，证据期限改为36个月")
@@ -221,12 +222,12 @@ for (const width of [1440, 390]) {
       path: testInfo.outputPath(`change-undone-${width}.png`),
     })
     await page.reload()
-    await page.getByRole("button", { name: "打开管理助手" }).click()
+    await openAdminAssistant(page)
     await expect(
       page.getByRole("region", { name: "设置改动确认卡" }).getByRole("status"),
     ).toHaveText("已撤销")
-    await page.getByRole("link", { name: "全屏打开", exact: true }).click()
-    await expect(page).toHaveURL("/admin/assistant")
+    await page.reload()
+    await expect(page).toHaveURL(/\/admin\/assistant\?session=/)
     await expect(
       page.getByRole("region", { name: "设置改动确认卡" }).getByRole("status"),
     ).toHaveText("已撤销")
@@ -364,8 +365,8 @@ test("Feishu draft keeps credentials private and requires a second confirmation"
   const { email, password, base, headers } = await createOrg(request, modelUrl)
   await logInUser(page, email, password)
   await page.goto("/admin/connections?tab=im")
-  await page.getByRole("button", { name: "打开管理助手" }).click()
-  const dialog = page.getByRole("dialog")
+  await openAdminAssistant(page)
+  const dialog = page.getByRole("region", { name: "管理助手", exact: true })
   await dialog
     .getByRole("textbox", { name: "发给管理助手的消息" })
     .fill("连接飞书")
@@ -387,7 +388,7 @@ test("Feishu draft keeps credentials private and requires a second confirmation"
   const card = dialog.getByRole("region", { name: "设置改动确认卡" })
   await card.getByRole("button", { name: "测试连接" }).click()
   await expect(card.getByText("测试连接：成功", { exact: true })).toBeVisible()
-  await page.keyboard.press("Escape")
+  await returnToManualPage(page)
   const form = page.getByRole("form", { name: "飞书", exact: true })
   await expect(form.getByRole("checkbox", { name: "启用入口" })).toBeChecked()
   await expect(form.locator('[data-assistant-suggested="true"]')).toHaveCount(2)
