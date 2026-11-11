@@ -48,14 +48,33 @@ def fake_pi(monkeypatch: pytest.MonkeyPatch) -> Generator[Event]:
             if self.path != "/v1/turns":
                 self.wfile.write(b"{}")
                 return
+            admin = any(t["name"] == "admin_read" for t in body["tools"])
+            drafting = admin and body["input"] == "停止"
+            tool = {
+                "type": "tool_call",
+                "name": "propose_changes"
+                if drafting
+                else "admin_read"
+                if admin
+                else "get_my_profile",
+                "arguments": {
+                    "items": [
+                        {
+                            "function": "update_update_settings",
+                            "args": {"reminder_schedule": "yearly"},
+                        }
+                    ]
+                }
+                if drafting
+                else {"function": "list_roles", "args": {}}
+                if admin
+                else {},
+                "call_id": "test",
+            }
             events = [
+                *([tool] if drafting else []),
                 {"type": "text", "text": "第一段"},
-                {
-                    "type": "tool_call",
-                    "name": "get_my_profile",
-                    "arguments": {},
-                    "call_id": "test",
-                },
+                *([] if drafting else [tool]),
                 {"type": "text", "text": "第二段"},
                 {"type": "text", "text": "第三段"},
                 {
@@ -66,10 +85,10 @@ def fake_pi(monkeypatch: pytest.MonkeyPatch) -> Generator[Event]:
                     "session_state": {"version": 1, "messages": []},
                 },
             ]
-            for index, event in enumerate(events):
+            for event in events:
                 self.wfile.write((json.dumps(event) + "\n").encode())
                 self.wfile.flush()
-                if index == 0 and body["input"] == "停止":
+                if event["type"] == "text" and body["input"] == "停止":
                     assert cancelled.wait(5), "Pi never received cancellation"
                     return
 

@@ -12,6 +12,7 @@ from sqlmodel import Session, select
 
 from app.authz.deps import get_org_principal
 from app.core.db import engine
+from app.domains.admin_assistant import core
 from app.domains.admin_assistant.models import AdminChangeSet
 from app.domains.audit.models import ActorKind, AuditEvent
 from app.domains.bot.admission import BotDraftingPriority
@@ -89,17 +90,6 @@ def test_runner_detects_hard_failure(
                     )
                 )
                 db.commit()
-        elif fault == "unconfirmed":
-            with Session(engine) as db:
-                org = db.get(Organization, self.context["org"])
-                user = db.exec(
-                    select(User).where(User.username == f"{org.slug}@example.com")
-                ).one()
-                save_update_settings(
-                    db,
-                    get_org_principal(org.id, user, db),
-                    UpdateSettingsInput(reminder_schedule="yearly"),
-                )
         elif fault in ("leaks", "unauthorized"):
             result.session_state["messages"].append(
                 {
@@ -108,6 +98,26 @@ def test_runner_detects_hard_failure(
                 }
             )
         return result
+
+    # Streaming retains message foreign-key locks until the turn commits.
+    if fault == "unconfirmed":
+        original_turn = core.turn
+
+        def unconfirmed(*args: Any, **kwargs: Any) -> Any:
+            result = original_turn(*args, **kwargs)
+            with Session(engine) as db:
+                org = db.get(Organization, args[1].org_id)
+                user = db.exec(
+                    select(User).where(User.username == f"{org.slug}@example.com")
+                ).one()
+                save_update_settings(
+                    db,
+                    get_org_principal(org.id, user, db),
+                    UpdateSettingsInput(reminder_schedule="yearly"),
+                )
+            return result
+
+        monkeypatch.setattr(core, "turn", unconfirmed)
 
     monkeypatch.setattr(Run, "wrap_turn", inject)
     if fault == "items":

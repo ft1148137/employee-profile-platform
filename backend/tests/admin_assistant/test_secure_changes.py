@@ -22,6 +22,7 @@ from app.domains.org.models import OrgMembership, Role, RoleGrant
 from app.domains.review.policy import PolicyInput, policy_view, read_policy, save_policy
 from tests.admin_assistant.test_registry import principal
 from tests.domains.test_bot_core import enable
+from tests.utils.bot import final_response
 from tests.utils.migrations import migrate
 
 
@@ -364,7 +365,7 @@ def test_pasted_secret_never_saved_or_sent(
         json={"text": f"这是我的密钥{canary}", "page": "/admin"},
     )
     assert response.status_code == 200 and canary not in response.text
-    assert response.json()["messages"][0]["text"] == "请用安全输入框填写"
+    assert final_response(response)["messages"][0]["text"] == "请用安全输入框填写"
     session = store.get_session(db, p, sid)
     assert session.state_ciphertext is None
     assert messages.messages_for(db, session) == []

@@ -1,9 +1,11 @@
 import json
 import logging
 import re
+from dataclasses import replace
 from time import monotonic
 from uuid import UUID
 
+from pydantic import JsonValue
 from sqlmodel import Session
 
 from app.authz.principal import Principal
@@ -65,7 +67,12 @@ def availability(db: Session, principal: Principal) -> Availability:
 
 
 def turn(
-    db: Session, principal: Principal, session_id: UUID, body: AdminTurnInput
+    db: Session,
+    principal: Principal,
+    session_id: UUID,
+    body: AdminTurnInput,
+    *,
+    stream: pi_client.TurnStream | None = None,
 ) -> AdminTurnResponse:
     row = store.get_session(db, principal, session_id)
     if looks_like_secret(body.text):
@@ -78,8 +85,40 @@ def turn(
     cards: list[
         LinkCard | TableCard | ChangeSetCard | SecretInputCard | FileUploadCard
     ] = []
+
+    def call(name: str, args: dict[str, JsonValue]) -> JsonValue:
+        title = tools.title(name, args)
+        if stream:
+            stream.check()
+            stream.on_tool(title, "start", True)
+        try:
+            result = tools.call(db, principal, cards, name, args, session_id=row.id)
+        except Exception:
+            if stream:
+                stream.on_tool(title, "end", False)
+            raise
+        if stream:
+            data = result.get("data") if isinstance(result, dict) else None
+            stream.on_tool(
+                title,
+                "end",
+                not (
+                    isinstance(result, dict)
+                    and (
+                        "error" in result or isinstance(data, dict) and "error" in data
+                    )
+                ),
+            )
+        return result
+
     try:
-        with begin_turn(db, principal, row, body.model_dump(mode="json")):
+        with begin_turn(
+            db,
+            principal,
+            row,
+            body.model_dump(mode="json"),
+            stream.cancelled if stream else None,
+        ):
             admitted = True
             result = pi_client.run_turn(
                 model_config(read_setting(db, principal.org_id)),
@@ -90,10 +129,12 @@ def turn(
                 + json.dumps(files.model_context(db, row), ensure_ascii=False),
                 input=body.text,
                 tools=tools.definitions(),
-                on_tool_call=lambda name, args: tools.call(
-                    db, principal, cards, name, args, session_id=row.id
-                ),
+                on_tool_call=call,
+                # Titles need tool arguments, which stay inside the worker callback.
+                stream=replace(stream, on_tool=lambda *_: None) if stream else None,
             )
+            if stream:
+                stream.check()
             if result.stop_reason != "stop":
                 raise ModelUnavailable()
             messages.save_state(db, row, result.session_state)
@@ -104,6 +145,8 @@ def turn(
                 db, row, "assistant", response.model_dump(mode="json")
             )
             return response
+    except pi_client.TurnCancelled:
+        return AdminTurnResponse(messages=[])
     except BotDraftingPriority:
         text = DRAFTING_REASON
     except BotBusy:
@@ -129,8 +172,17 @@ def turn(
         elif isinstance(card, ChangeSetCard) and card.change_set.items:
             page = registry.FUNCTIONS[card.change_set.items[-1].function].page
     response = _fallback(text, page)
+    if stream and stream.cancelled.is_set():
+        db.rollback()
+        return AdminTurnResponse(messages=[])
     if admitted:
+        if stream:
+            row.turn_count += 1
+            messages.append_message(db, row, "user", body.model_dump(mode="json"))
         messages.append_message(db, row, "assistant", response.model_dump(mode="json"))
+        if stream and stream.cancelled.is_set():
+            db.rollback()
+            return AdminTurnResponse(messages=[])
         db.commit()
     return response
 

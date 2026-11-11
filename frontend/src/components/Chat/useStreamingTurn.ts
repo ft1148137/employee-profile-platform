@@ -1,12 +1,16 @@
 import { useMutation } from "@tanstack/react-query"
 import { AxiosError, AxiosHeaders } from "axios"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { TextEvent, ToolEvent } from "@/client"
 
 export type ToolProgress = ToolEvent
 
-export function useStreamingTurn<Input, Response>(url: string) {
+export function useStreamingTurn<Input, Response>(
+  url: string,
+  resolveUrl?: (signal: AbortSignal) => Promise<string>,
+) {
   const controller = useRef<AbortController | null>(null)
+  const stop = useCallback(() => controller.current?.abort(), [])
   const [text, setText] = useState("")
   const [tools, setTools] = useState<ToolProgress[]>([])
   const [stopped, setStopped] = useState(false)
@@ -25,8 +29,10 @@ export function useStreamingTurn<Input, Response>(url: string) {
       setTools([])
       setStopped(false)
       try {
+        const target = resolveUrl ? await resolveUrl(abort.signal) : url
+        if (abort.signal.aborted) return undefined
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL ?? ""}${url}`,
+          `${import.meta.env.VITE_API_URL ?? ""}${target}`,
           {
             method: "POST",
             headers: {
@@ -105,6 +111,6 @@ export function useStreamingTurn<Input, Response>(url: string) {
     text,
     tools,
     stopped,
-    stop: () => controller.current?.abort(),
+    stop,
   }
 }

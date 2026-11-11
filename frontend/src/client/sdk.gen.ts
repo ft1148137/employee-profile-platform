@@ -60,7 +60,7 @@ export class AdminAssistantService {
      */
     public static assistantTurn<ThrowOnError extends boolean = true>(options: Options<adminAssistantTurnData, ThrowOnError>) {
         return (options.client ?? client).post<adminAssistantTurnResponses, adminAssistantTurnErrors, ThrowOnError>({
-            responseType: 'json',
+            responseType: 'blob',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/admin-assistant/sessions/{session_id}/turns',
             ...options,

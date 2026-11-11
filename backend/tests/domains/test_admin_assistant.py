@@ -32,6 +32,7 @@ from app.models import User
 from app.worker.tasks import draft_initial
 from tests.api.routes.test_employee_requests import principal_for
 from tests.domains.test_bot_core import enable
+from tests.utils.bot import final_response
 from tests.utils.migrations import migrate
 
 
@@ -109,9 +110,9 @@ def test_turn_and_private_sessions(
     )
     assert (
         "配置模型"
-        in client.post(
-            url + "/turns", headers=auth["admin"], params=query, json=body
-        ).json()["messages"][0]["text"]
+        in final_response(
+            client.post(url + "/turns", headers=auth["admin"], params=query, json=body)
+        )["messages"][0]["text"]
     )
     enable(db, org_id)
     expected = client.get(base + "/admin/overview", headers=auth["admin"]).json()
@@ -145,14 +146,14 @@ def test_turn_and_private_sessions(
         url + "/turns", headers=auth["admin"], params=query, json=body
     )
     assert response.status_code == 200
-    assert response.json()["messages"][1] == {
+    assert final_response(response)["messages"][1] == {
         "type": "link",
         "title": "打开管理首页",
         "page": "/admin",
     }
     history = client.get(url + "/messages", headers=auth["admin"], params=query).json()
     assert history[0]["payload"] == body
-    assert history[1]["payload"] == response.json()
+    assert history[1]["payload"] == final_response(response)
     assert (
         body["text"]
         not in db.exec(

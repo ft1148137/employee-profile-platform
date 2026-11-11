@@ -496,7 +496,7 @@ class Run:
             response = client.request(
                 method, path, headers=headers, params=params, **kwargs
             )
-            if self.task.entry == "employee_bot" and path.endswith("/turns"):
+            if response.status_code == 200 and path.endswith("/turns"):
                 final = json.loads(response.text.splitlines()[-1])
                 assert final["type"] == "final", "Missing final turn response"
                 output = final["response"]
