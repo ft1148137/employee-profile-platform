@@ -35,6 +35,7 @@ from app.domains.base import utc_now
 from app.domains.change_request.models import ReviewVia
 from app.domains.employee_tools import EMPLOYEE_TOOLS
 from app.domains.manager_tools import MANAGER_TOOLS
+from app.domains.org.employee_fields import FIELD_LABELS
 from app.mcp.oauth import resource_url
 
 TOOLS = {tool.name: tool for tool in (*EMPLOYEE_TOOLS, *MANAGER_TOOLS)}
@@ -90,7 +91,12 @@ def invoke(
                 arguments.update(via=ReviewVia.MCP, client_name=client_name)
             result = tool.handler(principal=principal, session=session, **arguments)
             session.commit()
-            data = result.model_dump(mode="json")
+            data = result.model_dump(
+                mode="json",
+                exclude={"employee": {str(f) for f in FIELD_LABELS}}
+                if tool.name == "get_my_profile"
+                else None,
+            )
             return types.CallToolResult(
                 content=[
                     types.TextContent(

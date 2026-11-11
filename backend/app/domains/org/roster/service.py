@@ -60,7 +60,10 @@ def create_import(
         preserved = [row for row in content.rows if row.inactive]
         output = StringIO()
         writer = csv.writer(output)
-        writer.writerow(HEADERS)
+        fields = [
+            f for f, label in FIELD_LABELS.items() if label in content.column_mapping
+        ]
+        writer.writerow([*HEADERS, *(FIELD_LABELS[f] for f in fields)])
         writer.writerows(
             (
                 r.employee_code,
@@ -69,11 +72,12 @@ def create_import(
                 r.title,
                 r.manager_code,
                 r.email,
+                *(getattr(r, f) for f in fields),
             )
             for r in content.active().rows
         )
         content = output.getvalue().encode()
-        roster = parse_roster(content, "人员变动.csv")
+        roster = parse_roster(content, "人员变动.csv", org.employee_fields)
         roster.rows.extend(preserved)
     else:
         roster = parse_roster(content, filename, org.employee_fields)

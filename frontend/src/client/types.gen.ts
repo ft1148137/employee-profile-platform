@@ -1666,6 +1666,18 @@ export type EmployeeFields = {
  */
 export type EmployeeSummary = {
     /**
+     * Job Family
+     */
+    job_family?: string | null;
+    /**
+     * Work Location
+     */
+    work_location?: string | null;
+    /**
+     * Hire Date
+     */
+    hire_date?: string | null;
+    /**
      * Id
      */
     id: string;
@@ -2866,6 +2878,18 @@ export type Onboard = {
      * Manager Id
      */
     manager_id?: string | null;
+    /**
+     * Job Family
+     */
+    job_family?: string | null;
+    /**
+     * Work Location
+     */
+    work_location?: string | null;
+    /**
+     * Hire Date
+     */
+    hire_date?: string | null;
 };
 
 /**
@@ -4396,6 +4420,18 @@ export type Transfer = {
      * Manager Id
      */
     manager_id?: string | null;
+    /**
+     * Job Family
+     */
+    job_family?: string | null;
+    /**
+     * Work Location
+     */
+    work_location?: string | null;
+    /**
+     * Hire Date
+     */
+    hire_date?: string | null;
 };
 
 /**
