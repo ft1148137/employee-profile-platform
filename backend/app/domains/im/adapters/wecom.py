@@ -4,7 +4,7 @@ import logging
 from collections.abc import AsyncIterator
 from contextvars import ContextVar
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 from uuid import UUID, uuid4
 
 import httpx
@@ -14,6 +14,7 @@ from websockets.exceptions import WebSocketException
 
 from app.domains.base import utc_now
 from app.domains.im.adapters.base import Event, ImError
+from app.domains.im.schemas import Platform
 
 HEARTBEAT_INTERVAL = 30
 _private_http: ContextVar[bool] = ContextVar("wecom_private_http", default=False)
@@ -35,6 +36,8 @@ for _name in (
 
 
 class Wecom:
+    platform: ClassVar[Platform] = "wecom"
+
     def __init__(self, org_id: UUID, credentials: dict[str, str]) -> None:
         self.org_id, self.credentials = org_id, credentials
         self.socket: ClientConnection | None = None

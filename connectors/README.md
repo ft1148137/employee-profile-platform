@@ -2,6 +2,8 @@
 
 连接器代码位于 `backend/app/connectors/`，随后端镜像交付。
 
+新增数据源的接口、文件清单、安全边界和必带测试见 [扩展开发指南](../docs/extending.md#1-数据源)。扩展通过提 PR 交付。
+
 模拟 Jira 位于 `app.connectors.jira.mock`，开发 Compose 和 `install.sh --demo` 默认启动。
 每个数据集有独立地址：`http://mock-jira:8080/demo-org`、`/qingli-saas`、`/qiguang-aiot`。
 Cloud 使用 `/rest/api/3/search/jql` 和 Basic 邮箱/API token；Data Center 使用

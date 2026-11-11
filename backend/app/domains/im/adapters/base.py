@@ -1,6 +1,6 @@
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Protocol
+from typing import ClassVar, Protocol
 from uuid import UUID
 
 from app.domains.im.schemas import Platform
@@ -27,6 +27,8 @@ class ImError(Exception):
 
 
 class Adapter(Protocol):
+    platform: ClassVar[Platform]
+
     def __init__(self, org_id: UUID, credentials: dict[str, str]) -> None: ...
     def poll(self) -> AsyncIterator[Event]: ...
     async def send_text(self, external_chat_id: str, text: str) -> None: ...

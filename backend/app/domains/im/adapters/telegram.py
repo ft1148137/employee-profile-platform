@@ -2,6 +2,7 @@ import asyncio
 import logging
 import re
 from collections.abc import AsyncIterator
+from typing import ClassVar
 from uuid import UUID
 
 import httpx
@@ -9,6 +10,7 @@ import sentry_sdk
 from pydantic import BaseModel, Field, JsonValue, TypeAdapter, ValidationError
 
 from app.domains.im.adapters.base import Event, ImError
+from app.domains.im.schemas import Platform
 
 
 class _PrivateRequest(logging.Filter):
@@ -58,6 +60,8 @@ class _Update(BaseModel):
 
 
 class Telegram:
+    platform: ClassVar[Platform] = "telegram"
+
     def __init__(self, org_id: UUID, credentials: dict[str, str]) -> None:
         self.org_id = org_id
         self.client = httpx.AsyncClient(
