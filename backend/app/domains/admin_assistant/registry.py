@@ -24,7 +24,7 @@ from app.domains.access_token import service as access
 from app.domains.account import service as accounts
 from app.domains.account.schemas import AccountStatus
 from app.domains.admin.overview import build_overview
-from app.domains.admin_assistant import model_settings
+from app.domains.admin_assistant import materials, model_settings
 from app.domains.admin_assistant.connections import register_connections
 from app.domains.admin_assistant.files import register_files
 from app.domains.admin_assistant.people import register_people
@@ -706,6 +706,20 @@ register_rules(FUNCTIONS)
 register_sources(FUNCTIONS)
 register_connections(FUNCTIONS)
 register_files(FUNCTIONS)
+FUNCTIONS["draft_profiles_from_material"] = AdminFunction(
+    name="draft_profiles_from_material",
+    area="rules",
+    kind="change",
+    risk=lambda a: "high" if len(a.people) >= 2 else "normal",
+    description="按材料整理初始画像请求，确认后交本人过目，不能撤销",
+    input_model=materials.MaterialArgs,
+    handler=materials.apply,
+    page="/admin/assistant",
+    endpoints=(),
+    impact=materials.impact,
+    undoable=False,
+)
+
 register_people(FUNCTIONS)
 
 for name, title, input_type in (

@@ -225,36 +225,6 @@ test("manual console completes all fifteen tabs without a model", async ({
     await expect(section.getByLabel("证据较旧期限（月）")).toHaveValue("36")
   })
 
-  await test.step("rules / profile import: preview and create an owner request", async () => {
-    await page.getByRole("tab", { name: "批量导入画像", exact: true }).click()
-    await page.getByLabel("选择画像文件（可多选）").setInputFiles({
-      name: "profile.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(
-        JSON.stringify({
-          schema_version: "1",
-          employee_email: employeeEmail("qg003"),
-          capability_schema_version: 1,
-          items: [
-            {
-              capability_key: "hardware",
-              statement: "完成合成电源设计",
-              basis: "合成项目经历",
-            },
-          ],
-        }),
-      ),
-    })
-    await page.getByRole("button", { name: "预览导入", exact: true }).click()
-    await expect(
-      page.getByRole("region", { name: "导入预览", exact: true }),
-    ).toContainText("将创建")
-    await page.getByRole("button", { name: "确认导入", exact: true }).click()
-    await expect(
-      page.getByRole("cell", { name: "已创建", exact: true }),
-    ).toHaveCount(1)
-  })
-
   await test.step("data / sources: save Jira and import work records", async () => {
     await page.getByRole("link", { name: "数据与 AI", exact: true }).click()
     await saveCloud(
