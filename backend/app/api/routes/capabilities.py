@@ -82,15 +82,15 @@ def preview_dictionary(
     content = file.file.read(2 * 1024 * 1024 + 1)
     if len(content) > 2 * 1024 * 1024:
         raise DictionaryTooLarge()
-    definitions, errors = parse_dictionary(content, file.filename or "")
-    return preview_version(session, principal, definitions, errors)
+    definitions, errors, warnings = parse_dictionary(content, file.filename or "")
+    return preview_version(session, principal, definitions, errors, warnings=warnings)
 
 
 @router.post("/versions", response_model=ActiveSchemaPublic)
 def save_dictionary(
     body: SaveDictionary, session: SessionDep, principal: OrgAdminDep
 ) -> ActiveSchemaPublic:
-    return publish_dictionary(session, principal, body, sync_ai_inference=False)
+    return publish_dictionary(session, principal, body)
 
 
 @router.get("/editor", response_model=DictionaryPreview)
@@ -104,9 +104,7 @@ def read_dictionary_editor(
 def preview_dictionary_editor(
     body: SaveDictionary, session: SessionDep, principal: OrgAdminDep
 ) -> DictionaryPreview:
-    preview = preview_version(
-        session, principal, body.definitions, [], sync_ai_inference=True
-    )
+    preview = preview_version(session, principal, body.definitions, [])
     if preview.expected_version != body.expected_version:
         raise DictionaryConflict()
     return preview
@@ -116,7 +114,7 @@ def preview_dictionary_editor(
 def update_dictionary(
     body: SaveDictionary, session: SessionDep, principal: OrgAdminDep
 ) -> ActiveSchemaPublic:
-    return publish_dictionary(session, principal, body, sync_ai_inference=True)
+    return publish_dictionary(session, principal, body)
 
 
 class DictionaryTooLarge(HTTPException):

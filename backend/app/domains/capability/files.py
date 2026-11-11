@@ -20,22 +20,22 @@ HEADERS = (
     "等级 key",
     "等级名称",
     "等级描述",
-    "允许 AI 推断",
 )
 
 
 def parse_dictionary(
     content: bytes, filename: str
-) -> tuple[list[DictionaryDefinition], list[str]]:
+) -> tuple[list[DictionaryDefinition], list[str], list[str]]:
     definitions: list[DictionaryDefinition] = []
     errors: list[str] = []
+    warnings: list[str] = []
     rows: list[tuple[int, object]] = []
     try:
         if Path(filename).suffix.lower() in (".yaml", ".yml"):
             data = yaml.safe_load(content)
             node = yaml.compose(content)
             if not isinstance(data, list) or not isinstance(node, yaml.SequenceNode):
-                return [], ["第 1 行：词典必须是能力列表，请下载模板填写"]
+                return [], ["第 1 行：词典必须是能力列表，请下载模板填写"], warnings
             rows = [
                 (n.start_mark.line + 1, value)
                 for n, value in zip(node.value, data, strict=True)
@@ -46,32 +46,39 @@ def parse_dictionary(
                     sum(info.file_size for info in archive.infolist())
                     > 20 * 1024 * 1024
                 ):
-                    return [], ["第 1 行：Excel 解压后超过 20 MB"]
+                    return [], ["第 1 行：Excel 解压后超过 20 MB"], warnings
             groups: dict[str, dict[str, Any]] = {}
             for number, values, missing in read_xlsx_rows(content):
                 if number > 20001:
-                    return [], [f"第 {number} 行：Excel 最多支持 20000 行等级"]
+                    return (
+                        [],
+                        [f"第 {number} 行：Excel 最多支持 20000 行等级"],
+                        warnings,
+                    )
                 if number == 1:
-                    if tuple(values) != HEADERS:
-                        return [], ["第 1 行：列名不正确，请下载 Excel 模板填写"]
+                    if tuple(values) in (
+                        HEADERS + ("AI 起草",),
+                        HEADERS + ("允许 AI 推断",),
+                    ):
+                        warnings = ["AI 起草列已不再使用，已忽略"]
+                    elif tuple(values) != HEADERS:
+                        return (
+                            [],
+                            ["第 1 行：列名不正确，请下载 Excel 模板填写"],
+                            warnings,
+                        )
                     continue
                 if not any(v is not None for v in values):
                     continue
                 if missing:
                     errors.append(f"第 {number} 行：公式没有计算结果，请粘贴为值")
                 values += [None] * (len(HEADERS) - len(values))
-                key, name, category, description, level, label, detail, ai = values[:8]
-                ai = True if ai is None else ai
-                if ai in ("false", "否"):
-                    ai = False
-                elif ai in ("true", "是"):
-                    ai = True
+                key, name, category, description, level, label, detail = values[:7]
                 raw: dict[str, Any] = {
                     "key": key,
                     "name": name,
                     "category": category or "",
                     "description": description or "",
-                    "ai_inference": ai,
                 }
                 group = groups.get(str(key))
                 if group is None:
@@ -80,7 +87,7 @@ def parse_dictionary(
                     rows.append((number, group))
                 elif any(group[k] != v for k, v in raw.items()):
                     errors.append(
-                        f"第 {number} 行：同一能力 key 的名称、分类、说明或 AI 设置不一致"
+                        f"第 {number} 行：同一能力 key 的名称、分类或说明不一致"
                     )
                 if any(v["key"] == level for v in group["level_rubric"]["levels"]):
                     errors.append(f"第 {number} 行：等级 key 重复")
@@ -88,12 +95,15 @@ def parse_dictionary(
                     {"key": level, "label": label, "description": detail}
                 )
         else:
-            return [], ["第 1 行：请上传 YAML 或 .xlsx 文件"]
+            return [], ["第 1 行：请上传 YAML 或 .xlsx 文件"], warnings
         if not rows or len(rows) > 1000:
-            return [], ["第 1 行：词典需包含 1 至 1000 项能力"]
+            return [], ["第 1 行：词典需包含 1 至 1000 项能力"], warnings
         seen: set[str] = set()
         for number, row in rows:
             try:
+                if isinstance(row, dict) and "ai_inference" in row:
+                    row = {k: v for k, v in row.items() if k != "ai_inference"}
+                    warnings = ["AI 起草列已不再使用，已忽略"]
                 definition = DictionaryDefinition.model_validate(row)
                 if definition.key in seen:
                     errors.append(f"第 {number} 行：能力 key 重复：{definition.key}")
@@ -125,7 +135,7 @@ def parse_dictionary(
         RecursionError,
     ):
         errors.append("第 1 行：文件无法读取，请检查格式或重新下载模板")
-    return definitions, errors
+    return definitions, errors, warnings
 
 
 def dictionary_yaml(definitions: list[DictionaryDefinition]) -> bytes:
@@ -152,7 +162,6 @@ def dictionary_xlsx(definitions: list[DictionaryDefinition]) -> bytes:
                     level.key,
                     level.label,
                     level.description,
-                    definition.ai_inference,
                 )
             )
     sheet.freeze_panes = "A2"

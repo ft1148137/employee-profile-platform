@@ -13,7 +13,6 @@ def save_dictionary(
     principal: Principal,
     body: SaveDictionary,
     *,
-    sync_ai_inference: bool = True,
     commit: bool = True,
 ) -> ActiveSchemaPublic:
     schema = save_version(
@@ -21,7 +20,6 @@ def save_dictionary(
         principal,
         body.definitions,
         expected_version=body.expected_version,
-        sync_ai_inference=sync_ai_inference,
     )
     result = ActiveSchemaPublic.model_validate(schema)
     if body.redraft:
