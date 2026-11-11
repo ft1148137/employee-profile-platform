@@ -156,8 +156,9 @@ def test_queue_progress_retry(
         records: list[CollectedRecord],
         capabilities: list[CapabilityDefinition],
         config: PiModelConfig,
+        **kwargs: object,
     ) -> DraftResult:
-        result = original_draft(records, capabilities, config)
+        result = original_draft(records, capabilities, config, **kwargs)
         items = result.items
         if items and len(records) > 1:
             session = object_session(records[0].evidence)
