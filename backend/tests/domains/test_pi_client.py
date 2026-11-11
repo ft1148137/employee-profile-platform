@@ -232,6 +232,9 @@ def test_protocol_error_mapping(
         )
     assert "sensitive" not in str(error.value) + caplog.text
     assert str(error.value) == message
+    assert error.value.code == (
+        "unavailable" if code == "unknown-secret-code" else code
+    )
     assert ("Pi protocol failure" in caplog.text) is (
         code in ("unauthorized", "bad_request")
     )

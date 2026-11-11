@@ -25,7 +25,7 @@ class ModelServiceError(ModelUnavailable):
 
 class ModelAuthenticationError(ModelUnavailable):
     def __init__(self) -> None:
-        super().__init__("密钥不对或没有权限")
+        super().__init__("密钥不对或没有权限", code="model_unauthorized")
 
 
 class ModelOutputInvalid(Exception):
