@@ -139,7 +139,7 @@ test("approval page highlights assistant draft and requires both confirmations",
   await expectChineseCopy(page)
 })
 
-test("drafting page highlights a department draft and applies it after confirmation", async ({
+test("model page highlights the auto drafting switch and applies it after confirmation", async ({
   page,
   request,
   modelUrl,
@@ -171,46 +171,38 @@ test("drafting page highlights a department draft and applies it after confirmat
       })
     ).ok(),
   ).toBeTruthy()
-  const departments = await (
-    await request.get(`${base}/departments`, { headers })
-  ).json()
-  const departmentId = departments.data[0].id
   await logInUser(page, email, password)
-  await page.goto("/admin/rules?tab=drafting")
-  const department = page.getByRole("checkbox", {
-    name: /^研发部\s*含下级部门$/,
-  })
-  await expect(department).not.toBeChecked()
+  await page.goto("/admin/data-ai?tab=model")
+  const toggle = page.getByRole("switch", { name: "自动起草", exact: true })
+  await expect(toggle).not.toBeChecked()
   await page.getByRole("button", { name: "打开管理助手" }).click()
   const dialog = page.getByRole("dialog")
   await dialog
     .getByRole("textbox", { name: "发给管理助手的消息" })
-    .fill(`关闭部门自动起草 ${departmentId}`)
+    .fill("打开自动起草")
   await dialog.getByRole("button", { name: "发送", exact: true }).click()
   await expect(
     dialog.getByRole("region", { name: "设置改动确认卡" }),
   ).toBeVisible({ timeout: 30000 })
   await page.keyboard.press("Escape")
-  await expect(department).toBeChecked()
+  await expect(toggle).toBeChecked()
   const suggested = page.locator('[data-assistant-suggested="true"]')
   await expect(suggested).toHaveCount(1)
   await expect(suggested.getByText("助手建议", { exact: true })).toBeVisible()
   await expect(
-    suggested.getByRole("checkbox", { name: /^研发部/ }),
+    suggested.getByRole("switch", { name: "自动起草", exact: true }),
   ).toBeChecked()
-  await expect(
-    page.getByRole("button", { name: "保存", exact: true }),
-  ).toBeDisabled()
+  await expect(toggle).toBeDisabled()
   const read = async () =>
     (await (await request.get(`${base}/drafting-settings`, { headers })).json())
-      .disabled_department_ids
-  expect(await read()).toEqual([])
+      .enabled
+  expect(await read()).toBe(false)
   const card = page.getByRole("region", { name: "页面草稿确认" })
   await card.getByRole("button", { name: "确认应用", exact: true }).click()
   await expect(card).toHaveCount(0)
   await expect(suggested).toHaveCount(0)
-  await expect(department).toBeChecked()
-  expect(await read()).toEqual([departmentId])
+  await expect(toggle).toBeChecked()
+  expect(await read()).toBe(true)
 })
 
 test("dictionary page highlights a modified capability and publishes a new version", async ({

@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { ApprovalPolicyService, InitialProfilesService } from "@/client"
+import {
+  ApprovalPolicyService,
+  DraftingSettingsService,
+  InitialProfilesService,
+} from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 
@@ -22,6 +26,12 @@ export function DraftProgress({
 }) {
   const client = useQueryClient()
   const path = { org_id: orgId }
+  const settings = useQuery({
+    queryKey: ["drafting-settings", orgId],
+    queryFn: async () =>
+      (await DraftingSettingsService.settingsGetDraftingSettings({ path }))
+        .data,
+  })
   const policy = useQuery({
     queryKey: ["approval-policy", orgId],
     queryFn: async () =>
@@ -104,6 +114,9 @@ export function DraftProgress({
       )}
       {data && (
         <>
+          {!settings.data?.enabled && (
+            <p>自动起草未打开，请先在「数据与 AI → 模型」里打开。</p>
+          )}
           {data.mode === "none" ? (
             <div role="alert" className="rounded-lg border p-4">
               <p>
@@ -146,11 +159,8 @@ export function DraftProgress({
           )}
           {!!counts.excluded && (
             <p>
-              {counts.excluded} 名员工不自动起草（部门关闭或本人选择），可以在
-              <Link className="underline" to="/admin/drafting">
-                自动起草设置
-              </Link>
-              里修改
+              {counts.excluded}{" "}
+              名员工本人选择不参与自动起草，可由员工在个人设置里修改。
             </p>
           )}
           {data.failed.length > 0 && (
@@ -169,7 +179,12 @@ export function DraftProgress({
       )}
       <div className="flex flex-wrap gap-3">
         <Button
-          disabled={draft.isPending || !data || data.mode === "none"}
+          disabled={
+            draft.isPending ||
+            !data ||
+            data.mode === "none" ||
+            !settings.data?.enabled
+          }
           onClick={() => {
             if (
               wizard ||
@@ -182,7 +197,12 @@ export function DraftProgress({
         </Button>
         <Button
           variant="outline"
-          disabled={draft.isPending || !counts.failed || data?.mode === "none"}
+          disabled={
+            draft.isPending ||
+            !counts.failed ||
+            data?.mode === "none" ||
+            !settings.data?.enabled
+          }
           onClick={() => draft.mutate("failed")}
         >
           重试失败的

@@ -51,8 +51,8 @@ export function AutoDraftSetting({ orgId }: { orgId: string }) {
       <p className="text-sm text-muted-foreground">
         关闭后，系统不再为你自动起草画像建议。已有的证据和判断不受影响，你可以随时打开。
       </p>
-      {query.data.department_disabled && (
-        <p className="text-sm">你所在的部门目前关闭了自动起草。</p>
+      {query.data.org_disabled && (
+        <p className="text-sm">企业目前没有打开自动起草。</p>
       )}
       {save.isError && <p role="alert">保存失败，请重试。</p>}
     </section>
