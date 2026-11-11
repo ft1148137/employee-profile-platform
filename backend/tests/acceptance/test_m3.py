@@ -286,7 +286,7 @@ def test_baseline_quota_exit_cleans_only_its_jobs(
             assert service.drafting_jobs(check, org_id, queued_only=True)
         scheduled.append(org_id)
 
-    def exhausted(*_args: object) -> None:
+    def exhausted(*_args: object, **_kwargs: object) -> None:
         raise ModelRateLimited(None)
 
     monkeypatch.setattr(service.model, "draft", exhausted)

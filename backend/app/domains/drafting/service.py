@@ -34,6 +34,7 @@ from app.domains.drafting.collect import (
 )
 from app.domains.drafting.collect import relation as record_relation
 from app.domains.drafting.model import DraftItem
+from app.domains.drafting.note import latest_note
 from app.domains.drafting.settings import (
     drafting_scope,
     read_settings,
@@ -358,7 +359,12 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                     raise ModelDisabled()
                 if capability_error:
                     raise capability_error
-                result = model.draft(records, capabilities, model_config(setting))
+                result = model.draft(
+                    records,
+                    capabilities,
+                    model_config(setting),
+                    note=latest_note(session, org_id),
+                )
                 items, generated_by = result.items, result.generated_by
                 items = postprocess(
                     session, org_id, employee, items, capabilities, groups

@@ -51,6 +51,7 @@ export const auditLabels: Record<string, string> = {
   "seed.loaded": "导入演示数据",
   "update_settings.updated": "修改持续更新提醒设置",
   "drafting_settings.updated": "修改自动起草设置",
+  "drafting_note.updated": "修改起草补充说明",
   "bot_settings.updated": "修改机器人设置",
   "im_settings.updated": "修改 IM 入口设置",
   "im_binding.code_created": "生成 IM 绑定码",

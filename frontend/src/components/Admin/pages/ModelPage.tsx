@@ -18,6 +18,7 @@ export function ModelPage() {
       <ModelSettingForm orgId={org.id} />
       <ChangeHistory targetType="model_setting" />
       <ChangeHistory targetType="drafting_setting" />
+      <ChangeHistory targetType="drafting_note" />
     </div>
   )
 }

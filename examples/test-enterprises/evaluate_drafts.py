@@ -22,11 +22,16 @@ from app.connectors.jira.client import jira_client_for
 from app.connectors.jira.mock import create_mock_app
 from app.core.db import engine
 from app.core.secrets import encrypt_secret
-from app.domains.capability.models import CapabilityDefinition
+from app.domains.capability.models import (
+    CapabilityDefinition,
+    CapabilityProposal,
+    CapabilityProposalEvidence,
+)
 from app.domains.capability.service import activate_template
 from app.domains.change_request.models import ChangeItem, ProfileChangeRequest
-from app.domains.drafting.models import DraftingSetting
+from app.domains.drafting.models import DraftingNote, DraftingSetting
 from app.domains.drafting.service import read_progress, run_drafting
+from app.domains.evidence.models import Evidence
 from app.domains.model.client import ModelUnavailable
 from app.domains.model.models import ModelSetting
 from app.domains.model.schemas import ModelSettingUpdate
@@ -51,6 +56,7 @@ EXAMPLES = Path(__file__).resolve().parents[1]
 def enterprise(
     slug: str,
     model: ModelSettingUpdate | None = None,
+    note: str = "",
 ) -> Generator[tuple[Session, Organization, dict[str, Employee]]]:
     path = EXAMPLES / ("demo-org" if slug == "demo-org" else f"test-enterprises/{slug}")
     org_data = yaml.safe_load((path / "org.yaml").read_text())
@@ -76,6 +82,15 @@ def enterprise(
                 db.flush()
                 db.add(OrgMembership(org_id=org.id, user_id=user.id))
                 db.flush()
+                if note:
+                    db.add(
+                        DraftingNote(
+                            org_id=org.id,
+                            version=1,
+                            text=note,
+                            created_by_user_id=user.id,
+                        )
+                    )
                 db.add(
                     DraftingSetting(
                         org_id=org.id,
@@ -122,7 +137,11 @@ def enterprise(
             activate_template(
                 db,
                 Principal.system_worker(org.id),
-                "aiot-hardware" if slug == "qiguang-aiot" else "tech-rnd",
+                "aiot-hardware"
+                if slug == "qiguang-aiot"
+                else "saas-software"
+                if slug == "qingli-saas"
+                else "tech-rnd",
             )
             db.commit()
             yield db, org, employees
@@ -195,8 +214,8 @@ def ingest_dataset(
     db.commit()
 
 
-def evaluate(slug: str, model: ModelSettingUpdate) -> str:
-    with enterprise(slug, model) as (db, org, employees):
+def evaluate(slug: str, model: ModelSettingUpdate, note: str = "") -> str:
+    with enterprise(slug, model, note) as (db, org, employees):
         ingest_dataset(db, org, employees, slug)
         run_drafting(Principal.system_worker(org.id), None)
         progress = read_progress(db, org.id)
@@ -258,12 +277,42 @@ def evaluate(slug: str, model: ModelSettingUpdate) -> str:
                 truth["misleading"] & predicted, key=lambda p: (codes[p[0]], p[1])
             )
         ]
+        proposals = db.exec(
+            select(CapabilityProposal)
+            .where(CapabilityProposal.org_id == org.id)
+            .order_by(CapabilityProposal.name_key)
+        ).all()
+        lines += [f"\n能力建议（同名合并后）：{len(proposals)} 条。"]
+        for proposal in proposals:
+            evidence = db.exec(
+                select(Evidence)
+                .join(
+                    CapabilityProposalEvidence,
+                    (CapabilityProposalEvidence.org_id == Evidence.org_id)
+                    & (CapabilityProposalEvidence.evidence_id == Evidence.id),
+                )
+                .where(
+                    Evidence.org_id == org.id,
+                    CapabilityProposalEvidence.org_id == org.id,
+                    CapabilityProposalEvidence.proposal_id == proposal.id,
+                )
+                .order_by(Evidence.source, Evidence.source_ref)
+            ).all()
+            lines += [
+                f"- **{proposal.name}**（{proposal.category or '未分类'}）：{proposal.description}；理由：{proposal.reason}",
+                "  证据："
+                + "；".join(
+                    f"{e.source_ref} / {codes.get(e.subject_employee_id, '?')} / {e.title}"
+                    for e in evidence
+                ),
+            ]
         return "\n".join(lines)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("slug", choices=["qiguang-aiot"])
+    parser.add_argument("slug", choices=["qiguang-aiot", "qingli-saas"])
+    parser.add_argument("--note-file", type=Path, help="UTF-8 补充说明；不传则无说明")
     parser.add_argument("--model", required=True, help="模型 ID，不带提供方前缀")
     parser.add_argument(
         "--kind",
@@ -286,4 +335,9 @@ if __name__ == "__main__":
         reasoning_effort=args.reasoning_effort,
         api_key=os.environ.get("MODEL_API_KEY"),
     )
-    print(evaluate(args.slug, config))
+    from app.domains.drafting.note import DraftingNoteInput
+
+    note = DraftingNoteInput(
+        text=args.note_file.read_text(encoding="utf-8") if args.note_file else ""
+    ).text
+    print(evaluate(args.slug, config, note))

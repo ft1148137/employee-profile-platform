@@ -2,6 +2,12 @@ from fastapi import APIRouter
 
 from app.api.deps import SessionDep
 from app.authz.deps import OrgAdminDep, OrgPrincipalDep
+from app.domains.drafting.note import (
+    DraftingNoteInput,
+    DraftingNotePublic,
+    read_note,
+    save_note,
+)
 from app.domains.drafting.settings import (
     AutoDraftPublic,
     AutoDraftUpdate,
@@ -20,6 +26,20 @@ from app.domains.drafting.update_settings import (
 )
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["drafting-settings"])
+
+
+@router.get("/drafting-note", response_model=DraftingNotePublic)
+def get_drafting_note(
+    session: SessionDep, principal: OrgAdminDep
+) -> DraftingNotePublic:
+    return read_note(session, principal.org_id)
+
+
+@router.put("/drafting-note", response_model=DraftingNotePublic)
+def put_drafting_note(
+    body: DraftingNoteInput, session: SessionDep, principal: OrgAdminDep
+) -> DraftingNotePublic:
+    return save_note(session, principal, body)
 
 
 @router.get("/drafting-settings", response_model=DraftingSettingsPublic)

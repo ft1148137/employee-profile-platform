@@ -36,6 +36,7 @@ from app.domains.bot import settings as bot
 from app.domains.capability.service import read_editor
 from app.domains.drafting import settings as drafting
 from app.domains.drafting import update_settings as updates
+from app.domains.drafting.note import read_note
 from app.domains.drafting.service import DraftProgress, active_employees, read_progress
 from app.domains.im import settings as im
 from app.domains.im.schemas import Platform
@@ -343,6 +344,15 @@ FUNCTIONS = {
             lambda d, p, a: drafting.read_settings(d, p.org_id),
             "/admin/data-ai?tab=model",
             "GET /drafting-settings",
+        ),
+        _f(
+            "get_drafting_note",
+            "data_ai",
+            "查看企业起草补充说明和版本",
+            NoArgs,
+            lambda d, p, a: read_note(d, p.org_id),
+            "/admin/data-ai?tab=model",
+            "GET /drafting-note",
         ),
         _f(
             "get_update_settings",

@@ -542,7 +542,7 @@ def test_redraft_only_queues_pending_owner_and_matches_published_key(
     seen: list[list[str]] = []
 
     def draft(
-        _records: object, capabilities: list, _config: object
+        _records: object, capabilities: list, _config: object, **_kwargs: object
     ) -> drafting.model.DraftResult:
         seen.append([c.key for c in capabilities])
         if len(seen) == 1:

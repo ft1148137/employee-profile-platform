@@ -142,6 +142,7 @@ def test_model_request_and_privacy(
         "reasoning_effort": "low",
         "dropped_items": 0,
         "proposals": 0,
+        "drafting_note_version": None,
     }
     payload = json.dumps(calls[0]["body"]["messages"], ensure_ascii=False)
     assert not re.search(r"[0-9a-f]{8}-[0-9a-f]{4}-", payload)
@@ -476,8 +477,8 @@ def test_disable_during_batch(
     replies.append('{"items":[]}')
     original = service.model.draft
 
-    def disable(*args: object) -> object:
-        result = original(*args)
+    def disable(*args: object, **kwargs: object) -> object:
+        result = original(*args, **kwargs)
         with Session(service.engine) as session:
             setting = session.get(ModelSetting, org)
             setting.enabled = False
@@ -683,7 +684,7 @@ def test_scope_rechecked_after_model(
     org, _, _, employees, _ = drafting
     employee_id = employees[0].id
 
-    def turn(*_args: object) -> model.DraftResult:
+    def turn(*_args: object, **_kwargs: object) -> model.DraftResult:
         with Session(engine) as other:
             if change == "org_disabled":
                 setting = other.get(DraftingSetting, org)

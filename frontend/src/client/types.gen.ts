@@ -1683,6 +1683,38 @@ export type DraftQueued = {
 };
 
 /**
+ * DraftingNoteInput
+ */
+export type DraftingNoteInput = {
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
+ * DraftingNotePublic
+ */
+export type DraftingNotePublic = {
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Version
+     */
+    version?: number | null;
+    /**
+     * Created By
+     */
+    created_by?: string | null;
+    /**
+     * Created At
+     */
+    created_at?: string | null;
+};
+
+/**
  * DraftingSettingsPublic
  */
 export type DraftingSettingsPublic = {
@@ -8239,6 +8271,66 @@ export type setupSkipStepResponses = {
 };
 
 export type setupSkipStepResponse = setupSkipStepResponses[keyof setupSkipStepResponses];
+
+export type draftingSettingsGetDraftingNoteData = {
+    body?: never;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/drafting-note';
+};
+
+export type draftingSettingsGetDraftingNoteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type draftingSettingsGetDraftingNoteError = draftingSettingsGetDraftingNoteErrors[keyof draftingSettingsGetDraftingNoteErrors];
+
+export type draftingSettingsGetDraftingNoteResponses = {
+    /**
+     * Successful Response
+     */
+    200: DraftingNotePublic;
+};
+
+export type draftingSettingsGetDraftingNoteResponse = draftingSettingsGetDraftingNoteResponses[keyof draftingSettingsGetDraftingNoteResponses];
+
+export type draftingSettingsPutDraftingNoteData = {
+    body: DraftingNoteInput;
+    path: {
+        /**
+         * Org Id
+         */
+        org_id: string;
+    };
+    query?: never;
+    url: '/api/v1/orgs/{org_id}/drafting-note';
+};
+
+export type draftingSettingsPutDraftingNoteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HTTPValidationError;
+};
+
+export type draftingSettingsPutDraftingNoteError = draftingSettingsPutDraftingNoteErrors[keyof draftingSettingsPutDraftingNoteErrors];
+
+export type draftingSettingsPutDraftingNoteResponses = {
+    /**
+     * Successful Response
+     */
+    200: DraftingNotePublic;
+};
+
+export type draftingSettingsPutDraftingNoteResponse = draftingSettingsPutDraftingNoteResponses[keyof draftingSettingsPutDraftingNoteResponses];
 
 export type draftingSettingsGetDraftingSettingsData = {
     body?: never;

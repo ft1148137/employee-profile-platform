@@ -38,6 +38,8 @@
 | 账号对应 | 解除关联并撤销该账号独有证据 | 人员 / Jira 账号匹配、人员详情 | `unlink_identity` |
 | 自动起草 | 查看企业总开关 | 数据与 AI / 模型 | `get_drafting_settings` |
 | 自动起草 | 打开或关闭企业自动起草（可撤销） | 数据与 AI / 模型 | `set_auto_drafting` |
+| 起草补充说明 | 查看正文、版本和最近修改人时间 | 数据与 AI / 模型 | `get_drafting_note` |
+| 起草补充说明 | 保存或清空正文；撤销时追加上一版正文 | 数据与 AI / 模型 | `update_drafting_note` |
 | 数据来源 | 读取脱敏的 Jira 配置 | 数据与 AI / 数据来源 | `get_sources` |
 | 数据来源 | 保存 Cloud / Data Center 凭据、日期、描述和定时同步周期 | 数据与 AI / 数据来源 | `update_jira_connection` |
 | 数据来源 | 测试已保存的 Jira 连接 | 数据与 AI / 数据来源 | `test_jira_connection` |
