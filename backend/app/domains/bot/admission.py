@@ -102,6 +102,11 @@ def begin_turn(
         )
         if active >= ORG_TURNS:
             raise BotBusy("本企业对话繁忙，请稍后再试")
+        owner = (
+            AdminAssistantSession.user_id == principal.user_id
+            if admin
+            else BotSession.employee_id == principal.employee_id
+        )
         times = db.exec(
             select(message_type.created_at)
             .join(
@@ -111,17 +116,40 @@ def begin_turn(
             )
             .where(
                 message_type.org_id == principal.org_id,
-                AdminAssistantSession.user_id == principal.user_id
-                if admin
-                else BotSession.employee_id == principal.employee_id,
+                owner,
                 message_type.role == "user",
                 message_type.created_at > now - timedelta(hours=1),
             )
             .order_by(col(message_type.created_at))
             .limit(HOURLY_TURNS)
         ).all()
-        if len(times) == HOURLY_TURNS:
-            raise BotRateLimited(times[0] + timedelta(hours=1))
+        reservations = (
+            db.exec(
+                select(session_type.id).where(
+                    session_type.org_id == principal.org_id,
+                    owner,
+                    col(session_type.lease_until) > now,
+                    ~select(message_type.id)
+                    .where(
+                        message_type.org_id == principal.org_id,
+                        message_type.session_id == session_type.id,
+                        message_type.role == "user",
+                        message_type.created_at
+                        >= col(session_type.lease_until)
+                        - timedelta(seconds=LEASE_SECONDS),
+                    )
+                    .exists(),
+                )
+            ).all()
+            if active
+            else []
+        )
+        if len(times) + len(reservations) >= HOURLY_TURNS:
+            raise BotRateLimited(
+                times[0] + timedelta(hours=1)
+                if times
+                else now + timedelta(seconds=LEASE_SECONDS)
+            )
         new_lease = now + timedelta(seconds=LEASE_SECONDS)
         row.lease_until = new_lease
         if cancelled is None:

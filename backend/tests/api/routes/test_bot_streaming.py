@@ -2,6 +2,7 @@ import json
 import socket
 import time
 from collections.abc import Generator
+from datetime import timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Event, Thread
 from typing import Any
@@ -14,13 +15,16 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from app.core.config import settings
-from app.domains.bot import core, store, tools
+from app.domains.base import utc_now
+from app.domains.bot import admission, core, store, tools
 from app.domains.model import pi_client
 from app.domains.model.client import ModelUnavailable
 from app.main import app
 from tests.api.routes.test_employee_requests import principal_for
 from tests.domains.test_bot_core import enable
 from tests.utils.bot import final_response
+
+pytestmark = pytest.mark.xdist_group("model")
 
 
 @pytest.fixture
@@ -182,6 +186,7 @@ def test_disconnect_cancels_joins_rolls_back_and_releases(
         await app(scope, receive, send)
 
     with socket.socket() as listener:
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         listener.bind(("127.0.0.1", 18307))
         server = uvicorn.Server(
             uvicorn.Config(application, lifespan="off", log_level="critical")
@@ -317,3 +322,31 @@ def test_cancel_checked_between_pi_events(fake_pi: Event) -> None:
             on_tool_call=lambda *_: None,
             stream=stream,
         )
+
+
+@pytest.mark.parametrize("saved_user", [False, True])
+@pytest.mark.parametrize("streaming", [False, True])
+def test_hourly_limit_counts_active_turn_once(
+    db: Session,
+    demo: tuple,
+    monkeypatch: pytest.MonkeyPatch,
+    saved_user: bool,
+    streaming: bool,
+) -> None:
+    p = principal_for(db, demo[1]["E02"].org_id)
+    active = store.create_session(db, p)
+    target = store.create_session(db, p)
+    active.lease_until = utc_now() + timedelta(seconds=admission.LEASE_SECONDS)
+    if saved_user:
+        store.append_message(db, active, "user", {"text": "已保存的轮次"})
+    db.add(active)
+    db.commit()
+    cancelled = Event() if streaming else None
+    monkeypatch.setattr(admission, "HOURLY_TURNS", 1)
+    with pytest.raises(admission.BotRateLimited):
+        with admission.begin_turn(db, p, target, {"text": "超限"}, cancelled):
+            pytest.fail("uncommitted streaming turn was not counted")
+    if saved_user:
+        monkeypatch.setattr(admission, "HOURLY_TURNS", 2)
+        with admission.begin_turn(db, p, target, {"text": "第二轮"}, cancelled):
+            pass
