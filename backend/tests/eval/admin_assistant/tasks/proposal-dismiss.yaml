@@ -1,0 +1,14 @@
+# Seed: isolated synthetic enterprise; defaults come from evaluate_drafts.enterprise.
+id: proposal-dismiss
+menu: rules
+seed: {proposal: true}
+steps:
+  - {type: say, text: '查看起草建议，忽略固件回归验证（ID ${proposal}），先给确认卡，不加入词典'}
+  - {type: apply}
+expect:
+  services:
+    - {function: list_capability_proposals, args: {}, value: {data: []}}
+fake_model:
+  - calls:
+      - {name: admin_read, args: {function: list_capability_proposals, args: {}}}
+      - {name: propose_changes, args: {items: [{function: dismiss_capability_proposal, args: {id: '${proposal}'}}]}}

@@ -1,0 +1,13 @@
+# Seed: isolated synthetic enterprise; defaults come from evaluate_drafts.enterprise.
+id: drafting-note-undo
+menu: data_ai
+steps:
+  - {type: say, text: '将起草补充说明改为“FW 表示固件项目，标签不能单独证明个人能力”，给我确认卡'}
+  - {type: apply}
+  - {type: undo}
+expect:
+  services:
+    - {function: get_drafting_note, args: {}, value: {text: '', version: 2}}
+fake_model:
+  - calls:
+      - {name: propose_changes, args: {items: [{function: update_drafting_note, args: {text: 'FW 表示固件项目，标签不能单独证明个人能力'}}]}}

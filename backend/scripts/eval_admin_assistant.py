@@ -36,6 +36,7 @@ from app.domains.org.models import (
     ExternalIdentity,
     Organization,
     OrgMembership,
+    Role,
     RoleGrant,
 )
 from app.domains.review import appeal
@@ -98,6 +99,14 @@ def contains(actual: Any, expected: Any) -> bool:
     return actual == expected
 
 
+def reply_contains(reply: str, expected: str | list[str | list[str]]) -> bool:
+    groups = [expected] if isinstance(expected, str) else expected
+    return all(
+        any(word in reply for word in ([group] if isinstance(group, str) else group))
+        for group in groups
+    )
+
+
 class Run:
     def __init__(self, task: Task, fake: bool) -> None:
         self.task, self.fake = task, fake
@@ -143,6 +152,8 @@ class Run:
             "bot_message",
             "bot_session",
             "roster_import",
+            "admin_assistant_attachment",
+            "bot_attachment",
         }
         for model in (*ORG_MODELS, Organization, User):
             if model.__tablename__ in staging:
@@ -523,6 +534,8 @@ class Run:
                 if kind == "say":
                     self.tool_results.clear()
                     body = {"text": step["text"]}
+                    if "attachments" in step:
+                        body["attachment_ids"] = step["attachments"]
                     if self.task.entry == "admin_assistant":
                         body["page"] = "/admin"
                     output = request("POST", url + "/turns", json=body)
@@ -547,6 +560,18 @@ class Run:
                         "GET",
                         prefix + "/" + self.sessions[self.current] + "/messages",
                     )
+                elif kind == "attach":
+                    content = (
+                        (ROOT / step["fixture"]).read_bytes()
+                        if "fixture" in step
+                        else step["content"].encode()
+                    )
+                    output = request(
+                        "POST",
+                        url + "/attachments",
+                        files={"file": (step["filename"], content)},
+                    )
+                    self.context[step["name"]] = output["id"]
                 elif kind == "upload":
                     content = step["content"].encode()
                     output = request(
@@ -636,10 +661,14 @@ class Run:
                     reply = "\n".join(
                         m["text"] for m in output["messages"] if m["type"] == "text"
                     )
-                    for phrase in self.expand(
-                        step.get("expect", {}).get("reply_contains", [])
-                    ):
-                        assert phrase in reply, "Expected assistant reply text missing"
+                    assert reply_contains(
+                        reply,
+                        self.expand(step.get("expect", {}).get("reply_contains", [])),
+                    ), "Expected assistant reply text missing"
+                    if step.get("expect", {}).get("no_change_card"):
+                        assert not any(
+                            m["type"] == "admin_change_set" for m in output["messages"]
+                        ), "Forbidden operation produced a confirmation card"
                 if any(
                     c.startswith("subscription_rate_limit:") or c == "drafting_paused"
                     for c in self.result.categories
@@ -667,6 +696,22 @@ class Run:
                 )
             )["data"]
             assert contains(value, oracle["value"]), "Final service state differs"
+        if "employee_fields" in self.task.expect:
+            from app.domains.org.models import Employee
+
+            expected = self.task.expect["employee_fields"]
+            subject = db.exec(
+                select(Employee).where(
+                    Employee.org_id == org.id,
+                    Employee.employee_code == expected["employee_code"],
+                )
+            ).one()
+            assert contains(subject.model_dump(mode="json"), expected)
+            assert set(db.get_one(Organization, org.id).employee_fields) == {
+                "job_family",
+                "work_location",
+                "hire_date",
+            }
         if "request_status" in self.task.expect:
             assert any(
                 r.status == self.task.expect["request_status"]
@@ -674,6 +719,20 @@ class Run:
                     principals[self.task.actor], db, "all"
                 ).data
             )
+        if "material_requests" in self.task.expect:
+            requests = db.exec(
+                select(ProfileChangeRequest).where(
+                    ProfileChangeRequest.org_id == org.id,
+                    ProfileChangeRequest.origin == "import",
+                )
+            ).all()
+            assert len(requests) == self.task.expect["material_requests"]
+            assert all(r.status == "pending_owner" for r in requests)
+            from app.domains.profile.models import ProfileVersion
+
+            assert not db.exec(
+                select(ProfileVersion).where(ProfileVersion.org_id == org.id)
+            ).all(), "Materials must not publish a profile"
         if self.fake:
             assert self.fake_index == len(self.task.fake_model or []), (
                 "Unused fake turns"
@@ -682,6 +741,66 @@ class Run:
     def seed(self, db: Session, org: Any, people: Any, principals: Any) -> None:
         seed = self.expand(self.task.seed)
         target = people["QG003"]
+        self.context["employee_email"] = target.work_email
+        if "auto_draft" in seed:
+            from app.domains.drafting.settings import (
+                DraftingSettingsUpdate,
+                save_settings,
+            )
+
+            save_settings(
+                db,
+                principals["admin"],
+                DraftingSettingsUpdate(enabled=seed["auto_draft"]),
+            )
+        if seed.get("proposal"):
+            from app.domains.capability.models import (
+                CapabilityProposal,
+                CapabilityProposalEvidence,
+            )
+
+            proposal = CapabilityProposal(
+                org_id=org.id,
+                name="固件回归验证",
+                name_key="固件回归验证",
+                description="合成回归验证建议",
+                reason="两条工作记录支持",
+            )
+            db.add(proposal)
+            db.flush()
+            for index in range(2):
+                ref, _ = append_evidence(
+                    db,
+                    org_id=org.id,
+                    subject_employee_id=target.id,
+                    kind=EvidenceKind.WORK_RECORD,
+                    source="csv",
+                    source_ref=f"eval-proposal-{index}",
+                    title="合成回归验证工作记录",
+                    content={"statement": "执行固件回归"},
+                    visibility=Visibility.STANDARD,
+                    provenance={},
+                )
+                db.add(
+                    CapabilityProposalEvidence(
+                        org_id=org.id, proposal_id=proposal.id, evidence_id=ref.id
+                    )
+                )
+            self.context["proposal"] = proposal.id
+        if seed.get("self_appeal"):
+            member = db.exec(
+                select(OrgMembership).where(
+                    OrgMembership.org_id == org.id,
+                    OrgMembership.user_id == principals["employee"].user_id,
+                )
+            ).one()
+            db.add(
+                RoleGrant(org_id=org.id, membership_id=member.id, role=Role.ORG_ADMIN)
+            )
+            db.flush()
+            principals["admin"] = get_org_principal(
+                org.id, db.get_one(User, principals["employee"].user_id), db
+            )
         if "name" in seed:
             target.display_name = seed["name"]
             db.add(target)

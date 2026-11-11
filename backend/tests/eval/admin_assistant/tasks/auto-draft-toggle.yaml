@@ -1,0 +1,15 @@
+# Seed: isolated synthetic enterprise; defaults come from evaluate_drafts.enterprise.
+id: auto-draft-toggle
+menu: data_ai
+seed: {auto_draft: false}
+steps:
+  - type: say
+    text: 查看自动起草总开关，再准备打开它的确认卡，不要改变其他设置
+  - {type: apply}
+expect:
+  services:
+    - {function: get_drafting_settings, args: {}, value: {enabled: true}}
+fake_model:
+  - calls:
+      - {name: admin_read, args: {function: get_drafting_settings, args: {}}}
+      - {name: propose_changes, args: {items: [{function: set_auto_drafting, args: {enabled: true}}]}}

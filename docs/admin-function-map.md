@@ -90,3 +90,5 @@
 完整操作步骤见[管理员指南](admin-guide.md)。
 
 对话附件上传和原文下载属于助手自身的会话接口（NOT_FOR_ASSISTANT），仅本人通过鉴权接口操作。文件提取文字随当前对话轮作为数据交给模型，不提供模型上传、下载或读取任意文件的工具；原有带预览的业务导入上传保持独立。
+
+M4.2 的登记表与接口对照由 `backend/tests/admin_assistant/test_registry.py` 校验。真实模型与确定性评测任务共用 `backend/tests/eval/admin_assistant/tasks/`，新增覆盖开关、三个档案字段、组织架构、起草建议、补充说明、对话材料与对抗请求。旧 `import_profiles` 已删除，`draft_profiles_from_material` 只准备待本人过目的初始请求。详见 [M4.2 验收](m4.2-acceptance.md)。
