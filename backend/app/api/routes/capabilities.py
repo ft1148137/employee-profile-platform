@@ -14,6 +14,7 @@ from app.domains.capability.schemas import (
     ActiveSchemaPublic,
     CapabilitiesPublic,
     CapabilityPublic,
+    CapabilityStatsPublic,
     DictionaryDefinition,
     DictionaryPreview,
     SaveDictionary,
@@ -26,9 +27,17 @@ from app.domains.capability.service import (
     preview_version,
     read_editor,
 )
+from app.domains.capability.stats import read_stats
 from app.domains.capability.templates import get_template
 
 router = APIRouter(prefix="/orgs/{org_id}/capabilities", tags=["capabilities"])
+
+
+@router.get("/stats", response_model=CapabilityStatsPublic)
+def read_capability_stats(
+    session: SessionDep, principal: OrgPrincipalDep
+) -> CapabilityStatsPublic:
+    return read_stats(session, principal)
 
 
 @router.get("", response_model=CapabilitiesPublic)

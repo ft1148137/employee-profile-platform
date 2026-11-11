@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { AxiosError } from "axios"
 import { useRef, useState } from "react"
 import { CapabilitiesService, type DictionaryPreview } from "@/client"
 import { ChangeHistory } from "@/components/Admin/ChangeHistory"
@@ -9,6 +10,7 @@ import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useOrg } from "@/hooks/useOrg"
+import { CapabilityBrowser } from "./CapabilityBrowser"
 import { DictionaryEditor } from "./DictionaryEditor"
 import { DictionaryPreviewPanel } from "./DictionaryPreviewPanel"
 
@@ -20,15 +22,25 @@ export function CapabilityDictionary() {
       key={org.id}
       orgId={org.id}
       admin={roles.includes("org_admin")}
+      showStats={roles.includes("org_admin") || roles.includes("dept_manager")}
     />
   )
 }
 
-function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
+function Dictionary({
+  orgId,
+  admin,
+  showStats,
+}: {
+  orgId: string
+  admin: boolean
+  showStats: boolean
+}) {
   const client = useQueryClient()
   const suggestion = usePageDraft(orgId, "update_capability_dictionary")
   const fileInput = useRef<HTMLInputElement>(null)
   const [editing, setEditing] = useState(false)
+  const [managing, setManaging] = useState(false)
   const [filename, setFilename] = useState("")
   const [preview, setPreview] = useState<DictionaryPreview | null>(null)
   const [redraft, setRedraft] = useState(false)
@@ -71,6 +83,7 @@ function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
     onMutate: () => setError(null),
     onSuccess: () => {
       setPreview(null)
+      setManaging(false)
       setSaved(true)
       client.invalidateQueries()
     },
@@ -98,6 +111,9 @@ function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
     onError: setError,
   })
   const busy = upload.isPending || save.isPending || suggestion.blocked
+  const missingDictionary =
+    current.error instanceof AxiosError &&
+    current.error.response?.status === 404
   return (
     <div className="max-w-4xl space-y-6 py-6">
       <header className="border-l-4 border-primary pl-4">
@@ -108,6 +124,13 @@ function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
         </p>
       </header>
       {current.isPending && <p role="status">正在加载词典…</p>}
+      <SetupError error={missingDictionary ? null : current.error} />
+      {missingDictionary && (
+        <p>
+          尚未启用能力词典。
+          {admin ? "请点击编辑词典创建。" : "请联系企业管理员。"}
+        </p>
+      )}
       {current.data && (
         <p className="rounded-xl border bg-muted/20 p-4">
           当前第 {current.data.schema_version.version} 版 ·{" "}
@@ -134,12 +157,30 @@ function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
             </Button>
           ))}
       </div>
+      {admin && (
+        <Button
+          variant="outline"
+          onClick={() => {
+            setManaging(!managing)
+            setEditing(!managing)
+          }}
+        >
+          {managing ? "返回浏览" : "编辑词典"}
+        </Button>
+      )}
+      {!managing && !suggestion.draft && current.data && (
+        <CapabilityBrowser
+          orgId={orgId}
+          capabilities={current.data.data}
+          showStats={showStats}
+        />
+      )}
       <PageDraft
         orgId={orgId}
         draft={suggestion.draft}
         error={suggestion.error}
       />
-      {admin && (
+      {admin && managing && (
         <section
           className="space-y-4 rounded-xl border p-6"
           aria-label="上传能力词典"
@@ -199,7 +240,7 @@ function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
           )}
         </section>
       )}
-      {admin && (editing || suggestion.draft) && (
+      {admin && ((managing && editing) || suggestion.draft) && (
         <DictionaryEditor
           key={
             suggestion.draft
@@ -211,6 +252,7 @@ function Dictionary({ orgId, admin }: { orgId: string; admin: boolean }) {
           onClose={() => setEditing(false)}
           onSaved={() => {
             setEditing(false)
+            setManaging(false)
             setSaved(true)
             client.invalidateQueries()
           }}
