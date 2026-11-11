@@ -87,7 +87,9 @@ def enterprise(
 
 def rows(db: Session, model: Any, org: UUID) -> list[Any]:
     db.expire_all()
-    return list(db.exec(select(model).where(model.org_id == org)).all())
+    return list(
+        db.exec(select(model).where(model.org_id == org).order_by(model.id)).all()
+    )
 
 
 def synchronize(context: tuple, client: TestClient, deployment: str) -> dict:
