@@ -9,33 +9,37 @@ WORKFLOWS = Path(__file__).resolve().parents[2] / ".github" / "workflows"
 
 
 @pytest.mark.parametrize(
-    "changes,changed,shards,success",
+    "changes,changed,prepare,shards,success",
     [
-        ("success", "true", "success", True),
-        ("success", "false", "skipped", True),
-        ("success", "true", "failure", False),
-        ("success", "true", "cancelled", False),
-        ("success", "true", "skipped", False),
-        ("failure", "", "skipped", False),
-        ("cancelled", "", "skipped", False),
-        ("success", "false", "failure", False),
-        ("success", "", "skipped", False),
+        ("success", "true", "success", "success", True),
+        ("success", "false", "skipped", "skipped", True),
+        ("success", "true", "success", "failure", False),
+        ("success", "true", "success", "cancelled", False),
+        ("success", "true", "success", "skipped", False),
+        ("failure", "", "skipped", "skipped", False),
+        ("cancelled", "", "skipped", "skipped", False),
+        ("success", "false", "skipped", "failure", False),
+        ("success", "", "skipped", "skipped", False),
+        ("success", "true", "failure", "skipped", False),
+        ("success", "true", "cancelled", "skipped", False),
     ],
 )
 def test_playwright_gate(
-    changes: str, changed: str, shards: str, success: bool
+    changes: str, changed: str, prepare: str, shards: str, success: bool
 ) -> None:
     workflow = yaml.safe_load((WORKFLOWS / "playwright.yml").read_text())
     gate = workflow["jobs"]["test-playwright"]
     assert gate["if"] == "${{ always() }}"
-    assert set(gate["needs"]) == {"changes", "playwright-shard"}
+    assert set(gate["needs"]) == {"changes", "playwright-prepare", "playwright-shard"}
     result = subprocess.run(
-        ["bash", "-e", "-c", gate["steps"][0]["run"]],
+        ["bash", "-e", "-c", gate["steps"][-1]["run"]],
+        cwd=WORKFLOWS.parents[1],
         env={
             **os.environ,
-            "CHANGES_RESULT": changes,
+            "FILTER": changes,
             "CHANGED": changed,
-            "TEST_RESULT": shards,
+            "PREPARE": prepare,
+            "TESTS": shards,
         },
         check=False,
     )
