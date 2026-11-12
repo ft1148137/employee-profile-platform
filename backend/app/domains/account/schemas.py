@@ -67,3 +67,14 @@ class InitialPassword(BaseModel):
     username: str
     display_name: str | None
     initial_password: str
+
+
+class UnlinkedAccount(BaseModel):
+    display_name: str | None
+    account: AccountPublic
+    roles: list[RolePublic]
+
+
+class UnlinkedAccountsPublic(BaseModel):
+    data: list[UnlinkedAccount]
+    count: int
