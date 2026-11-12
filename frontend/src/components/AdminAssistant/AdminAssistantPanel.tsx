@@ -268,6 +268,7 @@ export function AdminAssistantPanel({
       client.setQueryData<
         (Pick<AdminSessionMessage, "role" | "payload"> & {
           tools?: ToolProgress[]
+          created_at?: string
         })[]
       >(["admin-assistant-messages", orgId, id], (previous = []) => [
         ...previous,
@@ -276,8 +277,19 @@ export function AdminAssistantPanel({
             message.type === "text" && message.text === "请用安全输入框填写",
         )
           ? []
-          : [{ role: "user" as const, payload: displayInput(body) }]),
-        { role: "assistant", payload: data, tools },
+          : [
+              {
+                role: "user" as const,
+                payload: displayInput(body),
+                created_at: result.startedAt,
+              },
+            ]),
+        {
+          role: "assistant",
+          payload: data,
+          tools,
+          created_at: result.created_at,
+        },
       ])
       if (mounted.current && selection.current === startedAt) {
         rememberConversation(storageKey, id)
@@ -330,7 +342,7 @@ export function AdminAssistantPanel({
   const content = (
     <>
       <div
-        className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 text-sm"
+        className="min-h-0 flex-1 overflow-y-auto px-4 py-6 text-sm [&>*]:mx-auto [&>*]:max-w-3xl [&>*+*]:mt-4"
         role="log"
         aria-label="管理助手对话"
         aria-busy={busy}
@@ -341,12 +353,45 @@ export function AdminAssistantPanel({
           </p>
         )}
         <SetupError error={availability.error} />
-        {!sessionId && (
-          <TodayPanel orgId={orgId} onPrompt={(text) => setText(text)} />
+        {!sessionId && !messages.length && !pendingMessage && (
+          <div className="space-y-8 py-6">
+            <div className="space-y-3 text-center">
+              <h2 className="text-2xl font-semibold">
+                你好，今天有什么要处理的？
+              </h2>
+              <p className="text-muted-foreground">
+                试着问「今天有什么要处理的」。我会结合首页状态，帮你找到对应页面。
+              </p>
+            </div>
+            <TodayPanel orgId={orgId} onPrompt={setText} />
+            <section className="space-y-3" aria-label="可以这样问">
+              <h2 className="font-semibold">可以这样问</h2>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "查看同步与起草进度",
+                  "修改提醒周期",
+                  "查看员工名单和账号",
+                  "查看离职人员",
+                  "检查飞书连接",
+                  "排查同步失败",
+                ].map((example) => (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    key={example}
+                    className="h-auto rounded-full px-3 py-2 text-xs font-normal"
+                    onClick={() => setText(example)}
+                  >
+                    {example}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                可以查看信息、起草提醒设置改动，点确认卡后才会生效。备份恢复、升级、重置请联系部署人员；不做绩效和薪酬判断。
+              </p>
+            </section>
+          </div>
         )}
-        <p className="rounded-xl border-l-4 border-primary bg-muted/40 p-4">
-          试着问「今天有什么要处理的」。我会结合首页状态，帮你找到对应页面。
-        </p>
         <ChatMessages
           onDownload={async (id) =>
             (
@@ -372,13 +417,7 @@ export function AdminAssistantPanel({
           tools={stream.tools}
           stopped={stream.stopped}
           renderMessage={(entry, index) => (
-            <div
-              key={`${sessionId}:${index}`}
-              className={`space-y-3 ${entry.role === "user" ? "ml-8 rounded-xl bg-primary/10 p-3 whitespace-pre-wrap" : "mr-1"}`}
-            >
-              <p className="text-xs text-muted-foreground">
-                {entry.role === "user" ? "我" : "管理助手"}
-              </p>
+            <div key={`${sessionId}:${index}`} className="space-y-4">
               {"messages" in entry.payload
                 ? entry.payload.messages.map((message, i) =>
                     message.type === "link" ? (
@@ -492,36 +531,11 @@ export function AdminAssistantPanel({
           <Button onClick={() => history.refetch()}>重试加载对话</Button>
         )}
       </div>
-      <div className="space-y-2 border-t px-4 pt-3 text-xs">
-        <h2 className="font-semibold">我能帮你做什么</h2>
-        <div className="flex flex-wrap gap-2">
-          {[
-            "查看同步与起草进度",
-            "修改提醒周期",
-            "查看员工名单和账号",
-            "查看离职人员",
-            "检查飞书连接",
-            "排查同步失败",
-          ].map((example) => (
-            <button
-              type="button"
-              key={example}
-              className="rounded-full border px-3 py-1"
-              onClick={() => setText(example)}
-            >
-              {example}
-            </button>
-          ))}
-        </div>
-        <p className="text-muted-foreground">
-          可以查看信息、起草提醒设置改动，点确认卡后才会生效。备份恢复、升级、重置请联系部署人员；不做绩效和薪酬判断。
-        </p>
-      </div>
       <ChatComposer
         key={`${navigationKey}:${composerVersion}`}
         id="admin-assistant-input"
         label="发给管理助手的消息"
-        placeholder="今天有什么要处理的？"
+        placeholder="给管理助手发消息…"
         text={text}
         onChange={setText}
         onUpload={async (file) => {

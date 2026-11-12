@@ -8,7 +8,10 @@ declare global {
   }
 }
 
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({
+  storageState: { cookies: [], origins: [] },
+  permissions: ["clipboard-read", "clipboard-write"],
+})
 
 test("bot streams, folds tool progress, stops and sends again", async ({
   page,
@@ -65,6 +68,11 @@ test("bot streams, folds tool progress, stops and sends again", async ({
   await input.fill("合成问题")
   await input.press("Shift+Enter")
   await expect(input).toHaveValue("合成问题\n")
+  await input.dispatchEvent("keydown", { key: "Enter", isComposing: true })
+  await expect(input).toHaveValue("合成问题\n")
+  await expect(
+    panel.getByRole("button", { name: "停止", exact: true }),
+  ).toHaveCount(0)
   await input.press("Enter")
   await expect(panel.getByRole("log")).toContainText("合成问题")
   await expect(panel.getByText("第一段", { exact: true })).toBeVisible()
@@ -78,16 +86,33 @@ test("bot streams, folds tool progress, stops and sends again", async ({
       phase: "start",
       ok: true,
     })
+  })
+  await expect(
+    panel.getByText("正在执行：查看我的正式画像", { exact: true }),
+  ).toBeVisible()
+  await page.evaluate(() => {
     window.reply.emit({
       type: "tool",
       name: "查看我的正式画像",
       phase: "end",
       ok: true,
     })
+    window.reply.emit({
+      type: "tool",
+      name: "查看请求进度",
+      phase: "start",
+      ok: true,
+    })
+    window.reply.emit({
+      type: "tool",
+      name: "查看请求进度",
+      phase: "end",
+      ok: true,
+    })
     window.reply.emit({ type: "text", text: "第二段" })
   })
   await expect(panel.getByText("第一段第二段", { exact: true })).toBeVisible()
-  const toggle = panel.getByText("调用了 1 个功能", { exact: true })
+  const toggle = panel.getByText("2 步", { exact: true })
   await expect(
     panel.getByText("查看我的正式画像：成功", { exact: true }),
   ).toBeHidden()
@@ -110,10 +135,37 @@ test("bot streams, folds tool progress, stops and sends again", async ({
   await expect(
     panel.getByText("第一段第二段第三段", { exact: true }),
   ).toBeVisible()
+  const userMessage = panel.locator('[data-role="user"]').first()
+  const assistantMessage = panel.locator('[data-role="assistant"]').first()
+  const userBox = await userMessage.boundingBox()
+  const assistantBox = await assistantMessage.boundingBox()
+  expect(userBox!.x).toBeGreaterThan(assistantBox!.x)
+  expect(userBox!.width).toBeLessThanOrEqual(assistantBox!.width * 0.7 + 1)
+  await expect(assistantMessage).toContainText("秒内回复")
+  await assistantMessage
+    .getByRole("button", { name: "复制", exact: true })
+    .click()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    "第一段第二段第三段",
+  )
+  await toggle.click()
+  await expect(
+    panel.getByText("查看请求进度：成功", { exact: true }),
+  ).toBeVisible()
+  await toggle.click()
   await expect(input).toBeEnabled()
+  const sendButton = panel.getByRole("button", { name: "发送", exact: true })
+  expect(
+    await sendButton.evaluate((button) =>
+      parseFloat(getComputedStyle(button).borderRadius),
+    ),
+  ).toBeGreaterThan(100)
   await input.fill("停止这轮")
   await input.press("Enter")
   await expect(panel.getByText("第一段", { exact: true })).toBeVisible()
+  await expect(
+    panel.getByRole("button", { name: "停止", exact: true }),
+  ).toBeVisible()
   await panel.getByRole("button", { name: "停止", exact: true }).click()
   await expect(panel.getByText("已停止", { exact: true })).toBeVisible()
   await expect(panel.getByText("第一段", { exact: true })).toHaveCount(0)

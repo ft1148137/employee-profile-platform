@@ -33,7 +33,9 @@ export function BotMessage({
   if (message.type === "text")
     return (
       <div className="space-y-2">
-        <p className="whitespace-pre-wrap break-words">{message.text}</p>
+        <p className="whitespace-pre-wrap break-words leading-7">
+          {message.text}
+        </p>
         {message.review_link && (
           <Link to="/reviews" className="underline">
             去审批页
