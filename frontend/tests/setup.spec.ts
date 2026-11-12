@@ -41,6 +41,8 @@ test("initialize, configure model and start assistant setup guide", async ({
   const steps = page.getByRole("list", { name: "设置步骤" })
   await expect(steps.getByRole("listitem")).toHaveCount(9)
   await expect(steps).toContainText("待做")
+  await page.getByRole("button", { name: "完成模型配置", exact: true }).click()
+  await expect(page.getByRole("alert")).toContainText("模型")
   await page.getByLabel("企业名称", { exact: true }).fill("合成测试企业更新")
   await page.getByRole("button", { name: "保存企业名称", exact: true }).click()
   await expect(
