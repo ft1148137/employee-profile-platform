@@ -1,5 +1,5 @@
 from dataclasses import replace
-from datetime import timedelta
+from datetime import date, timedelta
 from io import BytesIO
 from typing import Any
 from uuid import UUID, uuid4
@@ -8,7 +8,7 @@ import pytest
 from fastapi import HTTPException, UploadFile
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.domains.admin_assistant import change_set as c
 from app.domains.admin_assistant import core, files, registry, store
@@ -21,9 +21,12 @@ from app.domains.admin_assistant.schemas import (
 from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
 from app.domains.bot import attachments
+from app.domains.capability.models import CapabilitySchemaVersion
+from app.domains.evidence.models import Evidence, EvidenceKind, Visibility
 from app.domains.model.models import ModelSetting
 from app.domains.model.pi_client import TurnResult
 from app.domains.org.models import (
+    Department,
     Employee,
     EmploymentStatus,
     ExternalIdentity,
@@ -33,6 +36,7 @@ from app.domains.org.models import (
     RosterImport,
 )
 from app.domains.org.roster import service, single
+from app.domains.profile.models import ProfileVersion
 from tests.admin_assistant.test_personnel import principal
 from tests.admin_assistant.test_personnel import roster as roster
 from tests.admin_assistant.test_personnel import tenant as tenant
@@ -74,6 +78,155 @@ def state(db: Session, tenant: SetupTenant) -> list:
         ]
         for model in (Employee, ReportingLine, RosterImport, AuditEvent)
     ]
+
+
+def test_rehire_preserves_employee_profile_and_evidence(
+    db: Session, tenant: SetupTenant, roster: dict
+) -> None:
+    p = principal(db, tenant)
+    employee = roster["B"]
+    employee_id = employee.id
+    employee.work_email = f"{uuid4()}@example.com"
+    db.add(employee)
+    account = link(db, tenant, employee)
+    org = db.get_one(Organization, p.org_id)
+    org.employee_fields = ["job_family", "work_location", "hire_date"]
+    schema = CapabilitySchemaVersion(org_id=p.org_id, version=1)
+    db.add_all([org, schema])
+    db.flush()
+    db.add_all(
+        [
+            ProfileVersion(
+                org_id=p.org_id,
+                subject_employee_id=employee_id,
+                revision=1,
+                schema_version_id=schema.id,
+                snapshot={},
+                published_at=utc_now(),
+                published_by={},
+            ),
+            Evidence(
+                org_id=p.org_id,
+                subject_employee_id=employee_id,
+                kind=EvidenceKind.SELF_REPORT,
+                source="employee",
+                source_ref="synthetic",
+                title="合成证据",
+                content={"statement": "合成陈述"},
+                visibility=Visibility.RESTRICTED,
+                provenance={},
+                content_hash="synthetic",
+            ),
+        ]
+    )
+    db.commit()
+
+    def history() -> list:
+        return [
+            [
+                r.model_dump(mode="json")
+                for r in db.exec(
+                    select(model)
+                    .where(
+                        model.org_id == p.org_id,
+                        model.subject_employee_id == employee_id,
+                    )
+                    .order_by(model.id)
+                ).all()
+            ]
+            for model in (ProfileVersion, Evidence)
+        ]
+
+    before = history()
+    assert (
+        db.exec(
+            select(ReportingLine).where(
+                ReportingLine.org_id == p.org_id,
+                ReportingLine.employee_id == employee_id,
+                col(ReportingLine.valid_to).is_(None),
+            )
+        )
+        .one()
+        .manager_employee_id
+        == roster["A"].id
+    )
+    departure = propose(
+        db, tenant, args([{"action": "offboard", "employee_code": "B"}])
+    )
+    assert c.apply(db, p, departure.id, departure.revision).status == "draft"
+    assert c.apply(db, p, departure.id, departure.revision).status == "applied"
+    row = propose(
+        db,
+        tenant,
+        args(
+            [
+                {
+                    "action": "onboard",
+                    "employee_code": "b",
+                    "display_name": "返聘乙",
+                    "department": "运营",
+                    "email": employee.work_email,
+                    "title": "顾问",
+                    "manager_code": "C",
+                    "job_family": "技术",
+                    "work_location": "上海",
+                    "hire_date": "2026-11-12",
+                }
+            ]
+        ),
+    )
+    text = row.items[0]["impact"]["text"]
+    assert row.items[0]["impact"]["count"] == 1
+    assert "恢复在职 1 人" in text and "新增 1 人" not in text
+    assert "员工详情" in text and "员工与账号" not in text
+    assert employees(db, tenant)["B"].employment_status == EmploymentStatus.INACTIVE
+    assert c.apply(db, p, row.id, row.revision).status == "applied"
+    saved = employees(db, tenant)["B"]
+    assert (
+        saved.id == employee_id and saved.employment_status == EmploymentStatus.ACTIVE
+    )
+    assert saved.display_name == "返聘乙" and saved.title == "顾问"
+    assert saved.work_email == account.email
+    assert db.get_one(Department, saved.department_id).name == "运营"
+    assert (saved.job_family, saved.work_location, saved.hire_date) == (
+        "技术",
+        "上海",
+        date(2026, 11, 12),
+    )
+    assert (
+        db.exec(
+            select(ReportingLine).where(
+                ReportingLine.org_id == p.org_id,
+                ReportingLine.employee_id == employee_id,
+                col(ReportingLine.valid_to).is_(None),
+            )
+        )
+        .one()
+        .manager_employee_id
+        == roster["C"].id
+    )
+    assert history() == before
+    db.refresh(account)
+    assert not account.is_active
+
+
+@pytest.mark.parametrize(
+    "action,code,status,problem",
+    [
+        ("onboard", "A", 422, "工号重复"),
+        ("update", "OLD", 404, "找不到该工号的在职员工"),
+    ],
+)
+def test_existing_employee_action_boundaries(
+    db: Session, tenant: SetupTenant, action: str, code: str, status: int, problem: str
+) -> None:
+    values = {"action": action, "employee_code": code}
+    if action == "onboard":
+        values.update(display_name="重复", department="研发", email="a@example.com")
+    with pytest.raises(service.RosterError) as error:
+        propose(db, tenant, args([values]))
+    assert error.value.status_code == status
+    assert problem in str(error.value.detail)
 
 
 @pytest.mark.parametrize("source", ["xlsx", "description"])

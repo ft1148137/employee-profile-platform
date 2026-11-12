@@ -190,6 +190,25 @@ def test_unchanged_roster(db: Session, tenant: SetupTenant, roster: dict) -> Non
     assert compute_roster_diff(db, tenant.org_id, rebuilt).changes == []
 
 
+def test_onboard_inactive_code_guides_to_assistant(
+    tenant: SetupTenant, client: TestClient, roster: dict
+) -> None:
+    response = client.post(
+        f"{tenant.url}/roster/single-change",
+        json={
+            "kind": "onboard",
+            "employee_code": roster["OLD"].employee_code,
+            "display_name": "返聘",
+            "email": "rehire@example.com",
+            "department": "研发",
+        },
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "该工号属于已离职员工，返聘请在管理助手里说明，按原工号恢复在职"
+    )
+
+
 @pytest.mark.parametrize("other", ["offboard_employees", "disable_accounts"])
 def test_split_deactivations_require_two_clicks(
     db: Session, tenant: SetupTenant, roster: dict, other: str

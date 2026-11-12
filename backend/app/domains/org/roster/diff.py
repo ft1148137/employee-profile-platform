@@ -290,7 +290,7 @@ def compute_roster_diff(
                 severity="warning",
                 row_number=None,
                 column=None,
-                message=f"恢复在职的 {summary['reactivated']} 名员工账号仍然停用，需要企业管理员在『员工与账号』页启用并重置密码",
+                message=f"恢复在职的 {summary['reactivated']} 名员工账号仍然停用，需要企业管理员在员工详情里启用并重置密码",
             )
         )
 
