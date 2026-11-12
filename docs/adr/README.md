@@ -39,3 +39,4 @@
 
 - [ADR-0037：私有会话附件与文件输入边界](0037-chat-attachments.md)
 - [ADR-0038：首次设置使用持久管理对话](0038-setup-conversation.md)
+- [ADR-0040：管理员和经理直接修改画像](0040-direct-profile-edits.md)

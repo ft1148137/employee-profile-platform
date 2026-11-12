@@ -378,6 +378,12 @@ import type {
   profileImportUploadProfileImportData,
   profileImportUploadProfileImportErrors,
   profileImportUploadProfileImportResponses,
+  profilesDirectEditData,
+  profilesDirectEditErrors,
+  profilesDirectEditResponses,
+  profilesPreviewDirectEditData,
+  profilesPreviewDirectEditErrors,
+  profilesPreviewDirectEditResponses,
   profilesReadProfileData,
   profilesReadProfileErrors,
   profilesReadProfileResponses,
@@ -2936,6 +2942,50 @@ export class CapabilityTemplatesService {
 }
 
 export class ProfilesService {
+  /**
+   * Preview Direct Edit
+   */
+  public static previewDirectEdit<ThrowOnError extends boolean = true>(
+    options: Options<profilesPreviewDirectEditData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      profilesPreviewDirectEditResponses,
+      profilesPreviewDirectEditErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/employees/{employee_id}/profile/direct-edits/preview",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * Direct Edit
+   */
+  public static directEdit<ThrowOnError extends boolean = true>(
+    options: Options<profilesDirectEditData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      profilesDirectEditResponses,
+      profilesDirectEditErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/employees/{employee_id}/profile/direct-edits",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
   /**
    * Read Profile
    */
