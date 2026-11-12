@@ -273,7 +273,10 @@ def propose(
         ):
             if any(i["function"] == entry.name for i in items):
                 raise ChangeSetError(
-                    "同一份改动只能整理一批同类材料，请合并后重新起草", 422
+                    "同一份改动只能整理一批词典，请合并后重新起草"
+                    if isinstance(args, dictionary_materials.MaterialArgs)
+                    else "同一份改动只能整理一批画像或人员变动，请合并人员后重新起草",
+                    422,
                 )
             materials.validate_attachments(db, principal, args.materials, session_id)
         # Secrets are stored by field for the whole change set; each needs one target.
