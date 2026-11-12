@@ -178,6 +178,9 @@ for (const width of [1440, 390]) {
     await panel.getByRole("button", { name: "发送", exact: true }).click()
     await expect(
       panel.getByText("本人完成了合成项目的验证", { exact: false }),
+    ).toHaveCount(0)
+    await expect(
+      panel.getByText("我补充了一段合成项目经历", { exact: false }),
     ).toBeVisible()
     const current = (await readRequests())[0]
     expect(current.id).toBe(initial.id)
@@ -300,7 +303,7 @@ test("disabled model keeps the entry and points to the form", async ({
   await expectChineseCopy(page)
 })
 
-test("web bot directs reviews to the review page without decision buttons", async ({
+test("web bot keeps review evidence links and renders decision cards", async ({
   page,
 }) => {
   const email = `review-bot-${crypto.randomUUID()}@example.com`
@@ -335,9 +338,17 @@ test("web bot directs reviews to the review page without decision buttons", asyn
   const panel = page.getByRole("region", { name: "助手", exact: true })
   await panel.getByLabel("发给机器人的消息").fill("查看待审批请求")
   await panel.getByRole("button", { name: "发送", exact: true }).click()
-  await expect(panel.getByRole("link", { name: "去审批页" })).toHaveCount(2)
   await expect(
-    panel.getByRole("link", { name: "去审批页" }).first(),
+    panel.getByRole("link", { name: "去审批页", exact: true }),
+  ).toHaveCount(1)
+  await expect(
+    panel.getByRole("region", { name: "审批决定复述" }),
+  ).toBeVisible()
+  await expect(
+    panel.getByRole("link", { name: "去审批页查看证据" }),
+  ).toBeVisible()
+  await expect(
+    panel.getByRole("link", { name: "去审批页", exact: true }).first(),
   ).toHaveAttribute("href", "/reviews")
   await expect(panel.getByRole("button", { name: "确认决定" })).toHaveCount(0)
   await expectChineseCopy(page)

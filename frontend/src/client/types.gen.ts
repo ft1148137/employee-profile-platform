@@ -6636,7 +6636,7 @@ export type botActData = {
   /**
    * Body
    */
-  body: RequestAction | QuestionAction
+  body: RequestAction | QuestionAction | ReviewAction
   path: {
     /**
      * Session Id

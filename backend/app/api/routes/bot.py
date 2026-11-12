@@ -7,8 +7,7 @@ from app.api.deps import SessionDep
 from app.authz.deps import OrgPrincipalDep
 from app.domains.bot import attachments, core, store, streaming
 from app.domains.bot.schemas import (
-    QuestionAction,
-    RequestAction,
+    Action,
     SessionCreated,
     SessionMessage,
     TurnInput,
@@ -77,7 +76,7 @@ def act(
     principal: OrgPrincipalDep,
     session: SessionDep,
     session_id: UUID,
-    body: RequestAction | QuestionAction,
+    body: Action,
 ) -> TurnResponse:
     return core.act(session, principal, session_id, body)
 

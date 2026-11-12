@@ -359,7 +359,8 @@ def test_render_full_preview_chunks_and_overflow(
     card = response.messages[0]
     card.items[0].after.owner_statement = "长" * 9000
     body, offered = rendering.render(card)
-    assert "本人陈述" in body and offered
+    assert "本人陈述" not in body and "长" not in body and offered
+    card.items[0].after.after.statement = "长" * 9000
 
     async def run() -> None:
         adapter = Telegram(p.org_id, {"bot_token": TOKEN})
@@ -377,7 +378,7 @@ def test_render_full_preview_chunks_and_overflow(
     assert len(sends) == 4 and all(len(m["text"]) <= 3000 for m in sends)
     assert all("reply_markup" not in m for m in sends[:-1])
     assert len(sends[-1]["reply_markup"]["inline_keyboard"][0]) == 2
-    card.items[0].after.owner_statement = "长" * 12000
+    card.items[0].after.after.statement = "长" * 12000
     assert rendering.render(card) == (
         "预览内容较长，请在网页查看完整内容并确认提交。",
         [],

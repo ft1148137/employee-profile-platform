@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, col, delete, select
 
 from app.core.db import engine
+from app.core.security import create_access_token
 from app.domains.base import utc_now
 from app.domains.bot import core, store, tools
 from app.domains.bot import schemas as s
@@ -173,10 +174,15 @@ def test_telegram_review_roundtrip(
 
 @pytest.mark.parametrize(
     "invalid",
-    ["unseen", "revision", "card", "self", "other", "tenant", "web", "revoked"],
+    ["unseen", "revision", "card", "self", "other", "tenant", "revoked"],
 )
-def test_review_confirmation_guards(demo: tuple, db: Session, invalid: str) -> None:
+@pytest.mark.parametrize("channel", ["web", "feishu"])
+def test_review_confirmation_guards(
+    demo: tuple, db: Session, client: TestClient, invalid: str, channel: str
+) -> None:
     owner, request, p, session, card, _ = prepared(db, demo)
+    session.channel = channel
+    db.add(session)
     if invalid != "unseen":
         core._save(db, session, [card])
         db.commit()
@@ -197,9 +203,6 @@ def test_review_confirmation_guards(demo: tuple, db: Session, invalid: str) -> N
         core._save(db, session, [card])
     elif invalid == "tenant":
         p = replace(p, org_id=uuid4())
-    elif invalid == "web":
-        session.channel = "web"
-        db.add(session)
     elif invalid == "revoked":
         member_id = db.exec(
             select(OrgMembership.id).where(
@@ -214,21 +217,36 @@ def test_review_confirmation_guards(demo: tuple, db: Session, invalid: str) -> N
             )
         )
     db.commit()
-    with pytest.raises(HTTPException) as error:
-        core.act(db, p, session.id, action)
-    if invalid in ("revision", "card", "unseen", "web"):
-        assert error.value.status_code == 409
+    if channel == "web":
+        response = client.post(
+            f"/api/v1/bot/sessions/{session.id}/actions",
+            params={"org_id": str(p.org_id)},
+            headers={
+                "Authorization": f"Bearer {create_access_token(p.user_id, expires_delta=timedelta(minutes=5))}"
+            },
+            json=action.model_dump(mode="json"),
+        )
+        status = response.status_code
+        assert status in (403, 404, 409)
+    else:
+        with pytest.raises(HTTPException) as error:
+            core.act(db, p, session.id, action)
+        status = error.value.status_code
+    if invalid in ("revision", "card", "unseen"):
+        assert status == 409
     if invalid == "self":
-        assert error.value.status_code == 403
+        assert status == 403
     assert not db.exec(
         select(ReviewDecision).where(ReviewDecision.org_id == owner.org_id)
     ).all()
 
 
+@pytest.mark.parametrize("channel", ["web", "feishu"])
 def test_review_projection_empty_permissions_and_validation(
-    demo: tuple, db: Session
+    demo: tuple, db: Session, channel: str
 ) -> None:
     owner, request, p, session, card, args = prepared(db, demo)
+    session.channel = channel
     for wrong in (
         owner,
         actor(db, p.org_id, "employee.algorithm@demo.example.com"),
@@ -243,6 +261,9 @@ def test_review_projection_empty_permissions_and_validation(
                 db, wrong, session, [], "get_review", {"request_id": str(request.id)}
             )
             is None
+        )
+        assert (
+            tools.call(db, wrong, session, [], "prepare_review_decision", args) is None
         )
     invalid_reason = {
         **args,
@@ -303,7 +324,7 @@ def test_review_projection_empty_permissions_and_validation(
     )
 
 
-def test_model_text_and_web_cannot_confirm(
+def test_model_text_cannot_confirm_but_web_card_can(
     demo: tuple,
     db: Session,
     client: TestClient,
@@ -328,15 +349,23 @@ def test_model_text_and_web_cannot_confirm(
     web = store.create_session(db, p)
     cards: list[s.Message] = []
     tools.call(db, p, web, cards, "prepare_review_decision", args)
-    assert cards[0].type == "text" and cards[0].review_link == "/reviews"
+    assert cards[0].type == "review_card"
+    core._save(db, web, cards)
+    db.commit()
     response = client.post(
-        f"/api/v1/bot/sessions/{session.id}/actions",
+        f"/api/v1/bot/sessions/{web.id}/actions",
         params={"org_id": str(p.org_id)},
         headers=demo[2]["manager"],
-        json=card.actions[0].model_dump(mode="json"),
+        json=cards[0].actions[0].model_dump(mode="json"),
     )
-    assert response.status_code == 422
-    assert db.get(ProfileChangeRequest, request.id).status == "pending_review"
+    assert response.status_code == 200
+    assert "审批决定已保存" in response.json()["messages"][0]["text"]
+    db.expire_all()
+    assert db.get(ProfileChangeRequest, request.id).status == "approved"
+    decision = db.exec(
+        select(ReviewDecision).where(ReviewDecision.org_id == p.org_id)
+    ).one()
+    assert decision.via == "web"
 
 
 def test_delegate_review_and_safe_rendering(demo: tuple, db: Session) -> None:

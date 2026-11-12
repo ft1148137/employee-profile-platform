@@ -1,5 +1,6 @@
 from pydantic import JsonValue
 
+from app.core.config import settings
 from app.domains.bot import schemas as s
 
 LABELS = {
@@ -38,16 +39,10 @@ def claim_text(claim: s.Claim | None) -> str:
 def item_text(item: s.ChangeItem) -> str:
     lines = [
         f"{item.capability.name}：{LABELS.get(item.op, item.op)}",
-        claim_text(item.after),
+        f"{item.after.statement}；等级：{item.after.level or '未给等级'}"
+        if item.after
+        else "撤回此判断",
     ]
-    for label, value in (
-        ("解释", item.explanation),
-        ("不确定之处", item.uncertainty),
-        ("本人陈述", item.owner_statement),
-        ("异议", item.objection),
-    ):
-        if value:
-            lines.append(f"{label}：{value}")
     return "\n".join(lines)
 
 
@@ -66,7 +61,7 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
                 + f"决定：{LABELS[decisions[item.after.id].decision]}\n原因：{decisions[item.after.id].reason or '未填写'}"
                 for index, item in enumerate(message.items)
             )
-            + "\n详情在网页审批页查看"
+            + f"\n详情在网页审批页查看：{settings.FRONTEND_HOST.rstrip('/')}/reviews/{message.id}"
         )
         if len(text) > 12000:
             return "审批内容较长，请在网页审批页查看并决定。", []
@@ -81,8 +76,7 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
         )
     if isinstance(message, s.PreviewCard):
         text = "改动预览\n" + "\n\n".join(
-            f"修改前：{claim_text(item.before)}\n修改后：{item_text(item.after)}"
-            + (f"\n提醒：{item.warning}" if item.warning else "")
+            f"{item.after.capability.name}\n修改前：{item.before.statement if item.before else '暂无判断'}；等级：{item.before.level if item.before else '未给等级'}\n修改后：{item_text(item.after)}"
             for item in message.items
         )
         if len(text) > 12000:
