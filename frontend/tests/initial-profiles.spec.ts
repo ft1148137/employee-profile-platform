@@ -466,9 +466,7 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
   await expect(
     syncRecords.getByText("新增证据：8", { exact: true }),
   ).toBeVisible()
-  expect((await syncRecords.innerText()).replaceAll("CSV", "")).not.toMatch(
-    /[A-Za-z]{3,}/,
-  )
+  await expect(syncRecords).not.toContainText(/\b(?!csv\b)[A-Za-z]{3,}\b/i)
   await enableAutoDrafting(page)
   await page.goto("/admin/data-ai?tab=model")
   await page.route("**/initial-profiles/draft", (route) =>
