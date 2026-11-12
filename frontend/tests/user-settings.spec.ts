@@ -97,20 +97,23 @@ test.describe("Change password validation", () => {
   })
 })
 
-test("Appearance button is visible in sidebar", async ({ page }) => {
+test("Appearance is available in the user menu", async ({ page }) => {
   await page.goto("/settings")
+  await page.getByTestId("user-menu").click()
   await expect(page.getByTestId("theme-button")).toBeVisible()
 })
 
 test("User can switch between theme modes", async ({ page }) => {
   await page.goto("/settings")
 
+  await page.getByTestId("user-menu").click()
   await page.getByTestId("theme-button").click()
   await page.getByTestId("dark-mode").click()
   await expect(page.locator("html")).toHaveClass(/dark/)
 
   await expect(page.getByTestId("dark-mode")).not.toBeVisible()
 
+  await page.getByTestId("user-menu").click()
   await page.getByTestId("theme-button").click()
   await page.getByTestId("light-mode").click()
   await expect(page.locator("html")).toHaveClass(/light/)
@@ -119,11 +122,13 @@ test("User can switch between theme modes", async ({ page }) => {
 test("Selected mode is preserved across sessions", async ({ page }) => {
   await page.goto("/settings")
 
+  await page.getByTestId("user-menu").click()
   await page.getByTestId("theme-button").click()
   await page.getByTestId("light-mode").click()
   await expect(page.locator("html")).toHaveClass(/light/)
   await expect(page.getByTestId("light-mode")).not.toBeVisible()
 
+  await page.getByTestId("user-menu").click()
   await page.getByTestId("theme-button").click()
   await page.getByTestId("dark-mode").click()
   await expect(page.locator("html")).toHaveClass(/dark/)

@@ -1,6 +1,7 @@
 import { Link as RouterLink } from "@tanstack/react-router"
-import { ChevronsUpDown, LogOut, Settings } from "lucide-react"
+import { LogOut, Monitor, Moon, Settings, Sun } from "lucide-react"
 
+import { useTheme } from "@/components/theme-provider"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -8,6 +9,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -42,6 +46,7 @@ function UserInfo({ fullName, email }: UserInfoProps) {
 
 export function User({ user }: { user: any }) {
   const { logout } = useAuth()
+  const { setTheme } = useTheme()
   const { isMobile, setOpenMobile } = useSidebar()
 
   if (!user) return null
@@ -62,11 +67,15 @@ export function User({ user }: { user: any }) {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="justify-center p-0 data-[state=open]:bg-sidebar-accent"
+              aria-label="用户菜单"
               data-testid="user-menu"
             >
-              <UserInfo fullName={user?.full_name} email={user?.email} />
-              <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
+              <Avatar className="size-8">
+                <AvatarFallback className="bg-zinc-600 text-white">
+                  {getInitials(user.full_name || "用户")}
+                </AvatarFallback>
+              </Avatar>
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -85,6 +94,32 @@ export function User({ user }: { user: any }) {
                 设置
               </DropdownMenuItem>
             </RouterLink>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger data-testid="theme-button">
+                <Sun className="mr-2 size-4" />
+                外观
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem
+                  data-testid="light-mode"
+                  onClick={() => setTheme("light")}
+                >
+                  <Sun />
+                  浅色
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  data-testid="dark-mode"
+                  onClick={() => setTheme("dark")}
+                >
+                  <Moon />
+                  深色
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme("system")}>
+                  <Monitor />
+                  跟随系统
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut />
               退出登录

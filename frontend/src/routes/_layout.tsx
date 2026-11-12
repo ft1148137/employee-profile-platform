@@ -8,11 +8,7 @@ import axios, { AxiosError } from "axios"
 import { UsersService } from "@/client"
 import { BotPanel } from "@/components/Bot/BotPanel"
 import AppSidebar from "@/components/Sidebar/AppSidebar"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { isLoggedIn } from "@/hooks/useAuth"
 import { useOrg } from "@/hooks/useOrg"
 
@@ -58,20 +54,16 @@ function Layout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
-          <SidebarTrigger className="-ml-1 text-muted-foreground" />
-        </header>
+      <SidebarInset className="min-w-0">
+        {!assistant && (
+          <header className="sticky top-0 z-10 h-16 shrink-0 border-b bg-background" />
+        )}
         <main
           className={
             assistant ? "flex min-h-0 flex-1 flex-col" : "flex-1 p-6 md:p-8"
           }
         >
-          <div
-            className={
-              assistant ? "h-[calc(100dvh-4rem)] min-h-0" : "mx-auto max-w-7xl"
-            }
-          >
+          <div className={assistant ? "h-dvh min-h-0" : "mx-auto max-w-7xl"}>
             <Outlet />
           </div>
         </main>

@@ -47,12 +47,26 @@ for (const size of [
     )
     await page.goto("/admin/assistant")
     const sidebar = page.getByRole("region", { name: "管理助手会话" })
-    await expect(sidebar.getByRole("link")).toHaveCount(10)
+    await expect(sidebar.getByRole("link")).toHaveCount(25)
     await expect(
       page.getByRole("region", { name: "今天要处理的事" }),
     ).toBeVisible()
-    await page.getByRole("button", { name: "更早的 15 个对话" }).click()
-    await expect(sidebar.getByRole("link")).toHaveCount(25)
+    for (const entry of entries) {
+      const row = sidebar.getByRole("link", {
+        name: entry.preview,
+        exact: true,
+      })
+      await row.scrollIntoViewIfNeeded()
+      await expect(row).toBeInViewport({ ratio: 1 })
+      await expect(row).toContainText("管理助手 · 1 轮")
+      await expect(row.locator("time")).toHaveText(
+        /^(?:\d{2}:\d{2}|\d{1,2}\/\d{1,2})$/,
+      )
+    }
+    const rail = page.getByTestId("app-rail")
+    for (const link of await rail.getByRole("link").all()) {
+      await expect(link).toBeInViewport({ ratio: 1 })
+    }
     for (const name of ["首页", "人员", "能力与规则", "数据与 AI", "连接"]) {
       await expect(
         page
@@ -63,7 +77,6 @@ for (const size of [
     await expect(page.getByText("更多", { exact: true })).toBeInViewport({
       ratio: 1,
     })
-    await expect(page.getByTestId("theme-button")).toBeInViewport({ ratio: 1 })
     await expect(page.getByTestId("user-menu")).toBeInViewport({ ratio: 1 })
     await sidebar
       .getByRole("link", { name: entries[1].preview, exact: true })
@@ -74,15 +87,27 @@ for (const size of [
       sidebar.getByRole("link", { name: entries[1].preview, exact: true }),
     ).toHaveAttribute("aria-current", "page")
     // Retaining the same DOM node proves that route switches do not remount the sidebar.
-    const node = await sidebar.elementHandle()
+    await expect(
+      page.getByRole("navigation", { name: "面包屑" }),
+    ).toContainText(entries[1].preview)
+    const node = await rail.elementHandle()
     await page.getByRole("link", { name: "人员", exact: true }).click()
     await expect(
       page.getByRole("tablist", { name: "人员", exact: true }),
     ).toBeVisible()
     expect(await node?.evaluate((element) => element.isConnected)).toBe(true)
+    await expect(sidebar).toHaveCount(0)
     await expect(
-      sidebar.getByRole("button", { name: "收起更早的对话" }),
-    ).toHaveAttribute("aria-expanded", "true")
+      page.getByRole("columnheader", { name: "工号", exact: true }),
+    ).toBeVisible()
+    if (size.width === 1280)
+      await page.screenshot({
+        path: path.resolve(
+          import.meta.dirname,
+          "../../docs/screenshots/m4.2/admin-rail-people.png",
+        ),
+      })
+    await page.getByRole("link", { name: "聊天", exact: true }).click()
     await sidebar
       .getByRole("link", { name: entries[0].preview, exact: true })
       .click()
@@ -93,7 +118,10 @@ for (const size of [
         `../../docs/screenshots/m4.2/admin-unified-${size.width}x${size.height}.png`,
       ),
     })
-    await page.getByRole("link", { name: "新对话", exact: true }).click()
+    await page.getByRole("button", { name: "新对话", exact: true }).click()
+    await expect(
+      page.getByRole("navigation", { name: "面包屑" }),
+    ).toContainText("新对话")
     await expect(page).toHaveURL("/admin/assistant")
     await expect(page.getByRole("log")).not.toContainText(entries[0].preview)
     await sidebar
@@ -176,9 +204,9 @@ test("unconfigured model allows history and every manual menu", async ({
       .click()
     await expect(page).toHaveURL(route)
   }
-  await page.getByText("更多", { exact: true }).click()
   for (const name of ["审计日志", "首次设置"]) {
-    await page.getByRole("link", { name, exact: false }).click()
+    await page.getByRole("button", { name: "更多", exact: true }).click()
+    await page.getByRole("menuitem", { name, exact: false }).click()
     await expect(page.getByRole("heading", { name, exact: true })).toBeVisible()
   }
 })
@@ -260,4 +288,109 @@ test("session switch cancels the turn and preserves both conversation histories"
   } finally {
     finishReload!()
   }
+})
+
+test("mobile conversation sheet switches sessions and starts a new task", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const id = crypto.randomUUID()
+  await page.route("**/admin-assistant/availability?*", (route) =>
+    route.fulfill({ json: { available: true, reason: "" } }),
+  )
+  await page.route("**/admin-assistant/sessions?*", (route) =>
+    route.fulfill({
+      json: {
+        data: [
+          {
+            id,
+            preview: "手机历史对话",
+            started_at: new Date().toISOString(),
+            last_activity_at: "2026-01-02T08:00:00Z",
+            turn_count: 3,
+          },
+        ],
+        retention_days: 0,
+      },
+    }),
+  )
+  await page.route("**/admin-assistant/sessions/*/messages?*", (route) =>
+    route.fulfill({
+      json: [{ role: "user", payload: { text: "手机对话内容" } }],
+    }),
+  )
+  await logInUser(
+    page,
+    "admin@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  await page.goto("/admin/assistant")
+  await expect(page.getByRole("region", { name: "管理助手会话" })).toHaveCount(
+    0,
+  )
+  await page.getByRole("button", { name: "会话", exact: true }).click()
+  const sheet = page.getByRole("dialog", { name: "会话", exact: true })
+  await expect(sheet).toContainText("2 小时没有活动后清除")
+  const row = sheet.getByRole("link", { name: "手机历史对话", exact: true })
+  await expect(row).toContainText("1/2")
+  await expect(row).toContainText("管理助手 · 3 轮")
+  await row.click()
+  await expect(sheet).toBeHidden()
+  await expect(page).toHaveURL(`/admin/assistant?session=${id}`)
+  await expect(page.getByRole("navigation", { name: "面包屑" })).toContainText(
+    "手机历史对话",
+  )
+  await expect(page.getByRole("log")).toContainText("手机对话内容")
+  await page.getByRole("button", { name: "会话", exact: true }).click()
+  await expect(sheet.getByRole("link")).toHaveAttribute("aria-current", "page")
+  await sheet.getByRole("button", { name: "新对话", exact: true }).click()
+  await expect(sheet).toBeHidden()
+  await expect(page).toHaveURL("/admin/assistant")
+  await expect(page.getByRole("navigation", { name: "面包屑" })).toContainText(
+    "新对话",
+  )
+  // Short windows move trailing manual entries into More, keeping the rail visible.
+  await page.setViewportSize({ width: 390, height: 540 })
+  await page.getByRole("button", { name: "更多", exact: true }).click()
+  await expect(
+    page.getByRole("menuitem", { name: "连接", exact: true }),
+  ).toBeVisible()
+  await page.getByRole("menuitem", { name: "连接", exact: true }).click()
+  await expect(page).toHaveURL("/admin/connections")
+})
+
+test("employees keep their own navigation and floating bot", async ({
+  page,
+}) => {
+  await logInUser(
+    page,
+    "employee.platform@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  const rail = page.getByTestId("app-rail")
+  await expect(
+    rail.getByRole("link", { name: "我的画像", exact: true }),
+  ).toBeVisible()
+  await expect(
+    rail.getByRole("link", { name: "收件箱", exact: true }),
+  ).toBeVisible()
+  for (const name of [
+    "聊天",
+    "员工",
+    "首页",
+    "人员",
+    "能力与规则",
+    "数据与 AI",
+    "连接",
+  ])
+    await expect(rail.getByRole("link", { name, exact: true })).toHaveCount(0)
+  await expect(
+    rail.getByRole("button", { name: "更多", exact: true }),
+  ).toHaveCount(0)
+  await page
+    .getByRole("button", { name: "打开画像机器人", exact: true })
+    .click()
+  await expect(
+    page.getByRole("dialog", { name: "我的画像机器人", exact: true }),
+  ).toBeVisible()
 })

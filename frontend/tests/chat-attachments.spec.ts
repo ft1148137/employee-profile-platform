@@ -74,7 +74,7 @@ async function openChat(page: Page, bot = false) {
       process.env.DEMO_USER_PASSWORD!,
     )
     await page.goto("/admin/assistant")
-    await page.getByRole("link", { name: "新对话", exact: true }).click()
+    await page.getByRole("button", { name: "新对话", exact: true }).click()
     await expect(page).toHaveURL(/\/admin\/assistant$/)
     await expect(
       page.getByRole("heading", { name: "今天要处理的事", exact: true }),
@@ -314,7 +314,7 @@ test("new conversations do not reuse unsent uploads", async ({ page }) => {
       sessions.push(response.url().split("/sessions/")[1].split("/")[0])
   })
   await upload(page, file)
-  await page.getByRole("link", { name: "新对话", exact: true }).click()
+  await page.getByRole("button", { name: "新对话", exact: true }).click()
   await expect(page).toHaveURL(/\/admin\/assistant$/)
   await expect(
     page.getByRole("heading", { name: "今天要处理的事", exact: true }),
@@ -337,7 +337,7 @@ test("cached history downloads images from the selected session", async ({
   await expect(page.getByRole("log").getByRole("img")).toBeVisible()
   await expect(page).toHaveURL(/session=/)
   const first = new URL(page.url()).searchParams.get("session")!
-  await page.getByRole("link", { name: "新对话", exact: true }).click()
+  await page.getByRole("button", { name: "新对话", exact: true }).click()
   await expect(page).toHaveURL(/\/admin\/assistant$/)
   await expect(
     page.getByRole("heading", { name: "今天要处理的事", exact: true }),

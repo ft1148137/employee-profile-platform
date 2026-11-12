@@ -61,7 +61,7 @@ test("five menus open every tab and more keeps audit and setup", async ({
     page.getByRole("navigation", { name: "管理菜单" }).getByRole("link"),
   ).toHaveCount(5)
   await expect(
-    page.getByRole("link", { name: "审计日志", exact: true }),
+    page.getByRole("menuitem", { name: "审计日志", exact: true }),
   ).toBeHidden()
   await page.getByRole("link", { name: "首页", exact: true }).click()
   await expect(
@@ -101,11 +101,12 @@ test("five menus open every tab and more keeps audit and setup", async ({
     }
   }
   await page.getByText("更多", { exact: true }).click()
-  await page.getByRole("link", { name: "审计日志", exact: true }).click()
+  await page.getByRole("menuitem", { name: "审计日志", exact: true }).click()
   await expect(
     page.getByRole("heading", { name: "审计日志", exact: true }),
   ).toBeVisible()
-  await page.getByRole("link", { name: "首次设置", exact: false }).click()
+  await page.getByRole("button", { name: "更多", exact: true }).click()
+  await page.getByRole("menuitem", { name: "首次设置", exact: false }).click()
   await expect(page).toHaveURL("/setup-wizard")
 })
 

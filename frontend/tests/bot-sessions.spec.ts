@@ -145,7 +145,7 @@ test("admin resumes conversations across manual pages with matching page drafts"
     await expect(page.getByLabel("发给管理助手的消息")).toBeEnabled()
   }
   await send("把提醒改成每年一次，证据期限改为36个月")
-  await page.getByRole("link", { name: "新对话", exact: true }).click()
+  await page.getByRole("button", { name: "新对话", exact: true }).click()
   await expect(page.getByRole("log")).not.toContainText("把提醒改成每年一次")
   await send("第二个合成对话：关闭经理确认")
   await page.reload()
@@ -221,7 +221,7 @@ async function checkSwitching(
           response.url().includes("/messages?"),
       )
   await tab
-    .getByRole(administrator ? "link" : "button", {
+    .getByRole("button", {
       name: "新对话",
       exact: true,
     })
@@ -231,7 +231,7 @@ async function checkSwitching(
   await expect(input).toHaveValue("本页还没发出的合成文字")
   await tab.close()
   await (administrator ? page : dialog)
-    .getByRole(administrator ? "link" : "button", {
+    .getByRole("button", {
       name: "新对话",
       exact: true,
     })
