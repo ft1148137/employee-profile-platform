@@ -23,6 +23,8 @@ export type IssuableEmployee = {
   status: AccountStatus
 }
 type Props = {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   orgId: string
   employees?: IssuableEmployee[]
   onIssued: (count: number) => void
@@ -35,8 +37,15 @@ const conflictSchema = z.array(
   }),
 )
 
-export function IssueAccountsDialog({ orgId, employees, onIssued }: Props) {
-  const [open, setOpen] = useState(false)
+export function IssueAccountsDialog({
+  orgId,
+  employees,
+  onIssued,
+  open: controlledOpen,
+  onOpenChange,
+}: Props) {
+  const [internalOpen, setOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
   const [busy, setBusy] = useState(false)
   const [issued, setIssued] = useState<number | null>(null)
   const regenerateId = useId()
@@ -49,6 +58,7 @@ export function IssueAccountsDialog({ orgId, employees, onIssued }: Props) {
   function close(value: boolean) {
     if (busy) return
     setOpen(value)
+    onOpenChange?.(value)
     if (!value) {
       if (issued !== null) onIssued(issued)
       setIssued(null)
@@ -125,9 +135,11 @@ export function IssueAccountsDialog({ orgId, employees, onIssued }: Props) {
   }
   return (
     <Dialog open={open} onOpenChange={close}>
-      <Button onClick={() => setOpen(true)}>
-        生成账号{selected ? `（已选 ${selected.length} 人）` : ""}
-      </Button>
+      {controlledOpen === undefined && (
+        <Button onClick={() => setOpen(true)}>
+          生成账号{selected ? `（已选 ${selected.length} 人）` : ""}
+        </Button>
+      )}
       <DialogContent
         className="max-h-[85vh] overflow-y-auto sm:max-w-2xl"
         showCloseButton={!busy}

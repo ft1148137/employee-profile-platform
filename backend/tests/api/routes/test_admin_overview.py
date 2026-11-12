@@ -313,6 +313,8 @@ def test_todos_and_tenant_isolation(
         "unmatched_identities",
         "setup_step",
     ]
+    assert todos[0]["page"] == "/employees?filter=appeals"
+    assert todos[3]["page"] == "/employees?filter=identities"
     assert all(t["count"] == 1 for t in todos)
     assert todos[0]["oldest_at"] == todos[2]["oldest_at"]
     assert todos[1]["oldest_at"] is None and todos[-1]["oldest_at"] is None

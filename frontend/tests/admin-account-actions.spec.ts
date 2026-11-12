@@ -47,7 +47,8 @@ test("reset password once, disable and enable employee accounts", async ({
     page
       .getByRole("row")
       .filter({ has: page.getByRole("cell", { name: code, exact: true }) })
-  await row("E08").getByRole("button", { name: "重置密码" }).click()
+  await row("E08").getByRole("button", { name: "更多", exact: true }).click()
+  await page.getByRole("menuitem", { name: "重置密码" }).click()
   const dialog = page.getByRole("dialog")
   await expect(dialog).toContainText("重置后原密码立即失效")
   await expectChineseCopy(page)
@@ -80,7 +81,8 @@ test("reset password once, disable and enable employee accounts", async ({
     .first()
     .click()
   await expect(page.locator(`input[value="${newPassword}"]`)).toHaveCount(0)
-  await row("E08").getByRole("button", { name: "重置密码" }).click()
+  await row("E08").getByRole("button", { name: "更多", exact: true }).click()
+  await page.getByRole("menuitem", { name: "重置密码" }).click()
   await expect(dialog.getByRole("textbox", { name: "新密码" })).toHaveCount(0)
   await dialog.getByRole("button", { name: "取消", exact: true }).click()
   const context = await browser.newContext({
@@ -110,7 +112,8 @@ test("reset password once, disable and enable employee accounts", async ({
     )
     expect(reset.ok()).toBeTruthy()
     const secret = (await reset.json()).initial_password
-    await row("E09").getByRole("button", { name: "停用", exact: true }).click()
+    await row("E09").getByRole("button", { name: "更多", exact: true }).click()
+    await page.getByRole("menuitem", { name: "停用", exact: true }).click()
     await expect(dialog).toContainText("停用后这名员工不能登录，画像和证据保留")
     await expectChineseCopy(page)
     await page.screenshot({
@@ -123,7 +126,8 @@ test("reset password once, disable and enable employee accounts", async ({
     await expect(
       employeePage.getByText("账号已停用，请联系企业管理员", { exact: true }),
     ).toBeVisible()
-    await row("E09").getByRole("button", { name: "启用", exact: true }).click()
+    await row("E09").getByRole("button", { name: "更多", exact: true }).click()
+    await page.getByRole("menuitem", { name: "启用", exact: true }).click()
     await expectChineseCopy(page)
     await dialog.getByRole("button", { name: "确认启用" }).click()
     await expect(row("E09")).toContainText("待首次登录")
@@ -202,7 +206,8 @@ test("reset password survives refresh when the employee leaves the active filter
     has: page.getByRole("cell", { name: "E08", exact: true }),
   })
   await expect(row).toContainText("正常")
-  await row.getByRole("button", { name: "重置密码" }).click()
+  await row.getByRole("button", { name: "更多", exact: true }).click()
+  await page.getByRole("menuitem", { name: "重置密码" }).click()
   const dialog = page.getByRole("dialog")
   await dialog.getByRole("button", { name: "确认重置密码" }).click()
   const password = dialog.getByRole("textbox", { name: "新密码" })

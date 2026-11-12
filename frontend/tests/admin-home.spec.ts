@@ -196,7 +196,11 @@ test("admin home shows status and appeal todo through resubmission", async ({
     .filter({ hasText: "1 个争议待处理" })
     .getByRole("link", { name: "去处理" })
     .click()
-  await expect(page).toHaveURL("/admin/people?tab=appeals")
+  await expect(page).toHaveURL("/employees?filter=appeals")
+  await expect(
+    page.getByRole("row").filter({ hasText: subject.display_name }),
+  ).toBeVisible()
+  await expect(page.locator("tbody tr")).toHaveCount(1)
   await page.goto(`/employees/${subject.id}?tab=appeals`)
   await expect(
     page.getByRole("heading", { name: "争议", exact: true }),

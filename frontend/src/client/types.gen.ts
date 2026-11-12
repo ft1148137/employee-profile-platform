@@ -197,6 +197,13 @@ export type AdminTurnInput = {
    */
   page:
     | "/admin"
+    | "/employees"
+    | "/employees/$employeeId"
+    | "/employees?filter=roles"
+    | "/employees?filter=identities"
+    | "/employees?filter=appeals"
+    | "/employees?filter=account-only"
+    | "/org-chart"
     | "/admin/people"
     | "/admin/people/$employeeId"
     | "/admin/people?tab=accounts"
@@ -276,6 +283,13 @@ export type AdminUserMessage = {
    */
   page:
     | "/admin"
+    | "/employees"
+    | "/employees/$employeeId"
+    | "/employees?filter=roles"
+    | "/employees?filter=identities"
+    | "/employees?filter=appeals"
+    | "/employees?filter=account-only"
+    | "/org-chart"
     | "/admin/people"
     | "/admin/people/$employeeId"
     | "/admin/people?tab=accounts"

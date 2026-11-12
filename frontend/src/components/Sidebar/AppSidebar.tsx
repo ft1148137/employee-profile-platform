@@ -41,7 +41,6 @@ import { User } from "./User"
 
 const manual: Item[] = [
   { icon: House, title: "首页", path: "/admin" },
-  { icon: Users, title: "人员", path: "/admin/people" },
   { icon: BookOpen, title: "能力与规则", path: "/admin/rules" },
   { icon: Sparkles, title: "数据与 AI", path: "/admin/data-ai" },
 ]

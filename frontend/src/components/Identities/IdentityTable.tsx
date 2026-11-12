@@ -29,10 +29,12 @@ export function IdentityTable({
   orgId,
   inWizard = false,
   employeeId,
+  initialSource,
 }: {
   orgId: string
   inWizard?: boolean
   employeeId?: string
+  initialSource?: string
 }) {
   const client = useQueryClient()
   const linkDraft = usePageDraft(orgId, "link_identity")
@@ -48,7 +50,9 @@ export function IdentityTable({
   )
   const [q, setQ] = useState("")
   const [identityId, setIdentityId] = useState("")
-  const [source, setSource] = useState(employeeId ? "jira" : "")
+  const [source, setSource] = useState(
+    initialSource ?? (employeeId ? "jira" : ""),
+  )
   const [skip, setSkip] = useState(0)
   const [selected, setSelected] = useState<string[]>([])
   const [picker, setPicker] = useState<ExternalIdentityPublic | null>(null)

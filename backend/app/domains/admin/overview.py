@@ -213,7 +213,7 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
         "appeals",
         len(disputes),
         f"{len(disputes)} 个争议待处理",
-        "/admin/people?tab=appeals",
+        "/employees?filter=appeals",
         "帮我处理争议",
         min((a.created_at for a in disputes), default=None),
     )
@@ -248,7 +248,7 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
         "unmatched_identities",
         unmatched,
         f"{unmatched} 个工作账号还没有匹配员工",
-        "/admin/people?tab=identities",
+        "/employees?filter=identities",
         "帮我匹配工作账号",
     )
     add(

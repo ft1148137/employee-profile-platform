@@ -15,8 +15,7 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
     process.env.DEMO_USER_PASSWORD!,
   )
   await expect(page).toHaveURL("/admin/assistant")
-  await page.getByRole("link", { name: "人员", exact: true }).click()
-  await page.getByRole("tab", { name: "员工与账号", exact: true }).click()
+  await page.getByRole("link", { name: "员工", exact: true }).click()
   const rows = page.getByRole("row")
   const row = (code: string) =>
     rows.filter({ has: page.getByRole("cell", { name: code, exact: true }) })
@@ -30,6 +29,15 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
     path: "test-results/admin-accounts-list.png",
     fullPage: true,
   })
+  await row("E03").getByRole("button", { name: "更多", exact: true }).click()
+  await page.getByRole("menuitem", { name: "发放账号", exact: true }).click()
+  await expect(
+    page.getByRole("dialog").getByRole("row").filter({ hasText: "E03" }),
+  ).toBeVisible()
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "取消", exact: true })
+    .click()
   await filter("账号状态筛选", "还没有账号")
   await expect(row("E03")).toBeVisible()
   await expect(row("E02")).toHaveCount(0)
@@ -124,7 +132,7 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
   await expect(row("E04")).toContainText("还没有账号")
 })
 
-test("non-admin direct access preserves session and shows the backend reason", async ({
+test("employee legacy access returns to their allowed landing page", async ({
   page,
 }) => {
   await logInUser(
@@ -134,8 +142,7 @@ test("non-admin direct access preserves session and shows the backend reason", a
   )
   await expect(page.getByRole("link", { name: "人员" })).toHaveCount(0)
   await page.goto("/admin/accounts")
-  await expect(page.getByRole("alert")).toContainText("需要企业管理员权限")
-  await expect(page).toHaveURL("/admin/people?tab=accounts")
+  await expect(page).toHaveURL("/inbox")
   await expectChineseCopy(page)
 })
 

@@ -271,7 +271,7 @@ FUNCTIONS = {
             "查看员工及账号状态",
             AccountArgs,
             lambda d, p, a: accounts.list_accounts(d, p, **a.model_dump()),
-            "/admin/people?tab=accounts",
+            "/employees",
             "GET /accounts",
         ),
         _f(
@@ -280,7 +280,7 @@ FUNCTIONS = {
             "查看名单导入记录",
             PageArgs,
             lambda d, p, a: roster.list_imports(d, p, **a.model_dump()),
-            "/admin/people?tab=accounts",
+            "/employees",
             "GET /roster/imports",
         ),
         _f(
@@ -289,7 +289,7 @@ FUNCTIONS = {
             "查看管理员和经理角色",
             NoArgs,
             lambda d, p, a: RootModel(accounts.list_roles(d, p)),
-            "/admin/people?tab=roles",
+            "/employees?filter=roles",
             "GET /role-grants",
         ),
         _f(
@@ -298,7 +298,7 @@ FUNCTIONS = {
             "查看待处理的争议",
             EmployeeFilter,
             lambda d, p, a: RootModel(appeal.list_disputes(p, d, **a.model_dump())),
-            "/admin/people?tab=appeals",
+            "/employees?filter=appeals",
             "GET /appeals",
         ),
         _f(
@@ -307,7 +307,7 @@ FUNCTIONS = {
             "查看一个争议的处理情况",
             AppealArgs,
             lambda d, p, a: appeal.read_appeal(p, d, a.appeal_id),
-            "/admin/people?tab=appeals",
+            "/employees?filter=appeals",
             "GET /appeals/{appeal_id}",
         ),
         _f(
@@ -379,7 +379,7 @@ FUNCTIONS = {
             "查看 Jira 账号匹配情况",
             IdentityArgs,
             lambda d, p, a: identities.list_identities(d, p.org_id, **a.model_dump()),
-            "/admin/people?tab=identities",
+            "/employees?filter=identities",
             "GET /external-identities",
         ),
         _f(
@@ -465,7 +465,7 @@ FUNCTIONS["update_employee_fields"] = AdminFunction(
     description="开启或关闭员工档案固定字段，不进入画像或 AI；关闭保留已有值",
     input_model=EmployeeFields,
     handler=save_employee_fields,
-    page="/admin/people?tab=accounts",
+    page="/employees",
     endpoints=(("PUT", "/employee-fields"),),
     snapshot=lambda d, p, a: EmployeeFields(
         fields=d.get_one(Organization, p.org_id).employee_fields
@@ -771,7 +771,7 @@ for name, title, input_type in (
         description=title,
         input_model=input_type,
         handler=single.apply,
-        page="/admin/people",
+        page="/employees",
         # All three operations share a discriminated route, classified once.
         endpoints=(("POST", "/roster/single-change"),)
         if name == "onboard_employee"

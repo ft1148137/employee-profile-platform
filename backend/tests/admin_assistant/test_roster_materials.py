@@ -170,7 +170,7 @@ def test_model_material_confirmation(
         p,
         sid,
         AdminTurnInput(
-            text="乙从研发调到平台组", page="/admin/people", attachment_ids=ids
+            text="乙从研发调到平台组", page="/employees", attachment_ids=ids
         ),
     )
     card = response.messages[1].change_set

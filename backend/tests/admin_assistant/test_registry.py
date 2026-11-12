@@ -120,7 +120,7 @@ def test_table_limit() -> None:
     rows = [{"名称": str(n)} for n in range(25)]
     card = r._table(r.FUNCTIONS["list_accounts"], {"data": rows, "count": 123})
     assert card and len(card.rows) == 20 and card.total == 123
-    assert card.columns == ["名称"] and card.page == "/admin/people?tab=accounts"
+    assert card.columns == ["名称"] and card.page == "/employees"
     assert r._table(r.FUNCTIONS["list_roles"], []).total == 0
 
 

@@ -15,16 +15,6 @@ test.beforeEach(async ({ page }) => {
 
 const groups = [
   {
-    name: "人员",
-    path: "/admin/people",
-    tabs: [
-      ["accounts", "员工与账号"],
-      ["roles", "角色"],
-      ["identities", "Jira 账号匹配"],
-      ["appeals", "争议"],
-    ],
-  },
-  {
     name: "能力与规则",
     path: "/admin/rules",
     tabs: [
@@ -46,13 +36,13 @@ const groups = [
   },
 ]
 
-test("four menus open every tab and more keeps audit and setup", async ({
+test("three menus open every tab and more keeps audit and setup", async ({
   page,
 }) => {
   test.setTimeout(90000)
   await expect(
     page.getByRole("navigation", { name: "管理菜单" }).getByRole("link"),
-  ).toHaveCount(4)
+  ).toHaveCount(3)
   await expect(
     page.getByRole("link", { name: "连接", exact: true }),
   ).toHaveCount(0)
@@ -159,11 +149,11 @@ test("direct tab links survive reload and history, invalid tabs use the first", 
 test("legacy addresses redirect to their new locations", async ({ page }) => {
   test.setTimeout(90000)
   const aliases = [
-    ["accounts", "/admin/people?tab=accounts"],
+    ["accounts", "/employees"],
     ["roster", "/admin/assistant"],
-    ["roles", "/admin/people?tab=roles"],
-    ["identities", "/admin/people?tab=identities"],
-    ["appeals", "/admin/people?tab=appeals"],
+    ["roles", "/employees?filter=roles"],
+    ["identities", "/employees?filter=identities"],
+    ["appeals", "/employees?filter=appeals"],
     ["drafting", "/admin/data-ai?tab=model"],
     ["profile-imports", "/admin/assistant"],
     ["sources", "/admin/data-ai?tab=sources"],
@@ -177,6 +167,18 @@ test("legacy addresses redirect to their new locations", async ({ page }) => {
     ["assistants", "/admin/data-ai?tab=mcp"],
     ["progress", "/admin"],
   ]
+  for (const [tab, target] of [
+    ["", "/employees"],
+    ["accounts", "/employees"],
+    ["roster", "/admin/assistant"],
+    ["org-chart", "/org-chart"],
+    ["roles", "/employees?filter=roles"],
+    ["identities", "/employees?filter=identities"],
+    ["appeals", "/employees?filter=appeals"],
+  ]) {
+    await page.goto(`/admin/people${tab ? `?tab=${tab}` : ""}`)
+    await expect(page).toHaveURL(target)
+  }
   await page.goto("/admin/rules?tab=profile-import")
   await expect(page).toHaveURL("/admin/assistant")
   for (const [old, target] of aliases) {

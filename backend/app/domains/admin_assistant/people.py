@@ -335,7 +335,7 @@ def register_people(functions: dict[str, AdminFunction]) -> None:
             title,
             model,
             handler,
-            "/admin/people?tab=accounts",
+            "/employees",
             (endpoint,),
             snapshot=snapshot,
             impact=people_impact,

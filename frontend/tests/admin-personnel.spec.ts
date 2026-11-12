@@ -201,6 +201,11 @@ test("work attributes in personnel form and employee pages", async ({
   )
   await dialog.getByRole("button", { name: "确认新增员工" }).click()
   await expect(dialog).toHaveCount(0)
+  let profileReads = 0
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith(`${base}/employees/`))
+      profileReads++
+  })
   await page.goto("/employees")
   const row = page.getByRole("row").filter({ hasText: "合成档案员工" })
   await expect(row).toContainText("技术")
@@ -216,6 +221,7 @@ test("work attributes in personnel form and employee pages", async ({
   ).toBeVisible()
   await expect(page.getByText("入职 3 年", { exact: true })).toBeVisible()
   await expect(page.getByText("上海", { exact: true })).toBeVisible()
+  expect(profileReads).toBeLessThan(10)
   await page.screenshot({
     path: testInfo.outputPath("employee-fields-detail.png"),
     fullPage: true,

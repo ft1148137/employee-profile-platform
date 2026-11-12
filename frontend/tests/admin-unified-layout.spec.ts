@@ -72,7 +72,7 @@ for (const size of [
     for (const link of await rail.getByRole("link").all()) {
       await expect(link).toBeInViewport({ ratio: 1 })
     }
-    for (const name of ["首页", "人员", "能力与规则", "数据与 AI"]) {
+    for (const name of ["首页", "能力与规则", "数据与 AI"]) {
       await expect(
         page
           .getByRole("navigation", { name: "管理菜单" })
@@ -96,9 +96,9 @@ for (const size of [
       page.getByRole("navigation", { name: "面包屑" }),
     ).toContainText(entries[1].preview)
     const node = await rail.elementHandle()
-    await page.getByRole("link", { name: "人员", exact: true }).click()
+    await page.getByRole("link", { name: "员工", exact: true }).click()
     await expect(
-      page.getByRole("tablist", { name: "人员", exact: true }),
+      page.getByRole("heading", { name: "员工", exact: true }),
     ).toBeVisible()
     expect(await node?.evaluate((element) => element.isConnected)).toBe(true)
     await expect(sidebar).toHaveCount(0)
@@ -198,7 +198,6 @@ test("unconfigured model allows history and every manual menu", async ({
   await expect(page.getByRole("log")).toContainText(reason)
   for (const [name, route] of [
     ["首页", "/admin"],
-    ["人员", "/admin/people"],
     ["能力与规则", "/admin/rules"],
     ["数据与 AI", "/admin/data-ai"],
   ]) {
