@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import type { ProfileView } from "../src/client"
 import { expectChineseCopy } from "./utils/copy"
 import { logInUser } from "./utils/user"
 
@@ -149,7 +150,8 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
     ).ok(),
   ).toBeTruthy()
   const employees = await request.get(`${base}/employees`, { headers })
-  const employeeId = (await employees.json()).data[0].id
+  const employee = (await employees.json()).data[0]
+  const employeeId = employee.id
   await logInUser(page, email, "synthetic-password-2026")
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/admin/rules?tab=dictionary")
@@ -223,6 +225,29 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
     page.getByRole("switch", { name: "自动起草", exact: true }),
   ).toBeVisible()
   await page.goto(`/employees/${employeeId}`)
+  await expect(page.getByText("本部门还没有设置对应能力")).toBeVisible()
+  await expect(
+    page.getByRole("article", { name: "新合成能力", exact: true }),
+  ).toHaveCount(0)
+  const profile: ProfileView = await (
+    await request.get(`${base}/employees/${employeeId}/profile`, { headers })
+  ).json()
+  const newCapability = profile.items.find(
+    (item) => item.capability.name === "新合成能力",
+  )!
+  expect(newCapability.status).toBe("unknown")
+  expect(
+    (
+      await request.put(
+        `${base}/departments/${employee.department.id}/capabilities`,
+        {
+          headers,
+          data: { capability_keys: [newCapability.capability.key] },
+        },
+      )
+    ).ok(),
+  ).toBeTruthy()
+  await page.reload()
   await expect(
     page.getByRole("article", { name: "新合成能力", exact: true }),
   ).toContainText("未知")

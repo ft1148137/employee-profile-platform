@@ -35,7 +35,7 @@ function EmployeePage() {
 }
 
 function EmployeeDetails() {
-  const { org, employeeId: ownEmployeeId } = useOrg()
+  const { org, roles, employeeId: ownEmployeeId } = useOrg()
   const { employeeId } = Route.useParams()
   const { tab: detailTab } = Route.useSearch()
   const navigate = Route.useNavigate()
@@ -144,6 +144,10 @@ function EmployeeDetails() {
             )}
             <CapabilityList
               items={query.data.items}
+              departmentConfigured={
+                query.data.department_capabilities_configured ?? false
+              }
+              canConfigureDepartment={roles.includes("org_admin")}
               onEvidence={setEvidenceId}
               onEdit={
                 ownEmployeeId === employeeId
@@ -164,16 +168,6 @@ function EmployeeDetails() {
                 )
               }
             />
-            {ownEmployeeId === employeeId && query.data.schema_version && (
-              <div className="mt-6 space-y-3">
-                <Button variant="outline" onClick={() => setEditing({})}>
-                  新增能力
-                </Button>
-                <p className="text-sm text-muted-foreground">
-                  画像不用于绩效、薪酬和晋升。
-                </p>
-              </div>
-            )}
           </TabsContent>
           <TabsContent value="evidence">
             <EvidenceList

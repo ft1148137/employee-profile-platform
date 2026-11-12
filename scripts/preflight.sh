@@ -54,7 +54,8 @@ git diff --name-only --diff-filter=A HEAD...origin/master -- backend/app/alembic
 
 # All test selection rules live here. Paths are relative to backend for pytest.
 select_checks() {
-  local path module stem relative domain candidate route token
+  local path module package stem relative domain candidate route token
+  local import_space='([[:space:]]|#[^\n]*\n)*'
   : > "$scratch/targets"
   : > "$scratch/playwright"
   : > "$scratch/services"
@@ -68,8 +69,13 @@ select_checks() {
         relative=${path#backend/}
         module=${relative%.py}; module=${module//\//.}
         stem=${path##*/}; stem=${stem%.py}
-        # Include importers even for deleted modules; generic names may overselect.
-        rg -l -F -e "$module" -e "$stem" backend/tests --glob 'test_*.py' > "$scratch/importers" || [[ $? == 1 ]]
+        module=${module%.__init__}
+        package=${module%.*}
+        # Match qualified references and package imports, including multiline lists.
+        rg -l -U \
+          -e "(^|[^[:alnum:]_])${module//./\\.}([^[:alnum:]_]|$)" \
+          -e "from[[:blank:]]+${package//./\\.}[[:blank:]]+import[[:blank:]]+(\\($import_space)?([[:alnum:]_]+([[:blank:]]+as[[:blank:]]+[[:alnum:]_]+)?[[:blank:]]*,$import_space)*${module##*.}([^[:alnum:]_]|$)" \
+          backend/tests --glob 'test_*.py' > "$scratch/importers" || [[ $? == 1 ]]
         sed 's|^backend/||' "$scratch/importers" >> "$scratch/targets"
         relative=${relative#app/}
         for candidate in "backend/tests/${relative%/*}/test_$stem.py" "backend/tests/${relative%.py}/"; do
@@ -82,7 +88,11 @@ select_checks() {
         fi
         if [[ -f $path ]] && rg -q 'audit|target_type' "$path"; then
           echo tests/domains/test_audit_labels.py >> "$scratch/targets"
-        fi ;;
+        fi
+        case "$path" in
+          backend/app/models.py|backend/app/core/*)
+            echo "共享底层模块 ${path}：本地选择直接引用及对应测试，全量回归交给 CI。" ;;
+        esac ;;
     esac
     case "$path" in
       .github/*) echo tests/test_ci_workflows.py >> "$scratch/targets" ;;

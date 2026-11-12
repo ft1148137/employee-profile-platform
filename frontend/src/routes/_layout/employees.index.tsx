@@ -67,20 +67,15 @@ const columns: ColumnDef<DataTableFeatures, EmployeeSummary>[] = [
     header: "部门",
     cell: ({ row }) => row.original.department?.name ?? "—",
   },
-  ...(
-    [
-      "fill_status",
-      "inference_status",
-      "review_status",
-      "evidence_quality",
-    ] as const
-  ).map((kind, i) => ({
-    id: kind,
-    header: ["填写进度", "推断进度", "审核状态", "证据质量"][i],
-    cell: ({ row }: { row: { original: EmployeeSummary } }) => (
-      <StatusBadge kind={kind} value={row.original.progress?.[kind]} />
-    ),
-  })),
+  ...(["fill_status", "inference_status", "review_status"] as const).map(
+    (kind, i) => ({
+      id: kind,
+      header: ["填写进度", "推断进度", "审核状态"][i],
+      cell: ({ row }: { row: { original: EmployeeSummary } }) => (
+        <StatusBadge kind={kind} value={row.original.progress?.[kind]} />
+      ),
+    }),
+  ),
   {
     id: "published",
     header: "最近发布版本",

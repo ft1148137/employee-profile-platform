@@ -18,6 +18,9 @@ test("demo admin sees all employees, filters, searches and paginates", async ({
   await expect(page.getByText("共 12 名员工")).toBeVisible()
   await expect(page.locator("tbody tr")).toHaveCount(12)
   await expect(
+    page.getByRole("columnheader", { name: "证据质量", exact: true }),
+  ).toHaveCount(0)
+  await expect(
     page
       .getByRole("row")
       .filter({ hasText: "张伟" })
@@ -56,6 +59,9 @@ test("demo admin sees all employees, filters, searches and paginates", async ({
   await page.getByRole("option", { name: "平台研发部", exact: true }).click()
   await expect(page.getByText("共 3 名员工")).toBeVisible()
   await expect(page.locator("tbody tr")).toHaveCount(3)
+  await expect(
+    page.getByRole("columnheader", { name: "证据质量", exact: true }),
+  ).toHaveCount(0)
   await page.getByRole("textbox", { name: "搜索姓名或工号" }).fill("林澈")
   await expect(page.locator("tbody tr")).toHaveCount(1)
   await page.getByRole("row").filter({ hasText: "林澈" }).click()

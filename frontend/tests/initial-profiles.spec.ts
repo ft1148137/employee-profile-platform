@@ -293,15 +293,25 @@ test("employee reviews initial profile and updates on desktop and mobile", async
         .getByRole("button", { name: "提异议", exact: true })
         .first()
         .click()
-    } else
-      await page.getByRole("button", { name: "新增能力", exact: true }).click()
+    } else {
+      await page.getByRole("button", { name: "添加能力", exact: true }).click()
+      await page
+        .getByRole("dialog")
+        .getByLabel("搜索能力")
+        .fill(newCapability.name)
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: newCapability.name, exact: true })
+        .click()
+    }
     let editor = page.getByRole("dialog")
     if (initial)
       await editor
         .getByLabel("异议原因")
         .first()
         .fill("系统判断的工作范围需要本人补充")
-    await editor.getByLabel("新增能力").selectOption(newCapability.key)
+    if (initial)
+      await editor.getByLabel("新增能力").selectOption(newCapability.key)
     await editor
       .getByRole("textbox", { name: "陈述", exact: true })
       .last()

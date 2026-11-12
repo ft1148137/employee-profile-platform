@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test"
+import type { ProfileView } from "../src/client"
 import { logInUser } from "./utils/user"
 
 const password = process.env.DEMO_USER_PASSWORD!
@@ -34,7 +35,12 @@ test("employee reads capability, Jira evidence and earlier published snapshot", 
   await expect(api.getByText("审核状态", { exact: true })).toHaveCount(0)
   await expect(
     page.getByRole("article").filter({ hasText: "未知：暂无足够证据" }),
-  ).toHaveCount(11)
+  ).toHaveCount(2)
+  await expect(page.getByText("证据质量", { exact: true })).toHaveCount(0)
+  await expect(page.getByText("本部门还没有设置对应能力")).toBeVisible()
+  await expect(page.getByRole("link", { name: "去组织架构设置" })).toHaveCount(
+    0,
+  )
   await expect(
     api.getByText("能独立完成复杂任务", { exact: true }),
   ).toBeVisible()
@@ -165,7 +171,7 @@ for (const [email, title] of [
     if (email !== "employee.platform@demo.example.com") {
       await expect(
         page.getByRole("button", {
-          name: /^(修改|提异议|直接提交|新增能力|撤回这条判断)$/,
+          name: /^(修改|填写|提异议|直接提交|添加能力|撤回这条判断)$/,
         }),
       ).toHaveCount(0)
     }
@@ -209,6 +215,124 @@ test("another employee cannot read the initial draft", async ({ page }) => {
   ).toHaveCount(0)
 })
 
+test("department capabilities filter counts, retain other claims and add through review", async ({
+  page,
+  request,
+}) => {
+  let profile: ProfileView
+  await page.route("**/employees/*/profile", async (route) => {
+    const response = await route.fetch()
+    profile = await response.json()
+    await route.fulfill({
+      json: {
+        ...profile,
+        department_capabilities_configured: true,
+        items: profile.items.map((item) => ({
+          ...item,
+          in_department: ["frontend_ui", "model_training"].includes(
+            item.capability.key,
+          ),
+        })),
+      },
+    })
+  })
+  await page.route(
+    "**/employees/*/change-requests?status=all",
+    async (route) => {
+      const response = await route.fetch()
+      const body = await response.json()
+      const data = body.data.filter(
+        (entry: { origin: string }) => entry.origin !== "initial_sync",
+      )
+      await route.fulfill({ json: { ...body, data, count: data.length } })
+    },
+  )
+  await openE02(page, "employee.platform@demo.example.com")
+  const known = page.getByRole("article", {
+    name: "后端 API 开发",
+    exact: true,
+  })
+  await expect(known).toContainText("其他部门能力")
+  await expect(page.getByRole("article")).toHaveCount(3)
+  const stats = page.getByRole("region", { name: "能力状态统计" })
+  await expect(stats).toContainText("已确认 1")
+  await expect(stats).toContainText("未知 2")
+  await page.screenshot({
+    path: "../docs/screenshots/m4.2/profile-department-capabilities.png",
+    fullPage: true,
+  })
+  const hidden = profile!.items.find(
+    (item) =>
+      item.status === "unknown" &&
+      ![
+        "frontend_ui",
+        "model_training",
+        "automated_testing",
+        "incident_support",
+      ].includes(item.capability.key),
+  )!
+  await page.getByRole("button", { name: "添加能力", exact: true }).click()
+  let dialog = page.getByRole("dialog")
+  await dialog.getByLabel("搜索能力").fill(hidden.capability.name)
+  await expect(
+    dialog.getByRole("button", { name: hidden.capability.name, exact: true }),
+  ).toHaveCount(1)
+  await dialog
+    .getByRole("button", { name: hidden.capability.name, exact: true })
+    .click()
+  dialog = page.getByRole("dialog", { name: "更新我的画像" })
+  await expect(
+    dialog.getByRole("textbox", { name: "陈述", exact: true }),
+  ).toHaveValue("")
+  await dialog
+    .getByRole("textbox", { name: "陈述", exact: true })
+    .fill("我完成了合成项目的能力验证")
+  await dialog.getByLabel("依据说明").fill("本人确认的合成经历")
+  const created = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/me/requests") &&
+      response.request().method() === "POST",
+  )
+  await dialog.getByRole("button", { name: "预览并提交" }).click()
+  const createdResponse = await created
+  const savedRequest = await createdResponse.json()
+  const requestPath = new URL(createdResponse.url()).pathname
+  const token = await page.evaluate(() => localStorage.getItem("access_token"))
+  try {
+    dialog = page.getByRole("dialog")
+    await dialog.getByRole("button", { name: "确认提交", exact: true }).click()
+    await expect(dialog).toBeHidden()
+    await page.reload()
+    const added = page.getByRole("article", {
+      name: hidden.capability.name,
+      exact: true,
+    })
+    await expect(added).toContainText("有待处理的改动")
+    await expect(page.getByRole("article")).toHaveCount(4)
+  } finally {
+    expect(
+      (
+        await request.post(`${requestPath}/${savedRequest.id}/withdraw`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      ).ok(),
+    ).toBeTruthy()
+  }
+})
+
+test("administrator gets the department setup link but cannot add for another employee", async ({
+  page,
+}) => {
+  await openE02(page, "admin@demo.example.com")
+  await expect(page.getByText("本部门还没有设置对应能力")).toBeVisible()
+  await expect(
+    page.getByRole("link", { name: "去组织架构设置" }),
+  ).toHaveAttribute("href", "/org-chart")
+  await expect(
+    page.getByRole("button", { name: "添加能力", exact: true }),
+  ).toHaveCount(0)
+})
+
 test("empty initial draft cannot submit and pending requests can be withdrawn", async ({
   page,
 }) => {
@@ -217,7 +341,9 @@ test("empty initial draft cannot submit and pending requests can be withdrawn", 
     async (route) => {
       const response = await route.fetch()
       const body = await response.json()
-      const initial = body.data[0]
+      const initial = body.data.find(
+        (entry: { origin: string }) => entry.origin === "initial_sync",
+      )
       await route.fulfill({
         json: {
           data: [
