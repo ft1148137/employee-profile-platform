@@ -91,7 +91,7 @@ select_checks() {
         fi
         case "$path" in
           backend/app/models.py|backend/app/core/*)
-            echo "共享底层模块 $path：本地选择直接引用及对应测试，全量回归交给 CI。" ;;
+            echo "共享底层模块 ${path}：本地选择直接引用及对应测试，全量回归交给 CI。" ;;
         esac ;;
     esac
     case "$path" in
