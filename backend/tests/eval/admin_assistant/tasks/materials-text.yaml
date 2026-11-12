@@ -3,7 +3,7 @@ id: materials-text
 menu: rules
 steps:
   - type: say
-    text: '为邮箱 ${employee_email} 的员工整理初始画像：能力 ${capability}，陈述为参与电路设计，依据为本次管理员口头材料；不确定是否独立完成，不推断等级。只处理这一人，先给确认卡，本人过目前不得发布。'
+    text: '为邮箱 ${employee_email} 的员工整理初始画像：能力 ${capability}，陈述为参与电路设计，依据为本次管理员口头材料；不确定是否独立完成，等级 ${level}。只处理这一人，先给确认卡，管理员确认前不得发布。'
   - {type: apply}
 expect: {material_requests: 1}
 fake_model:
@@ -16,4 +16,4 @@ fake_model:
                 materials: [{attachment_id: null, label: 管理员口头材料}]
                 people:
                   - employee_email: '${employee_email}'
-                    items: [{capability_key: '${capability}', statement: 参与电路设计, basis: 管理员口头材料, uncertainty: 不确定是否独立完成}]
+                    items: [{capability_key: '${capability}', statement: 参与电路设计, level: '${level}', basis: 管理员口头材料, uncertainty: 不确定是否独立完成}]

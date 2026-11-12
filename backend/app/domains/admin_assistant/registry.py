@@ -28,6 +28,7 @@ from app.domains.admin_assistant import (
     dictionary_materials,
     materials,
     model_settings,
+    profile_edits,
     roster_materials,
 )
 from app.domains.admin_assistant.capability_proposals import register_proposals
@@ -761,7 +762,7 @@ FUNCTIONS["draft_profiles_from_material"] = AdminFunction(
     area="rules",
     kind="change",
     risk=lambda a: "high" if len(a.people) >= 2 else "normal",
-    description="按材料整理初始画像请求，确认后交本人过目，不能撤销",
+    description="按材料整理画像，确认后直接发布并通知本人，不能撤销",
     input_model=materials.MaterialArgs,
     handler=materials.apply,
     page="/admin/assistant",
@@ -830,4 +831,21 @@ FUNCTIONS["draft_dictionary_from_material"] = AdminFunction(
     impact=dictionary_materials.impact,
     preview_risk=dictionary_materials.risk,
     reverse=restore_dictionary,
+)
+
+FUNCTIONS["edit_employee_profile"] = AdminFunction(
+    name="edit_employee_profile",
+    area="people",
+    kind="change",
+    risk="high",
+    description="修改员工画像，确认后直接发布并通知本人，不能修改自己，不能撤销",
+    input_model=profile_edits.EditArgs,
+    handler=profile_edits.apply,
+    page="/employees",
+    endpoints=(
+        ("POST", "/employees/{employee_id}/profile/direct-edits/preview"),
+        ("POST", "/employees/{employee_id}/profile/direct-edits"),
+    ),
+    impact=profile_edits.impact,
+    undoable=False,
 )

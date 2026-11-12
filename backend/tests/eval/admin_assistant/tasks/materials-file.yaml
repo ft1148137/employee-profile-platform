@@ -5,7 +5,7 @@ steps:
   - {type: attach, name: material, filename: 工作便笺.md, content: '这不是固定格式：一名员工协作画了电路图，尚不能证明独立完成。仅作初始草稿。'}
   - type: say
     attachments: ['${material}']
-    text: '按照这份便笺，为 ${employee_email} 整理初始画像，只用能力 ${capability}，不设等级。先给确认卡，材料名用工作便笺.md。本人过目前不得发布。'
+    text: '按照这份便笺，为 ${employee_email} 整理初始画像，只用能力 ${capability}，等级 ${level}。先给确认卡，材料名用工作便笺.md。管理员确认前不得发布。'
   - {type: apply}
 expect: {material_requests: 1}
 fake_model:
@@ -18,4 +18,4 @@ fake_model:
                 materials: [{attachment_id: '${material}', label: 工作便笺.md}]
                 people:
                   - employee_email: '${employee_email}'
-                    items: [{capability_key: '${capability}', statement: 协作绘制电路图, basis: 管理员便笺, uncertainty: 尚不能证明独立完成}]
+                    items: [{capability_key: '${capability}', statement: 协作绘制电路图, level: '${level}', basis: 管理员便笺, uncertainty: 尚不能证明独立完成}]
