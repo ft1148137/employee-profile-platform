@@ -73,21 +73,29 @@ test("draft roster from materials, restore and confirm without offboarding omitt
   await page.goto("/admin/roster")
   await expect(page).toHaveURL(/\/admin\/assistant(?:\?session=[0-9a-f-]+)?$/)
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.getByLabel("选择对话附件").setInputFiles({
+  const picker = page.getByLabel("选择对话附件")
+  await expect(picker).toBeEnabled()
+  await picker.setInputFiles({
     name: "人员材料.txt",
     mimeType: "text/plain",
     buffer: Buffer.from("新人一、新人二、新人三加入平台组"),
   })
+  await expect(
+    page.getByRole("list", { name: "待发送附件" }).getByRole("status"),
+  ).toHaveText("已上传")
   await page
     .getByRole("textbox", { name: "发给管理助手的消息" })
     .fill("帮我按材料导入名单")
   await page.getByRole("button", { name: "发送", exact: true }).click()
   await expect(page.getByRole("form", { name: "上传名单" })).toHaveCount(0)
   const card = page.getByRole("region", { name: "设置改动确认卡" })
+  const attachment = page.getByRole("region", { name: "附件：人员材料.txt" })
   await expect(card).toContainText("新增 3 人")
   await expect(card).toContainText("离职 0 人")
+  await expect(attachment).toBeVisible()
   await page.reload()
   await expect(card).toContainText("新增 3 人")
+  await expect(attachment).toBeVisible()
   const history = async () =>
     (await (await request.get(`${base}/roster/imports`, { headers })).json())
       .data
@@ -109,7 +117,8 @@ test("draft roster from materials, restore and confirm without offboarding omitt
   await expect(
     card.getByRole("button", { name: "撤销", exact: true }),
   ).toHaveCount(0)
-  await expectChineseCopy(page)
+  await expect(attachment).toBeVisible()
+  await expectChineseCopy(page, ["txt"])
   await page.screenshot({
     path: testInfo.outputPath("roster-chat-applied.png"),
     fullPage: true,
