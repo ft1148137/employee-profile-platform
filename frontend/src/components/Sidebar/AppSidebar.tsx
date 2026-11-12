@@ -6,6 +6,7 @@ import {
   ListChecks,
   MessageCircle,
   MoreHorizontal,
+  Network,
   ScrollText,
   Settings,
   Sparkles,
@@ -89,7 +90,10 @@ export function AppSidebar() {
       path: `/employees/${employeeId}`,
     })
   if (administrator || roles.includes("dept_manager"))
-    items.push({ icon: Users, title: "员工", path: "/employees" })
+    items.push(
+      { icon: Network, title: "组织架构", path: "/org-chart" },
+      { icon: Users, title: "员工", path: "/employees" },
+    )
   const visible = Math.max(0, Math.min(manual.length, slots - items.length - 1))
   const more: Item[] = [
     ...manual.slice(visible),

@@ -1,17 +1,15 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { ChevronDown, ChevronRight, Network } from "lucide-react"
-import { useState } from "react"
-import {
-  EmployeesService,
-  type OrgChartDepartment,
-  OrgsService,
-} from "@/client"
+import { type ReactNode, useState } from "react"
+import { type OrgChartPerson, OrgsService } from "@/client"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { useOrg } from "@/hooks/useOrg"
 import { cn } from "@/lib/utils"
+import "./org-chart.css"
 
 export function OrgChart() {
   const { org, roles } = useOrg()
@@ -21,8 +19,35 @@ export function OrgChart() {
   return <Chart key={org.id} orgId={org.id} />
 }
 
+// Only members of a cycle become roots; their other reports remain attached.
+function reportingCycles(people: OrgChartPerson[]) {
+  const managers = new Map(
+    people.map((person) => [person.id, person.manager_id]),
+  )
+  const checked = new Set<string>()
+  const cycles = new Set<string>()
+  for (const person of people) {
+    const path = new Map<string, number>()
+    let id: string | null | undefined = person.id
+    while (id && managers.has(id) && !checked.has(id)) {
+      const start = path.get(id)
+      if (start !== undefined) {
+        for (const [member, index] of path)
+          if (index >= start) cycles.add(member)
+        break
+      }
+      path.set(id, path.size)
+      id = managers.get(id)
+    }
+    for (const member of path.keys()) checked.add(member)
+  }
+  return cycles
+}
+
 function Chart({ orgId }: { orgId: string }) {
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selectedDepartment, setDepartment] = useState<string | null>(null)
+  const [selectedPerson, setPerson] = useState<string | null>(null)
+  const [collapsed, setCollapsed] = useState(new Set<string>())
   const chart = useQuery({
     queryKey: ["org-chart", orgId],
     queryFn: async () =>
@@ -30,247 +55,283 @@ function Chart({ orgId }: { orgId: string }) {
   })
   if (chart.isPending) return <ProfileLoading />
   if (chart.isError) return <ProfileError retry={() => chart.refetch()} />
-  const departments = chart.data.departments
-  if (!departments.length)
-    return (
-      <p className="py-12 text-center text-muted-foreground">暂无可见部门</p>
-    )
-  const children = new Map<string | null, OrgChartDepartment[]>()
-  for (const department of departments) {
-    const parent = department.parent_department_id
-    children.set(parent, [...(children.get(parent) ?? []), department])
-  }
-  const department = departments.find((item) => item.id === selected)
-  return (
-    <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
-      <section
-        aria-label="部门层级"
-        className="min-w-0 overflow-hidden rounded-xl border"
-      >
-        <header className="flex items-center gap-3 border-b bg-muted/40 p-4">
-          <Network className="size-5 text-primary" />
-          <div>
-            <h2 className="font-semibold">组织架构</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {departments.length} 个可见部门 · 人数仅统计在职员工
-            </p>
-          </div>
-        </header>
-        <div className="overflow-x-auto p-5">
-          <ul className="w-max min-w-full space-y-4">
-            {(children.get(null) ?? []).map((node) => (
-              <DepartmentNode
-                key={node.id}
-                node={node}
-                childrenByParent={children}
-                depth={0}
-                selected={selected}
-                onSelect={setSelected}
-              />
-            ))}
-          </ul>
+  const { departments, people } = chart.data
+  const department = departments.find((item) => item.id === selectedDepartment)
+  const person = people.find((item) => item.id === selectedPerson)
+  const cycles = reportingCycles(people)
+  const children = new Map<string | null, string[]>()
+  const addChild = (parent: string | null, id: string) =>
+    children.set(parent, [...(children.get(parent) ?? []), id])
+  let renderCard: (id: string) => ReactNode
+  let label = "部门层级"
+  if (person || department) {
+    const visible = person
+      ? people
+      : people.filter((item) => item.department_id === department?.id)
+    const byId = new Map(visible.map((item) => [item.id, item]))
+    if (person) {
+      label = "人员汇报关系"
+      const chain = [person.id]
+      let manager = person.manager_id
+      while (manager && byId.has(manager) && !chain.includes(manager)) {
+        chain.unshift(manager)
+        manager = byId.get(manager)?.manager_id ?? null
+      }
+      chain.forEach((id, index) => {
+        addChild(index ? chain[index - 1] : null, id)
+      })
+      for (const report of people)
+        if (report.manager_id === person.id && !chain.includes(report.id))
+          addChild(person.id, report.id)
+    } else {
+      label = "部门汇报关系"
+      for (const item of visible)
+        addChild(
+          !cycles.has(item.id) && item.manager_id && byId.has(item.manager_id)
+            ? item.manager_id
+            : null,
+          item.id,
+        )
+    }
+    renderCard = (id) => {
+      const item = byId.get(id)!
+      return (
+        <PersonCard
+          person={item}
+          selected={person?.id === id}
+          cycle={cycles.has(id)}
+          onSelect={() => setPerson(id)}
+        />
+      )
+    }
+  } else {
+    const byId = new Map(departments.map((item) => [item.id, item]))
+    for (const item of departments) addChild(item.parent_department_id, item.id)
+    renderCard = (id) => {
+      const item = byId.get(id)!
+      const childCount = children.get(id)?.length ?? 0
+      return (
+        <div className="w-52 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
+          <button
+            type="button"
+            aria-label={`查看${item.name}人员`}
+            onClick={() => setDepartment(id)}
+            className="w-full p-4 text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"
+          >
+            <span className="block font-semibold">{item.name}</span>
+            <span className="mt-2 block text-xs text-muted-foreground">
+              经理：
+              {item.managers
+                ?.map((manager) => manager.display_name)
+                .join("、") || "未设置"}
+            </span>
+            <span className="mt-3 flex justify-between text-xs text-muted-foreground">
+              <span>
+                本部门{" "}
+                <strong className="text-foreground">{item.direct_count}</strong>{" "}
+                人
+              </span>
+              <span>
+                含下级{" "}
+                <strong className="text-foreground">{item.total_count}</strong>{" "}
+                人
+              </span>
+            </span>
+          </button>
+          {childCount > 0 && (
+            <button
+              type="button"
+              aria-expanded={!collapsed.has(id)}
+              aria-controls={`org-children-${id}`}
+              aria-label={`${collapsed.has(id) ? "展开" : "折叠"}${item.name}下级部门`}
+              onClick={() =>
+                setCollapsed((old) => {
+                  const next = new Set(old)
+                  if (next.has(id)) next.delete(id)
+                  else next.add(id)
+                  return next
+                })
+              }
+              className="flex w-full items-center justify-center gap-1 border-t bg-muted/40 py-2 text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              {collapsed.has(id) ? (
+                <ChevronRight className="size-3" />
+              ) : (
+                <ChevronDown className="size-3" />
+              )}
+              {childCount} 个下级部门
+            </button>
+          )}
         </div>
-      </section>
-      <aside
-        aria-label="部门人员"
-        className="min-w-0 self-start rounded-xl border"
+      )
+    }
+  }
+  return (
+    <div className="min-w-0 space-y-5">
+      <header className="flex items-center gap-3">
+        <span className="rounded-xl bg-primary/10 p-3 text-primary">
+          <Network className="size-6" />
+        </span>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">组织架构</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {departments.length} 个可见部门 · 人数仅统计在职员工
+          </p>
+        </div>
+      </header>
+      <nav
+        aria-label="组织架构面包屑"
+        className="flex flex-wrap items-center gap-2 text-sm"
       >
-        {department ? (
-          <DepartmentPeople
-            key={department.id}
-            orgId={orgId}
-            department={department}
-          />
-        ) : (
-          <div className="px-6 py-16 text-center">
-            <h2 className="font-semibold">查看部门人员</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              选择左侧部门，查看职位和汇报上级。
-            </p>
-          </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setDepartment(null)
+            setPerson(null)
+          }}
+        >
+          部门层级
+        </Button>
+        {department && (
+          <>
+            <ChevronRight className="size-4 text-muted-foreground" />
+            <Button variant="ghost" size="sm" onClick={() => setPerson(null)}>
+              {department.name}
+            </Button>
+          </>
         )}
-      </aside>
+        {person && (
+          <>
+            <ChevronRight className="size-4 text-muted-foreground" />
+            <span aria-current="page">{person.display_name}</span>
+          </>
+        )}
+      </nav>
+      <section
+        aria-label={label}
+        className="overflow-hidden rounded-2xl border bg-muted/20"
+      >
+        <header className="flex items-center justify-between border-b bg-background px-5 py-3">
+          <h2 className="font-medium">
+            {person
+              ? `${person.display_name} · 上级与直接下属`
+              : department
+                ? `${department.name} · 汇报关系`
+                : "部门层级"}
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            {department && !person
+              ? `共 ${department.direct_count} 人`
+              : "只读 · 点击卡片查看"}
+          </span>
+        </header>
+        <section
+          aria-label="可滚动组织架构图"
+          className="max-h-[calc(100dvh-20rem)] min-h-80 overflow-auto p-6 focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          {children.size ? (
+            <ChartTree
+              childrenByParent={children}
+              renderCard={renderCard}
+              collapsed={person || department ? new Set() : collapsed}
+            />
+          ) : (
+            <p className="py-20 text-center text-sm text-muted-foreground">
+              {department ? "本部门暂无在职人员" : "暂无可见部门"}
+            </p>
+          )}
+        </section>
+      </section>
     </div>
   )
 }
 
-function DepartmentNode({
-  node,
-  childrenByParent,
-  depth,
+function PersonCard({
+  person,
   selected,
+  cycle,
   onSelect,
 }: {
-  node: OrgChartDepartment
-  childrenByParent: Map<string | null, OrgChartDepartment[]>
-  depth: number
-  selected: string | null
-  onSelect: (id: string) => void
+  person: OrgChartPerson
+  selected: boolean
+  cycle: boolean
+  onSelect: () => void
 }) {
-  const [expanded, setExpanded] = useState(depth < 1)
-  const children = childrenByParent.get(node.id) ?? []
   return (
-    <li className="relative">
-      <div
-        className={cn(
-          "w-64 overflow-hidden rounded-lg border bg-background shadow-xs transition-colors",
-          selected === node.id && "border-primary ring-1 ring-primary",
-        )}
-      >
-        <button
-          type="button"
-          aria-pressed={selected === node.id}
-          aria-label={`查看${node.name}人员`}
-          onClick={() => onSelect(node.id)}
-          className="w-full p-4 text-left hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-primary"
-        >
-          <span className="block font-semibold">{node.name}</span>
-          <span className="mt-2 block text-xs text-muted-foreground">
-            经理：
-            {node.managers?.map((manager) => manager.display_name).join("、") ||
-              "未设置"}
-          </span>
-          <span className="mt-3 flex items-baseline gap-2 text-xs text-muted-foreground">
-            本部门{" "}
-            <strong className="text-lg tabular-nums text-foreground">
-              {node.direct_count}
-            </strong>
-            <span className="ml-auto">
-              含下级{" "}
-              <strong className="text-foreground">{node.total_count}</strong> 人
-            </span>
-          </span>
-        </button>
-        {children.length > 0 && (
-          <button
-            type="button"
-            aria-expanded={expanded}
-            aria-controls={`departments-${node.id}`}
-            aria-label={`${expanded ? "折叠" : "展开"}${node.name}下级部门`}
-            onClick={() => setExpanded(!expanded)}
-            className="flex w-full items-center gap-1 border-t bg-muted/30 px-4 py-2 text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"
-          >
-            {expanded ? (
-              <ChevronDown className="size-3" />
-            ) : (
-              <ChevronRight className="size-3" />
-            )}
-            {children.length} 个下级部门
-          </button>
-        )}
-      </div>
-      {children.length > 0 && (
-        <ul
-          id={`departments-${node.id}`}
-          hidden={!expanded}
-          className="ml-5 mt-4 space-y-4 border-l border-border pl-6 [&>li]:before:absolute [&>li]:before:-left-6 [&>li]:before:top-6 [&>li]:before:w-6 [&>li]:before:border-t [&>li]:before:border-border"
-        >
-          {children.map((child) => (
-            <DepartmentNode
-              key={child.id}
-              node={child}
-              childrenByParent={childrenByParent}
-              depth={depth + 1}
-              selected={selected}
-              onSelect={onSelect}
-            />
-          ))}
-        </ul>
+    <div
+      className={cn(
+        "w-52 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm",
+        selected && "border-primary ring-2 ring-primary/30",
       )}
-    </li>
+    >
+      <button
+        type="button"
+        aria-label={`查看${person.display_name}汇报关系`}
+        aria-pressed={selected}
+        onClick={onSelect}
+        className="flex w-full items-center gap-3 p-4 text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"
+      >
+        <Avatar className="size-10">
+          <AvatarFallback className="bg-primary/10 text-primary">
+            {person.display_name.slice(0, 1)}
+          </AvatarFallback>
+        </Avatar>
+        <span className="min-w-0">
+          <span className="block font-semibold">{person.display_name}</span>
+          <span className="mt-1 block text-xs text-muted-foreground">
+            {person.title || "职位未填写"}
+          </span>
+        </span>
+      </button>
+      {cycle && (
+        <p className="px-3 pb-3 text-xs text-destructive">汇报线有循环</p>
+      )}
+      {selected && (
+        <Button
+          asChild
+          variant="ghost"
+          className="w-full rounded-none border-t text-primary"
+        >
+          <Link to="/employees/$employeeId" params={{ employeeId: person.id }}>
+            查看详情
+          </Link>
+        </Button>
+      )}
+    </div>
   )
 }
 
-function DepartmentPeople({
-  orgId,
-  department,
+function ChartTree({
+  childrenByParent,
+  renderCard,
+  collapsed,
 }: {
-  orgId: string
-  department: OrgChartDepartment
+  childrenByParent: Map<string | null, string[]>
+  renderCard: (id: string) => ReactNode
+  collapsed: Set<string>
 }) {
-  const { roles } = useOrg()
-  const [page, setPage] = useState(0)
-  const employees = useQuery({
-    queryKey: ["employees", orgId, "org-chart", department.id, page],
-    queryFn: async () =>
-      (
-        await EmployeesService.readEmployees({
-          path: { org_id: orgId },
-          query: {
-            department_id: department.id,
-            employment_status: "active",
-            skip: page * 25,
-            limit: 25,
-          },
-        })
-      ).data,
-  })
+  function branch(id: string): ReactNode {
+    const children = childrenByParent.get(id) ?? []
+    return (
+      <li key={id}>
+        {renderCard(id)}
+        {children.length > 0 && !collapsed.has(id) && (
+          <>
+            <span
+              className="org-stem"
+              data-testid="org-connector"
+              aria-hidden="true"
+            />
+            <ul id={`org-children-${id}`}>{children.map(branch)}</ul>
+          </>
+        )}
+      </li>
+    )
+  }
   return (
-    <>
-      <header className="border-b p-4">
-        <h2 className="font-semibold">{department.name} · 人员</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          本部门在职人员，不含下级部门
-        </p>
-      </header>
-      {employees.isPending ? (
-        <ProfileLoading />
-      ) : employees.isError ? (
-        <ProfileError retry={() => employees.refetch()} />
-      ) : (
-        <div className="p-4">
-          {employees.data.count === 0 && (
-            <p className="py-6 text-sm text-muted-foreground">
-              本部门暂无在职人员
-            </p>
-          )}
-          <ul className="divide-y">
-            {employees.data.data.map((employee) => (
-              <li key={employee.id} className="py-3 first:pt-0">
-                <Link
-                  to={
-                    roles.includes("org_admin")
-                      ? "/admin/people/$employeeId"
-                      : "/employees/$employeeId"
-                  }
-                  params={{ employeeId: employee.id }}
-                  className="font-medium text-primary hover:underline"
-                >
-                  {employee.display_name}
-                </Link>
-                <p className="mt-1 text-sm">{employee.title || "职位未填写"}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  上级：
-                  {employee.manager?.display_name ?? "未设置或不在可见范围"}
-                </p>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-4 flex items-center justify-between gap-2 border-t pt-4 text-xs text-muted-foreground">
-            <span>
-              共 {employees.data.count} 人 · 第 {page + 1} 页
-            </span>
-            <div className="flex gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 0}
-                onClick={() => setPage(page - 1)}
-              >
-                上一页
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={(page + 1) * 25 >= employees.data.count}
-                onClick={() => setPage(page + 1)}
-              >
-                下一页
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    <ul className="org-tree">
+      {(childrenByParent.get(null) ?? []).map(branch)}
+    </ul>
   )
 }

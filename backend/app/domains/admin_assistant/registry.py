@@ -262,7 +262,7 @@ FUNCTIONS = {
             "查看部门层级、部门经理和在职人数",
             NoArgs,
             lambda d, p, a: read_org_chart(d, p),
-            "/admin/people?tab=org-chart",
+            "/org-chart",
             "GET /org-chart",
         ),
         _f(

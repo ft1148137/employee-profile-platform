@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutInboxRouteImport } from './routes/_layout/inbox'
+import { Route as LayoutOrgChartRouteImport } from './routes/_layout/org-chart'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutSetupWizardRouteImport } from './routes/_layout/setup-wizard'
 import { Route as LayoutAdminIndexRouteImport } from './routes/_layout/admin.index'
@@ -71,6 +72,11 @@ const LayoutIndexRoute = LayoutIndexRouteImport.update({
 const LayoutInboxRoute = LayoutInboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutOrgChartRoute = LayoutOrgChartRouteImport.update({
+  id: '/org-chart',
+  path: '/org-chart',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
@@ -223,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/inbox': typeof LayoutInboxRoute
+  '/org-chart': typeof LayoutOrgChartRoute
   '/settings': typeof LayoutSettingsRoute
   '/setup-wizard': typeof LayoutSetupWizardRoute
   '/admin/accounts': typeof LayoutAdminAccountsRoute
@@ -257,6 +264,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/inbox': typeof LayoutInboxRoute
+  '/org-chart': typeof LayoutOrgChartRoute
   '/settings': typeof LayoutSettingsRoute
   '/setup-wizard': typeof LayoutSetupWizardRoute
   '/': typeof LayoutIndexRoute
@@ -294,6 +302,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/_layout/inbox': typeof LayoutInboxRoute
+  '/_layout/org-chart': typeof LayoutOrgChartRoute
   '/_layout/settings': typeof LayoutSettingsRoute
   '/_layout/setup-wizard': typeof LayoutSetupWizardRoute
   '/_layout/': typeof LayoutIndexRoute
@@ -332,6 +341,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/setup'
     | '/inbox'
+    | '/org-chart'
     | '/settings'
     | '/setup-wizard'
     | '/admin/accounts'
@@ -366,6 +376,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/setup'
     | '/inbox'
+    | '/org-chart'
     | '/settings'
     | '/setup-wizard'
     | '/'
@@ -402,6 +413,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/setup'
     | '/_layout/inbox'
+    | '/_layout/org-chart'
     | '/_layout/settings'
     | '/_layout/setup-wizard'
     | '/_layout/'
@@ -482,6 +494,13 @@ declare module '@tanstack/react-router' {
       path: '/inbox'
       fullPath: '/inbox'
       preLoaderRoute: typeof LayoutInboxRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/org-chart': {
+      id: '/_layout/org-chart'
+      path: '/org-chart'
+      fullPath: '/org-chart'
+      preLoaderRoute: typeof LayoutOrgChartRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/settings': {
@@ -696,6 +715,7 @@ const LayoutAdminPeopleRouteWithChildren =
 
 interface LayoutRouteChildren {
   LayoutInboxRoute: typeof LayoutInboxRoute
+  LayoutOrgChartRoute: typeof LayoutOrgChartRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
   LayoutSetupWizardRoute: typeof LayoutSetupWizardRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
@@ -728,6 +748,7 @@ interface LayoutRouteChildren {
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutInboxRoute: LayoutInboxRoute,
+  LayoutOrgChartRoute: LayoutOrgChartRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
   LayoutSetupWizardRoute: LayoutSetupWizardRoute,
   LayoutIndexRoute: LayoutIndexRoute,

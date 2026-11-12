@@ -95,6 +95,26 @@ def test_chart_scope_counts_and_managers(
         assert node["parent_department_id"] == (
             str(parent) if str(parent) in nodes else None
         )
+    people = {row["id"]: row for row in response.json()["people"]}
+    expected = {
+        str(employee.id)
+        for employee in employees[0]
+        if employee.department_id in {departments[0][i].id for i in visible}
+    }
+    if actor == 0:
+        expected.add(
+            next(row["id"] for row in people.values() if row["department_id"] is None)
+        )
+    assert set(people) == expected
+    assert all(row["display_name"] != "合成离职员工" for row in people.values())
+    assert not set(people) & {str(employee.id) for employee in employees[1]}
+    for row in people.values():
+        assert row["manager_id"] is None or row["manager_id"] in people
+    if actor in (0, 1):
+        assert people[str(employees[0][2].id)]["manager_id"] == str(employees[0][1].id)
+        assert people[str(employees[0][1].id)]["manager_id"] == (
+            str(employees[0][0].id) if actor == 0 else None
+        )
     if 1 in visible:
         assert {
             "employee_id": str(employees[0][1].id),
@@ -178,3 +198,24 @@ def test_chart_hierarchy_cycle_terminates(
             assert node["id"] not in seen
             seen.add(node["id"])
             node = nodes.get(node["parent_department_id"])
+
+
+def test_chart_reporting_cycle_returns_people(
+    chart_data: tuple, db: Session, client: TestClient
+) -> None:
+    orgs, _, employees, users, _ = chart_data
+    db.add(
+        ReportingLine(
+            org_id=orgs[0].id,
+            employee_id=employees[0][0].id,
+            manager_employee_id=employees[0][2].id,
+        )
+    )
+    db.commit()
+    response = client.get(
+        f"/api/v1/orgs/{orgs[0].id}/org-chart", headers=headers(users[0])
+    )
+    assert response.status_code == 200
+    people = {row["id"]: row for row in response.json()["people"]}
+    assert people[str(employees[0][0].id)]["manager_id"] == str(employees[0][2].id)
+    assert people[str(employees[0][2].id)]["manager_id"] == str(employees[0][1].id)
