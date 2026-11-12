@@ -80,6 +80,7 @@ test("enterprise switch and personal token lifecycle", async ({
     await expectChineseCopy(employee, [
       "AI",
       "Cursor",
+      "skill",
       "MCP",
       "mcpServers",
       "employeeProfile",

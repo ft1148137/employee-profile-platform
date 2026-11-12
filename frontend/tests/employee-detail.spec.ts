@@ -116,7 +116,7 @@ test("admin manages account, roles and history from the unified employee detail"
 })
 
 for (const username of ["manager.platform", "employee.platform"]) {
-  test(`${username} sees only profile and fields, including a restricted tab URL`, async ({
+  test(`${username} sees only compact profile, including a restricted tab URL`, async ({
     page,
     request,
   }) => {
@@ -152,17 +152,17 @@ for (const username of ["manager.platform", "employee.platform"]) {
         adminRequests.push(request.url())
     })
     await page.goto(`/employees/${subject.id}?tab=account`)
-    const tabs = page.getByRole("tablist", { name: "员工详情", exact: true })
-    await expect(tabs.getByRole("tab")).toHaveCount(2)
     await expect(
-      tabs.getByRole("tab", { name: "画像", exact: true }),
-    ).toHaveAttribute("aria-selected", "true")
-    await tabs.getByRole("tab", { name: "档案", exact: true }).click()
-    await expect(page).toHaveURL(
-      new RegExp(`/employees/${subject.id}\\?tab=fields$`),
-    )
+      page.getByRole("tablist", { name: "员工详情", exact: true }),
+    ).toHaveCount(0)
+    await expect(page.getByRole("region", { name: "员工信息" })).toHaveCount(0)
+    for (const tab of ["证据", "版本历史", "档案"])
+      await expect(
+        page.getByRole("tab", { name: tab, exact: true }),
+      ).toHaveCount(0)
+    await page.goto(`/employees/${subject.id}?tab=fields`)
     await page.reload()
-    await expect(page.getByRole("region", { name: "员工信息" })).toBeVisible()
+    await expect(page.getByRole("region", { name: "员工信息" })).toHaveCount(0)
     await expect(
       page.getByRole("button", { name: "调岗", exact: true }),
     ).toHaveCount(0)

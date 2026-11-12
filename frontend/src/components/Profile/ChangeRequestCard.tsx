@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
+  type ChangeItemPublic,
   type ChangeRequestPublic,
   EmployeeRequestsService,
+  type ProfileItem,
   type RequestStatus,
 } from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
@@ -30,7 +32,11 @@ export function ChangeRequestCard({
   onEvidence,
   orgId,
   onEdit,
+  compact = false,
+  profileItems = [],
 }: {
+  compact?: boolean
+  profileItems?: ProfileItem[]
   requests: ChangeRequestPublic[]
   employeeId: string
   isOwner: boolean
@@ -112,36 +118,45 @@ export function ChangeRequestCard({
                 aria-label={`草稿改动：${item.capability.name}`}
                 className="rounded-lg border bg-card p-5 space-y-3"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="font-semibold">{item.capability.name}</h3>
-                  {item.after && (
-                    <StatusBadge
-                      kind="assessment_status"
-                      value={item.after.assessment_status}
+                {compact ? (
+                  <CompactChange item={item} profileItems={profileItems} />
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="font-semibold">{item.capability.name}</h3>
+                      {item.after && (
+                        <StatusBadge
+                          kind="assessment_status"
+                          value={item.after.assessment_status}
+                        />
+                      )}
+                    </div>
+                    <p>{item.after?.statement}</p>
+                    <p className="text-sm">
+                      等级：
+                      {item.after?.level
+                        ? levelLabel(
+                            item.capability.level_rubric,
+                            item.after.level,
+                          )
+                        : "未给等级"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      依据说明：
+                      {item.owner_statement ?? item.explanation ?? "暂无说明"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      不确定之处：{item.uncertainty ?? "暂无说明"}
+                    </p>
+                    <EvidenceRows
+                      items={(item.evidence ?? []).map((evidence) => ({
+                        ...evidence,
+                        id: evidence.evidence_id,
+                      }))}
+                      onSelect={onEvidence}
                     />
-                  )}
-                </div>
-                <p>{item.after?.statement}</p>
-                <p className="text-sm">
-                  等级：
-                  {item.after?.level
-                    ? levelLabel(item.capability.level_rubric, item.after.level)
-                    : "未给等级"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  依据说明：
-                  {item.owner_statement ?? item.explanation ?? "暂无说明"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  不确定之处：{item.uncertainty ?? "暂无说明"}
-                </p>
-                <EvidenceRows
-                  items={(item.evidence ?? []).map((evidence) => ({
-                    ...evidence,
-                    id: evidence.evidence_id,
-                  }))}
-                  onSelect={onEvidence}
-                />
+                  </>
+                )}
                 {isOwner && (
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -172,11 +187,13 @@ export function ChangeRequestCard({
               </section>
             ))}
           </div>
-          <RequestTimeline
-            orgId={orgId}
-            employeeId={employeeId}
-            requestId={initial.id}
-          />
+          {!compact && (
+            <RequestTimeline
+              orgId={orgId}
+              employeeId={employeeId}
+              requestId={initial.id}
+            />
+          )}
           {isOwner && (
             <Button
               disabled={!initial.items?.length}
@@ -205,9 +222,18 @@ export function ChangeRequestCard({
                   >
                     {statusLabels[request.status]} ·{" "}
                     {request.items?.length ?? 0} 项改动
-                    {request.submitted_via === "admin_handover" && (
+                    {!compact && request.submitted_via === "admin_handover" && (
                       <span> · 员工未过目</span>
                     )}
+                    {compact &&
+                      open.includes(request) &&
+                      request.items?.map((item) => (
+                        <CompactChange
+                          key={item.id}
+                          item={item}
+                          profileItems={profileItems}
+                        />
+                      ))}
                     {request.items?.some((item) => item.decision) && (
                       <ul className="space-y-2">
                         {request.items.map((item) => (
@@ -216,7 +242,7 @@ export function ChangeRequestCard({
                             {item.decision
                               ? decisionLabels[item.decision]
                               : "待决定"}
-                            {item.decision_reason && (
+                            {!compact && item.decision_reason && (
                               <p className="whitespace-pre-wrap break-words">
                                 原因：{item.decision_reason}
                               </p>
@@ -232,11 +258,13 @@ export function ChangeRequestCard({
                         ))}
                       </ul>
                     )}
-                    <RequestTimeline
-                      orgId={orgId}
-                      employeeId={employeeId}
-                      requestId={request.id}
-                    />
+                    {!compact && (
+                      <RequestTimeline
+                        orgId={orgId}
+                        employeeId={employeeId}
+                        requestId={request.id}
+                      />
+                    )}
                     {isOwner && request.status === "draft" && (
                       <Button
                         className="ml-2"
@@ -269,6 +297,55 @@ export function ChangeRequestCard({
             </section>
           ),
       )}
+    </div>
+  )
+}
+
+function CompactChange({
+  item,
+  profileItems,
+}: {
+  item: ChangeItemPublic
+  profileItems: ProfileItem[]
+}) {
+  const before = profileItems.find(
+    (entry) => entry.claim?.id === item.target_claim_id,
+  )?.claim
+  return (
+    <div className="space-y-2">
+      <h3 className="font-semibold">{item.capability.name}</h3>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span>
+          修改前：
+          {before?.level
+            ? levelLabel(item.capability.level_rubric, before.level)
+            : before
+              ? "未给等级"
+              : item.target_claim_id
+                ? "历史判断"
+                : "暂无判断"}
+        </span>
+        {(before || !item.target_claim_id) && (
+          <StatusBadge
+            kind="assessment_status"
+            value={before?.assessment_status ?? "unknown"}
+          />
+        )}
+        <span>
+          → 修改后：
+          {item.after?.level
+            ? levelLabel(item.capability.level_rubric, item.after.level)
+            : "未给等级"}
+        </span>
+        {item.after ? (
+          <StatusBadge
+            kind="assessment_status"
+            value={item.after.assessment_status}
+          />
+        ) : (
+          <span>撤回</span>
+        )}
+      </div>
     </div>
   )
 }

@@ -15,7 +15,6 @@ import { EmployeeDetailTabs } from "@/components/Profile/EmployeeDetailTabs"
 import { EvidenceList } from "@/components/Profile/EvidenceList"
 import { EvidenceSheet } from "@/components/Profile/EvidenceSheet"
 import { OrgState } from "@/components/Profile/OrgState"
-import { ProfileImport } from "@/components/Profile/ProfileImport"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { VersionHistory } from "@/components/Profile/VersionHistory"
 import { Button } from "@/components/ui/button"
@@ -36,6 +35,7 @@ function EmployeePage() {
 
 function EmployeeDetails() {
   const { org, roles, employeeId: ownEmployeeId } = useOrg()
+  const isAdmin = roles.includes("org_admin")
   const { employeeId } = Route.useParams()
   const { tab: detailTab } = Route.useSearch()
   const navigate = Route.useNavigate()
@@ -93,14 +93,21 @@ function EmployeeDetails() {
         tab={detailTab}
         onTabChange={(tab) => navigate({ search: { tab } })}
       >
-        {ownEmployeeId === employeeId && <AutoDraftSetting orgId={org.id} />}
-        {ownEmployeeId === employeeId && <ProfileImport orgId={org.id} />}
-        <Tabs value={tab} onValueChange={setTab} className="gap-6">
-          <TabsList aria-label="画像详情">
-            <TabsTrigger value="capabilities">能力画像</TabsTrigger>
-            <TabsTrigger value="evidence">证据</TabsTrigger>
-            <TabsTrigger value="versions">版本历史</TabsTrigger>
-          </TabsList>
+        {isAdmin && ownEmployeeId === employeeId && (
+          <AutoDraftSetting orgId={org.id} />
+        )}
+        <Tabs
+          value={isAdmin ? tab : "capabilities"}
+          onValueChange={setTab}
+          className="gap-6"
+        >
+          {isAdmin && (
+            <TabsList aria-label="画像详情">
+              <TabsTrigger value="capabilities">能力画像</TabsTrigger>
+              <TabsTrigger value="evidence">证据</TabsTrigger>
+              <TabsTrigger value="versions">版本历史</TabsTrigger>
+            </TabsList>
+          )}
           <TabsContent value="capabilities">
             {requests.isPending ? (
               <ProfileLoading />
@@ -109,6 +116,8 @@ function EmployeeDetails() {
             ) : (
               <ChangeRequestCard
                 requests={requests.data.data}
+                compact={!isAdmin}
+                profileItems={query.data.items}
                 employeeId={employeeId}
                 isOwner={ownEmployeeId === employeeId}
                 onEvidence={setEvidenceId}
@@ -144,6 +153,7 @@ function EmployeeDetails() {
             )}
             <CapabilityList
               items={query.data.items}
+              compact={!isAdmin}
               departmentConfigured={
                 query.data.department_capabilities_configured ?? false
               }
@@ -169,31 +179,37 @@ function EmployeeDetails() {
               }
             />
           </TabsContent>
-          <TabsContent value="evidence">
-            <EvidenceList
-              orgId={org.id}
-              employeeId={employeeId}
-              onSelect={setEvidenceId}
-            />
-          </TabsContent>
-          <TabsContent value="versions">
-            <VersionHistory
-              orgId={org.id}
-              employeeId={employeeId}
-              onEvidence={setEvidenceId}
-              onRequest={(id) => {
-                setRequestId(id)
-                setTab("capabilities")
-              }}
-            />
-          </TabsContent>
+          {isAdmin && (
+            <TabsContent value="evidence">
+              <EvidenceList
+                orgId={org.id}
+                employeeId={employeeId}
+                onSelect={setEvidenceId}
+              />
+            </TabsContent>
+          )}
+          {isAdmin && (
+            <TabsContent value="versions">
+              <VersionHistory
+                orgId={org.id}
+                employeeId={employeeId}
+                onEvidence={setEvidenceId}
+                onRequest={(id) => {
+                  setRequestId(id)
+                  setTab("capabilities")
+                }}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       </EmployeeDetailTabs>
-      <EvidenceSheet
-        orgId={org.id}
-        evidenceId={evidenceId}
-        onClose={() => setEvidenceId(null)}
-      />
+      {isAdmin && (
+        <EvidenceSheet
+          orgId={org.id}
+          evidenceId={evidenceId}
+          onClose={() => setEvidenceId(null)}
+        />
+      )}
       {editing && ownEmployeeId === employeeId && (
         <ChangeRequestEditor
           orgId={org.id}

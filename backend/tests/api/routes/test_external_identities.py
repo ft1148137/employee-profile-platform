@@ -351,3 +351,37 @@ def test_link_order_equivalence(
         contents.append({k: v for k, v in evidence.content.items() if k != "key"})
         assert evidence.event_id and evidence.status == EvidenceStatus.ACTIVE
     assert contents[0] == contents[1]
+
+
+def test_my_identities_are_linked_and_scoped_to_principal(
+    request: pytest.FixtureRequest, client: TestClient, db: Session
+) -> None:
+    orgs, _, employees, users = request.getfixturevalue("tenant_data")
+    mine = account(db, orgs[0], "mine", employee_id=employees[2].id)
+    account(db, orgs[0], "manager", employee_id=employees[1].id)
+    account(db, orgs[0], "unlinked")
+    account(db, orgs[1], "foreign", employee_id=employees[5].id)
+    url = f"/api/v1/orgs/{orgs[0].id}/me/external-identities"
+    auth = headers(users[2])
+    response = client.get(
+        url,
+        headers=auth,
+        params={"employee_id": str(employees[1].id), "status": "all"},
+    )
+    assert response.status_code == 200
+    assert response.json()["count"] == 1
+    assert [row["id"] for row in response.json()["data"]] == [str(mine.id)]
+    assert response.json()["data"][0]["candidate"] is None
+    assert client.get(url, headers=auth, params={"skip": 1}).json()["data"] == []
+    manager = client.get(url, headers=headers(users[1])).json()
+    assert manager["count"] == 1 and manager["data"][0]["external_id"] == "manager"
+    assert client.get(url, headers=headers(users[0])).status_code == 404
+    assert client.get(url, headers=headers(users[3])).status_code == 404
+    assert (
+        client.get(
+            f"/api/v1/orgs/{orgs[1].id}/me/external-identities", headers=auth
+        ).status_code
+        == 404
+    )
+    for params in ({"limit": 201}, {"limit": 0}, {"skip": -1}):
+        assert client.get(url, headers=auth, params=params).status_code == 422

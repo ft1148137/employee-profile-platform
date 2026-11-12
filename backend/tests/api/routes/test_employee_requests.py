@@ -224,11 +224,17 @@ def test_initial_request_confirmation(
     )
     base = f"{url}/me/requests/{initial['id']}"
     if edit:
-        body = {"items": [payload(objection="不认可系统起草的范围")]}
+        uncertainty = initial["items"][0]["uncertainty"]
+        body = {
+            "items": [
+                payload(objection="不认可系统起草的范围", uncertainty=uncertainty)
+            ]
+        }
         updated = client.put(f"{base}/items", headers=headers, json=body)
         assert updated.status_code == 200
         initial = updated.json()
         assert initial["status"] == "draft"
+        assert initial["items"][0]["uncertainty"] == uncertainty
         assert (
             client.get(f"{url}/me/profile", headers=headers).json()["employee"][
                 "progress"

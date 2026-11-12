@@ -21,7 +21,9 @@ export function CapabilityList({
   onEdit,
   departmentConfigured,
   canConfigureDepartment,
+  compact = false,
 }: {
+  compact?: boolean
   items: ProfileItem[]
   onEvidence: (id: string) => void
   pendingCapabilityIds?: Set<string>
@@ -89,6 +91,7 @@ export function CapabilityList({
               <ClaimCard
                 key={item.capability.id}
                 item={item}
+                compact={compact}
                 onEvidence={onEvidence}
                 pending={pendingCapabilityIds?.has(item.capability.id)}
                 onEdit={!item.retired ? onEdit : undefined}
@@ -136,8 +139,10 @@ function ClaimCard({
   pending,
   onEdit,
   otherDepartment,
+  compact = false,
 }: {
   item: ProfileItem
+  compact?: boolean
   onEvidence: (id: string) => void
   pending?: boolean
   onEdit?: (item: ProfileItem, retract?: boolean) => void
@@ -165,11 +170,20 @@ function ClaimCard({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {otherDepartment && <Badge variant="outline">其他部门能力</Badge>}
-          {evidence_stale && <Badge variant="outline">证据较旧</Badge>}
+          {!compact && evidence_stale && (
+            <Badge variant="outline">证据较旧</Badge>
+          )}
           <StatusBadge kind="assessment_status" value={status} />
         </div>
       </div>
-      {claim ? (
+      {compact ? (
+        <p className="text-sm">
+          等级：
+          {claim?.level
+            ? levelLabel(capability.level_rubric, claim.level)
+            : "未给等级"}
+        </p>
+      ) : claim ? (
         <>
           <p className="leading-relaxed">{claim.statement}</p>
           <dl className="my-4 flex flex-wrap gap-x-5 gap-y-3 text-sm">

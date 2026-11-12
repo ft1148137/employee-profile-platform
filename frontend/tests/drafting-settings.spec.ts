@@ -37,6 +37,9 @@ test("drafting settings and personal choice persist with role boundaries", async
   await employeePage
     .getByRole("link", { name: "我的画像", exact: true })
     .click()
+  const employeeProfileUrl = new URL(employeePage.url()).pathname
+  await employeePage.goto("/settings")
+  await employeePage.getByRole("tab", { name: "自动起草", exact: true }).click()
   const employeeToken = await employeePage.evaluate(() =>
     localStorage.getItem("access_token"),
   )
@@ -125,6 +128,9 @@ test("drafting settings and personal choice persist with role boundaries", async
       fullPage: true,
     })
     await employeePage.reload()
+    await employeePage
+      .getByRole("tab", { name: "自动起草", exact: true })
+      .click()
     await expect(
       employeePage.getByText("企业目前没有打开自动起草。"),
     ).toBeVisible()
@@ -134,6 +140,9 @@ test("drafting settings and personal choice persist with role boundaries", async
     if (own.enabled) await toggle.click()
     await expect(toggle).not.toBeChecked()
     await employeePage.reload()
+    await employeePage
+      .getByRole("tab", { name: "自动起草", exact: true })
+      .click()
     await expect(toggle).not.toBeChecked()
     await expect(
       employeePage.getByRole("link", { name: "能力与规则", exact: true }),
@@ -144,7 +153,7 @@ test("drafting settings and personal choice persist with role boundaries", async
       fullPage: true,
     })
     await logInUser(managerPage, "manager.platform@demo.example.com", password)
-    await managerPage.goto(new URL(employeePage.url()).pathname)
+    await managerPage.goto(employeeProfileUrl)
     await expect(
       managerPage.getByRole("heading", { name: "张伟", exact: true }),
     ).toBeVisible()

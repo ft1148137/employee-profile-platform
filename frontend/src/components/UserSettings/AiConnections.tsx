@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
-import { AccessTokensService } from "@/client"
+import { AccessTokensService, ProfileImportService } from "@/client"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
@@ -49,6 +49,22 @@ function Tokens({
       setName("")
       setMessage("")
       client.invalidateQueries({ queryKey: ["access-tokens", orgId] })
+    },
+    onError: handleError.bind(setMessage),
+  })
+  const downloadSkill = useMutation({
+    mutationFn: async () => {
+      const { data } = await ProfileImportService.importDownloadImportFile({
+        path: { name: "skill" },
+        responseType: "blob",
+      })
+      if (!(data instanceof Blob)) throw new Error("下载失败，请重试")
+      const url = URL.createObjectURL(data)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = "SKILL.md"
+      link.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
     },
     onError: handleError.bind(setMessage),
   })
@@ -103,6 +119,23 @@ function Tokens({
           90 天到期。
         </p>
       </header>
+      {hasEmployee && (
+        <div className="space-y-2">
+          <a
+            href="/api/v1/profile-import/files/skill"
+            className="text-primary underline"
+            onClick={(event) => {
+              event.preventDefault()
+              downloadSkill.mutate()
+            }}
+          >
+            下载生成指南（skill）
+          </a>
+          <p className="text-sm text-muted-foreground">
+            外部 AI 按指南生成的文件，请在助手对话里上传
+          </p>
+        </div>
+      )}
       {!setting.data.enabled && (
         <p className="rounded-lg border bg-muted/30 p-4">
           企业已关闭外部 AI 助手，暂时不能生成新令牌。你仍可查看和吊销已有令牌。

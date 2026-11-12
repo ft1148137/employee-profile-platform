@@ -43,10 +43,6 @@ from tests.api.routes.test_oauth import (  # noqa: F401
     registered,
     token,
 )
-from tests.api.routes.test_profile_import import example, upload
-from tests.api.routes.test_profile_import import (
-    test_business_and_format_errors as test_business_and_format_errors,
-)
 from tests.api.routes.test_roster import tenant as tenant  # noqa: F401
 
 # These existing scenarios are also collected here so this file is the M3 gate.
@@ -164,10 +160,6 @@ def test_one_employee_all_channels(
     assert exchanged.status_code == 200, exchanged.text
     anyio.run(mcp_flow, headers(exchanged.json()["access_token"]), None)
 
-    imported = upload(client, demo, example(), True)
-    assert imported.status_code == 200, imported.text
-    submitted_ids.append(imported.json()["request_id"])
-
     def withdraw(request_id: str, via: str) -> None:
         db.expire_all()
         row = db.get(ProfileChangeRequest, UUID(request_id))
@@ -179,7 +171,6 @@ def test_one_employee_all_channels(
             == "withdrawn"
         )
 
-    withdraw(submitted_ids[-1], "import")
     draft = client.post(
         base + "/me/requests",
         headers=own,
@@ -255,7 +246,7 @@ def test_one_employee_all_channels(
     assert sent.status_code == 200, sent.text
     submitted_ids.append(request_id)
     withdraw(request_id, "bot")
-    assert len(set(submitted_ids)) == 5
+    assert len(set(submitted_ids)) == 4
     assert (
         client.get(base + "/me/profile", headers=own).json()["items"]
         == profile["items"]
@@ -266,14 +257,13 @@ def test_one_employee_all_channels(
             Evidence.source.in_(
                 [
                     "self_report:mcp",
-                    "self_report:import",
                     "self_report:web",
                     "self_report:bot",
                 ]
             ),
         )
     ).all()
-    assert len(reports) == 5 and all(e.visibility == "restricted" for e in reports)
+    assert len(reports) == 4 and all(e.visibility == "restricted" for e in reports)
 
 
 def test_baseline_quota_exit_cleans_only_its_jobs(

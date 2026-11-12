@@ -707,16 +707,6 @@ export type Body_login_login_access_token = {
 }
 
 /**
- * Body_profile-import-upload_profile_import
- */
-export type Body_profile_import_upload_profile_import = {
-  /**
-   * File
-   */
-  file: Blob | File
-}
-
-/**
  * Body_roster-upload_import
  */
 export type Body_roster_upload_import = {
@@ -7519,6 +7509,47 @@ export type meReadMembershipsResponses = {
 export type meReadMembershipsResponse =
   meReadMembershipsResponses[keyof meReadMembershipsResponses]
 
+export type employeeRequestsReadMyExternalIdentitiesData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: {
+    /**
+     * Skip
+     */
+    skip?: number
+    /**
+     * Limit
+     */
+    limit?: number
+  }
+  url: "/api/v1/orgs/{org_id}/me/external-identities"
+}
+
+export type employeeRequestsReadMyExternalIdentitiesErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type employeeRequestsReadMyExternalIdentitiesError =
+  employeeRequestsReadMyExternalIdentitiesErrors[keyof employeeRequestsReadMyExternalIdentitiesErrors]
+
+export type employeeRequestsReadMyExternalIdentitiesResponses = {
+  /**
+   * Successful Response
+   */
+  200: ExternalIdentitiesPublic
+}
+
+export type employeeRequestsReadMyExternalIdentitiesResponse =
+  employeeRequestsReadMyExternalIdentitiesResponses[keyof employeeRequestsReadMyExternalIdentitiesResponses]
+
 export type employeeRequestsReadQuestionsData = {
   body?: never
   path: {
@@ -10058,43 +10089,6 @@ export type profileImportDownloadImportFileResponses = {
    */
   200: unknown
 }
-
-export type profileImportUploadProfileImportData = {
-  body: Body_profile_import_upload_profile_import
-  path: {
-    /**
-     * Org Id
-     */
-    org_id: string
-  }
-  query?: {
-    /**
-     * Confirm
-     */
-    confirm?: boolean
-  }
-  url: "/api/v1/orgs/{org_id}/me/profile-import"
-}
-
-export type profileImportUploadProfileImportErrors = {
-  /**
-   * Validation Error
-   */
-  422: HTTPValidationError
-}
-
-export type profileImportUploadProfileImportError =
-  profileImportUploadProfileImportErrors[keyof profileImportUploadProfileImportErrors]
-
-export type profileImportUploadProfileImportResponses = {
-  /**
-   * Successful Response
-   */
-  200: RequestPreview
-}
-
-export type profileImportUploadProfileImportResponse =
-  profileImportUploadProfileImportResponses[keyof profileImportUploadProfileImportResponses]
 
 export type changeRequestsReadChangeRequestsData = {
   body?: never

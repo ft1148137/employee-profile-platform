@@ -149,7 +149,7 @@ test("new employee logs in to a real empty profile without a dictionary", async 
     page.getByRole("heading", { name: "你的画像还没有内容" }),
   ).toBeVisible()
   await expect(page.getByText("企业管理员还没有选择能力词典")).toBeVisible()
-  await expect(page.getByText("未发布", { exact: true })).toBeVisible()
+  await expect(page.getByText("未发布", { exact: true })).toHaveCount(0)
   await expectChineseCopy(page)
   await page.screenshot({
     path: "test-results/new-employee-empty-profile.png",

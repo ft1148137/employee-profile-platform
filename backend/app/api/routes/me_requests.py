@@ -26,8 +26,29 @@ from app.domains.inbox.schemas import (
 )
 from app.domains.inbox.service import mark_read, my_inbox
 from app.domains.profile.schemas import ProfileView
+from app.domains.source.identities import list_identities
+from app.domains.source.schemas import ExternalIdentitiesPublic
 
 router = APIRouter(prefix="/orgs/{org_id}/me", tags=["employee_requests"])
+
+
+@router.get("/external-identities")
+def read_my_external_identities(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> ExternalIdentitiesPublic:
+    return list_identities(
+        session,
+        principal.org_id,
+        status="linked",
+        employee_id=employee.employee_id(principal),
+        source=None,
+        q=None,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get("/questions")

@@ -26,10 +26,10 @@ async function openE02(page: Page, email: string) {
   ).toBeVisible()
 }
 
-test("employee reads capability, Jira evidence and earlier published snapshot", async ({
+test("administrator reads capability, Jira evidence and earlier published snapshot", async ({
   page,
 }) => {
-  await openE02(page, "employee.platform@demo.example.com")
+  await openE02(page, "admin@demo.example.com")
   const api = page.getByRole("article", { name: "后端 API 开发", exact: true })
   await expect(api.getByText("已确认", { exact: true })).toBeVisible()
   await expect(api.getByText("审核状态", { exact: true })).toHaveCount(0)
@@ -39,7 +39,7 @@ test("employee reads capability, Jira evidence and earlier published snapshot", 
   await expect(page.getByText("证据质量", { exact: true })).toHaveCount(0)
   await expect(page.getByText("本部门还没有设置对应能力")).toBeVisible()
   await expect(page.getByRole("link", { name: "去组织架构设置" })).toHaveCount(
-    0,
+    1,
   )
   await expect(
     api.getByText("能独立完成复杂任务", { exact: true }),
@@ -87,6 +87,39 @@ for (const [role, email, restricted] of [
 ] as const) {
   test(`${role} sees the permitted self-report content`, async ({ page }) => {
     await openE02(page, email)
+    if (role !== "admin") {
+      const api = page.getByRole("article", {
+        name: "后端 API 开发",
+        exact: true,
+      })
+      await expect(api).toContainText("能独立完成复杂任务")
+      await expect(api).toContainText("已确认")
+      for (const name of ["证据", "版本历史", "档案"])
+        await expect(page.getByRole("tab", { name, exact: true })).toHaveCount(
+          0,
+        )
+      for (const text of [
+        "相关证据",
+        "信心",
+        "生成来源",
+        "暂无解释",
+        "证据较旧",
+        selfReport,
+      ])
+        await expect(page.getByText(text, { exact: false })).toHaveCount(0)
+      await expect(
+        page.getByRole("button", { name: "导入 AI 生成的画像" }),
+      ).toHaveCount(0)
+      await expect(
+        page.getByRole("region", { name: "员工档案摘要" }),
+      ).toHaveCount(0)
+      await expect(page.getByRole("switch")).toHaveCount(0)
+      await page.screenshot({
+        path: `test-results/profile-compact-${role}.png`,
+        fullPage: true,
+      })
+      return
+    }
     await page.getByRole("tab", { name: "证据", exact: true }).click()
     await page.getByLabel("证据类型").selectOption("self_report")
     await expect(
@@ -116,9 +149,7 @@ for (const [role, email, restricted] of [
   })
 }
 
-test("profile recovers from errors and tolerates incomplete evidence fields", async ({
-  page,
-}) => {
+test("profile recovers from errors", async ({ page }) => {
   await page.route("**/employees/*/profile", (route) =>
     route.fulfill({ status: 500, json: { detail: "Temporary failure" } }),
   )
@@ -131,6 +162,10 @@ test("profile recovers from errors and tolerates incomplete evidence fields", as
   await expect(
     page.getByRole("heading", { name: "张伟", exact: true }),
   ).toBeVisible()
+})
+
+test("administrator tolerates incomplete evidence fields", async ({ page }) => {
+  await openE02(page, "admin@demo.example.com")
   await page.route("**/evidence/*", async (route) => {
     const response = await route.fetch()
     const evidence = await response.json()
@@ -143,6 +178,7 @@ test("profile recovers from errors and tolerates incomplete evidence fields", as
     })
   })
   await page.getByRole("tab", { name: "证据", exact: true }).click()
+  await page.getByLabel("证据类型").selectOption("work_record")
   await page
     .getByRole("tabpanel", { name: "证据", exact: true })
     .getByRole("button")
@@ -176,22 +212,35 @@ for (const [email, title] of [
       ).toHaveCount(0)
     }
     await expect(
-      draft.getByText("等级：未给等级", { exact: true }),
+      draft.getByText(
+        email === "admin@demo.example.com"
+          ? "等级：未给等级"
+          : "→ 修改后：未给等级",
+        { exact: true },
+      ),
     ).toHaveCount(2)
     await expect(draft.getByText("暂定", { exact: true })).toHaveCount(2)
     await expect(
       draft.getByText(/不确定之处：任务关联不等于已独立完成/),
-    ).toHaveCount(2)
+    ).toHaveCount(email === "admin@demo.example.com" ? 2 : 0)
     for (const capability of ["自动化测试", "问题诊断与支持"]) {
       await expect(
         page.getByRole("article", { name: capability, exact: true }),
       ).toContainText("有待处理的改动")
     }
-    await draft
-      .getByRole("button", { name: /实现分页查询接口/ })
-      .first()
-      .click()
-    await expect(page.getByRole("dialog")).toContainText("PLAT-104")
+    if (email === "admin@demo.example.com") {
+      await draft
+        .getByRole("button", { name: /实现分页查询接口/ })
+        .first()
+        .click()
+      await expect(page.getByRole("dialog")).toContainText("PLAT-104")
+    } else {
+      for (const text of ["依据说明", "不确定之处", "请求时间线", "相关证据"])
+        await expect(draft.getByText(text, { exact: false })).toHaveCount(0)
+      await expect(
+        draft.getByText("修改前：暂无判断", { exact: true }),
+      ).toHaveCount(2)
+    }
     await page.screenshot({
       animations: "disabled",
       path: `test-results/initial-draft-${email.split("@")[0]}.png`,
@@ -394,4 +443,100 @@ test("initial draft read failure can be retried", async ({ page }) => {
   await expect(
     page.getByRole("region", { name: "初始画像草稿", exact: true }),
   ).toBeVisible()
+})
+
+test("pending change shows before and after levels without its statement or basis", async ({
+  page,
+}) => {
+  await page.route(
+    "**/employees/*/change-requests?status=all",
+    async (route) => {
+      const profileResponse = await route.fetch({
+        url: route
+          .request()
+          .url()
+          .replace(/change-requests\?status=all$/, "profile"),
+      })
+      const profile: ProfileView = await profileResponse.json()
+      const existing = profile.items.find(
+        (item) => item.capability.key === "backend_api",
+      )!
+      const response = await route.fetch()
+      const body = await response.json()
+      const initial = body.data.find(
+        (entry: { origin: string }) => entry.origin === "initial_sync",
+      )
+      await route.fulfill({
+        json: {
+          data: [
+            {
+              ...initial,
+              id: "pending-modify",
+              origin: "manual",
+              status: "pending_review",
+              items: [
+                {
+                  ...initial.items[0],
+                  capability: existing.capability,
+                  target_claim_id: existing.claim!.id,
+                  after: {
+                    ...initial.items[0].after,
+                    level: null,
+                    statement: "不应显示的陈述",
+                  },
+                  owner_statement: "不应显示的依据",
+                },
+              ],
+            },
+          ],
+          count: 1,
+        },
+      })
+    },
+  )
+  await openE02(page, "employee.platform@demo.example.com")
+  const pending = page.getByRole("region", { name: "其他待处理请求" })
+  await expect(pending).toContainText("修改前：能独立完成复杂任务")
+  await expect(pending).toContainText("修改后：未给等级")
+  await expect(pending).toContainText("已确认")
+  await expect(pending).toContainText("暂定")
+  for (const text of ["不应显示的陈述", "不应显示的依据"])
+    await expect(page.getByText(text)).toHaveCount(0)
+  await expect(
+    pending.getByRole("button", { name: "撤回", exact: true }),
+  ).toBeVisible()
+})
+
+test("editing an initial candidate sends uncertainty back unchanged", async ({
+  page,
+}) => {
+  await openE02(page, "employee.platform@demo.example.com")
+  const initial = page.getByRole("region", {
+    name: "初始画像草稿",
+    exact: true,
+  })
+  await initial
+    .getByRole("button", { name: "修改", exact: true })
+    .first()
+    .click()
+  const dialog = page.getByRole("dialog")
+  await dialog
+    .getByRole("textbox", { name: "陈述", exact: true })
+    .first()
+    .fill("合成修改，不丢不确定说明")
+  let uncertainties: (string | null)[] = []
+  await page.route("**/me/requests/*/items", async (route) => {
+    uncertainties = route
+      .request()
+      .postDataJSON()
+      .items.map((item: { uncertainty: string | null }) => item.uncertainty)
+    // Capture the UI boundary without modifying the shared demo candidate.
+    await route.fulfill({ json: { id: "synthetic", revision: 2 } })
+  })
+  await dialog.getByRole("button", { name: "保存草稿", exact: true }).click()
+  await expect(dialog.getByRole("status")).toHaveText("草稿已保存")
+  expect(uncertainties).toHaveLength(2)
+  expect(
+    uncertainties.every((value) => value?.includes("任务关联不等于已独立完成")),
+  ).toBe(true)
 })
