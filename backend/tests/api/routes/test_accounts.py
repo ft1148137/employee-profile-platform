@@ -617,3 +617,86 @@ def test_issue_duplicate_username_in_batch(
             "reason": "邮箱已被占用",
         }
     ]
+
+
+def test_unlinked_accounts_tenant_scope_and_roles(
+    accounts: tuple, client: TestClient, db: Session
+) -> None:
+    url, auth, orgs, _, _, users = accounts
+    # The foreign user becomes an account without an employee as well.
+    foreign = db.exec(
+        select(OrgMembership).where(
+            OrgMembership.org_id == orgs[1].id,
+            OrgMembership.user_id == users[3].id,
+        )
+    ).one()
+    foreign.employee_id = None
+    db.add(foreign)
+    db.commit()
+    response = client.get(f"{url}/accounts/unlinked", headers=auth)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["count"] == 1
+    assert [row["account"]["user_id"] for row in result["data"]] == [str(users[0].id)]
+    assert result["data"][0]["roles"][0]["role"] == "org_admin"
+    assert result["data"][0]["account"]["status"] == "active"
+    assert "hashed_password" not in response.text
+    assert users[0].hashed_password not in response.text
+    assert (
+        client.get(
+            f"/api/v1/orgs/{orgs[1].id}/accounts/unlinked", headers=auth
+        ).status_code
+        == 404
+    )
+    assert client.get(
+        f"{url}/accounts/unlinked?skip=1&limit=1", headers=auth
+    ).json() == {"count": 1, "data": []}
+    for index in (1, 2):
+        assert (
+            client.get(
+                f"{url}/accounts/unlinked", headers=headers(users[index])
+            ).status_code
+            == 403
+        )
+
+
+def test_unlinked_accounts_pagination_and_status(
+    accounts: tuple, client: TestClient, db: Session
+) -> None:
+    url, auth, orgs, _, _, users = accounts
+    # Keep the caller active while two other memberships become account-only.
+    for index in (1, 2):
+        membership = db.exec(
+            select(OrgMembership).where(
+                OrgMembership.org_id == orgs[0].id,
+                OrgMembership.user_id == users[index].id,
+            )
+        ).one()
+        membership.employee_id = None
+        db.add(membership)
+    users[1].is_active = False
+    users[1].must_change_password = True
+    users[2].must_change_password = True
+    db.add_all(users[1:3])
+    db.commit()
+
+    response = client.get(f"{url}/accounts/unlinked", headers=auth)
+    assert response.status_code == 200
+    result = response.json()
+    expected_ids = sorted(str(user.id) for user in users[:3])
+    assert result["count"] == 3
+    assert [row["account"]["user_id"] for row in result["data"]] == expected_ids
+    by_id = {row["account"]["user_id"]: row for row in result["data"]}
+    assert by_id[str(users[1].id)]["account"]["status"] == "disabled"
+    assert len(by_id[str(users[1].id)]["roles"]) == 2
+    assert by_id[str(users[2].id)]["account"]["status"] == "pending_first_login"
+    assert by_id[str(users[2].id)]["roles"] == []
+    for skip in range(3):
+        page = client.get(f"{url}/accounts/unlinked?skip={skip}&limit=1", headers=auth)
+        assert page.status_code == 200
+        assert page.json() == {"count": 3, "data": [result["data"][skip]]}
+    for query in ("skip=-1", "limit=0", "limit=101"):
+        assert (
+            client.get(f"{url}/accounts/unlinked?{query}", headers=auth).status_code
+            == 422
+        )

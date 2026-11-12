@@ -661,6 +661,7 @@ async def admin_read(
 
 
 NOT_FOR_ASSISTANT = {
+    ("GET", "/accounts/unlinked"): "员工列表的仅账号筛选，助手沿用现有账号和角色查询",
     (
         "POST",
         "/admin-assistant/change-sets/{id}/test",

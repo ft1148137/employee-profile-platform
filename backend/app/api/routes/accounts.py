@@ -12,6 +12,7 @@ from app.domains.account.schemas import (
     AccountStatus,
     InitialPassword,
     IssueAccounts,
+    UnlinkedAccountsPublic,
 )
 from app.domains.base import utc_now
 from app.domains.org.models import EmploymentStatus
@@ -43,6 +44,16 @@ def read_accounts(
         employment_status,
         employee_id=employee_id,
     )
+
+
+@router.get("/unlinked", response_model=UnlinkedAccountsPublic)
+def read_unlinked_accounts(
+    session: SessionDep,
+    principal: OrgPrincipalDep,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+) -> UnlinkedAccountsPublic:
+    return service.list_unlinked_accounts(session, principal, skip, limit)
 
 
 @router.post(
