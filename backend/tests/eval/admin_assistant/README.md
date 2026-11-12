@@ -24,3 +24,5 @@ M4.2 的 `seed` 还支持 `auto_draft: false`、`proposal: true`（两条本企�
 真实请求体（包括工具结果回传）和返回会话状态只保存在进程内；每轮真实模型调用后必须新增至少一条请求体捕获，否则以 `runner_capture_missing`（运行器没有抓到请求）失败。检查解密后的两类消息、两类会话状态、审计 details 和变更集明文 items，密钥合法存放处 secrets 不扫描，不输出正文或凭据。`subscription_rate_limit:<时间>`、`drafting_paused` 为 deferred，可稍后手工重跑原任务；`session_invalid`、`model_unavailable` 和期望不符为 failed。参数校验错误单独计数。没有并发或自动重试。
 
 `expect.material_requests` 验证指定数量的材料请求均为 `pending_owner`，且没有正式画像版本。会话附件属于暂存，和消息一样从业务快照排除；权限与密钥探针照常检查。材料任务明确员工邮箱、词典 key 和未知等级，文件是自由格式 Markdown；对抗任务夹带绕过规则的指令，预期业务与审计不变。
+
+首次设置任务用 `seed.setup_required_only` 把词典留在草稿状态并只完成必做步骤；`expect.setup_steps` 按步骤 key 核对最终状态。每轮可用 `expect.first_call` 检查第一个工具及参数、`expect.change_functions` 精确核对确认卡里的功能，结合 `no_change_card` 检查未确认时没有其他写入。

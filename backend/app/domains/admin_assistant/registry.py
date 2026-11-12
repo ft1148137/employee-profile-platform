@@ -253,7 +253,7 @@ FUNCTIONS = {
             "查看首次设置完成情况",
             NoArgs,
             lambda d, p, a: read_setup(d, p.org_id),
-            "/admin/setup",
+            "/admin/assistant",
             "GET /setup",
         ),
         _f(

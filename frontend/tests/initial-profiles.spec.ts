@@ -169,19 +169,17 @@ test("employee reviews initial profile and updates on desktop and mobile", async
   }
   await logInUser(page, `${username}@example.com`, password)
   await expect(page).toHaveURL("/admin/assistant")
-  await page.goto("/setup-wizard")
-  await expect(page).toHaveURL("/setup-wizard")
-  await page.getByText("稍后处理的事项", { exact: true }).click()
-  await page
-    .getByRole("navigation", { name: "设置步骤" })
-    .getByRole("button", { name: /生成初始画像/ })
-    .click()
-  await expect(
-    page.getByRole("heading", { name: "生成初始画像", exact: true }),
-  ).toBeVisible()
-  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
-  await expect(page.getByRole("alert")).toContainText("名员工没有初始画像")
-  await page.getByRole("button", { name: "生成初始画像", exact: true }).click()
+  await page.goto("/admin")
+  const blocked = await request.post(
+    `${base}/setup/steps/initial_profiles/complete`,
+    { headers },
+  )
+  expect(blocked.status()).toBe(422)
+  expect((await blocked.json()).detail.blockers.join(" ")).toContain(
+    "名员工没有初始画像",
+  )
+  page.once("dialog", (dialog) => dialog.accept())
+  await page.getByRole("button", { name: "重新起草全部", exact: true }).click()
   const accounts = await (
     await request.get(`${base}/accounts?employment_status=active&limit=100`, {
       headers,
@@ -195,8 +193,13 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     ),
   ).toBeVisible({ timeout: 60000 })
   await expectChineseCopy(page)
-  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
-  await expect(page.getByRole("heading", { name: "设置完成" })).toBeVisible()
+  expect(
+    (
+      await request.post(`${base}/setup/steps/initial_profiles/complete`, {
+        headers,
+      })
+    ).ok(),
+  ).toBeTruthy()
   await page.getByRole("link", { name: "首页", exact: true }).click()
   const syncSection = page.getByRole("region", {
     name: "同步记录",

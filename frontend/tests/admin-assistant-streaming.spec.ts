@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { mockCompletedSetup } from "./utils/adminAssistant"
 import { logInUser } from "./utils/user"
 
 declare global {
@@ -10,6 +11,10 @@ declare global {
 test.use({
   storageState: { cookies: [], origins: [] },
   permissions: ["clipboard-read", "clipboard-write"],
+})
+
+test.beforeEach(async ({ page }) => {
+  await mockCompletedSetup(page)
 })
 
 test("admin streams, folds tool progress, stops, sends again and hides pasted secrets", async ({

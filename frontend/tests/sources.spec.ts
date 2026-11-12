@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test"
 import { expectChineseCopy } from "./utils/copy"
-import { createSourcesOrg, saveCloud, syncJira } from "./utils/sources"
+import {
+  createSourcesOrg,
+  saveCloud,
+  setupStep,
+  syncJira,
+} from "./utils/sources"
 import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -11,8 +16,9 @@ test("Cloud connection, secret preservation, sync and complete source step", asy
 }, testInfo) => {
   test.setTimeout(120000)
   await createSourcesOrg(page)
-  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
-  await expect(page.getByRole("alert")).toContainText(
+  const blocked = await setupStep(page, "sources")
+  expect(blocked.status()).toBe(422)
+  expect((await blocked.json()).detail.blockers).toContain(
     "还没有成功同步或导入过工作记录",
   )
   await saveCloud(page, base, "jira-admin@example.com", "wrong-token")
@@ -25,11 +31,6 @@ test("Cloud connection, secret preservation, sync and complete source step", asy
   ).toBeVisible()
   await saveCloud(page, base, "jira-admin@example.com", "mock-cloud-token")
   await page.reload()
-  await page.getByText("稍后处理的事项", { exact: true }).click()
-  await page
-    .getByRole("navigation", { name: "设置步骤" })
-    .getByRole("button", { name: /接数据来源/ })
-    .click()
   await expect(page.getByLabel("API token", { exact: true })).toHaveAttribute(
     "placeholder",
     "已保存，留空表示不修改",
@@ -72,12 +73,13 @@ test("Cloud connection, secret preservation, sync and complete source step", asy
     path: testInfo.outputPath("sources-synced.png"),
     fullPage: true,
   })
-  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
-  await expect(
-    page
-      .getByRole("navigation", { name: "设置步骤" })
-      .getByRole("button", { name: /接数据来源/ }),
-  ).toContainText("已完成")
+  const completed = await setupStep(page, "sources")
+  expect(completed.ok()).toBeTruthy()
+  expect(
+    (await completed.json()).steps.find(
+      (step: { key: string }) => step.key === "sources",
+    ).status,
+  ).toBe("completed")
   await page.goto("/admin/sources")
   await expect(
     page.getByRole("heading", { name: "数据来源", exact: true }),

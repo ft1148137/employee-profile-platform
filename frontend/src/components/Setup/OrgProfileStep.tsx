@@ -4,10 +4,15 @@ import { OrgsService } from "@/client"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useOrg } from "@/hooks/useOrg"
-import { SetupError } from "../SetupError"
-import type { StepProps } from "."
+import { SetupError } from "./SetupError"
 
-export function OrgProfileStep({ orgId, onComplete }: StepProps) {
+export function OrgProfileStep({
+  orgId,
+  onComplete,
+}: {
+  orgId: string
+  onComplete: () => void
+}) {
   const { org } = useOrg()
   const client = useQueryClient()
   const mutation = useMutation({

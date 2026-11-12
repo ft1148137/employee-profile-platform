@@ -265,7 +265,7 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
         "setup_step",
         len(steps),
         f"还有 {len(steps)} 步首次设置没完成：{titles}",
-        "/setup-wizard",
+        "/admin/assistant?prompt=帮我完成首次设置",
         "帮我完成首次设置",
     )
     return AdminOverviewPublic(
