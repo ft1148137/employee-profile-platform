@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import type { ProfileView } from "../src/client"
 import { logInUser } from "./utils/user"
 
 test.use({
@@ -236,6 +237,12 @@ test("manager chart excludes other departments", async ({ page }, testInfo) => {
   await expect(
     page.getByRole("region", { name: "部门汇报关系" }),
   ).toContainText("共 3 人")
+  const capabilities = page.getByRole("region", {
+    name: "对应能力",
+    exact: true,
+  })
+  await expect(capabilities).toBeVisible()
+  await expect(capabilities.getByRole("button")).toHaveCount(0)
   await page.screenshot({
     path: testInfo.outputPath("org-chart-manager.png"),
     fullPage: true,
@@ -281,3 +288,115 @@ for (const legacy of [
       page.getByRole("heading", { name: "组织架构", exact: true }),
     ).toBeVisible()
   })
+
+test("administrator saves department capabilities and the profile follows the selection", async ({
+  page,
+  request,
+}) => {
+  await logInUser(
+    page,
+    "admin@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  const token = await page.evaluate(() => localStorage.getItem("access_token"))
+  const headers = { Authorization: `Bearer ${token}` }
+  const memberships = await (
+    await request.get("/api/v1/me/memberships", { headers })
+  ).json()
+  const base = `/api/v1/orgs/${memberships[0].org.id}`
+  const employees = await (
+    await request.get(`${base}/employees?q=张伟`, { headers })
+  ).json()
+  const employee = employees.data[0]
+  const endpoint = `${base}/departments/${employee.department.id}/capabilities`
+  const original = await (await request.get(endpoint, { headers })).json()
+  try {
+    await page.goto("/org-chart")
+    await page.getByRole("button", { name: "查看平台研发部人员" }).click()
+    const panel = page.getByRole("region", { name: "对应能力", exact: true })
+    for (const name of ["前端交互实现", "模型训练与评估"]) {
+      await panel.getByRole("button", { name: "添加能力", exact: true }).click()
+      const picker = page.getByRole("dialog", { name: "添加能力" })
+      await picker.getByLabel("搜索能力").fill(name)
+      await picker.getByRole("button", { name, exact: true }).click()
+    }
+    await panel.getByRole("button", { name: "保存对应能力" }).click()
+    await expect(panel.getByRole("status")).toHaveText("对应能力已保存")
+    await page.screenshot({
+      path: "../docs/screenshots/m4.2/org-chart-department-capabilities.png",
+      fullPage: true,
+    })
+    const profile: ProfileView = await (
+      await request.get(`${base}/employees/${employee.id}/profile`, { headers })
+    ).json()
+    expect(
+      profile.items
+        .filter((item) => item.in_department)
+        .map((item) => item.capability.key)
+        .sort(),
+    ).toEqual(["frontend_ui", "model_training"])
+    await page.goto(`/employees/${employee.id}`)
+    for (const name of ["前端交互实现", "模型训练与评估"])
+      await expect(
+        page.getByRole("article", { name, exact: true }),
+      ).toBeVisible()
+    await expect(
+      page.getByRole("article", { name: "后端 API 开发", exact: true }),
+    ).toContainText("其他部门能力")
+    await page.goto("/org-chart")
+    await page.getByRole("button", { name: "查看平台研发部人员" }).click()
+    await panel.getByRole("button", { name: "移除前端交互实现" }).click()
+    await panel.getByRole("button", { name: "保存对应能力" }).click()
+    await expect(panel.getByRole("status")).toHaveText("对应能力已保存")
+    await page.goto(`/employees/${employee.id}`)
+    await expect(
+      page.getByRole("article", { name: "前端交互实现", exact: true }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole("article", { name: "模型训练与评估", exact: true }),
+    ).toBeVisible()
+  } finally {
+    expect(
+      (
+        await request.put(endpoint, {
+          headers,
+          data: { capability_keys: original.capability_keys },
+        })
+      ).ok(),
+    ).toBeTruthy()
+  }
+})
+
+test("inherited capabilities stay read only when an administrator removes a local assignment", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/orgs/*/org-chart", (route) =>
+    route.fulfill({ json: syntheticChart }),
+  )
+  await page.route("**/departments/dept-0/capabilities", (route) =>
+    route.fulfill({
+      json: {
+        capability_keys: ["backend_api"],
+        inherited_capability_keys: ["backend_api"],
+        capabilities: [
+          { key: "backend_api", name: "后端 API 开发", category: "工程开发" },
+        ],
+      },
+    }),
+  )
+  await logInUser(
+    page,
+    "admin@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  await page.goto("/org-chart")
+  await page.getByRole("button", { name: "查看平台部人员" }).click()
+  const panel = page.getByRole("region", { name: "对应能力", exact: true })
+  await expect(panel).toContainText("后端 API 开发 · 继承自上级部门")
+  await panel.getByRole("button", { name: "移除后端 API 开发" }).click()
+  await expect(panel).toContainText("暂无本部门设置")
+  await expect(panel).toContainText("后端 API 开发 · 继承自上级部门")
+  await expect(
+    panel.getByRole("button", { name: "移除后端 API 开发" }),
+  ).toHaveCount(0)
+})

@@ -148,18 +148,10 @@ export function AccountTable({
         ),
     },
     ...(
-      [
-        "fill_status",
-        "inference_status",
-        "review_status",
-        "evidence_quality",
-        "published",
-      ] as const
+      ["fill_status", "inference_status", "review_status", "published"] as const
     ).map((kind, index) => ({
       id: kind,
-      header: ["填写进度", "推断进度", "审核状态", "证据质量", "最近发布版本"][
-        index
-      ],
+      header: ["填写进度", "推断进度", "审核状态", "最近发布版本"][index],
       cell: ({ row }: { row: { original: EmployeeAccount } }) =>
         org ? (
           <EmployeeProgress
@@ -247,12 +239,7 @@ function EmployeeProgress({
 }: {
   orgId: string
   employeeId: string
-  kind:
-    | "fill_status"
-    | "inference_status"
-    | "review_status"
-    | "evidence_quality"
-    | "published"
+  kind: "fill_status" | "inference_status" | "review_status" | "published"
 }) {
   const summary = useQuery({
     queryKey: ["employee", orgId, employeeId],

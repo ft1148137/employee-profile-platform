@@ -56,9 +56,13 @@ export function ChangeRequestEditor({
       : selection.item
         ? [
             {
-              op: selection.retract ? "retract" : "modify",
+              op: selection.retract
+                ? "retract"
+                : selection.item.claim
+                  ? "modify"
+                  : "add",
               capability_key: selection.item.capability.key,
-              statement: selection.item.claim?.statement ?? "撤回这条判断",
+              statement: selection.item.claim?.statement ?? "",
               level: selection.retract ? null : selection.item.claim?.level,
               evidence_ids: (selection.item.claim?.evidence ?? []).map(
                 (e) => e.evidence_id,

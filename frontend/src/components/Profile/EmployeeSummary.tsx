@@ -35,23 +35,18 @@ export function EmployeeSummaryContent({
         </div>
       )}
       <dl className="grid gap-6 rounded-xl border bg-muted/10 p-6 sm:grid-cols-2 lg:grid-cols-4">
-        {(
-          [
-            "fill_status",
-            "inference_status",
-            "review_status",
-            "evidence_quality",
-          ] as const
-        ).map((kind, i) => (
-          <div key={kind}>
-            <dt className="mb-2 text-sm text-muted-foreground">
-              {["填写进度", "推断进度", "审核状态", "证据质量"][i]}
-            </dt>
-            <dd>
-              <StatusBadge kind={kind} value={employee.progress?.[kind]} />
-            </dd>
-          </div>
-        ))}
+        {(["fill_status", "inference_status", "review_status"] as const).map(
+          (kind, i) => (
+            <div key={kind}>
+              <dt className="mb-2 text-sm text-muted-foreground">
+                {["填写进度", "推断进度", "审核状态"][i]}
+              </dt>
+              <dd>
+                <StatusBadge kind={kind} value={employee.progress?.[kind]} />
+              </dd>
+            </div>
+          ),
+        )}
         {(org?.employee_fields ?? []).map((field) => (
           <div key={field}>
             <dt className="mb-2 text-sm text-muted-foreground">

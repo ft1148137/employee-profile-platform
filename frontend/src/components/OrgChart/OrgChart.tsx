@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { useOrg } from "@/hooks/useOrg"
 import { cn } from "@/lib/utils"
+import { DepartmentCapabilities } from "./DepartmentCapabilities"
 import "./org-chart.css"
 
 export function OrgChart() {
@@ -16,7 +17,9 @@ export function OrgChart() {
   if (!org) return <OrgState />
   if (!roles.some((role) => role === "org_admin" || role === "dept_manager"))
     return <p role="alert">需要企业管理员或部门经理权限</p>
-  return <Chart key={org.id} orgId={org.id} />
+  return (
+    <Chart key={org.id} orgId={org.id} canEdit={roles.includes("org_admin")} />
+  )
 }
 
 // Only members of a cycle become roots; their other reports remain attached.
@@ -44,7 +47,7 @@ function reportingCycles(people: OrgChartPerson[]) {
   return cycles
 }
 
-function Chart({ orgId }: { orgId: string }) {
+function Chart({ orgId, canEdit }: { orgId: string; canEdit: boolean }) {
   const [selectedDepartment, setDepartment] = useState<string | null>(null)
   const [selectedPerson, setPerson] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState(new Set<string>())
@@ -243,6 +246,14 @@ function Chart({ orgId }: { orgId: string }) {
           )}
         </section>
       </section>
+      {department && !person && (
+        <DepartmentCapabilities
+          key={department.id}
+          orgId={orgId}
+          departmentId={department.id}
+          canEdit={canEdit}
+        />
+      )}
     </div>
   )
 }
