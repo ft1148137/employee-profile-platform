@@ -160,9 +160,16 @@ export function AccountTable({
       header: ["填写进度", "推断进度", "审核状态", "证据质量", "最近发布版本"][
         index
       ],
-      cell: ({ row }: { row: { original: EmployeeAccount } }) => (
-        <EmployeeProgress employeeId={row.original.id} kind={kind} />
-      ),
+      cell: ({ row }: { row: { original: EmployeeAccount } }) =>
+        org ? (
+          <EmployeeProgress
+            orgId={org.id}
+            employeeId={row.original.id}
+            kind={kind}
+          />
+        ) : (
+          "—"
+        ),
     })),
     ...(org?.employee_fields ?? []).map((field) => ({
       id: field,
@@ -234,9 +241,11 @@ export function AccountActions({
 }
 
 function EmployeeProgress({
+  orgId,
   employeeId,
   kind,
 }: {
+  orgId: string
   employeeId: string
   kind:
     | "fill_status"
@@ -245,13 +254,12 @@ function EmployeeProgress({
     | "evidence_quality"
     | "published"
 }) {
-  const { org } = useOrg()
   const summary = useQuery({
-    queryKey: ["employee", org?.id, employeeId],
+    queryKey: ["employee", orgId, employeeId],
     queryFn: async () =>
       (
         await EmployeesService.readEmployee({
-          path: { org_id: org!.id, employee_id: employeeId },
+          path: { org_id: orgId, employee_id: employeeId },
         })
       ).data,
   })
