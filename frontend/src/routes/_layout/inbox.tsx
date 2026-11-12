@@ -17,6 +17,7 @@ export const Route = createFileRoute("/_layout/inbox")({
 })
 
 const kindLabels: Record<InboxKind, string> = {
+  profile_edited: "画像被直接修改",
   initial_review: "初始画像待过目",
   question: "待确认问题",
   submitted: "提交通知",

@@ -12,9 +12,10 @@ from app.domains.im.schemas import Platform
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.org.models import Organization, OrgMembership
 
-# Only fixed copy crosses the IM boundary; inbox messages may contain private data.
+# Most kinds use fixed copy because inbox messages may contain private data.
 REMINDERS = {
     InboxKind.INITIAL_REVIEW: "你有新的画像请求待过目",
+    InboxKind.PROFILE_EDITED: "你的画像已被直接修改",
     InboxKind.SUBMITTED: "你的画像请求已提交",
     InboxKind.STATUS_CHANGED: "你的画像请求状态已更新",
     InboxKind.QUESTION: "你有待确认问题或定期提醒",
@@ -158,11 +159,15 @@ async def send_pending(
                 assert bound is not None
                 row.attempts += 1
                 try:
+                    # Direct-edit copy contains only actor name, time and capability names.
                     async with asyncio.timeout(10):
                         await connection[1].send_text(
                             bound.external_chat_id,
                             f"你有 {item.admin_todo_count} 条管理员待办，请在网页首页处理。"
                             if item.kind == InboxKind.ADMIN_TODOS
+                            else item.message
+                            if item.kind == InboxKind.PROFILE_EDITED
+                            and row.platform == "feishu"
                             else REMINDERS[item.kind] + "，在网页或私聊我查看。",
                         )
                     row.status, row.sent_at, row.last_error_code = (
