@@ -5,6 +5,10 @@ from fastapi.testclient import TestClient
 from app.domains.change_request.import_json import FILES_DIR, ProfileImport
 
 
+def example() -> dict:
+    return json.loads((FILES_DIR / "example.json").read_bytes())
+
+
 def test_schema_and_authenticated_downloads(
     shared_demo: tuple, client: TestClient
 ) -> None:
