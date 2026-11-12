@@ -372,7 +372,7 @@ test("employees keep their own navigation and floating bot", async ({
     rail.getByRole("link", { name: "我的画像", exact: true }),
   ).toBeVisible()
   await expect(
-    rail.getByRole("link", { name: "收件箱", exact: true }),
+    rail.getByRole("link", { name: /^收件箱(?: \d+)?$/, exact: true }),
   ).toBeVisible()
   for (const name of [
     "聊天",

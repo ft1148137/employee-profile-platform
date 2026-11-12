@@ -17,7 +17,7 @@ export function Main({ items }: { items: Item[] }) {
     <Link
       key={item.path}
       to={item.path}
-      aria-label={item.title}
+      aria-label={item.badge ? `${item.title} ${item.badge}` : item.title}
       aria-current={pathname === item.path ? "page" : undefined}
       className={railItemClass}
       title={item.title}
