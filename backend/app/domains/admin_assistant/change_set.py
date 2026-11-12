@@ -89,6 +89,9 @@ def get(
 def public(row: AdminChangeSet) -> ChangeSetPublic:
     result = ChangeSetPublic.model_validate(row, from_attributes=True)
     for item in result.items:
+        # Legacy dictionary cards retain the editor's publication and undo rules.
+        if item.function == "import_capability_dictionary":
+            item.function = "update_capability_dictionary"
         entry = registry.FUNCTIONS.get(item.function)
         item.title = entry.description if entry else "管理改动"
         item.testable = entry is not None and entry.test is not None

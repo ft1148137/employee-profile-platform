@@ -339,3 +339,26 @@ def test_dictionary_changes_cannot_share_a_material_card(
                 }
             ),
         )
+
+
+def test_legacy_applied_dictionary_can_still_be_undone(
+    db: Session, demo: tuple
+) -> None:
+    p = principal(db, demo)
+    before = read_editor(db, p)
+    row = propose(db, demo, args([capability()]))
+    assert c.apply(db, p, row.id, row.revision).status == "applied"
+    record = c.get(db, p, row.id)
+    record.items = [
+        {
+            **record.items[0],
+            "function": "import_capability_dictionary",
+            "args": read_editor(db, p).model_dump(
+                mode="json", include={"definitions", "expected_version"}
+            ),
+        }
+    ]
+    db.add(record)
+    db.commit()
+    assert c.undo(db, p, record.id).status == "applied"
+    assert read_editor(db, p).definitions == before.definitions
