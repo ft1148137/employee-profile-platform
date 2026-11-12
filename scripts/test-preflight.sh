@@ -66,7 +66,10 @@ rg -q '^pi$' "$scratch/list"
 bash scripts/preflight.sh > "$scratch/run"
 rg -q 'pytest: 通过' "$scratch/run"
 rg -q 'run prek run --files' "$PREFLIGHT_CALLS"
-rg -q 'run pytest --no-cov -x -q' "$PREFLIGHT_CALLS"
+rg -q 'run pytest --no-cov -x -q -n 2 --dist loadgroup' "$PREFLIGHT_CALLS"
+: > "$PREFLIGHT_CALLS"
+PREFLIGHT_PYTEST_WORKERS=1 bash scripts/preflight.sh > "$scratch/run"
+rg -q 'run pytest --no-cov -x -q -n 1 --dist loadgroup' "$PREFLIGHT_CALLS"
 
 expect_failure() {
   local expected=$1

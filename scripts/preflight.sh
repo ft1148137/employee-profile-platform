@@ -139,7 +139,7 @@ select_checks() {
 select_checks
 
 echo '检查计划: 同步检查 → (cd backend && uv run alembic heads) → uv run prek run --from-ref origin/master --to-ref HEAD → 数据库环境 → pytest'
-echo 'pytest 目标（backend 下，uv run pytest --no-cov -x -q）:'
+echo "pytest 目标（backend 下，uv run pytest --no-cov -x -q -n ${PREFLIGHT_PYTEST_WORKERS:-2} --dist loadgroup）:"
 cat "$scratch/targets"
 if [[ -s $scratch/dirty ]]; then
   echo '工作区有未提交改动：请先提交；本次也会用 uv run prek run --files 检查现存改动文件。'
@@ -191,7 +191,7 @@ PY
   targets=()
   while IFS= read -r path; do targets+=("$path"); done < "$scratch/targets"
   if [[ ${#targets[@]} -gt 0 ]]; then
-    (cd backend && uv run pytest --no-cov -x -q "${targets[@]}")
+    (cd backend && uv run pytest --no-cov -x -q -n "${PREFLIGHT_PYTEST_WORKERS:-2}" --dist loadgroup "${targets[@]}")
     states[4]=通过
   else
     echo 'pytest: 跳过（无受影响目标）'

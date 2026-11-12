@@ -13,9 +13,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test-backend:
+  backend-shard:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,16 +47,71 @@ jobs:
         working-directory: backend
       - name: Run tests
         env:
-          PYTEST_ADDOPTS: '-m "not roster_performance"'
-        run: uv run bash scripts/tests-start.sh "Coverage for ${{ github.sha }}"
+          FASTAPI_ENV: development
+          SHARD: ${{ matrix.shard }}
+        run: >-
+          uv run pytest tests/ -n auto --dist loadgroup --cov --cov-report=
+          -m "not roster_performance" --splits=3 --group="$SHARD"
+          --splitting-algorithm=least_duration --store-durations --clean-durations --durations=25
+          --junitxml="junit-$SHARD.xml"
         working-directory: backend
       - name: Run roster performance tests without workers or coverage
+        if: matrix.shard == 1
         run: uv run pytest tests/domains/roster/test_parser.py -m roster_performance -n 0 --no-cov -x -q --durations=6
         working-directory: backend
         env:
           FASTAPI_ENV: development
       - if: always()
         run: docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
+      - name: Give shard results unique filenames
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          mv backend/.coverage "backend/.coverage.$SHARD"
+          mv backend/.test_durations "backend/test-durations-$SHARD.json"
+      - name: Store shard coverage, counts and timings
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          retention-days: 7
+          name: backend-coverage-${{ matrix.shard }}
+          path: |
+            backend/.coverage.*
+            backend/junit-*.xml
+            backend/test-durations-*.json
+          include-hidden-files: true
+          if-no-files-found: error
+
+  test-backend:
+    needs: [backend-shard]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every shard to succeed
+        env:
+          TEST_RESULT: ${{ needs.backend-shard.result }}
+        run: test "$TEST_RESULT" = success
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version-file: .python-version
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "latest-known"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: backend-coverage-*
+          path: backend
+          merge-multiple: true
+      - name: Combine all three shards and enforce total coverage
+        working-directory: backend
+        run: |
+          for shard in 1 2 3; do test -f ".coverage.$shard"; done
+          uv run coverage combine
+          uv run coverage report --fail-under=90
+          uv run coverage html
       - name: Store coverage files
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -60,6 +119,3 @@ jobs:
           name: coverage-html
           path: backend/htmlcov
           include-hidden-files: true
-      - name: Coverage report
-        run: uv run coverage report --fail-under=90
-        working-directory: backend
