@@ -18,7 +18,7 @@ bun ci
 
 排查上次失败可加 `--lf`；提交前仍需覆盖受影响的用例。默认不在本地重复全量 pytest、Playwright、Compose 和生产安装测试，这些由必需 CI 检查执行。
 
-- 迁移、权限和租户范围、证据协议、凭据发生变化：本地跑全量 pytest；迁移还需验证 upgrade、downgrade 和单一 head。
+- 迁移、权限和租户范围、证据协议、凭据发生变化：本地只跑改动涉及的测试，全量 pytest 由必需 CI 执行；迁移仍需验证 upgrade、downgrade 和单一 head。
 - 修改界面流程且需要本地排查：只跑相关 Playwright 文件或用例。
 - 使用 Docker 时仍遵守项目名、端口、磁盘和清理规则；不能连接其他任务的数据库。
 
