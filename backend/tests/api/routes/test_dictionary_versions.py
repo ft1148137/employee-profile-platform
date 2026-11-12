@@ -269,10 +269,9 @@ def test_dictionary_permissions(
         client.get(f"{url}/capabilities/export", headers=auth["foreign"]).status_code
         == 404
     )
-    assert (
-        client.get(f"{url}/capabilities/template", headers=auth[role]).status_code
-        in (404, 405)
-    )
+    assert client.get(
+        f"{url}/capabilities/template", headers=auth[role]
+    ).status_code in (404, 405)
 
 
 @pytest.mark.parametrize("method", ["post", "put"])

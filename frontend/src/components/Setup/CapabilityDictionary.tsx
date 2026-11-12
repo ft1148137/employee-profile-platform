@@ -40,7 +40,6 @@ function Dictionary({
   const openEditor = useLocation({
     select: (location) => admin && location.hash === "dictionary-editor",
   })
-  const [editing, setEditing] = useState(openEditor)
   const [managing, setManaging] = useState(openEditor)
   const [error, setError] = useState<Error | null>(null)
   const [saved, setSaved] = useState(false)
@@ -107,7 +106,6 @@ function Dictionary({
           variant="outline"
           onClick={() => {
             setManaging(!managing)
-            setEditing(!managing)
           }}
         >
           {managing ? "返回浏览" : "编辑词典"}
@@ -138,7 +136,7 @@ function Dictionary({
           </Button>
         </section>
       )}
-      {admin && ((managing && editing) || suggestion.draft) && (
+      {admin && (managing || suggestion.draft) && (
         <DictionaryEditor
           key={
             suggestion.draft
@@ -147,9 +145,8 @@ function Dictionary({
           }
           orgId={orgId}
           suggestion={suggestion}
-          onClose={() => setEditing(false)}
+          onClose={() => setManaging(false)}
           onSaved={() => {
-            setEditing(false)
             setManaging(false)
             setSaved(true)
             client.invalidateQueries()
