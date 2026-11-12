@@ -63,6 +63,8 @@ export function BotConversation({
   selectedSession?: string
   prompt?: string
 }) {
+  const { managedDepartmentIds } = useOrg()
+  const description = `${managedDepartmentIds.length ? "可以操作你本人和你管辖部门员工的画像" : "只操作你本人的画像"}。画像不用于绩效、薪酬和晋升。聊天原文默认不保存；未开启保留时，会话闲置两小时后清除。`
   const [open, setOpen] = useState(false)
   const client = useQueryClient()
   const navigate = useNavigate()
@@ -271,8 +273,7 @@ export function BotConversation({
       >
         {(!fullPage || messages.length === 0) && (
           <p className="mx-auto max-w-3xl text-muted-foreground leading-relaxed">
-            {fullPage &&
-              "只操作你本人的画像。画像不用于绩效、薪酬和晋升。聊天原文默认不保存；未开启保留时，会话闲置两小时后清除。"}
+            {fullPage && description}
             可以请我查看画像、过目初始画像、补充经历、查进度或回答问题。提交前请核对预览卡片。没有启用模型时，请到
             <Link
               className="underline"
@@ -391,9 +392,7 @@ export function BotConversation({
         <SheetContent className="inset-0 h-dvh w-full gap-0 sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[min(740px,calc(100dvh-40px))] sm:w-[440px] sm:max-w-[440px] sm:rounded-2xl sm:border">
           <SheetHeader className="shrink-0 border-b pr-12">
             <SheetTitle>我的画像机器人</SheetTitle>
-            <SheetDescription>
-              只操作你本人的画像。画像不用于绩效、薪酬和晋升。聊天原文默认不保存；未开启保留时，会话闲置两小时后清除。
-            </SheetDescription>
+            <SheetDescription>{description}</SheetDescription>
           </SheetHeader>
           {content}
         </SheetContent>
