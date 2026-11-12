@@ -168,6 +168,21 @@ docker compose logs backup # 查看自动备份错误
 
 M4.2 下线管理员批量画像页面、上传模板、`profile-imports` 接口及 `import_profiles` 助手功能，改用对话附件或文字整理初始画像请求；员工本人 JSON 导入不受影响。已有待本人过目请求保留。新增 PDF 文本提取依赖精确锁定 `pypdf==6.21.4`（BSD-3-Clause，兼容 Apache-2.0）；升级需重建后端镜像。附件加密保存并按聊天保留期清理，支持图片的模型会接收本轮图片。新增员工档案字段默认关闭，启用后由管理员维护。
 
+### M4.3 升级说明
+
+本次须重建后端和 Pi 镜像，并让 prestart 完成下列两个迁移，顺序为 `b368001ss001 → b373001bc001 → b381001dc001`（唯一 head）：
+
+| 迁移文件 | 作用与回退影响 |
+| --- | --- |
+| `b373001bc001_direct_profile_edits.py` | 新增直接修改决定和画像修改通知类型；downgrade 保留记录，但将 direct 映射为 web、profile_edited 映射为 status_changed，丢失类型区分 |
+| `b381001dc001_department_defaults.py` | 增加部门能力来源和词典版本；已有手工设置及可从审计识别的清空标为 admin。downgrade 删除 Pi 生成的能力行和来源标记，保留手工行及审计 |
+
+Worker 每小时执行一次 `capabilities.fill_department_defaults`，为从未设置及词典已换版的 Pi 部门生成对应能力。保持 worker 运行并配置可用模型；升级后、新建部门或模型恢复都等待下一轮，最多约一小时。管理员保存过的部门不再自动覆盖，模型不可用跳过，词典没有适合项可保存空列表，不保证每个部门都有能力。这个任务不受「自动起草画像」开关控制。设计见 [ADR-0041](adr/0041-department-default-capabilities.md)。
+
+飞书应用需在开放平台开通并发布 `im:resource` 权限，才能读取私聊文件和图片。未授权时用户会看到「无法读取文件，请让管理员在飞书开放平台开通文件权限」。网页附件不依赖飞书权限；真实应用权限和收发由部署方验证。
+
+员工和经理登录后进入助手；画像页仅显示能力、等级和状态，本人档案等移到设置。员工固定格式 JSON 导入已删除，改为助手上传自由格式材料，外部 skill 与 MCP 保留。管理员材料整理改为确认后直接发布并通知员工；系统自动起草仍先交本人过目。详见 [ADR-0040](adr/0040-direct-profile-edits.md) 和[角色指南](employee-guide.md)。
+
 升级前确认 Git 工作区干净，保管 `.env` 并记录当前提交 `git rev-parse HEAD`。
 
 如果 `.env` 里手动写过 `LOGIN_MAX_FAILURES_PER_IP=30`，升级后需自行改成 300（或按人数调整），再执行 `docker compose up -d`；没有写过这一项的部署，升级后自动使用 300。安装和升级脚本都会保留已有 `.env`。
