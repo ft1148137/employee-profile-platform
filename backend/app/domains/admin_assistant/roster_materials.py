@@ -60,21 +60,25 @@ def prepare(db: Session, p: Principal, args: MaterialArgs) -> ParsedRoster:
     departures: set[str] = set()
     for change in args.rows:
         code = change.employee_code.casefold()
-        if code in seen or (isinstance(change, Onboard) and code in by_code):
+        row = by_code.get(code)
+        if code in seen or (
+            isinstance(change, Onboard) and row is not None and not row.inactive
+        ):
             raise service.RosterError(422, f"工号重复：{change.employee_code}")
         seen.add(code)
-        row = by_code.get(code)
         if isinstance(change, Onboard):
-            row = RosterRow(
-                row_number=len(roster.rows) + 2,
-                employee_code=change.employee_code,
-                display_name=change.display_name,
-                department_path=(),
-                title=None,
-                manager_code=None,
-                email=change.email,
-            )
-            roster.rows.append(row)
+            if row is None:
+                row = RosterRow(
+                    row_number=len(roster.rows) + 2,
+                    employee_code=change.employee_code,
+                    display_name=change.display_name,
+                    department_path=(),
+                    title=None,
+                    manager_code=None,
+                    email=change.email,
+                )
+                roster.rows.append(row)
+            row.inactive = False
         elif row is None or row.inactive:
             raise service.RosterError(404, "找不到该工号的在职员工")
         if isinstance(change, Offboard):
@@ -142,14 +146,17 @@ def impact(db: Session, p: Principal, args: MaterialArgs) -> BaseModel:
         | FIELD_LABELS
     )
     changes = preview.changes
-    added = {c.employee_code for c in changes if c.kind in ("added", "reactivated")}
+    added = {c.employee_code for c in changes if c.kind == "added"}
+    reactivated = {c.employee_code for c in changes if c.kind == "reactivated"}
     removed = {c.employee_code for c in changes if c.kind == "deactivated"}
-    adjusted = {c.employee_code for c in changes} - added - removed
+    adjusted = {c.employee_code for c in changes} - added - reactivated - removed
     labels: dict[str, list[str]] = {}
     for c in changes:
         label = (
             "新增"
             if c.employee_code in added
+            else "恢复在职"
+            if c.employee_code in reactivated
             else "离职"
             if c.employee_code in removed
             else "、".join(
@@ -158,7 +165,10 @@ def impact(db: Session, p: Principal, args: MaterialArgs) -> BaseModel:
             )
         )
         labels.setdefault(c.display_name + f"（{c.employee_code}）", []).append(label)
-    text = f"新增 {len(added)} 人、调整 {len(adjusted)} 人、离职 {len(removed)} 人"
+    text = f"新增 {len(added)} 人"
+    if reactivated:
+        text += f"、恢复在职 {len(reactivated)} 人"
+    text += f"、调整 {len(adjusted)} 人、离职 {len(removed)} 人"
     text += "；" + "；".join(
         f"{name}：{'；'.join(parts)}" for name, parts in list(labels.items())[:20]
     )
@@ -167,7 +177,9 @@ def impact(db: Session, p: Principal, args: MaterialArgs) -> BaseModel:
     text += "".join(
         f"；第 {i.row_number} 行 {i.column or ''}：{i.message}" for i in preview.issues
     )
-    return RootModel({"count": len(added | adjusted | removed), "text": text})
+    return RootModel(
+        {"count": len(added | reactivated | adjusted | removed), "text": text}
+    )
 
 
 def apply(

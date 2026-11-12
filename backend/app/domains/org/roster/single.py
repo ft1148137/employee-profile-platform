@@ -181,11 +181,14 @@ def prepare(
                 raise service.RosterError(409, "上级须在职且有工号")
             manager_code = manager.employee_code
         if isinstance(args, Onboard):
-            if any(
-                r.employee_code.casefold() == args.employee_code.casefold()
-                for r in roster.rows
-            ):
-                raise service.RosterError(409, "工号已存在，请核对名单")
+            for existing in roster.rows:
+                if existing.employee_code.casefold() == args.employee_code.casefold():
+                    if existing.inactive:
+                        raise service.RosterError(
+                            409,
+                            "该工号属于已离职员工，返聘请在管理助手里说明，按原工号恢复在职",
+                        )
+                    raise service.RosterError(409, "工号已存在，请核对名单")
             row = RosterRow(
                 row_number=len(roster.rows) + 2,
                 employee_code=args.employee_code,
