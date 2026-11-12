@@ -28,7 +28,7 @@ test("enterprise switch and personal token lifecycle", async ({
   let id = ""
   let employeeHeaders = {}
   try {
-    await page.getByRole("link", { name: "连接", exact: true }).click()
+    await page.getByRole("link", { name: "数据与 AI", exact: true }).click()
     await page.getByRole("tab", { name: "外部 AI 助手", exact: true }).click()
     await expect(
       page.getByText(

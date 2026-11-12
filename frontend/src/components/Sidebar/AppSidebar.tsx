@@ -7,7 +7,6 @@ import {
   MessageCircle,
   MoreHorizontal,
   Network,
-  Plug,
   ScrollText,
   Settings,
   Sparkles,
@@ -46,7 +45,6 @@ const manual: Item[] = [
   { icon: Users, title: "人员", path: "/admin/people" },
   { icon: BookOpen, title: "能力与规则", path: "/admin/rules" },
   { icon: Sparkles, title: "数据与 AI", path: "/admin/data-ai" },
-  { icon: Plug, title: "连接", path: "/admin/connections" },
 ]
 
 export function AppSidebar() {

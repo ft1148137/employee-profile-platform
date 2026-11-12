@@ -350,8 +350,9 @@ test("manual console completes all fifteen tabs without a model", async ({
     )
   })
 
-  await test.step("connections / IM: save Feishu credentials without a live connection", async () => {
-    await page.getByRole("link", { name: "连接", exact: true }).click()
+  await test.step("data / IM: save Feishu credentials without a live connection", async () => {
+    await page.getByRole("link", { name: "数据与 AI", exact: true }).click()
+    await page.getByRole("tab", { name: "IM 入口", exact: true }).click()
     const form = page.getByRole("form", { name: "飞书", exact: true })
     await form.getByLabel("应用标识", { exact: true }).fill("synthetic-app")
     await form
@@ -377,7 +378,7 @@ test("manual console completes all fifteen tabs without a model", async ({
     await expect(form.getByRole("status")).toContainText("设置已保存")
   })
 
-  await test.step("connections / external assistants: save the enterprise switch", async () => {
+  await test.step("data / external assistants: save the enterprise switch", async () => {
     await page.getByRole("tab", { name: "外部 AI 助手", exact: true }).click()
     await page.getByRole("checkbox", { name: "允许外部 AI 助手" }).check()
     await page.getByLabel("允许的客户端", { exact: true }).fill("Cursor")

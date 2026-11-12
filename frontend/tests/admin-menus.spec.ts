@@ -40,25 +40,22 @@ const groups = [
       ["sources", "数据来源"],
       ["model", "模型"],
       ["bot", "内置机器人"],
-    ],
-  },
-  {
-    name: "连接",
-    path: "/admin/connections",
-    tabs: [
       ["im", "IM 入口"],
       ["mcp", "外部 AI 助手"],
     ],
   },
 ]
 
-test("five menus open every tab and more keeps audit and setup", async ({
+test("four menus open every tab and more keeps audit and setup", async ({
   page,
 }) => {
   test.setTimeout(90000)
   await expect(
     page.getByRole("navigation", { name: "管理菜单" }).getByRole("link"),
-  ).toHaveCount(5)
+  ).toHaveCount(4)
+  await expect(
+    page.getByRole("link", { name: "连接", exact: true }),
+  ).toHaveCount(0)
   await expect(
     page.getByRole("menuitem", { name: "审计日志", exact: true }),
   ).toBeHidden()
@@ -73,6 +70,12 @@ test("five menus open every tab and more keeps audit and setup", async ({
         .getByRole("tablist", { name: group.name, exact: true })
         .getByRole("tab", { selected: true }),
     ).toHaveText(group.tabs[0][1])
+    if (group.path === "/admin/data-ai")
+      await expect(
+        page
+          .getByRole("tablist", { name: group.name, exact: true })
+          .getByRole("tab"),
+      ).toHaveCount(5)
     for (const [tab, name] of group.tabs) {
       await page.getByRole("tab", { name, exact: true }).click()
       await expect(page).toHaveURL(
@@ -165,8 +168,12 @@ test("legacy addresses redirect to their new locations", async ({ page }) => {
     ["sources", "/admin/data-ai?tab=sources"],
     ["model", "/admin/data-ai?tab=model"],
     ["bot", "/admin/data-ai?tab=bot"],
-    ["im", "/admin/connections?tab=im"],
-    ["assistants", "/admin/connections?tab=mcp"],
+    ["connections", "/admin/data-ai?tab=im"],
+    ["connections?tab=im", "/admin/data-ai?tab=im"],
+    ["connections?tab=mcp", "/admin/data-ai?tab=mcp"],
+    ["connections?tab=unknown", "/admin/data-ai?tab=im"],
+    ["im", "/admin/data-ai?tab=im"],
+    ["assistants", "/admin/data-ai?tab=mcp"],
     ["progress", "/admin"],
   ]
   await page.goto("/admin/rules?tab=profile-import")

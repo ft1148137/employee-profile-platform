@@ -364,7 +364,7 @@ test("Feishu draft keeps credentials private and requires a second confirmation"
 }) => {
   const { email, password, base, headers } = await createOrg(request, modelUrl)
   await logInUser(page, email, password)
-  await page.goto("/admin/connections?tab=im")
+  await page.goto("/admin/data-ai?tab=im")
   await openAdminAssistant(page)
   const dialog = page.getByRole("region", { name: "管理助手", exact: true })
   await dialog
