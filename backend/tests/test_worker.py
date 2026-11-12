@@ -67,6 +67,14 @@ def test_stalled_recovery_is_periodic() -> None:
     assert periodic.task.queueing_lock == "retry_stalled_jobs"
 
 
+def test_department_defaults_are_hourly_and_locked() -> None:
+    periodic = app.periodic_registry.periodic_tasks[
+        ("capabilities.fill_department_defaults", "")
+    ]
+    assert periodic.cron == "0 * * * *"
+    assert periodic.task.queueing_lock == "department_defaults"
+
+
 def test_ping_job_succeeds(db: Session) -> None:
     db.rollback()
 

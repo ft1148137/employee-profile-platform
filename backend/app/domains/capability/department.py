@@ -133,6 +133,7 @@ def set_department_capabilities(
     db: Session, p: Principal, args: SetDepartmentCapabilities, *, commit: bool = True
 ) -> DepartmentCapabilitiesPublic:
     lock_org(db, p)
+    department = visible_department(db, p, args.department_id)
     before = snapshot(db, p, args).capability_keys
     after = sorted(set(args.capability_keys))
     active = db.exec(
@@ -150,7 +151,10 @@ def set_department_capabilities(
     ).all()
     if set(after) - set(active):
         raise DepartmentCapabilityError(422, "能力必须在当前启用的词典中")
-    if before != after:
+    if before != after or department.capability_source != "admin":
+        department.capability_source = "admin"
+        department.capability_schema_version_id = None
+        db.add(department)
         db.exec(
             delete(DepartmentCapability).where(
                 col(DepartmentCapability.org_id) == p.org_id,

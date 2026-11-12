@@ -50,9 +50,16 @@ class Department(TenantRecord, table=True):
             postgresql_nulls_not_distinct=True,
         ),
         tenant_fk("parent_department_id", "department"),
+        tenant_fk("capability_schema_version_id", "capability_schema_version"),
+        CheckConstraint(
+            "capability_source IN ('pi', 'admin')",
+            name="ck_department_capability_source",
+        ),
     )
     name: str
     parent_department_id: uuid.UUID | None = None
+    capability_source: str | None = None
+    capability_schema_version_id: uuid.UUID | None = None
 
 
 class Employee(TenantRecord, table=True):

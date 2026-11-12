@@ -129,4 +129,4 @@ class DepartmentCapability(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=utc_now, sa_type=DateTime(timezone=True)
     )
-    created_by_user_id: uuid.UUID
+    created_by_user_id: uuid.UUID | None = None
