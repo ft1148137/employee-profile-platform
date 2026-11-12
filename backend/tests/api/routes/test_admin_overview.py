@@ -175,6 +175,7 @@ def test_feishu(
         )
     db.commit()
     data = overview(client, demo)
+    assert data["status_cards"][0]["page"] == "/admin/data-ai?tab=im"
     assert data["status_cards"][0]["level"] == level
     if state == "failed":
         assert "1 条" in data["status_cards"][0]["summary"]

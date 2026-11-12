@@ -113,7 +113,7 @@ def register_connections(functions: dict[str, AdminFunction]) -> None:
         description="修改飞书入口；企业微信和 Telegram 请到网页上改；凭据只用安全输入框填写",
         input_model=FeishuArgs,
         handler=save_im,
-        page="/admin/connections?tab=im",
+        page="/admin/data-ai?tab=im",
         endpoints=(("PUT", "/im-settings/{platform}"),),
         snapshot=im_snapshot,
         merge_settings=True,
@@ -138,7 +138,7 @@ def register_connections(functions: dict[str, AdminFunction]) -> None:
         input_model=McpSettingUpdate,
         merge_settings=True,
         handler=mcp.save_setting,
-        page="/admin/connections?tab=mcp",
+        page="/admin/data-ai?tab=mcp",
         endpoints=(("PUT", "/mcp-setting"),),
         snapshot=lambda d, p, a: McpSettingUpdate.model_validate(
             mcp.get_setting(d, p).model_dump(include=set(McpSettingUpdate.model_fields))

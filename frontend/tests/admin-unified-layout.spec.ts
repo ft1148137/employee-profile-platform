@@ -67,7 +67,7 @@ for (const size of [
     for (const link of await rail.getByRole("link").all()) {
       await expect(link).toBeInViewport({ ratio: 1 })
     }
-    for (const name of ["首页", "人员", "能力与规则", "数据与 AI", "连接"]) {
+    for (const name of ["首页", "人员", "能力与规则", "数据与 AI"]) {
       await expect(
         page
           .getByRole("navigation", { name: "管理菜单" })
@@ -196,7 +196,6 @@ test("unconfigured model allows history and every manual menu", async ({
     ["人员", "/admin/people"],
     ["能力与规则", "/admin/rules"],
     ["数据与 AI", "/admin/data-ai"],
-    ["连接", "/admin/connections"],
   ]) {
     await page
       .getByRole("navigation", { name: "管理菜单" })
@@ -350,13 +349,13 @@ test("mobile conversation sheet switches sessions and starts a new task", async 
     "新对话",
   )
   // Short windows move trailing manual entries into More, keeping the rail visible.
-  await page.setViewportSize({ width: 390, height: 540 })
+  await page.setViewportSize({ width: 390, height: 480 })
   await page.getByRole("button", { name: "更多", exact: true }).click()
   await expect(
-    page.getByRole("menuitem", { name: "连接", exact: true }),
+    page.getByRole("menuitem", { name: "数据与 AI", exact: true }),
   ).toBeVisible()
-  await page.getByRole("menuitem", { name: "连接", exact: true }).click()
-  await expect(page).toHaveURL("/admin/connections")
+  await page.getByRole("menuitem", { name: "数据与 AI", exact: true }).click()
+  await expect(page).toHaveURL("/admin/data-ai")
 })
 
 test("employees keep their own navigation and floating bot", async ({
