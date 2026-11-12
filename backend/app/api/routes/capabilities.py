@@ -1,4 +1,3 @@
-from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Response, UploadFile
@@ -6,7 +5,6 @@ from fastapi import APIRouter, HTTPException, Response, UploadFile
 from app.api.deps import SessionDep
 from app.authz.deps import OrgAdminDep, OrgPrincipalDep
 from app.domains.capability.files import (
-    dictionary_xlsx,
     dictionary_yaml,
     parse_dictionary,
 )
@@ -18,7 +16,6 @@ from app.domains.capability.schemas import (
     CapabilityProposalsPublic,
     CapabilityPublic,
     CapabilityStatsPublic,
-    DictionaryDefinition,
     DictionaryPreview,
     SaveDictionary,
 )
@@ -31,7 +28,6 @@ from app.domains.capability.service import (
     read_editor,
 )
 from app.domains.capability.stats import read_stats
-from app.domains.capability.templates import get_template
 
 router = APIRouter(prefix="/orgs/{org_id}/capabilities", tags=["capabilities"])
 
@@ -63,27 +59,6 @@ def export_dictionary(session: SessionDep, principal: OrgPrincipalDep) -> Respon
         dictionary_yaml(_definitions(session, principal)),
         media_type="application/yaml",
         headers={"Content-Disposition": 'attachment; filename="capabilities.yaml"'},
-    )
-
-
-@router.get("/template", response_class=Response)
-def dictionary_template(
-    _principal: OrgAdminDep, format: Literal["yaml", "xlsx"] = "yaml"
-) -> Response:
-    definitions = [
-        DictionaryDefinition.model_validate(c.model_dump())
-        for c in get_template("tech-rnd").capabilities[:1]
-    ]
-    return Response(
-        dictionary_yaml(definitions)
-        if format == "yaml"
-        else dictionary_xlsx(definitions),
-        media_type="application/yaml"
-        if format == "yaml"
-        else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f'attachment; filename="capabilities-template.{format}"'
-        },
     )
 
 

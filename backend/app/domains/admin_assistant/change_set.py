@@ -13,7 +13,13 @@ from sqlmodel import Session, col, select
 from app.authz.principal import Principal
 from app.core.secrets import decrypt_secret, encrypt_secret
 from app.domains.account.service import AccountError
-from app.domains.admin_assistant import materials, registry, roster_materials, store
+from app.domains.admin_assistant import (
+    dictionary_materials,
+    materials,
+    registry,
+    roster_materials,
+    store,
+)
 from app.domains.admin_assistant.models import AdminAssistantSession, AdminChangeSet
 from app.domains.admin_assistant.outputs import (
     AccountsOutput,
@@ -188,7 +194,7 @@ def _entry(
     name: str, args: dict[str, JsonValue]
 ) -> tuple[registry.AdminFunction, BaseModel]:
     entry = registry.FUNCTIONS.get(name)
-    if name == "apply_roster_import":
+    if name in ("apply_roster_import", "import_capability_dictionary"):
         raise ChangeSetError("这个操作已下线，请重新发起", 422)
     if (
         entry is None
@@ -212,10 +218,11 @@ def _entry(
         if name in (
             "draft_profiles_from_material",
             "draft_roster_from_material",
+            "draft_dictionary_from_material",
         ) and isinstance(error, ValidationError):
             raise ChangeSetError(
                 "；".join(
-                    f"{'.'.join(map(str, e['loc']))}：{e['type']}（请按功能参数说明修改）"
+                    f"{'.'.join(map(str, e['loc']))}：{e['msg'] if name == 'draft_dictionary_from_material' else e['type']}（请按功能参数说明修改）"
                     for e in error.errors()
                 ),
                 422,
@@ -258,10 +265,15 @@ def propose(
             ):
                 supplied = {**(before or {}), **supplied}
         entry, args = _entry(item.function, supplied)
-        if isinstance(args, materials.MaterialArgs | roster_materials.MaterialArgs):
+        if isinstance(
+            args,
+            materials.MaterialArgs
+            | roster_materials.MaterialArgs
+            | dictionary_materials.MaterialArgs,
+        ):
             if any(i["function"] == entry.name for i in items):
                 raise ChangeSetError(
-                    "同一份改动只能整理一批画像或人员变动，请合并人员后重新起草", 422
+                    "同一份改动只能整理一批同类材料，请合并后重新起草", 422
                 )
             materials.validate_attachments(db, principal, args.materials, session_id)
         # Secrets are stored by field for the whole change set; each needs one target.
@@ -299,6 +311,16 @@ def propose(
                 "undoable": entry.undoable,
             }
         )
+    dictionary_functions = {
+        "draft_dictionary_from_material",
+        "update_capability_dictionary",
+        "apply_capability_template",
+    }
+    if (
+        any(i["function"] == "draft_dictionary_from_material" for i in items)
+        and sum(i["function"] in dictionary_functions for i in items) > 1
+    ):
+        raise ChangeSetError("一份确认卡只能保存一次词典，请合并后重新起草", 422)
     # shortcut: Secret settings still need cards for key rotation; tighten when proposals can declare it.
     if not allow_unchanged and all(
         registry.FUNCTIONS[str(item["function"])].merge_settings

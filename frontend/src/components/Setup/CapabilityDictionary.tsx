@@ -1,19 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useLocation } from "@tanstack/react-router"
+import { Link, useLocation } from "@tanstack/react-router"
 import { AxiosError } from "axios"
-import { useRef, useState } from "react"
-import { CapabilitiesService, type DictionaryPreview } from "@/client"
+import { useState } from "react"
+import { CapabilitiesService } from "@/client"
 import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { PageDraft } from "@/components/AdminAssistant/PageDraft"
 import { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
 import { OrgState } from "@/components/Profile/OrgState"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { useOrg } from "@/hooks/useOrg"
 import { CapabilityBrowser } from "./CapabilityBrowser"
 import { DictionaryEditor } from "./DictionaryEditor"
-import { DictionaryPreviewPanel } from "./DictionaryPreviewPanel"
 
 export function CapabilityDictionary() {
   const { org, roles } = useOrg()
@@ -39,15 +37,11 @@ function Dictionary({
 }) {
   const client = useQueryClient()
   const suggestion = usePageDraft(orgId, "update_capability_dictionary")
-  const fileInput = useRef<HTMLInputElement>(null)
   const openEditor = useLocation({
     select: (location) => admin && location.hash === "dictionary-editor",
   })
   const [editing, setEditing] = useState(openEditor)
   const [managing, setManaging] = useState(openEditor)
-  const [filename, setFilename] = useState("")
-  const [preview, setPreview] = useState<DictionaryPreview | null>(null)
-  const [redraft, setRedraft] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const [saved, setSaved] = useState(false)
   const current = useQuery({
@@ -57,64 +51,22 @@ function Dictionary({
         .data,
     retry: false,
   })
-  const upload = useMutation({
-    mutationFn: (file: File) =>
-      CapabilitiesService.previewDictionary({
-        path: { org_id: orgId },
-        body: { file },
-      }),
-    onMutate: (file) => {
-      setFilename(file.name)
-      setPreview(null)
-      setError(null)
-      setSaved(false)
-    },
-    onSuccess: ({ data }) => setPreview(data),
-    onError: setError,
-  })
-  const save = useMutation({
-    mutationFn: async () => {
-      if (!preview) throw new Error("请先上传词典")
-      return CapabilitiesService.saveDictionary({
-        path: { org_id: orgId },
-        body: {
-          definitions: preview.definitions,
-          expected_version: preview.expected_version,
-          redraft,
-        },
-      })
-    },
-    onMutate: () => setError(null),
-    onSuccess: () => {
-      setPreview(null)
-      setManaging(false)
-      setSaved(true)
-      client.invalidateQueries()
-    },
-    onError: setError,
-  })
   const download = useMutation({
-    mutationFn: async (format: "yaml" | "xlsx" | "export") => {
-      const options = { path: { org_id: orgId }, responseType: "blob" as const }
-      const { data } =
-        format === "export"
-          ? await CapabilitiesService.exportDictionary(options)
-          : await CapabilitiesService.dictionaryTemplate({
-              ...options,
-              query: { format },
-            })
+    mutationFn: async () => {
+      const { data } = await CapabilitiesService.exportDictionary({
+        path: { org_id: orgId },
+        responseType: "blob",
+      })
       if (!(data instanceof Blob)) throw new Error("词典下载失败")
       const url = URL.createObjectURL(data)
       const link = document.createElement("a")
       link.href = url
-      link.download =
-        format === "export" ? "本企业能力词典.yaml" : `能力词典模板.${format}`
+      link.download = "本企业能力词典.yaml"
       link.click()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
     },
     onError: setError,
   })
-  const busy = upload.isPending || save.isPending || suggestion.blocked
   const missingDictionary =
     current.error instanceof AxiosError &&
     current.error.response?.status === 404
@@ -145,21 +97,10 @@ function Dictionary({
         <Button
           variant="outline"
           disabled={!current.data || download.isPending}
-          onClick={() => download.mutate("export")}
+          onClick={() => download.mutate()}
         >
           导出当前词典
         </Button>
-        {admin &&
-          (["yaml", "xlsx"] as const).map((format) => (
-            <Button
-              key={format}
-              variant="outline"
-              disabled={download.isPending}
-              onClick={() => download.mutate(format)}
-            >
-              下载模板（{format === "xlsx" ? "Excel" : "YAML"}）
-            </Button>
-          ))}
       </div>
       {admin && (
         <Button
@@ -184,64 +125,17 @@ function Dictionary({
         draft={suggestion.draft}
         error={suggestion.error}
       />
-      {admin && managing && (
-        <section
-          className="space-y-4 rounded-xl border p-6"
-          aria-label="上传能力词典"
-        >
-          <label htmlFor="dictionary-file" className="block font-medium">
-            上传 YAML 或 Excel 词典（不超过 2 MB）
-          </label>
-          <Input
-            ref={fileInput}
-            hidden
-            id="dictionary-file"
-            type="file"
-            accept=".yaml,.yml,.xlsx"
-            disabled={busy}
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file) {
-                setEditing(false)
-                upload.mutate(file)
-              }
-              event.target.value = ""
-            }}
-          />
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={() => fileInput.current?.click()}
-          >
-            选择词典文件
+      {admin && (
+        <section className="space-y-3 rounded-xl border p-4">
+          <p>要导入任意格式的词典，在管理助手里上传文件</p>
+          <Button variant="outline" asChild>
+            <Link
+              to="/admin/assistant"
+              search={{ prompt: "帮我按这份材料导入能力词典" }}
+            >
+              在管理助手中导入词典
+            </Link>
           </Button>
-          <Button
-            variant="outline"
-            disabled={busy || current.isPending}
-            onClick={() => {
-              setEditing(true)
-              setPreview(null)
-              setError(null)
-              setSaved(false)
-            }}
-          >
-            在网页上编辑
-          </Button>
-          {filename && (
-            <p className="break-all text-sm text-muted-foreground">
-              {filename}
-            </p>
-          )}
-          {upload.isPending && <p role="status">正在分析词典…</p>}
-          {preview && !suggestion.draft && (
-            <DictionaryPreviewPanel
-              preview={preview}
-              busy={busy}
-              redraft={redraft}
-              onRedraft={setRedraft}
-              onSave={() => save.mutate()}
-            />
-          )}
         </section>
       )}
       {admin && ((managing && editing) || suggestion.draft) && (

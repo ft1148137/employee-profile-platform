@@ -271,7 +271,7 @@ def test_dictionary_permissions(
     )
     assert (
         client.get(f"{url}/capabilities/template", headers=auth[role]).status_code
-        == status
+        in (404, 405)
     )
 
 
@@ -318,15 +318,6 @@ def test_concurrent_versions_and_atomic_rollback(
 
 def test_files_and_chinese_validation(shared_demo: tuple, client: TestClient) -> None:
     url, _, auth = shared_demo
-    for format in ("yaml", "xlsx"):
-        template = client.get(
-            f"{url}/capabilities/template?format={format}", headers=auth["admin"]
-        )
-        assert template.status_code == 200
-        parsed, errors, warnings = parse_dictionary(
-            template.content, f"template.{format}"
-        )
-        assert parsed and not errors and not warnings
     definitions = [
         DictionaryDefinition.model_validate(d)
         for d in exported(client, url, auth["admin"])

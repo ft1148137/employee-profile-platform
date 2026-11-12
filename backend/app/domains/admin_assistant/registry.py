@@ -24,12 +24,21 @@ from app.domains.access_token import service as access
 from app.domains.account import service as accounts
 from app.domains.account.schemas import AccountStatus
 from app.domains.admin.overview import build_overview
-from app.domains.admin_assistant import materials, model_settings, roster_materials
+from app.domains.admin_assistant import (
+    dictionary_materials,
+    materials,
+    model_settings,
+    roster_materials,
+)
 from app.domains.admin_assistant.capability_proposals import register_proposals
 from app.domains.admin_assistant.connections import register_connections
 from app.domains.admin_assistant.files import register_files
 from app.domains.admin_assistant.people import register_people
-from app.domains.admin_assistant.rules import register_rules
+from app.domains.admin_assistant.rules import (
+    dictionary_snapshot,
+    register_rules,
+    restore_dictionary,
+)
 from app.domains.admin_assistant.sources import register_sources
 from app.domains.audit import service as audit
 from app.domains.base import utc_now
@@ -710,7 +719,8 @@ NOT_FOR_ASSISTANT = {
         "/roster/imports",
     ): "仅 API，界面已删除，名单变动走 draft_roster_from_material",
     ("POST", "/roster/imports/{id}/apply"): "人员弹窗确认单人变动",
-    ("GET", "/capabilities/template"): "模板下载由助手给页面链接",
+    ("POST", "/capabilities/preview"): "兼容旧 API 调用；助手改用材料整理",
+    ("POST", "/capabilities/versions"): "兼容旧 API 调用；助手改用材料整理",
     ("GET", "/model-setting/chatgpt/login"): "在模型页面操作",
     ("POST", "/model-setting/chatgpt/login"): "在模型页面操作",
     ("POST", "/model-setting/chatgpt/callback"): "在模型页面操作",
@@ -782,3 +792,19 @@ for name, title, input_type in (
     )
 
 PENDING: dict[Endpoint, str] = {}
+
+FUNCTIONS["draft_dictionary_from_material"] = AdminFunction(
+    name="draft_dictionary_from_material",
+    area="rules",
+    kind="change",
+    risk="normal",
+    description="按任意材料整理能力词典，merge 增改或 replace 替换；预览确认后发布新版本",
+    input_model=dictionary_materials.MaterialArgs,
+    handler=dictionary_materials.apply,
+    page="/admin/assistant",
+    endpoints=(),
+    snapshot=dictionary_snapshot,
+    impact=dictionary_materials.impact,
+    preview_risk=dictionary_materials.risk,
+    reverse=restore_dictionary,
+)

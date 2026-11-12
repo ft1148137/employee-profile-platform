@@ -138,9 +138,6 @@ import type {
   botUploadAttachmentData,
   botUploadAttachmentErrors,
   botUploadAttachmentResponses,
-  capabilitiesDictionaryTemplateData,
-  capabilitiesDictionaryTemplateErrors,
-  capabilitiesDictionaryTemplateResponses,
   capabilitiesDismissCapabilityProposalData,
   capabilitiesDismissCapabilityProposalErrors,
   capabilitiesDismissCapabilityProposalResponses,
@@ -2702,23 +2699,6 @@ export class CapabilitiesService {
     >({
       security: [{ scheme: "bearer", type: "http" }],
       url: "/api/v1/orgs/{org_id}/capabilities/export",
-      ...options,
-    })
-  }
-
-  /**
-   * Dictionary Template
-   */
-  public static dictionaryTemplate<ThrowOnError extends boolean = true>(
-    options: Options<capabilitiesDictionaryTemplateData, ThrowOnError>,
-  ) {
-    return (options.client ?? client).get<
-      capabilitiesDictionaryTemplateResponses,
-      capabilitiesDictionaryTemplateErrors,
-      ThrowOnError
-    >({
-      security: [{ scheme: "bearer", type: "http" }],
-      url: "/api/v1/orgs/{org_id}/capabilities/template",
       ...options,
     })
   }

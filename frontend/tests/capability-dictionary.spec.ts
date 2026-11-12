@@ -4,7 +4,7 @@ import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
-test("admin uploads, previews and confirms a dictionary version", async ({
+test("admin exports a dictionary and opens material import in the assistant", async ({
   page,
   request,
 }) => {
@@ -26,48 +26,39 @@ test("admin uploads, previews and confirms a dictionary version", async ({
   await page.goto("/admin/rules?tab=dictionary")
   await page.getByRole("tab", { name: "能力词典", exact: true }).click()
   await expectChineseCopy(page, ["YAML", "AI"])
-  const download = page.waitForEvent("download")
-  await page.getByRole("button", { name: "下载模板（Excel）" }).click()
-  expect((await download).suggestedFilename()).toBe("能力词典模板.xlsx")
-  await page.getByRole("button", { name: "编辑词典", exact: true }).click()
-  await page
-    .getByLabel("上传 YAML 或 Excel 词典（不超过 2 MB）")
-    .setInputFiles({
-      name: "broken.yaml",
-      mimeType: "application/yaml",
-      buffer: Buffer.from("- key: custom\n"),
-    })
-  await expect(page.getByRole("alert")).toContainText("第 1 行")
-  await expect(
-    page.getByRole("button", { name: "确认保存新版本" }),
-  ).toBeDisabled()
-  const content =
-    "- key: custom\n  name: 合成能力\n  category: 工程\n  description: 合成能力说明\n  ai_inference: false\n  level_rubric:\n    levels:\n      - key: basic\n        label: 基础\n        description: 在指导下完成\n"
-  await page
-    .getByLabel("上传 YAML 或 Excel 词典（不超过 2 MB）")
-    .setInputFiles({
-      name: "custom.yaml",
-      mimeType: "application/yaml",
-      buffer: Buffer.from(content),
-    })
-  await expect(
-    page.getByRole("region", { name: "词典改动预览" }),
-  ).toContainText("新增 1 项")
-  await expect(
-    page.getByRole("region", { name: "词典改动预览" }),
-  ).toContainText("AI 起草列已不再使用，已忽略")
-  await expectChineseCopy(page, ["YAML", "AI", "custom"])
-  await page.getByRole("button", { name: "确认保存新版本" }).click()
-  await expect(
-    page.getByRole("status").filter({ hasText: "新词典已启用" }),
-  ).toBeVisible()
-  await expect(page.getByText("当前第 1 版 · 1 项能力")).toBeVisible()
+  await expect(page.getByRole("button", { name: "下载模板" })).toHaveCount(0)
+  await expect(page.locator('input[type="file"]')).toHaveCount(0)
+  const { access_token, org_id } = await initialized.json()
+  const response = await request.put(`/api/v1/orgs/${org_id}/capabilities`, {
+    headers: { Authorization: `Bearer ${access_token}` },
+    data: {
+      expected_version: 0,
+      definitions: [
+        {
+          key: "custom",
+          name: "合成能力",
+          category: "工程",
+          description: "合成说明",
+          level_rubric: {
+            levels: [
+              { key: "basic", label: "基础", description: "在指导下完成" },
+            ],
+          },
+        },
+      ],
+    },
+  })
+  expect(response.ok()).toBeTruthy()
   await page.reload()
-  await page.getByRole("tab", { name: "能力词典", exact: true }).click()
   await expect(page.getByText("当前第 1 版 · 1 项能力")).toBeVisible()
   const exported = page.waitForEvent("download")
   await page.getByRole("button", { name: "导出当前词典" }).click()
   expect((await exported).suggestedFilename()).toBe("本企业能力词典.yaml")
+  await page.getByRole("link", { name: "在管理助手中导入词典" }).click()
+  await expect(page).toHaveURL(/\/admin\/assistant/)
+  await expect(
+    page.getByRole("textbox", { name: "发给管理助手的消息" }),
+  ).toHaveValue("帮我按这份材料导入能力词典")
   await page.screenshot({
     path: "test-results/capability-dictionary.png",
     fullPage: true,
