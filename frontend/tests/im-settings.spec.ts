@@ -14,6 +14,9 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
     process.env.DEMO_USER_PASSWORD!,
   )
   await page.waitForURL((url) => url.pathname !== "/")
+  await expect(
+    page.getByRole("heading", { name: "管理助手", exact: true }),
+  ).toBeVisible()
   await page.getByRole("link", { name: "数据与 AI", exact: true }).click()
   await page.getByRole("tab", { name: "IM 入口", exact: true }).click()
   await expect(page.getByRole("heading", { name: "IM 入口" })).toBeVisible()
