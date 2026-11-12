@@ -4,6 +4,8 @@ NERE-272 试行此流程，NERE-277 明确沿用；Mika 更新「全栈开发」
 
 ## 本地检查
 
+每次 push 前运行 `bash scripts/preflight.sh`：检查远端新增迁移、单一 Alembic head、pre-commit、独立数据库端口及受影响的 pytest / 守卫测试，并提示相关 Playwright spec 和镜像构建服务；`--list` 只列计划，不 fetch 或执行检查。
+
 每个 PR 必跑后端 ruff、mypy、ty，前端 biome、类型检查、build，以及改动涉及的 pytest 文件或目录。沿用仓库的 uv、Bun 和现有脚本：
 
 ```bash
