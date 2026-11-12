@@ -25,18 +25,39 @@ departments:
 - name: 栖湖花园项目部
   pcf_categories: ['4.0 Deliver Physical Products', '10.0 Acquire, Construct, and Manage Assets']
   responsibilities: 栖湖花园住宅项目的现场施工生产组织、劳务班组管理、进度与现场安全文明施工落实
+  capability_keys:
+  - project_overall_management
+  - construction_schedule
+  - site_production_coordination
+  - labor_subcontract_management
+  - safety_hazard_inspection
+  - safety_education_briefing
+  - temp_electricity_fire_safety
 - name: 安全质量部
   pcf_categories: ['11.0 Manage Enterprise Risk, Compliance, Remediation, and Resiliency', '13.0 Develop and Manage Business Capabilities']
   responsibilities: 公司安全生产与质量管理标准制定、隐患排查与整改闭环、检验批与隐蔽工程验收监督、安全员与质量员派驻管理
+  capability_keys:
+  - safety_hazard_inspection
+  - scaffold_lifting_safety
+  - inspection_lot_acceptance
+  - concealed_work_acceptance
 - name: 工程管理部
   pcf_categories: ['2.0 Develop and Manage Products and Services', '4.0 Deliver Physical Products']
   responsibilities: 施工方案与技术管理、进度计划审核、机电与 BIM 技术支持，并承担维保与小型改造项目的生产组织
+  capability_keys:
+  - construction_scheme_drafting
+  - construction_schedule
+  - site_production_coordination
 - name: 商务合约部
   pcf_categories: ['9.0 Manage Financial Resources', '12.0 Manage External Relationships']
   responsibilities: 投标报价、分包合约签订、工程量计量与进度款报量、变更签证与索赔管理
+  capability_keys:
+  - quantity_takeoff_pricing
+  - subcontract_claim_management
 - name: 人力行政部
   pcf_categories: ['7.0 Develop and Manage Human Capital', '8.0 Manage Information Technology (IT)']
   responsibilities: 人员招聘与劳动关系、证书与特种作业证台账、实名制管理、公司信息系统账号与权限维护
+  capability_keys: []
 projects:
 - code: QHHY
   name: 栖湖花园住宅项目

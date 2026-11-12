@@ -25,26 +25,46 @@ departments:
   - 2.0 Develop and Manage Products and Services
   - 8.0 Manage Information Technology (IT)
   responsibilities: 采购协同与供应商门户的后端、前端与基础设施开发，多租户隔离与数据库演进
+  capability_keys:
+  - backend_api
+  - frontend_web
+  - data_modeling
+  - multi_tenant_isolation
 - name: 产品与设计部
   pcf_categories:
   - 1.0 Develop Vision and Strategy
   - 2.0 Develop and Manage Products and Services
   responsibilities: 需求调研、产品方案与验收标准、交互设计与设计规范维护
+  capability_keys:
+  - requirement_discovery
+  - product_spec
+  - interaction_design
 - name: 质量与运维部
   pcf_categories:
   - 2.0 Develop and Manage Products and Services
   - 8.0 Manage Information Technology (IT)
   responsibilities: 测试设计与自动化、版本发布与回滚、线上监控与故障处理
+  capability_keys:
+  - test_design
+  - test_automation
+  - release_management
+  - observability
 - name: 客户成功部
   pcf_categories:
   - 5.0 Deliver Services
   - 6.0 Manage Customer Service
   responsibilities: 客户上线实施、历史数据迁移、培训交付与报障受理
+  capability_keys:
+  - onboarding_implementation
+  - tenant_training
+  - customer_support
 - name: 人力与信息部
   pcf_categories:
   - 7.0 Develop and Manage Human Capital
   - 8.0 Manage Information Technology (IT)
   responsibilities: 招聘与人事档案、职级评定支持、内部 IT 与账号权限、数据合规配置
+  capability_keys:
+  - data_security_compliance
 projects:
 - code: PUR
   name: 采购协同 2.0

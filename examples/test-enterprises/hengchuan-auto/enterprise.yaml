@@ -22,18 +22,38 @@ departments:
 - name: 机加工车间
   pcf_categories: ['4.0 Deliver Physical Products']
   responsibilities: 制动卡钳支架、转向齿条等机加工件的批量生产、换型与报工
+  capability_keys:
+  - cnc_machining_operation
+  - machine_changeover
+  - shopfloor_reporting
 - name: 质量部
   pcf_categories: ['4.0 Deliver Physical Products', '11.0 Manage Enterprise Risk, Compliance, Remediation, and Resiliency']
   responsibilities: 首件与过程检验、不合格品控制、客户抱诉与 8D、PPAP 提交、IATF 16949 体系内审
+  capability_keys:
+  - precision_measurement
+  - first_article_inspection
+  - nonconformance_handling
+  - problem_solving_8d
+  - ppap_submission
+  - iatf_internal_audit
+  - msa_spc_analysis
 - name: 工艺技术部
   pcf_categories: ['2.0 Develop and Manage Products and Services']
   responsibilities: 工艺路线与控制计划编制、CAM 编程、夹具刀具方案、新件量产导入
+  capability_keys:
+  - process_planning
+  - cam_programming
+  - fixture_tooling_design
 - name: 设备动力部
   pcf_categories: ['10.0 Acquire, Construct, and Manage Assets']
   responsibilities: 机床与公用动力设备的点检、保养、故障维修与精度恢复
+  capability_keys:
+  - equipment_maintenance
+  - tpm_autonomous_maintenance
 - name: 人力行政部
   pcf_categories: ['7.0 Develop and Manage Human Capital', '8.0 Manage Information Technology (IT)']
   responsibilities: 招聘与技能矩阵、特种作业与体系资质台账、薪酬与培训、MES/QMS 账号与基础 IT 运维
+  capability_keys: []
 projects:
 - code: EPB-2
   name: 电子驻车卡钳支架二期量产导入
