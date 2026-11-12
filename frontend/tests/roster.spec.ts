@@ -35,7 +35,7 @@ test("opt-in work attributes import and personnel tenure", async ({
     page.getByRole("textbox", { name: "发给管理助手的消息" }),
   ).toHaveValue("帮我按这份名单导入员工")
   await page.goto("/admin/people?tab=roster")
-  await expect(page).toHaveURL("/admin/assistant")
+  await expect(page).toHaveURL(/\/admin\/assistant(?:\?session=[0-9a-f-]+)?$/)
   await page.goto("/admin/people?tab=accounts")
   await page.getByRole("button", { name: "档案字段", exact: true }).click()
   const switches = page.getByRole("region", { name: "员工档案字段" })

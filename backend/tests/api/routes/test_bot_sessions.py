@@ -12,6 +12,8 @@ from app.domains.base import utc_now
 from app.domains.bot import store
 from app.domains.bot.models import BotMessage, BotSetting
 from app.domains.org.models import OrgMembership, Role, RoleGrant
+from app.domains.setup.models import SetupStatus
+from app.domains.setup.wizard import update_step
 from app.models import User
 from tests.api.routes.test_employee_requests import principal_for
 from tests.domains.test_admin_assistant import admin
@@ -25,6 +27,8 @@ def test_recent_sessions(
     _, people, auth = demo
     org_id = people["E02"].org_id
     p = admin(db, org_id) if administrator else principal_for(db, org_id)
+    if administrator:
+        update_step(db, p, "model", SetupStatus.SKIPPED)
     settings = db.get(BotSetting, org_id) or BotSetting(org_id=org_id)
     settings.retention_days = days
     db.add(settings)

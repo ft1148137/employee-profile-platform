@@ -7,6 +7,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from pydantic import BaseModel, JsonValue
+from sqlalchemy import case, false, true
 from sqlmodel import Session, col, delete, select, update
 
 from app.authz.principal import Principal
@@ -49,6 +50,7 @@ class SessionSummary(BaseModel):
     last_activity_at: datetime
     turn_count: int
     preview: str
+    purpose: Literal["setup"] | None = None
 
 
 class SessionList(BaseModel):
@@ -77,6 +79,12 @@ def list_sessions(
         owner = (col(BotSession.employee_id) == principal.employee_id) & (
             col(BotSession.channel) == "web"
         )
+    from app.domains.setup.wizard import read_setup
+
+    pending_setup = administrator and not read_setup(db, principal.org_id).completed
+    pinned = (
+        (col(AdminAssistantSession.purpose) == "setup") if pending_setup else false()
+    )
     now = utc_now()
     retained = select(message_type.id).where(
         message_type.org_id == principal.org_id,
@@ -100,13 +108,15 @@ def list_sessions(
         .where(
             col(session_type.org_id) == principal.org_id,
             owner,
-            retained.exists(),
-            col(session_type.last_activity_at) > now - timedelta(hours=2)
+            retained.exists() | pinned,
+            (col(session_type.last_activity_at) > now - timedelta(hours=2)) | pinned
             if not days
             else True,
         )
         .order_by(
-            col(session_type.last_activity_at).desc(), col(session_type.id).desc()
+            case((pinned, 0), else_=1),
+            col(session_type.last_activity_at).desc(),
+            col(session_type.id).desc(),
         )
         .limit(50)
     ).all()
@@ -117,6 +127,9 @@ def list_sessions(
                 **row.model_dump(
                     include={"id", "started_at", "last_activity_at", "turn_count"}
                 ),
+                purpose="setup"
+                if isinstance(row, AdminAssistantSession) and row.purpose == "setup"
+                else None,
                 preview=json.loads(decrypt_secret(ciphertext))["text"][:40]
                 if ciphertext
                 else "",
@@ -168,6 +181,16 @@ def get_session(
     return row
 
 
+def setup_in_progress(db: Session, session: BotSession | AdminAssistantSession) -> bool:
+    from app.domains.setup.wizard import read_setup
+
+    return (
+        isinstance(session, AdminAssistantSession)
+        and session.purpose == "setup"
+        and not read_setup(db, session.org_id).completed
+    )
+
+
 def append_message(
     db: Session,
     session: BotSession | AdminAssistantSession,
@@ -179,9 +202,11 @@ def append_message(
         if isinstance(session, AdminAssistantSession)
         else BotMessage
     )
-    if not read_settings(
-        db, session.org_id
-    ).retention_days and session.last_activity_at <= utc_now() - timedelta(hours=2):
+    if (
+        not read_settings(db, session.org_id).retention_days
+        and not setup_in_progress(db, session)
+        and session.last_activity_at <= utc_now() - timedelta(hours=2)
+    ):
         session.state_ciphertext = None
         attachment_type = (
             AdminAssistantAttachment
@@ -227,14 +252,21 @@ def _messages(
     )
     days = read_settings(db, session.org_id).retention_days
     now = utc_now()
-    if not days and session.last_activity_at <= now - timedelta(hours=2):
+    protected = setup_in_progress(db, session)
+    if (
+        not days
+        and not protected
+        and session.last_activity_at <= now - timedelta(hours=2)
+    ):
         return []
     query = (
         select(message_type)
         .where(
             message_type.org_id == session.org_id,
             message_type.session_id == session.id,
-            message_type.created_at > now - timedelta(days=days) if days else True,
+            message_type.created_at > now - timedelta(days=days)
+            if days and not protected
+            else True,
         )
         .order_by(col(message_type.created_at).desc(), col(message_type.id).desc())
     )
@@ -332,7 +364,10 @@ def cleanup_messages(db: Session, now: datetime) -> None:
     db.commit()
     for org_id in org_ids:
         try:
+            from app.domains.setup.wizard import read_setup
+
             days = read_settings(db, org_id).retention_days
+            pending_setup = not read_setup(db, org_id).completed
             for session_type, message_type, attachment_type in (
                 (BotSession, BotMessage, BotAttachment),
                 (
@@ -408,8 +443,16 @@ def cleanup_messages(db: Session, now: datetime) -> None:
                             updated_at=now,
                         )
                     )
+                protected = select(AdminAssistantSession.id).where(
+                    AdminAssistantSession.org_id == org_id,
+                    AdminAssistantSession.purpose == "setup",
+                    pending_setup,
+                )
                 db.exec(
                     delete(message_type).where(
+                        ~col(message_type.session_id).in_(protected)
+                        if session_type is AdminAssistantSession
+                        else true(),
                         col(message_type.org_id) == org_id,
                         col(message_type.created_at) <= now - timedelta(days=days)
                         if days

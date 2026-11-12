@@ -76,7 +76,8 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
   }
   await page.getByRole("button", { name: /确认所选候选/ }).click()
   await expect(page.getByRole("status")).toContainText("已补充")
-  await page.goto("/admin/assistant")
+  await page.goto("/")
+  await expect(page).toHaveURL(/\/admin\/assistant\?session=/)
   await page.getByRole("button", { name: "完成模型配置", exact: true }).click()
   await expect(page.getByRole("alert")).toContainText("模型")
   await configureModel(page, modelUrl)

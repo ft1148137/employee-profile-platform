@@ -47,7 +47,7 @@ function Initialize() {
       localStorage.setItem("access_token", data.access_token)
       localStorage.setItem("current_org_id", data.org_id)
       client.clear()
-      navigate({ to: "/admin/assistant", replace: true })
+      navigate({ to: "/", replace: true })
     },
   })
   const { reset } = mutation

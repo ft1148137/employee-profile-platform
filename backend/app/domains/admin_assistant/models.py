@@ -11,6 +11,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
@@ -27,6 +28,16 @@ class AdminAssistantSession(SQLModel, table=True):
             ["org_id", "user_id"], ["org_membership.org_id", "org_membership.user_id"]
         ),
         CheckConstraint("turn_count >= 0"),
+        CheckConstraint(
+            "purpose IS NULL OR purpose = 'setup'", name="ck_admin_session_purpose"
+        ),
+        Index(
+            "uq_admin_session_setup",
+            "org_id",
+            "user_id",
+            unique=True,
+            postgresql_where=text("purpose = 'setup'"),
+        ),
         Index("ix_admin_assistant_session_lease", "org_id", "lease_until"),
     )
     id: UUID = Field(default_factory=uuid4, primary_key=True)
@@ -39,6 +50,7 @@ class AdminAssistantSession(SQLModel, table=True):
         default_factory=utc_now, sa_type=DateTime(timezone=True)
     )
     state_ciphertext: str | None = Field(default=None, repr=False)
+    purpose: str | None = None
     turn_count: int = 0
     lease_until: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 

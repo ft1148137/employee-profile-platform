@@ -6,6 +6,7 @@ from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
+from app.domains.admin_assistant.models import AdminAssistantSession
 from app.domains.base import utc_now
 from app.domains.capability.models import CapabilityProposal, ProposalStatus
 from app.domains.change_request.handover import hand_over
@@ -261,11 +262,20 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
     )
     steps = [s for s in read_setup(session, org_id).steps if s.status == "pending"]
     titles = "、".join(s.title for s in steps[:2]) + ("…" if len(steps) > 2 else "")
+    setup_session = session.exec(
+        select(AdminAssistantSession.id).where(
+            AdminAssistantSession.org_id == org_id,
+            AdminAssistantSession.user_id == principal.user_id,
+            AdminAssistantSession.purpose == "setup",
+        )
+    ).one_or_none()
     add(
         "setup_step",
         len(steps),
         f"还有 {len(steps)} 步首次设置没完成：{titles}",
-        "/admin/assistant?prompt=帮我完成首次设置",
+        f"/admin/assistant?session={setup_session}"
+        if setup_session
+        else "/admin/assistant",
         "帮我完成首次设置",
     )
     return AdminOverviewPublic(
