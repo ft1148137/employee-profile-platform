@@ -38,3 +38,4 @@
 - [ADR-0036：企业自动起草使用单一总开关](0036-auto-drafting-switch.md)
 
 - [ADR-0037：私有会话附件与文件输入边界](0037-chat-attachments.md)
+- [ADR-0038：首次设置使用持久管理对话](0038-setup-conversation.md)

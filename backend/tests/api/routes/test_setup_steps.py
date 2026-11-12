@@ -672,7 +672,7 @@ def test_two_step_completion_and_home_todos(
     overview = client.get(f"{tenant.url}/admin/overview", headers=auth).json()
     todo = next(t for t in overview["todos"] if t["kind"] == "setup_step")
     assert todo["count"] == 7
-    assert todo["page"] == "/admin/assistant?prompt=帮我完成首次设置"
+    assert todo["page"] == "/admin/assistant"
     db.add(
         ModelSetting(
             org_id=tenant.org_id, enabled=True, updated_by_user_id=tenant.admin_id

@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
-import { Bot, Plus } from "lucide-react"
+import { Bot, ListChecks, Plus } from "lucide-react"
 import { AdminAssistantService } from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { rememberConversation } from "@/hooks/useCurrentConversation"
+import { useSetup } from "@/hooks/useSetup"
 
 export function useAdminConversations(orgId: string | undefined) {
   return useQuery({
@@ -32,6 +33,9 @@ export function AdminConversations({
   const navigate = useNavigate()
   const location = useLocation()
   const selected = new URLSearchParams(location.searchStr).get("session")
+  const setup = useSetup()
+  const remaining =
+    setup.data?.steps.filter((step) => step.status === "pending").length ?? 0
   const history = useAdminConversations(orgId)
   const entries = history.data?.data ?? []
   return (
@@ -67,6 +71,9 @@ export function AdminConversations({
           </Button>
         )}
         {entries.map((entry) => {
+          const onboarding = entry.purpose === "setup" && !setup.data?.completed
+          const title = onboarding ? "首次设置" : entry.preview || "对话"
+          const Icon = onboarding ? ListChecks : Bot
           const activity = new Date(entry.last_activity_at)
           const today = activity.toDateString() === new Date().toDateString()
           return (
@@ -74,19 +81,21 @@ export function AdminConversations({
               key={entry.id}
               to="/admin/assistant"
               search={{ session: entry.id }}
-              aria-label={entry.preview || "对话"}
+              aria-label={
+                onboarding ? `首次设置 · ${remaining} 步待完成` : title
+              }
               aria-current={selected === entry.id ? "page" : undefined}
               onClick={onSelect}
               className="flex min-w-0 items-center gap-3 rounded-xl px-3 py-3 hover:bg-sidebar-accent aria-current:bg-sidebar-accent"
-              title={entry.preview || "对话"}
+              title={title}
             >
               <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-background">
-                <Bot className="size-4 text-muted-foreground" />
+                <Icon className="size-4 text-muted-foreground" />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                    {entry.preview || "对话"}
+                    {title}
                   </span>
                   <time
                     dateTime={entry.last_activity_at}
@@ -102,7 +111,9 @@ export function AdminConversations({
                   </time>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  管理助手 · {entry.turn_count} 轮
+                  {onboarding
+                    ? `${remaining} 步待完成`
+                    : `管理助手 · ${entry.turn_count} 轮`}
                 </p>
               </div>
             </Link>

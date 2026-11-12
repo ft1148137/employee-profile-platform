@@ -19,6 +19,7 @@ import useAuth from "@/hooks/useAuth"
 import { useCurrentConversation } from "@/hooks/useCurrentConversation"
 import { useIsMobile } from "@/hooks/useMobile"
 import { useOrg } from "@/hooks/useOrg"
+import { useSetup } from "@/hooks/useSetup"
 
 export const Route = createFileRoute("/_layout/admin/assistant")({
   component: AssistantPage,
@@ -34,6 +35,7 @@ export const Route = createFileRoute("/_layout/admin/assistant")({
 function AssistantPage() {
   const { org, roles } = useOrg()
   const { user } = useAuth()
+  const setup = useSetup()
   const location = useLocation()
   const isMobile = useIsMobile()
   const [open, setOpen] = useState(false)
@@ -47,11 +49,15 @@ function AssistantPage() {
   if (!org || !user) return <OrgState />
   if (!roles.includes("org_admin"))
     return <p role="alert">需要企业管理员权限</p>
+  const initial = history.data?.data.find((entry) => entry.purpose === "setup")
   const selected = session || remembered
-  const title = selected
-    ? history.data?.data.find((entry) => entry.id === selected)?.preview ||
-      "对话"
-    : "新对话"
+  const title =
+    selected === initial?.id && !setup.data?.completed
+      ? "首次设置"
+      : selected
+        ? history.data?.data.find((entry) => entry.id === selected)?.preview ||
+          "对话"
+        : "新对话"
   const conversations = (
     <AdminConversations
       orgId={org.id}

@@ -8,6 +8,6 @@ setup("authenticate", async ({ page }) => {
   await page.getByTestId("email-input").fill(firstSuperuser)
   await page.getByTestId("password-input").fill(firstSuperuserPassword)
   await page.getByRole("button", { name: "登录" }).click()
-  await page.waitForURL("/admin/assistant")
+  await page.waitForURL(/\/admin\/assistant(?:\?session=[0-9a-f-]+)?$/)
   await page.context().storageState({ path: authFile })
 })

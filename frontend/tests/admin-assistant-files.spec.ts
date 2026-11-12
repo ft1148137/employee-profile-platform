@@ -71,7 +71,7 @@ test("draft roster from materials, restore and confirm without offboarding omitt
   ).toBeTruthy()
   await logInUser(page, email, password)
   await page.goto("/admin/roster")
-  await expect(page).toHaveURL("/admin/assistant")
+  await expect(page).toHaveURL(/\/admin\/assistant(?:\?session=[0-9a-f-]+)?$/)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.getByLabel("选择对话附件").setInputFiles({
     name: "人员材料.txt",

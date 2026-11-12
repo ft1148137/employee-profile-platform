@@ -140,6 +140,15 @@ class TestConnection(ToolInput):
     item: int = Field(ge=0, strict=True)
 
 
+class SetupChecklistCard(BaseModel):
+    type: Literal["setup_checklist"] = "setup_checklist"
+
+
+class SetupFormCard(BaseModel):
+    type: Literal["setup_form"] = "setup_form"
+    step: Literal["org_profile", "model"]
+
+
 class AdminTurnResponse(BaseModel):
     steps: list[ToolStep] = Field(default_factory=list)
     messages: list[
@@ -150,7 +159,9 @@ class AdminTurnResponse(BaseModel):
             | ChangeSetCard
             | SecretInputCard
             | FileUploadCard
-            | FilePreviewCard,
+            | FilePreviewCard
+            | SetupChecklistCard
+            | SetupFormCard,
             Field(discriminator="type"),
         ]
     ]

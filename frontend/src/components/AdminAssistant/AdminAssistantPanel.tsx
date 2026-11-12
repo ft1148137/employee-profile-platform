@@ -20,11 +20,12 @@ import { ChatComposer } from "@/components/Chat/ChatComposer"
 import { ChatMessages } from "@/components/Chat/ChatMessages"
 import { useStreamingTurn } from "@/components/Chat/useStreamingTurn"
 import { RosterPreview } from "@/components/Roster/RosterPreview"
+import { SetupCard } from "@/components/Setup/SetupCards"
 import { SetupError } from "@/components/Setup/SetupError"
-import { SetupStartPanel } from "@/components/Setup/SetupStartPanel"
 import { Button } from "@/components/ui/button"
 import { useAdminAvailability } from "@/hooks/useAdminAvailability"
 import { rememberConversation } from "@/hooks/useCurrentConversation"
+import { useSetup } from "@/hooks/useSetup"
 import { ChangeSetCard } from "./ChangeSetCard"
 import { FileSummaryPreview } from "./FileSummaryPreview"
 import { FileUploadCard } from "./FileUploadCard"
@@ -149,6 +150,7 @@ export function AdminAssistantPanel({
 }) {
   const client = useQueryClient()
   const navigate = useNavigate()
+  const setup = useSetup()
   const availability = useAdminAvailability()
   const available = availability.data?.available === true
   const [uploading, setUploading] = useState(false)
@@ -188,6 +190,12 @@ export function AdminAssistantPanel({
       ).data,
   })
   const messages = history.data ?? []
+  const setupIntro =
+    messages.some(
+      (entry) =>
+        "messages" in entry.payload &&
+        entry.payload.messages.some((card) => card.type === "setup_checklist"),
+    ) && !messages.some((entry) => entry.role === "user")
   const expired =
     history.error instanceof AxiosError &&
     history.error.response?.status === 404
@@ -329,9 +337,19 @@ export function AdminAssistantPanel({
     setPendingMessage(null)
   }, [sessionId, storageKey, prefill, send.reset])
   useEffect(() => {
-    if (messages.length || busy || stream.text || stream.tools.length)
+    if (
+      (!setupIntro || pendingMessage) &&
+      (messages.length || busy || stream.text || stream.tools.length)
+    )
       bottom.current?.scrollIntoView({ block: "end" })
-  }, [messages.length, busy, stream.text, stream.tools])
+  }, [
+    messages.length,
+    busy,
+    stream.text,
+    stream.tools,
+    setupIntro,
+    pendingMessage,
+  ])
   useEffect(() => {
     if (navigationKey) return stream.stop
   }, [navigationKey, stream.stop])
@@ -363,55 +381,43 @@ export function AdminAssistantPanel({
         <SetupError error={availability.error} />
         {!sessionId && !messages.length && !pendingMessage && (
           <>
-            <SetupStartPanel
-              orgId={orgId}
-              available={available}
-              onStart={() => {
-                const body = {
-                  text: "帮我完成首次设置",
-                  page: "/admin/assistant" as const,
-                }
-                setPendingMessage(body)
-                send.mutate(body)
-              }}
-            >
-              <div className="space-y-8 py-6">
-                <div className="space-y-3 text-center">
-                  <h2 className="text-2xl font-semibold">
-                    你好，今天有什么要处理的？
-                  </h2>
-                  <p className="text-muted-foreground">
-                    试着问「今天有什么要处理的」。我会结合当前状态，帮你找到对应页面。
-                  </p>
-                </div>
-                <section className="space-y-3" aria-label="可以这样问">
-                  <h2 className="font-semibold">可以这样问</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      "查看同步与起草进度",
-                      "修改提醒周期",
-                      "查看员工名单和账号",
-                      "查看离职人员",
-                      "检查飞书连接",
-                      "排查同步失败",
-                    ].map((example) => (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        key={example}
-                        className="h-auto rounded-full px-3 py-2 text-xs font-normal"
-                        onClick={() => setText(example)}
-                      >
-                        {example}
-                      </Button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    可以查看信息、起草提醒设置改动，点确认卡后才会生效。备份恢复、升级、重置请联系部署人员；不做绩效和薪酬判断。
-                  </p>
-                </section>
+            <div className="space-y-8 py-6">
+              <div className="space-y-3 text-center">
+                <h2 className="text-2xl font-semibold">
+                  你好，今天有什么要处理的？
+                </h2>
+                <p className="text-muted-foreground">
+                  试着问「今天有什么要处理的」。我会结合当前状态，帮你找到对应页面。
+                </p>
               </div>
-            </SetupStartPanel>
+              <section className="space-y-3" aria-label="可以这样问">
+                <h2 className="font-semibold">可以这样问</h2>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "查看同步与起草进度",
+                    "修改提醒周期",
+                    "查看员工名单和账号",
+                    "查看离职人员",
+                    "检查飞书连接",
+                    "排查同步失败",
+                  ].map((example) => (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      key={example}
+                      className="h-auto rounded-full px-3 py-2 text-xs font-normal"
+                      onClick={() => setText(example)}
+                    >
+                      {example}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  可以查看信息、起草提醒设置改动，点确认卡后才会生效。备份恢复、升级、重置请联系部署人员；不做绩效和薪酬判断。
+                </p>
+              </section>
+            </div>
+
             <TodayPanel orgId={orgId} onPrompt={setText} />
           </>
         )}
@@ -443,7 +449,18 @@ export function AdminAssistantPanel({
             <div key={`${sessionId}:${index}`} className="space-y-4">
               {"messages" in entry.payload
                 ? entry.payload.messages.map((message, i) =>
-                    message.type === "link" ? (
+                    message.type === "setup_checklist" ||
+                    message.type === "setup_form" ? (
+                      <SetupCard
+                        key={i}
+                        orgId={orgId}
+                        step={
+                          message.type === "setup_form"
+                            ? message.step
+                            : undefined
+                        }
+                      />
+                    ) : message.type === "link" ? (
                       <Link
                         key={i}
                         to={message.page}
@@ -549,6 +566,26 @@ export function AdminAssistantPanel({
             </div>
           )}
         />
+        {setupIntro &&
+          !pendingMessage &&
+          available &&
+          setup.data?.steps
+            .filter((step) => step.required)
+            .every((step) => step.status === "completed") && (
+            <Button
+              disabled={busy}
+              onClick={() => {
+                const body = {
+                  text: "帮我完成首次设置",
+                  page: "/admin/assistant" as const,
+                }
+                setPendingMessage(body)
+                send.mutate(body)
+              }}
+            >
+              继续，让助手带我完成剩下的设置
+            </Button>
+          )}
         <div ref={bottom} />
         {busy && <p role="status">正在处理，请稍候…</p>}
         <SetupError error={(!expired ? history.error : null) ?? send.error} />

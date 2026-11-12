@@ -44,6 +44,7 @@ router = APIRouter(
 
 @router.get("/sessions")
 def list_sessions(principal: OrgAdminDep, session: SessionDep) -> SessionList:
+    store.ensure_setup_session(session, principal)
     return recent_sessions(session, principal, administrator=True)
 
 

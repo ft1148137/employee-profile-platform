@@ -264,6 +264,12 @@ export type AdminTurnResponse = {
     | ({
         type: "file_preview"
       } & FilePreviewCard)
+    | ({
+        type: "setup_checklist"
+      } & SetupChecklistCard)
+    | ({
+        type: "setup_form"
+      } & SetupFormCard)
   >
 }
 
@@ -4428,6 +4434,34 @@ export type SessionSummary = {
    * Preview
    */
   preview: string
+  /**
+   * Purpose
+   */
+  purpose?: "setup" | null
+}
+
+/**
+ * SetupChecklistCard
+ */
+export type SetupChecklistCard = {
+  /**
+   * Type
+   */
+  type?: "setup_checklist"
+}
+
+/**
+ * SetupFormCard
+ */
+export type SetupFormCard = {
+  /**
+   * Type
+   */
+  type?: "setup_form"
+  /**
+   * Step
+   */
+  step: "org_profile" | "model"
 }
 
 /**
