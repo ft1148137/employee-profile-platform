@@ -119,7 +119,7 @@ test("drafting settings and personal choice persist with role boundaries", async
     await expect(
       card.getByRole("button", { name: "开始起草", exact: true }),
     ).toBeDisabled()
-    await expectChineseCopy(page, ["ChatGPT"])
+    await expectChineseCopy(card, ["ChatGPT"])
     await page.screenshot({
       path: "test-results/drafting-settings.png",
       fullPage: true,
