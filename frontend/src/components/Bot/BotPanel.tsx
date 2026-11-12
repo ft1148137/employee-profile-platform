@@ -63,7 +63,10 @@ function Panel({
   const [sessionId, setSessionId] = useState("")
   const remembered = useCurrentConversation(storageKey)
   const [messages, setMessages] = useState<
-    (Pick<SessionMessage, "role" | "payload"> & { tools?: ToolProgress[] })[]
+    (Pick<SessionMessage, "role" | "payload"> &
+      Partial<Pick<SessionMessage, "created_at">> & {
+        tools?: ToolProgress[]
+      })[]
   >([])
   const [text, setText] = useState("")
   const [expired, setExpired] = useState(false)
@@ -117,6 +120,7 @@ function Panel({
         : {
             response: (await BotService.act({ ...options, body: input })).data,
             tools: [],
+            created_at: new Date().toISOString(),
           }
     },
     onSuccess: (result) => {
@@ -126,7 +130,12 @@ function Panel({
       }
       setMessages((previous) => [
         ...previous,
-        { role: "assistant", payload: result.response, tools: result.tools },
+        {
+          role: "assistant",
+          payload: result.response,
+          tools: result.tools,
+          created_at: result.created_at,
+        },
       ])
       setConflict(false)
       client.invalidateQueries({ queryKey: ["conversation-history", orgId] })
@@ -151,7 +160,11 @@ function Panel({
   async function sendText(value: string, attachments: AttachmentPublic[] = []) {
     setMessages((previous) => [
       ...previous,
-      { role: "user", payload: { text: value, attachments } },
+      {
+        role: "user",
+        payload: { text: value, attachments },
+        created_at: new Date().toISOString(),
+      },
     ])
     setText("")
     const result = await send.mutateAsync({
@@ -192,12 +205,12 @@ function Panel({
           onSelect={(id) => initialize.mutate(id)}
         />
         <div
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 text-sm"
+          className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 text-sm"
           role="log"
           aria-label="机器人对话"
           aria-busy={busy}
         >
-          <p className="rounded-xl bg-muted p-4 leading-relaxed">
+          <p className="mx-auto max-w-3xl text-muted-foreground leading-relaxed">
             可以请我查看画像、过目初始画像、补充经历、查进度或回答问题。提交前请核对预览卡片。没有启用模型时，请到
             <Link
               className="underline"
@@ -222,13 +235,7 @@ function Panel({
             tools={stream.tools}
             stopped={stream.stopped}
             renderMessage={(entry, index) => (
-              <div
-                key={index}
-                className={`space-y-3 break-words ${entry.role === "user" ? "ml-8 rounded-xl bg-primary/10 p-3 whitespace-pre-wrap" : "mr-1"}`}
-              >
-                <p className="text-xs text-muted-foreground">
-                  {entry.role === "user" ? "我" : "画像机器人"}
-                </p>
+              <div key={index} className="space-y-4 break-words">
                 {"messages" in entry.payload
                   ? entry.payload.messages.map((message, i) => (
                       <BotMessage
@@ -278,7 +285,7 @@ function Panel({
           key={sessionId}
           id="bot-input"
           label="发给机器人的消息"
-          placeholder="说说你想补充的经历…"
+          placeholder="给画像机器人发消息…"
           text={text}
           onChange={setText}
           onSend={(attachments) =>

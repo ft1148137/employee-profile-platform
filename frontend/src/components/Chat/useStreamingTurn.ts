@@ -23,6 +23,7 @@ export function useStreamingTurn<Input, Response>(
   }, [url])
   const mutation = useMutation({
     mutationFn: async (body: Input) => {
+      const startedAt = new Date().toISOString()
       const abort = new AbortController()
       controller.current = abort
       setText("")
@@ -87,7 +88,12 @@ export function useStreamingTurn<Input, Response>(
           }
           if (final === undefined || pending.trim())
             throw new Error("对话连接中断，请重试")
-          return { response: final, tools: progress }
+          return {
+            response: final,
+            tools: progress,
+            startedAt,
+            created_at: new Date().toISOString(),
+          }
         } finally {
           await reader.cancel()
         }

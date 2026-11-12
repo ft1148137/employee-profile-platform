@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { AxiosError } from "axios"
+import { FileText } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { AttachmentPublic } from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
@@ -48,12 +49,18 @@ export function ChatAttachment({
   }, [url, requested, image, attachment.filename])
   return (
     <section
-      className="my-2 space-y-1 rounded-lg border p-3 text-sm"
+      className="my-2 w-fit max-w-full space-y-2 rounded-xl border bg-background p-2.5 text-sm"
       aria-label={`附件：${attachment.filename}`}
     >
-      <p>{attachment.filename}</p>
+      <p className="flex items-center gap-2 break-all">
+        <FileText
+          className="size-4 shrink-0 text-muted-foreground"
+          aria-hidden="true"
+        />
+        {attachment.filename}
+      </p>
       <p className="text-xs text-muted-foreground">
-        {attachment.size.toLocaleString("zh-CN")} 字节 · {attachment.mime_type}
+        {attachment.size.toLocaleString("zh-CN")} 字节
       </p>
       {attachment.notice && <p>{attachment.notice}</p>}
       {cleaned ? (
@@ -65,13 +72,14 @@ export function ChatAttachment({
               <img
                 src={url}
                 alt={attachment.filename}
-                className="max-h-40 max-w-full rounded object-contain"
+                className="max-h-40 w-auto max-w-[min(240px,100%)] rounded-lg object-contain"
               />
             </a>
           ) : (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
+              size="sm"
               disabled={download.isFetching}
               onClick={() => {
                 if (download.isError) download.refetch()

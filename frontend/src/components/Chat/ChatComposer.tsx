@@ -1,4 +1,5 @@
-import { useRef, useState } from "react"
+import { ArrowUp, Plus, Square, X } from "lucide-react"
+import { useLayoutEffect, useRef, useState } from "react"
 import type { AttachmentPublic } from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
@@ -27,6 +28,14 @@ export function ChatComposer({
   onUpload: (file: File) => Promise<AttachmentPublic>
 }) {
   const input = useRef<HTMLInputElement>(null)
+  const textarea = useRef<HTMLTextAreaElement>(null)
+  useLayoutEffect(() => {
+    if (!textarea.current) return
+    textarea.current.style.height = "auto"
+    textarea.current.style.height = text
+      ? `${textarea.current.scrollHeight}px`
+      : "auto"
+  }, [text])
   const [pending, setPending] = useState<
     { key: string; file: File; attachment?: AttachmentPublic; error?: Error }[]
   >([])
@@ -104,7 +113,7 @@ export function ChatComposer({
   }
   return (
     <form
-      className="shrink-0 space-y-3 border-t p-4"
+      className="mx-auto mb-4 w-[calc(100%-2rem)] max-w-3xl shrink-0 space-y-3 rounded-2xl border bg-background p-3 shadow-sm focus-within:border-ring focus-within:ring-1 focus-within:ring-ring"
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault()
@@ -129,11 +138,14 @@ export function ChatComposer({
         }}
       />
       <ul
-        className="max-h-40 space-y-2 overflow-y-auto text-sm"
+        className="flex max-h-40 flex-wrap gap-2 overflow-y-auto text-xs"
         aria-label="待发送附件"
       >
         {pending.map((item) => (
-          <li key={item.key} className="rounded-lg border p-2">
+          <li
+            key={item.key}
+            className="relative max-w-full space-y-1 rounded-lg border bg-muted/50 py-2 pl-3 pr-9 break-words"
+          >
             <p>
               {item.file.name} · {item.file.size.toLocaleString("zh-CN")} 字节
             </p>
@@ -147,6 +159,9 @@ export function ChatComposer({
             <Button
               type="button"
               variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0 size-7"
+              aria-label={`移除 ${item.file.name}`}
               disabled={busy}
               onClick={() =>
                 update(
@@ -154,7 +169,7 @@ export function ChatComposer({
                 )
               }
             >
-              移除 {item.file.name}
+              <X className="size-3.5" aria-hidden="true" />
             </Button>
           </li>
         ))}
@@ -168,8 +183,10 @@ export function ChatComposer({
         {label}
       </label>
       <textarea
+        ref={textarea}
         id={id}
-        className="min-h-20 max-h-40 w-full rounded-lg border bg-background p-3 text-sm focus-visible:outline-ring"
+        rows={2}
+        className="min-h-14 max-h-48 w-full resize-none border-0 bg-transparent px-1 py-2 text-sm leading-6 outline-none disabled:opacity-50"
         placeholder={placeholder}
         maxLength={10000}
         value={text}
@@ -191,25 +208,39 @@ export function ChatComposer({
           }
         }}
       />
-      <Button
-        type="button"
-        variant="outline"
-        disabled={busy || disabled}
-        onClick={() => input.current?.click()}
-      >
-        添加附件
-      </Button>
-      {busy ? (
-        <Button type="button" onClick={onStop}>
-          停止
-        </Button>
-      ) : (
+      <div className="flex items-center justify-between">
         <Button
-          disabled={disabled || blocked || (!text.trim() && !pending.length)}
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="rounded-full"
+          aria-label="添加附件"
+          disabled={busy || disabled}
+          onClick={() => input.current?.click()}
         >
-          发送
+          <Plus aria-hidden="true" />
         </Button>
-      )}
+        {busy ? (
+          <Button
+            type="button"
+            size="icon"
+            className="rounded-full"
+            aria-label="停止"
+            onClick={onStop}
+          >
+            <Square className="size-4 fill-current" aria-hidden="true" />
+          </Button>
+        ) : (
+          <Button
+            size="icon"
+            className="rounded-full"
+            aria-label="发送"
+            disabled={disabled || blocked || (!text.trim() && !pending.length)}
+          >
+            <ArrowUp aria-hidden="true" />
+          </Button>
+        )}
+      </div>
     </form>
   )
 }
