@@ -140,6 +140,8 @@ def test_sdk_employee_flow(demo: tuple, db: Session) -> None:
 
                 profile = await use("get_my_profile")
                 assert profile["employee"]["id"] == str(people["E02"].id)
+                assert "department_capabilities_configured" not in profile
+                assert all("in_department" not in item for item in profile["items"])
                 assert (await use("list_my_evidence"))["data"]
                 assert (await use("get_my_requests"))["data"]
                 assert (await use("get_capability_dictionary"))["data"]

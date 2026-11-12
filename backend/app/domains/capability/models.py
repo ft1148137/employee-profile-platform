@@ -108,3 +108,25 @@ class CapabilityProposalEvidence(SQLModel, table=True):
     org_id: uuid.UUID = Field(primary_key=True)
     proposal_id: uuid.UUID = Field(primary_key=True)
     evidence_id: uuid.UUID = Field(primary_key=True)
+
+
+class DepartmentCapability(SQLModel, table=True):
+    __tablename__ = "department_capability"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["org_id", "department_id"],
+            ["department.org_id", "department.id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["org_id", "created_by_user_id"],
+            ["org_membership.org_id", "org_membership.user_id"],
+        ),
+    )
+    org_id: uuid.UUID = Field(primary_key=True)
+    department_id: uuid.UUID = Field(primary_key=True)
+    capability_key: str = Field(primary_key=True)
+    created_at: datetime = Field(
+        default_factory=utc_now, sa_type=DateTime(timezone=True)
+    )
+    created_by_user_id: uuid.UUID

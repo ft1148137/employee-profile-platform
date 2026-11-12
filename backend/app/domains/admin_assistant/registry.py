@@ -34,6 +34,7 @@ from app.domains.admin_assistant.sources import register_sources
 from app.domains.audit import service as audit
 from app.domains.base import utc_now
 from app.domains.bot import settings as bot
+from app.domains.capability import department as department_capabilities
 from app.domains.capability.service import read_editor
 from app.domains.drafting import settings as drafting
 from app.domains.drafting import update_settings as updates
@@ -476,6 +477,28 @@ FUNCTIONS["update_employee_fields"] = AdminFunction(
             "text": "变更员工档案字段的显示及名单导入；已有预览失效",
         }
     ),
+)
+
+FUNCTIONS["get_department_capabilities"] = _f(
+    "get_department_capabilities",
+    "people",
+    "查看部门自己设置和从上级继承的对应能力",
+    department_capabilities.DepartmentArgs,
+    department_capabilities.read_department_capabilities,
+    "/org-chart",
+    "GET /departments/{id}/capabilities",
+)
+FUNCTIONS["set_department_capabilities"] = AdminFunction(
+    name="set_department_capabilities",
+    area="people",
+    kind="change",
+    risk="normal",
+    description="替换部门自己设置的对应能力，子部门继承；确认后保存，可撤销",
+    input_model=department_capabilities.SetDepartmentCapabilities,
+    handler=department_capabilities.set_department_capabilities,
+    page="/org-chart",
+    endpoints=(("PUT", "/departments/{id}/capabilities"),),
+    snapshot=department_capabilities.snapshot,
 )
 
 FUNCTIONS["update_update_settings"] = AdminFunction(

@@ -93,7 +93,11 @@ def invoke(
             session.commit()
             data = result.model_dump(
                 mode="json",
-                exclude={"employee": {str(f) for f in FIELD_LABELS}}
+                exclude={
+                    "employee": {str(f) for f in FIELD_LABELS},
+                    "department_capabilities_configured": True,
+                    "items": {"__all__": {"in_department"}},
+                }
                 if tool.name == "get_my_profile"
                 else None,
             )

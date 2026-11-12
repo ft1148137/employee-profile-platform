@@ -348,6 +348,9 @@ import type {
   oauthRevokeAuthorizationData,
   oauthRevokeAuthorizationErrors,
   oauthRevokeAuthorizationResponses,
+  orgsReadDepartmentCapabilitiesData,
+  orgsReadDepartmentCapabilitiesErrors,
+  orgsReadDepartmentCapabilitiesResponses,
   orgsReadDepartmentsData,
   orgsReadDepartmentsErrors,
   orgsReadDepartmentsResponses,
@@ -357,6 +360,9 @@ import type {
   orgsRenameOrganizationData,
   orgsRenameOrganizationErrors,
   orgsRenameOrganizationResponses,
+  orgsUpdateDepartmentCapabilitiesData,
+  orgsUpdateDepartmentCapabilitiesErrors,
+  orgsUpdateDepartmentCapabilitiesResponses,
   orgsUpdateEmployeeFieldsData,
   orgsUpdateEmployeeFieldsErrors,
   orgsUpdateEmployeeFieldsResponses,
@@ -2255,6 +2261,46 @@ export class ExternalIdentitiesService {
 }
 
 export class OrgsService {
+  /**
+   * Read Department Capabilities
+   */
+  public static readDepartmentCapabilities<ThrowOnError extends boolean = true>(
+    options: Options<orgsReadDepartmentCapabilitiesData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      orgsReadDepartmentCapabilitiesResponses,
+      orgsReadDepartmentCapabilitiesErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/departments/{id}/capabilities",
+      ...options,
+    })
+  }
+
+  /**
+   * Update Department Capabilities
+   */
+  public static updateDepartmentCapabilities<
+    ThrowOnError extends boolean = true,
+  >(options: Options<orgsUpdateDepartmentCapabilitiesData, ThrowOnError>) {
+    return (options.client ?? client).put<
+      orgsUpdateDepartmentCapabilitiesResponses,
+      orgsUpdateDepartmentCapabilitiesErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/departments/{id}/capabilities",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
   /**
    * Read Org Chart
    */

@@ -51,6 +51,8 @@ def test_web_parity(
     args = {}
     if name == "get_employee_profile":
         args = {"employee_id": str(employees["E02"].id)}
+    if name == "get_department_capabilities":
+        args = {"department_id": str(employees["E02"].department_id)}
     if name == "get_appeal":
         args = {"appeal_id": str(uuid4())}
     if name == "test_im_connection":
@@ -58,7 +60,7 @@ def test_web_parity(
     result = call(db, principal(db, shared_demo), name, args)
     expected = []
     for method, path in entry.endpoints:
-        path = path.format(**args)
+        path = path.format(id=args.get("department_id"), **args)
         response = client.request(method, url + path, headers=auth["admin"])
         if response.status_code == 404:
             assert result == {"data": {"error": "找不到该记录"}}

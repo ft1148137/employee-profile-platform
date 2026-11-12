@@ -6,6 +6,7 @@ from sqlmodel import Session, col, func, select
 
 from app.authz.principal import Principal
 from app.domains.base import utc_now
+from app.domains.capability.department import department_keys
 from app.domains.capability.models import CapabilityDefinition, CapabilitySchemaVersion
 from app.domains.capability.schemas import CapabilityPublic, SchemaVersionPublic
 from app.domains.capability.service import (
@@ -154,6 +155,12 @@ def read_profile(
     employee = employee_summary(
         session, visible_employee(session, principal, employee_id), principal
     )
+    own, inherited = department_keys(
+        session,
+        principal.org_id,
+        employee.department.id if employee.department else None,
+    )
+    keys = own | inherited
     try:
         schema = get_schema(session, principal.org_id)
     except SchemaNotFound:
@@ -163,6 +170,7 @@ def read_profile(
             latest_published=employee.latest_published,
             items=[],
             counts=ProfileCounts(),
+            department_capabilities_configured=bool(keys),
         )
     from app.domains.change_request.models import ChangeItem
     from app.domains.review.models import AppealStatus, ReviewAppeal
@@ -230,12 +238,15 @@ def read_profile(
     items, counts = profile_items(
         session, principal, schema.id, list(current.values()), disputed_keys
     )
+    for item in items:
+        item.in_department = not item.retired and item.capability.key in keys
     return ProfileView(
         employee=employee,
         schema_version=SchemaVersionPublic.model_validate(schema),
         latest_published=employee.latest_published,
         items=items,
         counts=counts,
+        department_capabilities_configured=bool(keys),
     )
 
 
