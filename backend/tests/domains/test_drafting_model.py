@@ -32,6 +32,7 @@ from app.domains.model.models import ModelSetting
 from app.domains.model.service import model_config
 from app.domains.org.models import ExternalIdentity
 from app.domains.profile.models import ProfileProgress
+from app.worker.app import app as worker_app
 from app.worker.tasks import draft_initial
 from tests.api.routes.test_initial_profiles import work_queue
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
@@ -599,8 +600,14 @@ def test_chatgpt_separate_setting_lock(
 
 @pytest.mark.parametrize("enabled", [True, False])
 def test_opt_out_after_queue_does_not_block_next_batch(
-    drafting: tuple, db: Session, request: pytest.FixtureRequest, enabled: bool
+    drafting: tuple,
+    db: Session,
+    request: pytest.FixtureRequest,
+    enabled: bool,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Hourly department defaults must not consume this test's drafting replies.
+    monkeypatch.setattr(worker_app.periodic_registry, "periodic_tasks", {})
     org, _, _, employees, _ = drafting
     replies, _ = request.getfixturevalue("model_completions")
     replies.extend(['{"items":[]}'] * 9)
