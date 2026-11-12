@@ -4,7 +4,7 @@ import logging
 import multiprocessing
 import time
 from collections.abc import AsyncIterator
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from multiprocessing.process import BaseProcess
 from multiprocessing.queues import Queue
 from queue import Empty
@@ -16,8 +16,18 @@ import httpx
 import sentry_sdk
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
-from app.domains.im.adapters.base import Event, ImError
+from app.domains.bot.attachments import AttachmentError, size_limit
+from app.domains.im.adapters.base import Attachment, Event, ImError
 from app.domains.im.schemas import Platform
+
+
+class _PrivateResource(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "/resources/" not in record.getMessage()
+
+
+for _name in ("httpx", "httpcore.http11", "httpcore.http2"):
+    logging.getLogger(_name).addFilter(_PrivateResource())
 
 
 def _listen(credentials: dict[str, str], events: Queue[tuple[str, str]]) -> None:
@@ -167,16 +177,71 @@ class Feishu:
         except ImError, KeyError, TypeError, AttributeError:
             return None
 
+    async def _attachment(
+        self, message_id: str, key: str, kind: str, filename: str
+    ) -> Attachment:
+        limit = size_limit(filename)
+        await self._authenticate()
+        try:
+            with sentry_sdk.new_scope() as scope:
+                scope.set_client(
+                    sentry_sdk.Client(dsn="", default_integrations=False, release="")
+                )
+                async with self.client.stream(
+                    "GET",
+                    f"im/v1/messages/{quote(message_id, safe='')}/resources/{quote(key, safe='')}",
+                    params={"type": kind},
+                    headers={"Authorization": f"Bearer {self.token}"},
+                ) as response:
+                    if response.status_code in (400, 401, 403):
+                        raise AttachmentError(
+                            "无法读取文件，请让管理员在飞书开放平台开通文件权限"
+                        )
+                    if response.status_code != 200:
+                        raise AttachmentError("无法读取文件，请稍后重试")
+                    if int(response.headers.get("content-length", "0")) > limit:
+                        raise AttachmentError(
+                            "文件太大，图片最多 5 MiB，文件最多 10 MiB"
+                        )
+                    data = bytearray()
+                    async for chunk in response.aiter_bytes(64 * 1024):
+                        if len(data) + len(chunk) > limit:
+                            raise AttachmentError(
+                                "文件太大，图片最多 5 MiB，文件最多 10 MiB"
+                            )
+                        data.extend(chunk)
+        except httpx.HTTPError, ValueError:
+            raise AttachmentError("无法读取文件，请稍后重试") from None
+        if kind == "image":
+            if data.startswith(b"\x89PNG\r\n\x1a\n"):
+                filename = "图片.png"
+            elif data.startswith(b"\xff\xd8\xff"):
+                filename = "图片.jpg"
+            elif data.startswith((b"GIF87a", b"GIF89a")):
+                filename = "图片.gif"
+            elif data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+                filename = "图片.webp"
+            else:
+                raise AttachmentError("不支持的附件类型")
+            return Attachment("image", filename, bytes(data))
+        return Attachment("file", filename, bytes(data))
+
     async def _event(self, payload: str) -> Event | None:
         try:
             data = json.loads(payload)
             header, event = data["header"], data["event"]
             if header["event_type"] == "im.message.receive_v1":
                 message, sender = event["message"], event["sender"]
-                if sender["sender_type"] != "user" or message["message_type"] != "text":
+                kind = message["message_type"]
+                if sender["sender_type"] != "user" or kind not in (
+                    "text",
+                    "file",
+                    "image",
+                ):
                     return None
-                text = json.loads(message["content"])["text"]
-                if not isinstance(text, str):
+                content = json.loads(message["content"])
+                text = content.get("text") if kind == "text" else None
+                if kind == "text" and not isinstance(text, str):
                     return None
                 result = Event(
                     self.org_id,
@@ -187,6 +252,25 @@ class Feishu:
                     message["chat_type"] == "p2p",
                     text,
                 )
+                if kind != "text":
+                    if not result.private:
+                        return replace(result, attachment_error="请私聊我")
+                    try:
+                        result = replace(
+                            result,
+                            attachment=await self._attachment(
+                                message["message_id"],
+                                content["image_key" if kind == "image" else "file_key"],
+                                kind,
+                                content["file_name"] if kind == "file" else "图片.png",
+                            ),
+                        )
+                    except AttachmentError as error:
+                        result = replace(result, attachment_error=str(error.detail))
+                    except ImError:
+                        result = replace(
+                            result, attachment_error="无法读取文件，请稍后重试"
+                        )
             elif header["event_type"] == "card.action.trigger":
                 context = event["context"]
                 chat_id = context["open_chat_id"]

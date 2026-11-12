@@ -172,6 +172,28 @@ def extract(ext: str, data: bytes) -> tuple[str, str | None]:
 def upload(
     db: Session, p: Principal, kind: SessionKind, session_id: UUID, file: UploadFile
 ) -> AttachmentPublic:
+    _session(db, p, kind, session_id)
+    filename = file.filename or ""
+    return save_bytes(
+        db, p, kind, session_id, filename, file.file.read(size_limit(filename) + 1)
+    )
+
+
+def size_limit(filename: str) -> int:
+    ext = Path(filename).suffix.lower().lstrip(".")
+    if ext not in MIME:
+        raise AttachmentError("不支持的附件类型")
+    return (5 if MIME[ext].startswith("image/") else 10) * 1024 * 1024
+
+
+def save_bytes(
+    db: Session,
+    p: Principal,
+    kind: SessionKind,
+    session_id: UUID,
+    filename: str,
+    data: bytes,
+) -> AttachmentPublic:
     _session(db, p, kind, session_id, lock=True)
     table = _table(kind)
     if (
@@ -186,13 +208,10 @@ def upload(
         >= 50
     ):
         raise AttachmentError("这个会话的附件太多了，请新建对话")
-    filename = Path(file.filename or "").name[:255]
+    filename = Path(filename).name[:255]
     ext = Path(filename).suffix.lower().lstrip(".")
-    if ext not in MIME:
-        raise AttachmentError("不支持的附件类型")
+    limit = size_limit(filename)
     image = MIME[ext].startswith("image/")
-    limit = (5 if image else 10) * 1024 * 1024
-    data = file.file.read(limit + 1)
     if not data or len(data) > limit:
         raise AttachmentError("附件不能为空，图片最多 5 MiB，文件最多 10 MiB")
     session_table: type[BotSession] | type[AdminAssistantSession]
