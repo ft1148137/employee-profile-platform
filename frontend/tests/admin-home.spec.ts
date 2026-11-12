@@ -3,7 +3,7 @@ import { expectChineseCopy } from "./utils/copy"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
-test("admin home shows status and appeal todo through resubmission", async ({
+test("assistant shows status and appeal todo through resubmission", async ({
   page,
   request,
 }) => {
@@ -183,6 +183,10 @@ test("admin home shows status and appeal todo through resubmission", async ({
     ).ok(),
   ).toBeTruthy()
   await enter(admin.access_token, "/admin")
+  await expect(page).toHaveURL("/admin/assistant")
+  await page.goto("/admin/progress")
+  await expect(page).toHaveURL("/admin/assistant")
+  await expect(page.getByLabel("发给管理助手的消息")).toBeDisabled()
   const today = page.getByRole("region", { name: "今天要处理的事" })
   for (const name of ["飞书", "AI 模型", "数据同步", "自动起草"]) {
     await expect(

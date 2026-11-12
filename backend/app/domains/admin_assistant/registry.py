@@ -231,7 +231,7 @@ FUNCTIONS = {
             "查看今天要处理的事和运行状态",
             NoArgs,
             lambda d, p, a: build_overview(d, p),
-            "/admin",
+            "/admin/assistant",
             "GET /admin/overview",
         ),
         _f(
@@ -243,7 +243,7 @@ FUNCTIONS = {
                 sync_runs=sources.read_sync_runs(d, p, **a.model_dump()),
                 drafting=read_progress(d, p.org_id),
             ),
-            "/admin",
+            "/admin/data-ai?tab=sources",
             "GET /sync-runs",
             "GET /initial-profiles/progress",
         ),

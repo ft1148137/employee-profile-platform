@@ -35,7 +35,7 @@ export function SetupStartPanel({
       })
       client.invalidateQueries({ queryKey: ["admin-overview", orgId] })
       if (key === "model") {
-        if (skip) navigate({ to: "/admin" })
+        if (skip) navigate({ to: "/admin/assistant" })
         else setReady(true)
       }
     },

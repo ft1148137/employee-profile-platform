@@ -155,3 +155,18 @@ test("new employee logs in to a real empty profile without a dictionary", async 
     fullPage: true,
   })
 })
+
+test("Chinese copy checks the requested region without relaxing translation rules", async ({
+  page,
+}) => {
+  await page.setContent(
+    '<main aria-label="起草区域">起草已完成</main><aside>ChatGPT JSON base URL</aside>',
+  )
+  const region = page.getByRole("main", { name: "起草区域" })
+  await expectChineseCopy(region)
+  await expect(expectChineseCopy(page)).rejects.toThrow("页面存在未翻译的英文")
+  await region.evaluate((element) => {
+    element.textContent = "Untranslated"
+  })
+  await expect(expectChineseCopy(region)).rejects.toThrow("Untranslated")
+})

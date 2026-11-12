@@ -104,7 +104,7 @@ export function DraftingPage({ orgId }: { orgId: string }) {
         >
           {start.isPending ? "正在排队…" : "开始起草"}
         </Button>
-        <a className="text-sm underline" href="/admin">
+        <a className="text-sm underline" href="#draft-progress">
           查看起草进度
         </a>
       </div>

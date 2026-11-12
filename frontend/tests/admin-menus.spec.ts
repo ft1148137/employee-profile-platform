@@ -36,23 +36,22 @@ const groups = [
   },
 ]
 
-test("three menus open every tab and more keeps audit and setup", async ({
+test("management menus open every tab and more keeps audit", async ({
   page,
 }) => {
   test.setTimeout(90000)
   await expect(
     page.getByRole("navigation", { name: "管理菜单" }).getByRole("link"),
-  ).toHaveCount(3)
+  ).toHaveCount(2)
   await expect(
     page.getByRole("link", { name: "连接", exact: true }),
   ).toHaveCount(0)
   await expect(
     page.getByRole("menuitem", { name: "审计日志", exact: true }),
   ).toBeHidden()
-  await page.getByRole("link", { name: "首页", exact: true }).click()
   await expect(
-    page.getByRole("heading", { name: "同步与起草进度", exact: true }),
-  ).toBeVisible()
+    page.getByRole("link", { name: "首页", exact: true }),
+  ).toHaveCount(0)
   for (const group of groups) {
     await page.getByRole("link", { name: group.name, exact: true }).click()
     await expect(
@@ -165,7 +164,8 @@ test("legacy addresses redirect to their new locations", async ({ page }) => {
     ["connections?tab=unknown", "/admin/data-ai?tab=im"],
     ["im", "/admin/data-ai?tab=im"],
     ["assistants", "/admin/data-ai?tab=mcp"],
-    ["progress", "/admin"],
+    ["progress", "/admin/assistant"],
+    ["", "/admin/assistant"],
   ]
   for (const [tab, target] of [
     ["", "/employees"],

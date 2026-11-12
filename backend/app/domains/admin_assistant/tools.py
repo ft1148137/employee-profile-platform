@@ -182,5 +182,7 @@ def call(
         return {"error": "工具或参数不正确，请使用已开放的功能"}
     overview = build_overview(db, principal)
     if not cards:
-        cards.append(LinkCard(title="打开管理首页", page="/admin"))
+        cards.append(
+            LinkCard(title="查看数据来源和同步", page="/admin/data-ai?tab=sources")
+        )
     return {"data": overview.model_dump(mode="json")}

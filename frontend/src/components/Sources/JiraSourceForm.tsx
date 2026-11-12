@@ -356,8 +356,11 @@ function JiraForm({
           : "定时同步已关闭"}
       </p>
       <LastSyncStatus run={latest} />
-      <a href="/admin/progress" className="text-sm text-primary underline">
-        查看同步与起草进度
+      <a
+        href="/admin/data-ai?tab=sources#sync-runs"
+        className="text-sm text-primary underline"
+      >
+        查看同步记录
       </a>
     </section>
   )

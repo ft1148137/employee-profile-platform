@@ -362,53 +362,58 @@ export function AdminAssistantPanel({
         )}
         <SetupError error={availability.error} />
         {!sessionId && !messages.length && !pendingMessage && (
-          <SetupStartPanel
-            orgId={orgId}
-            available={available}
-            onStart={() => {
-              const body = { text: "帮我完成首次设置", page: "/admin" as const }
-              setPendingMessage(body)
-              send.mutate(body)
-            }}
-          >
-            <div className="space-y-8 py-6">
-              <div className="space-y-3 text-center">
-                <h2 className="text-2xl font-semibold">
-                  你好，今天有什么要处理的？
-                </h2>
-                <p className="text-muted-foreground">
-                  试着问「今天有什么要处理的」。我会结合首页状态，帮你找到对应页面。
-                </p>
-              </div>
-              <TodayPanel orgId={orgId} onPrompt={setText} />
-              <section className="space-y-3" aria-label="可以这样问">
-                <h2 className="font-semibold">可以这样问</h2>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    "查看同步与起草进度",
-                    "修改提醒周期",
-                    "查看员工名单和账号",
-                    "查看离职人员",
-                    "检查飞书连接",
-                    "排查同步失败",
-                  ].map((example) => (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      key={example}
-                      className="h-auto rounded-full px-3 py-2 text-xs font-normal"
-                      onClick={() => setText(example)}
-                    >
-                      {example}
-                    </Button>
-                  ))}
+          <>
+            <SetupStartPanel
+              orgId={orgId}
+              available={available}
+              onStart={() => {
+                const body = {
+                  text: "帮我完成首次设置",
+                  page: "/admin/assistant" as const,
+                }
+                setPendingMessage(body)
+                send.mutate(body)
+              }}
+            >
+              <div className="space-y-8 py-6">
+                <div className="space-y-3 text-center">
+                  <h2 className="text-2xl font-semibold">
+                    你好，今天有什么要处理的？
+                  </h2>
+                  <p className="text-muted-foreground">
+                    试着问「今天有什么要处理的」。我会结合当前状态，帮你找到对应页面。
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  可以查看信息、起草提醒设置改动，点确认卡后才会生效。备份恢复、升级、重置请联系部署人员；不做绩效和薪酬判断。
-                </p>
-              </section>
-            </div>
-          </SetupStartPanel>
+                <section className="space-y-3" aria-label="可以这样问">
+                  <h2 className="font-semibold">可以这样问</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      "查看同步与起草进度",
+                      "修改提醒周期",
+                      "查看员工名单和账号",
+                      "查看离职人员",
+                      "检查飞书连接",
+                      "排查同步失败",
+                    ].map((example) => (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        key={example}
+                        className="h-auto rounded-full px-3 py-2 text-xs font-normal"
+                        onClick={() => setText(example)}
+                      >
+                        {example}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    可以查看信息、起草提醒设置改动，点确认卡后才会生效。备份恢复、升级、重置请联系部署人员；不做绩效和薪酬判断。
+                  </p>
+                </section>
+              </div>
+            </SetupStartPanel>
+            <TodayPanel orgId={orgId} onPrompt={setText} />
+          </>
         )}
         <ChatMessages
           onDownload={async (id) =>
@@ -573,7 +578,7 @@ export function AdminAssistantPanel({
         onSend={async (attachments) => {
           const body = {
             text: text.trim() || "请查看附件",
-            page: "/admin" as const,
+            page: "/admin/assistant" as const,
             attachments,
             attachment_ids: attachments.map((item) => item.id),
           }

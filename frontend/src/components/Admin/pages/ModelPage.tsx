@@ -1,6 +1,7 @@
 import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { ModelSettingForm } from "@/components/Model/ModelSettingForm"
 import { OrgState } from "@/components/Profile/OrgState"
+import { DraftProgress } from "@/components/Progress/DraftProgress"
 import { useOrg } from "@/hooks/useOrg"
 import { DraftingPage } from "./DraftingPage"
 export function ModelPage() {
@@ -15,6 +16,9 @@ export function ModelPage() {
         <h1 className="mt-2 text-3xl font-semibold">模型</h1>
       </header>
       <DraftingPage orgId={org.id} />
+      <div id="draft-progress">
+        <DraftProgress orgId={org.id} />
+      </div>
       <ModelSettingForm orgId={org.id} />
       <ChangeHistory targetType="model_setting" />
       <ChangeHistory targetType="drafting_setting" />

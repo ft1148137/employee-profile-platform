@@ -63,28 +63,27 @@ test("manual console completes all fifteen tabs without a model", async ({
     if (req.url().includes("/turns?")) turns++
   })
 
-  await test.step("unconfigured model gives the real manual landing page", async () => {
+  await test.step("unconfigured model lands in the assistant with actionable todos", async () => {
     expect(await get("/model-setting")).toMatchObject({
       enabled: false,
       has_api_key: false,
     })
     await post("/setup/steps/model/skip")
     await logInUser(page, email, password)
-    await expect(page).toHaveURL(/\/admin\/?$/)
-    await expect(
-      page.getByText("请先在模型设置里配置模型，也可以继续使用手工页面。", {
-        exact: true,
-      }),
-    ).toBeVisible()
+    await expect(page).toHaveURL(/\/admin\/assistant$/)
+    await expect(page.getByRole("log")).toContainText(
+      "请先在模型设置里配置模型，也可以继续使用手工页面。",
+    )
     const availability = await request.get(
       `/api/v1/admin-assistant/availability?org_id=${org_id}`,
       { headers },
     )
     expect(availability.ok()).toBeTruthy()
     expect(await availability.json()).toMatchObject({ available: false })
+    await expect(page.getByLabel("发给管理助手的消息")).toBeDisabled()
     await expect(
-      page.getByRole("button", { name: "重新起草全部", exact: true }),
-    ).toBeDisabled()
+      page.getByRole("region", { name: "今天要处理的事" }),
+    ).toBeVisible()
     await screenshot("home")
   })
 
@@ -197,6 +196,9 @@ test("manual console completes all fifteen tabs without a model", async ({
     await expect(card.getByRole("switch")).not.toBeChecked()
     await expect(card.getByRole("switch")).toBeDisabled()
     await expect(card).toContainText("模型未启用")
+    await expect(
+      page.getByRole("button", { name: "重新起草全部", exact: true }),
+    ).toBeDisabled()
     await screenshot("drafting-off")
     await page.goto("/admin/rules?tab=reminders")
   })
@@ -396,12 +398,13 @@ test("manual console completes all fifteen tabs without a model", async ({
     )
   })
 
-  await test.step("home / progress and more / audit: read actual results and filter", async () => {
-    await page.getByRole("link", { name: "首页", exact: true }).click()
+  await test.step("data / progress and more / audit: read actual results and filter", async () => {
+    await page.goto("/admin/data-ai?tab=sources")
     const runs = page.getByRole("region", { name: "同步记录" })
     await expect(
       runs.getByRole("row").filter({ hasText: "work_records.csv" }),
     ).toContainText("已完成")
+    await page.goto("/admin/assistant")
     await page
       .getByRole("region", { name: "今天要处理的事" })
       .getByRole("article", { name: "AI 模型", exact: true })

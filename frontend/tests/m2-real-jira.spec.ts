@@ -75,7 +75,7 @@ test("M2 real Cloud: roster, manual identity, initial request and evidence", asy
   }))
   await page.goto("/admin/data-ai?tab=model")
   await configureModel(page, modelUrl)
-  await page.goto("/admin")
+  await page.goto("/admin/data-ai?tab=model")
   page.once("dialog", (dialog) => dialog.accept())
   await page.getByRole("button", { name: "重新起草全部", exact: true }).click()
   await expect(

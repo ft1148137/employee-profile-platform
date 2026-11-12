@@ -93,7 +93,7 @@ for (const width of [1440, 390]) {
       await expect(
         dialog.getByRole("link", { name: "打开管理首页" }).last(),
       ).toHaveAttribute("href", "/admin")
-      expect(sent[sent.length - 1]).toBe("/admin")
+      expect(sent[sent.length - 1]).toBe("/admin/assistant")
       await expect(
         dialog.getByText("忽略「合成能力建议」", { exact: true }).last(),
       ).toBeVisible()
@@ -157,24 +157,21 @@ for (const available of [true, false]) {
       "admin@demo.example.com",
       process.env.DEMO_USER_PASSWORD!,
     )
-    await expect(page).toHaveURL(
-      available ? /\/admin\/assistant$/ : /\/admin\/?$/,
-    )
+    await expect(page).toHaveURL(/\/admin\/assistant$/)
     if (!available) {
-      await expect(
-        page.getByText("请先配置模型，可以继续使用手工页面。", { exact: true }),
-      ).toBeVisible()
+      await expect(page.getByRole("log")).toContainText(
+        "请先配置模型，可以继续使用手工页面。",
+      )
       await expect(
         page
           .getByRole("status")
           .filter({ hasText: "请先配置模型，可以继续使用手工页面。" })
           .getByRole("link", { name: "去配置模型" }),
       ).toHaveAttribute("href", "/admin/data-ai?tab=model")
-    } else {
-      await expect(
-        page.getByRole("link", { name: "首页", exact: true }),
-      ).toBeVisible()
     }
+    await expect(
+      page.getByRole("link", { name: "首页", exact: true }),
+    ).toHaveCount(0)
     let sends = 0
     const saveReply = await mockAdminMessages(page)
     await page.route("**/admin-assistant/sessions/*/turns?*", (route) => {
@@ -207,7 +204,7 @@ for (const available of [true, false]) {
     })
     await page.goto("/admin")
     const action = page
-      .getByRole("link", { name: "让助手处理", exact: true })
+      .getByRole("button", { name: "让助手处理", exact: true })
       .first()
     await action.click()
     await expect(

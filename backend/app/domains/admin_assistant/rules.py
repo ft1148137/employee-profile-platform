@@ -229,7 +229,7 @@ def register_rules(functions: dict[str, AdminFunction]) -> None:
             "为全部或失败的员工启动初始画像起草，不能撤销",
             DraftArgs,
             start_drafting,
-            "/admin",
+            "/admin/data-ai?tab=model",
             (("POST", "/initial-profiles/draft"),),
             impact=draft_impact,
         ),
@@ -241,7 +241,7 @@ def register_rules(functions: dict[str, AdminFunction]) -> None:
             "将超期未过目的初始画像送交经理审批，不能撤销",
             NoArgs,
             handover,
-            "/admin",
+            "/admin/data-ai?tab=model",
             (("POST", "/initial-profiles/hand-over"),),
             impact=lambda d, p, a: RootModel(
                 {"count": hand_over(d, p), "text": "将送交经理审批的初始画像"}
@@ -255,7 +255,7 @@ def register_rules(functions: dict[str, AdminFunction]) -> None:
             "预览超期初始画像的交付人数",
             NoArgs,
             lambda d, p, a: RootModel({"count": hand_over(d, p)}),
-            "/admin",
+            "/admin/data-ai?tab=model",
             (("GET", "/initial-profiles/hand-over"),),
         ),
         AdminFunction(
