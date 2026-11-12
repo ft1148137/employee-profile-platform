@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import Engine, inspect
 from sqlmodel import Session, select
 
+from app.api.deps import get_authenticated_user
 from app.authz.principal import Principal
 from app.domains.audit.models import ActorKind, AuditEvent
 from app.domains.base import utc_now
@@ -310,10 +311,16 @@ def test_concurrent_changes_are_not_overwritten(
     assert events(db, p.org_id) == []
 
 
-def test_worker_tenant_isolation_and_parent_first(defaults: tuple, db: Session) -> None:
+@pytest.mark.usefixtures("shared_demo")
+def test_worker_tenant_isolation_and_parent_first(
+    defaults: tuple, db: Session, demo: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
     p, department, keys, calls, replies = defaults
+    user = get_authenticated_user(
+        db, demo[2]["foreign"]["Authorization"].removeprefix("Bearer ")
+    )
     foreign = db.exec(
-        select(Organization).where(Organization.name == "Synthetic foreign tenant")
+        select(Organization).join(OrgMembership).where(OrgMembership.user_id == user.id)
     ).one()
     foreign_schema = activate_template(
         db, Principal.system_worker(foreign.id), "hospital"
@@ -338,19 +345,30 @@ def test_worker_tenant_isolation_and_parent_first(defaults: tuple, db: Session) 
     )
     db.commit()
     foreign_key = list_capabilities(db, foreign.id, foreign_schema.id)[0].key
-    replies[:] = [
-        {"capability_keys": keys[:1]},
-        {"capability_keys": []},
-        {"capability_keys": [foreign_key]},
-    ]
+    original = d.generate
+
+    def generate(config: Any, body: Any, allowed: Any) -> list[str]:
+        selected = {
+            department.name: keys[:1],
+            child.name: [],
+            foreign_department.name: [foreign_key],
+        }
+        replies[:] = [{"capability_keys": selected[body["department_name"]]}]
+        return original(config, body, allowed)
+
+    monkeypatch.setattr(d, "generate", generate)
     fill_defaults(0)
     db.expire_all()
     assert child.capability_source == "pi"
-    assert calls[1]["inherited_capability_keys"] == keys[:1]
+    child_call = next(c for c in calls if c["department_name"] == child.name)
+    foreign_call = next(
+        c for c in calls if c["department_name"] == foreign_department.name
+    )
+    assert child_call["inherited_capability_keys"] == keys[:1]
     assert len(events(db, foreign.id)) == 1
     assert foreign_department.capability_source == "pi"
     assert department_keys(db, foreign.id, foreign_department.id)[0] == {foreign_key}
-    assert keys[0] not in {c["key"] for c in calls[-1]["capabilities"]}
+    assert keys[0] not in {c["key"] for c in foreign_call["capabilities"]}
     assert foreign_schema.id != department.capability_schema_version_id
     foreign_department.capability_schema_version_id = None
     db.add(foreign_department)
