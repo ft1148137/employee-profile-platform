@@ -67,6 +67,10 @@ test("admin opens department reporting tree, person chain and employee details",
     "admin@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
+  await page.goto("/employees")
+  await expect(
+    page.getByRole("heading", { name: "员工", exact: true }),
+  ).toBeVisible()
   await page
     .getByRole("navigation", { name: "主导航", exact: true })
     .getByRole("link", { name: "组织架构", exact: true })
@@ -213,7 +217,11 @@ test("manager chart excludes other departments", async ({ page }, testInfo) => {
     "manager.platform@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
+  await page.goto("/employees")
   await expect(page).toHaveURL(/\/employees\/?$/)
+  await expect(
+    page.getByRole("heading", { name: "员工", exact: true }),
+  ).toBeVisible()
   await page
     .getByRole("navigation", { name: "主导航", exact: true })
     .getByRole("link", { name: "组织架构", exact: true })
