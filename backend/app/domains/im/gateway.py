@@ -14,6 +14,7 @@ from sqlmodel import Session, col, select
 
 from app.core.secrets import SecretUnavailable, decrypt_secret
 from app.domains.base import utc_now
+from app.domains.bot.attachments import AttachmentError
 from app.domains.im import actions, binding
 from app.domains.im.adapters.base import Adapter, Event, ImError
 from app.domains.im.adapters.feishu import Feishu
@@ -67,12 +68,19 @@ class Gateway:
             db.commit()
             if (
                 added is None
-                or (event.text is None and not event.callback_id)
+                or (
+                    event.text is None
+                    and not event.callback_id
+                    and not event.attachment
+                    and not event.attachment_error
+                )
                 or not event.external_chat_id
             ):
                 return None
             if not event.private:
                 return "请私聊我"
+            if event.attachment_error:
+                return event.attachment_error
             text = event.text or ""
             match = re.fullmatch(r"绑定\s+([0-9]{6})", text.strip())
             try:
@@ -103,6 +111,9 @@ class Gateway:
                 if event.callback_id:
                     return actions.callback(db, p, event, identity)
                 return actions.text(db, p, event, identity)
+            except AttachmentError as error:
+                db.rollback()
+                return str(error.detail)
             except HTTPException:
                 db.rollback()
                 return (
@@ -122,8 +133,8 @@ class Gateway:
         if (
             isinstance(adapter, (Feishu, Wecom))
             and event.private
-            and event.text is not None
-            and not event.text.strip().startswith("绑定")
+            and (event.text is not None or event.attachment is not None)
+            and not (event.text or "").strip().startswith("绑定")
             and self.enabled(event.org_id, event.platform, credentials)
         ):
             with Session(self.engine) as db:

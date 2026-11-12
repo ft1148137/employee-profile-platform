@@ -64,6 +64,41 @@ def event(
     return Event(org_id, "telegram", uuid4().hex, user, user, private, message)
 
 
+@pytest.mark.parametrize("kind", ["document", "photo"])
+def test_telegram_attachment_notice(
+    demo: tuple, db: Session, telegram_server: dict, kind: str
+) -> None:
+    p = principal(db, demo[1]["E02"].org_id, demo[1]["E02"].id)
+    setting = enable(db, p)
+    telegram_server["updates"] = [
+        {
+            "update_id": 1,
+            "message": {
+                "from": {"id": 100, "is_bot": False},
+                "chat": {"id": 100, "type": "private"},
+                kind: [{"file_id": "synthetic"}]
+                if kind == "photo"
+                else {"file_id": "synthetic"},
+            },
+        }
+    ]
+
+    async def run() -> None:
+        adapter = Telegram(p.org_id, {"bot_token": TOKEN})
+        try:
+            async for incoming in adapter.poll():
+                await gateway.Gateway(engine).handle(
+                    incoming, "12345", setting.credentials, adapter
+                )
+        finally:
+            await adapter.close()
+
+    asyncio.run(run())
+    assert (
+        telegram_server["requests"][-1][1]["text"] == "该入口暂不支持文件，请在网页上传"
+    )
+
+
 def test_http_binding_cycle(
     demo: tuple,
     db: Session,

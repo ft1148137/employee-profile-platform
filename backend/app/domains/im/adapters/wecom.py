@@ -145,7 +145,8 @@ class Wecom:
                     if body.get("msgtype") == "text"
                     else None
                 )
-                if not isinstance(text, str) and not is_callback:
+                attachment = body.get("msgtype") in ("file", "image")
+                if not isinstance(text, str) and not is_callback and not attachment:
                     continue
                 if not private:
                     self.groups[chat] = req_id
@@ -169,6 +170,9 @@ class Wecom:
                         req_id if is_callback else None,
                         detail.get("event_key") if is_callback else None,
                         detail.get("task_id") if is_callback else None,
+                        attachment_error=(
+                            "该入口暂不支持文件，请在网页上传" if attachment else None
+                        ),
                     )
                 )
         except (

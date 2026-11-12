@@ -44,6 +44,8 @@ class _Message(BaseModel):
     message_id: int | None = None
     chat: _Chat
     text: str | None = None
+    document: dict[str, JsonValue] | None = None
+    photo: list[dict[str, JsonValue]] | None = None
 
 
 class _Callback(BaseModel):
@@ -167,6 +169,11 @@ class Telegram:
                         str(msg.chat.id),
                         private,
                         msg.text,
+                        attachment_error=(
+                            "该入口暂不支持文件，请在网页上传"
+                            if msg.document is not None or msg.photo is not None
+                            else None
+                        ),
                     )
             cb = update.callback_query
             if cb and not cb.sender.is_bot:
