@@ -141,6 +141,7 @@ class DepartmentNote(Strict):
     name: str
     pcf_categories: list[str] = Field(min_length=1)
     responsibilities: str
+    capability_keys: list[str] = Field(max_length=8)
 
 
 class Project(Strict):
@@ -552,6 +553,12 @@ def check(data: Loaded) -> list[str]:
     # Capability template
     capabilities = {c.key for c in data.capabilities}
     dupes([c.key for c in data.capabilities], "capability key")
+    for department in ent.departments:
+        keys = dupes(department.capability_keys, f"{department.name} capability key")
+        require(
+            keys <= capabilities,
+            f"{department.name} unknown capability_keys: {sorted(keys - capabilities)}",
+        )
     require(len(capabilities) >= 12, "capability template needs >=12 entries")
     require(
         ent.capability_template.startswith("templates/capabilities/")

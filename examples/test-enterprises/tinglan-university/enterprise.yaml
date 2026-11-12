@@ -27,25 +27,51 @@ departments:
   - '5.0 Deliver Services'
   - '2.0 Develop and Manage Products and Services'
   responsibilities: 计算机类本科与研究生教学、学科科研、专业实验室与学生培养
+  capability_keys:
+  - course_teaching
+  - curriculum_development
+  - thesis_supervision
+  - vertical_project_management
+  - research_paper_writing
+  - lab_safety_management
+  - experiment_course_instruction
 - name: 机械工程学院
   pcf_categories:
   - '5.0 Deliver Services'
   - '2.0 Develop and Manage Products and Services'
   responsibilities: 机械类教学、工程训练与虚拟仿真实验、面向企业的横向技术服务
+  capability_keys:
+  - course_teaching
+  - curriculum_development
+  - thesis_supervision
+  - experiment_course_instruction
+  - lab_safety_management
+  - horizontal_contract_ip
 - name: 学生工作部
   pcf_categories:
   - '6.0 Manage Customer Service'
   - '5.0 Deliver Services'
   responsibilities: 辅导员队伍管理、学业帮扶、奖助评审与学生突发事件处置
+  capability_keys:
+  - student_counseling
+  - scholarship_review_organization
+  - student_crisis_response
 - name: 科研处
   pcf_categories:
   - '2.0 Develop and Manage Products and Services'
   - '13.0 Develop and Manage Business Capabilities'
   responsibilities: 纵向项目组织申报与过程管理、横向合同与知识产权、科研经费合规与成果统计
+  capability_keys:
+  - vertical_project_management
+  - horizontal_contract_ip
+  - research_fund_compliance
 - name: 信息化办公室
   pcf_categories:
   - '8.0 Manage Information Technology (IT)'
   responsibilities: 教务、科研、学工等业务系统的建设与运维、账号与权限管理、数据核对
+  capability_keys:
+  - education_system_ops
+  - grade_data_handling
 projects:
 - code: KJ2026-01
   name: 面向制造场景的边缘视觉检测方法研究（纵向，国家级面上项目）

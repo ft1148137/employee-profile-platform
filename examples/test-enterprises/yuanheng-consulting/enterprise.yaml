@@ -25,18 +25,39 @@ departments:
 - name: 战略与组织咨询部
   pcf_categories: ['1.0 Develop Vision and Strategy', '5.0 Deliver Services']
   responsibilities: 面向客户的战略规划、集团管控与组织设计咨询；承接集团型客户的高层议题
+  capability_keys:
+  - issue_structuring
+  - hypothesis_driven_analysis
+  - org_design
+  - interview_research
+  - storyline_writing
+  - client_communication
 - name: 运营与供应链咨询部
   pcf_categories: ['5.0 Deliver Services', '13.0 Develop and Manage Business Capabilities']
   responsibilities: 流程诊断、运营效率提升、供应链计划与库存优化咨询
+  capability_keys:
+  - process_diagnosis
+  - supply_chain_planning
+  - quantitative_modeling
+  - benchmarking
 - name: 数字化咨询部
   pcf_categories: ['5.0 Deliver Services', '8.0 Manage Information Technology (IT)']
   responsibilities: 数字化转型蓝图、IT 治理与数据治理咨询
+  capability_keys:
+  - digital_blueprint
+  - data_governance
 - name: 知识与研究中心
   pcf_categories: ['13.0 Develop and Manage Business Capabilities']
   responsibilities: 行业研究、基准数据库与方法论资产建设，为各 Practice 提供研究支持
+  capability_keys:
+  - desk_research
+  - benchmarking
+  - knowledge_contribution
 - name: 人力与运营支持部
   pcf_categories: ['7.0 Develop and Manage Human Capital', '8.0 Manage Information Technology (IT)', '9.0 Manage Financial Resources']
   responsibilities: 招聘与职级管理、项目资源排程（Staffing）、工时与合约财务、内部系统管理
+  capability_keys:
+  - engagement_planning
 projects:
 - code: ENG-ZQ
   name: 正桥集团集团管控与组织重设计（虚构客户）
