@@ -60,18 +60,18 @@ bun ci
 
 ## 合并后 master CI
 
-技术规划在阶段核对时检查 master 最新提交的 push workflow，失败则处理；PR 分支保护保证合并前检查通过。不为成功路径另建 master CI 定时唤醒，因为自动关单同样会禁用它。PR 条件观察的是 PR head 的检查，不能用它冒充 master 合并提交的检查。pre-commit 目前只在 PR 上运行。
+技术规划在阶段核对时检查 master 最新提交的 push workflow，失败则处理；PR 分支保护保证合并前检查通过。不为普通成功路径另建 master CI 定时唤醒，因为自动关单同样会禁用它。PR 条件观察的是 PR head 的检查，不能用它冒充 master 合并提交的检查。所有 workflow（包括 pre-commit）在每次 master push 和每日 UTC 19:17 全量运行；非 PR 使用各自 run ID 作为并发组，不取消之前的合并验证。PR 仍按编号取消旧运行。
 
 ## CI 门禁与并行边界
 
-master 必需检查名：`changes`、`test-playwright`、`test-backend`、`test-docker-compose`、`test-production-install`、`test-pi`、`pre-commit`、`Run zizmor`。所有 workflow 都在每个 PR 上触发，无顶层 paths 过滤；Playwright 保留 job 级路径过滤，汇总 job 在无关改动时也返回成功，在过滤失败或任一 shard 失败时失败。
+master 必需检查名：`changes`、`test-playwright`、`test-backend`、`test-docker-compose`、`test-production-install`、`test-pi`、`pre-commit`、`Run zizmor`。所有 workflow 都在每个 PR 上触发，无顶层 paths 过滤。共享 `.github/ci-paths.yml` 和 `ci-deploy-paths.yml`：文档及 issue 模板变更不启动后端、Playwright、Compose；仅 `pi/` 变化不启动 Playwright；生产安装按部署路径执行，未知路径保守执行。各汇总 job 只有在过滤成功且测试全部成功或按过滤明确跳过时通过。
 
 Playwright 分 3 个独立 runner，每个有自己的 Compose 网络、数据库和报告；每个 shard 仍用 1 worker。检查发现 admin-account-actions、admin-roles、admin-accounts、employees、approval-policy、drafting-settings 等使用共用演示企业，不能让同一数据库中的多个 worker 并发修改。已有 setup 和 admin-account-actions 的 serial 分组保留，不新增 serial 标记，不改变重试或 flaky 检查。
 
-Docker 使用 SHA 固定的 Docker 官方 setup-buildx / bake action，为各 workflow 的 backend、pi 镜像配置 `type=gha` 导入与导出缓存。Bake 加载本地镜像，Playwright 与普通 Compose 验证用 `up --no-build` 复用它们。Playwright 浏览器在 runner 上安装 Chromium，直接测试容器里的后端及已构建的前端；不再构建和导出大型浏览器镜像。本地 Compose 的 playwright 服务保留。生产安装脚本仍执行原来的 Compose 构建和验证，并复用当前 Buildx builder。首次 PR 缓存可能为空；合并后 master 的 push 运行建立后续 PR 可读取的缓存。生产安装仍现场生成真实测试配置，缓存预热只使用合成的 Compose 解析占位值。
+Docker 使用 SHA 固定的 Docker 官方 setup-buildx / bake action，为各 workflow 的 backend、pi 镜像配置 `type=gha` 导入与导出缓存。Playwright 前置 job 构建一次镜像、生成一次客户端，通过一天有效的压缩 artifact 供三片加载；Chromium 按操作系统、架构及锁文件缓存，缺失时重新安装。各片用 `up --no-build` 启动自己的服务。普通 Compose 验证也复用本 job 的 Bake 镜像。本地 Compose 的 playwright 服务保留。生产安装脚本仍执行原来的 Compose 构建和验证，并复用当前 Buildx builder。首次 PR 缓存可能为空；合并后 master 的 push 运行建立后续 PR 可读取的缓存。生产安装仍现场生成真实测试配置，缓存预热只使用合成的 Compose 解析占位值。
 
 backend 在 coverage 启动前用 `uv sync --all-packages --frozen --compile-bytecode` 编译依赖，避免真实飞书 SDK 的大量模块在覆盖率跟踪期间首次编译。M2 的模拟 Jira 使用一个上下文内的 TestClient，复用 ASGI portal；同步、分页、失败重试、迁移和证据断言均保留。测量见 [CI 提速记录](ci-performance.md)。
 
-roster 性能函数的 6 个参数场景（包括两个 5000 行 XLSX）从带 coverage 的 xdist 阶段分离，在同一必需 backend job 中用 `-n 0 --no-cov` 运行。2 秒断言保持不变，功能覆盖率仍必须达到原来的 90%。
+后端由 pytest-split 拆成三片，每片保留 xdist loadgroup 与独立数据库。roster 性能函数的 6 个参数场景（包括两个 5000 行 XLSX）从带 coverage 的阶段分离，仅第一片额外用 `-n 0 --no-cov` 运行。2 秒断言保持不变。`test-backend` 要求三片成功、三份 coverage 数据齐备，合并后对总功能覆盖率执行原来的 `--fail-under=90`；JUnit artifact 保留各片用例数量。
 
 分支保护要求 PR 和全部门禁，不要求人工 review；禁止 force push 和删除，保留 GitHub 默认的管理员 bypass，但 agent 不使用。strict 关闭，避免并行 PR 每合并一次就使其他分支重跑；合并后的 master CI 兜底。
