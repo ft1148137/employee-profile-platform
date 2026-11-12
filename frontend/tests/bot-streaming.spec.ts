@@ -223,10 +223,13 @@ test("bot steps remain after closing the panel and reloading", async ({
     })
   })
   await logInUser(page, email, password)
+  await page.waitForURL(/\/employees\/[^/]+$/)
   await page.getByRole("button", { name: "打开画像机器人" }).click()
   const panel = page.getByRole("dialog")
   await panel.getByLabel("发给机器人的消息").fill("查看进度")
   await panel.getByLabel("发给机器人的消息").press("Enter")
+  await expect(panel.getByText("合成历史步骤", { exact: true })).toBeVisible()
+  await expect(panel.getByLabel("发给机器人的消息")).toBeEnabled()
   await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
   await panel.getByText("2 步", { exact: true }).click()
   await expect(
