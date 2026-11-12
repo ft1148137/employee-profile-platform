@@ -1,7 +1,6 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import {
   BookOpen,
-  House,
   Inbox,
   ListChecks,
   MessageCircle,
@@ -40,7 +39,6 @@ import { type Item, Main, railItemClass } from "./Main"
 import { User } from "./User"
 
 const manual: Item[] = [
-  { icon: House, title: "首页", path: "/admin" },
   { icon: BookOpen, title: "能力与规则", path: "/admin/rules" },
   { icon: Sparkles, title: "数据与 AI", path: "/admin/data-ai" },
 ]

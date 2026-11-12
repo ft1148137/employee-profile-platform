@@ -12,7 +12,8 @@ from app.domains.change_request.schemas import ToolInput
 from app.domains.org.roster.schemas import RosterImportPreview
 
 AdminPage = Literal[
-    "/admin",
+    "/admin",  # Historical messages link to the assistant via redirect.
+    "/admin/assistant",
     "/employees",
     "/employees/$employeeId",
     "/employees?filter=roles",

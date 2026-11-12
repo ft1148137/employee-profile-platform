@@ -87,7 +87,7 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
   ).toBeVisible()
   await expect(page.getByLabel("全企业需要经理确认")).toBeChecked()
   await expect(page.getByLabel("员工过目期限（天）")).toHaveValue("14")
-  await page.goto("/admin")
+  await page.goto("/admin/data-ai?tab=model")
   page.once("dialog", (dialog) => dialog.accept())
   await page.getByRole("button", { name: "重新起草全部", exact: true }).click()
   await expect(

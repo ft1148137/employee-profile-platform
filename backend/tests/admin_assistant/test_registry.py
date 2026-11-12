@@ -186,7 +186,7 @@ def test_function_map_rejects_missing_or_unknown_names(
 ) -> None:
     guide = Path(__file__).resolve().parents[3] / "docs/admin-function-map.md"
     text = guide.read_text().replace(
-        "| 首页 | `get_today` |", f"| `get_today` | {replacement} |"
+        "| 管理助手 / 新对话 | `get_today` |", f"| `get_today` | {replacement} |"
     )
     text += "\n正文提及 `get_today`。\n"
     original = Path.read_text
@@ -386,3 +386,37 @@ def test_connection_pages(name: str, tab: str) -> None:
     assert AdminTurnInput(text="查看设置", page=page).page == page
     legacy = f"/admin/connections?tab={tab}"
     assert AdminTurnInput(text="恢复历史", page=legacy).page == legacy
+
+
+@pytest.mark.parametrize(
+    "name,page",
+    [
+        ("get_today", "/admin/assistant"),
+        ("get_progress", "/admin/data-ai?tab=sources"),
+        ("retry_sync_run", "/admin/data-ai?tab=sources"),
+        ("start_initial_drafting", "/admin/data-ai?tab=model"),
+        ("get_initial_handover", "/admin/data-ai?tab=model"),
+        ("hand_over_initial_profiles", "/admin/data-ai?tab=model"),
+    ],
+)
+def test_progress_functions_link_to_their_module(name: str, page: str) -> None:
+    assert r.FUNCTIONS[name].page == page
+
+
+@pytest.mark.parametrize("page", ["/admin", "/admin/assistant"])
+def test_assistant_accepts_current_and_historical_page(page: str) -> None:
+    from app.domains.admin_assistant.schemas import AdminTurnInput
+
+    assert AdminTurnInput(text="今天有什么要处理的", page=page).page == page
+
+
+def test_today_fallback_opens_sources(db: Session, shared_demo: tuple) -> None:
+    from app.domains.admin_assistant import tools
+    from app.domains.admin_assistant.schemas import LinkCard
+
+    cards: list = []
+    result = tools.call(db, principal(db, shared_demo), cards, "get_today", {})
+    assert isinstance(result, dict) and "data" in result
+    assert cards == [
+        LinkCard(title="查看数据来源和同步", page="/admin/data-ai?tab=sources")
+    ]

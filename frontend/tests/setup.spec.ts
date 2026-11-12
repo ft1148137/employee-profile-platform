@@ -138,12 +138,12 @@ test("missing and invalid initialization links and uninitialized login hint", as
   await expectChineseCopy(page)
 })
 
-test("skip model, use manual home and resume from setup todo", async ({
+test("skip model, stay in assistant and resume from setup todo", async ({
   page,
 }) => {
   await initialize(page)
   await page.getByRole("button", { name: "暂不配置模型", exact: true }).click()
-  await expect(page).toHaveURL(/\/admin\/?$/)
+  await expect(page).toHaveURL(/\/admin\/assistant$/)
   const todo = page
     .getByRole("listitem")
     .filter({ hasText: "步首次设置没完成" })

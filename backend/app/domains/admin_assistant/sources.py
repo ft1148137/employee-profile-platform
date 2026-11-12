@@ -149,7 +149,7 @@ def register_sources(functions: dict[str, AdminFunction]) -> None:
             "重试失败或停滞的同步，不能撤销",
             RetryArgs,
             lambda d, p, a, **kw: sync.retry_run(d, p, a.run_id, **kw),
-            "/admin",
+            "/admin/data-ai?tab=sources",
             (("POST", "/sync-runs/{run_id}/retry"),),
         ),
         AdminFunction(

@@ -227,6 +227,10 @@ def test_sync(
     db.commit()
     data = overview(client, demo)
     assert data["status_cards"][2]["level"] == level
+    assert data["status_cards"][2]["page"] == "/admin/data-ai?tab=sources"
+    for todo in data["todos"]:
+        if todo["kind"] == "sync_failed":
+            assert todo["page"] == "/admin/data-ai?tab=sources"
     assert ("sync_failed" in {t["kind"] for t in data["todos"]}) == failed
     if state in ("queued", "running"):
         assert data["status_cards"][2]["summary"] == "正在同步"
@@ -314,6 +318,7 @@ def test_todos_and_tenant_isolation(
         "setup_step",
     ]
     assert todos[0]["page"] == "/employees?filter=appeals"
+    assert todos[1]["page"] == "/admin/data-ai?tab=model"
     assert todos[3]["page"] == "/employees?filter=identities"
     assert all(t["count"] == 1 for t in todos)
     assert todos[0]["oldest_at"] == todos[2]["oldest_at"]

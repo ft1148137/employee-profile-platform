@@ -1,5 +1,6 @@
 import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { OrgState } from "@/components/Profile/OrgState"
+import { SyncRunTable } from "@/components/Progress/SyncRunTable"
 import { SourceForms } from "@/components/Sources/SourceForms"
 import { useOrg } from "@/hooks/useOrg"
 
@@ -20,6 +21,9 @@ export function SourcesPage() {
         </p>
       </div>
       <SourceForms key={org.id} orgId={org.id} />
+      <div id="sync-runs">
+        <SyncRunTable key={org.id} orgId={org.id} />
+      </div>
       <ChangeHistory targetType="source_connection" />
     </div>
   )

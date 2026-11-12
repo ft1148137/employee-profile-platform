@@ -169,7 +169,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
   }
   await logInUser(page, `${username}@example.com`, password)
   await expect(page).toHaveURL("/admin/assistant")
-  await page.goto("/admin")
+  await page.goto("/admin/data-ai?tab=model")
   const blocked = await request.post(
     `${base}/setup/steps/initial_profiles/complete`,
     { headers },
@@ -200,7 +200,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
       })
     ).ok(),
   ).toBeTruthy()
-  await page.getByRole("link", { name: "首页", exact: true }).click()
+  await page.goto("/admin/data-ai?tab=sources")
   const syncSection = page.getByRole("region", {
     name: "同步记录",
     exact: true,
@@ -210,6 +210,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     syncSection.getByRole("cell", { name: "已完成 1 次", exact: true }),
   ).toBeVisible()
   await expect(syncSection.getByText("记录：38", { exact: true })).toBeVisible()
+  await page.goto("/admin/data-ai?tab=model")
   await expect(
     page.getByRole("region", { name: "初始画像起草进度" }),
   ).toContainText(`已为 ${total} 名员工生成初始画像`)
@@ -438,7 +439,7 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
     "admin@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
-  await page.goto("/admin/progress")
+  await page.goto("/admin/data-ai?tab=model")
   await expect(page.getByRole("alert")).toContainText(
     "ChatGPT 订阅 5 小时用量已到上限",
   )
@@ -458,11 +459,12 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
   for (const error of modelErrors) {
     await expect(page.getByText(error, { exact: false })).toBeVisible()
   }
+  await page.goto("/admin/data-ai?tab=sources")
   await expect(page.getByText("合成工作记录.csv")).toBeVisible()
   await expect(page.getByText("新增证据：8", { exact: true })).toBeVisible()
   await expectChineseCopy(page, ["ChatGPT"])
   await enableAutoDrafting(page)
-  await page.reload()
+  await page.goto("/admin/data-ai?tab=model")
   await page.route("**/initial-profiles/draft", (route) =>
     route.fulfill({ status: 202, json: { queued: 1 } }),
   )
@@ -479,11 +481,13 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
   await page.route("**/sync-runs/synthetic-run/retry", (route) =>
     route.fulfill({ status: 409, json: { detail: "已有同步在进行" } }),
   )
+  await page.goto("/admin/data-ai?tab=sources")
   await page.getByRole("button", { name: "重试", exact: true }).click()
   await expect(
     page.getByRole("alert").filter({ hasText: "已有同步在进行" }),
   ).toBeVisible()
   counts = { generated: 3, failed: 0, excluded: 3, pending: 0 }
+  await page.goto("/admin/data-ai?tab=model")
   await expect(
     page.getByRole("region", { name: "初始画像起草进度" }).getByRole("status"),
   ).toContainText("已为 3 名员工生成初始画像", { timeout: 15000 })
@@ -498,8 +502,15 @@ for (const username of [
     await expect(
       page.getByRole("link", { name: "首页", exact: true }),
     ).toHaveCount(0)
-    await page.goto("/admin/progress")
+    await page.goto("/admin/data-ai?tab=model")
     await expect(page.getByRole("alert")).toHaveText("需要企业管理员权限")
+    await expect(
+      page.getByRole("region", { name: "初始画像起草进度", exact: true }),
+    ).toHaveCount(0)
+    await page.goto("/admin/data-ai?tab=sources")
+    await expect(page.getByRole("alert")).toContainText(
+      "只有企业管理员可以操作",
+    )
     await expect(
       page.getByRole("region", { name: "同步记录", exact: true }),
     ).toHaveCount(0)
@@ -524,7 +535,7 @@ test("no model shows configuration guidance and disables drafting", async ({
     "admin@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
-  await page.goto("/admin/progress")
+  await page.goto("/admin/data-ai?tab=model")
   const progress = page.getByRole("region", { name: "初始画像起草进度" })
   await expect(progress.getByRole("alert")).toContainText(
     "还没有配置模型，请先在设置页配置模型，或者让员工用 JSON 导入画像",
@@ -557,7 +568,7 @@ test("administrator previews and confirms overdue initial handover", async ({
     "admin@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
-  await page.goto("/admin/progress")
+  await page.goto("/admin/data-ai?tab=model")
   await expect(page.getByText("满 14 天未处理、可批量送审：2 人")).toBeVisible()
   page.once("dialog", async (dialog) => {
     expect(dialog.message()).toContain("2 名员工")

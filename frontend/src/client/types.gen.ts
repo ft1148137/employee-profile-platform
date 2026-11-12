@@ -197,6 +197,7 @@ export type AdminTurnInput = {
    */
   page:
     | "/admin"
+    | "/admin/assistant"
     | "/employees"
     | "/employees/$employeeId"
     | "/employees?filter=roles"
@@ -283,6 +284,7 @@ export type AdminUserMessage = {
    */
   page:
     | "/admin"
+    | "/admin/assistant"
     | "/employees"
     | "/employees/$employeeId"
     | "/employees?filter=roles"

@@ -72,7 +72,7 @@ for (const size of [
     for (const link of await rail.getByRole("link").all()) {
       await expect(link).toBeInViewport({ ratio: 1 })
     }
-    for (const name of ["首页", "能力与规则", "数据与 AI"]) {
+    for (const name of ["能力与规则", "数据与 AI"]) {
       await expect(
         page
           .getByRole("navigation", { name: "管理菜单" })
@@ -190,14 +190,16 @@ test("unconfigured model allows history and every manual menu", async ({
     "admin@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
-  await page.goto("/admin/assistant")
+  await expect(page).toHaveURL("/admin/assistant")
+  await expect(
+    page.getByRole("region", { name: "今天要处理的事" }),
+  ).toBeVisible()
   await expect(page.getByRole("log")).toContainText(reason)
   await expect(page.getByLabel("发给管理助手的消息")).toBeDisabled()
   await page.getByRole("link", { name: "合成历史对话", exact: true }).click()
   await expect(page.getByRole("log")).toContainText("历史内容仍可查看")
   await expect(page.getByRole("log")).toContainText(reason)
   for (const [name, route] of [
-    ["首页", "/admin"],
     ["能力与规则", "/admin/rules"],
     ["数据与 AI", "/admin/data-ai"],
   ]) {
