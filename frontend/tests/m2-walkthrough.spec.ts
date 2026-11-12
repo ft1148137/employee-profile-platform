@@ -20,11 +20,14 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
   await createSourcesOrg(page)
   await importRoster(
     page,
-    readFileSync(
-      path.resolve(
-        import.meta.dirname,
-        "../../examples/test-enterprises/qiguang-aiot/roster.csv",
-      ),
+    Buffer.from(
+      readFileSync(
+        path.resolve(
+          import.meta.dirname,
+          "../../examples/test-enterprises/qiguang-aiot/roster.csv",
+        ),
+        "utf8",
+      ).replace(/@/g, `+${crypto.randomUUID()}@`),
     ),
   )
   await activateTemplate(page, "aiot-hardware")
@@ -79,8 +82,10 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
   await page.getByRole("button", { name: "完成模型配置", exact: true }).click()
   await page.goto("/admin/rules?tab=approval")
   await expect(
-    page.getByRole("heading", { name: "审批规则", exact: true }),
+    page.getByRole("tab", { name: "审批规则", exact: true, selected: true }),
   ).toBeVisible()
+  await expect(page.getByLabel("全企业需要经理确认")).toBeChecked()
+  await expect(page.getByLabel("员工过目期限（天）")).toHaveValue("14")
   await page.goto("/admin")
   page.once("dialog", (dialog) => dialog.accept())
   await page.getByRole("button", { name: "重新起草全部", exact: true }).click()

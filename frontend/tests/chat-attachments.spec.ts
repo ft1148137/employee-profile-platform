@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test"
 import { expect, test } from "@playwright/test"
 import type { AttachmentPublic } from "../src/client"
+import { mockCompletedSetup } from "./utils/adminAssistant"
 import { createUser } from "./utils/privateApi"
 import { logInUser } from "./utils/user"
 
@@ -65,6 +66,7 @@ async function openChat(page: Page, bot = false) {
     await logInUser(page, email, password)
     await page.getByRole("button", { name: "打开画像机器人" }).click()
   } else {
+    await mockCompletedSetup(page)
     await page.route("**/admin-assistant/availability?*", (route) =>
       route.fulfill({ json: { available: true, reason: "" } }),
     )
