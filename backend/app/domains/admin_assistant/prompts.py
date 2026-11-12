@@ -42,7 +42,7 @@ def system_prompt(principal: Principal, page: AdminPage) -> str:
         "管理员明确要求跳过某一步时，先核对 get_setup_status 中该步的 skippable；true 则只起草该步 skip_setup_step 确认卡，不夹带其他步骤。"
         "这个指定跳过请求可以单独处理，不必先完成前面的步骤；skippable=false 时明确告诉管理员「这一步不能跳过」，解释用途并继续引导，不调用 skip_setup_step，也不要说已跳过。"
         "全部步骤完成或跳过后说明设置已完成，以后仍可在首页待办查看未处理事项。"
-        "其他问题引导到人员、能力与规则、数据与 AI、连接等对应手工页面。"
+        "其他问题引导到人员、能力与规则、数据与 AI 等对应手工页面。"
         "恢复备份、升级、重置环境只能用命令，参考 docs/deploy.md。"
         "回答用纯文本，不要用 Markdown 标记（不要用 **、#，列表用「1. 」「2. 」或换行）。"
         "不做绩效、薪酬、晋升判断；未知不等于不会，confidence 不是概率。用中文回答。"

@@ -45,18 +45,18 @@
 | 数据来源 | 立即同步 | 数据与 AI / 数据来源 | `start_jira_sync` |
 | 数据来源 | 下载工作记录模板 | 数据与 AI / 数据来源 | NOT_FOR_ASSISTANT：模板下载由助手给页面链接 |
 | 数据来源 | 上传并导入 CSV / Excel 工作记录 | 数据与 AI / 数据来源 | `import_work_records`（先在上传框传文件） |
-| 外部 AI 助手 | 读取开关、允许的客户端 | 连接 / 外部 AI 助手 | `get_mcp_setting` |
-| 外部 AI 助手 | 开关外部助手、保存客户端名单 | 连接 / 外部 AI 助手 | `update_mcp_setting` |
+| 外部 AI 助手 | 读取开关、允许的客户端 | 数据与 AI / 外部 AI 助手 | `get_mcp_setting` |
+| 外部 AI 助手 | 开关外部助手、保存客户端名单 | 数据与 AI / 外部 AI 助手 | `update_mcp_setting` |
 | 模型 | 读取类型、模型名和可用状态 | 数据与 AI / 模型 | `get_model_setting` |
 | 模型 | 保存模型、推理强度、启用开关和密钥 | 数据与 AI / 模型 | `update_model_setting` |
 | 模型 | 测试已保存的模型连接 | 数据与 AI / 模型 | `test_model` |
 | 模型 | 发起、查看、完成、取消 ChatGPT 授权，断开连接 | 数据与 AI / 模型 | NOT_FOR_ASSISTANT：在模型页面操作 |
 | 内置机器人 | 读取提问指南、聊天保留期 | 数据与 AI / 内置机器人 | `get_bot_settings` |
 | 内置机器人 | 保存指南和保留天数 | 数据与 AI / 内置机器人 | `update_bot_settings` |
-| IM 入口 | 读取消息平台设置 | 连接 / IM 入口 | `get_im_settings` |
-| IM 入口 | 保存飞书开关、邮箱绑定和凭据 | 连接 / IM 入口 | `update_im_setting` |
-| IM 入口 | 测试已保存的连接、查看长连接心跳 | 连接 / IM 入口 | `test_im_connection` |
-| IM 入口 | 企业微信、Telegram 设置 | 连接 / IM 入口 | `update_im_setting` 仅支持飞书，其余平台按登记项说明给网页链接；当前只支持飞书联调 |
+| IM 入口 | 读取消息平台设置 | 数据与 AI / IM 入口 | `get_im_settings` |
+| IM 入口 | 保存飞书开关、邮箱绑定和凭据 | 数据与 AI / IM 入口 | `update_im_setting` |
+| IM 入口 | 测试已保存的连接、查看长连接心跳 | 数据与 AI / IM 入口 | `test_im_connection` |
+| IM 入口 | 企业微信、Telegram 设置 | 数据与 AI / IM 入口 | `update_im_setting` 仅支持飞书，其余平台按登记项说明给网页链接；当前只支持飞书联调 |
 | 审计日志 | 按时间、操作、操作者或对象查日志 | 更多 / 审计日志；各设置页修改记录 | `list_audit_events` |
 | 首次设置 | 查看设置进度 | 管理助手 / 首次设置引导 | `get_setup_status` |
 | 首次设置 | 修改企业名 | 管理助手 / 首次设置引导 | `update_org_profile` |

@@ -366,3 +366,23 @@ def test_existing_appeal(db: Session, demo: tuple, client: TestClient) -> None:
         ]
         == expected.json()
     )
+
+
+@pytest.mark.parametrize(
+    "name,tab",
+    [
+        ("get_im_settings", "im"),
+        ("test_im_connection", "im"),
+        ("update_im_setting", "im"),
+        ("get_mcp_setting", "mcp"),
+        ("update_mcp_setting", "mcp"),
+    ],
+)
+def test_connection_pages(name: str, tab: str) -> None:
+    from app.domains.admin_assistant.schemas import AdminTurnInput
+
+    page = f"/admin/data-ai?tab={tab}"
+    assert r.FUNCTIONS[name].page == page
+    assert AdminTurnInput(text="查看设置", page=page).page == page
+    legacy = f"/admin/connections?tab={tab}"
+    assert AdminTurnInput(text="恢复历史", page=legacy).page == legacy

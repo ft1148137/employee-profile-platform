@@ -65,7 +65,7 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
         key="feishu",
         title="飞书",
         summary="已开启",
-        page="/admin/connections?tab=im",
+        page="/admin/data-ai?tab=im",
         assistant_prompt="帮我检查飞书连接",
     )
     im = session.get(ImSetting, (org_id, "feishu"))

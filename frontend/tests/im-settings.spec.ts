@@ -14,7 +14,7 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
     process.env.DEMO_USER_PASSWORD!,
   )
   await page.waitForURL((url) => url.pathname !== "/")
-  await page.getByRole("link", { name: "连接", exact: true }).click()
+  await page.getByRole("link", { name: "数据与 AI", exact: true }).click()
   await page.getByRole("tab", { name: "IM 入口", exact: true }).click()
   await expect(page.getByRole("heading", { name: "IM 入口" })).toBeVisible()
   await expectChineseCopy(page, ["Telegram"])
@@ -146,15 +146,26 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
   }
 })
 
-test("employees cannot open IM administration", async ({ page }) => {
-  await logInUser(
+for (const [tab, message] of [
+  ["sources", "你没有权限管理数据来源，只有企业管理员可以操作。"],
+  ["model", "需要企业管理员权限"],
+  ["bot", "需要企业管理员权限"],
+  ["im", "需要企业管理员权限"],
+  ["mcp", "需要企业管理员权限"],
+]) {
+  test(`employees cannot open data and AI administration: ${tab}`, async ({
     page,
-    "employee.platform@demo.example.com",
-    process.env.DEMO_USER_PASSWORD!,
-  )
-  await expect(
-    page.getByRole("link", { name: "连接", exact: true }),
-  ).toHaveCount(0)
-  await page.goto("/admin/im")
-  await expect(page.getByRole("alert")).toContainText("需要企业管理员权限")
-})
+  }) => {
+    await logInUser(
+      page,
+      "employee.platform@demo.example.com",
+      process.env.DEMO_USER_PASSWORD!,
+    )
+    await expect(
+      page.getByRole("link", { name: "数据与 AI", exact: true }),
+    ).toHaveCount(0)
+    await page.goto(`/admin/data-ai?tab=${tab}`)
+    await expect(page.getByRole("alert")).toHaveText(message)
+    await expect(page.getByRole("tablist")).toHaveCount(0)
+  })
+}

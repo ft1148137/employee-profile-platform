@@ -406,7 +406,7 @@ FUNCTIONS = {
             "查看消息平台连接设置（不含凭据）",
             NoArgs,
             lambda d, p, a: RootModel(im.list_settings(d, p.org_id)),
-            "/admin/connections?tab=im",
+            "/admin/data-ai?tab=im",
             "GET /im-settings",
         ),
         _f(
@@ -415,7 +415,7 @@ FUNCTIONS = {
             "查看外部 AI 助手开关",
             NoArgs,
             lambda d, p, a: access.get_setting(d, p),
-            "/admin/connections?tab=mcp",
+            "/admin/data-ai?tab=mcp",
             "GET /mcp-setting",
         ),
         _f(
@@ -442,7 +442,7 @@ FUNCTIONS = {
             "测试已保存的消息平台连接",
             ImArgs,
             _im_test,
-            "/admin/connections?tab=im",
+            "/admin/data-ai?tab=im",
             "POST /im-settings/{platform}/test",
         ),
         _f(
