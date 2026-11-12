@@ -78,7 +78,7 @@
 
 ![人员菜单](img/admin/people.png)
 
-「人员」（`/admin/people`）有六个标签页。
+「人员」（`/admin/people`）提供以下入口；「组织架构」会跳转到独立模块（`/org-chart`）。
 
 | 标签页 | 主要做法 |
 | --- | --- |

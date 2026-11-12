@@ -73,6 +73,9 @@ test("admin opens department reporting tree, person chain and employee details",
     .click()
   await expect(page).toHaveURL(/\/org-chart$/)
   const tree = page.getByRole("region", { name: "部门层级", exact: true })
+  await expect(
+    page.getByText("4 个可见部门 · 人数仅统计在职员工"),
+  ).toBeVisible()
   await expect(tree).toContainText("平台研发部")
   await page.screenshot({
     path: testInfo.outputPath("org-chart-admin.png"),
@@ -126,6 +129,14 @@ test("three department levels have connectors, fit viewport and collapse", async
     page.getByRole("button", { name: "查看质量组人员" }),
   ).toBeHidden()
   await page.getByRole("button", { name: "展开平台部下级部门" }).click()
+  await page.getByRole("button", { name: "折叠研发中心下级部门" }).click()
+  await expect(
+    page.getByRole("button", { name: "查看平台部人员" }),
+  ).toBeHidden()
+  await page.getByRole("button", { name: "展开研发中心下级部门" }).click()
+  await expect(
+    page.getByRole("button", { name: "查看质量组人员" }),
+  ).toBeVisible()
   await page.getByRole("button", { name: "查看质量组人员" }).click()
   await expect(page.getByText("本部门暂无在职人员")).toBeVisible()
   await page.getByRole("button", { name: "部门层级", exact: true }).click()
@@ -221,6 +232,12 @@ test("manager chart excludes other departments", async ({ page }, testInfo) => {
     path: testInfo.outputPath("org-chart-manager.png"),
     fullPage: true,
   })
+  await page.getByRole("button", { name: "查看张伟汇报关系" }).click()
+  await page.getByRole("link", { name: "查看详情", exact: true }).click()
+  await expect(page).toHaveURL(/\/employees\/[^/]+$/)
+  await expect(
+    page.getByRole("heading", { name: "张伟", exact: true }),
+  ).toBeVisible()
 })
 
 test("employees cannot navigate to or open org chart", async ({ page }) => {
