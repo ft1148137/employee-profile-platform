@@ -24,7 +24,7 @@ from app.domains.access_token import service as access
 from app.domains.account import service as accounts
 from app.domains.account.schemas import AccountStatus
 from app.domains.admin.overview import build_overview
-from app.domains.admin_assistant import materials, model_settings
+from app.domains.admin_assistant import materials, model_settings, roster_materials
 from app.domains.admin_assistant.capability_proposals import register_proposals
 from app.domains.admin_assistant.connections import register_connections
 from app.domains.admin_assistant.files import register_files
@@ -733,6 +733,21 @@ FUNCTIONS["draft_profiles_from_material"] = AdminFunction(
 )
 
 register_people(FUNCTIONS)
+
+FUNCTIONS["draft_roster_from_material"] = AdminFunction(
+    name="draft_roster_from_material",
+    area="people",
+    kind="change",
+    risk=roster_materials.risk,
+    description="按材料整理人员新增、调整和明确离职，确认后生效；多人或离职需二次确认",
+    input_model=roster_materials.MaterialArgs,
+    handler=roster_materials.apply,
+    page="/admin/assistant",
+    endpoints=(),
+    snapshot=roster_materials.snapshot,
+    impact=roster_materials.impact,
+    undoable=False,
+)
 
 for name, title, input_type in (
     ("onboard_employee", "新增员工", single.Onboard),

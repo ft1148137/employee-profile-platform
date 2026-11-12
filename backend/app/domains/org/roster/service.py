@@ -53,6 +53,7 @@ def create_import(
     filename: str,
     *,
     commit: bool = True,
+    persist: bool = True,
 ) -> RosterImportPreview:
     org = lock_org(session, principal)
     assert principal.user_id is not None
@@ -117,10 +118,11 @@ def create_import(
         base_revision=org.roster_revision,
         uploaded_by_user_id=principal.user_id,
     )
-    session.add(record)
-    session.flush()
-    if commit:
-        session.commit()
+    if persist:
+        session.add(record)
+        session.flush()
+        if commit:
+            session.commit()
     return RosterImportPreview(
         **diff.model_dump(),
         id=record.id,

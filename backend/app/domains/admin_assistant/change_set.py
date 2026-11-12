@@ -13,7 +13,7 @@ from sqlmodel import Session, col, select
 from app.authz.principal import Principal
 from app.core.secrets import decrypt_secret, encrypt_secret
 from app.domains.account.service import AccountError
-from app.domains.admin_assistant import materials, registry, store
+from app.domains.admin_assistant import materials, registry, roster_materials, store
 from app.domains.admin_assistant.files import RosterArgs, _record
 from app.domains.admin_assistant.models import AdminAssistantSession, AdminChangeSet
 from app.domains.admin_assistant.outputs import (
@@ -208,9 +208,10 @@ def _entry(
             {**args, **dict.fromkeys(entry.private_fields, "pending-secure-input")}
         )
     except ValueError as error:
-        if name == "draft_profiles_from_material" and isinstance(
-            error, ValidationError
-        ):
+        if name in (
+            "draft_profiles_from_material",
+            "draft_roster_from_material",
+        ) and isinstance(error, ValidationError):
             raise ChangeSetError(
                 "；".join(
                     f"{'.'.join(map(str, e['loc']))}：{e['type']}（请按功能参数说明修改）"
@@ -257,12 +258,12 @@ def propose(
             ):
                 supplied = {**(before or {}), **supplied}
         entry, args = _entry(item.function, supplied)
-        if isinstance(args, materials.MaterialArgs):
+        if isinstance(args, materials.MaterialArgs | roster_materials.MaterialArgs):
             if any(i["function"] == entry.name for i in items):
                 raise ChangeSetError(
-                    "同一份改动只能整理一批画像，请将人员合并在 people 中", 422
+                    "同一份改动只能整理一批同类材料，请合并人员后重新起草", 422
                 )
-            materials.validate_attachments(db, principal, args, session_id)
+            materials.validate_attachments(db, principal, args.materials, session_id)
         # Secrets are stored by field for the whole change set; each needs one target.
         if secret_fields.intersection(entry.private_fields):
             raise ChangeSetError(

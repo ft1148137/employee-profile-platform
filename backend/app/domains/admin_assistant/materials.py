@@ -27,9 +27,9 @@ class MaterialArgs(ToolInput):
 
 
 def validate_attachments(
-    db: Session, p: Principal, args: MaterialArgs, session_id: UUID
+    db: Session, p: Principal, materials: list[Material], session_id: UUID
 ) -> None:
-    for material in args.materials:
+    for material in materials:
         if material.attachment_id is not None:
             try:
                 get_session_attachment(
@@ -70,7 +70,7 @@ def apply(
     db: Session, p: Principal, args: MaterialArgs, *, commit: bool = True
 ) -> BaseModel:
     context = db.info["audit_context"]
-    validate_attachments(db, p, args, UUID(context["assistant_session_id"]))
+    validate_attachments(db, p, args.materials, UUID(context["assistant_session_id"]))
     return RootModel(
         import_profiles(
             p,
