@@ -235,6 +235,10 @@ export type AdminTurnInput = {
  */
 export type AdminTurnResponse = {
   /**
+   * Steps
+   */
+  steps?: Array<ToolStep>
+  /**
    * Messages
    */
   messages: Array<
@@ -4823,6 +4827,20 @@ export type ToolEvent = {
 }
 
 /**
+ * ToolStep
+ */
+export type ToolStep = {
+  /**
+   * Name
+   */
+  name: string
+  /**
+   * Ok
+   */
+  ok: boolean
+}
+
+/**
  * Transfer
  */
 export type Transfer = {
@@ -4898,6 +4916,10 @@ export type TurnResponse = {
         type: "review_card"
       } & ReviewCard)
   >
+  /**
+   * Steps
+   */
+  steps?: Array<ToolStep>
 }
 
 /**

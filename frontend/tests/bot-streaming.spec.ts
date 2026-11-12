@@ -128,7 +128,13 @@ test("bot streams, folds tool progress, stops and sends again", async ({
     window.reply.emit({ type: "text", text: "第三段" })
     window.reply.emit({
       type: "final",
-      response: { messages: [{ type: "text", text: "第一段第二段第三段" }] },
+      response: {
+        messages: [{ type: "text", text: "第一段第二段第三段" }],
+        steps: [
+          { name: "查看我的正式画像", ok: true },
+          { name: "查看请求进度", ok: true },
+        ],
+      },
     })
     window.reply.finish()
   })
@@ -182,4 +188,64 @@ test("bot streams, folds tool progress, stops and sends again", async ({
   })
   await expect(panel.getByText("继续回复成功", { exact: true })).toBeVisible()
   await expect(input).toBeEnabled()
+})
+
+test("bot steps remain after closing the panel and reloading", async ({
+  page,
+}) => {
+  const email = `steps-${crypto.randomUUID()}@example.com`
+  const password = "synthetic-password-2026"
+  await createUser({ email, password, withEmptyProfile: true })
+  const steps = [
+    { name: "查看我的正式画像", ok: true },
+    { name: "查看请求进度", ok: false },
+  ]
+  const response = { messages: [{ type: "text", text: "合成历史步骤" }], steps }
+  let completed = false
+  await page.route("**/bot/sessions/*/messages?*", (route) =>
+    route.fulfill({
+      json: completed ? [{ role: "assistant", payload: response }] : [],
+    }),
+  )
+  await page.route("**/bot/sessions/*/turns?*", (route) => {
+    completed = true
+    return route.fulfill({
+      contentType: "application/x-ndjson",
+      body: `${[
+        ...steps.flatMap((step) => [
+          { type: "tool", ...step, phase: "start" },
+          { type: "tool", ...step, phase: "end" },
+        ]),
+        { type: "final", response },
+      ]
+        .map((event) => JSON.stringify(event))
+        .join("\n")}\n`,
+    })
+  })
+  await logInUser(page, email, password)
+  await page.waitForURL(/\/employees\/[^/]+$/)
+  await page.getByRole("button", { name: "打开画像机器人" }).click()
+  const panel = page.getByRole("dialog")
+  await panel.getByLabel("发给机器人的消息").fill("查看进度")
+  await panel.getByLabel("发给机器人的消息").press("Enter")
+  await expect(panel.getByText("合成历史步骤", { exact: true })).toBeVisible()
+  await expect(panel.getByLabel("发给机器人的消息")).toBeEnabled()
+  await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
+  await panel.getByText("2 步", { exact: true }).click()
+  await expect(
+    panel.getByText("查看我的正式画像：成功", { exact: true }),
+  ).toBeVisible()
+  await expect(
+    panel.getByText("查看请求进度：失败", { exact: true }),
+  ).toBeVisible()
+  await page.keyboard.press("Escape")
+  await page.getByRole("button", { name: "打开画像机器人" }).click()
+  await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
+  await page.reload()
+  await page.getByRole("button", { name: "打开画像机器人" }).click()
+  await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
+  await panel.getByText("2 步", { exact: true }).click()
+  await expect(
+    panel.getByText("查看请求进度：失败", { exact: true }),
+  ).toBeVisible()
 })

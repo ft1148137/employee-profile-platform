@@ -212,12 +212,13 @@ def test_undo_after_manual_change(db: Session, demo: tuple) -> None:
         )
         assert saved[-1].role == "assistant"
         assert saved[-1].payload == {
+            "steps": [],
             "messages": [
                 {
                     "type": "admin_change_set",
                     "change_set": reversed.model_dump(mode="json"),
                 }
-            ]
+            ],
         }
     c.apply(db, p, reversed.id, reversed.revision)
     assert read_update_settings(db, p.org_id).reminder_schedule == "quarterly"

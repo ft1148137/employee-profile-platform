@@ -31,7 +31,7 @@ from app.domains.bot.admission import (
     BotRateLimited,
     begin_turn,
 )
-from app.domains.bot.schemas import TextMessage
+from app.domains.bot.schemas import TextMessage, ToolStep
 from app.domains.drafting.service import drafting_jobs
 from app.domains.model import pi_client
 from app.domains.model.client import ModelUnavailable
@@ -97,6 +97,8 @@ def turn(
         LinkCard | TableCard | ChangeSetCard | SecretInputCard | FileUploadCard
     ] = []
 
+    steps: list[ToolStep] = []
+
     def call(name: str, args: dict[str, JsonValue]) -> JsonValue:
         title = tools.title(name, args)
         if stream:
@@ -105,21 +107,18 @@ def turn(
         try:
             result = tools.call(db, principal, cards, name, args, session_id=row.id)
         except Exception:
+            steps.append(ToolStep(name=title, ok=False))
             if stream:
                 stream.on_tool(title, "end", False)
             raise
+        data = result.get("data") if isinstance(result, dict) else None
+        ok = not (
+            isinstance(result, dict)
+            and ("error" in result or isinstance(data, dict) and "error" in data)
+        )
+        steps.append(ToolStep(name=title, ok=ok))
         if stream:
-            data = result.get("data") if isinstance(result, dict) else None
-            stream.on_tool(
-                title,
-                "end",
-                not (
-                    isinstance(result, dict)
-                    and (
-                        "error" in result or isinstance(data, dict) and "error" in data
-                    )
-                ),
-            )
+            stream.on_tool(title, "end", ok)
         return result
 
     try:
@@ -160,10 +159,11 @@ def turn(
                 raise ModelUnavailable()
             messages.save_state(db, row, result.session_state)
             response = AdminTurnResponse(
+                steps=steps,
                 messages=[
                     TextMessage(text="\n".join(filter(None, [notice, result.text]))),
                     *cards,
-                ]
+                ],
             )
             messages.append_message(
                 db, row, "assistant", response.model_dump(mode="json")
@@ -196,6 +196,7 @@ def turn(
         elif isinstance(card, ChangeSetCard) and card.change_set.items:
             page = registry.FUNCTIONS[card.change_set.items[-1].function].page
     response = _fallback("\n".join(filter(None, [notice, text])), page)
+    response.steps = steps
     if stream and stream.cancelled.is_set():
         db.rollback()
         return AdminTurnResponse(messages=[])

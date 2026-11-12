@@ -163,7 +163,8 @@ def test_ordered_events_and_original_response(
     expected = {
         "messages": [
             {"type": "text", "text": "第一段第二段第三段", "review_link": None}
-        ]
+        ],
+        "steps": [{"name": tools.TITLES["get_my_profile"], "ok": True}],
     }
     assert final_response(response) == expected
     assert (
@@ -369,3 +370,61 @@ def test_hourly_limit_counts_active_turn_once(
         monkeypatch.setattr(admission, "HOURLY_TURNS", 2)
         with admission.begin_turn(db, p, target, {"text": "第二轮"}, cancelled):
             pass
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+@pytest.mark.parametrize("outcome", ["success", "fallback", "exception"])
+def test_tool_steps_survive_history(
+    db: Session,
+    client: TestClient,
+    demo: tuple,
+    monkeypatch: pytest.MonkeyPatch,
+    streaming: bool,
+    outcome: str,
+) -> None:
+    url, query, auth = setup(db, client, demo)
+    original = tools.call
+
+    def call(*args: Any, **kwargs: Any) -> Any:
+        if outcome == "exception" and args[-1]:
+            raise ModelUnavailable()
+        return original(*args, **kwargs)
+
+    def run(*_args: Any, **kwargs: Any) -> pi_client.TurnResult:
+        kwargs["on_tool_call"]("get_my_profile", {})
+        kwargs["on_tool_call"]("get_my_profile", {"unexpected": "private-argument"})
+        if outcome == "fallback":
+            raise ModelUnavailable()
+        return pi_client.TurnResult(
+            text="完成", stop_reason="stop", model_calls=1, tool_calls=2
+        )
+
+    monkeypatch.setattr(tools, "call", call)
+    monkeypatch.setattr(pi_client, "run_turn", run)
+    if streaming:
+        response = client.post(
+            url + "/turns",
+            params=query,
+            headers=auth["employee"],
+            json={"text": "步骤"},
+        )
+        result = final_response(response)
+        ends = [
+            {"name": event["name"], "ok": event["ok"]}
+            for line in response.text.splitlines()
+            if (event := json.loads(line))["type"] == "tool" and event["phase"] == "end"
+        ]
+        assert ends == result["steps"]
+        assert "private-argument" not in response.text
+    else:
+        p = principal_for(db, demo[1]["E02"].org_id)
+        result = core.turn(db, p, UUID(url.rsplit("/", 1)[1]), "步骤").model_dump(
+            mode="json"
+        )
+    assert result["steps"] == [
+        {"name": tools.TITLES["get_my_profile"], "ok": ok} for ok in (True, False)
+    ]
+    history = client.get(
+        url + "/messages", params=query, headers=auth["employee"]
+    ).json()
+    assert history[-1]["payload"] == result

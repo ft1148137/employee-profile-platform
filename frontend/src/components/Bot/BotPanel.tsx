@@ -12,10 +12,7 @@ import {
 } from "@/client"
 import { ChatComposer } from "@/components/Chat/ChatComposer"
 import { ChatMessages } from "@/components/Chat/ChatMessages"
-import {
-  type ToolProgress,
-  useStreamingTurn,
-} from "@/components/Chat/useStreamingTurn"
+import { useStreamingTurn } from "@/components/Chat/useStreamingTurn"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import {
@@ -64,9 +61,7 @@ function Panel({
   const remembered = useCurrentConversation(storageKey)
   const [messages, setMessages] = useState<
     (Pick<SessionMessage, "role" | "payload"> &
-      Partial<Pick<SessionMessage, "created_at">> & {
-        tools?: ToolProgress[]
-      })[]
+      Partial<Pick<SessionMessage, "created_at">>)[]
   >([])
   const [text, setText] = useState("")
   const [expired, setExpired] = useState(false)
@@ -119,7 +114,6 @@ function Panel({
         ? stream.mutateAsync(input)
         : {
             response: (await BotService.act({ ...options, body: input })).data,
-            tools: [],
             created_at: new Date().toISOString(),
           }
     },
@@ -133,7 +127,6 @@ function Panel({
         {
           role: "assistant",
           payload: result.response,
-          tools: result.tools,
           created_at: result.created_at,
         },
       ])

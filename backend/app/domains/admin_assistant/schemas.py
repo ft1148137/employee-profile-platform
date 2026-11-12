@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, JsonValue, SecretStr, field_validator
 from app.domains.admin_assistant.files import FileKind, FileSummary
 from app.domains.admin_assistant.outputs import OneTimeOutput
 from app.domains.admin_assistant.registry import TableCard as TableCard
-from app.domains.bot.schemas import TextMessage, TurnInput, UserMessage
+from app.domains.bot.schemas import TextMessage, ToolStep, TurnInput, UserMessage
 from app.domains.change_request.schemas import ToolInput
 from app.domains.org.roster.schemas import RosterImportPreview
 
@@ -140,6 +140,7 @@ class TestConnection(ToolInput):
 
 
 class AdminTurnResponse(BaseModel):
+    steps: list[ToolStep] = Field(default_factory=list)
     messages: list[
         Annotated[
             TextMessage
