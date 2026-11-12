@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session, col, delete, select
+from sqlmodel.sql.expression import SelectOfScalar
 
 from app.authz.principal import Principal
 from app.domains.account.service import lock_org
@@ -58,9 +59,9 @@ def visible_department(db: Session, p: Principal, id: UUID) -> Department:
     return department
 
 
-def department_keys(
-    db: Session, org_id: UUID, department_id: UUID | None
-) -> tuple[set[str], set[str]]:
+def department_assignments(
+    org_id: UUID, department_id: UUID | None
+) -> SelectOfScalar[DepartmentCapability]:
     ancestors = (
         select(Department.id, Department.parent_department_id)
         .where(Department.org_id == org_id, Department.id == department_id)
@@ -72,12 +73,16 @@ def department_keys(
         .join(ancestors, col(Department.id) == ancestors.c.parent_department_id)
         .where(Department.org_id == org_id)
     )
-    rows = db.exec(
-        select(DepartmentCapability).where(
-            DepartmentCapability.org_id == org_id,
-            col(DepartmentCapability.department_id).in_(select(ancestors.c.id)),
-        )
-    ).all()
+    return select(DepartmentCapability).where(
+        DepartmentCapability.org_id == org_id,
+        col(DepartmentCapability.department_id).in_(select(ancestors.c.id)),
+    )
+
+
+def department_keys(
+    db: Session, org_id: UUID, department_id: UUID | None
+) -> tuple[set[str], set[str]]:
+    rows = db.exec(department_assignments(org_id, department_id)).all()
     return (
         {r.capability_key for r in rows if r.department_id == department_id},
         {r.capability_key for r in rows if r.department_id != department_id},

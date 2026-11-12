@@ -6,12 +6,15 @@ from sqlmodel import Session, col, func, select
 
 from app.authz.principal import Principal
 from app.domains.base import utc_now
-from app.domains.capability.department import department_keys
-from app.domains.capability.models import CapabilityDefinition, CapabilitySchemaVersion
+from app.domains.capability.department import department_assignments
+from app.domains.capability.models import (
+    CapabilityDefinition,
+    CapabilitySchemaVersion,
+    DepartmentCapability,
+    SchemaStatus,
+)
 from app.domains.capability.schemas import CapabilityPublic, SchemaVersionPublic
 from app.domains.capability.service import (
-    SchemaNotFound,
-    get_schema,
     level_exists,
     list_capabilities,
 )
@@ -155,15 +158,27 @@ def read_profile(
     employee = employee_summary(
         session, visible_employee(session, principal, employee_id), principal
     )
-    own, inherited = department_keys(
-        session,
-        principal.org_id,
-        employee.department.id if employee.department else None,
+    department_keys = (
+        department_assignments(
+            principal.org_id,
+            employee.department.id if employee.department else None,
+        )
+        .with_only_columns(func.array_agg(DepartmentCapability.capability_key))
+        .scalar_subquery()
     )
-    keys = own | inherited
-    try:
-        schema = get_schema(session, principal.org_id)
-    except SchemaNotFound:
+    # Read mapping and active dictionary together to preserve the profile query bound.
+    schema, configured_keys = session.exec(
+        select(CapabilitySchemaVersion, department_keys)
+        .select_from(Employee)
+        .outerjoin(
+            CapabilitySchemaVersion,
+            (col(CapabilitySchemaVersion.org_id) == Employee.org_id)
+            & (col(CapabilitySchemaVersion.status) == SchemaStatus.ACTIVE),
+        )
+        .where(Employee.org_id == principal.org_id, Employee.id == employee_id)
+    ).one()
+    keys = set(configured_keys or [])
+    if schema is None:
         return ProfileView(
             employee=employee,
             schema_version=None,
