@@ -142,7 +142,7 @@ test("employee legacy access returns to their allowed landing page", async ({
   )
   await expect(page.getByRole("link", { name: "人员" })).toHaveCount(0)
   await page.goto("/admin/accounts")
-  await expect(page).toHaveURL("/inbox")
+  await expect(page).toHaveURL("/assistant")
   await expectChineseCopy(page)
 })
 

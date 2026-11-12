@@ -113,7 +113,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
     .getByLabel("确认新密码", { exact: true })
     .fill("synthetic-new-password-2026")
   await page.getByRole("button", { name: "保存密码" }).click()
-  await expect(page).toHaveURL("/inbox")
+  await expect(page).toHaveURL("/assistant")
   await page.getByRole("link", { name: "我的画像", exact: true }).click()
   await page.setViewportSize({ width: 390, height: 844 })
   await expect(
@@ -159,8 +159,8 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
     .getByRole("button", { name: "撤回", exact: true })
     .first()
     .click()
-  await page.getByRole("button", { name: "打开画像机器人" }).click()
-  const bot = page.getByRole("dialog", { name: "我的画像机器人" })
+  await page.getByRole("link", { name: "聊天", exact: true }).click()
+  const bot = page.getByRole("region", { name: "助手", exact: true })
   await bot.getByLabel("发给机器人的消息").fill("补充一段合成项目经历")
   await bot.getByRole("button", { name: "发送", exact: true }).click()
   await expect(

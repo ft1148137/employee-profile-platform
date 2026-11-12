@@ -17,20 +17,13 @@ test("employee resumes either conversation after reload and in a new tab", async
   const password = "synthetic-password-2026"
   await createUser({ email, password, withEmptyProfile: true })
   await logInUser(page, email, password)
-  await page.setViewportSize({ width: 390, height: 900 })
-  const open = async () =>
-    page.getByRole("button", { name: "打开画像机器人" }).click()
-  await open()
-  const dialog = page.getByRole("dialog")
-  await dialog.getByRole("button", { name: "历史对话", exact: true }).click()
+  await page.setViewportSize({ width: 1440, height: 900 })
+  const dialog = page
   await expect(dialog.getByText("还没有历史对话")).toBeVisible()
-  await page.screenshot({
-    path: testInfo.outputPath("empty-history-mobile.png"),
-  })
+  await page.screenshot({ path: testInfo.outputPath("empty-history.png") })
   await expect(
     dialog.getByText("对话在 2 小时没有活动后会被清除", { exact: false }),
   ).toBeVisible()
-  await dialog.getByRole("button", { name: "历史对话", exact: true }).click()
   const send = async (text: string) => {
     await dialog.getByLabel("发给机器人的消息").fill(text)
     await dialog.getByRole("button", { name: "发送", exact: true }).click()
@@ -42,15 +35,12 @@ test("employee resumes either conversation after reload and in a new tab", async
   await expect(dialog.getByRole("log")).not.toContainText("第一个合成对话")
   await send("第二个合成对话：关闭经理确认")
   await page.reload()
-  await open()
   await expect(dialog.getByRole("log")).toContainText("第二个合成对话")
   await expect(dialog.getByRole("log")).not.toContainText("第一个合成对话")
   const tab = await context.newPage()
-  await tab.goto("/employees")
-  await tab.getByRole("button", { name: "打开画像机器人" }).click()
+  await tab.goto("/assistant")
   await expect(tab.getByRole("log")).toContainText("第二个合成对话")
   await tab.close()
-  await dialog.getByRole("button", { name: "历史对话", exact: true }).click()
   await dialog
     .getByRole("region", { name: "历史对话" })
     .getByRole("button", { name: /第一个合成对话/ })
@@ -71,7 +61,6 @@ test("employee resumes either conversation after reload and in a new tab", async
     { times: 1 },
   )
   await page.reload()
-  await open()
   await expect(dialog.getByLabel("发给机器人的消息")).toBeEnabled()
   await expect(dialog.getByRole("log")).not.toContainText("继续第一个对话")
   expect(
@@ -88,7 +77,7 @@ test("employee resumes either conversation after reload and in a new tab", async
   ).not.toContain("清理后继续对话")
   await expect(
     dialog.getByText("这段对话已过期被清除，已为你新开对话"),
-  ).toHaveCount(0)
+  ).toBeVisible()
   await checkSwitching(page, context, false, "第二个合成对话")
 })
 
@@ -198,19 +187,16 @@ async function checkSwitching(
   expiredPreview: string,
 ) {
   const service = administrator ? "admin-assistant" : "bot"
-  const opener = administrator ? "打开管理助手" : "打开画像机器人"
   const label = administrator ? "发给管理助手的消息" : "发给机器人的消息"
   const dialog = administrator
     ? page.getByRole("region", { name: "管理助手", exact: true })
-    : page.getByRole("dialog")
+    : page.getByRole("region", { name: "助手", exact: true })
   if (administrator) await openAdminAssistant(page)
-  else if (!(await dialog.isVisible()))
-    await page.getByRole("button", { name: opener }).click()
+  else await expect(page).toHaveURL(/\/assistant(?:\?|$)/)
   const input = dialog.getByLabel(label)
   await expect(input).toBeEnabled()
   const tab = await context.newPage()
   await tab.goto(page.url())
-  if (!administrator) await tab.getByRole("button", { name: opener }).click()
   await expect(tab.getByLabel(label)).toBeEnabled()
   await input.fill("本页还没发出的合成文字")
   const resumed = administrator
@@ -230,7 +216,7 @@ async function checkSwitching(
   await expect(input).toBeEnabled()
   await expect(input).toHaveValue("本页还没发出的合成文字")
   await tab.close()
-  await (administrator ? page : dialog)
+  await page
     .getByRole("button", {
       name: "新对话",
       exact: true,
@@ -255,13 +241,15 @@ async function checkSwitching(
       )
     ).json()
   } else {
-    const listed = page.waitForResponse(
-      (response) =>
-        response.request().method() === "GET" &&
-        new URL(response.url()).pathname === `/api/v1/${service}/sessions`,
-    )
-    await dialog.getByRole("button", { name: "历史对话", exact: true }).click()
-    history = await (await listed).json()
+    const { token, orgId } = await page.evaluate(() => ({
+      token: localStorage.getItem("access_token"),
+      orgId: localStorage.getItem("current_org_id"),
+    }))
+    history = await (
+      await page.request.get(`/api/v1/bot/sessions?org_id=${orgId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    ).json()
   }
   const expired = history.data.find((entry) =>
     entry.preview.includes(expiredPreview),
@@ -289,21 +277,19 @@ async function checkSwitching(
     })
   })
   await input.fill("主动切换前的文字")
-  await (administrator ? page : dialog)
+  await page
     .getByRole("region", { name: administrator ? "管理助手会话" : "历史对话" })
     .getByRole(administrator ? "link" : "button", {
       name: new RegExp(expiredPreview),
     })
     .click()
-  await expect(dialog.getByRole("status")).toHaveText(
-    "这段对话已过期被清除，已为你新开对话",
-  )
+  await expect(
+    dialog.getByRole("status").filter({ hasText: "这段对话已过期被清除" }),
+  ).toHaveText("这段对话已过期被清除，已为你新开对话")
   await expect(input).toBeEnabled()
   await expect(input).toHaveValue("")
-  if (!administrator)
-    await dialog.getByRole("button", { name: "历史对话", exact: true }).click()
   await expect(
-    (administrator ? page : dialog)
+    page
       .getByRole("region", {
         name: administrator ? "管理助手会话" : "历史对话",
       })
