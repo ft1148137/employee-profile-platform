@@ -64,6 +64,7 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
     fullPage: true,
   })
   await page.goto("/admin/people?tab=identities")
+  await page.getByLabel("按来源筛选").selectOption("")
   await page
     .getByRole("checkbox", { name: /选择账号/ })
     .first()

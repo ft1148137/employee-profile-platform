@@ -188,7 +188,9 @@ test("confirm candidates in bulk, select employee, unlink and save optional setu
   )
   await page.unroute("**/external-identities/link")
   await dialog.getByRole("button", { name: /在职/ }).click()
-  await expect(dialog).toHaveCount(0)
+  await expect(
+    page.getByRole("dialog", { name: "选择员工", exact: true }),
+  ).toHaveCount(0)
   await page.getByRole("tab", { name: "已关联（3）" }).click()
   await expect(
     page.getByRole("row").filter({ hasText: manual.external_id }),
@@ -244,6 +246,23 @@ for (const username of ["manager.platform", "employee.platform"]) {
       page.getByRole("link", { name: "人员", exact: true }),
     ).toHaveCount(0)
     await page.goto("/admin/identities")
-    await expect(page.getByRole("alert")).toHaveText("需要企业管理员权限")
+    await expect(page).toHaveURL(
+      username.startsWith("manager")
+        ? "/employees?filter=identities"
+        : "/inbox",
+    )
+    await expect(
+      page.getByRole("dialog", { name: "未匹配 Jira 账号", exact: true }),
+    ).toHaveCount(0)
+    const context = await page.evaluate(() => ({
+      org: localStorage.getItem("current_org_id"),
+      token: localStorage.getItem("access_token"),
+    }))
+    const response = await page.request.get(
+      `/api/v1/orgs/${context.org}/external-identities`,
+      { headers: { Authorization: `Bearer ${context.token}` } },
+    )
+    expect(response.status()).toBe(403)
+    expect((await response.json()).detail).toBe("需要企业管理员权限")
   })
 }
