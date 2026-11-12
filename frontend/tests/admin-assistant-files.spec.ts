@@ -165,3 +165,37 @@ test("preview work records in chat, repair errors and confirm", async ({
     fullPage: true,
   })
 })
+
+test("dictionary materials produce a restored confirmation card and a new version", async ({
+  page,
+  request,
+  modelUrl,
+}) => {
+  const { email, password, base, headers } = await createOrg(request, modelUrl)
+  await logInUser(page, email, password)
+  await page.goto("/admin/assistant")
+  await page.getByLabel("选择对话附件").setInputFiles({
+    name: "词典材料.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("合成能力：基础等级，在指导下完成。分类工程。"),
+  })
+  await page
+    .getByRole("textbox", { name: "发给管理助手的消息" })
+    .fill("按材料导入能力词典")
+  await page.getByRole("button", { name: "发送", exact: true }).click()
+  await expect(page.getByRole("form", { name: "上传能力词典" })).toHaveCount(0)
+  const card = page.getByRole("region", { name: "设置改动确认卡" })
+  await expect(card).toContainText("新增 1 项")
+  expect(
+    (await request.get(`${base}/capabilities`, { headers })).status(),
+  ).toBe(404)
+  await page.reload()
+  await expect(card).toContainText("新增 1 项")
+  await card.getByRole("button", { name: "确认应用", exact: true }).click()
+  await expect(card.getByRole("status")).toHaveText("已应用")
+  const result = await request.get(`${base}/capabilities`, { headers })
+  expect(result.ok()).toBeTruthy()
+  const dictionary = await result.json()
+  expect(dictionary.schema_version.version).toBe(1)
+  expect(dictionary.data[0].name).toBe("合成能力")
+})

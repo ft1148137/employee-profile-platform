@@ -154,18 +154,18 @@ test("manual console completes all fifteen tabs without a model", async ({
     await expect(manager).toContainText("暂无管理角色")
   })
 
-  await test.step("rules / dictionary: publish an imported dictionary", async () => {
+  await test.step("rules / dictionary: publish through the web editor", async () => {
     await page.getByRole("link", { name: "能力与规则", exact: true }).click()
     await page.getByRole("button", { name: "编辑词典", exact: true }).click()
-    await page
-      .getByLabel("上传 YAML 或 Excel 词典（不超过 2 MB）")
-      .setInputFiles({
-        name: "dictionary.yaml",
-        mimeType: "application/yaml",
-        buffer: Buffer.from(
-          "- key: hardware\n  name: 硬件设计\n  category: 工程\n  description: 合成硬件设计能力\n  level_rubric:\n    levels:\n      - key: basic\n        label: 基础\n        description: 在指导下完成\n",
-        ),
-      })
+    const editor = page.getByRole("region", { name: "网页编辑能力词典" })
+    await editor.getByRole("button", { name: "新增能力", exact: true }).click()
+    const capability = editor.getByRole("article").last()
+    await capability.getByLabel("能力名称").fill("硬件设计")
+    await capability.getByLabel("能力标识").fill("hardware")
+    await capability.getByLabel("分类", { exact: true }).fill("工程")
+    await capability.getByLabel("能力说明").fill("合成硬件设计能力")
+    await capability.getByLabel("等级描述").fill("在指导下完成")
+    await editor.getByRole("button", { name: "预览改动" }).click()
     await expect(
       page.getByRole("region", { name: "词典改动预览" }),
     ).toContainText("新增 1 项")

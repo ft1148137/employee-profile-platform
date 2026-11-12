@@ -22,11 +22,9 @@ from app.domains.admin_assistant.schemas import (
 )
 from app.domains.audit.models import AuditEvent
 from app.domains.bot import store as messages
-from app.domains.capability.files import dictionary_xlsx
-from app.domains.capability.service import get_schema, read_editor
+from app.domains.capability.service import read_editor
 from app.domains.change_request.import_json import InvalidImport
 from app.domains.change_request.models import ChangeItem, ProfileChangeRequest
-from app.domains.drafting.models import DraftingSetting
 from app.domains.evidence.models import Evidence
 from app.domains.inbox.models import InboxItem
 from app.domains.org.models import Organization, OrgMembership, Role, RoleGrant
@@ -60,25 +58,14 @@ def jobs(db: Session, org: UUID) -> int:
     ).scalar_one()
 
 
-@pytest.fixture(params=["work_csv", "capabilities"])
+@pytest.fixture(params=["work_csv"])
 def file_case(
     request: pytest.FixtureRequest, db: Session, demo: tuple
 ) -> Generator[tuple]:
     p = principal(db, demo)
     sid = store.create_session(db, p).id
     kind = request.param
-    if kind == "work_csv":
-        content, filename = build_work_records_template_csv(), "work.csv"
-    else:
-        definitions = read_editor(db, p).definitions
-        definitions[0].name = "合成修改能力"
-        content, filename = dictionary_xlsx(definitions[:-1]), "dictionary.xlsx"
-        setting = db.get(DraftingSetting, p.org_id) or DraftingSetting(
-            org_id=p.org_id, updated_by_user_id=p.user_id
-        )
-        setting.auto_draft_enabled = False
-        db.add(setting)
-        db.commit()
+    content, filename = build_work_records_template_csv(), "work.csv"
     try:
         yield kind, p, sid, filename, content
     finally:
@@ -133,82 +120,33 @@ def test_web_parity_and_confirmation(
     assert not preview["preview"]["errors"]
     assert state(db, p) == before
     row = c.get(db, p, UUID(card["change_set"]["id"]))
-    args = row.items[0]["args"]
     assert row.items[0]["risk"] == "normal"
-    if kind == "capabilities":
-        web = client.post(
-            demo[0] + "/capabilities/preview",
-            headers=demo[2]["admin"],
-            files={"file": (filename, content)},
-        ).json()
-        assert (
-            args["definitions"] == web["definitions"]
-            and args["expected_version"] == web["expected_version"]
-        )
-        assert preview["preview"]["counts"]["修改"] == len(web["modified"]) == 1
-        assert preview["preview"]["counts"]["删除"] == len(web["removed"]) == 1
-        assert row.items[0]["function"] == "import_capability_dictionary"
-        assert row.secrets is None
-    else:
-        assert b64decode(json.loads(decrypt_secret(row.secrets))["content"]) == content
-        assert row.items[0]["before"] is None and not row.items[0]["undoable"]
-        assert "content" not in json.dumps(row.items)
+    assert b64decode(json.loads(decrypt_secret(row.secrets))["content"]) == content
+    assert row.items[0]["before"] is None and not row.items[0]["undoable"]
+    assert "content" not in json.dumps(row.items)
     if assistant:
         assert c.apply(db, p, row.id, row.revision).status == "applied"
         assert c.get(db, p, row.id).secrets is None
-        if kind != "capabilities":
-            with pytest.raises(c.ChangeSetError, match="文件已失效"):
-                c.apply(db, p, row.id, row.revision)
+        with pytest.raises(c.ChangeSetError, match="文件已失效"):
+            c.apply(db, p, row.id, row.revision)
     else:
-        path = {
-            "work_csv": "/sources/csv/imports",
-            "capabilities": "/capabilities/versions",
-        }[kind]
         response = client.post(
-            demo[0] + path,
+            demo[0] + "/sources/csv/imports",
             headers=demo[2]["admin"],
-            **(
-                {"json": args}
-                if kind == "capabilities"
-                else {
-                    "files": {
-                        "file": (
-                            filename,
-                            content,
-                        )
-                    }
-                }
-            ),
+            files={"file": (filename, content)},
         )
         assert response.status_code in (200, 202), response.text
     db.expire_all()
-    if kind == "work_csv":
-        run = db.exec(select(SyncRun).where(SyncRun.org_id == p.org_id)).one()
-        assert run.status == "queued"
-        assert run.input["rows"] == [
-            r.model_dump(mode="json")
-            for r in parse_work_records(content, filename).rows
-        ]
-        assert len(run.input["rows"]) == preview["preview"]["counts"]["记录条数"] == 1
-        assert (
-            preview["preview"]["counts"]["涉及人数"] == 3
-            and jobs(db, p.org_id) == before[-1] + 1
-        )
-    else:
-        expected = args["definitions"]
-        assert [
-            d.model_dump(mode="json") for d in read_editor(db, p).definitions
-        ] == expected
-        assert not db.get(DraftingSetting, p.org_id).auto_draft_enabled
-        assert get_schema(db, p.org_id).version == before[2]["expected_version"] + 1
-        if assistant:
-            reverse = c.undo(db, p, row.id)
-            assert reverse.status == "applied"
-            assert reverse.items[0].function == "import_capability_dictionary"
-            assert [d.model_dump() for d in read_editor(db, p).definitions] == before[
-                2
-            ]["definitions"]
-            assert not db.get(DraftingSetting, p.org_id).auto_draft_enabled
+    run = db.exec(select(SyncRun).where(SyncRun.org_id == p.org_id)).one()
+    assert run.status == "queued"
+    assert run.input["rows"] == [
+        r.model_dump(mode="json") for r in parse_work_records(content, filename).rows
+    ]
+    assert len(run.input["rows"]) == preview["preview"]["counts"]["记录条数"] == 1
+    assert (
+        preview["preview"]["counts"]["涉及人数"] == 3
+        and jobs(db, p.org_id) == before[-1] + 1
+    )
 
 
 def test_invalid_limits_and_private_sessions(
@@ -223,7 +161,7 @@ def test_invalid_limits_and_private_sessions(
         db.exec(select(AdminChangeSet).where(AdminChangeSet.session_id == sid)).all()
         == []
     )
-    limit = {"work_csv": 5, "capabilities": 2}[kind]
+    limit = 5
     assert (
         upload(client, demo, file_case, b"x" * (limit * 1024 * 1024 + 1)).status_code
         == 413

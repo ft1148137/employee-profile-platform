@@ -278,6 +278,31 @@ export const test = base.extend<{ modelUrl: string }>({
           tool.function.arguments = JSON.stringify({ kind: "work_csv" })
         }
       }
+      if (
+        admin &&
+        !toolResult &&
+        JSON.stringify(last).includes("导入能力词典")
+      ) {
+        const tool = chunk.choices[0].delta.tool_calls?.[0]
+        if (tool) {
+          const { level_rubric, ...definition } = dictionaryDefinitions[0]
+          tool.function.name = "propose_changes"
+          tool.function.arguments = JSON.stringify({
+            items: [
+              {
+                function: "draft_dictionary_from_material",
+                args: {
+                  materials: [{ attachment_id: null, label: "词典材料.txt" }],
+                  mode: "merge",
+                  capabilities: [
+                    { ...definition, levels: level_rubric.levels },
+                  ],
+                },
+              },
+            ],
+          })
+        }
+      }
       if (admin && !toolResult && JSON.stringify(last).includes("导入名单")) {
         const tool = chunk.choices[0].delta.tool_calls?.[0]
         if (tool) {

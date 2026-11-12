@@ -18,14 +18,6 @@ const fileKinds = {
     format: "Excel、CSV",
     result: "导入工作记录",
   },
-  capabilities: {
-    title: "能力词典",
-    form: "上传能力词典",
-    accept: ".xlsx",
-    limit: 2,
-    format: "Excel",
-    result: "发布新版本",
-  },
 } as const
 
 export function FileUploadCard({

@@ -1,6 +1,5 @@
 """Rules and home actions reuse the manual console's domain services."""
 
-from dataclasses import replace
 from typing import TYPE_CHECKING, Any, Literal
 
 from fastapi import HTTPException
@@ -67,13 +66,6 @@ def restore_dictionary(
     return "update_capability_dictionary", SaveDictionary.model_validate(
         before | {"expected_version": read_editor(db, p).expected_version}
     )
-
-
-def restore_import_dictionary(
-    db: Session, p: Principal, before: dict[str, JsonValue]
-) -> tuple[str, BaseModel]:
-    _, body = restore_dictionary(db, p, before)
-    return "import_capability_dictionary", body
 
 
 class DictionaryRestoreUnavailable(HTTPException):
@@ -304,13 +296,3 @@ def register_rules(functions: dict[str, AdminFunction]) -> None:
             )
         )
     functions.update((f.name, f) for f in entries)
-    functions["import_capability_dictionary"] = replace(
-        functions["update_capability_dictionary"],
-        name="import_capability_dictionary",
-        description="导入能力词典；撤销时发布上一版内容",
-        endpoints=(
-            ("POST", "/capabilities/preview"),
-            ("POST", "/capabilities/versions"),
-        ),
-        reverse=restore_import_dictionary,
-    )

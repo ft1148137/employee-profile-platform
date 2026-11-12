@@ -175,6 +175,13 @@ class AdminTurnResponse(BaseModel):
                 if isinstance(card, dict)
                 and card.get("type") == "file_upload"
                 and card.get("kind") == "roster"
+                else {
+                    "type": "text",
+                    "text": "词典上传框已下线，请在管理助手按材料整理能力词典。",
+                }
+                if isinstance(card, dict)
+                and card.get("type") == "file_upload"
+                and card.get("kind") == "capabilities"
                 else card
                 for card in value
             ]

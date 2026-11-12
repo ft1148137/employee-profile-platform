@@ -643,7 +643,7 @@ export type Body_admin_assistant_upload_file = {
   /**
    * Kind
    */
-  kind: "work_csv" | "capabilities"
+  kind: "work_csv"
   /**
    * File
    */
@@ -2385,7 +2385,7 @@ export type FileUploadCard = {
   /**
    * Kind
    */
-  kind: "work_csv" | "capabilities"
+  kind: "work_csv"
   /**
    * Type
    */
@@ -9338,40 +9338,6 @@ export type capabilitiesExportDictionaryError =
   capabilitiesExportDictionaryErrors[keyof capabilitiesExportDictionaryErrors]
 
 export type capabilitiesExportDictionaryResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown
-}
-
-export type capabilitiesDictionaryTemplateData = {
-  body?: never
-  path: {
-    /**
-     * Org Id
-     */
-    org_id: string
-  }
-  query?: {
-    /**
-     * Format
-     */
-    format?: "yaml" | "xlsx"
-  }
-  url: "/api/v1/orgs/{org_id}/capabilities/template"
-}
-
-export type capabilitiesDictionaryTemplateErrors = {
-  /**
-   * Validation Error
-   */
-  422: HTTPValidationError
-}
-
-export type capabilitiesDictionaryTemplateError =
-  capabilitiesDictionaryTemplateErrors[keyof capabilitiesDictionaryTemplateErrors]
-
-export type capabilitiesDictionaryTemplateResponses = {
   /**
    * Successful Response
    */

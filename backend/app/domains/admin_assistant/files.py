@@ -14,9 +14,6 @@ from app.core.secrets import encrypt_secret
 from app.domains.admin_assistant import store
 from app.domains.admin_assistant.models import AdminAssistantSession
 from app.domains.bot import store as messages
-from app.domains.capability.files import parse_dictionary
-from app.domains.capability.schemas import SaveDictionary
-from app.domains.capability.service import preview_version
 from app.domains.org.roster import service as roster
 from app.domains.org.roster.schemas import RosterImportPreview
 from app.domains.source.import_records import import_work_records, preview_work_records
@@ -26,7 +23,7 @@ if TYPE_CHECKING:
     from app.domains.admin_assistant.registry import AdminFunction, Area, Handler
     from app.domains.admin_assistant.schemas import AdminTurnResponse
 
-FileKind = Literal["work_csv", "capabilities"]
+FileKind = Literal["work_csv"]
 
 
 class FileError(BaseModel):
@@ -159,7 +156,7 @@ def upload(
     kind: FileKind,
     file: UploadFile,
 ) -> AdminTurnResponse:
-    limit_mb = {"work_csv": 5, "capabilities": 2}[kind]
+    limit_mb = 5
     content = file.file.read(limit_mb * 1024 * 1024 + 1)
     if len(content) > limit_mb * 1024 * 1024:
         raise roster.RosterError(413, f"文件超过 {limit_mb} MB，请拆分后再上传")
@@ -186,49 +183,29 @@ def _upload_other(
     filename = filename.replace("\\", "/").rsplit("/", 1)[-1][:200]
     args: dict[str, JsonValue] = {"filename": filename}
     function = "import_work_records"
-    if kind == "work_csv":
-        parsed = preview_work_records(content, filename)
-        preview.counts = {
-            "记录条数": len(parsed.rows),
-            "涉及人数": len(
-                {
-                    (r.source, person.account)
-                    for r in parsed.rows
-                    for person in [r.actor, *r.participants]
-                }
-            ),
-        }
-        preview.counts["警告"] = sum(i.level == "warning" for i in parsed.issues)
-        for level, target in (("error", preview.errors), ("warning", preview.warnings)):
-            target.extend(
-                FileError(
-                    location=(f"第 {i.row_number} 行 " if i.row_number else "")
-                    + COLUMNS.get(i.column or "", i.column or "")[:200],
-                    message=i.message[:200],
-                )
-                for i in parsed.issues
-                if i.level == level
+    parsed = preview_work_records(content, filename)
+    preview.counts = {
+        "记录条数": len(parsed.rows),
+        "涉及人数": len(
+            {
+                (r.source, person.account)
+                for r in parsed.rows
+                for person in [r.actor, *r.participants]
+            }
+        ),
+    }
+    preview.counts["警告"] = sum(i.level == "warning" for i in parsed.issues)
+    for level, target in (("error", preview.errors), ("warning", preview.warnings)):
+        target.extend(
+            FileError(
+                location=(f"第 {i.row_number} 行 " if i.row_number else "")
+                + COLUMNS.get(i.column or "", i.column or "")[:200],
+                message=i.message[:200],
             )
-        preview.warnings = preview.warnings[:20]
-    else:
-        definitions, errors, warnings = parse_dictionary(content, filename)
-        dictionary = preview_version(db, p, definitions, errors, warnings=warnings)
-        preview.warnings = [FileError(location="", message=w) for w in warnings]
-        preview.counts = {
-            "能力条数": len(definitions),
-            "新增": len(dictionary.added),
-            "修改": len(dictionary.modified),
-            "删除": len(dictionary.removed),
-            "涉及已发布判断": sum(dictionary.removed_claim_counts.values()),
-        }
-        preview.errors = [FileError(location="", message=e) for e in dictionary.errors]
-        function = "import_capability_dictionary"
-        if not preview.errors:
-            args = SaveDictionary(
-                definitions=definitions,
-                expected_version=dictionary.expected_version,
-                redraft=False,
-            ).model_dump(mode="json")
+            for i in parsed.issues
+            if i.level == level
+        )
+    preview.warnings = preview.warnings[:20]
     if preview.errors:
         preview.counts["错误"] = len(preview.errors)
         preview.errors = [
@@ -245,11 +222,10 @@ def _upload_other(
                 {"items": [{"function": function, "args": args}]}
             ),
         )
-        if kind != "capabilities":
-            row.secrets = encrypt_secret(
-                json.dumps({"content": b64encode(content).decode("ascii")})
-            )
-            db.add(row)
+        row.secrets = encrypt_secret(
+            json.dumps({"content": b64encode(content).decode("ascii")})
+        )
+        db.add(row)
         response.messages.append(ChangeSetCard(change_set=change_set.public(row)))
     messages.append_message(
         db,

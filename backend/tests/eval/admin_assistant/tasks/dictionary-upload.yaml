@@ -1,25 +1,19 @@
 id: dictionary-upload
 menu: rules
 steps:
-- type: upload
-  kind: capabilities
-  filename: synthetic-capabilities.yaml
-  content: |
-    - key: eval_collaboration
-      name: 合成协作
-      category: 协作
-      description: 仅用于评测
-      level_rubric:
-        levels:
-        - key: basic
-          label: 基础
-          description: 能完成合成协作
+- type: attach
+  name: dictionary
+  filename: 能力便笺.txt
+  content: 合成协作：能完成合成协作，基础等级；这是完整的新词典。
+- type: say
+  attachments: ['${dictionary}']
+  text: 按这份材料替换词典，只保留合成协作（key eval_collaboration），分类协作，说明仅用于评测，基础等级 basic，说明能完成合成协作。材料名能力便笺.txt。先给确认卡。
 - type: apply
+- type: again
 - type: say
   text: 重新查询当前能力词典，这次只有哪一项能力？
   expect:
-    reply_contains:
-    - 合成协作
+    reply_contains: [合成协作]
 expect:
   services:
   - function: get_capability_dictionary
@@ -36,3 +30,22 @@ expect:
           - key: basic
             label: 基础
             description: 能完成合成协作
+fake_model:
+- calls:
+  - name: propose_changes
+    args:
+      items:
+      - function: draft_dictionary_from_material
+        args:
+          materials: [{attachment_id: '${dictionary}', label: 能力便笺.txt}]
+          mode: replace
+          capabilities:
+          - key: eval_collaboration
+            name: 合成协作
+            category: 协作
+            description: 仅用于评测
+            levels: [{key: basic, label: 基础, description: 能完成合成协作}]
+- calls:
+  - name: admin_read
+    args: {function: get_capability_dictionary, args: {}}
+  text: 当前词典只有合成协作。
