@@ -6,9 +6,8 @@ from xml.etree import ElementTree
 from zipfile import ZIP_DEFLATED, ZipFile
 
 import pytest
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
 
-from app.domains.org.roster import template
 from app.domains.org.roster.parser import parse_roster
 from app.domains.org.roster.schemas import HEADERS
 
@@ -256,41 +255,6 @@ def test_formula_with_cached_value() -> None:
     result = parse_roster(output.getvalue(), "公式.xlsx")
     assert not result.has_errors
     assert result.rows[0].title == "2"
-
-
-@pytest.mark.parametrize("xlsx", [False, True])
-def test_templates_round_trip(xlsx: bool) -> None:
-    content = template.build_template_xlsx() if xlsx else template.build_template_csv()
-    if not xlsx:
-        assert content.startswith(b"\xef\xbb\xbf")
-    result = parse_roster(
-        content,
-        "模板.xlsx" if xlsx else "模板.csv",
-        ["job_family", "work_location", "hire_date"],
-    )
-    assert not result.issues
-    assert len(result.rows) == 2
-    assert result.rows[0].row_number == 2
-
-
-def test_template_strings_are_text(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        template, "EXAMPLE_ROWS", (("=1+1", "+姓名", "-部门", "@职位", "", ""),)
-    )
-    workbook = load_workbook(BytesIO(template.build_template_xlsx()), data_only=False)
-    sheet = workbook.worksheets[0]
-    assert sheet.column_dimensions["A"].number_format == "@"
-    assert sheet["A2"].value == "=1+1"
-    assert all(
-        cell.data_type == "s" and cell.number_format == "@" for cell in sheet[2][:4]
-    )
-    assert workbook.sheetnames == ["员工名单", "填写说明"]
-    assert any(
-        "名单里没有的在职员工会被停用" in cell.value
-        for row in workbook.worksheets[1]
-        for cell in row
-    )
-    workbook.close()
 
 
 def test_sample_roster() -> None:

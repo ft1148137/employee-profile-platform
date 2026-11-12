@@ -1,8 +1,6 @@
-from typing import Literal
-from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Response, UploadFile
+from fastapi import APIRouter, Query, UploadFile
 
 from app.api.deps import SessionDep
 from app.authz.deps import OrgAdminDep
@@ -14,7 +12,6 @@ from app.domains.org.roster.schemas import (
     RosterImportsPublic,
 )
 from app.domains.org.roster.single import SingleChange, preview
-from app.domains.org.roster.template import build_template_csv, build_template_xlsx
 
 router = APIRouter(prefix="/orgs/{org_id}/roster", tags=["roster"])
 
@@ -24,25 +21,6 @@ def preview_single_change(
     body: SingleChange, session: SessionDep, principal: OrgAdminDep
 ) -> RosterImportPreview:
     return preview(session, principal, body)
-
-
-@router.get("/template", response_class=Response)
-def download_template(
-    _principal: OrgAdminDep, format: Literal["xlsx", "csv"] = "xlsx"
-) -> Response:
-    content = build_template_xlsx() if format == "xlsx" else build_template_csv()
-    media_type = (
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        if format == "xlsx"
-        else "text/csv"
-    )
-    return Response(
-        content,
-        media_type=media_type,
-        headers={
-            "Content-Disposition": f"attachment; filename*=UTF-8''{quote(f'员工名单模板.{format}', safe='')}",
-        },
-    )
 
 
 @router.post("/imports", response_model=RosterImportPreview)

@@ -13,10 +13,10 @@
 | 争议 | 列出待处理争议 | 人员 / 争议；首页待办 | `list_appeals` |
 | 争议 | 查看争议详情 | 人员 / 争议；人员详情 | `get_appeal` |
 | 争议 | 允许重新提交或维持原判断，填写说明；不能处理自己提出的申诉 | 人员 / 争议；人员详情 | `resolve_appeal` |
-| 导入名单 | 下载 CSV / Excel 模板 | 人员 / 导入名单 | NOT_FOR_ASSISTANT：模板下载由助手给页面链接 |
-| 导入名单 | 上传名单、核对新增调岗停用预览、应用 | 人员 / 导入名单 | `apply_roster_import`（先在上传框传文件） |
-| 导入名单 | 开关员工档案固定字段（可撤销） | 人员 / 导入名单 | `update_employee_fields` |
-| 导入名单 | 查看导入历史 | 人员 / 导入名单 | `list_roster_imports` |
+| 人员变动 | 上传任意格式材料或描述，核对后确认新增、调整和明确离职 | 管理助手 | `draft_roster_from_material` |
+| 名单 API | 上传及应用名单（仅 API） | 无界面入口；应用接口供人员弹窗确认单人变动 | NOT_FOR_ASSISTANT：界面已删除，名单变动走 draft_roster_from_material |
+| 员工与账号 | 开关员工档案固定字段（可撤销） | 人员 / 员工与账号 / 档案字段 | `update_employee_fields` |
+| 名单历史 | 查看导入历史 | 管理助手；审计日志 | `list_roster_imports` |
 | 按材料整理画像 | 上传对话附件或直接描述，预览后创建待本人过目请求 | 管理助手 | `draft_profiles_from_material`（两人及以上二次确认） |
 | 员工与账号 | 搜索员工、筛选部门及账号状态 | 人员 / 员工与账号 | `list_accounts` |
 | 组织架构 | 查看部门层级、经理和在职人数，点部门查看人员 | 人员 / 组织架构 | `get_org_chart` |

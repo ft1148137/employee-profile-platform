@@ -13,8 +13,7 @@ from sqlmodel import Session, col, select
 from app.authz.principal import Principal
 from app.core.secrets import decrypt_secret, encrypt_secret
 from app.domains.account.service import AccountError
-from app.domains.admin_assistant import materials, registry, store
-from app.domains.admin_assistant.files import RosterArgs, _record
+from app.domains.admin_assistant import materials, registry, roster_materials, store
 from app.domains.admin_assistant.models import AdminAssistantSession, AdminChangeSet
 from app.domains.admin_assistant.outputs import (
     AccountsOutput,
@@ -189,6 +188,8 @@ def _entry(
     name: str, args: dict[str, JsonValue]
 ) -> tuple[registry.AdminFunction, BaseModel]:
     entry = registry.FUNCTIONS.get(name)
+    if name == "apply_roster_import":
+        raise ChangeSetError("这个操作已下线，请重新发起", 422)
     if (
         entry is None
         or entry.kind != "change"
@@ -208,9 +209,10 @@ def _entry(
             {**args, **dict.fromkeys(entry.private_fields, "pending-secure-input")}
         )
     except ValueError as error:
-        if name == "draft_profiles_from_material" and isinstance(
-            error, ValidationError
-        ):
+        if name in (
+            "draft_profiles_from_material",
+            "draft_roster_from_material",
+        ) and isinstance(error, ValidationError):
             raise ChangeSetError(
                 "；".join(
                     f"{'.'.join(map(str, e['loc']))}：{e['type']}（请按功能参数说明修改）"
@@ -241,7 +243,6 @@ def propose(
     secret_fields: set[str] = set()
     disabled_users: set[UUID] = set()
     offboarded_employees: set[UUID] = set()
-    imported_deactivations = 0
     for item in body.items:
         entry = registry.FUNCTIONS.get(item.function)
         supplied = item.args
@@ -257,12 +258,12 @@ def propose(
             ):
                 supplied = {**(before or {}), **supplied}
         entry, args = _entry(item.function, supplied)
-        if isinstance(args, materials.MaterialArgs):
+        if isinstance(args, materials.MaterialArgs | roster_materials.MaterialArgs):
             if any(i["function"] == entry.name for i in items):
                 raise ChangeSetError(
-                    "同一份改动只能整理一批画像，请将人员合并在 people 中", 422
+                    "同一份改动只能整理一批画像或人员变动，请合并人员后重新起草", 422
                 )
-            materials.validate_attachments(db, principal, args, session_id)
+            materials.validate_attachments(db, principal, args.materials, session_id)
         # Secrets are stored by field for the whole change set; each needs one target.
         if secret_fields.intersection(entry.private_fields):
             raise ChangeSetError(
@@ -273,10 +274,6 @@ def propose(
             disabled_users.update(args.user_ids)
         elif isinstance(args, Offboard):
             offboarded_employees.update(args.employee_ids)
-        elif isinstance(args, RosterArgs):
-            imported_deactivations += _record(db, principal, args).summary[
-                "deactivated"
-            ]
         items.append(
             {
                 "function": entry.name,
@@ -311,12 +308,11 @@ def propose(
         for item in items
     ):
         raise ChangeSetError("设置已经是这个值，不需要改动", 422)
-    if len(disabled_users) + len(offboarded_employees) + imported_deactivations >= 2:
+    if len(disabled_users) + len(offboarded_employees) >= 2:
         for saved_item in items:
             if saved_item["function"] in (
                 "disable_accounts",
                 "offboard_employees",
-                "apply_roster_import",
             ):
                 saved_item["risk"] = "high"
     if row:

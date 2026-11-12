@@ -1,6 +1,7 @@
 import {
   createFileRoute,
   Outlet,
+  redirect,
   useChildMatches,
 } from "@tanstack/react-router"
 import { AdminTabs, tabSearch } from "@/components/Admin/AdminTabs"
@@ -8,13 +9,11 @@ import { AccountsPage } from "@/components/Admin/pages/AccountsPage"
 import { AppealsPage } from "@/components/Admin/pages/AppealsPage"
 import { IdentitiesPage } from "@/components/Admin/pages/IdentitiesPage"
 import { RolesPage } from "@/components/Admin/pages/RolesPage"
-import { RosterPage } from "@/components/Admin/pages/RosterPage"
 import { OrgChart } from "@/components/OrgChart/OrgChart"
 
 const tabs = [
   { value: "accounts", title: "员工与账号", component: AccountsPage },
   { value: "org-chart", title: "组织架构", component: OrgChart },
-  { value: "roster", title: "导入名单", component: RosterPage },
   { value: "roles", title: "角色", component: RolesPage },
   { value: "identities", title: "Jira 账号匹配", component: IdentitiesPage },
   { value: "appeals", title: "争议", component: AppealsPage },
@@ -23,6 +22,10 @@ const tabs = [
 export const Route = createFileRoute("/_layout/admin/people")({
   component: People,
   validateSearch: tabSearch,
+  beforeLoad: ({ search }) => {
+    if (search.tab === "roster")
+      throw redirect({ to: "/admin/assistant", replace: true })
+  },
   head: () => ({ meta: [{ title: "人员 - 员工画像平台" }] }),
 })
 

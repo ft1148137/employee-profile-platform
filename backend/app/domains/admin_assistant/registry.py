@@ -24,7 +24,7 @@ from app.domains.access_token import service as access
 from app.domains.account import service as accounts
 from app.domains.account.schemas import AccountStatus
 from app.domains.admin.overview import build_overview
-from app.domains.admin_assistant import materials, model_settings
+from app.domains.admin_assistant import materials, model_settings, roster_materials
 from app.domains.admin_assistant.capability_proposals import register_proposals
 from app.domains.admin_assistant.connections import register_connections
 from app.domains.admin_assistant.files import register_files
@@ -280,7 +280,7 @@ FUNCTIONS = {
             "查看名单导入记录",
             PageArgs,
             lambda d, p, a: roster.list_imports(d, p, **a.model_dump()),
-            "/admin/people?tab=roster",
+            "/admin/people?tab=accounts",
             "GET /roster/imports",
         ),
         _f(
@@ -465,7 +465,7 @@ FUNCTIONS["update_employee_fields"] = AdminFunction(
     description="开启或关闭员工档案固定字段，不进入画像或 AI；关闭保留已有值",
     input_model=EmployeeFields,
     handler=save_employee_fields,
-    page="/admin/people?tab=roster",
+    page="/admin/people?tab=accounts",
     endpoints=(("PUT", "/employee-fields"),),
     snapshot=lambda d, p, a: EmployeeFields(
         fields=d.get_one(Organization, p.org_id).employee_fields
@@ -704,7 +704,11 @@ NOT_FOR_ASSISTANT = {
     ): "本人读取附件原文，不向模型提供下载工具",
     ("GET", "/admin-assistant/availability"): "助手自身的会话接口",
     ("GET", "/sources/csv/template"): "模板下载由助手给页面链接",
-    ("GET", "/roster/template"): "模板下载由助手给页面链接",
+    (
+        "POST",
+        "/roster/imports",
+    ): "仅 API，界面已删除，名单变动走 draft_roster_from_material",
+    ("POST", "/roster/imports/{id}/apply"): "人员弹窗确认单人变动",
     ("GET", "/capabilities/template"): "模板下载由助手给页面链接",
     ("GET", "/model-setting/chatgpt/login"): "在模型页面操作",
     ("POST", "/model-setting/chatgpt/login"): "在模型页面操作",
@@ -733,6 +737,21 @@ FUNCTIONS["draft_profiles_from_material"] = AdminFunction(
 )
 
 register_people(FUNCTIONS)
+
+FUNCTIONS["draft_roster_from_material"] = AdminFunction(
+    name="draft_roster_from_material",
+    area="people",
+    kind="change",
+    risk=roster_materials.risk,
+    description="按材料整理人员新增、调整和明确离职，确认后生效；多人或离职需二次确认",
+    input_model=roster_materials.MaterialArgs,
+    handler=roster_materials.apply,
+    page="/admin/assistant",
+    endpoints=(),
+    snapshot=roster_materials.snapshot,
+    impact=roster_materials.impact,
+    undoable=False,
+)
 
 for name, title, input_type in (
     ("onboard_employee", "新增员工", single.Onboard),

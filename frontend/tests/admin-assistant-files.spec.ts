@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs"
 import type { APIRequestContext } from "@playwright/test"
 import { expectChineseCopy } from "./utils/copy"
 import { expect, test } from "./utils/model"
@@ -43,12 +42,11 @@ async function createOrg(request: APIRequestContext, modelUrl: string) {
   return { email, password, base, headers }
 }
 
-test("upload a sample roster in chat, restore preview and confirm import", async ({
+test("draft roster from materials, restore and confirm without offboarding omitted people", async ({
   page,
   request,
   modelUrl,
 }, testInfo) => {
-  test.setTimeout(90000)
   const { email, password, base, headers } = await createOrg(request, modelUrl)
   const initial = await request.post(`${base}/roster/imports`, {
     headers,
@@ -72,51 +70,42 @@ test("upload a sample roster in chat, restore preview and confirm import", async
     ).ok(),
   ).toBeTruthy()
   await logInUser(page, email, password)
-  await page.goto("/admin/assistant")
+  await page.goto("/admin/roster")
+  await expect(page).toHaveURL("/admin/assistant")
   await page.setViewportSize({ width: 390, height: 844 })
+  await page.getByLabel("选择对话附件").setInputFiles({
+    name: "人员材料.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("新人一、新人二、新人三加入平台组"),
+  })
   await page
     .getByRole("textbox", { name: "发给管理助手的消息" })
-    .fill("帮我导入名单")
+    .fill("帮我按材料导入名单")
   await page.getByRole("button", { name: "发送", exact: true }).click()
-  await expect(page.getByRole("form", { name: "上传名单" })).toBeVisible({
-    timeout: 30000,
-  })
-  await page.getByLabel("选择员工名单").setInputFiles({
-    name: "超大名单.csv",
-    mimeType: "text/csv",
-    buffer: Buffer.alloc(5 * 1024 * 1024 + 1),
-  })
-  await page.getByRole("button", { name: "上传并预览" }).click()
-  await expect(page.getByRole("alert")).toContainText("文件超过 5 MB")
-  await page.getByLabel("选择员工名单").setInputFiles({
-    name: "示例名单.csv",
-    mimeType: "text/csv",
-    buffer: readFileSync(
-      new URL("../../examples/roster/sample-30.csv", import.meta.url),
-    ),
-  })
-  await page.getByRole("button", { name: "上传并预览" }).click()
-  const preview = page.getByRole("region", { name: "名单预览" })
-  await expect(preview.getByText("新增 30 人", { exact: true })).toBeVisible()
-  await expect(preview.getByText("停用 1 人", { exact: true })).toBeVisible()
+  await expect(page.getByRole("form", { name: "上传名单" })).toHaveCount(0)
+  const card = page.getByRole("region", { name: "设置改动确认卡" })
+  await expect(card).toContainText("新增 3 人")
+  await expect(card).toContainText("离职 0 人")
   await page.reload()
-  await expect(preview.getByText("新增 30 人", { exact: true })).toBeVisible()
+  await expect(card).toContainText("新增 3 人")
   const history = async () =>
     (await (await request.get(`${base}/roster/imports`, { headers })).json())
       .data
-  expect(
-    (await history()).filter(
-      (item: { status: string }) => item.status === "applied",
-    ),
-  ).toHaveLength(1)
-  const card = page.getByRole("region", { name: "设置改动确认卡" })
-  await card.getByRole("button", { name: "确认应用" }).click()
+  expect(await history()).toHaveLength(1)
+  await card.getByRole("button", { name: "确认应用", exact: true }).click()
+  await expect(card.getByRole("status")).toHaveText("请再次确认")
+  expect(await history()).toHaveLength(1)
+  await card.getByRole("button", { name: "再次确认", exact: true }).click()
   await expect(card.getByRole("status")).toHaveText("已应用")
+  expect(await history()).toHaveLength(2)
+  const accounts = await (
+    await request.get(`${base}/accounts`, { headers })
+  ).json()
   expect(
-    (await history()).filter(
-      (item: { status: string }) => item.status === "applied",
+    accounts.data.filter(
+      (e: { employment_status: string }) => e.employment_status === "active",
     ),
-  ).toHaveLength(2)
+  ).toHaveLength(4)
   await expect(
     card.getByRole("button", { name: "撤销", exact: true }),
   ).toHaveCount(0)

@@ -204,11 +204,6 @@ export function ChangeSetCard({
       {current.items.map((item, i) => (
         <div key={i} className="space-y-2">
           <p className="text-sm font-medium">{item.title}</p>
-          {item.function === "apply_roster_import" && (
-            <p className="text-sm">
-              请核对上方名单预览。确认后更新员工信息，离职人员的账号会停用。
-            </p>
-          )}
           {item.function === "dismiss_capability_proposal" && (
             <p className="text-sm">
               {item.before?.status === "dismissed" ? "恢复待处理建议" : "忽略"}

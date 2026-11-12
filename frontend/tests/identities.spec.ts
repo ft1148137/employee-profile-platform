@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs"
 import path from "node:path"
 import { expect, test } from "@playwright/test"
 import type { ExternalIdentitiesPublic } from "../src/client"
+import { importRoster } from "./utils/roster"
 import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -34,17 +36,15 @@ test("confirm candidates in bulk, select employee, unlink and save optional setu
     },
     { access_token, org_id },
   )
-  await page.goto("/admin/roster")
-  await page
-    .getByLabel("拖拽名单到这里，或选择文件上传")
-    .setInputFiles(
+  await importRoster(
+    page,
+    readFileSync(
       path.resolve(
         import.meta.dirname,
         "../../examples/test-enterprises/qiguang-aiot/roster.csv",
       ),
-    )
-  await page.getByRole("button", { name: "确认导入", exact: true }).click()
-  await expect(page.getByText("导入成功，员工名单和部门已更新。")).toBeVisible()
+    ),
+  )
   expect(
     (
       await request.put(`${base}/sources/jira`, {

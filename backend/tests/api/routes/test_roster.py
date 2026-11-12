@@ -3,7 +3,6 @@ from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from io import StringIO
 from pathlib import Path
-from urllib.parse import quote
 from uuid import UUID, uuid4
 
 import httpx
@@ -28,7 +27,6 @@ from app.domains.org.models import (
     RosterImport,
 )
 from app.domains.org.roster import service
-from app.domains.org.roster.parser import parse_roster
 from app.domains.profile.models import ProfileVersion
 from app.domains.setup.steps import check_roster
 from app.main import app
@@ -480,30 +478,6 @@ def test_errors_and_limits(
 
 
 @pytest.mark.parametrize(
-    "format,media",
-    [
-        ("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
-        ("csv", "text/csv"),
-    ],
-)
-def test_templates(
-    tenant: SetupTenant, client: TestClient, format: str, media: str
-) -> None:
-    url = f"{tenant.url}/roster"
-    response = client.get(f"{url}/template?format={format}")
-    assert response.status_code == 200 and response.headers["content-type"].startswith(
-        media
-    )
-    filename = f"员工名单模板.{format}"
-    assert (
-        response.headers["content-disposition"]
-        == f"attachment; filename*=UTF-8''{quote(filename, safe='')}"
-    )
-    assert not parse_roster(response.content, filename).has_errors
-    assert client.get(f"{url}/template?format=xls").status_code == 422
-
-
-@pytest.mark.parametrize(
     "role,status", [("manager", 403), ("employee", 403), ("foreign", 404)]
 )
 def test_permissions(
@@ -512,7 +486,6 @@ def test_permissions(
     urls = f"{tenant.url}/roster"
     auth = tenant.auth[role]
     responses = [
-        client.get(f"{urls}/template", headers=auth),
         client.get(f"{urls}/imports", headers=auth),
         client.post(
             f"{urls}/imports",

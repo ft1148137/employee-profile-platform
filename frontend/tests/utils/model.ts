@@ -270,17 +270,34 @@ export const test = base.extend<{ modelUrl: string }>({
       if (
         admin &&
         !toolResult &&
-        ["导入名单", "导入工作记录"].some((text) =>
-          JSON.stringify(last).includes(text),
-        )
+        JSON.stringify(last).includes("导入工作记录")
       ) {
         const tool = chunk.choices[0].delta.tool_calls?.[0]
         if (tool) {
           tool.function.name = "request_file"
+          tool.function.arguments = JSON.stringify({ kind: "work_csv" })
+        }
+      }
+      if (admin && !toolResult && JSON.stringify(last).includes("导入名单")) {
+        const tool = chunk.choices[0].delta.tool_calls?.[0]
+        if (tool) {
+          tool.function.name = "propose_changes"
           tool.function.arguments = JSON.stringify({
-            kind: JSON.stringify(last).includes("导入工作记录")
-              ? "work_csv"
-              : "roster",
+            items: [
+              {
+                function: "draft_roster_from_material",
+                args: {
+                  materials: [{ attachment_id: null, label: "人员材料" }],
+                  rows: [1, 2, 3].map((n) => ({
+                    action: "onboard",
+                    employee_code: `34000${n}`,
+                    display_name: `合成新人${n}`,
+                    department: "研发/平台组",
+                    email: `roster-${crypto.randomUUID()}@example.com`,
+                  })),
+                },
+              },
+            ],
           })
         }
       }

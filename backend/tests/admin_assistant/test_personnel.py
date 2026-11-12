@@ -190,9 +190,7 @@ def test_unchanged_roster(db: Session, tenant: SetupTenant, roster: dict) -> Non
     assert compute_roster_diff(db, tenant.org_id, rebuilt).changes == []
 
 
-@pytest.mark.parametrize(
-    "other", ["offboard_employees", "disable_accounts", "apply_roster_import"]
-)
+@pytest.mark.parametrize("other", ["offboard_employees", "disable_accounts"])
 def test_split_deactivations_require_two_clicks(
     db: Session, tenant: SetupTenant, roster: dict, other: str
 ) -> None:
@@ -210,13 +208,6 @@ def test_split_deactivations_require_two_clicks(
     ]
     if other == "disable_accounts":
         items[1]["args"] = {"user_ids": [str(account.id)]}
-    elif other == "apply_roster_import":
-        preview = single.preview(db, p, single.Offboard(employee_ids=[roster["C"].id]))
-        items[1]["args"] = {
-            "import_id": str(preview.id),
-            "base_revision": preview.base_revision,
-        }
-        items.reverse()
     row = c.propose(
         db,
         p,

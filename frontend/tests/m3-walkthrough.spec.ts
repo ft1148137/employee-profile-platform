@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs"
 import path from "node:path"
 import { configureModel, expect, test } from "./utils/model"
+import { importRoster } from "./utils/roster"
 import { createSourcesOrg, saveCloud, syncJira } from "./utils/sources"
 import { logOutUser } from "./utils/user"
 
@@ -24,10 +25,9 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
     page.getByRole("heading", { name: "配置模型", exact: true }),
   ).toBeVisible()
   await step(/导入员工名单/).click()
-  await page.getByLabel("拖拽名单到这里，或选择文件上传").setInputFiles({
-    name: "roster.csv",
-    mimeType: "text/csv",
-    buffer: Buffer.from(
+  await importRoster(
+    page,
+    Buffer.from(
       readFileSync(
         path.resolve(
           import.meta.dirname,
@@ -36,9 +36,10 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
         "utf8",
       ).replace(/@/g, `+${crypto.randomUUID()}@`),
     ),
-  })
-  await page.getByRole("button", { name: "确认导入", exact: true }).click()
-  await expect(page.getByText("导入成功，员工名单和部门已更新。")).toBeVisible()
+  )
+  await page.reload()
+  await page.getByText("稍后处理的事项", { exact: true }).click()
+  await step(/导入员工名单/).click()
   await next()
   await page.getByRole("button", { name: /科技研发/ }).click()
   await page.getByRole("button", { name: "启用此词典" }).click()
