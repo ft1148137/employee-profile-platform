@@ -1795,6 +1795,87 @@ export type DictionaryRubric = {
 }
 
 /**
+ * DirectClaim
+ */
+export type DirectClaim = {
+  /**
+   * Statement
+   */
+  statement: string
+  /**
+   * Level
+   */
+  level: string | null
+  assessment_status: AssessmentStatus
+}
+
+/**
+ * DirectEditInput
+ */
+export type DirectEditInput = {
+  /**
+   * Items
+   */
+  items: Array<DirectItemInput>
+  /**
+   * Base Revision
+   */
+  base_revision?: number | null
+}
+
+/**
+ * DirectEditItem
+ */
+export type DirectEditItem = {
+  /**
+   * Capability Key
+   */
+  capability_key: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  before: DirectClaim | null
+  after: DirectClaim
+}
+
+/**
+ * DirectEditResult
+ */
+export type DirectEditResult = {
+  /**
+   * Revision
+   */
+  revision: number | null
+  /**
+   * Items
+   */
+  items: Array<DirectEditItem>
+}
+
+/**
+ * DirectItemInput
+ */
+export type DirectItemInput = {
+  /**
+   * Op
+   */
+  op: "add" | "modify" | "retract"
+  /**
+   * Capability Key
+   */
+  capability_key: string
+  /**
+   * Statement
+   */
+  statement: string
+  /**
+   * Level
+   */
+  level?: string | null
+}
+
+/**
  * DraftBody
  */
 export type DraftBody = {
@@ -2655,6 +2736,7 @@ export type Impact = {
  * InboxKind
  */
 export type InboxKind =
+  | "profile_edited"
   | "initial_review"
   | "submitted"
   | "status_changed"
@@ -9687,6 +9769,78 @@ export type capabilityTemplatesActivateCapabilitySchemaResponses = {
 
 export type capabilityTemplatesActivateCapabilitySchemaResponse =
   capabilityTemplatesActivateCapabilitySchemaResponses[keyof capabilityTemplatesActivateCapabilitySchemaResponses]
+
+export type profilesPreviewDirectEditData = {
+  body: DirectEditInput
+  path: {
+    /**
+     * Employee Id
+     */
+    employee_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/employees/{employee_id}/profile/direct-edits/preview"
+}
+
+export type profilesPreviewDirectEditErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type profilesPreviewDirectEditError =
+  profilesPreviewDirectEditErrors[keyof profilesPreviewDirectEditErrors]
+
+export type profilesPreviewDirectEditResponses = {
+  /**
+   * Successful Response
+   */
+  200: DirectEditResult
+}
+
+export type profilesPreviewDirectEditResponse =
+  profilesPreviewDirectEditResponses[keyof profilesPreviewDirectEditResponses]
+
+export type profilesDirectEditData = {
+  body: DirectEditInput
+  path: {
+    /**
+     * Employee Id
+     */
+    employee_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/employees/{employee_id}/profile/direct-edits"
+}
+
+export type profilesDirectEditErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type profilesDirectEditError =
+  profilesDirectEditErrors[keyof profilesDirectEditErrors]
+
+export type profilesDirectEditResponses = {
+  /**
+   * Successful Response
+   */
+  200: DirectEditResult
+}
+
+export type profilesDirectEditResponse =
+  profilesDirectEditResponses[keyof profilesDirectEditResponses]
 
 export type profilesReadProfileData = {
   body?: never

@@ -27,26 +27,51 @@ departments:
   - 3.0 Market and Sell Products and Services
   - 4.0 Deliver Physical Products
   responsibilities: 东城区域门店的销售与损耗指标、督导巡店与整改、生鲜运营标准、跨店人力调度
+  capability_keys:
+  - shift_scheduling
+  - store_inspection
+  - loss_control
+  - food_safety
 - name: 滨江店
   pcf_categories:
   - 3.0 Market and Sell Products and Services
   - 6.0 Manage Customer Service
   responsibilities: 滨江店的开闭店、收银前台、理货陈列、生鲜加工与食品安全日常管理
+  capability_keys:
+  - store_opening_closing
+  - pos_operation
+  - shelf_replenishment
+  - fresh_processing
+  - food_safety
 - name: 南湖店
   pcf_categories:
   - 3.0 Market and Sell Products and Services
   - 6.0 Manage Customer Service
   responsibilities: 南湖店的开闭店、收银前台、理货陈列、生鲜加工与盘点损耗管理
+  capability_keys:
+  - store_opening_closing
+  - pos_operation
+  - shelf_replenishment
+  - fresh_processing
+  - inventory_count
+  - loss_control
 - name: 商品采购部
   pcf_categories:
   - 4.0 Deliver Physical Products
   - 12.0 Manage External Relationships
   responsibilities: 生鲜、包装食品与非食品类的供应商谈判、商品引进、品类结构与价格带、索证索票归档
+  capability_keys:
+  - supplier_negotiation
+  - category_management
+  - food_safety
 - name: 人力与信息部
   pcf_categories:
   - 7.0 Develop and Manage Human Capital
   - 8.0 Manage Information Technology (IT)
   responsibilities: 用工与排班制度、员工培训与食品安全培训组织、排班与 POS 等门店系统的账号和权限管理
+  capability_keys:
+  - shift_scheduling
+  - staff_coaching
 projects:
 - code: SX01
   name: 生鲜损耗专项改善

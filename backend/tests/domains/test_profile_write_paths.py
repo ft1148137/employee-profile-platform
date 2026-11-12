@@ -1,4 +1,4 @@
-"""Guard the approved publication boundary documented in ADR-0035."""
+"""Guard the approved publication boundary documented in ADR-0040."""
 
 import ast
 from pathlib import Path
@@ -7,11 +7,12 @@ import pytest
 
 APP = Path(__file__).resolve().parents[2] / "app"
 PUBLISH_CALLERS = {
+    "domains/review/direct.py",
     "domains/review/service.py",
     "domains/review/policy.py",
     "domains/drafting/incremental.py",
 }
-MESSAGE = "正式画像只能由批准的请求修改，新增写入路径需要先改 ADR"
+MESSAGE = "正式画像只能由批准的请求修改，新增写入路径需要先改 ADR-0040"
 
 
 def profile_writes(source: str) -> list[tuple[str, int]]:
@@ -51,6 +52,17 @@ def test_official_profile_write_paths() -> None:
             if not allowed:
                 violations.append(f"{relative}:{line}: {name}()")
     assert not violations, MESSAGE + "\n" + "\n".join(violations)
+
+
+def test_new_publish_caller_is_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import sys
+
+    monkeypatch.setattr(sys.modules[__name__], "APP", tmp_path)
+    (tmp_path / "unexpected.py").write_text("publisher.publish()", encoding="utf-8")
+    with pytest.raises(AssertionError, match="unexpected.py:1: publish"):
+        test_official_profile_write_paths()
 
 
 @pytest.mark.parametrize(

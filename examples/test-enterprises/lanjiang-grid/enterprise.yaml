@@ -25,18 +25,40 @@ departments:
 - name: 变电检修中心
   pcf_categories: ['10.0 Acquire, Construct, and Manage Assets', '5.0 Deliver Services']
   responsibilities: 辖区 500kV 至 35kV 变电站一次设备检修、开关柜消缺、高压例行试验与绝缘油气检测，下设变电检修一班、变电检修二班、高压试验班
+  capability_keys:
+  - substation_maintenance
+  - switchgear_defect_handling
+  - hv_routine_test
+  - oil_gas_analysis
 - name: 输电运检中心
   pcf_categories: ['10.0 Acquire, Construct, and Manage Assets']
   responsibilities: 220kV 及 110kV 架空线路巡视、通道治理、带电作业、故障查找与无人机机巡，下设线路运维班、带电作业班
+  capability_keys:
+  - line_patrol
+  - live_line_work
+  - line_fault_locating
+  - drone_inspection
 - name: 电力调度控制中心
   pcf_categories: ['5.0 Deliver Services', '8.0 Manage Information Technology (IT)']
   responsibilities: 辖区电网值班调度、倒闸操作发令、检修计划平衡与负荷预测、调度自动化系统运维
+  capability_keys:
+  - dispatch_operation
+  - switching_operation
+  - load_forecast_plan
+  - scada_maintenance
 - name: 安全监察部
   pcf_categories: ['11.0 Manage Enterprise Risk, Compliance, Remediation, and Resiliency']
   responsibilities: 安全监督与到岗到位检查、违章查处、「三种人」资格考评、安规培训与反事故演练组织
+  capability_keys:
+  - onsite_safety_supervision
+  - qualification_management
+  - safety_rule_training
 - name: 人力资源部
   pcf_categories: ['7.0 Develop and Manage Human Capital']
   responsibilities: 人员档案与劳资管理、培训计划与考试组织、特种作业操作证与技能等级台账维护，并承担本公司信息系统的账号与权限管理
+  capability_keys:
+  - safety_rule_training
+  - qualification_management
 projects:
 - code: YF2026
   name: 2026 年迎峰度夏保供专项

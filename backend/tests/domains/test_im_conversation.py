@@ -17,7 +17,7 @@ from app.domains.change_request import employee
 from app.domains.change_request.models import ProfileChangeRequest
 from app.domains.change_request.schemas import ItemInput
 from app.domains.im import actions, binding, gateway, rendering
-from app.domains.im.adapters.base import Event
+from app.domains.im.adapters.base import Attachment, Event
 from app.domains.im.adapters.telegram import Telegram
 from app.domains.im.models import ImAction
 from app.domains.inbox.models import PendingQuestion
@@ -428,3 +428,32 @@ def test_closed_question_does_not_trap_conversation(demo: tuple, db: Session) ->
     assert "其他入口处理" in reply.response.messages[0].text
     resumed = actions.text(db, p, incoming, "12345")
     assert "先配置模型" in resumed.response.messages[0].text
+
+
+def test_file_does_not_answer_pending_question(demo: tuple, db: Session) -> None:
+    p, _ = setup(db, demo)
+    incoming = replace(
+        event(p.org_id, ""),
+        platform="feishu",
+        text=None,
+        attachment=Attachment("file", "材料.txt", "合成材料".encode()),
+    )
+    session = actions.conversation(db, p, incoming, "synthetic-app")
+    question = PendingQuestion(
+        org_id=p.org_id,
+        target_employee_id=p.employee_id,
+        question="还在使用这项能力吗？",
+        reason="定期确认",
+    )
+    db.add(question)
+    db.flush()
+    session.pending_question_id = question.id
+    db.add(session)
+    db.commit()
+    actions.text(db, p, incoming, "synthetic-app")
+    db.refresh(question)
+    db.refresh(session)
+    assert question.status == "open" and session.pending_question_id == question.id
+    history = store.messages_for(db, session)
+    assert history[0].payload["text"] == "我发送了文件：材料.txt"
+    assert history[0].payload["attachments"][0]["filename"] == "材料.txt"

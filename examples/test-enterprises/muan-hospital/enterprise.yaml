@@ -28,18 +28,38 @@ departments:
 - name: 心血管内科
   pcf_categories: ['5.0 Deliver Services']
   responsibilities: 心血管疾病门诊与住院诊疗、CCU 监护、冠脉造影与介入治疗、心衰随访
+  capability_keys:
+  - outpatient_consult
+  - inpatient_management
+  - critical_care
+  - cardiac_intervention
 - name: 普通外科
   pcf_categories: ['5.0 Deliver Services']
   responsibilities: 肝胆、胃肠、疝与甲乳疾病的门诊与手术治疗，腹腔镜与开腹手术，围手术期管理
+  capability_keys:
+  - outpatient_consult
+  - surgery_grade3
+  - perioperative_management
 - name: 急诊医学科
   pcf_categories: ['5.0 Deliver Services', '6.0 Manage Customer Service']
   responsibilities: 急诊预检分诊、抢救室与留观病区、院前衔接与急危重症初步处置
+  capability_keys:
+  - emergency_triage
+  - critical_care
 - name: 医务部
   pcf_categories: ['11.0 Manage Enterprise Risk, Compliance, Remediation, and Resiliency', '13.0 Develop and Manage Business Capabilities']
   responsibilities: 医疗质量与安全管理、病案质控与编码、手术分级授权审核、继续医学教育与规培管理、行政总值班
+  capability_keys:
+  - record_qc_review
+  - icd_coding
+  - cme_management
+  - resident_teaching
 - name: 信息中心
   pcf_categories: ['8.0 Manage Information Technology (IT)']
   responsibilities: 电子病历与 HIS 运维、病历质控规则配置、账号与权限管理、医疗质量数据统计与上报支持
+  capability_keys:
+  - emr_system_support
+  - clinical_data_report
 projects:
 - code: CHF-MDT
   name: 心衰多学科诊疗（MDT）协作组

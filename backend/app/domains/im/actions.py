@@ -8,7 +8,7 @@ from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.domains.base import utc_now
-from app.domains.bot import core, store
+from app.domains.bot import attachments, core, store
 from app.domains.bot import schemas as s
 from app.domains.bot.models import BotMessage, BotSession
 from app.domains.bot.settings import read_settings
@@ -46,8 +46,21 @@ def conversation(db: Session, p: Principal, event: Event, identity: str) -> BotS
 
 def text(db: Session, p: Principal, event: Event, identity: str) -> Reply:
     session = conversation(db, p, event, identity)
-    body = s.TurnInput(text=event.text or "")
-    if session.pending_question_id:
+    attachment_ids = []
+    text = event.text or ""
+    if event.attachment:
+        attachment = attachments.save_bytes(
+            db,
+            p,
+            "bot",
+            session.id,
+            event.attachment.filename,
+            event.attachment.content,
+        )
+        attachment_ids = [attachment.id]
+        text = text or f"我发送了文件：{attachment.filename}"
+    body = s.TurnInput(text=text)
+    if session.pending_question_id and not attachment_ids:
         question = read_question(p, db, session.pending_question_id)
         if question.status != "open":
             session.pending_question_id = None
@@ -79,7 +92,9 @@ def text(db: Session, p: Principal, event: Event, identity: str) -> Reply:
             db.add(session)
         db.commit()
     else:
-        response = core.turn(db, p, session.id, body.text)
+        response = core.turn(
+            db, p, session.id, body.text, attachment_ids=attachment_ids
+        )
     return Reply(session.id, response)
 
 

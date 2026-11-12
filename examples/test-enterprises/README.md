@@ -6,6 +6,8 @@
 
 研究笔记和来源链接见 [research.md](research.md)。
 
+部门对应能力在 `enterprise.yaml` 的 `departments[].capability_keys`，建企业后可以在组织架构里照着设置，也可以等系统自动生成后对照。空列表表示本行业词典里没有这个部门对应的能力（多见于人力、行政、IT 部门）；对照自动生成结果时，这些部门不应被挂上其他部门的能力。
+
 ## 规则起草评测
 
 先按开发配置启动独立 PostgreSQL 并执行迁移，再从 `backend/` 运行 `PYTHONPATH=. uv run python ../examples/test-enterprises/evaluate_drafts.py qiguang-aiot --provider openai --model 模型名`（密钥用 `MODEL_API_KEY` 环境变量）。脚本使用与后端测试相同的数据库配置（环境变量优先于 `.env`），临时建立企业，用进程内模拟 Jira 和 CSV 起草，按在职员工/能力 key 输出 Markdown 精确率、召回率、证据状态分组及 misleading 明细，最后删除本企业续跑任务和临时企业。只把 `personas.yaml` 当离线答案，不导入系统，也不使用其中的 account_truth 关联身份。无通过门槛；记录见 [M2 基线](../../docs/m2-baseline.md)和 [M3 模型基线](../../docs/m3-baseline.md)。
@@ -112,6 +114,7 @@ uv run --project backend python examples/test-enterprises/validate.py
 uv run --project backend python examples/test-enterprises/validate.py            # 全部 10 家 + 数据集级检查
 uv run --project backend python examples/test-enterprises/validate.py helin-retail
 uv run --project backend python examples/test-enterprises/validate.py --summary  # 打印一览表和边界情况分布
+uv run --project backend python examples/test-enterprises/test_validate.py      # 部门能力校验的边界用例
 ```
 
 `validate.py` 只读文件，不连数据库。它用 seed 模型校验同格式文件，再检查部门与人数下限、汇报关系、登录账号与角色、账号引用、证据引用、真实能力的证据分布、每个边界标签对应的数据条件，以及数据集级的门类不重复、至少 3 家不用 Jira、组织形态覆盖、在职人数不少于 200。

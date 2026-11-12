@@ -1,7 +1,10 @@
 import asyncio
 import json
 import logging
+from base64 import b64decode
+from collections.abc import AsyncIterator
 from dataclasses import replace
+from io import BytesIO
 from queue import Queue
 from uuid import uuid4
 
@@ -9,22 +12,28 @@ import httpx
 import pytest
 import sentry_sdk
 from fastapi.testclient import TestClient
+from pypdf import PdfWriter
+from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 from sqlmodel import Session, select
 
 from app.core.db import engine
-from app.core.secrets import encrypt_secret
-from app.domains.bot import core
+from app.core.secrets import decrypt_secret, encrypt_secret
+from app.domains.bot import attachments, core, store
 from app.domains.bot import schemas as s
+from app.domains.bot.models import BotAttachment
 from app.domains.change_request.models import ProfileChangeRequest, ReviewDecision
 from app.domains.im import actions, binding, gateway
 from app.domains.im.adapters import feishu
+from app.domains.im.adapters.base import Event
 from app.domains.im.adapters.feishu import Feishu
 from app.domains.im.models import ImAction, ImBinding, ImSetting
+from app.domains.model import pi_client
 from app.domains.org.models import Employee, EmploymentStatus, OrgMembership
 from app.models import User
 from tests.api.routes.test_employee_requests import payload
 from tests.domains.test_bot_core import enable as enable_model
 from tests.domains.test_bot_reviews import prepared
+from tests.domains.test_chat_attachments import document
 from tests.domains.test_im_gateway import principal
 from tests.utils.feishu_listener import fake_listener, message
 from tests.utils.pi import PiHarness
@@ -55,6 +64,19 @@ def service(monkeypatch: pytest.MonkeyPatch) -> dict:
         state["requests"].append((request.url.path, body))
         if "/auth/" in request.url.path:
             data = {"tenant_access_token": "private-token", "expire": 7200}
+        elif "/resources/" in request.url.path:
+            assert request.headers["authorization"] == "Bearer private-token"
+            assert request.url.params["type"] == state["resource_kind"]
+            if "resource_stream" in state:
+                return httpx.Response(
+                    200,
+                    stream=state["resource_stream"],
+                    headers=state.get("resource_headers", {}),
+                )
+            return httpx.Response(
+                state.get("resource_status", 200),
+                content=state["resource"],
+            )
         elif "/contact/" in request.url.path:
             data = {
                 "data": {
@@ -96,6 +118,292 @@ def setup(db: Session, demo: tuple) -> tuple:
     db.add(setting)
     db.commit()
     return p, setting
+
+
+def attachment_message(ext: str, *, group: bool = False) -> dict:
+    data = message("group" if group else "p2p")
+    image = ext in ("png", "jpg", "gif", "webp")
+    data["event"]["message"].update(
+        message_id="message-synthetic",
+        message_type="image" if image else "file",
+        content=json.dumps(
+            {"image_key": "private-resource-key"}
+            if image
+            else {"file_key": "private-resource-key", "file_name": f"材料.{ext}"}
+        ),
+    )
+    return data
+
+
+def pdf_material() -> bytes:
+    writer = PdfWriter()
+    page = writer.add_blank_page(100, 100)
+    page[NameObject("/Resources")] = DictionaryObject(
+        {
+            NameObject("/Font"): DictionaryObject(
+                {
+                    NameObject("/F1"): writer._add_object(
+                        DictionaryObject(
+                            {
+                                NameObject("/Type"): NameObject("/Font"),
+                                NameObject("/Subtype"): NameObject("/Type1"),
+                                NameObject("/BaseFont"): NameObject("/Helvetica"),
+                            }
+                        )
+                    )
+                }
+            )
+        }
+    )
+    content = DecodedStreamObject()
+    content.set_data(b"BT /F1 12 Tf 10 50 Td (Synthetic material) Tj ET")
+    page[NameObject("/Contents")] = writer._add_object(content)
+    output = BytesIO()
+    writer.write(output)
+    return output.getvalue()
+
+
+@pytest.mark.parametrize(
+    "ext",
+    [
+        "txt",
+        "docx",
+        "pdf",
+        "json",
+        "png",
+        "jpg",
+        "gif",
+        "webp",
+        "image_fallback",
+        "with_text",
+    ],
+)
+def test_attachment_turn(
+    demo: tuple,
+    db: Session,
+    service: dict,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    ext: str,
+) -> None:
+    p, setting = setup(db, demo)
+    assert binding.bind(
+        db,
+        p.org_id,
+        "feishu",
+        "ou_test",
+        "oc_test",
+        CREDS["app_id"],
+        binding.create_code(db, p).code,
+    )
+    enable_model(db, p.org_id)
+    images = {
+        "png": b"\x89PNG\r\n\x1a\n",
+        "jpg": b"\xff\xd8\xff",
+        "gif": b"GIF89a",
+        "webp": b"RIFF0000WEBP",
+    }
+    actual = "png" if ext == "image_fallback" else "txt" if ext == "with_text" else ext
+    raw = (
+        pdf_material()
+        if actual == "pdf"
+        else document(actual)
+        if actual == "docx"
+        else images.get(actual, "合成材料".encode())
+    )
+    service.update(resource=raw, resource_kind="image" if actual in images else "file")
+    calls = []
+
+    def run_turn(*_args: object, **kwargs: object) -> pi_client.TurnResult:
+        calls.append(kwargs)
+        return pi_client.TurnResult(
+            text="已读取材料", stop_reason="stop", model_calls=1, tool_calls=0
+        )
+
+    monkeypatch.setattr(pi_client, "run_turn", run_turn)
+    monkeypatch.setattr(core, "supports_images", lambda _: ext != "image_fallback")
+    caplog.set_level(logging.DEBUG)
+
+    async def run() -> None:
+        adapter = Feishu(p.org_id, CREDS)
+        try:
+            incoming = await adapter._event(json.dumps(attachment_message(actual)))
+            assert incoming and incoming.attachment
+            if ext == "with_text":
+                incoming = replace(incoming, text="请整理材料")
+            g = gateway.Gateway(engine)
+            await g.handle(incoming, CREDS["app_id"], setting.credentials, adapter)
+            await g.handle(incoming, CREDS["app_id"], setting.credentials, adapter)
+        finally:
+            await adapter.close()
+
+    asyncio.run(run())
+    assert len(calls) == 1
+    saved = db.exec(select(BotAttachment).where(BotAttachment.org_id == p.org_id)).one()
+    assert b64decode(decrypt_secret(saved.ciphertext)) == raw
+    session = actions.conversation(
+        db,
+        p,
+        Event(p.org_id, "feishu", "lookup", external_chat_id="oc_test"),
+        CREDS["app_id"],
+    )
+    assert saved.session_id == session.id
+    history = store.messages_for(db, session)
+    assert history[0].payload["text"] == (
+        "请整理材料" if ext == "with_text" else f"我发送了文件：{saved.filename}"
+    )
+    assert history[0].payload["attachments"][0]["id"] == str(saved.id)
+    if actual in images:
+        assert bool(calls[0]["images"]) == (ext != "image_fallback")
+        assert (
+            attachments.IMAGE_NOTICE in history[-1].payload["messages"][0]["text"]
+        ) == (ext == "image_fallback")
+    else:
+        assert attachments.START in calls[0]["input"]
+        assert ("Synthetic material" if actual == "pdf" else "合成材料") in calls[0][
+            "input"
+        ]
+    other_session = store.create_session(db, p)
+    with pytest.raises(attachments.AttachmentError):
+        attachments.prepare(db, p, "bot", other_session.id, [saved.id], "材料")
+    other = principal(db, p.org_id, demo[1]["E01"].id)
+    for wrong in (other, replace(p, org_id=uuid4())):
+        with pytest.raises(store.BotSessionNotFound):
+            attachments.prepare(db, wrong, "bot", session.id, [saved.id], "材料")
+    wire = (
+        json.dumps([m.payload for m in history], ensure_ascii=False)
+        + caplog.text
+        + json.dumps(service["requests"][-1])
+    )
+    for secret in (
+        "private-token",
+        "private-resource-key",
+        "synthetic-secret",
+        "/resources/",
+    ):
+        assert secret not in wire
+
+
+@pytest.mark.parametrize(
+    "case",
+    ["unsupported", "large", "permission", "quota", "group", "unbound", "bad_image"],
+)
+def test_attachment_rejected(
+    demo: tuple,
+    db: Session,
+    service: dict,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    case: str,
+) -> None:
+    p, setting = setup(db, demo)
+    if case != "unbound":
+        assert binding.bind(
+            db,
+            p.org_id,
+            "feishu",
+            "ou_test",
+            "oc_test",
+            CREDS["app_id"],
+            binding.create_code(db, p).code,
+        )
+    service.update(
+        resource=b"synthetic", resource_kind="image" if case == "bad_image" else "file"
+    )
+    if case == "permission":
+        service["resource_status"] = 403
+    elif case == "large":
+        service["resource"] = b"x" * (10 * 1024 * 1024 + 1)
+    elif case == "quota":
+        monkeypatch.setattr(attachments, "USER_LIMIT", 0)
+    caplog.set_level(logging.DEBUG)
+
+    async def run() -> None:
+        adapter = Feishu(p.org_id, CREDS)
+        try:
+            incoming = await adapter._event(
+                json.dumps(
+                    attachment_message(
+                        "exe"
+                        if case == "unsupported"
+                        else "png"
+                        if case == "bad_image"
+                        else "txt",
+                        group=case == "group",
+                    )
+                )
+            )
+            assert incoming
+            await gateway.Gateway(engine).handle(
+                incoming, CREDS["app_id"], setting.credentials, adapter
+            )
+        finally:
+            await adapter.close()
+
+    asyncio.run(run())
+    expected = {
+        "unsupported": "不支持的附件类型",
+        "large": "文件太大",
+        "permission": "无法读取文件，请让管理员在飞书开放平台开通文件权限",
+        "quota": "附件总量已达上限",
+        "group": "请私聊我",
+        "unbound": binding.GUIDE,
+        "bad_image": "不支持的附件类型",
+    }[case]
+    assert expected in json.loads(service["requests"][-1][1]["content"])["text"]
+    assert not db.exec(
+        select(BotAttachment).where(BotAttachment.org_id == p.org_id)
+    ).all()
+    if case in ("unsupported", "group"):
+        assert not any("/resources/" in path for path, _ in service["requests"])
+    assert (
+        "private-token" not in caplog.text and "private-resource-key" not in caplog.text
+    )
+
+
+@pytest.mark.parametrize("case", ["header", "unknown", "short_header", "network"])
+def test_download_is_bounded_and_closed(service: dict, case: str) -> None:
+    class Resource(httpx.AsyncByteStream):
+        reads = 0
+        closed = False
+
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            self.reads += 1
+            if case == "network":
+                raise httpx.ReadError("private-upstream-token")
+            yield b"x" * (5 * 1024 * 1024)
+            self.reads += 1
+            yield b"x" * (64 * 1024)
+            pytest.fail("Do not read beyond the image limit")
+
+        async def aclose(self) -> None:
+            self.closed = True
+
+    resource = Resource()
+    service.update(resource_kind="image", resource_stream=resource)
+    if case in ("header", "short_header"):
+        service["resource_headers"] = {
+            "content-length": str(5 * 1024 * 1024 + 1) if case == "header" else "1"
+        }
+
+    async def run() -> None:
+        adapter = Feishu(uuid4(), CREDS)
+        try:
+            incoming = await adapter._event(json.dumps(attachment_message("png")))
+            assert incoming and incoming.attachment is None
+            assert incoming.attachment_error == (
+                "无法读取文件，请稍后重试"
+                if case == "network"
+                else "文件太大，图片最多 5 MiB，文件最多 10 MiB"
+            )
+            assert resource.reads == (
+                0 if case == "header" else 1 if case == "network" else 2
+            )
+            assert resource.closed
+        finally:
+            await adapter.close()
+
+    asyncio.run(run())
 
 
 @pytest.mark.parametrize(

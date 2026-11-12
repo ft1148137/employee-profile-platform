@@ -1,9 +1,16 @@
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
-from typing import ClassVar, Protocol
+from dataclasses import dataclass, field
+from typing import ClassVar, Literal, Protocol
 from uuid import UUID
 
 from app.domains.im.schemas import Platform
+
+
+@dataclass(frozen=True)
+class Attachment:
+    kind: Literal["file", "image"]
+    filename: str
+    content: bytes = field(repr=False)
 
 
 @dataclass(frozen=True)
@@ -18,6 +25,8 @@ class Event:
     callback_id: str | None = None
     token: str | None = None
     message_id: str | None = None
+    attachment: Attachment | None = None
+    attachment_error: str | None = None
 
 
 class ImError(Exception):

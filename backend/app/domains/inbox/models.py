@@ -16,6 +16,7 @@ from app.domains.base import TenantRecord, enum_type, tenant_fk
 
 
 class InboxKind(StrEnum):
+    PROFILE_EDITED = "profile_edited"
     INITIAL_REVIEW = "initial_review"
     SUBMITTED = "submitted"
     STATUS_CHANGED = "status_changed"
