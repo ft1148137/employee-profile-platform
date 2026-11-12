@@ -227,6 +227,9 @@ import type {
   employeeRequestsReadMyEvidenceData,
   employeeRequestsReadMyEvidenceErrors,
   employeeRequestsReadMyEvidenceResponses,
+  employeeRequestsReadMyExternalIdentitiesData,
+  employeeRequestsReadMyExternalIdentitiesErrors,
+  employeeRequestsReadMyExternalIdentitiesResponses,
   employeeRequestsReadMyProfileData,
   employeeRequestsReadMyProfileErrors,
   employeeRequestsReadMyProfileResponses,
@@ -375,9 +378,6 @@ import type {
   profileImportDownloadImportFileData,
   profileImportDownloadImportFileErrors,
   profileImportDownloadImportFileResponses,
-  profileImportUploadProfileImportData,
-  profileImportUploadProfileImportErrors,
-  profileImportUploadProfileImportResponses,
   profilesReadProfileData,
   profilesReadProfileErrors,
   profilesReadProfileResponses,
@@ -1620,6 +1620,27 @@ export class MeService {
 }
 
 export class EmployeeRequestsService {
+  /**
+   * Read My External Identities
+   */
+  public static readMyExternalIdentities<ThrowOnError extends boolean = true>(
+    options: Options<
+      employeeRequestsReadMyExternalIdentitiesData,
+      ThrowOnError
+    >,
+  ) {
+    return (options.client ?? client).get<
+      employeeRequestsReadMyExternalIdentitiesResponses,
+      employeeRequestsReadMyExternalIdentitiesErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/me/external-identities",
+      ...options,
+    })
+  }
+
   /**
    * Read Questions
    */
@@ -3066,29 +3087,6 @@ export class ProfileImportService {
       security: [{ scheme: "bearer", type: "http" }],
       url: "/api/v1/profile-import/files/{name}",
       ...options,
-    })
-  }
-
-  /**
-   * Upload Profile Import
-   */
-  public static importUploadProfileImport<ThrowOnError extends boolean = true>(
-    options: Options<profileImportUploadProfileImportData, ThrowOnError>,
-  ) {
-    return (options.client ?? client).post<
-      profileImportUploadProfileImportResponses,
-      profileImportUploadProfileImportErrors,
-      ThrowOnError
-    >({
-      ...formDataBodySerializer,
-      responseType: "json",
-      security: [{ scheme: "bearer", type: "http" }],
-      url: "/api/v1/orgs/{org_id}/me/profile-import",
-      ...options,
-      headers: {
-        "Content-Type": null,
-        ...options.headers,
-      },
     })
   }
 }

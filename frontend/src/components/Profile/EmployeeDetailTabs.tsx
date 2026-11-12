@@ -90,28 +90,19 @@ export function EmployeeDetailTabs({
       : []),
   ]
   const selected = tabs.some(([value]) => value === tab) ? tab : "profile"
-  const fields = [
-    ...(org?.employee_fields ?? []).map((field) => [
-      field === "hire_date" ? "入职年限" : employeeFieldLabels[field],
-      field === "hire_date" && summary.hire_date
-        ? tenureLabel(summary.hire_date)
-        : summary[field],
-    ]),
-    ...(employee
-      ? [
-          ["工号", employee.employee_code],
-          ["邮箱", employee.work_email],
-        ]
-      : []),
-    [
-      "部门",
-      options.find((d) => d.id === summary.department?.id)?.name ??
-        summary.department?.name,
-    ],
-    ["职位", summary.title],
-    ["在职状态", employmentLabels[summary.employment_status]],
-    ["直属上级", summary.manager?.display_name],
-  ]
+  if (!isAdmin)
+    return (
+      <div className="space-y-6">
+        <header className="border-b pb-6">
+          <h1 className="text-3xl font-semibold">{summary.display_name}</h1>
+          <p className="mt-2 text-muted-foreground">
+            {summary.title ?? "未填写职位"} ·{" "}
+            {summary.department?.name ?? "未分配部门"}
+          </p>
+        </header>
+        {children}
+      </div>
+    )
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-6">
@@ -172,18 +163,14 @@ export function EmployeeDetailTabs({
           {children}
         </TabsContent>
         <TabsContent value="fields" className="space-y-6">
-          <section aria-label="员工信息" className="rounded-xl border p-5">
-            <dl className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {fields.map(([name, value]) => (
-                <div key={name}>
-                  <dt className="text-xs text-muted-foreground">{name}</dt>
-                  <dd className="mt-1 break-words text-sm font-medium">
-                    {value || "未填写"}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </section>
+          <EmployeeFields
+            summary={summary}
+            employeeCode={employee?.employee_code}
+            workEmail={employee?.work_email}
+            departmentName={
+              options.find((d) => d.id === summary.department?.id)?.name
+            }
+          />
           {isAdmin && <ChangeHistory employeeId={employeeId} />}
         </TabsContent>
         {isAdmin && (
@@ -300,5 +287,52 @@ export function EmployeeDetailTabs({
         )}
       </Tabs>
     </div>
+  )
+}
+
+export function EmployeeFields({
+  summary,
+  employeeCode,
+  workEmail,
+  departmentName,
+}: {
+  summary: EmployeeSummary
+  employeeCode?: string | null
+  workEmail?: string | null
+  departmentName?: string
+}) {
+  const { org } = useOrg()
+  const fields = [
+    ...(org?.employee_fields ?? []).map((field) => [
+      field === "hire_date" ? "入职年限" : employeeFieldLabels[field],
+      field === "hire_date" && summary.hire_date
+        ? tenureLabel(summary.hire_date)
+        : summary[field],
+    ]),
+    ...(employeeCode !== undefined || workEmail !== undefined
+      ? [
+          ["工号", employeeCode],
+          ["邮箱", workEmail],
+        ]
+      : []),
+    ["部门", departmentName ?? summary.department?.name],
+    ["职位", summary.title],
+    ["在职状态", employmentLabels[summary.employment_status]],
+    ["直属上级", summary.manager?.display_name],
+  ]
+
+  return (
+    <section aria-label="员工信息" className="rounded-xl border p-5">
+      <dl className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {fields.map(([name, value]) => (
+          <div key={name}>
+            <dt className="text-xs text-muted-foreground">{name}</dt>
+            <dd className="mt-1 break-words text-sm font-medium">
+              {value || "未填写"}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   )
 }

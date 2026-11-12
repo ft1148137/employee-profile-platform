@@ -208,22 +208,34 @@ test("M4: employee update, manager publication, history and self-review denial",
   await page.setViewportSize({ width: 390, height: 844 })
   const card = page.locator(`[id="request-${draft.id}"]`)
   await expect(card).toContainText("合成能力：批准")
-  await card.getByText("请求时间线", { exact: true }).click()
-  await expect(card.getByRole("list", { name: "请求时间线" })).toContainText(
-    "发布画像 · r2",
+  await expect(card.getByText("请求时间线", { exact: true })).toHaveCount(0)
+  await expect(page.getByRole("tab", { name: "版本历史" })).toHaveCount(0)
+  const timeline = await request.get(
+    `${base}/employees/${owner.id}/change-requests/${draft.id}/timeline`,
+    { headers: ownerHeaders },
+  )
+  expect(timeline.ok()).toBeTruthy()
+  expect(await timeline.json()).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ action: "published", version: 2 }),
+    ]),
+  )
+  const versions = await request.get(
+    `${base}/employees/${owner.id}/profile-versions`,
+    { headers: ownerHeaders },
+  )
+  expect(versions.ok()).toBeTruthy()
+  expect((await versions.json()).data).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ revision: 1 }),
+      expect.objectContaining({ revision: 2 }),
+    ]),
   )
   await expectChineseCopy(page)
   await page.screenshot({
-    path: info.outputPath("m4-employee-timeline.png"),
+    path: info.outputPath("m4-employee-profile.png"),
     fullPage: true,
   })
-  await page.getByRole("tab", { name: "版本历史" }).click()
-  await expect(
-    page.getByRole("tabpanel", { name: "版本历史", exact: true }),
-  ).toContainText("r2")
-  await expect(
-    page.getByRole("tabpanel", { name: "版本历史", exact: true }),
-  ).toContainText("r1")
   const self = await (
     await request.post(`${base}/me/requests`, {
       headers: managerHeaders,

@@ -342,15 +342,23 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
     const card = page.locator(`[id="request-${draft.id}"]`)
     await expect(card).toContainText("合成能力1：批准")
     await expect(card).toContainText("合成能力2：退回修改")
-    await expect(card).toContainText("原因：依据与陈述不符")
-    await card.getByText("请求时间线", { exact: true }).click()
-    await expect(card.getByRole("list", { name: "请求时间线" })).toContainText(
-      "发布画像 · r1",
+    await expect(card.getByText("原因：依据与陈述不符")).toHaveCount(0)
+    await expect(card.getByText("请求时间线", { exact: true })).toHaveCount(0)
+    const timeline = await request.get(
+      `${base}/employees/${subject.id}/change-requests/${draft.id}/timeline`,
+      { headers: ownerHeaders },
     )
-    await expect(card).toContainText(
-      `审批决定 · ${reviewer === "manager" ? "合成经理" : "合成管理员"}`,
+    expect(timeline.ok()).toBeTruthy()
+    expect(await timeline.json()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ action: "published", version: 1 }),
+        expect.objectContaining({
+          action: "decided",
+          reviewer: reviewer === "manager" ? "合成经理" : "合成管理员",
+        }),
+        expect.objectContaining({ action: "returned" }),
+      ]),
     )
-    await card.getByRole("link", { name: "查看退回草稿" }).click()
     await expectChineseCopy(page)
     expect(
       await page.evaluate(
@@ -361,12 +369,15 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       path: info.outputPath("review-results-mobile.png"),
       fullPage: true,
     })
-    await page.getByRole("tab", { name: "版本历史" }).click()
-    await expect(
-      page.getByRole("tabpanel", { name: "版本历史", exact: true }),
-    ).toContainText("r1")
-    await page.getByRole("button", { name: "来源请求" }).click()
-    await expect(card).toBeVisible()
+    await expect(page.getByRole("tab", { name: "版本历史" })).toHaveCount(0)
+    const versions = await request.get(
+      `${base}/employees/${subject.id}/profile-versions`,
+      { headers: ownerHeaders },
+    )
+    expect(versions.ok()).toBeTruthy()
+    expect((await versions.json()).data).toEqual(
+      expect.arrayContaining([expect.objectContaining({ revision: 1 })]),
+    )
     await page.getByRole("button", { name: "继续修改" }).click()
     const editor = page.getByRole("dialog")
     await editor
