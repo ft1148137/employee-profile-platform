@@ -509,6 +509,7 @@ def test_redraft_only_queues_pending_owner_and_matches_published_key(
                 capability_id=current.id,
                 after=ClaimAfter(
                     statement="重新起草合成判断",
+                    level=current.level_rubric["levels"][0]["key"],
                     assessment_status=AssessmentStatus.TENTATIVE,
                 ),
                 evidence={},

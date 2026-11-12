@@ -167,6 +167,9 @@ def write_initial_request(
 ) -> bool:
     if employee.org_id != org_id:
         raise InvalidDraft("员工不属于当前企业")
+    items = [item for item in items if item.after.level is not None]
+    if not items:
+        return False
     session.exec(
         select(Organization).where(Organization.id == org_id).with_for_update()
     ).one()
@@ -386,7 +389,7 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                 store_proposals(session, org_id, employee_id, result.proposals)
                 progress_row(session, org_id, employee_id, InferenceStatus.GENERATED)
                 session.commit()
-                counts["generated" if written else "handed_over"] += 1
+                counts["generated" if written or not items else "handed_over"] += 1
             except ModelRateLimited as error:
                 session.rollback()
                 pause_drafting(org_id, ids[index:], error)

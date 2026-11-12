@@ -205,9 +205,7 @@ def test_queue_progress_retry(
     assert "Synthetic sensitive exception" not in str(result)
     db.expire_all()
     requests = rows(db, ProfileChangeRequest, org)
-    assert len(requests) == 3 and not rows(db, ChangeItem, org)
-    assert all(r.subject_employee_id != failed_employee for r in requests)
-    assert all(r.generated_by["mode"] == "model" for r in requests)
+    assert not requests and not rows(db, ChangeItem, org)
     monkeypatch.setattr(service, "write_initial_request", original)
     assert client.post(
         url + "/draft", headers=auth, json={"scope": "failed"}
@@ -216,10 +214,13 @@ def test_queue_progress_retry(
     result = client.get(url + "/progress", headers=auth).json()
     assert (
         result["counts"]["generated"] == 4
-        and result["requests"]["pending_owner"] == 4
+        and result["requests"]["pending_owner"] == 1
         and not result["failed"]
     )
     items = rows(db, ChangeItem, org)
+    requests = rows(db, ProfileChangeRequest, org)
+    assert len(requests) == 1 and requests[0].subject_employee_id == failed_employee
+    assert requests[0].generated_by["mode"] == "model"
     assert len(items) == 1 and items[0].after is not None
     assert items[0].after["evidence_count"] == 1
     assert items[0].after["statement"] == "合成能力建议"
@@ -238,7 +239,7 @@ def test_queue_progress_retry(
     db.commit()
     draft_initial(org_id=str(org))
     result = client.get(url + "/progress", headers=auth).json()
-    assert result["requests"] == {"pending_owner": 3, "handed_over": 1}
+    assert result["requests"] == {"pending_owner": 0, "handed_over": 1}
     audit = db.exec(
         select(AuditEvent)
         .where(

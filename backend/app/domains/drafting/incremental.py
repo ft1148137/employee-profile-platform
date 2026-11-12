@@ -263,6 +263,8 @@ def draft_employee(session: Session, org_id: UUID, employee_id: UUID) -> None:
     )
     automatic, review = [], []
     for item in items:
+        if item.op in {ChangeOp.ADD, ChangeOp.MODIFY} and item.after.level is None:
+            continue
         target = current_by_id.get(item.capability_id)
         if item.op == ChangeOp.ATTACH_EVIDENCE and target:
             item.evidence = {

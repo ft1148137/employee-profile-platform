@@ -89,13 +89,15 @@ def pi_service(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[PiH
                         {
                             "capability_key": body["capabilities"][0]["key"],
                             "statement": "合成能力建议",
-                            "level": None,
+                            "level": body["capabilities"][0]["levels"][0]["key"],
                             "evidence": [r["ref"] for r in body["records"]],
                             "explanation": "合成工作记录",
                             "uncertainty": "需要本人确认",
                         }
                     ]
-                    if body["records"] and body["capabilities"]
+                    if body["records"]
+                    and body["capabilities"]
+                    and body["capabilities"][0]["levels"]
                     else []
                 }
             elif request.get("tools") and not tool_result:
