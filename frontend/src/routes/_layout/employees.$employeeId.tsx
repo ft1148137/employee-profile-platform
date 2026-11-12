@@ -1,8 +1,12 @@
 import { useQuery } from "@tanstack/react-query"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { isAxiosError } from "axios"
 import { useEffect, useState } from "react"
-import { ChangeRequestsService, ProfilesService } from "@/client"
+import {
+  ChangeRequestsService,
+  type ProfileItem,
+  ProfilesService,
+} from "@/client"
 import { tabSearch } from "@/components/Admin/AdminTabs"
 import { AutoDraftSetting } from "@/components/Profile/AutoDraftSetting"
 import { CapabilityList } from "@/components/Profile/CapabilityList"
@@ -11,13 +15,21 @@ import {
   ChangeRequestEditor,
   type EditorSelection,
 } from "@/components/Profile/ChangeRequestEditor"
+import { DirectEditDialog } from "@/components/Profile/DirectEditDialog"
 import { EmployeeDetailTabs } from "@/components/Profile/EmployeeDetailTabs"
 import { EvidenceList } from "@/components/Profile/EvidenceList"
 import { EvidenceSheet } from "@/components/Profile/EvidenceSheet"
+import { levelLabel } from "@/components/Profile/fields"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { VersionHistory } from "@/components/Profile/VersionHistory"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useOrg } from "@/hooks/useOrg"
 
@@ -34,7 +46,12 @@ function EmployeePage() {
 }
 
 function EmployeeDetails() {
-  const { org, roles, employeeId: ownEmployeeId } = useOrg()
+  const {
+    org,
+    roles,
+    employeeId: ownEmployeeId,
+    managedDepartmentIds,
+  } = useOrg()
   const isAdmin = roles.includes("org_admin")
   const { employeeId } = Route.useParams()
   const { tab: detailTab } = Route.useSearch()
@@ -43,6 +60,8 @@ function EmployeeDetails() {
   const [requestId, setRequestId] = useState<string | null>(null)
   const [evidenceId, setEvidenceId] = useState<string | null>(null)
   const [editing, setEditing] = useState<EditorSelection | null>(null)
+  const [choosing, setChoosing] = useState<ProfileItem | null>(null)
+  const [directEditing, setDirectEditing] = useState<ProfileItem | null>(null)
   const requests = useQuery({
     queryKey: ["change-requests", org?.id, employeeId],
     queryFn: async () =>
@@ -86,6 +105,11 @@ function EmployeeDetails() {
       </div>
     )
   }
+  const canDirectEdit =
+    ownEmployeeId !== employeeId &&
+    query.data.employee.employment_status === "active" &&
+    (isAdmin ||
+      managedDepartmentIds.includes(query.data.employee.department?.id ?? ""))
   return (
     <div className="space-y-8">
       <EmployeeDetailTabs
@@ -159,10 +183,16 @@ function EmployeeDetails() {
               }
               canConfigureDepartment={roles.includes("org_admin")}
               onEvidence={setEvidenceId}
+              directEdit={canDirectEdit}
               onEdit={
                 ownEmployeeId === employeeId
-                  ? (item, retract) => setEditing({ item, retract })
-                  : undefined
+                  ? (item, retract) =>
+                      retract
+                        ? setEditing({ item, retract })
+                        : setChoosing(item)
+                  : canDirectEdit
+                    ? setDirectEditing
+                    : undefined
               }
               pendingCapabilityIds={
                 new Set(
@@ -216,6 +246,43 @@ function EmployeeDetails() {
           selection={editing}
           profileItems={query.data.items}
           onClose={() => setEditing(null)}
+        />
+      )}
+      {choosing && (
+        <Dialog open onOpenChange={(open) => !open && setChoosing(null)}>
+          <DialogContent>
+            <DialogTitle>编辑「{choosing.capability.name}」</DialogTitle>
+            <DialogDescription>
+              选择手动编辑，或在助手中描述你想做的修改。
+            </DialogDescription>
+            <Button
+              onClick={() => {
+                setEditing({ item: choosing })
+                setChoosing(null)
+              }}
+            >
+              手动编辑
+            </Button>
+            <Button variant="outline" asChild>
+              <Link
+                to="/assistant"
+                search={{
+                  prompt: `我想修改「${choosing.capability.name}」这项能力，现在的等级是${choosing.claim?.level ? levelLabel(choosing.capability.level_rubric, choosing.claim.level) : "未填写"}：`,
+                }}
+              >
+                让助手改
+              </Link>
+            </Button>
+          </DialogContent>
+        </Dialog>
+      )}
+      {directEditing && canDirectEdit && (
+        <DirectEditDialog
+          orgId={org.id}
+          employeeId={employeeId}
+          item={directEditing}
+          revision={query.data.latest_published?.revision ?? null}
+          onClose={() => setDirectEditing(null)}
         />
       )}
     </div>

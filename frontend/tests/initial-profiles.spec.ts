@@ -308,6 +308,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
         .getByRole("dialog")
         .getByRole("button", { name: newCapability.name, exact: true })
         .click()
+      await page.getByRole("button", { name: "手动编辑", exact: true }).click()
     }
     let editor = page.getByRole("dialog")
     if (initial)

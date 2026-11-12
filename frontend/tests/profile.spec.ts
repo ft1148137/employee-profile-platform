@@ -44,7 +44,7 @@ test("administrator reads capability, Jira evidence and earlier published snapsh
   await expect(
     api.getByText("能独立完成复杂任务", { exact: true }),
   ).toBeVisible()
-  await api.getByRole("button").first().hover()
+  await api.locator('[data-slot="tooltip-trigger"]').hover()
   await expect(page.getByRole("tooltip")).toContainText("不是经过校准的概率")
   await page.keyboard.press("Escape")
   await expect(page.getByRole("tooltip")).toHaveCount(0)
@@ -206,7 +206,7 @@ for (const [email, title] of [
     await expect(draft.getByRole("region")).toHaveCount(2)
     if (email !== "employee.platform@demo.example.com") {
       await expect(
-        page.getByRole("button", {
+        draft.getByRole("button", {
           name: /^(修改|填写|提异议|直接提交|添加能力|撤回这条判断)$/,
         }),
       ).toHaveCount(0)
@@ -329,6 +329,7 @@ test("department capabilities filter counts, retain other claims and add through
   await dialog
     .getByRole("button", { name: hidden.capability.name, exact: true })
     .click()
+  await page.getByRole("button", { name: "手动编辑", exact: true }).click()
   dialog = page.getByRole("dialog", { name: "更新我的画像" })
   await expect(
     dialog.getByRole("textbox", { name: "陈述", exact: true }),
@@ -369,7 +370,7 @@ test("department capabilities filter counts, retain other claims and add through
   }
 })
 
-test("administrator gets the department setup link but cannot add for another employee", async ({
+test("administrator gets the department setup link and can add for another employee", async ({
   page,
 }) => {
   await openE02(page, "admin@demo.example.com")
@@ -379,7 +380,7 @@ test("administrator gets the department setup link but cannot add for another em
   ).toHaveAttribute("href", "/org-chart")
   await expect(
     page.getByRole("button", { name: "添加能力", exact: true }),
-  ).toHaveCount(0)
+  ).toBeVisible()
 })
 
 test("empty initial draft cannot submit and pending requests can be withdrawn", async ({

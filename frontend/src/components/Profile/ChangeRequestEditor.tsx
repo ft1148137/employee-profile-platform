@@ -110,6 +110,7 @@ export function ChangeRequestEditor({
   const refresh = () => {
     client.invalidateQueries({ queryKey: ["change-requests", orgId] })
     client.invalidateQueries({ queryKey: ["profile", orgId] })
+    client.invalidateQueries({ queryKey: ["profile-versions", orgId] })
     client.invalidateQueries({ queryKey: ["inbox", orgId] })
   }
   const save = useMutation({

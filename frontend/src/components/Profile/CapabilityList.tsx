@@ -22,7 +22,9 @@ export function CapabilityList({
   departmentConfigured,
   canConfigureDepartment,
   compact = false,
+  directEdit = false,
 }: {
+  directEdit?: boolean
   compact?: boolean
   items: ProfileItem[]
   onEvidence: (id: string) => void
@@ -92,6 +94,7 @@ export function CapabilityList({
                 key={item.capability.id}
                 item={item}
                 compact={compact}
+                directEdit={directEdit}
                 onEvidence={onEvidence}
                 pending={pendingCapabilityIds?.has(item.capability.id)}
                 onEdit={!item.retired ? onEdit : undefined}
@@ -140,7 +143,9 @@ function ClaimCard({
   onEdit,
   otherDepartment,
   compact = false,
+  directEdit = false,
 }: {
+  directEdit?: boolean
   item: ProfileItem
   compact?: boolean
   onEvidence: (id: string) => void
@@ -163,7 +168,19 @@ function ClaimCard({
     >
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h3 className="font-semibold">{capability.name}</h3>
+          <h3 className="font-semibold">
+            {onEdit ? (
+              <button
+                type="button"
+                className="text-left underline-offset-4 hover:underline focus-visible:outline-ring"
+                onClick={() => onEdit({ capability, status, claim })}
+              >
+                {capability.name}
+              </button>
+            ) : (
+              capability.name
+            )}
+          </h3>
           {pending && (
             <p className="mt-1 text-xs text-muted-foreground">有待处理的改动</p>
           )}
@@ -247,9 +264,9 @@ function ClaimCard({
             variant="outline"
             onClick={() => onEdit({ capability, status, claim })}
           >
-            {claim ? "修改" : "填写"}
+            {directEdit ? "直接修改" : claim ? "修改" : "填写"}
           </Button>
-          {claim && (
+          {claim && !directEdit && (
             <Button
               variant="ghost"
               onClick={() => onEdit({ capability, status, claim }, true)}
