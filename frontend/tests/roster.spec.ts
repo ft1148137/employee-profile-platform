@@ -69,7 +69,7 @@ test("opt-in work attributes import and personnel tenure", async ({
   })
   expect(accounts.ok()).toBeTruthy()
   const people = (await accounts.json()).data
-  await page.goto(`/admin/people/${people[0].id}`)
+  await page.goto(`/admin/people/${people[0].id}?tab=fields`)
   const info = page.getByRole("region", { name: "员工信息" })
   await expect(info.getByText("技术", { exact: true })).toBeVisible()
   await expect(info.getByText("上海", { exact: true })).toBeVisible()
@@ -83,6 +83,6 @@ test("opt-in work attributes import and personnel tenure", async ({
     path: "../docs/screenshots/m4.2/employee-fields.png",
     fullPage: true,
   })
-  await page.goto(`/admin/people/${people[1].id}`)
+  await page.goto(`/admin/people/${people[1].id}?tab=fields`)
   await expect(page.getByText("不满 1 年", { exact: true })).toBeVisible()
 })

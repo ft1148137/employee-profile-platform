@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { isAxiosError } from "axios"
 import { useEffect, useState } from "react"
 import { ChangeRequestsService, ProfilesService } from "@/client"
+import { tabSearch } from "@/components/Admin/AdminTabs"
 import { AutoDraftSetting } from "@/components/Profile/AutoDraftSetting"
 import { CapabilityList } from "@/components/Profile/CapabilityList"
 import { ChangeRequestCard } from "@/components/Profile/ChangeRequestCard"
@@ -10,7 +11,7 @@ import {
   ChangeRequestEditor,
   type EditorSelection,
 } from "@/components/Profile/ChangeRequestEditor"
-import { EmployeeSummaryContent } from "@/components/Profile/EmployeeSummary"
+import { EmployeeDetailTabs } from "@/components/Profile/EmployeeDetailTabs"
 import { EvidenceList } from "@/components/Profile/EvidenceList"
 import { EvidenceSheet } from "@/components/Profile/EvidenceSheet"
 import { OrgState } from "@/components/Profile/OrgState"
@@ -23,7 +24,8 @@ import { useOrg } from "@/hooks/useOrg"
 
 export const Route = createFileRoute("/_layout/employees/$employeeId")({
   component: EmployeePage,
-  head: () => ({ meta: [{ title: "员工画像 - 员工画像平台" }] }),
+  validateSearch: tabSearch,
+  head: () => ({ meta: [{ title: "员工详情 - 员工画像平台" }] }),
 })
 
 function EmployeePage() {
@@ -35,6 +37,8 @@ function EmployeePage() {
 function EmployeeDetails() {
   const { org, employeeId: ownEmployeeId } = useOrg()
   const { employeeId } = Route.useParams()
+  const { tab: detailTab } = Route.useSearch()
+  const navigate = Route.useNavigate()
   const [tab, setTab] = useState("capabilities")
   const [requestId, setRequestId] = useState<string | null>(null)
   const [evidenceId, setEvidenceId] = useState<string | null>(null)
@@ -84,108 +88,113 @@ function EmployeeDetails() {
   }
   return (
     <div className="space-y-8">
-      <EmployeeSummaryContent employee={query.data.employee} />
-      {ownEmployeeId === employeeId && <AutoDraftSetting orgId={org.id} />}
-      {ownEmployeeId === employeeId && <ProfileImport orgId={org.id} />}
-      <Tabs value={tab} onValueChange={setTab} className="gap-6">
-        <TabsList aria-label="画像详情">
-          <TabsTrigger value="capabilities">能力画像</TabsTrigger>
-          <TabsTrigger value="evidence">证据</TabsTrigger>
-          <TabsTrigger value="versions">版本历史</TabsTrigger>
-        </TabsList>
-        <TabsContent value="capabilities">
-          {requests.isPending ? (
-            <ProfileLoading />
-          ) : requests.isError ? (
-            <ProfileError retry={() => requests.refetch()} />
-          ) : (
-            <ChangeRequestCard
-              requests={requests.data.data}
-              employeeId={employeeId}
-              isOwner={ownEmployeeId === employeeId}
-              onEvidence={setEvidenceId}
-              orgId={org.id}
-              onEdit={setEditing}
-            />
-          )}
-          {!query.data.latest_published &&
-            !query.data.items.some((item) => item.claim) && (
-              <section
-                aria-label="画像说明"
-                className="mb-6 rounded-xl border bg-muted/20 p-6 space-y-3"
-              >
-                <h2 className="font-semibold">
-                  {ownEmployeeId === employeeId
-                    ? "你的画像还没有内容"
-                    : "该员工的画像还没有内容"}
-                </h2>
-                <p>
-                  {ownEmployeeId === employeeId
-                    ? "企业接入工作记录后，系统会先起草一份画像给你本人过目，你确认或修改后才会提交审核。"
-                    : "企业接入工作记录后，系统会先起草一份画像给该员工本人过目，由本人确认或修改后才会提交审核。"}
-                </p>
-                <p>
-                  画像只用来帮助跨部门找到合适的人，不用于绩效、薪酬和晋升。
-                </p>
-              </section>
+      <EmployeeDetailTabs
+        employee={query.data.employee}
+        tab={detailTab}
+        onTabChange={(tab) => navigate({ search: { tab } })}
+      >
+        {ownEmployeeId === employeeId && <AutoDraftSetting orgId={org.id} />}
+        {ownEmployeeId === employeeId && <ProfileImport orgId={org.id} />}
+        <Tabs value={tab} onValueChange={setTab} className="gap-6">
+          <TabsList aria-label="画像详情">
+            <TabsTrigger value="capabilities">能力画像</TabsTrigger>
+            <TabsTrigger value="evidence">证据</TabsTrigger>
+            <TabsTrigger value="versions">版本历史</TabsTrigger>
+          </TabsList>
+          <TabsContent value="capabilities">
+            {requests.isPending ? (
+              <ProfileLoading />
+            ) : requests.isError ? (
+              <ProfileError retry={() => requests.refetch()} />
+            ) : (
+              <ChangeRequestCard
+                requests={requests.data.data}
+                employeeId={employeeId}
+                isOwner={ownEmployeeId === employeeId}
+                onEvidence={setEvidenceId}
+                orgId={org.id}
+                onEdit={setEditing}
+              />
             )}
-          {!query.data.schema_version && (
-            <p role="status" className="mb-6 text-muted-foreground">
-              企业管理员还没有选择能力词典
-            </p>
-          )}
-          <CapabilityList
-            items={query.data.items}
-            onEvidence={setEvidenceId}
-            onEdit={
-              ownEmployeeId === employeeId
-                ? (item, retract) => setEditing({ item, retract })
-                : undefined
-            }
-            pendingCapabilityIds={
-              new Set(
-                requests.data?.data
-                  .filter((request) =>
-                    ["draft", "pending_owner", "pending_review"].includes(
-                      request.status,
-                    ),
-                  )
-                  .flatMap((request) =>
-                    (request.items ?? []).map((item) => item.capability.id),
-                  ),
-              )
-            }
-          />
-          {ownEmployeeId === employeeId && query.data.schema_version && (
-            <div className="mt-6 space-y-3">
-              <Button variant="outline" onClick={() => setEditing({})}>
-                新增能力
-              </Button>
-              <p className="text-sm text-muted-foreground">
-                画像不用于绩效、薪酬和晋升。
+            {!query.data.latest_published &&
+              !query.data.items.some((item) => item.claim) && (
+                <section
+                  aria-label="画像说明"
+                  className="mb-6 rounded-xl border bg-muted/20 p-6 space-y-3"
+                >
+                  <h2 className="font-semibold">
+                    {ownEmployeeId === employeeId
+                      ? "你的画像还没有内容"
+                      : "该员工的画像还没有内容"}
+                  </h2>
+                  <p>
+                    {ownEmployeeId === employeeId
+                      ? "企业接入工作记录后，系统会先起草一份画像给你本人过目，你确认或修改后才会提交审核。"
+                      : "企业接入工作记录后，系统会先起草一份画像给该员工本人过目，由本人确认或修改后才会提交审核。"}
+                  </p>
+                  <p>
+                    画像只用来帮助跨部门找到合适的人，不用于绩效、薪酬和晋升。
+                  </p>
+                </section>
+              )}
+            {!query.data.schema_version && (
+              <p role="status" className="mb-6 text-muted-foreground">
+                企业管理员还没有选择能力词典
               </p>
-            </div>
-          )}
-        </TabsContent>
-        <TabsContent value="evidence">
-          <EvidenceList
-            orgId={org.id}
-            employeeId={employeeId}
-            onSelect={setEvidenceId}
-          />
-        </TabsContent>
-        <TabsContent value="versions">
-          <VersionHistory
-            orgId={org.id}
-            employeeId={employeeId}
-            onEvidence={setEvidenceId}
-            onRequest={(id) => {
-              setRequestId(id)
-              setTab("capabilities")
-            }}
-          />
-        </TabsContent>
-      </Tabs>
+            )}
+            <CapabilityList
+              items={query.data.items}
+              onEvidence={setEvidenceId}
+              onEdit={
+                ownEmployeeId === employeeId
+                  ? (item, retract) => setEditing({ item, retract })
+                  : undefined
+              }
+              pendingCapabilityIds={
+                new Set(
+                  requests.data?.data
+                    .filter((request) =>
+                      ["draft", "pending_owner", "pending_review"].includes(
+                        request.status,
+                      ),
+                    )
+                    .flatMap((request) =>
+                      (request.items ?? []).map((item) => item.capability.id),
+                    ),
+                )
+              }
+            />
+            {ownEmployeeId === employeeId && query.data.schema_version && (
+              <div className="mt-6 space-y-3">
+                <Button variant="outline" onClick={() => setEditing({})}>
+                  新增能力
+                </Button>
+                <p className="text-sm text-muted-foreground">
+                  画像不用于绩效、薪酬和晋升。
+                </p>
+              </div>
+            )}
+          </TabsContent>
+          <TabsContent value="evidence">
+            <EvidenceList
+              orgId={org.id}
+              employeeId={employeeId}
+              onSelect={setEvidenceId}
+            />
+          </TabsContent>
+          <TabsContent value="versions">
+            <VersionHistory
+              orgId={org.id}
+              employeeId={employeeId}
+              onEvidence={setEvidenceId}
+              onRequest={(id) => {
+                setRequestId(id)
+                setTab("capabilities")
+              }}
+            />
+          </TabsContent>
+        </Tabs>
+      </EmployeeDetailTabs>
       <EvidenceSheet
         orgId={org.id}
         evidenceId={evidenceId}
