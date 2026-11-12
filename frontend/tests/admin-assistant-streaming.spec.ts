@@ -140,7 +140,13 @@ test("admin streams, folds tool progress, stops, sends again and hides pasted se
     window.reply.emit({ type: "text", text: "第三段" })
     window.reply.emit({
       type: "final",
-      response: { messages: [{ type: "text", text: "第一段第二段第三段" }] },
+      response: {
+        messages: [{ type: "text", text: "第一段第二段第三段" }],
+        steps: [
+          { name: "查看员工及账号状态", ok: true },
+          { name: "查看请求进度", ok: true },
+        ],
+      },
     })
     window.reply.finish()
   })
@@ -276,4 +282,146 @@ test("new chat suggestions disappear in history; historical timestamps and missi
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     "没有时间的回复",
   )
+})
+
+test("first-turn steps persist through navigation, reload and history; wide tables scroll", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  const session = crypto.randomUUID()
+  const steps = [
+    { name: "查看员工及账号状态", ok: true },
+    { name: "查看同步与起草进度", ok: false },
+  ]
+  const response = {
+    messages: [
+      { type: "text", text: "合成步骤回复" },
+      {
+        type: "table",
+        title: "合成同步记录",
+        page: "/admin/data-ai",
+        columns: [
+          "id",
+          "kind",
+          "status",
+          "trigger",
+          "attempts",
+          "counts",
+          "error",
+          "created_at",
+          "started_at",
+          "finished_at",
+        ],
+        rows: [
+          Array.from({ length: 10 }, () => "合成中文同步记录内容".repeat(5)),
+        ],
+        total: 1,
+      },
+    ],
+    steps,
+  }
+  let completed = false
+  await page.route("**/admin-assistant/availability?*", (route) =>
+    route.fulfill({ json: { available: true, reason: "" } }),
+  )
+  await page.route("**/admin-assistant/sessions?*", async (route) => {
+    if (route.request().method() === "POST")
+      return route.fulfill({ json: { session_id: session } })
+    return route.fulfill({
+      json: {
+        data: [
+          {
+            id: session,
+            preview: "合成步骤会话",
+            turn_count: 1,
+            started_at: new Date().toISOString(),
+            last_activity_at: new Date().toISOString(),
+          },
+        ],
+        retention_days: 7,
+      },
+    })
+  })
+  await page.route("**/admin-assistant/sessions/*/messages?*", (route) =>
+    route.fulfill({
+      json: completed
+        ? [
+            {
+              role: "assistant",
+              payload: response,
+              created_at: new Date().toISOString(),
+            },
+          ]
+        : [],
+    }),
+  )
+  await page.route("**/admin-assistant/sessions/*/turns?*", (route) => {
+    completed = true
+    return route.fulfill({
+      contentType: "application/x-ndjson",
+      body: `${[
+        ...steps.flatMap((step) => [
+          { type: "tool", ...step, phase: "start" },
+          { type: "tool", ...step, phase: "end" },
+        ]),
+        { type: "final", response },
+      ]
+        .map((event) => JSON.stringify(event))
+        .join("\n")}\n`,
+    })
+  })
+  await logInUser(
+    page,
+    "admin@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  await page.goto("/admin/assistant")
+  await page.getByLabel("发给管理助手的消息").fill("合成同步问题")
+  await page.getByLabel("发给管理助手的消息").press("Enter")
+  await expect(page).toHaveURL(new RegExp(`session=${session}`))
+  const panel = page.getByRole("region", { name: "管理助手", exact: true })
+  await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
+  await panel.getByText("2 步", { exact: true }).click()
+  await expect(
+    panel.getByText("查看员工及账号状态：成功", { exact: true }),
+  ).toBeVisible()
+  await expect(
+    panel.getByText("查看同步与起草进度：失败", { exact: true }),
+  ).toBeVisible()
+  await page.reload()
+  await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "新对话", exact: true }).click()
+  await page.getByRole("link", { name: "合成步骤会话", exact: true }).click()
+  await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
+  await panel.getByText("2 步", { exact: true }).click()
+  await expect(
+    panel.getByText("查看同步与起草进度：失败", { exact: true }),
+  ).toBeVisible()
+  const table = panel.getByRole("table")
+  for (const header of await table.getByRole("columnheader").all()) {
+    expect(
+      await header.evaluate((element) => {
+        const style = getComputedStyle(element)
+        return (
+          (element.clientHeight -
+            parseFloat(style.paddingTop) -
+            parseFloat(style.paddingBottom)) /
+          parseFloat(style.lineHeight)
+        )
+      }),
+    ).toBeLessThanOrEqual(1.5)
+  }
+  expect(
+    await table.evaluate((element) => {
+      const wrapper = element.parentElement!
+      return wrapper.scrollWidth > wrapper.clientWidth
+    }),
+  ).toBe(true)
+  const cell = table.getByRole("cell").first()
+  expect(
+    await cell.evaluate((element) => element.clientWidth),
+  ).toBeGreaterThanOrEqual(96)
+  expect(
+    await cell.evaluate((element) => element.clientWidth),
+  ).toBeLessThanOrEqual(272)
 })

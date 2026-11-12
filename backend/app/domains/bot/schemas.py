@@ -197,8 +197,14 @@ Message = Annotated[
 ]
 
 
+class ToolStep(BaseModel):
+    name: str
+    ok: bool
+
+
 class TurnResponse(BaseModel):
     messages: list[Message]
+    steps: list[ToolStep] = Field(default_factory=list)
 
 
 class TurnInput(ToolInput):

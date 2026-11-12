@@ -1038,6 +1038,7 @@ export type {
   TokenCreated,
   TokenPublic,
   ToolEvent,
+  ToolStep,
   Transfer,
   TurnInput,
   TurnResponse,

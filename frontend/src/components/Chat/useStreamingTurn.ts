@@ -90,7 +90,6 @@ export function useStreamingTurn<Input, Response>(
             throw new Error("对话连接中断，请重试")
           return {
             response: final,
-            tools: progress,
             startedAt,
             created_at: new Date().toISOString(),
           }

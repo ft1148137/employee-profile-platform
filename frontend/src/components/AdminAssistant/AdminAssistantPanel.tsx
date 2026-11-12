@@ -18,10 +18,7 @@ import { TodayPanel } from "@/components/Admin/TodayPanel"
 import { BotMessage } from "@/components/Bot/BotMessage"
 import { ChatComposer } from "@/components/Chat/ChatComposer"
 import { ChatMessages } from "@/components/Chat/ChatMessages"
-import {
-  type ToolProgress,
-  useStreamingTurn,
-} from "@/components/Chat/useStreamingTurn"
+import { useStreamingTurn } from "@/components/Chat/useStreamingTurn"
 import { RosterPreview } from "@/components/Roster/RosterPreview"
 import { SetupError } from "@/components/Setup/SetupError"
 import { SetupStartPanel } from "@/components/Setup/SetupStartPanel"
@@ -265,10 +262,9 @@ export function AdminAssistantPanel({
     },
     onSuccess: ({ id, result, navigationKey: startedAt }, body) => {
       if (!result) return
-      const { response: data, tools } = result
+      const { response: data } = result
       client.setQueryData<
         (Pick<AdminSessionMessage, "role" | "payload"> & {
-          tools?: ToolProgress[]
           created_at?: string
         })[]
       >(["admin-assistant-messages", orgId, id], (previous = []) => [
@@ -288,7 +284,6 @@ export function AdminAssistantPanel({
         {
           role: "assistant",
           payload: data,
-          tools,
           created_at: result.created_at,
         },
       ])
@@ -504,11 +499,14 @@ export function AdminAssistantPanel({
                           )}
                           （共 {message.total} 条，最多显示 20 条）
                         </p>
-                        <table className="w-full text-left text-sm">
+                        <table className="w-max min-w-full text-left text-sm">
                           <thead>
                             <tr>
                               {message.columns.map((column) => (
-                                <th key={column} className="p-2">
+                                <th
+                                  key={column}
+                                  className="whitespace-nowrap p-2"
+                                >
                                   {labels[column] ?? "信息"}
                                 </th>
                               ))}
@@ -520,7 +518,7 @@ export function AdminAssistantPanel({
                                 {row.map((cell, cellIndex) => (
                                   <td
                                     key={cellIndex}
-                                    className="max-w-64 break-words p-2"
+                                    className="min-w-[8em] max-w-64 break-words p-2"
                                   >
                                     {cellText(cell, message.columns[cellIndex])}
                                   </td>

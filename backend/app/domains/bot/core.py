@@ -3,6 +3,7 @@ from dataclasses import replace
 from time import monotonic
 from uuid import UUID
 
+from pydantic import JsonValue
 from sqlmodel import Session
 
 from app.authz.principal import Principal
@@ -30,9 +31,12 @@ logger = logging.getLogger(__name__)
 
 
 def _save(
-    db: Session, session: BotSession, messages: list[s.Message]
+    db: Session,
+    session: BotSession,
+    messages: list[s.Message],
+    steps: list[s.ToolStep] | None = None,
 ) -> s.TurnResponse:
-    response = s.TurnResponse(messages=messages)
+    response = s.TurnResponse(messages=messages, steps=steps or [])
     store.append_message(db, session, "assistant", response.model_dump(mode="json"))
     return response
 
@@ -56,6 +60,27 @@ def turn(
     )
     admitted = False
     started = monotonic()
+    steps: list[s.ToolStep] = []
+    cards: list[s.Message] = []
+
+    def call(name: str, args: dict[str, JsonValue]) -> JsonValue:
+        title = tools.TITLES[name]
+        if stream:
+            stream.check()
+            stream.on_tool(title, "start", True)
+        try:
+            result = tools.call(db, p, session, cards, name, args)
+        except Exception:
+            steps.append(s.ToolStep(name=title, ok=False))
+            if stream:
+                stream.on_tool(title, "end", False)
+            raise
+        ok = not (isinstance(result, dict) and "error" in result)
+        steps.append(s.ToolStep(name=title, ok=ok))
+        if stream:
+            stream.on_tool(title, "end", ok)
+        return result
+
     try:
         with begin_turn(
             db, p, session, user_payload, stream.cancelled if stream else None
@@ -86,7 +111,6 @@ def turn(
                 notice = ""
             if notice and stream:
                 stream.on_text(notice + "\n")
-            cards: list[s.Message] = []
             result = pi_client.run_turn(
                 config,
                 mode="chat",
@@ -95,17 +119,8 @@ def turn(
                 system_prompt=system_prompt(db, p, session.channel),
                 input=tools.redact_text(model_input),
                 tools=tools.definitions(),
-                on_tool_call=lambda name, args: tools.call(
-                    db, p, session, cards, name, args
-                ),
-                stream=replace(
-                    stream,
-                    on_tool=lambda name, phase, ok: stream.on_tool(
-                        tools.TITLES[name], phase, ok
-                    ),
-                )
-                if stream
-                else None,
+                on_tool_call=call,
+                stream=replace(stream, on_tool=lambda *_: None) if stream else None,
             )
             if stream:
                 stream.check()
@@ -121,7 +136,7 @@ def turn(
             messages.extend(cards)
             if stream:
                 stream.check()
-            return _save(db, session, messages)
+            return _save(db, session, messages, steps)
     except pi_client.TurnCancelled:
         return s.TurnResponse(messages=[])
     except BotBusy:
@@ -156,7 +171,7 @@ def turn(
         if stream:
             session.turn_count += 1
             store.append_message(db, session, "user", user_payload)
-        response = _save(db, session, messages)
+        response = _save(db, session, messages, steps)
         if stream and stream.cancelled.is_set():
             db.rollback()
             return s.TurnResponse(messages=[])

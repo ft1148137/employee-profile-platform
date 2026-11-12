@@ -261,3 +261,61 @@ def test_stream_failure_keeps_original_fallback_and_safe_progress(
     history = client.get(url + "/messages", params=query, headers=auth["admin"]).json()
     assert len(history) == 2 and history[0]["payload"]["text"] == "失败"
     assert history[1]["payload"] == result
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+@pytest.mark.parametrize("outcome", ["success", "fallback", "exception"])
+def test_tool_steps_survive_history(
+    db: Session,
+    client: TestClient,
+    demo: tuple,
+    monkeypatch: pytest.MonkeyPatch,
+    streaming: bool,
+    outcome: str,
+) -> None:
+    url, query, auth = setup(db, client, demo)
+    original = tools.call
+
+    def call(*args: Any, **kwargs: Any) -> Any:
+        if outcome == "exception" and args[-1].get("function") == "missing":
+            raise ModelUnavailable()
+        return original(*args, **kwargs)
+
+    def run(*_args: Any, **kwargs: Any) -> pi_client.TurnResult:
+        kwargs["on_tool_call"]("admin_read", {"function": "list_roles", "args": {}})
+        kwargs["on_tool_call"](
+            "admin_read",
+            {"function": "missing", "args": {"secret": "private-argument"}},
+        )
+        if outcome == "fallback":
+            raise ModelUnavailable()
+        return pi_client.TurnResult(
+            text="完成", stop_reason="stop", model_calls=1, tool_calls=2
+        )
+
+    monkeypatch.setattr(tools, "call", call)
+    monkeypatch.setattr(pi_client, "run_turn", run)
+    body = AdminTurnInput(text="步骤", page="/admin")
+    if streaming:
+        response = client.post(
+            url + "/turns", params=query, headers=auth["admin"], json=body.model_dump()
+        )
+        result = final_response(response)
+        ends = [
+            {"name": event["name"], "ok": event["ok"]}
+            for line in response.text.splitlines()
+            if (event := json.loads(line))["type"] == "tool" and event["phase"] == "end"
+        ]
+        assert ends == result["steps"]
+        assert "private-argument" not in response.text
+    else:
+        p = admin(db, demo[1]["E02"].org_id)
+        result = core.turn(db, p, UUID(url.rsplit("/", 1)[1]), body).model_dump(
+            mode="json"
+        )
+    assert result["steps"] == [
+        {"name": registry.FUNCTIONS["list_roles"].description, "ok": True},
+        {"name": "读取信息", "ok": False},
+    ]
+    history = client.get(url + "/messages", params=query, headers=auth["admin"]).json()
+    assert history[-1]["payload"] == result

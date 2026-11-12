@@ -1,6 +1,6 @@
 import { Check, Copy, LoaderCircle, X } from "lucide-react"
 import { type ReactNode, useRef, useState } from "react"
-import type { AdminSessionMessage, SessionMessage } from "@/client"
+import type { AdminSessionMessage, SessionMessage, ToolStep } from "@/client"
 import { Button } from "@/components/ui/button"
 import { ChatAttachment } from "./ChatAttachment"
 import type { ToolProgress } from "./useStreamingTurn"
@@ -19,7 +19,7 @@ export function ChatMessages<
   stopped,
   onDownload,
 }: {
-  messages: (Message & { tools?: ToolProgress[] })[]
+  messages: Message[]
   renderMessage: (message: Message, index: number) => ReactNode
   text: string
   tools: ToolProgress[]
@@ -47,7 +47,11 @@ export function ChatMessages<
                 : "space-y-3 break-words leading-7"
             }
           >
-            <ToolCalls tools={message.tools ?? []} />
+            <ToolCalls
+              steps={
+                "steps" in message.payload ? (message.payload.steps ?? []) : []
+              }
+            />
             <Reply
               seconds={
                 !user && Number.isFinite(elapsed) && elapsed >= 0
@@ -71,7 +75,19 @@ export function ChatMessages<
       })}
       {(tools.length > 0 || text || stopped) && (
         <div data-role="assistant" className="space-y-3 leading-7">
-          <ToolCalls tools={tools} />
+          <ToolCalls
+            steps={tools.flatMap((tool, index) =>
+              tool.phase === "start"
+                ? [
+                    {
+                      name: tool.name,
+                      ok: tools[index + 1]?.ok ?? false,
+                      running: tools[index + 1]?.phase !== "end",
+                    },
+                  ]
+                : [],
+            )}
+          />
           {text && <p className="whitespace-pre-wrap break-words">{text}</p>}
           {stopped && (
             <p role="status" className="text-sm text-muted-foreground">
@@ -127,20 +143,9 @@ function Reply({
   )
 }
 
-function ToolCalls({ tools }: { tools: ToolProgress[] }) {
-  const steps = tools.flatMap((tool, index) =>
-    tool.phase === "start"
-      ? [
-          {
-            name: tool.name,
-            end:
-              tools[index + 1]?.phase === "end" ? tools[index + 1] : undefined,
-          },
-        ]
-      : [],
-  )
+function ToolCalls({ steps }: { steps: (ToolStep & { running?: boolean })[] }) {
   if (!steps.length) return null
-  const running = steps.find((step) => !step.end)
+  const running = steps.find((step) => step.running)
   return (
     <details className="text-sm text-muted-foreground">
       <summary className="w-fit cursor-pointer py-1">
@@ -148,13 +153,13 @@ function ToolCalls({ tools }: { tools: ToolProgress[] }) {
       </summary>
       <ul className="space-y-2 border-l pl-4 pt-2">
         {steps.map((step, index) => {
-          const status = !step.end ? "进行中" : step.end.ok ? "成功" : "失败"
-          const Icon = !step.end ? LoaderCircle : step.end.ok ? Check : X
+          const status = step.running ? "进行中" : step.ok ? "成功" : "失败"
+          const Icon = step.running ? LoaderCircle : step.ok ? Check : X
           return (
             <li key={index} className="flex items-center gap-2">
               <Icon
                 aria-hidden="true"
-                className={`size-3.5 shrink-0 ${!step.end ? "animate-spin" : ""}`}
+                className={`size-3.5 shrink-0 ${step.running ? "animate-spin" : ""}`}
               />
               <span>
                 {step.name}：{status}
