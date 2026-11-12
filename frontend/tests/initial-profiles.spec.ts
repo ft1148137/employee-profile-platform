@@ -460,7 +460,9 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
     await expect(page.getByText(error, { exact: false })).toBeVisible()
   }
   await page.goto("/admin/data-ai?tab=sources")
-  await expect(page.getByText("合成工作记录.csv")).toBeVisible()
+  await expect(
+    page.getByRole("region", { name: "同步记录" }).getByText("合成工作记录.csv"),
+  ).toBeVisible()
   await expect(page.getByText("新增证据：8", { exact: true })).toBeVisible()
   await expectChineseCopy(page, ["ChatGPT"])
   await enableAutoDrafting(page)
