@@ -134,16 +134,31 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
   await expect(
     page.getByRole("heading", { name: "待你过目：系统起草的初始画像" }),
   ).toBeVisible()
-  await page
-    .getByRole("region", { name: /^草稿改动：/ })
-    .first()
-    .getByRole("button")
-    .first()
-    .click()
-  await expect(page.getByRole("dialog")).toContainText("Jira 记录")
-  await expect(page.getByRole("dialog")).toContainText("有效")
+  const initialItem = page.getByRole("region", { name: /^草稿改动：/ }).first()
+  await expect(initialItem.getByRole("heading")).toBeVisible()
+  await expect(initialItem).toContainText("修改后：")
+  await expect(
+    initialItem.getByText("Jira 记录", { exact: false }),
+  ).toHaveCount(0)
+  const employeeHeaders = await page.evaluate(() => ({
+    Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+  }))
+  const evidence = await page.request.get(
+    `${base}/me/evidence?kind=work_record`,
+    { headers: employeeHeaders },
+  )
+  expect(evidence.ok()).toBeTruthy()
+  expect((await evidence.json()).data).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        kind: "work_record",
+        source: "jira",
+        status: "active",
+      }),
+    ]),
+  )
   await page.screenshot({
-    path: info.outputPath("employee-evidence.png"),
+    path: info.outputPath("employee-profile.png"),
     animations: "disabled",
     fullPage: true,
   })
