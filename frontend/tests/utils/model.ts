@@ -290,7 +290,7 @@ export const test = base.extend<{ modelUrl: string }>({
                   materials: [{ attachment_id: null, label: "人员材料" }],
                   rows: [1, 2, 3].map((n) => ({
                     action: "onboard",
-                    employee_code: `NEW${n}`,
+                    employee_code: `34000${n}`,
                     display_name: `合成新人${n}`,
                     department: "研发/平台组",
                     email: `roster-${crypto.randomUUID()}@example.com`,
