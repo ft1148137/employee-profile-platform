@@ -1,4 +1,4 @@
-"""Model-structured materials create owner-review requests only after confirmation."""
+"""Model-structured materials publish profiles only after confirmation."""
 
 from uuid import UUID
 
@@ -46,7 +46,6 @@ def preview(db: Session, p: Principal, args: MaterialArgs) -> list[ImportResult]
         p,
         db,
         args.people,
-        material_names=[m.label for m in args.materials],
         confirm=False,
         commit=False,
     )
@@ -60,7 +59,12 @@ def impact(db: Session, p: Principal, args: MaterialArgs) -> BaseModel:
         count=len(people),
         text="；".join(
             f"{r.display_name}（{r.department_name}）：{r.item_count} 条判断"
-            + (f"，跳过：{r.reason}" if r.status == "skipped" else "，交本人过目")
+            + "，"
+            + "；".join(
+                f"{i.capability_name} 等级 {i.before.level if i.before and i.before.level else '未知'} → {i.after.level}，{i.after.statement}"
+                for i in r.changes
+            )
+            + "，直接发布并通知本人"
             for r in people
         ),
     )
@@ -76,7 +80,6 @@ def apply(
             p,
             db,
             args.people,
-            material_names=[m.label for m in args.materials],
             confirm=True,
             commit=commit,
         )

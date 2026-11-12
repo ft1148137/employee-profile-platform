@@ -43,6 +43,7 @@ class DirectItemInput(ToolInput):
     capability_key: str
     statement: str = Field(min_length=1)
     level: str | None = None
+    explanation: str | None = Field(default=None, max_length=300)
 
 
 class DirectEditInput(ToolInput):
@@ -149,6 +150,7 @@ def _prepare(
                 op=item.op,
                 capability_definition_id=capability.id,
                 target_claim_id=target.id if target else None,
+                explanation=item.explanation,
                 after=ClaimAfter.model_validate(after.model_dump()).model_dump(
                     mode="json"
                 )
