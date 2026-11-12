@@ -1,4 +1,5 @@
 import { createServer } from "node:http"
+import { networkInterfaces } from "node:os"
 import { expect, test } from "@playwright/test"
 import type { EmployeeAccount } from "../src/client"
 
@@ -7,6 +8,7 @@ test.use({ storageState: { cookies: [], origins: [] } })
 test("manager confirms a review from the assistant", async ({
   page,
   request,
+  baseURL,
 }) => {
   test.setTimeout(120000)
   const password = "synthetic-review-password-2026"
@@ -182,6 +184,14 @@ test("manager confirms a review from the assistant", async ({
   const address = server.address()
   if (!address || typeof address === "string")
     throw new Error("Missing model address")
+  const host =
+    process.env.MODEL_TEST_HOST ??
+    (baseURL?.includes("backend:")
+      ? Object.values(networkInterfaces())
+          .flat()
+          .find((network) => network?.family === "IPv4" && !network.internal)
+          ?.address
+      : "localhost")
   try {
     expect(
       (
@@ -192,7 +202,7 @@ test("manager confirms a review from the assistant", async ({
             kind: "openai_compatible",
             provider: "openai-compatible",
             model: "synthetic",
-            base_url: `http://${process.env.MODEL_TEST_HOST ?? "localhost"}:${address.port}/v1`,
+            base_url: `http://${host}:${address.port}/v1`,
             api_key: "synthetic-key",
           },
         })
