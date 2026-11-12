@@ -85,29 +85,32 @@ function Resolve({
           不能处理自己提出的申诉，请由另一位企业管理员处理
         </p>
       )}
-      <label className="block" htmlFor={`resolution-${appeal.id}`}>
-        处理说明
-        <textarea
-          className="w-full rounded-md border bg-background p-3"
-          id={`resolution-${appeal.id}`}
-          aria-label="处理说明"
-          maxLength={4000}
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-        />
-      </label>
-      <div className="flex flex-wrap gap-3">
-        {(["upheld", "reopened"] as const).map((status) => (
-          <Button
-            key={status}
-            disabled={isOwn || !reason.trim() || resolve.isPending}
-            aria-describedby={isOwn ? `self-appeal-${appeal.id}` : undefined}
-            onClick={() => resolve.mutate(status)}
-          >
-            {status === "upheld" ? "维持原决定" : "允许重新提交"}
-          </Button>
-        ))}
-      </div>
+      {!isOwn && (
+        <>
+          <label className="block" htmlFor={`resolution-${appeal.id}`}>
+            处理说明
+            <textarea
+              className="w-full rounded-md border bg-background p-3"
+              id={`resolution-${appeal.id}`}
+              aria-label="处理说明"
+              maxLength={4000}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </label>
+          <div className="flex flex-wrap gap-3">
+            {(["upheld", "reopened"] as const).map((status) => (
+              <Button
+                key={status}
+                disabled={!reason.trim() || resolve.isPending}
+                onClick={() => resolve.mutate(status)}
+              >
+                {status === "upheld" ? "维持原决定" : "允许重新提交"}
+              </Button>
+            ))}
+          </div>
+        </>
+      )}
     </section>
   )
 }

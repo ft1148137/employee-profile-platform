@@ -47,6 +47,7 @@ export function IdentityTable({
     employeeId ? "linked" : "unlinked",
   )
   const [q, setQ] = useState("")
+  const [identityId, setIdentityId] = useState("")
   const [source, setSource] = useState(employeeId ? "jira" : "")
   const [skip, setSkip] = useState(0)
   const [selected, setSelected] = useState<string[]>([])
@@ -128,6 +129,7 @@ export function IdentityTable({
     }))
   async function refresh() {
     setSelected([])
+    setIdentityId("")
     setSkip(0)
     await client.invalidateQueries({ queryKey: ["identities", orgId] })
   }
@@ -224,6 +226,7 @@ export function IdentityTable({
           disabled={actionPending}
           onChange={(e) => {
             setQ(e.target.value)
+            setIdentityId("")
             resetSelection()
           }}
         />
@@ -250,7 +253,7 @@ export function IdentityTable({
             ))}
           </select>
         )}
-        {status === "unlinked" && (
+        {!employeeId && status === "unlinked" && (
           <Button
             disabled={pending || !links.length}
             onClick={() => link.mutate(links)}
@@ -261,6 +264,44 @@ export function IdentityTable({
       </div>
       {(!employeeId && identities.isPending) || page.isPending ? (
         <p role="status">正在加载账号…</p>
+      ) : employeeId && status === "unlinked" ? (
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="space-y-2 text-sm" htmlFor="link-employee-identity">
+            <span className="block">关联账号</span>
+            <select
+              id="link-employee-identity"
+              className="h-10 max-w-full rounded-md border bg-background px-3"
+              value={identityId}
+              disabled={pending || page.isError}
+              onChange={(event) => setIdentityId(event.target.value)}
+            >
+              <option value="">请选择未关联的账号</option>
+              {visible.map((row) => (
+                <option key={row.id} value={row.id}>
+                  {row.display_name ?? row.external_id} · {row.external_id}
+                </option>
+              ))}
+            </select>
+          </label>
+          <ConfirmActionDialog
+            title="关联到此员工"
+            disabled={pending || !visible.some((row) => row.id === identityId)}
+            description={`确认把账号「${visible.find((row) => row.id === identityId)?.external_id ?? ""}」关联到当前员工？这个账号的工作记录将作为这名员工的证据。`}
+            action={() =>
+              ExternalIdentitiesService.identitiesPostLinks({
+                path: { org_id: orgId },
+                body: {
+                  links: [{ identity_id: identityId, employee_id: employeeId }],
+                },
+              })
+            }
+            onSuccess={() => {
+              refresh()
+              setStatus("linked")
+            }}
+          />
+          {!visible.length && <p>没有符合条件的账号</p>}
+        </div>
       ) : (
         <Table>
           <TableHeader>

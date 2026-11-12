@@ -28,7 +28,7 @@ test("admin selects a department and opens personnel details", async ({
     fullPage: true,
   })
   await people.getByRole("link", { name: "张伟", exact: true }).click()
-  await expect(page).toHaveURL(/\/admin\/people\/[^/]+$/)
+  await expect(page).toHaveURL(/\/employees\/[^/?]+\?tab=account$/)
   await expect(
     page.getByRole("heading", { name: "张伟", exact: true }),
   ).toBeVisible()

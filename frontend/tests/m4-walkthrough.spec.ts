@@ -218,8 +218,12 @@ test("M4: employee update, manager publication, history and self-review denial",
     fullPage: true,
   })
   await page.getByRole("tab", { name: "版本历史" }).click()
-  await expect(page.getByRole("tabpanel")).toContainText("r2")
-  await expect(page.getByRole("tabpanel")).toContainText("r1")
+  await expect(
+    page.getByRole("tabpanel", { name: "版本历史", exact: true }),
+  ).toContainText("r2")
+  await expect(
+    page.getByRole("tabpanel", { name: "版本历史", exact: true }),
+  ).toContainText("r1")
   const self = await (
     await request.post(`${base}/me/requests`, {
       headers: managerHeaders,

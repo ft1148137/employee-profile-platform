@@ -312,7 +312,11 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       const fetched = page.waitForRequest((url) =>
         url.url().includes(`${base}/evidence/`),
       )
-      await page.getByRole("tabpanel").getByRole("button").first().click()
+      await page
+        .getByRole("tabpanel", { name: "证据", exact: true })
+        .getByRole("button")
+        .first()
+        .click()
       await fetched
       try {
         expect(
@@ -358,7 +362,9 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       fullPage: true,
     })
     await page.getByRole("tab", { name: "版本历史" }).click()
-    await expect(page.getByRole("tabpanel")).toContainText("r1")
+    await expect(
+      page.getByRole("tabpanel", { name: "版本历史", exact: true }),
+    ).toContainText("r1")
     await page.getByRole("button", { name: "来源请求" }).click()
     await expect(card).toBeVisible()
     await page.getByRole("button", { name: "继续修改" }).click()

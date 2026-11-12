@@ -14,22 +14,26 @@ export function publishedLabel(value: EmployeeSummary["latest_published"]) {
 
 export function EmployeeSummaryContent({
   employee,
+  showHeading = true,
 }: {
   employee: EmployeeSummary
+  showHeading?: boolean
 }) {
   const { org } = useOrg()
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="mb-2 text-sm text-muted-foreground">员工画像</p>
-        <h1 className="text-3xl font-semibold tracking-tight">
-          {employee.display_name}
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          {employee.title ?? "未填写职位"} ·{" "}
-          {employee.department?.name ?? "未分配部门"}
-        </p>
-      </div>
+      {showHeading && (
+        <div>
+          <p className="mb-2 text-sm text-muted-foreground">员工画像</p>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            {employee.display_name}
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            {employee.title ?? "未填写职位"} ·{" "}
+            {employee.department?.name ?? "未分配部门"}
+          </p>
+        </div>
+      )}
       <dl className="grid gap-6 rounded-xl border bg-muted/10 p-6 sm:grid-cols-2 lg:grid-cols-4">
         {(
           [
