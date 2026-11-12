@@ -148,8 +148,8 @@ def test_turn_and_private_sessions(
     assert response.status_code == 200
     assert final_response(response)["messages"][1] == {
         "type": "link",
-        "title": "打开管理首页",
-        "page": "/admin",
+        "title": "查看数据来源和同步",
+        "page": "/admin/data-ai?tab=sources",
     }
     history = client.get(url + "/messages", headers=auth["admin"], params=query).json()
     assert history[0]["payload"] == body
@@ -396,7 +396,7 @@ def test_registry_wired_to_turn(
     if function in {"get_progress", "list_accounts"}:
         assert cards[0].type == "link"
         assert cards[0].page == (
-            "/admin" if function == "get_progress" else "/employees"
+            "/admin/data-ai?tab=sources" if function == "get_progress" else "/employees"
         )
         assert cards[1].type == "table" and len(cards[1].rows) <= 20
     else:
