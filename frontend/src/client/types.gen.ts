@@ -3112,6 +3112,32 @@ export type OrgChartDepartment = {
 };
 
 /**
+ * OrgChartPerson
+ */
+export type OrgChartPerson = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Title
+     */
+    title: string | null;
+    /**
+     * Department Id
+     */
+    department_id: string | null;
+    /**
+     * Manager Id
+     */
+    manager_id: string | null;
+};
+
+/**
  * OrgChartPublic
  */
 export type OrgChartPublic = {
@@ -3119,6 +3145,10 @@ export type OrgChartPublic = {
      * Departments
      */
     departments: Array<OrgChartDepartment>;
+    /**
+     * People
+     */
+    people: Array<OrgChartPerson>;
 };
 
 /**

@@ -64,8 +64,15 @@ class OrgChartDepartment(DepartmentPublic):
     total_count: int = 0
 
 
+class OrgChartPerson(EmployeeReference):
+    title: str | None
+    department_id: UUID | None
+    manager_id: UUID | None
+
+
 class OrgChartPublic(SQLModel):
     departments: list[OrgChartDepartment]
+    people: list[OrgChartPerson]
 
 
 class ProgressPublic(SQLModel):

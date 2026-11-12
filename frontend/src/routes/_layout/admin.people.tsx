@@ -23,6 +23,8 @@ export const Route = createFileRoute("/_layout/admin/people")({
   component: People,
   validateSearch: tabSearch,
   beforeLoad: ({ search }) => {
+    if (search.tab === "org-chart")
+      throw redirect({ to: "/org-chart", replace: true })
     if (search.tab === "roster")
       throw redirect({ to: "/admin/assistant", replace: true })
   },
