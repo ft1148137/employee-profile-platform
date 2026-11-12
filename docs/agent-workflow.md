@@ -6,6 +6,8 @@ NERE-272 试行此流程，NERE-277 明确沿用；Mika 更新「全栈开发」
 
 每次 push 前运行 `bash scripts/preflight.sh`：检查远端新增迁移、单一 Alembic head、pre-commit、独立数据库端口及受影响的 pytest / 守卫测试，并提示相关 Playwright spec 和镜像构建服务；`--list` 只列计划，不 fetch 或执行检查。
 
+preflight 的 pytest 默认使用 `-n 2 --dist loadgroup`，可用 `PREFLIGHT_PYTEST_WORKERS` 调整；几个任务同时在本机运行，不要自行加大 `-n`（包括通过 `PYTEST_ADDOPTS` 设置）。
+
 每个 PR 必跑后端 ruff、mypy、ty，前端 biome、类型检查、build，以及改动涉及的 pytest 文件或目录。沿用仓库的 uv、Bun 和现有脚本：
 
 ```bash
@@ -74,6 +76,8 @@ Docker 使用 SHA 固定的 Docker 官方 setup-buildx / bake action，为各 wo
 
 backend 在 coverage 启动前用 `uv sync --all-packages --frozen --compile-bytecode` 编译依赖，避免真实飞书 SDK 的大量模块在覆盖率跟踪期间首次编译。M2 的模拟 Jira 使用一个上下文内的 TestClient，复用 ASGI portal；同步、分页、失败重试、迁移和证据断言均保留。测量见 [CI 提速记录](ci-performance.md)。
 
-roster 性能函数的 6 个参数场景（包括两个 5000 行 XLSX）从带 coverage 的 xdist 阶段分离，在同一必需 backend job 中用 `-n 0 --no-cov` 运行。2 秒断言保持不变，功能覆盖率仍必须达到原来的 90%。
+backend 使用 pytest-split 的 `least_duration` 算法，按仓库中 `backend/.test_durations` 的历史耗时分成 3 片，各片保留 xdist loadgroup；新增用例按已知用例的平均耗时估算。各片上传 coverage、JUnit 和最新耗时；刷新基线时合并三份 `test-durations-*.json` 后提交。必需检查 `test-backend` 在所有分片成功后合并三份 coverage，仍要求总覆盖率 90%，任一片失败、取消或跳过都失败。
+
+roster 性能函数的 6 个参数场景（包括两个 5000 行 XLSX）从带 coverage 的 xdist 阶段分离，在第 1 片内用 `-n 0 --no-cov` 运行。2 秒断言保持不变，其结果也计入必需检查。
 
 分支保护要求 PR 和全部门禁，不要求人工 review；禁止 force push 和删除，保留 GitHub 默认的管理员 bypass，但 agent 不使用。strict 关闭，避免并行 PR 每合并一次就使其他分支重跑；合并后的 master CI 兜底。

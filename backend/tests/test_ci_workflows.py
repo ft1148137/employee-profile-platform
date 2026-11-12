@@ -8,6 +8,27 @@ import yaml
 WORKFLOWS = Path(__file__).resolve().parents[2] / ".github" / "workflows"
 
 
+@pytest.mark.parametrize("result", ["success", "failure", "cancelled", "skipped", ""])
+def test_backend_gate_requires_all_shards(result: str) -> None:
+    workflow = yaml.safe_load((WORKFLOWS / "test-backend.yml").read_text())
+    shards = workflow["jobs"]["backend-shard"]
+    assert shards["strategy"] == {
+        "fail-fast": False,
+        "matrix": {"shard": [1, 2, 3]},
+    }
+    gate = workflow["jobs"]["test-backend"]
+    assert gate["if"] == "${{ always() }}"
+    assert gate["needs"] == ["backend-shard"]
+    require = gate["steps"][0]
+    assert require["env"]["TEST_RESULT"] == "${{ needs.backend-shard.result }}"
+    completed = subprocess.run(
+        ["bash", "-e", "-c", require["run"]],
+        env={**os.environ, "TEST_RESULT": result},
+        check=False,
+    )
+    assert (completed.returncode == 0) is (result == "success")
+
+
 @pytest.mark.parametrize(
     "changes,changed,shards,success",
     [
