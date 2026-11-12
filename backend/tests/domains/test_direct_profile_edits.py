@@ -1,6 +1,7 @@
 import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 from threading import Barrier
 from unittest.mock import AsyncMock
 
@@ -26,6 +27,34 @@ from app.domains.review.publish import current_claims
 from tests.api.routes.test_direct_profile_edits import edit_body
 from tests.api.routes.test_reviews import actor, pending, values
 from tests.utils.migrations import migrate
+
+
+def test_notification_uses_beijing_time_and_request_stays_utc(
+    demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    now = datetime(2026, 11, 12, 2, tzinfo=UTC)
+    monkeypatch.setattr(direct, "utc_now", lambda: now)
+    subject = demo[1]["E02"]
+    direct.direct_edit(
+        actor(db, subject.org_id, "manager.platform@demo.example.com"),
+        db,
+        subject.id,
+        direct.DirectEditInput.model_validate(edit_body(db, subject)),
+        via="web",
+        client_name="timezone-test",
+    )
+    item = db.exec(
+        select(InboxItem).where(
+            InboxItem.org_id == subject.org_id,
+            InboxItem.recipient_employee_id == subject.id,
+            InboxItem.kind == InboxKind.PROFILE_EDITED,
+        )
+    ).one()
+    assert "2026-11-12 10:00" in item.message
+    request = db.get(ProfileChangeRequest, item.request_id)
+    assert request is not None and request.decided_at is not None
+    assert request.submitted_at.isoformat() == now.isoformat()
+    assert request.decided_at.isoformat() == now.isoformat()
 
 
 def test_direct_publication_audit_retract_and_atomicity(
