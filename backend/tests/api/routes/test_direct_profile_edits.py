@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from app.domains.org.models import Department, Employee, Organization, OrgMembership
+from app.domains.org.models import Department, Employee, OrgMembership
 from app.domains.profile.models import ProfileVersion
 from tests.api.routes.test_reviews import actor
 
@@ -97,12 +97,8 @@ def test_inactive_missing_foreign_and_admin_self(
     body = edit_body(db, subject)
     subject.employment_status = "inactive"
     db.commit()
-    foreign_org = db.exec(
-        select(Organization).where(Organization.name == "Synthetic foreign tenant")
-    ).first()
-    foreign = Employee(org_id=foreign_org.id, display_name="合成他企业员工")
-    db.add(foreign)
-    db.commit()
+    foreign = db.exec(select(Employee).where(Employee.org_id != subject.org_id)).first()
+    assert foreign is not None
     for employee_id in (subject.id, foreign.id, uuid4()):
         response = client.post(
             f"{base}/employees/{employee_id}/profile/direct-edits",
