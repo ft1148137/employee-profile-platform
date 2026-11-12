@@ -68,16 +68,16 @@ export const test = base.extend<{ modelUrl: string }>({
           ? JSON.parse(typeof content === "string" ? content : content[0].text)
           : { capabilities: [], records: [] }
       ) as {
-        capabilities: { key: string }[]
+        capabilities: { key: string; levels: { key: string }[] }[]
         records: { ref: string }[]
       }
       const items =
-        body.records.length && body.capabilities.length
+        body.records.length && body.capabilities[0]?.levels.length
           ? [
               {
                 capability_key: body.capabilities[0].key,
                 statement: "合成模型能力建议",
-                level: null,
+                level: body.capabilities[0].levels[0].key,
                 evidence: body.records.map((r) => r.ref),
                 explanation: "合成工作记录",
                 uncertainty: "需要本人确认",

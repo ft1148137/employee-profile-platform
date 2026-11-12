@@ -41,12 +41,18 @@ from app.domains.bot import store as messages
 from app.domains.bot.schemas import TextMessage
 from app.domains.capability.proposals import ProposalConflict
 from app.domains.capability.service import DictionaryConflict
+from app.domains.change_request.employee import (
+    EmployeeRecordNotFound,
+    InvalidItems,
+    RequestConflict,
+)
 from app.domains.change_request.import_json import InvalidImport
 from app.domains.im.settings import InvalidImSetting
 from app.domains.model.service import InvalidModelSetting
 from app.domains.org.models import Organization
 from app.domains.org.roster.service import RosterError
 from app.domains.org.roster.single import Offboard
+from app.domains.review.direct import SelfDirectEditForbidden
 from app.domains.source.identities import IdentityConflict, InvalidIdentityEmployee
 from app.domains.source.import_records import InvalidWorkRecords
 from app.domains.source.service import InvalidSourceSetting
@@ -292,6 +298,16 @@ def propose(
             disabled_users.update(args.user_ids)
         elif isinstance(args, Offboard):
             offboarded_employees.update(args.employee_ids)
+        # Material previews freeze revisions before confirmation arguments are saved.
+        try:
+            impact = entry.impact(db, principal, args) if entry.impact else None
+        except (
+            EmployeeRecordNotFound,
+            InvalidItems,
+            RequestConflict,
+            SelfDirectEditForbidden,
+        ) as error:
+            raise ChangeSetError(str(error.detail), error.status_code) from None
         items.append(
             {
                 "function": entry.name,
@@ -306,9 +322,7 @@ def propose(
                 if entry.snapshot
                 else None,
                 "after": args.model_dump(mode="json", exclude=entry.private_fields),
-                "impact": entry.impact(db, principal, args).model_dump(mode="json")
-                if entry.impact
-                else None,
+                "impact": impact.model_dump(mode="json") if impact else None,
                 "risk": entry.preview_risk(db, principal, args)
                 if entry.preview_risk
                 else entry.risk(args)
@@ -447,9 +461,10 @@ def apply(
             if item.function == "draft_profiles_from_material" and isinstance(
                 result, RootModel
             ):
-                skipped = sum(i.status == "skipped" for i in result.root)
                 notices.append(
-                    TextMessage(text=f"初始画像请求已整理，跳过 {skipped} 人")
+                    TextMessage(
+                        text=f"已直接发布 {len(result.root)} 人的画像并通知本人"
+                    )
                 )
             if isinstance(result, PasswordOutput | AccountsOutput):
                 one_time.append(result)
@@ -483,6 +498,16 @@ def apply(
                 AdminTurnResponse(messages=[*notices]).model_dump(mode="json"),
             )
         db.commit()
+    except (
+        EmployeeRecordNotFound,
+        InvalidItems,
+        RequestConflict,
+        SelfDirectEditForbidden,
+    ) as error:
+        db.rollback()
+        raise ChangeSetError(
+            f"{error.detail}；所有改动均已回滚", error.status_code
+        ) from None
     except InvalidImport as error:
         db.rollback()
         raise ChangeSetError(

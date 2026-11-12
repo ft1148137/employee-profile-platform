@@ -1,6 +1,8 @@
+import type { ChangeRequestsPublic } from "../src/client"
 import { expectChineseCopy } from "./utils/copy"
 import { expect, test } from "./utils/model"
 import { createUser } from "./utils/privateApi"
+import { addDraftingEvidence } from "./utils/sources"
 import { logInUser, logOutUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -89,6 +91,8 @@ for (const width of [1440, 390]) {
         })
       ).ok(),
     ).toBeTruthy()
+    await logInUser(page, email, password)
+    await addDraftingEvidence(page)
     expect(
       (
         await request.post(`${base}/initial-profiles/draft`, {
@@ -111,7 +115,6 @@ for (const width of [1440, 390]) {
       )
       .toBe(1)
 
-    await logInUser(page, email, password)
     await expect(
       page.getByRole("button", { name: "打开画像机器人" }),
     ).toHaveCount(0)
@@ -145,7 +148,7 @@ for (const width of [1440, 390]) {
     const employeeHeaders = {
       Authorization: `Bearer ${(await changed.json()).access_token}`,
     }
-    const readRequests = async () =>
+    const readRequests = async (): Promise<ChangeRequestsPublic["data"]> =>
       (
         await (
           await request.get(`${base}/me/requests?status=all`, {
@@ -156,6 +159,7 @@ for (const width of [1440, 390]) {
     const initial = (await readRequests())[0]
     expect(initial.status).toBe("pending_owner")
     expect(initial.origin).toBe("initial_sync")
+    expect(initial.items?.every((item) => item.after?.level != null)).toBe(true)
     await logOutUser(page)
     await logInUser(page, employeeEmail, password)
     await page.setViewportSize({ width, height: 900 })
@@ -215,6 +219,11 @@ for (const width of [1440, 390]) {
     panel = page.getByRole("region", { name: "助手", exact: true })
     await expect(
       panel.getByText("另一标签页的经历", { exact: false }),
+    ).toBeVisible()
+    await expect(
+      panel.getByText("修改后：合成模型能力建议 · 等级：需要协助", {
+        exact: true,
+      }),
     ).toBeVisible()
     await expectChineseCopy(page)
     const bounds = await panel.boundingBox()

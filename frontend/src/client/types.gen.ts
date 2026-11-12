@@ -1883,6 +1883,10 @@ export type DirectItemInput = {
    * Level
    */
   level?: string | null
+  /**
+   * Explanation
+   */
+  explanation?: string | null
 }
 
 /**

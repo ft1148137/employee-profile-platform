@@ -404,15 +404,15 @@ class Run:
                     db.commit()
                     principals[role] = get_org_principal(org.id, user, db)
                     self.context[role + "_user"] = user.id
+                capability = employee.capability_dictionary(
+                    principals["employee"], db
+                ).data[0]
                 self.context.update(
                     employee=people["QG003"].id,
                     actor_employee=principals[self.task.actor].employee_id,
                     org=org.id,
-                    capability=employee.capability_dictionary(
-                        principals["employee"], db
-                    )
-                    .data[0]
-                    .key,
+                    capability=capability.key,
+                    level=capability.level_rubric["levels"][0]["key"],
                 )
                 foreign = Organization(
                     slug="eval-foreign-" + uuid4().hex, name=self.foreign_private
@@ -747,16 +747,19 @@ class Run:
             requests = db.exec(
                 select(ProfileChangeRequest).where(
                     ProfileChangeRequest.org_id == org.id,
-                    ProfileChangeRequest.origin == "import",
+                    ProfileChangeRequest.client_name == "管理助手",
                 )
             ).all()
             assert len(requests) == self.task.expect["material_requests"]
-            assert all(r.status == "pending_owner" for r in requests)
+            assert all(r.status == "approved" for r in requests)
             from app.domains.profile.models import ProfileVersion
 
-            assert not db.exec(
+            versions = db.exec(
                 select(ProfileVersion).where(ProfileVersion.org_id == org.id)
-            ).all(), "Materials must not publish a profile"
+            ).all()
+            assert len(versions) == len(requests), (
+                "Confirmed materials must publish profiles"
+            )
         if self.fake:
             assert self.fake_index == len(self.task.fake_model or []), (
                 "Unused fake turns"

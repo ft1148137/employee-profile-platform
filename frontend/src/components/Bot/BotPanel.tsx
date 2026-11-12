@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { AxiosError } from "axios"
 import { Bot, LoaderCircle } from "lucide-react"
@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import {
   type AttachmentPublic,
   BotService,
+  EmployeeRequestsService,
   type SessionMessage,
   type TurnInput,
   type TurnResponse,
@@ -82,6 +83,12 @@ export function BotConversation({
   const initialization = useRef(0)
   const preserveText = useRef(false)
   const query = { org_id: orgId }
+  const dictionary = useQuery({
+    queryKey: ["my-capabilities", orgId],
+    queryFn: async () =>
+      (await EmployeeRequestsService.readMyCapabilities({ path: query })).data,
+    enabled: fullPage || open,
+  })
   const initialize = useMutation({
     onMutate: () => ++initialization.current,
     mutationFn: async (selection?: string) => {
@@ -295,6 +302,7 @@ export function BotConversation({
               {"messages" in entry.payload
                 ? entry.payload.messages.map((message, i) => (
                     <BotMessage
+                      dictionary={dictionary.data}
                       key={i}
                       message={message}
                       disabled={busy || conflict}

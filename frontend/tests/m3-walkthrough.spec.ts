@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs"
 import path from "node:path"
-import { configureModel, expect, test } from "./utils/model"
+import { configureModel, expect, jiraTestUrl, test } from "./utils/model"
 import { importRoster } from "./utils/roster"
 import {
   activateTemplate,
+  addDraftingEvidence,
   createSourcesOrg,
   saveCloud,
   syncJira,
@@ -42,7 +43,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   await page.goto("/admin/data-ai?tab=sources")
   await saveCloud(
     page,
-    "http://mock-jira:8080/qingli-saas",
+    new URL("/qingli-saas", jiraTestUrl).href,
     "jira-admin@example.com",
     "mock-cloud-token",
   )
@@ -73,6 +74,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   await expect(page.getByLabel("全企业需要经理确认")).toBeChecked()
   await expect(page.getByLabel("员工过目期限（天）")).toHaveValue("14")
   await page.goto("/admin/data-ai?tab=model")
+  await addDraftingEvidence(page)
   page.once("dialog", (dialog) => dialog.accept())
   await page.getByRole("button", { name: "重新起草全部", exact: true }).click()
   await expect(
@@ -165,6 +167,9 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   await bot.getByRole("button", { name: "发送", exact: true }).click()
   await expect(
     bot.getByText("本人完成了合成项目的验证", { exact: false }),
+  ).toHaveCount(0)
+  await expect(
+    bot.getByText("我补充了一段合成项目经历", { exact: false }),
   ).toBeVisible()
   await page.screenshot({
     path: info.outputPath("m3-mobile-bot-preview.png"),

@@ -76,7 +76,7 @@ def official(db: Session, org_id: UUID) -> list[list[dict]]:
 
 
 @pytest.mark.parametrize("source", ["xlsx", "description"])
-def test_material_turn_confirmation_owner_review(
+def test_material_turn_confirmation_direct_publication(
     db: Session,
     demo: tuple,
     client: TestClient,
@@ -171,36 +171,31 @@ def test_material_turn_confirmation_owner_review(
     requests = db.exec(
         select(ProfileChangeRequest).where(
             ProfileChangeRequest.org_id == p.org_id,
-            ProfileChangeRequest.origin == "import",
+            ProfileChangeRequest.client_name == "管理助手",
         )
     ).all()
     assert len(requests) == 2
     for row in requests:
-        assert row.status == "pending_owner"
+        assert row.status == "approved"
+        assert row.origin == "manual" and row.submitted_via == "web"
         assert row.author == {"actor_type": "user", "user_id": str(p.user_id)}
-        assert row.generated_by == {
-            "via": "admin_assistant",
-            "assistant_session_id": str(sid),
-            "change_set_id": str(card.id),
-            "materials": [args["materials"][0]["label"]],
-        }
-        assert row.client_name == args["materials"][0]["label"]
         items = db.exec(
             select(ChangeItem).where(
                 ChangeItem.org_id == p.org_id, ChangeItem.request_id == row.id
             )
         ).all()
-        assert len(items) == 1 and items[0].after["assessment_status"] == "tentative"
-        assert items[0].owner_statement == args["people"][0]["items"][0]["basis"]
+        assert len(items) == 1 and items[0].after["assessment_status"] == "confirmed"
+        assert items[0].explanation == args["people"][0]["items"][0]["basis"]
         notice = db.exec(
             select(InboxItem).where(
                 InboxItem.org_id == p.org_id, InboxItem.request_id == row.id
             )
         ).one()
         assert notice.recipient_employee_id == row.subject_employee_id
-        assert notice.message == "管理员提供了材料并整理了画像，请过目后提交"
+        assert notice.kind == "profile_edited"
+        assert "直接修改了你的画像" in notice.message
     assert snapshot(db, p.org_id)[-1] == before[-1]  # No evidence is created.
-    assert official(db, p.org_id) == published
+    assert official(db, p.org_id) != published
     with pytest.raises(c.ChangeSetError, match="不能撤销"):
         c.undo(db, p, card.id)
 
@@ -210,6 +205,9 @@ def test_material_turn_confirmation_owner_review(
     [
         "capability",
         "level",
+        "missing_level",
+        "null_level",
+        "self",
         "unknown",
         "foreign",
         "inactive",
@@ -239,6 +237,12 @@ def test_rejected_arguments_have_specific_errors_and_no_card(
         field = "capability_key" if problem == "capability" else "level"
         item[field] = "missing"
         expected = field
+    elif problem in ("missing_level", "null_level"):
+        item.pop("level") if problem == "missing_level" else item.update(level=None)
+        expected = "people.0.items.0.level"
+    elif problem == "self":
+        p = replace(p, employee_id=demo[1]["E03"].id)
+        expected = "不能直接修改自己的画像"
     elif problem in ("unknown", "foreign"):
         person["employee_email"] = "other@foreign.example.com"
         if problem == "foreign":
@@ -313,18 +317,26 @@ def test_rejected_arguments_have_specific_errors_and_no_card(
     )
 
 
-def test_skips_and_rechecks_before_atomic_apply(db: Session, demo: tuple) -> None:
+def test_version_conflict_and_rechecks_before_atomic_apply(
+    db: Session, demo: tuple
+) -> None:
     p = principal(db, demo)
     # E02 already has a pending_owner request from the demo data.
     row = propose(db, demo, arguments(demo, "E02", "E03"))
-    assert "跳过" in row.items[0]["impact"]["text"]
+    assert "直接发布" in row.items[0]["impact"]["text"]
+    published = official(db, p.org_id)
     c.apply(db, p, row.id, row.revision)
     # Another confirmed material request arrives after preview.
     second = propose(db, demo, arguments(demo, "E03"))
     c.apply(db, p, second.id, second.revision)
     before = snapshot(db, p.org_id)
-    assert c.apply(db, p, row.id, row.revision).status == "applied"
+    versions = official(db, p.org_id)
+    with pytest.raises(c.ChangeSetError, match="画像已变化") as conflict:
+        c.apply(db, p, row.id, row.revision)
+    assert conflict.value.status_code == 409
     assert snapshot(db, p.org_id) == before
+    assert official(db, p.org_id) == versions and versions != published
+    assert c.get(db, p, row.id).status == "draft"
 
     fresh = propose(db, demo, arguments(demo, "E04", "E06"))
     c.apply(db, p, fresh.id, fresh.revision)
@@ -376,7 +388,7 @@ def test_preview_keeps_outer_writes_and_retired_paths(
         materials.preview(
             db, p, materials.MaterialArgs.model_validate(arguments(demo, "E03"))
         )[0].status
-        == "will_create"
+        == "will_publish"
     )
     db.commit()
     assert db.get(Organization, p.org_id).name == "外层事务保留"
@@ -433,8 +445,9 @@ def test_old_conversation_stays_readable(
     )
 
 
-def test_owner_edits_and_submits_material_request(
-    db: Session, demo: tuple, client: TestClient
+@pytest.mark.parametrize("status", ["draft", "pending_owner"])
+def test_material_publication_preserves_existing_draft(
+    db: Session, demo: tuple, status: str
 ) -> None:
     p = principal(db, demo)
     subject = demo[1]["E02"]
@@ -444,39 +457,47 @@ def test_owner_edits_and_submits_material_request(
             ProfileChangeRequest.subject_employee_id == subject.id,
         )
     ).one()
-    initial.status = "rejected"
+    initial.status = status
     db.add(initial)
     db.commit()
-    published = official(db, p.org_id)
+    db.refresh(initial)
+    before = initial.model_dump(mode="json")
+    items_before = [
+        i.model_dump(mode="json")
+        for i in db.exec(
+            select(ChangeItem).where(
+                ChangeItem.org_id == p.org_id, ChangeItem.request_id == initial.id
+            )
+        ).all()
+    ]
     row = propose(db, demo, arguments(demo, "E02"))
     assert c.apply(db, p, row.id, row.revision).status == "applied"
+    db.refresh(initial)
+    assert initial.model_dump(mode="json") == before
+    assert [
+        i.model_dump(mode="json")
+        for i in db.exec(
+            select(ChangeItem).where(
+                ChangeItem.org_id == p.org_id, ChangeItem.request_id == initial.id
+            )
+        ).all()
+    ] == items_before
     request = db.exec(
         select(ProfileChangeRequest).where(
             ProfileChangeRequest.org_id == p.org_id,
-            ProfileChangeRequest.origin == "import",
+            ProfileChangeRequest.client_name == "管理助手",
         )
     ).one()
-    url = f"{demo[0]}/me/requests/{request.id}"
-    edited = client.put(
-        url + "/items",
-        headers=demo[2]["employee"],
-        json={
-            "items": [
-                {
-                    "op": "add",
-                    "capability_key": example()["items"][0]["capability_key"],
-                    "statement": "员工核对后的合成陈述",
-                    "owner_statement": "员工确认的材料依据",
-                }
-            ]
-        },
-    )
-    assert edited.status_code == 200, edited.text
-    sent = client.post(
-        url + "/submit",
-        headers=demo[2]["employee"],
-        json={"revision": edited.json()["revision"]},
-    )
-    assert sent.status_code == 200, sent.text
-    assert sent.json()["status"] == "pending_review"
-    assert official(db, p.org_id) == published
+    assert request.status == "approved"
+
+    repeated = propose(db, demo, arguments(demo, "E02"))
+    assert c.apply(db, p, repeated.id, repeated.revision).status == "applied"
+    latest_item = db.exec(
+        select(ChangeItem).where(
+            ChangeItem.org_id == p.org_id,
+            ChangeItem.request_id != request.id,
+            ChangeItem.explanation
+            == arguments(demo, "E02")["people"][0]["items"][0]["basis"],
+        )
+    ).one()
+    assert latest_item.op == "modify" and latest_item.target_claim_id is not None

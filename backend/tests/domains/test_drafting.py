@@ -25,6 +25,7 @@ from app.domains.profile.models import AssessmentStatus, EvidenceRelation, Profi
 from app.worker.tasks import draft_initial
 from app.worker.tenant import TenantNotFound
 from tests.authz.test_tenant_access import tenant_data  # noqa: F401
+from tests.domains.test_drafting_model import drafting  # noqa: F401
 from tests.domains.test_ingest import ingest, person, record, rows
 
 pytestmark = pytest.mark.xdist_group("model")
@@ -114,7 +115,7 @@ def test_model_and_statistics(
     assert item.after.evidence_count == 1 and item.after.source_count == 2
     assert item.after.latest_evidence_at.isoformat() == "2026-04-02T16:30:00+00:00"
     assert (
-        item.after.level is None
+        item.after.level == "needs_support"
         and item.after.assessment_status == AssessmentStatus.TENTATIVE
     )
     assert item.after.statement == "合成能力建议" and "2026-04-03。" in item.explanation
@@ -186,6 +187,28 @@ def test_model_and_statistics(
     assert len(rows(db, ProfileChangeRequest, org)) == before
     with pytest.raises(TenantNotFound):
         draft_initial(org_id=str(uuid7()))
+
+
+def test_initial_writer_discards_unlevelled_items(
+    request: pytest.FixtureRequest, db: Session
+) -> None:
+    org, schema, _, employees, _ = request.getfixturevalue("drafting")
+    capability = list_capabilities(db, org, schema.id)[0]
+    invalid = model.DraftItem(
+        capability_id=capability.id,
+        after=ClaimAfter(
+            statement="证据不足，无法确定等级",
+            assessment_status=AssessmentStatus.TENTATIVE,
+        ),
+        evidence={},
+        explanation="合成依据",
+        uncertainty="待确认",
+    )
+    assert not service.write_initial_request(db, org, employees[0], [invalid], {})
+    assert not rows(db, ProfileChangeRequest, org)
+    invalid.after.level = capability.level_rubric["levels"][0]["key"]
+    assert service.write_initial_request(db, org, employees[0], [invalid], {})
+    assert rows(db, ChangeItem, org)[0].after["level"] is not None
 
 
 @pytest.mark.parametrize("field", ["title", "detail"])

@@ -223,6 +223,8 @@ test("manager confirms a review from the assistant", async ({
     const card = panel.getByRole("region", { name: "审批决定复述" })
     await expect(card).toContainText("合成能力1")
     await expect(card).toContainText("决定：已批准")
+    await expect(card).toContainText("等级：独立完成")
+    await expect(card).not.toContainText("routine")
     await expect(card).not.toContainText("隐藏的受限自述")
     await expect(
       card.getByRole("link", { name: "去审批页查看证据" }),

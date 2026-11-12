@@ -17,7 +17,8 @@
 | 名单 API | 上传及应用名单（仅 API） | 无界面入口；应用接口供人员弹窗确认单人变动 | NOT_FOR_ASSISTANT：界面已删除，名单变动走 draft_roster_from_material |
 | 员工与账号 | 开关员工档案固定字段（可撤销） | 员工 / 档案字段 | `update_employee_fields` |
 | 名单历史 | 查看导入历史 | 管理助手；审计日志 | `list_roster_imports` |
-| 按材料整理画像 | 上传对话附件或直接描述，预览后创建待本人过目请求 | 管理助手 | `draft_profiles_from_material`（两人及以上二次确认） |
+| 直接修改员工画像 | 预览能力、等级和陈述，确认后直接发布并通知本人；不能改自己、不能撤销 | 员工详情 / 管理助手 | `edit_employee_profile`（二次确认） |
+| 按材料整理画像 | 上传对话附件或直接描述，预览确认后直接发布并通知本人（每项必须给等级） | 管理助手 | `draft_profiles_from_material`（两人及以上二次确认） |
 | 员工与账号 | 搜索员工、筛选部门及账号状态；仅账号模式查看没有员工身份的账号（角色只读） | 员工 | `list_accounts` |
 | 仅账号 | 查看无员工身份账号、账号状态和只读角色 | 员工 / 仅账号 | NOT_FOR_ASSISTANT：仅网页查看；重置密码和启停复用账号操作 |
 | 组织架构 | 查看部门层级、经理和在职人数，点部门查看人员 | 组织架构（`/org-chart`） | `get_org_chart` |
@@ -94,4 +95,4 @@
 
 对话附件上传和原文下载属于助手自身的会话接口（NOT_FOR_ASSISTANT），仅本人通过鉴权接口操作。文件提取文字随当前对话轮作为数据交给模型，不提供模型上传、下载或读取任意文件的工具；原有带预览的业务导入上传保持独立。
 
-M4.2 的登记表与接口对照由 `backend/tests/admin_assistant/test_registry.py` 校验。真实模型与确定性评测任务共用 `backend/tests/eval/admin_assistant/tasks/`，新增覆盖开关、三个档案字段、组织架构、起草建议、补充说明、对话材料与对抗请求。旧 `import_profiles` 已删除，`draft_profiles_from_material` 只准备待本人过目的初始请求。详见 [M4.2 验收](m4.2-acceptance.md)。
+M4.2 的登记表与接口对照由 `backend/tests/admin_assistant/test_registry.py` 校验。真实模型与确定性评测任务共用 `backend/tests/eval/admin_assistant/tasks/`，新增覆盖开关、三个档案字段、组织架构、起草建议、补充说明、对话材料与对抗请求。旧 `import_profiles` 已删除，`draft_profiles_from_material` 在管理员确认后直接发布画像，系统自动起草仍先交本人过目。详见 [M4.2 验收](m4.2-acceptance.md)。
