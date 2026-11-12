@@ -36,7 +36,6 @@ import useAuth from "@/hooks/useAuth"
 import { useInbox } from "@/hooks/useInbox"
 import { useOrg } from "@/hooks/useOrg"
 import { useReviews } from "@/hooks/useReviews"
-import { useSetup } from "@/hooks/useSetup"
 import { type Item, Main, railItemClass } from "./Main"
 import { User } from "./User"
 
@@ -51,7 +50,6 @@ const manual: Item[] = [
 export function AppSidebar() {
   const { user } = useAuth()
   const { org, memberships, roles, employeeId, setOrg } = useOrg()
-  const setup = useSetup()
   const inbox = useInbox()
   const reviews = useReviews()
   const navigate = useNavigate()
@@ -98,12 +96,6 @@ export function AppSidebar() {
   const more: Item[] = [
     ...manual.slice(visible),
     { icon: ScrollText, title: "审计日志", path: "/admin/audit" },
-    {
-      icon: ListChecks,
-      title: "首次设置",
-      path: "/setup-wizard",
-      badge: setup.data?.completed === false ? "待完成" : undefined,
-    },
   ]
   const orgMark = (
     <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground">
@@ -166,13 +158,6 @@ export function AppSidebar() {
               >
                 <MoreHorizontal className="size-5" />
                 <span>更多</span>
-                {setup.data?.completed === false && (
-                  <span
-                    className="absolute right-1 top-1 size-2 rounded-full bg-primary"
-                    role="img"
-                    aria-label="首次设置待完成"
-                  />
-                )}
               </DropdownMenuTrigger>
               <DropdownMenuContent side="right" align="end">
                 {more.map((item) => (

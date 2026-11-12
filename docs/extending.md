@@ -124,7 +124,7 @@ def ingest_record(
 | `backend/app/api/routes/sources.py` | 管理员 API、kind 参数、凭据安全路由；新路由还需在 `backend/app/api/main.py` 挂载 |
 | `backend/app/domains/admin_assistant/sources.py`、`registry.py`、`docs/admin-function-map.md` | 管理功能登记、预览 / 确认、安全凭据字段和页面对照，不增加 Pi 工具 |
 | `frontend/src/components/Sources/`、`frontend/src/components/Admin/pages/SourcesPage.tsx` | 连接配置、同步状态、导入与凭据输入框 |
-| `frontend/src/components/Setup/steps/SourcesStep.tsx` | 初始化入口是否需要展示新来源 |
+| `frontend/src/components/Sources/SourceForms.tsx` | 手工数据来源页面是否需要展示新来源 |
 | `frontend/src/client/` | 运行 `bash scripts/generate-client.sh` 自动生成，不能手写 API 类型 |
 | `backend/tests/connectors/test_<source>.py`、下列既有后端测试及 `frontend/tests/sources.spec.ts` | 新客户端契约、来源分支和页面回归；模拟服务变化同时改 `backend/tests/utils/` 对应 fixture |
 

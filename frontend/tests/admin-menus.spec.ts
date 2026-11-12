@@ -105,8 +105,9 @@ test("five menus open every tab and more keeps audit and setup", async ({
     page.getByRole("heading", { name: "审计日志", exact: true }),
   ).toBeVisible()
   await page.getByRole("button", { name: "更多", exact: true }).click()
-  await page.getByRole("menuitem", { name: "首次设置", exact: false }).click()
-  await expect(page).toHaveURL("/setup-wizard")
+  await expect(
+    page.getByRole("menuitem", { name: "首次设置", exact: false }),
+  ).toHaveCount(0)
 })
 
 test("direct tab links survive reload and history, invalid tabs use the first", async ({

@@ -25,7 +25,7 @@ export function usePageDraft(
           query: {
             status: "draft",
             function: functionName,
-            session_id: sessionId ?? undefined,
+            session_id: sessionId || undefined,
           },
         })
       ).data,

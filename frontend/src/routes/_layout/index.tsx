@@ -15,8 +15,8 @@ function Home() {
   if (!org) return <OrgState />
   if (roles.includes("org_admin")) {
     if (setup.isPending) return <p role="status">正在加载首次设置…</p>
-    if (setup.isError) return <Navigate to="/setup-wizard" replace />
-    if (!setup.data.completed) return <Navigate to="/setup-wizard" replace />
+    if (setup.isError) return <Navigate to="/admin/assistant" replace />
+    if (!setup.data.completed) return <Navigate to="/admin/assistant" replace />
     if (availability.isPending) return <p role="status">正在检查管理助手…</p>
     return availability.data?.available ? (
       <Navigate to="/admin/assistant" search={{ prompt: undefined }} replace />

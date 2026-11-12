@@ -2,7 +2,12 @@ import { readFileSync } from "node:fs"
 import path from "node:path"
 import { configureModel, expect, test } from "./utils/model"
 import { importRoster } from "./utils/roster"
-import { createSourcesOrg, saveCloud, syncJira } from "./utils/sources"
+import {
+  activateTemplate,
+  createSourcesOrg,
+  saveCloud,
+  syncJira,
+} from "./utils/sources"
 import { logOutUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] }, actionTimeout: 15000 })
@@ -13,18 +18,6 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
 }, info) => {
   test.setTimeout(180000)
   await createSourcesOrg(page)
-  const step = (name: RegExp) =>
-    page
-      .getByRole("navigation", { name: "设置步骤" })
-      .getByRole("button", { name })
-  const next = () =>
-    page.getByRole("button", { name: "完成此步骤并继续" }).click()
-  await step(/企业信息/).click()
-  await next()
-  await expect(
-    page.getByRole("heading", { name: "配置模型", exact: true }),
-  ).toBeVisible()
-  await step(/导入员工名单/).click()
   await importRoster(
     page,
     Buffer.from(
@@ -37,14 +30,8 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
       ).replace(/@/g, `+${crypto.randomUUID()}@`),
     ),
   )
-  await page.reload()
-  await page.getByText("稍后处理的事项", { exact: true }).click()
-  await step(/导入员工名单/).click()
-  await next()
-  await page.getByRole("button", { name: /科技研发/ }).click()
-  await page.getByRole("button", { name: "启用此词典" }).click()
-  await expect(page.getByText("词典已启用，可以完成此步骤。")).toBeVisible()
-  await next()
+  await activateTemplate(page, "tech-rnd")
+  await page.goto("/admin/people?tab=accounts")
   await page.getByRole("button", { name: "生成账号", exact: true }).click()
   await page.getByRole("button", { name: "确认生成并下载" }).click()
   await page
@@ -52,8 +39,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
     .getByRole("button", { name: "关闭", exact: true })
     .first()
     .click()
-  await expect(page.getByText("还有 0 名在职员工没有账号")).toBeVisible()
-  await next()
+  await page.goto("/admin/data-ai?tab=sources")
   await saveCloud(
     page,
     "http://mock-jira:8080/qingli-saas",
@@ -66,7 +52,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
     animations: "disabled",
     fullPage: true,
   })
-  await next()
+  await page.goto("/admin/people?tab=identities")
   const boxes = page.getByRole("checkbox", { name: /选择账号/ })
   await boxes.first().waitFor()
   for (const box of await boxes.all()) {
@@ -74,24 +60,23 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   }
   const link = page.getByRole("button", { name: /确认所选候选/ })
   if (await link.isEnabled()) await link.click()
-  await next()
-  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
+  await page.goto("/admin/assistant")
+  await page.getByRole("button", { name: "完成模型配置", exact: true }).click()
   await expect(page.getByRole("alert")).toContainText("模型")
   await configureModel(page, modelUrl)
-  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
-  await step(/审批规则/).click()
+  await page.getByRole("button", { name: "完成模型配置", exact: true }).click()
+  await page.goto("/admin/rules?tab=approval")
   await expect(
     page.getByRole("heading", { name: "审批规则", exact: true }),
   ).toBeVisible()
-  await next()
-  await page.getByRole("button", { name: "生成初始画像", exact: true }).click()
+  await page.goto("/admin")
+  page.once("dialog", (dialog) => dialog.accept())
+  await page.getByRole("button", { name: "重新起草全部", exact: true }).click()
   await expect(
     page.getByText(
       "已为 26 名员工生成初始画像，员工登录后能在自己的画像页看到",
     ),
   ).toBeVisible({ timeout: 60000 })
-  await next()
-  await expect(page.getByRole("heading", { name: "设置完成" })).toBeVisible()
   const { base, headers } = await page.evaluate(() => ({
     base: `/api/v1/orgs/${localStorage.getItem("current_org_id")}`,
     headers: {

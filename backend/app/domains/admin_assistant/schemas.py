@@ -34,7 +34,7 @@ AdminPage = Literal[
     "/admin/connections?tab=im",
     "/admin/connections?tab=mcp",
     "/admin/audit",
-    "/setup-wizard",
+    "/setup-wizard",  # Historical messages link to the assistant via redirect.
 ]
 
 

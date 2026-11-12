@@ -1,8 +1,7 @@
 import { CsvImportCard } from "@/components/Sources/CsvImportCard"
 import { JiraSourceForm } from "@/components/Sources/JiraSourceForm"
-import type { StepProps } from "."
 
-export function SourcesStep({ orgId }: StepProps) {
+export function SourceForms({ orgId }: { orgId: string }) {
   return (
     <div className="space-y-5">
       <JiraSourceForm orgId={orgId} />
