@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.domains.bot.attachments import AttachmentPublic
 from app.domains.change_request.schemas import ToolInput
 from app.domains.profile.models import AssessmentStatus
+from app.domains.review.direct import DirectEditInput, DirectEditResult
 from app.domains.review.schemas import DecisionInput
 
 
@@ -134,7 +135,12 @@ class ReviewAction(ToolInput):
     card_id: UUID
 
 
-Action = RequestAction | QuestionAction | ReviewAction
+class ProfileEditAction(ToolInput):
+    action: Literal["confirm_profile_edit", "continue_profile_edit"]
+    card_id: UUID
+
+
+Action = RequestAction | QuestionAction | ReviewAction | ProfileEditAction
 
 
 class TextMessage(BaseModel):
@@ -176,6 +182,15 @@ class ReviewCard(Review):
     actions: list[ReviewAction] = Field(default_factory=list)
 
 
+class ProfileEditCard(DirectEditResult):
+    type: Literal["profile_edit_card"] = "profile_edit_card"
+    card_id: UUID = Field(default_factory=uuid4)
+    employee_id: UUID
+    employee_name: str
+    edit: DirectEditInput
+    actions: list[ProfileEditAction] = Field(default_factory=list)
+
+
 class PreviewCard(Preview):
     type: Literal["preview_card"] = "preview_card"
     actions: list[RequestAction]
@@ -192,7 +207,12 @@ class QuestionCard(Question):
 
 
 Message = Annotated[
-    TextMessage | PreviewCard | StatusCard | QuestionCard | ReviewCard,
+    TextMessage
+    | PreviewCard
+    | StatusCard
+    | QuestionCard
+    | ReviewCard
+    | ProfileEditCard,
     Field(discriminator="type"),
 ]
 
