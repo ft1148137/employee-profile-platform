@@ -84,7 +84,7 @@ test("page shows assistant reminder draft and can apply or discard it", async ({
   // A new conversation must stop showing drafts from the previous conversation.
   await propose()
   await openAdminAssistant(page)
-  await page.getByRole("link", { name: "新对话", exact: true }).click()
+  await page.getByRole("button", { name: "新对话", exact: true }).click()
   await returnToManualPage(page)
   await expect(section.getByRole("combobox")).toHaveText("每季度")
   await expect(

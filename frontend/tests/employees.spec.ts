@@ -156,9 +156,9 @@ test("organization switch updates navigation and scopes requests", async ({
     page.getByRole("link", { name: "员工", exact: true }),
   ).toHaveCount(0)
   await page.reload()
-  await expect(page.getByRole("combobox", { name: "当前组织" })).toHaveText(
-    "测试组织 2",
-  )
+  await expect(
+    page.getByRole("combobox", { name: "当前组织" }),
+  ).toHaveAttribute("title", "测试组织 2")
 })
 
 test("employee list handles failure, retry and empty search", async ({

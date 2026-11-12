@@ -235,7 +235,7 @@ for (const available of [true, false]) {
     ).toBeVisible()
     await expect(page.getByText(/查询于 \d{2}:\d{2}/)).toBeVisible()
     expect(sends).toBe(1)
-    await page.getByRole("link", { name: "新对话", exact: true }).click()
+    await page.getByRole("button", { name: "新对话", exact: true }).click()
     await page
       .getByRole("button", { name: "让助手处理", exact: true })
       .first()

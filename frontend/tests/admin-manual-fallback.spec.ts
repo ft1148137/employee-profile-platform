@@ -417,7 +417,7 @@ test("manual console completes all fifteen tabs without a model", async ({
       .click()
     await expect(page).toHaveURL("/admin/data-ai?tab=model")
     await page.getByText("更多", { exact: true }).click()
-    await page.getByRole("link", { name: "审计日志", exact: true }).click()
+    await page.getByRole("menuitem", { name: "审计日志", exact: true }).click()
     await page.getByRole("combobox", { name: "操作类型筛选" }).click()
     await page.getByRole("option", { name: "角色", exact: true }).click()
     await expect(
