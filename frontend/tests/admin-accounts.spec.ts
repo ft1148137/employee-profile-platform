@@ -14,7 +14,7 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
     "admin@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
-  await expect(page).toHaveURL("/setup-wizard")
+  await expect(page).toHaveURL("/admin/assistant")
   await page.getByRole("link", { name: "员工", exact: true }).click()
   const rows = page.getByRole("row")
   const row = (code: string) =>

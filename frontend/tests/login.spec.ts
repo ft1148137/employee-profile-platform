@@ -143,7 +143,7 @@ for (const path of ["/", "/settings", "/employees"]) {
 
     await fillForm(page, firstSuperuser, firstSuperuserPassword)
     await page.getByRole("button", { name: "登录" }).click()
-    await page.waitForURL("/setup-wizard")
+    await page.waitForURL("/admin/assistant")
     await expect(page.getByTestId("user-menu")).toBeVisible()
   })
 }

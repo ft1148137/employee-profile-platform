@@ -1,8 +1,13 @@
 import path from "node:path"
 import { expect, test } from "@playwright/test"
+import { mockCompletedSetup } from "./utils/adminAssistant"
 import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
+
+test.beforeEach(async ({ page }) => {
+  await mockCompletedSetup(page)
+})
 
 for (const size of [
   { width: 1280, height: 720 },
@@ -202,11 +207,14 @@ test("unconfigured model allows history and every manual menu", async ({
       .click()
     await expect(page).toHaveURL(route)
   }
-  for (const name of ["审计日志", "首次设置"]) {
-    await page.getByRole("button", { name: "更多", exact: true }).click()
-    await page.getByRole("menuitem", { name, exact: false }).click()
-    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible()
-  }
+  await page.getByRole("button", { name: "更多", exact: true }).click()
+  await expect(
+    page.getByRole("menuitem", { name: "首次设置", exact: false }),
+  ).toHaveCount(0)
+  await page.getByRole("menuitem", { name: "审计日志", exact: true }).click()
+  await expect(
+    page.getByRole("heading", { name: "审计日志", exact: true }),
+  ).toBeVisible()
 })
 
 test("session switch cancels the turn and preserves both conversation histories", async ({

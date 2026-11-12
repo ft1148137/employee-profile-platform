@@ -59,13 +59,13 @@
 | IM 入口 | 测试已保存的连接、查看长连接心跳 | 数据与 AI / IM 入口 | `test_im_connection` |
 | IM 入口 | 企业微信、Telegram 设置 | 数据与 AI / IM 入口 | `update_im_setting` 仅支持飞书，其余平台按登记项说明给网页链接；当前只支持飞书联调 |
 | 审计日志 | 按时间、操作、操作者或对象查日志 | 更多 / 审计日志；各设置页修改记录 | `list_audit_events` |
-| 首次设置 | 查看设置进度 | 更多 / 首次设置 | `get_setup_status` |
-| 首次设置 | 修改企业名 | 更多 / 首次设置 | `update_org_profile` |
-| 首次设置 | 标记步骤完成 | 更多 / 首次设置 | `complete_setup_step` |
-| 首次设置 | 跳过可选步骤（包括暂不配置模型） | 更多 / 首次设置 | `skip_setup_step` |
+| 首次设置 | 查看设置进度 | 管理助手 / 首次设置引导 | `get_setup_status` |
+| 首次设置 | 修改企业名 | 管理助手 / 首次设置引导 | `update_org_profile` |
+| 首次设置 | 标记步骤完成 | 管理助手 / 首次设置引导 | `complete_setup_step` |
+| 首次设置 | 跳过可选步骤（包括暂不配置模型） | 管理助手 / 首次设置引导 | `skip_setup_step` |
 | 设置 / 能力词典 | 查看、导出当前词典 | 能力与规则 / 能力词典 | `get_capability_dictionary`（导出按钮留在网页） |
 | 设置 / 能力词典 | 下载 YAML / Excel 模板 | 能力与规则 / 能力词典 | NOT_FOR_ASSISTANT：模板下载由助手给页面链接 |
-| 设置 / 能力词典 | 选择内置词典 | 更多 / 首次设置 → 稍后处理的事项 | `apply_capability_template` |
+| 设置 / 能力词典 | 选择内置词典 | 管理助手 / 首次设置引导 | `apply_capability_template` |
 | 设置 / 能力词典 | 上传、预览并发布词典 | 能力与规则 / 能力词典 | `import_capability_dictionary` |
 | 起草建议 | 查看名称、说明、理由和证据条数（助手不读取证据标题或正文） | 能力与规则 / 能力词典 | `list_capability_proposals` |
 | 起草建议 | 忽略建议，撤销时检查状态和同名建议 | 能力与规则 / 能力词典 | `dismiss_capability_proposal` |

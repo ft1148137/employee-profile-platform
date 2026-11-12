@@ -24,6 +24,7 @@ import {
 } from "@/components/Chat/useStreamingTurn"
 import { RosterPreview } from "@/components/Roster/RosterPreview"
 import { SetupError } from "@/components/Setup/SetupError"
+import { SetupStartPanel } from "@/components/Setup/SetupStartPanel"
 import { Button } from "@/components/ui/button"
 import { useAdminAvailability } from "@/hooks/useAdminAvailability"
 import { rememberConversation } from "@/hooks/useCurrentConversation"
@@ -350,47 +351,69 @@ export function AdminAssistantPanel({
         {!available && (
           <p role="status" className="rounded-lg border bg-muted/40 p-4">
             {availability.data?.reason || "正在检查管理助手…"}
+            {availability.data?.reason?.includes("模型") && (
+              <span className="mt-2 block">
+                模型未配置或不可用。
+                <Link
+                  to="/admin/data-ai"
+                  search={{ tab: "model" }}
+                  className="underline"
+                >
+                  去配置模型
+                </Link>
+              </span>
+            )}
           </p>
         )}
         <SetupError error={availability.error} />
         {!sessionId && !messages.length && !pendingMessage && (
-          <div className="space-y-8 py-6">
-            <div className="space-y-3 text-center">
-              <h2 className="text-2xl font-semibold">
-                你好，今天有什么要处理的？
-              </h2>
-              <p className="text-muted-foreground">
-                试着问「今天有什么要处理的」。我会结合首页状态，帮你找到对应页面。
-              </p>
-            </div>
-            <TodayPanel orgId={orgId} onPrompt={setText} />
-            <section className="space-y-3" aria-label="可以这样问">
-              <h2 className="font-semibold">可以这样问</h2>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  "查看同步与起草进度",
-                  "修改提醒周期",
-                  "查看员工名单和账号",
-                  "查看离职人员",
-                  "检查飞书连接",
-                  "排查同步失败",
-                ].map((example) => (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    key={example}
-                    className="h-auto rounded-full px-3 py-2 text-xs font-normal"
-                    onClick={() => setText(example)}
-                  >
-                    {example}
-                  </Button>
-                ))}
+          <SetupStartPanel
+            orgId={orgId}
+            available={available}
+            onStart={() => {
+              const body = { text: "帮我完成首次设置", page: "/admin" as const }
+              setPendingMessage(body)
+              send.mutate(body)
+            }}
+          >
+            <div className="space-y-8 py-6">
+              <div className="space-y-3 text-center">
+                <h2 className="text-2xl font-semibold">
+                  你好，今天有什么要处理的？
+                </h2>
+                <p className="text-muted-foreground">
+                  试着问「今天有什么要处理的」。我会结合首页状态，帮你找到对应页面。
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                可以查看信息、起草提醒设置改动，点确认卡后才会生效。备份恢复、升级、重置请联系部署人员；不做绩效和薪酬判断。
-              </p>
-            </section>
-          </div>
+              <TodayPanel orgId={orgId} onPrompt={setText} />
+              <section className="space-y-3" aria-label="可以这样问">
+                <h2 className="font-semibold">可以这样问</h2>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "查看同步与起草进度",
+                    "修改提醒周期",
+                    "查看员工名单和账号",
+                    "查看离职人员",
+                    "检查飞书连接",
+                    "排查同步失败",
+                  ].map((example) => (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      key={example}
+                      className="h-auto rounded-full px-3 py-2 text-xs font-normal"
+                      onClick={() => setText(example)}
+                    >
+                      {example}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  可以查看信息、起草提醒设置改动，点确认卡后才会生效。备份恢复、升级、重置请联系部署人员；不做绩效和薪酬判断。
+                </p>
+              </section>
+            </div>
+          </SetupStartPanel>
         )}
         <ChatMessages
           onDownload={async (id) =>

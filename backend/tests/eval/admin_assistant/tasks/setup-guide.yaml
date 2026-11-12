@@ -1,0 +1,46 @@
+id: setup-guide
+menu: home
+seed: {setup_required_only: true}
+steps:
+  - type: say
+    text: 帮我完成首次设置。请先查询进度，只说明第一个待做步骤和它的用途，并告诉我需要上传什么材料，暂时不要起草变更。
+    expect:
+      first_call: {name: admin_read, args: {function: get_setup_status, args: {}}}
+      reply_contains: [名单, [上传, 材料, 文档]]
+      no_change_card: true
+  - type: say
+    text: 先跳过数据来源，其他设置不变，只给我跳过这一步的确认卡。
+    expect: {change_functions: [skip_setup_step]}
+  - type: say
+    text: 还没点确认，先查一下设置进度，不要改动。
+    expect: {no_change_card: true}
+  - type: apply
+  - type: say
+    text: 先跳过词典。请先核对这个步骤能不能跳过；不能跳过就告诉我，不要给其他操作的确认卡。
+    expect:
+      no_change_card: true
+      reply_contains: [[不能跳过, 不可跳过, 不支持跳过, 无法跳过]]
+expect:
+  setup_steps:
+    org_profile: completed
+    model: completed
+    roster: pending
+    capabilities: pending
+    sources: skipped
+    identities: pending
+    approval_policy: pending
+    initial_profiles: pending
+fake_model:
+  - calls:
+      - {name: admin_read, args: {function: get_setup_status, args: {}}}
+    text: 先整理员工名单，建立员工与部门的对应关系。请上传名单文档，我会整理后给你确认。
+  - calls:
+      - name: propose_changes
+        args: {items: [{function: skip_setup_step, args: {key: sources}}]}
+    text: 请在确认卡上确认跳过数据来源。
+  - calls:
+      - {name: admin_read, args: {function: get_setup_status, args: {}}}
+    text: 尚未确认，数据来源仍是待做。
+  - calls:
+      - {name: admin_read, args: {function: get_setup_status, args: {}}}
+    text: 词典不能跳过，需要选择并启用能力词典后继续。

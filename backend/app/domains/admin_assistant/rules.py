@@ -266,7 +266,7 @@ def register_rules(functions: dict[str, AdminFunction]) -> None:
             "修改企业名称",
             OrgArgs,
             lambda d, p, a, **kw: rename_organization(d, p, a.name, **kw),
-            "/admin/setup",
+            "/admin/assistant",
             (("PATCH", ""),),
             snapshot=lambda d, p, a: OrgArgs(
                 name=d.exec(
@@ -299,7 +299,7 @@ def register_rules(functions: dict[str, AdminFunction]) -> None:
                 "完成首次设置步骤" if path == "complete" else "跳过可选的首次设置步骤",
                 StepArgs,
                 handler,
-                "/admin/setup",
+                "/admin/assistant",
                 (("POST", f"/setup/steps/{{key}}/{path}"),),
             )
         )

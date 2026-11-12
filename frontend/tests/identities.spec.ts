@@ -3,6 +3,7 @@ import path from "node:path"
 import { expect, test } from "@playwright/test"
 import type { ExternalIdentitiesPublic } from "../src/client"
 import { importRoster } from "./utils/roster"
+import { setupStep } from "./utils/sources"
 import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -208,23 +209,21 @@ test("confirm candidates in bulk, select employee, unlink and save optional setu
     path: testInfo.outputPath("identities.png"),
     fullPage: true,
   })
-  await page.goto("/setup-wizard")
-  await page.getByText("稍后处理的事项", { exact: true }).click()
-  const step = page
-    .getByRole("navigation", { name: "设置步骤" })
-    .getByRole("button", { name: /确认账号对应/ })
-  await step.click()
-  await expect(
-    page.getByText(/还有 \d+ 个账号未关联，它们的记录不会算到任何人头上/),
-  ).toBeVisible()
-  await page.getByRole("button", { name: "跳过", exact: true }).click()
-  await expect(step).toContainText("已跳过")
+  const skipped = await setupStep(page, "identities", "skip")
+  expect(skipped.ok()).toBeTruthy()
+  expect(
+    (await skipped.json()).steps.find(
+      (step: { key: string }) => step.key === "identities",
+    ).status,
+  ).toBe("skipped")
   await page.reload()
-  await page.getByText("稍后处理的事项", { exact: true }).click()
-  await expect(step).toContainText("已跳过")
-  await step.click()
-  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
-  await expect(step).toContainText("已完成")
+  const completed = await setupStep(page, "identities")
+  expect(completed.ok()).toBeTruthy()
+  expect(
+    (await completed.json()).steps.find(
+      (step: { key: string }) => step.key === "identities",
+    ).status,
+  ).toBe("completed")
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/admin/identities")
   expect(

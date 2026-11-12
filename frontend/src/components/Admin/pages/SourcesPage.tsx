@@ -1,6 +1,6 @@
 import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { OrgState } from "@/components/Profile/OrgState"
-import { SourcesStep } from "@/components/Setup/steps/SourcesStep"
+import { SourceForms } from "@/components/Sources/SourceForms"
 import { useOrg } from "@/hooks/useOrg"
 
 export function SourcesPage() {
@@ -19,7 +19,7 @@ export function SourcesPage() {
           连接 Jira 或上传文件，为员工画像补充事实依据。
         </p>
       </div>
-      <SourcesStep key={org.id} orgId={org.id} onComplete={() => {}} />
+      <SourceForms key={org.id} orgId={org.id} />
       <ChangeHistory targetType="source_connection" />
     </div>
   )

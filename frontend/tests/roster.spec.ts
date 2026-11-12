@@ -30,13 +30,7 @@ test("opt-in work attributes import and personnel tenure", async ({
     },
     { token: access_token, orgId: org_id },
   )
-  await page.goto("/setup-wizard")
-  await page.getByText("稍后处理的事项", { exact: true }).click()
-  await page
-    .getByRole("navigation", { name: "设置步骤" })
-    .getByRole("button", { name: /导入员工名单/ })
-    .click()
-  await page.getByRole("link", { name: "前往管理助手" }).click()
+  await page.goto("/admin/assistant?prompt=帮我按这份名单导入员工")
   await expect(
     page.getByRole("textbox", { name: "发给管理助手的消息" }),
   ).toHaveValue("帮我按这份名单导入员工")
