@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_layout/admin/people")({
     if (search.tab === "roster")
       throw redirect({ to: "/admin/assistant", replace: true })
     if (search.tab === "org-chart")
-      throw redirect({ href: "/org-chart", replace: true })
+      throw redirect({ to: "/org-chart", replace: true })
     throw redirect({
       to: "/employees",
       search: {

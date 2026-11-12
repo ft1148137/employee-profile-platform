@@ -15,6 +15,11 @@ import { useOrg } from "@/hooks/useOrg"
 export const Route = createFileRoute("/_layout")({
   component: Layout,
   beforeLoad: async ({ location }) => {
+    if (
+      location.pathname.replace(/\/$/, "") === "/employees" &&
+      new URLSearchParams(location.searchStr).get("view") === "org-chart"
+    )
+      throw redirect({ to: "/org-chart", replace: true })
     const search =
       location.pathname === "/oauth/consent"
         ? { next: location.href }

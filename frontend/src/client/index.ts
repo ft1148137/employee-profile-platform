@@ -779,6 +779,7 @@ export type {
   OrganizationPublic,
   OrganizationUpdate,
   OrgChartDepartment,
+  OrgChartPerson,
   OrgChartPublic,
   orgsReadDepartmentsData,
   orgsReadDepartmentsError,

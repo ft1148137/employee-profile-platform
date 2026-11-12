@@ -30,6 +30,7 @@ from app.domains.org.schemas import (
     EmployeeSummary,
     OrganizationPublic,
     OrgChartDepartment,
+    OrgChartPerson,
     OrgChartPublic,
     ProgressPublic,
     PublishedSummary,
@@ -72,17 +73,28 @@ def read_org_chart(session: Session, principal: Principal) -> OrgChartPublic:
                 break
             seen.add(ancestor)
             ancestor = nodes[ancestor].parent_department_id
-    counts = session.exec(
-        select(Employee.department_id, func.count())
+    managers_query = _reporting_managers(principal)
+    # shortcut: return all people at once; paginate by department above 2,000 people.
+    rows = session.exec(
+        Select[tuple[Employee, UUID | None]](Employee, managers_query.c.id)
+        .outerjoin(managers_query, col(Employee.id) == managers_query.c.employee_id)
         .where(
             employee_scope_clause(principal),
             Employee.employment_status == EmploymentStatus.ACTIVE,
         )
-        .group_by(col(Employee.department_id))
+        .order_by(Employee.display_name, col(Employee.id))
     ).all()
-    for department_id, count in counts:
-        if department_id in nodes:
-            nodes[department_id].direct_count = count
+    visible_ids = {employee.id for employee, _ in rows}
+    people = [
+        OrgChartPerson(
+            **employee.model_dump(),
+            manager_id=manager_id if manager_id in visible_ids else None,
+        )
+        for employee, manager_id in rows
+    ]
+    for person in people:
+        if person.department_id is not None and person.department_id in nodes:
+            nodes[person.department_id].direct_count += 1
     for node in nodes.values():
         ancestor = node.id
         seen = set()
@@ -118,7 +130,7 @@ def read_org_chart(session: Session, principal: Principal) -> OrgChartPublic:
                     display_name=employee.display_name if employee else user.username,
                 )
             )
-    return OrgChartPublic(departments=list(nodes.values()))
+    return OrgChartPublic(departments=list(nodes.values()), people=people)
 
 
 def _reporting_managers(principal: Principal) -> Subquery:

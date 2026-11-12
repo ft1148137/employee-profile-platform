@@ -1,0 +1,45 @@
+.org-tree,
+.org-tree ul {
+  display: flex;
+  justify-content: center;
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.org-tree li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0 10px;
+}
+.org-tree ul > li {
+  padding-top: 24px;
+}
+.org-tree ul > li::before,
+.org-tree ul > li::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 24px;
+  border-top: 1px solid var(--muted-foreground);
+}
+.org-tree ul > li::before {
+  right: 50%;
+  border-right: 1px solid var(--muted-foreground);
+}
+.org-tree ul > li::after {
+  left: 50%;
+}
+.org-tree ul > li:first-child::before,
+.org-tree ul > li:last-child::after {
+  border-top: 0;
+}
+.org-stem {
+  height: 24px;
+  border-left: 1px solid var(--muted-foreground);
+}
