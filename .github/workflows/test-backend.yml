@@ -52,7 +52,7 @@ jobs:
         run: >-
           uv run pytest tests/ -n auto --dist loadgroup --cov --cov-report=
           -m "not roster_performance" --splits=3 --group="$SHARD"
-          --splitting-algorithm=least_duration --store-durations --durations=25
+          --splitting-algorithm=least_duration --store-durations --clean-durations --durations=25
           --junitxml="junit-$SHARD.xml"
         working-directory: backend
       - name: Run roster performance tests without workers or coverage
