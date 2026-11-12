@@ -137,7 +137,7 @@ def test_attach_publishes_without_pending_or_notification(
         and request.decided_at
     )
     assert request.author == {"actor_type": "system_worker"}
-    assert request.generated_by["prompt_version"] == "incremental-draft-v2"
+    assert request.generated_by["prompt_version"] == "incremental-draft-v3"
     assert request.generated_by["schema_version_id"] == str(schema.id)
     assert request.generated_by["model"] == "synthetic"
     decision = rows(db, ReviewDecision, org)[0]
@@ -214,7 +214,7 @@ def test_mixed_results_publish_then_notify(
         c for c in list_capabilities(db, org, schema.id) if c.key != "backend_api"
     )
     pi_service.replies.append(
-        {"items": [answer(), answer(op="add", capability_key=other.key, level=None)]}
+        {"items": [answer(), answer(op="add", capability_key=other.key)]}
     )
     run(incremental_context, db)
     requests = rows(db, ProfileChangeRequest, org)
@@ -229,11 +229,133 @@ def test_mixed_results_publish_then_notify(
     )
 
 
+@pytest.mark.parametrize("op", ["add", "modify"])
+@pytest.mark.parametrize("keep_valid", [False, True])
+def test_unlevelled_increment_is_discarded(
+    incremental_context: tuple,
+    db: Session,
+    pi_service: PiHarness,
+    op: str,
+    keep_valid: bool,
+) -> None:
+    org, schema, _, employees, _, claim, original = incremental_context
+    other = next(
+        c for c in list_capabilities(db, org, schema.id) if c.key != "backend_api"
+    )
+    invalid_key = other.key if op == "add" else "backend_api"
+    valid = (
+        answer()
+        if op == "add"
+        else answer(
+            op="add",
+            capability_key=other.key,
+            level=other.level_rubric["levels"][0]["key"],
+        )
+    )
+    items = [answer(op=op, capability_key=invalid_key, level=None)]
+    if keep_valid:
+        items.append(valid)
+    pi_service.replies.append({"items": items})
+    run(incremental_context, db)
+    assert len(pi_service.requests) == 2
+    stored = rows(db, ChangeItem, org)
+    requests = rows(db, ProfileChangeRequest, org)
+    assert len(stored) == len(requests) == int(keep_valid)
+    assert all(i.after["level"] is not None for i in stored)
+    if keep_valid:
+        assert requests[0].generated_by["dropped_items"] == 1
+    else:
+        assert incremental.latest_version(db, org, employees[0].id).id == original.id
+        assert not rows(db, InboxItem, org)
+    assert (
+        db.get(ProfileProgress, (org, employees[0].id)).inference_status == "generated"
+    )
+    db.refresh(claim)
+    assert claim.level == "routine"
+
+
+@pytest.mark.parametrize("empty_rubric", [False, True])
+def test_attach_preserves_historical_null_level(
+    incremental_context: tuple,
+    db: Session,
+    pi_service: PiHarness,
+    empty_rubric: bool,
+) -> None:
+    org, schema, _, employees, _, claim, version = incremental_context
+    claim.level = None
+    db.add(claim)
+    if empty_rubric:
+        capability = next(
+            c for c in list_capabilities(db, org, schema.id) if c.key == "backend_api"
+        )
+        capability.level_rubric = {"levels": []}
+        db.add(capability)
+    db.flush()
+    version.snapshot = build_profile_snapshot(
+        db, org_id=org, employee_id=employees[0].id, claim_ids=[claim.id]
+    )
+    db.add(version)
+    db.commit()
+    pi_service.replies.append({"items": [answer(level=None)]})
+    run(incremental_context, db)
+    request = rows(db, ProfileChangeRequest, org)[0]
+    assert request.status == "approved" and request.generated_by["dropped_items"] == 0
+    item = rows(db, ChangeItem, org)[0]
+    assert item.op == "attach_evidence" and item.after["level"] is None
+    published = db.get(ProfileClaim, item.published_claim_id)
+    assert published.level is None and published.statement == claim.statement
+    assert not rows(db, InboxItem, org)
+
+
+@pytest.mark.parametrize("op", ["add", "modify"])
+def test_incremental_writer_defends_against_unlevelled_items(
+    incremental_context: tuple,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    op: str,
+) -> None:
+    from app.domains.change_request.claim import ClaimAfter
+    from app.domains.change_request.models import ChangeOp
+    from app.domains.drafting.model import DraftItem, DraftResult
+
+    org, schema, *_ = incremental_context
+    capability = next(
+        c
+        for c in list_capabilities(db, org, schema.id)
+        if (c.key == "backend_api") == (op == "modify")
+    )
+    evidence = next(e for e in rows(db, Evidence, org) if e.source_ref == "API-3")
+    result = DraftResult(
+        [
+            DraftItem(
+                capability_id=capability.id,
+                after=ClaimAfter(
+                    statement="无法确定等级",
+                    assessment_status=AssessmentStatus.TENTATIVE,
+                ),
+                evidence={evidence.id: "supports"},
+                explanation="合成依据",
+                uncertainty="需要确认",
+                op=ChangeOp(op),
+            )
+        ],
+        {"mode": "model"},
+    )
+    monkeypatch.setattr(incremental.model, "draft", lambda *args, **kwargs: result)
+    run(incremental_context, db)
+    assert not rows(db, ProfileChangeRequest, org)
+    assert not rows(db, ChangeItem, org)
+    assert (
+        db.get(ProfileProgress, (org, incremental_context[3][0].id)).inference_status
+        == "generated"
+    )
+
+
 def test_modify_requires_review_and_replacement_retains_records(
     incremental_context: tuple, db: Session, pi_service: PiHarness
 ) -> None:
     org = incremental_context[0]
-    pi_service.replies.append({"items": [answer(op="modify", level=None)]})
+    pi_service.replies.append({"items": [answer(op="modify")]})
     run(incremental_context, db)
     pending = rows(db, ProfileChangeRequest, org)[0]
     assert pending.status == "pending_owner" and pending.revision == 1

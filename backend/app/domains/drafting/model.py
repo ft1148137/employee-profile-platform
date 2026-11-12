@@ -61,10 +61,11 @@ class DraftResult:
     proposals: list[DraftProposal] = field(default_factory=list)
 
 
-PROMPT_VERSION = "initial-draft-v2"
+PROMPT_VERSION = "initial-draft-v3"
 SYSTEM_PROMPT = """只根据给出的记录起草能力陈述，没有记录支持的能力不要输出，未知不等于不会。
 指派人或报告人不一定是实际完成人，要在 uncertainty 中说明。同一经验组只算一项经验。
-等级只能用该能力给出的等级 key，没有把握时为 null。不做绩效、薪酬、晋升判断。
+add / modify 的每条判断必须给出该能力等级里的一个 key，不能为 null。
+证据不足以确定等级、或该能力没有等级时，不要输出这条判断。不做绩效、薪酬、晋升判断。
 explanation 不要写证据条数、来源数和日期，系统会按实际证据补在开头。
 只返回规定格式的 JSON，evidence 使用本次记录的 ref。
 词典里没有合适的能力时，可以在 proposals 里提出，最多 3 条，不要在 items 里使用词典外的 key；proposals 不是判断，不写等级和员工陈述。"""
@@ -231,6 +232,8 @@ def draft(
             accepted.append(proposal)
         return accepted
 
+    dropped_items = 0
+
     class DraftOutput(BaseModel):
         model_config = ConfigDict(extra="forbid")
         items: list[ModelItem]
@@ -243,7 +246,9 @@ def draft(
 
         @model_validator(mode="after")
         def validate_references(self) -> Self:
+            nonlocal dropped_items
             seen: set[str] = set()
+            accepted = []
             for item in self.items:
                 if item.capability_key in seen:
                     raise ValueError("能力重复")
@@ -253,6 +258,7 @@ def draft(
                 if len(set(item.evidence)) != len(item.evidence):
                     raise ValueError("证据引用重复")
                 if item.capability_key not in definitions:
+                    accepted.append(item)
                     continue
                 if current is not None:
                     before = current.get(item.capability_key)
@@ -267,11 +273,18 @@ def draft(
                         )
                     ):
                         raise ValueError("补充证据不能改变陈述或等级")
+                if item.op in {"add", "modify"} and (
+                    item.level is None or not levels[item.capability_key]
+                ):
+                    continue
                 if (
                     item.level is not None
                     and item.level not in levels[item.capability_key]
                 ):
                     raise ValueError("等级不在该能力的给定等级中")
+                accepted.append(item)
+            dropped_items = len(self.items) - len(accepted)
+            self.items = accepted
             return self
 
     output = None
@@ -371,11 +384,11 @@ def draft(
             "mode": "model",
             "provider": provider,
             "model": model_id,
-            "prompt_version": "incremental-draft-v2"
+            "prompt_version": "incremental-draft-v3"
             if current is not None
             else PROMPT_VERSION,
             "reasoning_effort": effort,
-            "dropped_items": len(unknown),
+            "dropped_items": dropped_items + len(unknown),
             "proposals": len(proposals),
             "drafting_note_version": note.version
             if note is not None and note.text

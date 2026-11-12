@@ -19,7 +19,10 @@ from app.domains.capability.proposals import store_proposals
 from app.domains.capability.service import list_capabilities
 from app.domains.change_request.models import ChangeItem, ProfileChangeRequest
 from app.domains.drafting import incremental, model, service
+from app.domains.drafting.collect import collect
 from app.domains.evidence.service import append_evidence
+from app.domains.model.models import ModelSetting
+from app.domains.model.service import model_config
 from app.domains.profile.models import ProfileClaim, ProfileVersion
 from tests.authz.test_tenant_access import tenant_data  # noqa: F401
 from tests.domains.test_drafting_model import (
@@ -68,6 +71,7 @@ def test_unknown_item_becomes_proposal_without_publishing(
     unknown = known | {
         "capability_key": "新能力",
         "op": "add",
+        "level": None,
         "evidence": ["R1", "R2"],
     }
     pi_service.replies.append({"items": [unknown, known]})
@@ -78,7 +82,7 @@ def test_unknown_item_becomes_proposal_without_publishing(
     assert change.status == "pending_owner"
     assert change.generated_by["dropped_items"] == change.generated_by["proposals"] == 1
     assert change.generated_by["prompt_version"] == (
-        "incremental-draft-v2" if is_incremental else "initial-draft-v2"
+        "incremental-draft-v3" if is_incremental else "initial-draft-v3"
     )
     assert "新能力" not in json.dumps(change.generated_by, ensure_ascii=False)
     assert len(rows(db, ChangeItem, org)) == 1
@@ -133,12 +137,19 @@ def test_bad_proposal_does_not_discard_items_or_good_proposal(
 def test_unknown_item_with_one_record_is_dropped(
     request: pytest.FixtureRequest, db: Session, pi_service: PiHarness
 ) -> None:
-    org, _, _, employees, _ = request.getfixturevalue("drafting")
+    org, schema, _, employees, _ = request.getfixturevalue("drafting")
+    pi_service.replies.append(answer(capability_key="missing"))
+    result = model.draft(
+        collect(db, org, employees[0]),
+        list_capabilities(db, org, schema.id),
+        model_config(db.get(ModelSetting, org)),
+    )
+    assert result.generated_by["dropped_items"] == 1
+    assert result.generated_by["proposals"] == 0 and not result.items
     pi_service.replies.append(answer(capability_key="missing"))
     service.run_drafting(Principal.system_worker(org), [str(employees[0].id)])
     db.expire_all()
-    generated = rows(db, ProfileChangeRequest, org)[0].generated_by
-    assert generated["dropped_items"] == 1 and generated["proposals"] == 0
+    assert not rows(db, ProfileChangeRequest, org)
     assert not rows(db, CapabilityProposal, org) and not rows(db, ChangeItem, org)
 
 

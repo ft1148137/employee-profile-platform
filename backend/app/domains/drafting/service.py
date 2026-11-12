@@ -174,6 +174,9 @@ def write_initial_request(
     active_ids = {c.id for c in list_capabilities(session, org_id, active.id)}
     if any(item.capability_id not in active_ids for item in items):
         raise InvalidDraft("词典已更新，请按当前词典重新起草")
+    items = [item for item in items if item.after.level is not None]
+    if not items:
+        return False
     request = session.exec(
         select(ProfileChangeRequest)
         .where(
@@ -386,7 +389,7 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                 store_proposals(session, org_id, employee_id, result.proposals)
                 progress_row(session, org_id, employee_id, InferenceStatus.GENERATED)
                 session.commit()
-                counts["generated" if written else "handed_over"] += 1
+                counts["generated" if written or not items else "handed_over"] += 1
             except ModelRateLimited as error:
                 session.rollback()
                 pause_drafting(org_id, ids[index:], error)

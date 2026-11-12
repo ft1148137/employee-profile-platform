@@ -161,6 +161,49 @@ def test_model_request_and_privacy(
     assert all(r["date"] == "2026-01-01" for r in body["records"])
 
 
+@pytest.mark.parametrize("op", ["add", "modify"])
+@pytest.mark.parametrize("empty_rubric", [False, True])
+@pytest.mark.parametrize("keep_valid", [False, True])
+def test_unlevelled_items_are_discarded_without_retry(
+    drafting: tuple,
+    db: Session,
+    pi_service: PiHarness,
+    op: str,
+    empty_rubric: bool,
+    keep_valid: bool,
+) -> None:
+    org, schema, _, employees, _ = drafting
+    capabilities = list_capabilities(db, org, schema.id)
+    capability = next(c for c in capabilities if c.key == "backend_api")
+    other = next(c for c in capabilities if c.key != capability.key)
+    if empty_rubric:
+        capability.level_rubric = {"levels": []}
+        db.add(capability)
+        db.commit()
+    invalid = json.loads(answer(op=op, level="routine" if empty_rubric else None))
+    if keep_valid:
+        invalid["items"].extend(
+            json.loads(
+                answer(
+                    capability_key=other.key,
+                    level=other.level_rubric["levels"][0]["key"],
+                )
+            )["items"]
+        )
+    pi_service.replies.append(invalid)
+    service.run_drafting(Principal.system_worker(org), [str(employees[0].id)])
+    db.expire_all()
+    assert len(pi_service.requests) == 2
+    assert service.read_progress(db, org).counts["failed"] == 0
+    items = rows(db, ChangeItem, org)
+    requests = rows(db, ProfileChangeRequest, org)
+    assert len(items) == len(requests) == int(keep_valid)
+    if keep_valid:
+        assert items[0].capability_definition_id == other.id
+        assert items[0].after["level"] is not None
+        assert requests[0].generated_by["dropped_items"] == 1
+
+
 @pytest.mark.parametrize(
     "change",
     [
@@ -286,6 +329,15 @@ def test_scope_filters(
     employees[3].department_id = depts[2].id
     depts[2].parent_department_id = depts[1].id
     db.add_all([employees[0], employees[3], depts[2]])
+    for index, employee in enumerate(employees[1:5]):
+        account = f"scope-{index}"
+        db.add(
+            ExternalIdentity(
+                org_id=org, employee_id=employee.id, source="jira", external_id=account
+            )
+        )
+        db.flush()
+        ingest(db, org, record(person(account), key=f"SCOPE-{index}"))
     db.commit()
     pi_service.auto_draft = True
     if not enabled:
@@ -301,6 +353,7 @@ def test_scope_filters(
         {e.id for e in employees[:5]} - {employees[0].id} if enabled else set()
     )
     if enabled:
+        assert len(pi_service.requests) == 8
         body = json.loads(
             pi_service.requests[0]["body"]["messages"][-1]["content"][0]["text"]
         )
