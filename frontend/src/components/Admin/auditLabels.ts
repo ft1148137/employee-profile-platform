@@ -47,6 +47,7 @@ export const auditLabels: Record<string, string> = {
   "setup.step_completed": "完成设置步骤",
   "setup.step_skipped": "跳过设置步骤",
   "department.capabilities_updated": "修改部门对应能力",
+  "department.capabilities_generated": "自动生成部门对应能力",
   "org.renamed": "修改企业名称",
   "org.employee_fields_updated": "修改员工档案字段开关",
   "capability_schema.activated": "启用能力词典",

@@ -7,7 +7,9 @@ from app.domains.admin_assistant import change_set as c
 from app.domains.bot.schemas import Profile as BotProfile
 from app.domains.capability.department import (
     DepartmentArgs,
+    SetDepartmentCapabilities,
     read_department_capabilities,
+    set_department_capabilities,
     snapshot,
 )
 from app.domains.capability.models import DepartmentCapability
@@ -210,6 +212,19 @@ def test_stale_confirmation(db: Session, demo: tuple, client: TestClient) -> Non
     )
     with pytest.raises(c.ChangeSetError, match="内容已变化"):
         c.apply(db, p, row.id, row.revision)
+
+
+def test_manual_empty_marks_department_admin(db: Session, demo: tuple) -> None:
+    p = principal(db, demo)
+    department = db.get(Department, demo[1]["E02"].department_id)
+    assert department.capability_source is None
+    set_department_capabilities(
+        db,
+        p,
+        SetDepartmentCapabilities(department_id=department.id, capability_keys=[]),
+    )
+    assert department.capability_source == "admin"
+    assert department.capability_schema_version_id is None
 
 
 def test_migration_roundtrip(migration_engine: Engine) -> None:

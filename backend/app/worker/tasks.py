@@ -4,16 +4,18 @@ from procrastinate.exceptions import JobRetry
 from procrastinate.job_context import JobContext
 from procrastinate.jobs import Job
 from procrastinate.retry import BaseRetryStrategy
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.core.db import engine
 from app.domains.base import utc_now
 from app.domains.bot.store import cleanup_messages
+from app.domains.capability.department_defaults import fill_department_defaults
 from app.domains.drafting.incremental import run_incremental
 from app.domains.drafting.service import run_drafting
 from app.domains.im.binding import cleanup_events
 from app.domains.inbox.admin_todos import dispatch_admin_todos
 from app.domains.inbox.reminders import dispatch_due_reminders
+from app.domains.org.models import Organization
 from app.domains.source.schedule import dispatch_due_syncs
 from app.domains.source.sync import execute_sync
 from app.worker.app import app
@@ -83,6 +85,17 @@ def dispatch_scheduled(timestamp: int) -> None:  # noqa: ARG001
 def dispatch_reminders(timestamp: int) -> None:  # noqa: ARG001
     with Session(engine) as session:
         dispatch_due_reminders(session, utc_now())
+
+
+@app.periodic(cron="0 * * * *")
+@app.task(
+    name="capabilities.fill_department_defaults", queueing_lock="department_defaults"
+)
+def fill_defaults(timestamp: int) -> None:  # noqa: ARG001
+    with Session(engine) as session:
+        org_ids = session.exec(select(Organization.id)).all()
+    for org_id in org_ids:
+        tenant_task(org_id, fill_department_defaults)
 
 
 # shortcut: Fixed UTC 01:00 (09:00 in China); use organization timezones when configurable.
