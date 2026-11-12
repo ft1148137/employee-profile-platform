@@ -1,5 +1,6 @@
 from typing import Literal
 from uuid import UUID, uuid7
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from pydantic import JsonValue
@@ -259,11 +260,13 @@ def direct_edit(
     actor = session.get(User, principal.user_id)
     assert actor is not None
     names = "、".join(i.capability_name for i in result.items)
+    # shortcut: 按北京时间显示，企业有时区设置后改用企业时区。
+    display_time = now.astimezone(ZoneInfo("Asia/Shanghai"))
     notify(
         session,
         request,
         InboxKind.PROFILE_EDITED,
-        f"{actor.full_name or actor.email}于 {now:%Y-%m-%d %H:%M} 直接修改了你的画像：{names}。如有异议，可以在画像页修改后提交经理审批",
+        f"{actor.full_name or actor.email}于 {display_time:%Y-%m-%d %H:%M} 直接修改了你的画像：{names}。如有异议，可以在画像页修改后提交经理审批",
     )
     session.flush()
     if commit:
