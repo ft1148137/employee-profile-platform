@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router"
+import { useState } from "react"
 import type { ProfileItem } from "@/client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -6,6 +8,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { CapabilityPicker } from "./CapabilityPicker"
 import { EvidenceRows } from "./EvidenceList"
 import { dateLabel, levelLabel } from "./fields"
 import { labels } from "./labels"
@@ -16,14 +19,32 @@ export function CapabilityList({
   onEvidence,
   pendingCapabilityIds,
   onEdit,
+  departmentConfigured,
+  canConfigureDepartment,
 }: {
   items: ProfileItem[]
   onEvidence: (id: string) => void
   pendingCapabilityIds?: Set<string>
   onEdit?: (item: ProfileItem, retract?: boolean) => void
+  departmentConfigured?: boolean
+  canConfigureDepartment?: boolean
 }) {
+  const [added, setAdded] = useState(new Set<string>())
+  const [picking, setPicking] = useState(false)
+  // Historical snapshots omit departmentConfigured and keep every frozen item.
+  const visible = items.filter(
+    (item) =>
+      departmentConfigured === undefined ||
+      (departmentConfigured && item.in_department) ||
+      item.status !== "unknown" ||
+      pendingCapabilityIds?.has(item.capability.id) ||
+      added.has(item.capability.id),
+  )
+  const available = items.filter(
+    (item) => !item.retired && !visible.includes(item),
+  )
   const groups = new Map<string, ProfileItem[]>()
-  for (const item of items) {
+  for (const item of visible) {
     const category = item.retired
       ? "已不在当前词典中的能力"
       : (item.capability.category ?? "其他能力")
@@ -31,6 +52,16 @@ export function CapabilityList({
   }
   return (
     <div className="space-y-8">
+      {departmentConfigured === false && (
+        <p className="rounded-lg border bg-muted/20 p-4 text-sm">
+          本部门还没有设置对应能力
+          {canConfigureDepartment && (
+            <Link to="/org-chart" className="ml-3 text-primary underline">
+              去组织架构设置
+            </Link>
+          )}
+        </p>
+      )}
       <section
         className="flex flex-wrap gap-4 rounded-lg border bg-muted/20 p-4"
         aria-label="能力状态统计"
@@ -41,12 +72,12 @@ export function CapabilityList({
             className={`rounded-md px-3 py-1 text-sm ${label.className}`}
           >
             {label.label}{" "}
-            {items.filter((item) => item.status === status).length}
+            {visible.filter((item) => item.status === status).length}
           </span>
         ))}
       </section>
-      {!items.length && (
-        <p className="py-8 text-muted-foreground">暂无能力定义。</p>
+      {!visible.length && (
+        <p className="py-8 text-muted-foreground">暂无可显示的能力。</p>
       )}
       {Array.from(groups, ([category, entries]) => (
         <section key={category} className="space-y-4">
@@ -61,11 +92,33 @@ export function CapabilityList({
                 onEvidence={onEvidence}
                 pending={pendingCapabilityIds?.has(item.capability.id)}
                 onEdit={!item.retired ? onEdit : undefined}
+                otherDepartment={
+                  departmentConfigured !== undefined &&
+                  !item.in_department &&
+                  item.status !== "unknown"
+                }
               />
             ))}
           </div>
         </section>
       ))}
+      {onEdit && (
+        <Button variant="outline" onClick={() => setPicking(true)}>
+          添加能力
+        </Button>
+      )}
+      {picking && onEdit && (
+        <CapabilityPicker
+          capabilities={available.map((item) => item.capability)}
+          onClose={() => setPicking(false)}
+          onSelect={(key) => {
+            const item = available.find((item) => item.capability.key === key)!
+            setAdded((old) => new Set([...old, item.capability.id]))
+            setPicking(false)
+            onEdit(item)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -82,11 +135,13 @@ function ClaimCard({
   onEvidence,
   pending,
   onEdit,
+  otherDepartment,
 }: {
   item: ProfileItem
   onEvidence: (id: string) => void
   pending?: boolean
   onEdit?: (item: ProfileItem, retract?: boolean) => void
+  otherDepartment?: boolean
 }) {
   const actor = claim?.generated_by.actor_type
   const sources: Record<string, string> = {
@@ -109,6 +164,7 @@ function ClaimCard({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {otherDepartment && <Badge variant="outline">其他部门能力</Badge>}
           {evidence_stale && <Badge variant="outline">证据较旧</Badge>}
           <StatusBadge kind="assessment_status" value={status} />
         </div>
@@ -171,20 +227,22 @@ function ClaimCard({
           未知：暂无足够证据，不代表不具备这项能力
         </p>
       )}
-      {onEdit && claim && (
+      {onEdit && (
         <div className="mt-4 flex flex-wrap gap-2">
           <Button
             variant="outline"
             onClick={() => onEdit({ capability, status, claim })}
           >
-            修改
+            {claim ? "修改" : "填写"}
           </Button>
-          <Button
-            variant="ghost"
-            onClick={() => onEdit({ capability, status, claim }, true)}
-          >
-            撤回这条判断
-          </Button>
+          {claim && (
+            <Button
+              variant="ghost"
+              onClick={() => onEdit({ capability, status, claim }, true)}
+            >
+              撤回这条判断
+            </Button>
+          )}
         </div>
       )}
     </article>
