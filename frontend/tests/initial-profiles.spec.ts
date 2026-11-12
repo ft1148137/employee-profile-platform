@@ -459,12 +459,16 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
   for (const error of modelErrors) {
     await expect(page.getByText(error, { exact: false })).toBeVisible()
   }
-  await page.goto("/admin/data-ai?tab=sources")
-  await expect(
-    page.getByRole("region", { name: "同步记录" }).getByText("合成工作记录.csv"),
-  ).toBeVisible()
-  await expect(page.getByText("新增证据：8", { exact: true })).toBeVisible()
   await expectChineseCopy(page, ["ChatGPT"])
+  await page.goto("/admin/data-ai?tab=sources")
+  const syncRecords = page.getByRole("region", { name: "同步记录" })
+  await expect(syncRecords.getByText("合成工作记录.csv")).toBeVisible()
+  await expect(
+    syncRecords.getByText("新增证据：8", { exact: true }),
+  ).toBeVisible()
+  expect((await syncRecords.innerText()).replaceAll("CSV", "")).not.toMatch(
+    /[A-Za-z]{3,}/,
+  )
   await enableAutoDrafting(page)
   await page.goto("/admin/data-ai?tab=model")
   await page.route("**/initial-profiles/draft", (route) =>
