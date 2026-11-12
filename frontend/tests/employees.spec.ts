@@ -70,6 +70,7 @@ test("demo admin sees all employees, filters, searches and paginates", async ({
 
 test("platform manager sees only their department", async ({ page }) => {
   await logInUser(page, "manager.platform@demo.example.com", password)
+  await page.getByRole("link", { name: "我的团队", exact: true }).click()
   await expect(page.getByText("共 3 名员工")).toBeVisible()
   await expect(page.locator("tbody tr")).toHaveCount(3)
   await expect(
@@ -105,7 +106,7 @@ test("employee lands on own profile and cannot read a colleague", async ({
   })
   const [manager] = await memberships.json()
   await logInUser(page, "employee.platform@demo.example.com", password)
-  await expect(page).toHaveURL("/inbox")
+  await expect(page).toHaveURL("/assistant")
   await page.getByRole("link", { name: "我的画像", exact: true }).click()
   await expect(page).toHaveURL(/\/employees\/[^/]+$/)
   await expect(
@@ -182,6 +183,8 @@ test("organization switch updates navigation and scopes requests", async ({
   await expect(page.getByText("共 0 名员工")).toBeVisible()
   await page.getByRole("combobox", { name: "当前组织" }).click()
   await page.getByRole("option", { name: "测试组织 2" }).click()
+  await expect(page).toHaveURL("/assistant")
+  await page.getByRole("link", { name: "我的画像", exact: true }).click()
   await expect(page).toHaveURL(/\/employees\/own-employee$/)
   await expect(page.getByText("未找到该员工或你没有权限查看")).toBeVisible()
   await expect(

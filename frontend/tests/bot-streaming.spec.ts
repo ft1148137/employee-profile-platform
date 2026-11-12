@@ -61,8 +61,7 @@ test("bot streams, folds tool progress, stops and sends again", async ({
     }
   })
   await logInUser(page, email, password)
-  await page.getByRole("button", { name: "打开画像机器人" }).click()
-  const panel = page.getByRole("dialog")
+  const panel = page.getByRole("region", { name: "助手", exact: true })
   const input = panel.getByLabel("发给机器人的消息")
   await expect(input).toBeEnabled()
   await input.fill("合成问题")
@@ -190,7 +189,7 @@ test("bot streams, folds tool progress, stops and sends again", async ({
   await expect(input).toBeEnabled()
 })
 
-test("bot steps remain after closing the panel and reloading", async ({
+test("bot steps remain after leaving the assistant and reloading", async ({
   page,
 }) => {
   const email = `steps-${crypto.randomUUID()}@example.com`
@@ -223,9 +222,8 @@ test("bot steps remain after closing the panel and reloading", async ({
     })
   })
   await logInUser(page, email, password)
-  await page.waitForURL(/\/employees\/[^/]+$/)
-  await page.getByRole("button", { name: "打开画像机器人" }).click()
-  const panel = page.getByRole("dialog")
+  await page.waitForURL(/\/assistant$/)
+  const panel = page.getByRole("region", { name: "助手", exact: true })
   await panel.getByLabel("发给机器人的消息").fill("查看进度")
   await panel.getByLabel("发给机器人的消息").press("Enter")
   await expect(panel.getByText("合成历史步骤", { exact: true })).toBeVisible()
@@ -238,11 +236,10 @@ test("bot steps remain after closing the panel and reloading", async ({
   await expect(
     panel.getByText("查看请求进度：失败", { exact: true }),
   ).toBeVisible()
-  await page.keyboard.press("Escape")
-  await page.getByRole("button", { name: "打开画像机器人" }).click()
+  await page.getByRole("link", { name: "我的画像", exact: true }).click()
+  await page.getByRole("link", { name: "聊天", exact: true }).click()
   await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
   await page.reload()
-  await page.getByRole("button", { name: "打开画像机器人" }).click()
   await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
   await panel.getByText("2 步", { exact: true }).click()
   await expect(
