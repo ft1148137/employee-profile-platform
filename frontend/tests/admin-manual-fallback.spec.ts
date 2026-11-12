@@ -16,8 +16,6 @@ test("manual console completes all fifteen tabs without a model", async ({
   test.setTimeout(240000)
   const suffix = crypto.randomUUID()
   const email = `manual-${suffix}@example.com`
-  const employeeEmail = (code: string) =>
-    `${code}+${suffix}@qiguang-aiot.example.com`
   const password = "synthetic-password-2026"
   const setupToken = await request.post("/api/v1/private/setup-tokens", {
     data: { purpose: "new_org" },
@@ -145,15 +143,16 @@ test("manual console completes all fifteen tabs without a model", async ({
       .first()
       .click()
     await page.reload()
-    const manager = page
-      .getByRole("row")
-      .filter({ hasText: employeeEmail("qg002") })
+    const manager = page.getByRole("region", {
+      name: "账号与角色",
+      exact: true,
+    })
     await expect(manager).toContainText("部门经理")
     await manager.getByRole("button", { name: "撤销角色", exact: true }).click()
     await dialog
       .getByRole("button", { name: "确认撤销角色", exact: true })
       .click()
-    await expect(manager).toHaveCount(0)
+    await expect(manager).toContainText("暂无管理角色")
   })
 
   await test.step("rules / dictionary: publish an imported dictionary", async () => {

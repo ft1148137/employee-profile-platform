@@ -42,6 +42,7 @@ test("demo admin sees all employees, filters, searches and paginates", async ({
     .getByRole("dialog")
     .getByRole("button", { name: "关闭", exact: true })
     .click()
+  await expect(page.getByRole("dialog")).toBeHidden()
   await page.screenshot({
     path: "../docs/screenshots/m4.2/employees-admin.png",
     fullPage: true,

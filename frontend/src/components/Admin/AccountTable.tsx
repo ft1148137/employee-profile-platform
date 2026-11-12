@@ -99,6 +99,11 @@ export function AccountTable({
       ),
     },
     {
+      id: "actions",
+      header: "操作",
+      cell: actions,
+    },
+    {
       accessorKey: "title",
       header: "职位",
       cell: ({ row }) => row.original.title ?? "—",
@@ -167,11 +172,6 @@ export function AccountTable({
           ? tenureLabel(row.original.hire_date)
           : (row.original[field] ?? "—"),
     })),
-    {
-      id: "actions",
-      header: "操作",
-      cell: actions,
-    },
   ]
   return (
     <div className="overflow-x-auto rounded-xl border">
