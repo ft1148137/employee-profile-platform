@@ -367,7 +367,7 @@ test("mobile conversation sheet switches sessions and starts a new task", async 
   await expect(page).toHaveURL("/admin/data-ai")
 })
 
-test("employees keep their own navigation and floating bot", async ({
+test("employees have assistant navigation without a floating bot", async ({
   page,
 }) => {
   await logInUser(
@@ -383,7 +383,6 @@ test("employees keep their own navigation and floating bot", async ({
     rail.getByRole("link", { name: /^收件箱(?: \d+)?$/, exact: true }),
   ).toBeVisible()
   for (const name of [
-    "聊天",
     "员工",
     "首页",
     "人员",
@@ -395,10 +394,10 @@ test("employees keep their own navigation and floating bot", async ({
   await expect(
     rail.getByRole("button", { name: "更多", exact: true }),
   ).toHaveCount(0)
-  await page
-    .getByRole("button", { name: "打开画像机器人", exact: true })
-    .click()
   await expect(
-    page.getByRole("dialog", { name: "我的画像机器人", exact: true }),
+    rail.getByRole("link", { name: "聊天", exact: true }),
   ).toBeVisible()
+  await expect(
+    page.getByRole("button", { name: "打开画像机器人", exact: true }),
+  ).toHaveCount(0)
 })

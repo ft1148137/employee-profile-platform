@@ -55,7 +55,9 @@ export const Route = createFileRoute("/_layout")({
 function Layout() {
   const location = useLocation()
   const { roles } = useOrg()
-  const assistant = location.pathname.replace(/\/$/, "") === "/admin/assistant"
+  const assistant = ["/admin/assistant", "/assistant"].includes(
+    location.pathname.replace(/\/$/, ""),
+  )
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -73,8 +75,8 @@ function Layout() {
           </div>
         </main>
       </SidebarInset>
-      {(!roles.includes("org_admin") ||
-        !/^\/admin(?:\/|$)/.test(location.pathname)) && <BotPanel />}
+      {roles.includes("org_admin") &&
+        !/^\/admin(?:\/|$)/.test(location.pathname) && <BotPanel />}
     </SidebarProvider>
   )
 }

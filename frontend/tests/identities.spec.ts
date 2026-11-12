@@ -249,11 +249,14 @@ for (const username of ["manager.platform", "employee.platform"]) {
     await expect(page).toHaveURL(
       username.startsWith("manager")
         ? "/employees?filter=identities"
-        : "/inbox",
+        : "/assistant",
     )
     await expect(
       page.getByRole("dialog", { name: "未匹配 Jira 账号", exact: true }),
     ).toHaveCount(0)
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem("current_org_id")))
+      .not.toBeNull()
     const context = await page.evaluate(() => ({
       org: localStorage.getItem("current_org_id"),
       token: localStorage.getItem("access_token"),

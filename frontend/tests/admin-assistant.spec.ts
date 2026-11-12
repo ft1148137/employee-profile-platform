@@ -111,7 +111,7 @@ for (const width of [1440, 390]) {
   })
 }
 
-test("employee sees their profile bot on a manual page", async ({ page }) => {
+test("employee manual pages have no floating assistants", async ({ page }) => {
   await logInUser(
     page,
     "employee.platform@demo.example.com",
@@ -123,7 +123,7 @@ test("employee sees their profile bot on a manual page", async ({ page }) => {
   )
   await expect(
     page.getByRole("button", { name: "打开画像机器人" }),
-  ).toBeVisible()
+  ).toHaveCount(0)
 })
 
 for (const available of [true, false]) {
@@ -251,11 +251,11 @@ for (const available of [true, false]) {
   })
 }
 
-test("manager keeps employee landing page", async ({ page }) => {
+test("manager with employee identity lands on assistant", async ({ page }) => {
   await logInUser(
     page,
     "manager.platform@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
-  await expect(page).toHaveURL("/employees")
+  await expect(page).toHaveURL("/assistant")
 })

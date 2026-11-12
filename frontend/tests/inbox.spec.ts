@@ -25,11 +25,13 @@ test("employee answers a real question on mobile and updates unread count", asyn
   const inbox = await request.get(`${base}/inbox`, { headers })
   const before = await inbox.json()
   await logInUser(page, "employee.platform@demo.example.com", password)
-  await expect(page).toHaveURL("/inbox")
+  await expect(page).toHaveURL("/assistant")
+  await page.goto("/inbox")
   await expect(page.getByText("初始画像待过目", { exact: true })).toBeVisible()
   await logOutUser(page)
   await logInUser(page, username, password)
-  await expect(page).toHaveURL("/inbox")
+  await expect(page).toHaveURL("/assistant")
+  await page.goto("/inbox")
   await expect(
     page.getByRole("link", {
       name: `收件箱 ${before.unread_count}`,
@@ -83,7 +85,7 @@ test("employee answers a real question on mobile and updates unread count", asyn
   ).toBeVisible()
 })
 
-test("without todos home opens profile; empty inbox and errors are readable", async ({
+test("without todos home opens assistant; empty inbox and errors are readable", async ({
   page,
 }) => {
   await page.route("**/me/inbox?*", (route) =>
@@ -92,7 +94,7 @@ test("without todos home opens profile; empty inbox and errors are readable", as
     }),
   )
   await logInUser(page, username, password)
-  await expect(page).toHaveURL(/\/employees\/[^/]+$/)
+  await expect(page).toHaveURL("/assistant")
   await page.getByRole("link", { name: "收件箱", exact: true }).click()
   await expect(page.getByText("收件箱暂时没有消息。")).toBeVisible()
   await page.route("**/me/inbox?*", (route) =>

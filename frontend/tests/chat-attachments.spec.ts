@@ -64,7 +64,7 @@ async function openChat(page: Page, bot = false) {
     const password = "synthetic-password-2026"
     await createUser({ email, password, withEmptyProfile: true })
     await logInUser(page, email, password)
-    await page.getByRole("button", { name: "打开画像机器人" }).click()
+    await expect(page).toHaveURL(/\/assistant$/)
   } else {
     await mockCompletedSetup(page)
     await page.route("**/admin-assistant/availability?*", (route) =>
@@ -101,11 +101,16 @@ async function upload(page: Page, files: typeof file | (typeof file)[]) {
   )
 }
 
-for (const method of ["button", "drop", "paste"] as const) {
-  test(`admin uploads through ${method}, sends, displays and downloads attachments`, async ({
+for (const [bot, method] of [
+  [false, "button"],
+  [false, "drop"],
+  [false, "paste"],
+  [true, "button"],
+] as const) {
+  test(`${bot ? "bot" : "admin"} uploads through ${method}, sends, displays and downloads attachments`, async ({
     page,
   }) => {
-    const { input, turns } = await openChat(page)
+    const { input, turns } = await openChat(page, bot)
     if (method === "button") {
       const chooser = page.waitForEvent("filechooser")
       await page.getByRole("button", { name: "添加附件" }).click()

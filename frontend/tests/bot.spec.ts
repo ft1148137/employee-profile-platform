@@ -159,8 +159,7 @@ for (const width of [1440, 390]) {
     await logOutUser(page)
     await logInUser(page, employeeEmail, password)
     await page.setViewportSize({ width, height: 900 })
-    await page.getByRole("button", { name: "打开画像机器人" }).click()
-    let panel = page.getByRole("dialog", { name: "我的画像机器人" })
+    let panel = page.getByRole("region", { name: "助手", exact: true })
     await panel.getByLabel("发给机器人的消息").fill("请帮我过目初始画像")
     await panel.getByRole("button", { name: "发送", exact: true }).click()
     await expect(
@@ -210,18 +209,17 @@ for (const width of [1440, 390]) {
       panel.getByText("另一标签页的经历", { exact: false }),
     ).toBeVisible()
     await page.reload()
-    await page.getByRole("button", { name: "打开画像机器人" }).click()
-    panel = page.getByRole("dialog", { name: "我的画像机器人" })
+    panel = page.getByRole("region", { name: "助手", exact: true })
     await expect(
       panel.getByText("另一标签页的经历", { exact: false }),
     ).toBeVisible()
     await expectChineseCopy(page)
     const bounds = await panel.boundingBox()
     expect(bounds!.width).toBeLessThanOrEqual(width)
-    if (width === 390) expect(bounds!.width).toBe(width)
+    expect(bounds!.width).toBe(width - 64 - (width === 390 ? 0 : 320))
     await expect
       .poll(async () => Math.round((await panel.boundingBox())!.x))
-      .toBe(width === 390 ? 0 : width - 460)
+      .toBe(64 + (width === 390 ? 0 : 320))
     await page.screenshot({
       path: testInfo.outputPath(`bot-${width}.png`),
       animations: "disabled",
@@ -251,9 +249,8 @@ test("disabled model keeps the entry and points to the form", async ({
   const password = "synthetic-password-2026"
   await createUser({ email, password, withEmptyProfile: true })
   await logInUser(page, email, password)
-  await page.getByRole("button", { name: "打开画像机器人" }).click()
-  const panel = page.getByRole("dialog")
-  await expect(panel.getByRole("link", { name: "我的画像" })).toBeVisible()
+  const panel = page.getByRole("region", { name: "助手", exact: true })
+  await expect(panel.getByRole("link", { name: "打开画像页" })).toBeVisible()
   await panel.getByLabel("发给机器人的消息").fill("你好")
   await panel.getByRole("button", { name: "发送", exact: true }).click()
   await expect(
@@ -326,8 +323,7 @@ test("web bot directs reviews to the review page without decision buttons", asyn
       })}\n`,
     }),
   )
-  await page.getByRole("button", { name: "打开画像机器人" }).click()
-  const panel = page.getByRole("dialog")
+  const panel = page.getByRole("region", { name: "助手", exact: true })
   await panel.getByLabel("发给机器人的消息").fill("查看待审批请求")
   await panel.getByRole("button", { name: "发送", exact: true }).click()
   await expect(panel.getByRole("link", { name: "去审批页" })).toHaveCount(2)

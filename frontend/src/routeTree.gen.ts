@@ -14,6 +14,7 @@ import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
+import { Route as LayoutAssistantRouteImport } from './routes/_layout/assistant'
 import { Route as LayoutInboxRouteImport } from './routes/_layout/inbox'
 import { Route as LayoutOrgChartRouteImport } from './routes/_layout/org-chart'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
@@ -67,6 +68,11 @@ const SetupRoute = SetupRouteImport.update({
 const LayoutIndexRoute = LayoutIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutAssistantRoute = LayoutAssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutInboxRoute = LayoutInboxRouteImport.update({
@@ -228,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/assistant': typeof LayoutAssistantRoute
   '/inbox': typeof LayoutInboxRoute
   '/org-chart': typeof LayoutOrgChartRoute
   '/settings': typeof LayoutSettingsRoute
@@ -263,6 +270,7 @@ export interface FileRoutesByTo {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/assistant': typeof LayoutAssistantRoute
   '/inbox': typeof LayoutInboxRoute
   '/org-chart': typeof LayoutOrgChartRoute
   '/settings': typeof LayoutSettingsRoute
@@ -301,6 +309,7 @@ export interface FileRoutesById {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/_layout/assistant': typeof LayoutAssistantRoute
   '/_layout/inbox': typeof LayoutInboxRoute
   '/_layout/org-chart': typeof LayoutOrgChartRoute
   '/_layout/settings': typeof LayoutSettingsRoute
@@ -340,6 +349,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/login'
     | '/setup'
+    | '/assistant'
     | '/inbox'
     | '/org-chart'
     | '/settings'
@@ -375,6 +385,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/login'
     | '/setup'
+    | '/assistant'
     | '/inbox'
     | '/org-chart'
     | '/settings'
@@ -412,6 +423,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/login'
     | '/setup'
+    | '/_layout/assistant'
     | '/_layout/inbox'
     | '/_layout/org-chart'
     | '/_layout/settings'
@@ -487,6 +499,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof LayoutIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/assistant': {
+      id: '/_layout/assistant'
+      path: '/assistant'
+      fullPath: '/assistant'
+      preLoaderRoute: typeof LayoutAssistantRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/inbox': {
@@ -714,6 +733,7 @@ const LayoutAdminPeopleRouteWithChildren =
   LayoutAdminPeopleRoute._addFileChildren(LayoutAdminPeopleRouteChildren)
 
 interface LayoutRouteChildren {
+  LayoutAssistantRoute: typeof LayoutAssistantRoute
   LayoutInboxRoute: typeof LayoutInboxRoute
   LayoutOrgChartRoute: typeof LayoutOrgChartRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
@@ -747,6 +767,7 @@ interface LayoutRouteChildren {
 }
 
 const LayoutRouteChildren: LayoutRouteChildren = {
+  LayoutAssistantRoute: LayoutAssistantRoute,
   LayoutInboxRoute: LayoutInboxRoute,
   LayoutOrgChartRoute: LayoutOrgChartRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,

@@ -12,7 +12,7 @@ test.use({
 async function openE02(page: Page, email: string) {
   await logInUser(page, email, password)
   if (email === "employee.platform@demo.example.com") {
-    await expect(page).toHaveURL("/inbox")
+    await expect(page).toHaveURL("/assistant")
     await page.getByRole("link", { name: "我的画像", exact: true }).click()
   }
   if (email !== "employee.platform@demo.example.com") {
@@ -123,7 +123,7 @@ test("profile recovers from errors and tolerates incomplete evidence fields", as
     route.fulfill({ status: 500, json: { detail: "Temporary failure" } }),
   )
   await logInUser(page, "employee.platform@demo.example.com", password)
-  await expect(page).toHaveURL("/inbox")
+  await expect(page).toHaveURL("/assistant")
   await page.getByRole("link", { name: "我的画像", exact: true }).click()
   await expect(page.getByRole("alert")).toBeVisible()
   await page.unroute("**/employees/*/profile")
