@@ -44,15 +44,15 @@ test("首次登录先改密，保存新令牌后进入首页", async ({ page }, 
   expect(await page.locator("body").textContent()).not.toMatch(/[A-Za-z]{2,}/)
   await page.getByLabel("当前密码", { exact: true }).fill(password)
   await page.getByRole("button", { name: "保存密码", exact: true }).click()
-  await expect(page).toHaveURL(/\/employees\/[^/]+$/)
+  await expect(page).toHaveURL("/assistant")
   await expect(page.getByText("密码修改成功")).toBeVisible()
   expect(
     await page.evaluate(() => localStorage.getItem("access_token")),
   ).not.toBe(oldToken)
   await page.reload()
-  await expect(page).toHaveURL(/\/employees\/[^/]+$/)
+  await expect(page).toHaveURL("/assistant")
   await page.goto("/change-password")
-  await expect(page).toHaveURL(/\/employees\/[^/]+$/)
+  await expect(page).toHaveURL("/assistant")
 })
 
 test("任意接口要求改密时保留令牌并跳转", async ({ page }) => {

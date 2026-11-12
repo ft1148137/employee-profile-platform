@@ -1,6 +1,7 @@
 import type { AuditEventPublic } from "@/client"
 
 export const auditLabels: Record<string, string> = {
+  "profile.direct_edited": "直接修改员工画像",
   "appeal.open": "提交申诉",
   "appeal.upheld": "申诉维持原决定",
   "appeal.reopened": "申诉允许重新提交",

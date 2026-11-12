@@ -36,7 +36,7 @@ for (const account of ["admin", "manager.platform", "employee.platform"]) {
     await logInUser(page, `${account}@demo.example.com`, password)
     await expect(page.getByRole("heading").first()).toBeVisible()
     if (account === "employee.platform") {
-      await expect(page).toHaveURL("/inbox")
+      await expect(page).toHaveURL("/assistant")
       await expectChineseCopy(page)
       await page.getByRole("link", { name: "我的画像", exact: true }).click()
     }
@@ -107,7 +107,7 @@ for (const [account, own] of [
     })
     await logInUser(page, `${account}@demo.example.com`, password)
     if (own) {
-      await expect(page).toHaveURL("/inbox")
+      await expect(page).toHaveURL("/assistant")
       await page.getByRole("link", { name: "我的画像", exact: true }).click()
     }
     if (!own) await page.goto("/employees")
@@ -143,7 +143,8 @@ test("new employee logs in to a real empty profile without a dictionary", async 
   const password = randomPassword()
   await createUser({ email, password, withEmptyProfile: true })
   await logInUser(page, email, password)
-  await expect(page).toHaveURL(/\/employees\/[^/]+$/)
+  await expect(page).toHaveURL("/assistant")
+  await page.getByRole("link", { name: "我的画像", exact: true }).click()
   await expect(
     page.getByRole("heading", { name: "你的画像还没有内容" }),
   ).toBeVisible()

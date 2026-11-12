@@ -24,30 +24,52 @@ departments:
   pcf_categories:
   - 2.0 Develop and Manage Products and Services
   responsibilities: 主板原理图与 PCB 设计、电源与防护设计、结构与散热设计、硬件问题定位
+  capability_keys:
+  - schematic_design
+  - pcb_layout
+  - power_emc_design
+  - structure_thermal
 - name: 嵌入式软件部
   pcf_categories:
   - 2.0 Develop and Manage Products and Services
   responsibilities: 内核与 BSP 维护、外设驱动、相机与 ISP 调试、固件集成与 OTA 升级
+  capability_keys:
+  - bsp_driver
+  - camera_isp_tuning
+  - firmware_integration
 - name: 端侧算法部
   pcf_categories:
   - 2.0 Develop and Manage Products and Services
   - 13.0 Develop and Manage Business Capabilities
   responsibilities: 视觉模型训练与评估、RKNN 模型转换与量化、NPU 性能调优、算法包交付
+  capability_keys:
+  - model_training
+  - rknn_conversion
+  - npu_performance_tuning
+  - edge_integration
 - name: 测试与认证部
   pcf_categories:
   - 2.0 Develop and Manage Products and Services
   - 11.0 Manage Enterprise Risk, Compliance, Remediation, and Resiliency
   responsibilities: 系统与固件测试、EMC 整改、环境与可靠性试验、第三方认证送检与工厂检查
+  capability_keys:
+  - emc_debug
+  - reliability_test
+  - certification_project
 - name: 供应链与制造工程部
   pcf_categories:
   - 4.0 Deliver Physical Products
   - 10.0 Acquire, Construct, and Manage Assets
   responsibilities: 元器件选型与二供导入、BOM 与 ECN 管理、DFM 评审、EMS 代工厂对接与试产
+  capability_keys:
+  - ecn_bom_management
+  - dfm_review
 - name: 综合管理部
   pcf_categories:
   - 7.0 Develop and Manage Human Capital
   - 8.0 Manage Information Technology (IT)
   responsibilities: 人力与培训档案、行政与办公采购、内部 IT 与 Jira/PLM 系统管理
+  capability_keys: []
 projects:
 - code: MODX
   name: 模组 V3 硬件平台

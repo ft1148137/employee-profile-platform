@@ -4,9 +4,19 @@ import { AdminAssistantService, BotService } from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 
+export function useBotConversations(orgId: string | undefined) {
+  return useQuery({
+    queryKey: ["conversation-history", orgId, false],
+    enabled: !!orgId,
+    queryFn: async () =>
+      (await BotService.listSessions({ query: { org_id: orgId! } })).data,
+  })
+}
+
 export function SessionHistory({
   orgId,
   administrator = false,
+  sidebar = false,
   currentId,
   disabled,
   onSelect,
@@ -14,6 +24,7 @@ export function SessionHistory({
 }: {
   orgId: string
   administrator?: boolean
+  sidebar?: boolean
   currentId: string
   disabled: boolean
   onSelect: (id: string) => void
@@ -22,7 +33,7 @@ export function SessionHistory({
   const [open, setOpen] = useState(false)
   const history = useQuery({
     queryKey: ["conversation-history", orgId, administrator],
-    enabled: open,
+    enabled: sidebar || open,
     queryFn: async () =>
       (
         await (administrator
@@ -31,28 +42,54 @@ export function SessionHistory({
       ).data,
   })
   return (
-    <div className="shrink-0 space-y-3 border-b p-4">
-      <div className="flex gap-2">
+    <div
+      className={
+        sidebar
+          ? "flex h-full min-h-0 flex-col bg-sidebar/40"
+          : "shrink-0 space-y-3 border-b p-4"
+      }
+    >
+      <div
+        className={
+          sidebar
+            ? "flex h-16 shrink-0 items-center justify-between border-b px-5"
+            : "flex gap-2"
+        }
+      >
+        {sidebar && <h2 className="font-semibold">聊天</h2>}
         <Button variant="outline" disabled={disabled} onClick={onNew}>
           新对话
         </Button>
-        <Button
-          variant="outline"
-          disabled={disabled}
-          aria-expanded={open}
-          onClick={() => {
-            setOpen(!open)
-            if (!open) history.refetch()
-          }}
-        >
-          历史对话
-        </Button>
+        {!sidebar && (
+          <Button
+            variant="outline"
+            disabled={disabled}
+            aria-expanded={open}
+            onClick={() => {
+              setOpen(!open)
+              if (!open) history.refetch()
+            }}
+          >
+            历史对话
+          </Button>
+        )}
       </div>
-      {open && (
-        <section aria-label="历史对话" className="space-y-2 text-sm">
+      {(sidebar || open) && (
+        <section
+          aria-label="历史对话"
+          className={
+            sidebar
+              ? "min-h-0 flex-1 space-y-2 overflow-y-auto p-2 text-sm"
+              : "space-y-2 text-sm"
+          }
+        >
           {history.isPending && <p role="status">正在加载对话…</p>}
           <SetupError error={history.error} />
-          <div className="max-h-48 space-y-2 overflow-y-auto">
+          <div
+            className={
+              sidebar ? "space-y-2" : "max-h-48 space-y-2 overflow-y-auto"
+            }
+          >
             {history.data?.data.map((entry) => (
               <button
                 key={entry.id}

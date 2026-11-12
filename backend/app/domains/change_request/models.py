@@ -60,6 +60,7 @@ class ItemDecision(StrEnum):
 
 
 class ReviewVia(StrEnum):
+    DIRECT = "direct"
     WEB = "web"
     MCP = "mcp"
     IM = "im"

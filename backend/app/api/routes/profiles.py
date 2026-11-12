@@ -10,8 +10,36 @@ from app.domains.profile.schemas import (
     ProfileVersionView,
     ProfileView,
 )
+from app.domains.review import direct
 
 router = APIRouter(prefix="/orgs/{org_id}/employees/{employee_id}", tags=["profiles"])
+
+
+@router.post("/profile/direct-edits/preview")
+def preview_direct_edit(
+    employee_id: UUID,
+    body: direct.DirectEditInput,
+    session: SessionDep,
+    principal: OrgPrincipalDep,
+) -> direct.DirectEditResult:
+    return direct.preview_direct_edit(principal, session, employee_id, body)
+
+
+@router.post("/profile/direct-edits")
+def direct_edit(
+    employee_id: UUID,
+    body: direct.DirectEditInput,
+    session: SessionDep,
+    principal: OrgPrincipalDep,
+) -> direct.DirectEditResult:
+    return direct.direct_edit(
+        principal,
+        session,
+        employee_id,
+        body,
+        via="web",
+        client_name="画像页",
+    )
 
 
 @router.get("/profile", response_model=ProfileView)

@@ -105,6 +105,47 @@ def setup(db: Session, demo: tuple) -> tuple:
     return p, row
 
 
+@pytest.mark.parametrize("kind", ["file", "image"])
+def test_attachment_notice(
+    demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
+    p, setting = setup(db, demo)
+
+    async def run() -> None:
+        async with server(monkeypatch) as fake:
+            adapter = wecom.Wecom(p.org_id, CREDS)
+            try:
+                await adapter.test_connection()
+                await fake["socket"].send(
+                    json.dumps(
+                        {
+                            "cmd": "aibot_msg_callback",
+                            "headers": {"req_id": uuid4().hex},
+                            "body": {
+                                "aibotid": CREDS["bot_id"],
+                                "msgid": uuid4().hex,
+                                "chattype": "single",
+                                "from": {"userid": "user"},
+                                "msgtype": kind,
+                                kind: {"url": "https://synthetic.invalid/private"},
+                            },
+                        }
+                    )
+                )
+                async for incoming in adapter.poll():
+                    await gateway.Gateway(engine).handle(
+                        incoming, CREDS["bot_id"], setting.credentials, adapter
+                    )
+                assert (
+                    fake["requests"][-1]["body"]["markdown"]["content"]
+                    == "该入口暂不支持文件，请在网页上传"
+                )
+            finally:
+                await adapter.close()
+
+    asyncio.run(run())
+
+
 def test_conversation(
     demo: tuple, db: Session, pi_service: PiHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:

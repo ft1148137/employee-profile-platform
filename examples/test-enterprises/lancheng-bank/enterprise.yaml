@@ -25,21 +25,49 @@ departments:
 - name: 公司金融部
   pcf_categories: ['3.0 Market and Sell Products and Services', '5.0 Deliver Services']
   responsibilities: 对公客户拓展与维护、贷前调查组织、授信方案申报与条线口径管理
+  capability_keys:
+  - corporate_credit_investigation
+  - credit_report_writing
+  - customer_acquisition
+  - cross_line_collaboration
 - name: 零售金融部
   pcf_categories: ['3.0 Market and Sell Products and Services', '2.0 Develop and Manage Products and Services']
   responsibilities: 个人贷款与财富业务的产品管理、零售条线客户经理指导与代销适当性管理
+  capability_keys:
+  - retail_loan_processing
+  - wealth_product_suitability
+  - customer_acquisition
 - name: 风险合规部
   pcf_categories: ['11.0 Manage Enterprise Risk, Compliance, Remediation, and Resiliency']
   responsibilities: 信贷审查、贷后管理、反洗钱、合规检查与整改跟踪
+  capability_keys:
+  - credit_review
+  - post_loan_monitoring
+  - aml_customer_due_diligence
+  - compliance_inspection
 - name: 运营管理部
   pcf_categories: ['5.0 Deliver Services', '6.0 Manage Customer Service']
   responsibilities: 柜面运营管理、集中授权、事后监督、业务差错管理与现金凭证管理
+  capability_keys:
+  - counter_operations
+  - transaction_authorization
+  - internal_control_review
+  - error_handling
+  - cash_management
 - name: 云溪支行
   pcf_categories: ['5.0 Deliver Services', '3.0 Market and Sell Products and Services']
   responsibilities: 属地网点的对公与零售客户经营、柜面服务与网点转型落地
+  capability_keys:
+  - customer_acquisition
+  - corporate_credit_investigation
+  - retail_loan_processing
+  - wealth_product_suitability
+  - counter_operations
+  - cross_line_collaboration
 - name: 综合管理部
   pcf_categories: ['7.0 Develop and Manage Human Capital', '8.0 Manage Information Technology (IT)']
   responsibilities: 人力资源与培训管理、分行信息科技运维支持、行政与安保
+  capability_keys: []
 projects:
 - code: XWD
   name: 普惠小微贷款线上化项目

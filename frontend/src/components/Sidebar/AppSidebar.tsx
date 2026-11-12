@@ -64,6 +64,8 @@ export function AppSidebar() {
   const items: Item[] = []
   if (administrator)
     items.push({ icon: MessageCircle, title: "聊天", path: "/admin/assistant" })
+  if (!administrator && employeeId)
+    items.push({ icon: MessageCircle, title: "聊天", path: "/assistant" })
   if (org)
     items.push({
       icon: Inbox,
@@ -73,12 +75,12 @@ export function AppSidebar() {
         ? String(inbox.data.unread_count)
         : undefined,
     })
-  if (reviews.data?.count)
+  if (reviews.data?.count || (!administrator && roles.includes("dept_manager")))
     items.push({
       icon: ListChecks,
       title: "待审批",
       path: "/reviews",
-      badge: String(reviews.data.count),
+      badge: reviews.data?.count ? String(reviews.data.count) : undefined,
     })
   if (employeeId)
     items.push({
@@ -86,7 +88,12 @@ export function AppSidebar() {
       title: "我的画像",
       path: `/employees/${employeeId}`,
     })
-  if (administrator || roles.includes("dept_manager"))
+  if (!administrator && roles.includes("dept_manager"))
+    items.push(
+      { icon: Users, title: "我的团队", path: "/employees" },
+      { icon: Network, title: "组织架构", path: "/org-chart" },
+    )
+  if (administrator)
     items.push(
       { icon: Network, title: "组织架构", path: "/org-chart" },
       { icon: Users, title: "员工", path: "/employees" },
