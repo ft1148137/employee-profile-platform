@@ -45,6 +45,7 @@ export const auditLabels: Record<string, string> = {
   "setup.initialized": "初始化企业",
   "setup.step_completed": "完成设置步骤",
   "setup.step_skipped": "跳过设置步骤",
+  "department.capabilities_updated": "修改部门对应能力",
   "org.renamed": "修改企业名称",
   "org.employee_fields_updated": "修改员工档案字段开关",
   "capability_schema.activated": "启用能力词典",
@@ -71,6 +72,7 @@ export const actorLabels: Record<string, string> = {
   cli: "命令行",
 }
 export const targetLabels: Record<string, string> = {
+  department: "部门",
   review_delegation: "代理审批",
   review_appeal: "画像申诉",
   approval_policy: "审批规则",

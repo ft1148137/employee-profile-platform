@@ -6,11 +6,15 @@ from sqlmodel import Session, col, func, select
 
 from app.authz.principal import Principal
 from app.domains.base import utc_now
-from app.domains.capability.models import CapabilityDefinition, CapabilitySchemaVersion
+from app.domains.capability.department import department_assignments
+from app.domains.capability.models import (
+    CapabilityDefinition,
+    CapabilitySchemaVersion,
+    DepartmentCapability,
+    SchemaStatus,
+)
 from app.domains.capability.schemas import CapabilityPublic, SchemaVersionPublic
 from app.domains.capability.service import (
-    SchemaNotFound,
-    get_schema,
     level_exists,
     list_capabilities,
 )
@@ -154,15 +158,34 @@ def read_profile(
     employee = employee_summary(
         session, visible_employee(session, principal, employee_id), principal
     )
-    try:
-        schema = get_schema(session, principal.org_id)
-    except SchemaNotFound:
+    department_keys = (
+        department_assignments(
+            principal.org_id,
+            employee.department.id if employee.department else None,
+        )
+        .with_only_columns(func.array_agg(DepartmentCapability.capability_key))
+        .scalar_subquery()
+    )
+    # Read mapping and active dictionary together to preserve the profile query bound.
+    schema, configured_keys = session.exec(
+        select(CapabilitySchemaVersion, department_keys)
+        .select_from(Employee)
+        .outerjoin(
+            CapabilitySchemaVersion,
+            (col(CapabilitySchemaVersion.org_id) == Employee.org_id)
+            & (col(CapabilitySchemaVersion.status) == SchemaStatus.ACTIVE),
+        )
+        .where(Employee.org_id == principal.org_id, Employee.id == employee_id)
+    ).one()
+    keys = set(configured_keys or [])
+    if schema is None:
         return ProfileView(
             employee=employee,
             schema_version=None,
             latest_published=employee.latest_published,
             items=[],
             counts=ProfileCounts(),
+            department_capabilities_configured=bool(keys),
         )
     from app.domains.change_request.models import ChangeItem
     from app.domains.review.models import AppealStatus, ReviewAppeal
@@ -230,12 +253,15 @@ def read_profile(
     items, counts = profile_items(
         session, principal, schema.id, list(current.values()), disputed_keys
     )
+    for item in items:
+        item.in_department = not item.retired and item.capability.key in keys
     return ProfileView(
         employee=employee,
         schema_version=SchemaVersionPublic.model_validate(schema),
         latest_published=employee.latest_published,
         items=items,
         counts=counts,
+        department_capabilities_configured=bool(keys),
     )
 
 

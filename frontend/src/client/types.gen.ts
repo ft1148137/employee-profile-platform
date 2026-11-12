@@ -1566,6 +1566,52 @@ export type DelegationView = {
 }
 
 /**
+ * DepartmentCapabilitiesInput
+ */
+export type DepartmentCapabilitiesInput = {
+  /**
+   * Capability Keys
+   */
+  capability_keys: Array<string>
+}
+
+/**
+ * DepartmentCapabilitiesPublic
+ */
+export type DepartmentCapabilitiesPublic = {
+  /**
+   * Capability Keys
+   */
+  capability_keys: Array<string>
+  /**
+   * Inherited Capability Keys
+   */
+  inherited_capability_keys: Array<string>
+  /**
+   * Capabilities
+   */
+  capabilities: Array<DepartmentCapabilityPublic>
+}
+
+/**
+ * DepartmentCapabilityPublic
+ */
+export type DepartmentCapabilityPublic = {
+  /**
+   * Key
+   */
+  key: string
+  /**
+   * Name
+   */
+  name: string
+  /**
+   * Category
+   */
+  category: string | null
+}
+
+/**
  * DepartmentManager
  */
 export type DepartmentManager = {
@@ -3539,6 +3585,10 @@ export type ProfileItem = {
   status: AssessmentStatus
   claim: ClaimPublic | null
   /**
+   * In Department
+   */
+  in_department?: boolean
+  /**
    * Evidence Stale
    */
   evidence_stale?: boolean
@@ -3635,6 +3685,10 @@ export type ProfileView = {
    * Items
    */
   items: Array<ProfileItem>
+  /**
+   * Department Capabilities Configured
+   */
+  department_capabilities_configured?: boolean
 }
 
 /**
@@ -8516,6 +8570,78 @@ export type externalIdentitiesPostUnlinkResponses = {
 
 export type externalIdentitiesPostUnlinkResponse =
   externalIdentitiesPostUnlinkResponses[keyof externalIdentitiesPostUnlinkResponses]
+
+export type orgsReadDepartmentCapabilitiesData = {
+  body?: never
+  path: {
+    /**
+     * Id
+     */
+    id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/departments/{id}/capabilities"
+}
+
+export type orgsReadDepartmentCapabilitiesErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type orgsReadDepartmentCapabilitiesError =
+  orgsReadDepartmentCapabilitiesErrors[keyof orgsReadDepartmentCapabilitiesErrors]
+
+export type orgsReadDepartmentCapabilitiesResponses = {
+  /**
+   * Successful Response
+   */
+  200: DepartmentCapabilitiesPublic
+}
+
+export type orgsReadDepartmentCapabilitiesResponse =
+  orgsReadDepartmentCapabilitiesResponses[keyof orgsReadDepartmentCapabilitiesResponses]
+
+export type orgsUpdateDepartmentCapabilitiesData = {
+  body: DepartmentCapabilitiesInput
+  path: {
+    /**
+     * Id
+     */
+    id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/departments/{id}/capabilities"
+}
+
+export type orgsUpdateDepartmentCapabilitiesErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type orgsUpdateDepartmentCapabilitiesError =
+  orgsUpdateDepartmentCapabilitiesErrors[keyof orgsUpdateDepartmentCapabilitiesErrors]
+
+export type orgsUpdateDepartmentCapabilitiesResponses = {
+  /**
+   * Successful Response
+   */
+  200: DepartmentCapabilitiesPublic
+}
+
+export type orgsUpdateDepartmentCapabilitiesResponse =
+  orgsUpdateDepartmentCapabilitiesResponses[keyof orgsUpdateDepartmentCapabilitiesResponses]
 
 export type orgsReadOrgChartData = {
   body?: never

@@ -45,6 +45,7 @@ class ProfileItem(SQLModel):
     capability: CapabilityPublic
     status: AssessmentStatus
     claim: ClaimPublic | None
+    in_department: bool = False
     evidence_stale: bool = False
     retired: bool = False
     level_adjusted: bool = False
@@ -64,6 +65,7 @@ class ProfileView(SQLModel):
     latest_published: PublishedSummary | None
     counts: ProfileCounts
     items: list[ProfileItem]
+    department_capabilities_configured: bool = False
 
 
 class PublisherPublic(SQLModel):

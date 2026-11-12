@@ -21,6 +21,7 @@ from app.domains.capability.models import (
     CapabilityProposal,
     CapabilityProposalEvidence,
     CapabilitySchemaVersion,
+    DepartmentCapability,
 )
 from app.domains.change_request.models import (
     ChangeItem,
@@ -100,6 +101,7 @@ ORG_MODELS = (
     ProfileVersion,
     ProfileClaim,
     ProfileProgress,
+    DepartmentCapability,
     CapabilityProposalEvidence,
     CapabilityProposal,
     Evidence,

@@ -150,7 +150,13 @@ def test_one_employee_all_channels(
             assert (await use("withdraw_request", {"request_id": sent["id"]}))[
                 "status"
             ] == "withdrawn"
-            assert (await use("get_my_profile"))["items"] == profile["items"]
+            mcp_profile = await use("get_my_profile")
+            assert "department_capabilities_configured" not in mcp_profile
+            assert all("in_department" not in item for item in mcp_profile["items"])
+            assert mcp_profile["items"] == [
+                {key: value for key, value in item.items() if key != "in_department"}
+                for item in profile["items"]
+            ]
 
     pat, _ = token_for(db, people["E02"])
     anyio.run(mcp_flow, pat, initial["id"])
