@@ -30,6 +30,9 @@ AdminPage = Literal[
     "/admin/data-ai?tab=sources",
     "/admin/data-ai?tab=model",
     "/admin/data-ai?tab=bot",
+    "/admin/data-ai?tab=im",
+    "/admin/data-ai?tab=mcp",
+    # Historical user messages retain their page.
     "/admin/connections",
     "/admin/connections?tab=im",
     "/admin/connections?tab=mcp",
