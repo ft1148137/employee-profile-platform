@@ -174,7 +174,10 @@ def test_ordered_events_and_original_response(
         == expected
     )
     assert not fake_pi.is_set()
-    assert set(tools.TITLES) == {t.name for t in tools.definitions()}
+    assert (
+        set(tools.TITLES)
+        == {t.name for t in tools.definitions()} | tools.TEAM_INPUTS.keys()
+    )
     assert all(
         any("\u4e00" <= c <= "\u9fff" for c in title) for title in tools.TITLES.values()
     )

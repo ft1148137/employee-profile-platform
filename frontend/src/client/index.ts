@@ -842,6 +842,8 @@ export type {
   privateSeedCapabilityProposalResponses,
   PrivateUserCreate,
   ProfileCounts,
+  ProfileEditAction,
+  ProfileEditCard,
   profileImportDownloadImportFileData,
   profileImportDownloadImportFileError,
   profileImportDownloadImportFileErrors,

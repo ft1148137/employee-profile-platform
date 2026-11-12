@@ -3660,6 +3660,55 @@ export type ProfileCounts = {
 }
 
 /**
+ * ProfileEditAction
+ */
+export type ProfileEditAction = {
+  /**
+   * Action
+   */
+  action: "confirm_profile_edit" | "continue_profile_edit"
+  /**
+   * Card Id
+   */
+  card_id: string
+}
+
+/**
+ * ProfileEditCard
+ */
+export type ProfileEditCard = {
+  /**
+   * Revision
+   */
+  revision: number | null
+  /**
+   * Items
+   */
+  items: Array<DirectEditItem>
+  /**
+   * Type
+   */
+  type?: "profile_edit_card"
+  /**
+   * Card Id
+   */
+  card_id?: string
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Employee Name
+   */
+  employee_name: string
+  edit: DirectEditInput
+  /**
+   * Actions
+   */
+  actions?: Array<ProfileEditAction>
+}
+
+/**
  * ProfileItem
  */
 export type ProfileItem = {
@@ -5081,6 +5130,9 @@ export type TurnResponse = {
     | ({
         type: "review_card"
       } & ReviewCard)
+    | ({
+        type: "profile_edit_card"
+      } & ProfileEditCard)
   >
   /**
    * Steps
@@ -6636,7 +6688,7 @@ export type botActData = {
   /**
    * Body
    */
-  body: RequestAction | QuestionAction | ReviewAction
+  body: RequestAction | QuestionAction | ReviewAction | ProfileEditAction
   path: {
     /**
      * Session Id

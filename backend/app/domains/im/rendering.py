@@ -4,6 +4,8 @@ from app.core.config import settings
 from app.domains.bot import schemas as s
 
 LABELS = {
+    "confirm_profile_edit": "确认修改",
+    "continue_profile_edit": "继续修改",
     "confirm_review": "确认决定",
     "continue_review": "继续修改",
     "confirm_submit": "确认提交",
@@ -49,6 +51,19 @@ def item_text(item: s.ChangeItem) -> str:
 def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
     if isinstance(message, s.TextMessage):
         return message.text, []
+    if isinstance(message, s.ProfileEditCard):
+        text = (
+            f"直接修改画像：{message.employee_name}\n"
+            + "\n\n".join(
+                f"{item.capability_name}\n修改前：{claim_text(s.Claim.model_validate(item.before)) if item.before else '暂无判断'}"
+                f"\n修改后：{claim_text(s.Claim.model_validate(item.after))}"
+                for item in message.items
+            )
+            + "\n确认后立即发布并通知员工。"
+        )
+        if len(text) > 12000:
+            return "修改内容较长，请缩小改动后重新生成确认卡。", []
+        return text, [a.model_dump(mode="json") for a in message.actions]
     if isinstance(message, s.ReviewCard):
         decisions = {d.item_id: d for d in message.decisions}
         text = (

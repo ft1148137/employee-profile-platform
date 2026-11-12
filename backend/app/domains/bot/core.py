@@ -26,6 +26,7 @@ from app.domains.inbox import service as inbox
 from app.domains.model import pi_client
 from app.domains.model.client import ModelServiceError, ModelUnavailable
 from app.domains.model.service import model_config, read_setting, supports_images
+from app.domains.review import direct
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +119,7 @@ def turn(
                 session_state=store.load_state(db, session),
                 system_prompt=system_prompt(db, p, session.channel),
                 input=tools.redact_text(model_input),
-                tools=tools.definitions(),
+                tools=tools.definitions(p),
                 on_tool_call=call,
                 stream=replace(stream, on_tool=lambda *_: None) if stream else None,
             )
@@ -199,7 +200,36 @@ def act(
         for card in s.TurnResponse.model_validate(message.payload).messages
     ]
     messages: list[s.Message]
-    if isinstance(action, s.ReviewAction):
+    if isinstance(action, s.ProfileEditAction):
+        edit_card = next(
+            (
+                c
+                for c in cards
+                if isinstance(c, s.ProfileEditCard) and action in c.actions
+            ),
+            None,
+        )
+        if edit_card is None:
+            raise employee.RequestConflict("请重新查看画像修改确认卡")
+        team_principal = replace(p, is_org_admin=False)
+        tools.team_member(db, team_principal, edit_card.employee_id)
+        if action.action == "continue_profile_edit":
+            direct.preview_direct_edit(
+                team_principal, db, edit_card.employee_id, edit_card.edit
+            )
+            messages = [s.TextMessage(text="请告诉我需要修改的内容")]
+        else:
+            direct.direct_edit(
+                team_principal,
+                db,
+                edit_card.employee_id,
+                edit_card.edit,
+                via="bot",
+                client_name=session.channel,
+                commit=False,
+            )
+            messages = [s.TextMessage(text="画像已发布，已通知员工")]
+    elif isinstance(action, s.ReviewAction):
         card = next(
             (c for c in cards if isinstance(c, s.ReviewCard) and action in c.actions),
             None,

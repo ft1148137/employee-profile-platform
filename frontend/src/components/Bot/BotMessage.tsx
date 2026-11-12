@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router"
 import { useState } from "react"
 import type {
   CapabilitiesPublic,
+  ProfileEditAction,
   QuestionAction,
   RequestAction,
   ReviewAction,
@@ -11,7 +12,11 @@ import { levelLabel } from "@/components/Profile/fields"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
 import { Button } from "@/components/ui/button"
 
-export type BotAction = RequestAction | QuestionAction | ReviewAction
+export type BotAction =
+  | RequestAction
+  | QuestionAction
+  | ReviewAction
+  | ProfileEditAction
 const actionLabels = {
   confirm_submit: "确认提交",
   continue_editing: "继续修改",
@@ -51,6 +56,61 @@ export function BotMessage({
           </Link>
         )}
       </div>
+    )
+  if (message.type === "profile_edit_card")
+    return (
+      <section
+        className="space-y-4 rounded-xl border bg-background p-4"
+        aria-label="画像修改确认"
+      >
+        <h3 className="font-semibold">直接修改画像：{message.employee_name}</h3>
+        {message.items.map((item) => {
+          const rubric = dictionary?.data.find(
+            (capability) => capability.key === item.capability_key,
+          )?.level_rubric
+          return (
+            <div key={item.capability_key} className="space-y-2 border-t pt-3">
+              <h4 className="font-medium">{item.capability_name}</h4>
+              {[
+                { label: "修改前", claim: item.before },
+                { label: "修改后", claim: item.after },
+              ].map(({ label, claim }) => (
+                <p key={label}>
+                  {label}：{claim?.statement ?? "暂无判断"} · 等级：
+                  {claim?.level
+                    ? dictionary
+                      ? levelLabel(rubric, claim.level)
+                      : "等级暂不可用"
+                    : "未给等级"}
+                  {claim && (
+                    <StatusBadge
+                      kind="assessment_status"
+                      value={claim.assessment_status}
+                    />
+                  )}
+                </p>
+              ))}
+            </div>
+          )
+        })}
+        <p>确认后立即发布并通知员工。</p>
+        <div className="flex flex-wrap gap-2">
+          {(message.actions ?? []).map((action) => (
+            <Button
+              key={action.action}
+              disabled={disabled}
+              variant={
+                action.action === "confirm_profile_edit" ? "default" : "outline"
+              }
+              onClick={() => onAction(action)}
+            >
+              {action.action === "confirm_profile_edit"
+                ? "确认修改"
+                : "继续修改"}
+            </Button>
+          ))}
+        </div>
+      </section>
     )
   if (message.type === "review_card")
     return (
