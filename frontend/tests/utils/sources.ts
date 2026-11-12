@@ -20,13 +20,7 @@ export async function createSourcesOrg(page: Page) {
     localStorage.setItem("access_token", result.access_token)
     localStorage.setItem("current_org_id", result.org_id)
   }, data)
-  await page.goto("/setup-wizard")
-  await expect(page).toHaveURL("/setup-wizard")
-  await page.getByText("稍后处理的事项", { exact: true }).click()
-  await page
-    .getByRole("navigation", { name: "设置步骤" })
-    .getByRole("button", { name: /接数据来源/ })
-    .click()
+  await page.goto("/admin/data-ai?tab=sources")
   await expect(page.getByRole("heading", { name: "连接 Jira" })).toBeVisible()
 }
 
@@ -48,4 +42,33 @@ export async function syncJira(page: Page) {
   await expect(page.getByText("Jira 同步：成功", { exact: true })).toBeVisible({
     timeout: 90000,
   })
+}
+
+export async function setupStep(page: Page, key: string, action = "complete") {
+  const tenant = await page.evaluate(() => ({
+    base: `/api/v1/orgs/${localStorage.getItem("current_org_id")}`,
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+    },
+  }))
+  return page.request.post(`${tenant.base}/setup/steps/${key}/${action}`, {
+    headers: tenant.headers,
+  })
+}
+
+export async function activateTemplate(page: Page, templateId: string) {
+  const tenant = await page.evaluate(() => ({
+    base: `/api/v1/orgs/${localStorage.getItem("current_org_id")}`,
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+    },
+  }))
+  expect(
+    (
+      await page.request.post(`${tenant.base}/capability-schema`, {
+        headers: tenant.headers,
+        data: { template_id: templateId },
+      })
+    ).ok(),
+  ).toBeTruthy()
 }

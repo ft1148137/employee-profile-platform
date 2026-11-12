@@ -391,3 +391,15 @@ def test_model_errors_are_distinct(
     assert result.status == status, result
     assert any(c.startswith(category) for c in result.categories)
     assert (result.unconfirmed, result.unauthorized, result.leaks) == (0, 0, 0)
+
+
+@pytest.mark.parametrize("fault", ["first_call", "change_functions", "setup_steps"])
+def test_setup_guide_detects_wrong_tool_or_state(fault: str) -> None:
+    task = next(t for t in tasks() if t.id == "setup-guide").model_copy(deep=True)
+    if fault == "first_call":
+        task.steps[0]["expect"][fault] = {"name": "propose_changes"}
+    elif fault == "change_functions":
+        task.steps[1]["expect"][fault] = ["complete_setup_step"]
+    else:
+        task.expect[fault]["capabilities"] = "skipped"
+    assert Run(task, True).execute().status == "failed"

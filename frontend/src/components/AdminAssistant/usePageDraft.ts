@@ -17,7 +17,7 @@ export function usePageDraft(
   )
   const query = useQuery({
     queryKey: ["admin-page-drafts", orgId, functionName, sessionId],
-    enabled: !!user && roles.includes("org_admin"),
+    enabled: !!user && roles.includes("org_admin") && !!sessionId,
     queryFn: async () =>
       (
         await AdminAssistantService.assistantListChangeSets({
@@ -25,7 +25,7 @@ export function usePageDraft(
           query: {
             status: "draft",
             function: functionName,
-            session_id: sessionId ?? undefined,
+            session_id: sessionId || undefined,
           },
         })
       ).data,
@@ -46,6 +46,7 @@ export function usePageDraft(
     error: query.error,
     blocked:
       roles.includes("org_admin") &&
+      !!sessionId &&
       (query.isPending || query.isError || !!draft),
     values<T extends object>(saved: T): T {
       return { ...saved, ...item?.after }

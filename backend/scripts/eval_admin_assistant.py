@@ -119,6 +119,7 @@ class Run:
         self.captures: list[Any] = []
         self.outputs: list[Any] = []
         self.tool_results: dict[str, Any] = {}
+        self.tool_calls: list[dict[str, Any]] = []
         self.sessions: dict[str, str] = {}
         self.cards: dict[str, list[dict[str, Any]]] = {}
         self.current = "first"
@@ -221,6 +222,7 @@ class Run:
         callback = kwargs["on_tool_call"]
 
         def call(name: str, args: dict[str, Any]) -> Any:
+            self.tool_calls.append({"name": name, "args": args})
             value = callback(name, args)
             self.outputs.append(value)
             self.tool_results[name] = value
@@ -533,6 +535,7 @@ class Run:
                 url = prefix + "/" + self.sessions[self.current]
                 if kind == "say":
                     self.tool_results.clear()
+                    self.tool_calls.clear()
                     body = {"text": step["text"]}
                     if "attachments" in step:
                         body["attachment_ids"] = step["attachments"]
@@ -665,6 +668,20 @@ class Run:
                         reply,
                         self.expand(step.get("expect", {}).get("reply_contains", [])),
                     ), "Expected assistant reply text missing"
+                    expected = step.get("expect", {})
+                    if "first_call" in expected:
+                        assert self.tool_calls and contains(
+                            self.tool_calls[0], expected["first_call"]
+                        ), "First tool call differs"
+                    if "change_functions" in expected:
+                        assert [
+                            item["function"]
+                            for card in output["messages"]
+                            if card["type"] == "admin_change_set"
+                            for item in card["change_set"]["items"]
+                        ] == expected["change_functions"], (
+                            "Unexpected setup change card"
+                        )
                     if step.get("expect", {}).get("no_change_card"):
                         assert not any(
                             m["type"] == "admin_change_set" for m in output["messages"]
@@ -696,6 +713,13 @@ class Run:
                 )
             )["data"]
             assert contains(value, oracle["value"]), "Final service state differs"
+        if "setup_steps" in self.task.expect:
+            from app.domains.setup.wizard import read_setup
+
+            states = {s.key: s.status for s in read_setup(db, org.id).steps}
+            assert contains(states, self.task.expect["setup_steps"]), (
+                "Setup step states differ"
+            )
         if "employee_fields" in self.task.expect:
             from app.domains.org.models import Employee
 
@@ -742,6 +766,19 @@ class Run:
         seed = self.expand(self.task.seed)
         target = people["QG003"]
         self.context["employee_email"] = target.work_email
+        if seed.get("setup_required_only"):
+            from app.domains.capability.models import CapabilitySchemaVersion
+            from app.domains.setup.models import SetupStatus
+            from app.domains.setup.wizard import update_step
+
+            for schema in db.exec(
+                select(CapabilitySchemaVersion).where(
+                    CapabilitySchemaVersion.org_id == org.id
+                )
+            ):
+                schema.status = "draft"
+                db.add(schema)
+            update_step(db, principals["admin"], "model", SetupStatus.COMPLETED)
         if "auto_draft" in seed:
             from app.domains.drafting.settings import (
                 DraftingSettingsUpdate,

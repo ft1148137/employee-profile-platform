@@ -30,13 +30,7 @@ test("opt-in work attributes import and personnel tenure", async ({
     },
     { token: access_token, orgId: org_id },
   )
-  await page.goto("/setup-wizard")
-  await page.getByText("稍后处理的事项", { exact: true }).click()
-  await page
-    .getByRole("navigation", { name: "设置步骤" })
-    .getByRole("button", { name: /导入员工名单/ })
-    .click()
-  await page.getByRole("link", { name: "前往管理助手" }).click()
+  await page.goto("/admin/assistant?prompt=帮我按这份名单导入员工")
   await expect(
     page.getByRole("textbox", { name: "发给管理助手的消息" }),
   ).toHaveValue("帮我按这份名单导入员工")
@@ -69,7 +63,7 @@ test("opt-in work attributes import and personnel tenure", async ({
   })
   expect(accounts.ok()).toBeTruthy()
   const people = (await accounts.json()).data
-  await page.goto(`/admin/people/${people[0].id}`)
+  await page.goto(`/admin/people/${people[0].id}?tab=fields`)
   const info = page.getByRole("region", { name: "员工信息" })
   await expect(info.getByText("技术", { exact: true })).toBeVisible()
   await expect(info.getByText("上海", { exact: true })).toBeVisible()
@@ -83,6 +77,6 @@ test("opt-in work attributes import and personnel tenure", async ({
     path: "../docs/screenshots/m4.2/employee-fields.png",
     fullPage: true,
   })
-  await page.goto(`/admin/people/${people[1].id}`)
+  await page.goto(`/admin/people/${people[1].id}?tab=fields`)
   await expect(page.getByText("不满 1 年", { exact: true })).toBeVisible()
 })

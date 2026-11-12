@@ -109,6 +109,7 @@ test("onboard and transfer on the web, then offboard through the assistant", asy
   )
   await dialog.getByRole("button", { name: "确认调岗" }).click()
   await expect(dialog).toHaveCount(0)
+  await page.getByRole("tab", { name: "档案", exact: true }).click()
   await expect(page.getByRole("region", { name: "员工信息" })).toContainText(
     "主管",
   )

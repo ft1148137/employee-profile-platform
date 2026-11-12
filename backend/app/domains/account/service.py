@@ -5,6 +5,7 @@ from email_validator import EmailNotValidError, validate_email
 from fastapi import HTTPException
 from pydantic import JsonValue
 from sqlalchemy import case, func, or_
+from sqlalchemy.sql.elements import Case
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
@@ -20,6 +21,8 @@ from app.domains.account.schemas import (
     InitialPassword,
     IssueAccounts,
     RolePublic,
+    UnlinkedAccount,
+    UnlinkedAccountsPublic,
 )
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
@@ -478,12 +481,7 @@ def list_accounts(
     employee_id: UUID | None = None,
 ) -> AccountsPublic:
     require_admin(p)
-    account_status = case(
-        (col(User.id).is_(None), "none"),
-        (col(User.is_active).is_(False), "disabled"),
-        (col(User.must_change_password).is_(True), "pending_first_login"),
-        else_="active",
-    )
+    account_status = account_status_expression()
     query = (
         select(Employee, User, Department, Organization.employee_fields)
         .join(Organization, col(Organization.id) == Employee.org_id)
@@ -558,5 +556,52 @@ def list_accounts(
                 roles=roles.get(u.id, []) if u else [],
             )
             for e, u, d, enabled_fields in rows
+        ],
+    )
+
+
+def account_status_expression() -> Case[AccountStatus]:
+    return case(
+        (col(User.id).is_(None), "none"),
+        (col(User.is_active).is_(False), "disabled"),
+        (col(User.must_change_password).is_(True), "pending_first_login"),
+        else_="active",
+    )
+
+
+def list_unlinked_accounts(
+    session: Session, p: Principal, skip: int, limit: int
+) -> UnlinkedAccountsPublic:
+    require_admin(p)
+    query = (
+        select(User, account_status_expression())
+        .join(OrgMembership, col(OrgMembership.user_id) == User.id)
+        .where(
+            OrgMembership.org_id == p.org_id,
+            col(OrgMembership.employee_id).is_(None),
+        )
+    )
+    count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    roles: dict[UUID, list[RolePublic]] = {}
+    for grant in list_roles(session, p):
+        roles.setdefault(grant.user_id, []).append(grant)
+    return UnlinkedAccountsPublic(
+        count=count,
+        data=[
+            UnlinkedAccount(
+                display_name=user.full_name,
+                account=AccountPublic(
+                    user_id=user.id,
+                    username=user.username,
+                    email=user.email,
+                    email_login=uses_email_login(user),
+                    last_login_at=user.last_login_at,
+                    status=status,
+                ),
+                roles=roles.get(user.id, []),
+            )
+            for user, status in session.exec(
+                query.order_by(col(User.id)).offset(skip).limit(limit)
+            ).all()
         ],
     )

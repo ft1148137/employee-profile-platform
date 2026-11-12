@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test"
+import type { SetupPublic } from "../../src/client"
 
 const manualPages = new WeakMap<Page, string>()
 
@@ -50,4 +51,16 @@ export async function mockAdminMessages(page: Page) {
   })
   return (url: string, reply: unknown) =>
     replies.set(new URL(url).pathname.split("/")[5], reply)
+}
+
+export async function mockCompletedSetup(page: Page) {
+  await page.route("**/orgs/*/setup", (route) =>
+    route.fulfill({
+      json: {
+        completed: true,
+        next_step_key: null,
+        steps: [],
+      } satisfies SetupPublic,
+    }),
+  )
 }

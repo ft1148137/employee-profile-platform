@@ -30,13 +30,28 @@ test("M2 real Cloud: roster, manual identity, initial request and evidence", asy
       path.resolve(import.meta.dirname, "../../examples/roster/sample-30.csv"),
     ),
   )
-  await page.goto("/setup-wizard")
-  await page.getByText("稍后处理的事项", { exact: true }).click()
-  const steps = page.getByRole("navigation", { name: "设置步骤" })
-  await steps.getByRole("button", { name: /能力词典/ }).click()
-  await page.getByRole("button", { name: /科技研发/ }).click()
-  await page.getByRole("button", { name: "启用此词典" }).click()
-  await expect(page.getByText("词典已启用，可以完成此步骤。")).toBeVisible()
+  const tenant = await page.evaluate(() => ({
+    base: `/api/v1/orgs/${localStorage.getItem("current_org_id")}`,
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+    },
+  }))
+  const templates = await (
+    await page.request.get("/api/v1/capability-templates", {
+      headers: tenant.headers,
+    })
+  ).json()
+  const template = templates.find((item: { name: string }) =>
+    item.name.includes("科技研发"),
+  )
+  expect(
+    (
+      await page.request.post(`${tenant.base}/capability-schema`, {
+        headers: tenant.headers,
+        data: { template_id: template.id },
+      })
+    ).ok(),
+  ).toBeTruthy()
   await page.goto("/admin/sources")
   await saveCloud(
     page,
@@ -58,17 +73,11 @@ test("M2 real Cloud: roster, manual identity, initial request and evidence", asy
       Authorization: `Bearer ${localStorage.getItem("access_token")}`,
     },
   }))
-  await page.goto("/setup-wizard")
-  await steps.getByRole("button", { name: /配置模型/ }).click()
+  await page.goto("/admin/data-ai?tab=model")
   await configureModel(page, modelUrl)
-  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
-  await page.getByText("稍后处理的事项", { exact: true }).click()
-  await steps.getByRole("button", { name: /审批规则/ }).click()
-  await expect(
-    page.getByRole("heading", { name: "审批规则", exact: true }),
-  ).toBeVisible()
-  await page.getByRole("button", { name: "完成此步骤并继续" }).click()
-  await page.getByRole("button", { name: "生成初始画像", exact: true }).click()
+  await page.goto("/admin")
+  page.once("dialog", (dialog) => dialog.accept())
+  await page.getByRole("button", { name: "重新起草全部", exact: true }).click()
   await expect(
     page.getByText(
       "已为 30 名员工生成初始画像，员工登录后能在自己的画像页看到",

@@ -44,13 +44,9 @@ test("grant and revoke a department manager, preserve the last administrator", a
       ).ok(),
     ).toBeTruthy()
   }
-  await page.getByRole("link", { name: "人员", exact: true }).click()
-  await page.getByRole("tab", { name: "角色", exact: true }).click()
+  await page.goto(`/employees/${employee.id}?tab=account`)
   await expect(
-    page.getByRole("heading", { name: "角色", exact: true }),
-  ).toBeVisible()
-  await expect(
-    page.getByRole("cell", { name: "admin@demo.example.com", exact: true }),
+    page.getByRole("heading", { name: "账号与角色", exact: true }),
   ).toBeVisible()
   await expectChineseCopy(page, ["admin", "superadmin"])
   await page.screenshot({
@@ -82,19 +78,29 @@ test("grant and revoke a department manager, preserve the last administrator", a
     .getByRole("button", { name: "关闭", exact: true })
     .first()
     .click()
-  const row = page.getByRole("row").filter({
-    has: page.getByRole("cell", {
-      name: "employee10@demo.example.com",
-      exact: true,
-    }),
-  })
+  const row = page.getByRole("region", { name: "账号与角色" })
   await expect(row).toContainText("部门经理")
   await expect(row).toContainText("平台研发部")
-  await row.getByRole("button", { name: "撤销", exact: true }).click()
-  await expect(dialog).toContainText("平台研发部 的部门经理")
+  await row.getByRole("button", { name: "撤销角色", exact: true }).click()
+  await expect(dialog).toContainText("部门经理")
   await expectChineseCopy(page, ["admin", "superadmin"])
-  await dialog.getByRole("button", { name: "确认撤销" }).click()
-  await expect(row).toHaveCount(0)
+  await dialog.getByRole("button", { name: "确认撤销角色" }).click()
+  await expect(row).toContainText("暂无管理角色")
+  const adminGrant = await request.post(`${base}/role-grants`, {
+    headers,
+    data: {
+      user_id:
+        employee.account?.user_id ??
+        (
+          await (
+            await request.get(`${base}/accounts?q=E10`, { headers })
+          ).json()
+        ).data[0].account.user_id,
+      role: "org_admin",
+    },
+  })
+  expect(adminGrant.ok()).toBeTruthy()
+  await page.reload()
   // The demo has two effective admins; backend tests cover the last-admin rule.
   const revokePattern = "**/api/v1/orgs/*/role-grants/*"
   await page.route(revokePattern, (route) =>
@@ -105,14 +111,8 @@ test("grant and revoke a department manager, preserve the last administrator", a
         })
       : route.continue(),
   )
-  const admin = page.getByRole("row").filter({
-    has: page.getByRole("cell", {
-      name: "admin@demo.example.com",
-      exact: true,
-    }),
-  })
-  await admin.getByRole("button", { name: "撤销", exact: true }).click()
-  await dialog.getByRole("button", { name: "确认撤销" }).click()
+  await row.getByRole("button", { name: "撤销角色", exact: true }).click()
+  await dialog.getByRole("button", { name: "确认撤销角色" }).click()
   await expect(dialog.getByRole("alert")).toContainText(
     "不能移除最后一名有效的企业管理员",
   )
@@ -121,5 +121,13 @@ test("grant and revoke a department manager, preserve the last administrator", a
   await page.unroute(revokePattern)
   await dialog.getByRole("button", { name: "取消", exact: true }).click()
   await page.reload()
-  await expect(admin).toContainText("企业管理员")
+  await expect(row).toContainText("企业管理员")
+  expect(
+    (
+      await request.delete(
+        `${base}/role-grants/${(await adminGrant.json()).id}`,
+        { headers },
+      )
+    ).ok(),
+  ).toBeTruthy()
 })

@@ -168,13 +168,12 @@ test("admin home shows status and appeal todo through resubmission", async ({
   await expect(
     page.getByRole("region", { name: "今天要处理的事" }),
   ).toContainText("1 个争议待处理")
-  await page.goto("/admin/people?tab=appeals")
+  await page.goto(`/employees/${subject.id}?tab=appeals`)
   await expect(
     page.getByText("不能处理自己提出的申诉，请由另一位企业管理员处理"),
   ).toBeVisible()
-  await page.getByLabel("处理说明").fill("本人不能处理此申诉")
   for (const name of ["维持原决定", "允许重新提交"]) {
-    await expect(page.getByRole("button", { name })).toBeDisabled()
+    await expect(page.getByRole("button", { name })).toHaveCount(0)
   }
   expect(
     (
@@ -198,6 +197,7 @@ test("admin home shows status and appeal todo through resubmission", async ({
     .getByRole("link", { name: "去处理" })
     .click()
   await expect(page).toHaveURL("/admin/people?tab=appeals")
+  await page.goto(`/employees/${subject.id}?tab=appeals`)
   await expect(
     page.getByRole("heading", { name: "争议", exact: true }),
   ).toBeVisible()

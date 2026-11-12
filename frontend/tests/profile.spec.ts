@@ -53,7 +53,11 @@ test("employee reads capability, Jira evidence and earlier published snapshot", 
   await expect(page.getByRole("dialog")).toContainText("背景")
   await page.getByRole("button", { name: "关闭", exact: true }).click()
   await page.getByRole("tab", { name: "版本历史" }).click()
-  await expect(page.getByRole("tabpanel").getByRole("listitem")).toHaveCount(2)
+  await expect(
+    page
+      .getByRole("tabpanel", { name: "版本历史", exact: true })
+      .getByRole("listitem"),
+  ).toHaveCount(2)
   await page.getByRole("button", { name: /^r1 ·/ }).click()
   const snapshot = page.getByRole("region", { name: "r1 只读快照" })
   await expect(
@@ -79,10 +83,15 @@ for (const [role, email, restricted] of [
     await openE02(page, email)
     await page.getByRole("tab", { name: "证据", exact: true }).click()
     await page.getByLabel("证据类型").selectOption("self_report")
-    await expect(page.getByRole("tabpanel").getByRole("listitem")).toHaveCount(
-      1,
-    )
-    await page.getByRole("tabpanel").getByRole("button").click()
+    await expect(
+      page
+        .getByRole("tabpanel", { name: "证据", exact: true })
+        .getByRole("listitem"),
+    ).toHaveCount(1)
+    await page
+      .getByRole("tabpanel", { name: "证据", exact: true })
+      .getByRole("button")
+      .click()
     const sheet = page.getByRole("dialog")
     await expect(sheet).toContainText("SR02")
     await expect(sheet.getByRole("listitem")).toHaveCount(1)
@@ -128,7 +137,11 @@ test("profile recovers from errors and tolerates incomplete evidence fields", as
     })
   })
   await page.getByRole("tab", { name: "证据", exact: true }).click()
-  await page.getByRole("tabpanel").getByRole("button").first().click()
+  await page
+    .getByRole("tabpanel", { name: "证据", exact: true })
+    .getByRole("button")
+    .first()
+    .click()
   await expect(page.getByRole("dialog")).toContainText("关联任务：—")
   await expect(page.getByRole("dialog")).toContainText("来源与导入信息")
 })
