@@ -109,7 +109,6 @@ ORG_MODELS = (
     Task,
     CapabilityDefinition,
     CapabilitySchemaVersion,
-    DepartmentCapability,
     RoleGrant,
     ReportingLine,
     RosterImport,
