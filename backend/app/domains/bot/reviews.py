@@ -47,7 +47,7 @@ def definitions() -> list[ToolDefinition]:
 def call(
     db: Session,
     p: Principal,
-    session: BotSession,
+    _session: BotSession,
     cards: list[s.Message],
     name: str,
     arguments: dict[str, JsonValue],
@@ -56,11 +56,6 @@ def call(
         body = INPUTS[name].model_validate(arguments)
     except ValidationError:
         return {"error": "请逐项给出决定，退回和拒绝必须说明原因"}
-    if session.channel == "web":
-        cards.append(
-            s.TextMessage(text="请在网页审批页查看并决定", review_link="/reviews")
-        )
-        return {"message": "请去网页审批页查看并决定"}
     if name == "list_pending_reviews":
         rows = manager_tools.list_pending_reviews(p, db)
         return {

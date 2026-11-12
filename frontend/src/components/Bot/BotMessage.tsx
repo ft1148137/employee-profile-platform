@@ -1,10 +1,15 @@
 import { Link } from "@tanstack/react-router"
 import { useState } from "react"
-import type { QuestionAction, RequestAction, TurnResponse } from "@/client"
+import type {
+  QuestionAction,
+  RequestAction,
+  ReviewAction,
+  TurnResponse,
+} from "@/client"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
 import { Button } from "@/components/ui/button"
 
-export type BotAction = RequestAction | QuestionAction
+export type BotAction = RequestAction | QuestionAction | ReviewAction
 const actionLabels = {
   confirm_submit: "确认提交",
   continue_editing: "继续修改",
@@ -45,9 +50,72 @@ export function BotMessage({
     )
   if (message.type === "review_card")
     return (
-      <Link to="/reviews" className="underline">
-        去审批页
-      </Link>
+      <section
+        className="space-y-4 rounded-xl border bg-background p-4"
+        aria-label="审批决定复述"
+      >
+        <h3 className="font-semibold">
+          审批决定复述（修订 {message.revision}）
+        </h3>
+        {message.items.map((item) => {
+          const decision = message.decisions.find(
+            (d) => d.item_id === item.after.id,
+          )
+          return (
+            <div key={item.after.id} className="space-y-2 border-t pt-3">
+              <h4 className="font-medium">{item.after.capability.name}</h4>
+              <p>
+                修改前：{item.before?.statement ?? "暂无判断"} · 等级：
+                {item.before?.level ?? "未给等级"}
+                {item.before && (
+                  <StatusBadge
+                    kind="assessment_status"
+                    value={item.before.assessment_status}
+                  />
+                )}
+              </p>
+              <p>
+                修改后：{item.after.after?.statement ?? "撤回此判断"} · 等级：
+                {item.after.after?.level ?? "未给等级"}
+                {item.after.after && (
+                  <StatusBadge
+                    kind="assessment_status"
+                    value={item.after.after.assessment_status}
+                  />
+                )}
+              </p>
+              <p>
+                依据标题：
+                {item.evidence.map((e) => e.title).join("、") || "暂无"}
+              </p>
+              {item.jira_only && <p>仅 Jira 来源（最多暂定）</p>}
+              <p>决定：{decision ? statuses[decision.decision] : "未填写"}</p>
+              <p>原因：{decision?.reason || "未填写"}</p>
+            </div>
+          )
+        })}
+        <Link
+          to="/reviews/$requestId"
+          params={{ requestId: message.id }}
+          className="underline"
+        >
+          去审批页查看证据
+        </Link>
+        <div className="flex flex-wrap gap-2">
+          {(message.actions ?? []).map((action) => (
+            <Button
+              key={action.action}
+              disabled={disabled}
+              variant={
+                action.action === "confirm_review" ? "default" : "outline"
+              }
+              onClick={() => onAction(action)}
+            >
+              {action.action === "confirm_review" ? "确认决定" : "继续修改"}
+            </Button>
+          ))}
+        </div>
+      </section>
     )
   return (
     <section
@@ -116,28 +184,6 @@ export function BotMessage({
                   修改后：{item.after.after?.statement ?? "撤回此判断"} · 等级：
                   {item.after.after?.level ?? "未给等级"}
                 </p>
-                {item.after.after && (
-                  <StatusBadge
-                    kind="assessment_status"
-                    value={item.after.after.assessment_status}
-                  />
-                )}
-                <p>
-                  依据说明：
-                  {item.after.explanation ?? "暂无说明"}
-                </p>
-                {item.after.owner_statement && (
-                  <p>本人补充：{item.after.owner_statement}</p>
-                )}
-                {item.after.uncertainty && (
-                  <p>不确定之处：{item.after.uncertainty}</p>
-                )}
-                {item.after.objection && <p>异议：{item.after.objection}</p>}
-                {item.warning && (
-                  <p className="text-amber-700 dark:text-amber-300">
-                    {item.warning}
-                  </p>
-                )}
               </div>
             ))
           ) : (

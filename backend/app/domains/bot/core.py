@@ -64,7 +64,7 @@ def turn(
     cards: list[s.Message] = []
 
     def call(name: str, args: dict[str, JsonValue]) -> JsonValue:
-        title = tools.TITLES[name]
+        title = tools.TITLES.get(name, "不允许的工具")
         if stream:
             stream.check()
             stream.on_tool(title, "start", True)
@@ -204,7 +204,7 @@ def act(
             (c for c in cards if isinstance(c, s.ReviewCard) and action in c.actions),
             None,
         )
-        if session.channel == "web" or card is None:
+        if card is None:
             raise employee.RequestConflict("请重新查看审批卡片")
         if action.action == "continue_review":
             review = manager_tools.get_review(p, db, action.request_id)
@@ -218,7 +218,7 @@ def act(
                 action.request_id,
                 action.revision,
                 card.decisions,
-                via=ReviewVia.IM,
+                via=ReviewVia.WEB if session.channel == "web" else ReviewVia.IM,
                 client_name=session.channel,
             )
             messages = [
