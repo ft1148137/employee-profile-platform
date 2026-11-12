@@ -13,6 +13,14 @@ from app.domains.org.roster.schemas import RosterImportPreview
 
 AdminPage = Literal[
     "/admin",
+    "/employees",
+    "/employees/$employeeId",
+    "/employees?filter=roles",
+    "/employees?filter=identities",
+    "/employees?filter=appeals",
+    "/employees?filter=account-only",
+    "/org-chart",
+    # Historical user messages retain their page.
     "/admin/people",
     "/admin/people/$employeeId",
     "/admin/people?tab=accounts",

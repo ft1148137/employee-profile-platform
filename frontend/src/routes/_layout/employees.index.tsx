@@ -8,11 +8,11 @@ import {
 import type { ColumnDef } from "@tanstack/react-table"
 import { useEffect, useState } from "react"
 import { type EmployeeSummary, EmployeesService, OrgsService } from "@/client"
+import { EmployeesAdminList } from "@/components/Admin/EmployeesAdminList"
 import {
   DataTable,
   type DataTableFeatures,
 } from "@/components/Common/DataTable"
-import { OrgChart } from "@/components/OrgChart/OrgChart"
 import { publishedLabel } from "@/components/Profile/EmployeeSummary"
 import { OrgState } from "@/components/Profile/OrgState"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
@@ -29,11 +29,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useOrg } from "@/hooks/useOrg"
 
 export const Route = createFileRoute("/_layout/employees/")({
   component: EmployeesPage,
+  validateSearch: (search: Record<string, unknown>): { filter?: string } => ({
+    filter: ["appeals", "identities", "roles", "account-only"].includes(
+      String(search.filter),
+    )
+      ? String(search.filter)
+      : undefined,
+  }),
   head: () => ({ meta: [{ title: "员工 - 员工画像平台" }] }),
 })
 
@@ -88,22 +94,14 @@ const columns: ColumnDef<DataTableFeatures, EmployeeSummary>[] = [
 
 function EmployeesPage() {
   const { org, roles } = useOrg()
+  const { filter } = Route.useSearch()
   if (!org) return <OrgState />
   if (!roles.includes("org_admin") && !roles.includes("dept_manager"))
     return <Navigate to="/" replace />
-  return (
-    <Tabs key={org.id} defaultValue="list" className="min-w-0">
-      <TabsList aria-label="员工视图">
-        <TabsTrigger value="list">列表</TabsTrigger>
-        <TabsTrigger value="org-chart">组织架构</TabsTrigger>
-      </TabsList>
-      <TabsContent value="list">
-        <EmployeesList orgId={org.id} />
-      </TabsContent>
-      <TabsContent value="org-chart">
-        <OrgChart />
-      </TabsContent>
-    </Tabs>
+  return roles.includes("org_admin") ? (
+    <EmployeesAdminList key={org.id} filter={filter} />
+  ) : (
+    <EmployeesList key={org.id} orgId={org.id} />
   )
 }
 

@@ -212,8 +212,20 @@ def turn(
 
 
 def _fallback(text: str, page: str) -> AdminTurnResponse:
-    if page == "/admin/people/$employeeId":
-        page = "/admin/people"
+    # Redirect historical page links without changing saved conversation messages.
+    if page.startswith("/admin/people"):
+        tab = page.partition("?tab=")[2]
+        page = (
+            "/org-chart"
+            if tab == "org-chart"
+            else "/admin/assistant"
+            if tab == "roster"
+            else f"/employees?filter={tab}"
+            if tab in {"roles", "identities", "appeals"}
+            else "/employees"
+        )
+    if "$employeeId" in page:
+        page = "/employees"
     return AdminTurnResponse(
         messages=[
             TextMessage(text=text),

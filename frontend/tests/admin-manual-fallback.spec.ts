@@ -105,7 +105,6 @@ test("manual console completes all fifteen tabs without a model", async ({
   })
 
   await test.step("people / accounts: issue accounts and retain the result", async () => {
-    await page.getByRole("tab", { name: "员工与账号", exact: true }).click()
     await page.getByRole("button", { name: "生成账号", exact: true }).click()
     const dialog = page.getByRole("dialog")
     const download = page.waitForEvent("download")
@@ -130,7 +129,8 @@ test("manual console completes all fifteen tabs without a model", async ({
   })
 
   await test.step("people / roles: grant a department manager", async () => {
-    await page.getByRole("tab", { name: "角色", exact: true }).click()
+    const employee = (await get("/accounts?q=QG002")).data[0]
+    await page.goto(`/employees/${employee.id}?tab=account`)
     await page.getByRole("button", { name: "授予角色", exact: true }).click()
     const dialog = page.getByRole("dialog")
     await dialog.getByRole("textbox", { name: "搜索姓名或工号" }).fill("QG002")
@@ -149,8 +149,10 @@ test("manual console completes all fifteen tabs without a model", async ({
       .getByRole("row")
       .filter({ hasText: employeeEmail("qg002") })
     await expect(manager).toContainText("部门经理")
-    await manager.getByRole("button", { name: "撤销", exact: true }).click()
-    await dialog.getByRole("button", { name: "确认撤销", exact: true }).click()
+    await manager.getByRole("button", { name: "撤销角色", exact: true }).click()
+    await dialog
+      .getByRole("button", { name: "确认撤销角色", exact: true })
+      .click()
     await expect(manager).toHaveCount(0)
   })
 
@@ -235,7 +237,8 @@ test("manual console completes all fifteen tabs without a model", async ({
   })
 
   await test.step("people / identities: manually link a work record account", async () => {
-    await page.goto("/admin/people?tab=identities")
+    await page.goto("/employees?filter=identities")
+    await page.getByLabel("按来源筛选").selectOption("")
     const identities: ExternalIdentitiesPublic = await get(
       "/external-identities",
     )
@@ -245,11 +248,12 @@ test("manual console completes all fifteen tabs without a model", async ({
     expect(identity).toBeTruthy()
     const row = page.getByRole("row").filter({ hasText: identity.external_id })
     await row.getByRole("button", { name: "选择员工", exact: true }).click()
-    const dialog = page.getByRole("dialog")
+    const dialog = page.getByRole("dialog", { name: "选择员工", exact: true })
     await dialog.getByLabel("搜索员工姓名或工号").fill("QG002")
     await dialog.getByRole("button", { name: /在职/ }).click()
-    await expect(dialog).toHaveCount(0)
+    await expect(dialog).toBeHidden()
     await page.reload()
+    await page.getByLabel("按来源筛选").selectOption("")
     await page.getByRole("tab", { name: /已关联/ }).click()
     await expect(row).toContainText("乔砚之")
   })
@@ -312,7 +316,7 @@ test("manual console completes all fifteen tabs without a model", async ({
       },
       owner,
     )
-    await page.goto("/admin/people?tab=appeals")
+    await page.goto(`/employees/${accounts.data[0].id}?tab=appeals`)
     await expect(page.getByText("申诉原因：希望补充合成依据")).toBeVisible()
     await page.getByLabel("处理说明").fill("请补充后重新提交")
     await page.getByRole("button", { name: "允许重新提交" }).click()

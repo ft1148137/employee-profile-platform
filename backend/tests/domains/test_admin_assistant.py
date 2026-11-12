@@ -54,7 +54,7 @@ def test_turn_and_private_sessions(
         endpoint + "/sessions", headers=auth["admin"], params=query
     ).json()["session_id"]
     url = f"{endpoint}/sessions/{sid}"
-    body = {"text": "今天有什么要处理的", "page": "/admin/people?tab=roster"}
+    body = {"text": "今天有什么要处理的", "page": "/admin"}
     for role in ("employee", "manager", "foreign"):
         assert (
             client.get(url + "/messages", headers=auth[role], params=query).status_code
@@ -301,14 +301,14 @@ def test_failed_turn_releases_lease(
         db,
         p,
         row.id,
-        AdminTurnInput(text="查看员工", page="/admin/people/$employeeId"),
+        AdminTurnInput(text="查看员工", page="/employees/$employeeId"),
     )
     assert (
         response.messages[0].type == "text"
         and "未完成" not in response.messages[0].text
     )
     assert response.messages[1].type == "link"
-    assert response.messages[1].page == "/admin/people"
+    assert response.messages[1].page == "/employees"
     if isinstance(error, admission.BotDraftingPriority):
         assert "正在起草画像" in response.messages[0].text
     db.refresh(row)
@@ -396,7 +396,7 @@ def test_registry_wired_to_turn(
     if function in {"get_progress", "list_accounts"}:
         assert cards[0].type == "link"
         assert cards[0].page == (
-            "/admin" if function == "get_progress" else "/admin/people?tab=accounts"
+            "/admin" if function == "get_progress" else "/employees"
         )
         assert cards[1].type == "table" and len(cards[1].rows) <= 20
     else:
@@ -484,3 +484,25 @@ def test_drafting_unavailable(
         db.rollback()
         db.execute(text("DELETE FROM procrastinate_jobs WHERE id=:id"), {"id": job_id})
         db.commit()
+
+
+def test_historical_page_links_redirect_without_rewriting_messages() -> None:
+    from typing import get_args
+
+    from app.domains.admin_assistant.schemas import AdminPage
+
+    targets = {
+        "accounts": "/employees",
+        "roster": "/admin/assistant",
+        "roles": "/employees?filter=roles",
+        "identities": "/employees?filter=identities",
+        "appeals": "/employees?filter=appeals",
+    }
+    for page in get_args(AdminPage):
+        if "people" not in page:
+            continue
+        body = AdminTurnInput(text="恢复历史消息", page=page)
+        link = core._fallback("暂时不可用", body.page).messages[1]
+        assert link.type == "link"
+        assert link.page == targets.get(page.partition("?tab=")[2], "/employees")
+        assert body.page == page

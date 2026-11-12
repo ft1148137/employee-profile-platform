@@ -16,36 +16,45 @@ export function ConfirmActionDialog({
   action,
   onSuccess,
   disabled = false,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   title: string
   description: string
   action: () => Promise<unknown>
   onSuccess: () => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   disabled?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
   const mutation = useMutation({
     mutationFn: action,
     onSuccess: () => {
       setOpen(false)
+      onOpenChange?.(false)
       onSuccess()
     },
   })
   function changeOpen(value: boolean) {
     if (mutation.isPending) return
     setOpen(value)
+    onOpenChange?.(value)
     mutation.reset()
   }
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={disabled}
-        onClick={() => changeOpen(true)}
-      >
-        {title}
-      </Button>
+      {controlledOpen === undefined && (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          onClick={() => changeOpen(true)}
+        >
+          {title}
+        </Button>
+      )}
       <DialogContent showCloseButton={!mutation.isPending}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

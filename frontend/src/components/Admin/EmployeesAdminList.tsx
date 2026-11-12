@@ -1,7 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import {
   AccountsService,
+  AppealsService,
   type EmployeeAccount,
   type EmploymentStatus,
   OrgsService,
@@ -16,6 +18,8 @@ import {
 } from "@/components/Admin/labels"
 import { PersonnelDialog } from "@/components/Admin/PersonnelDialog"
 import { ResetPasswordDialog } from "@/components/Admin/ResetPasswordDialog"
+import { UnlinkedAccounts } from "@/components/Admin/UnlinkedAccounts"
+import { UnmatchedIdentities } from "@/components/Identities/UnmatchedIdentities"
 import { OrgState } from "@/components/Profile/OrgState"
 import { EmployeeFields } from "@/components/Roster/EmployeeFields"
 import { Button } from "@/components/ui/button"
@@ -37,12 +41,17 @@ import {
 import { useOrg } from "@/hooks/useOrg"
 import { handleError } from "@/utils"
 
-export function AccountsPage() {
+export function EmployeesAdminList({ filter }: { filter?: string }) {
   const { org } = useOrg()
-  return org ? <AccountsList key={org.id} orgId={org.id} /> : <OrgState />
+  return org ? (
+    <AccountsList key={`${org.id}:${filter}`} orgId={org.id} filter={filter} />
+  ) : (
+    <OrgState />
+  )
 }
 
-function AccountsList({ orgId }: { orgId: string }) {
+function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
+  const navigate = useNavigate()
   const client = useQueryClient()
   const { org, roles } = useOrg()
   const [department, setDepartment] = useState("all")
@@ -60,7 +69,6 @@ function AccountsList({ orgId }: { orgId: string }) {
     setPagination((old) => ({ ...old, pageIndex: 0 }))
   }
   useEffect(() => {
-    setSelected([])
     const timer = setTimeout(() => {
       setSelected([])
       setQ(search.trim())
@@ -97,8 +105,16 @@ function AccountsList({ orgId }: { orgId: string }) {
           },
         })
       ).data,
+    enabled: filter !== "account-only",
     retry: false,
   })
+  const appeals = useQuery({
+    queryKey: ["disputes", orgId],
+    queryFn: async () =>
+      (await AppealsService.listDisputes({ path: { org_id: orgId } })).data,
+    enabled: filter === "appeals",
+  })
+  const disputed = new Set(appeals.data?.map((appeal) => appeal.employee_id))
   const options = departmentOptions(departments.data?.data ?? [])
   let error = ""
   if (accounts.error)
@@ -110,14 +126,14 @@ function AccountsList({ orgId }: { orgId: string }) {
       <div className="flex flex-wrap items-center justify-between gap-4 border-l-4 border-primary pl-4">
         <div>
           <p className="mb-1 text-xs tracking-widest text-muted-foreground">
-            管理 · 账号发放
+            组织 · 员工资源
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight">员工与账号</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">员工</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            按员工名单发放账号，初始密码由员工首次登录时修改。
+            查看画像进度，管理员工档案与登录账号。
           </p>
         </div>
-        {roles.includes("org_admin") && (
+        {roles.includes("org_admin") && filter !== "account-only" && (
           <IssueAccountsDialog
             orgId={orgId}
             employees={accounts.data?.data
@@ -163,80 +179,131 @@ function AccountsList({ orgId }: { orgId: string }) {
           }}
         />
       )}
-      <div className="flex flex-wrap items-center gap-3">
-        <Input
-          className="max-w-xs"
-          aria-label="搜索姓名或工号"
-          placeholder="搜索姓名或工号…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <AccountFilter
-          title="部门"
-          value={department}
-          labels={Object.fromEntries(options.map((d) => [d.id, d.name]))}
-          onChange={(value) => {
-            setDepartment(value)
-            reset()
-          }}
-        />
-        <AccountFilter
-          title="账号状态"
-          value={status}
-          labels={accountLabels}
-          onChange={(value) => {
-            setStatus(value)
-            reset()
-          }}
-        />
-        <AccountFilter
-          title="在职状态"
-          value={employment}
-          labels={employmentLabels}
-          onChange={(value) => {
-            setEmployment(value)
-            reset()
-          }}
-        />
-        <span className="ml-auto text-sm text-muted-foreground">
-          共 {accounts.data?.count ?? "—"} 名员工 · 已选 {selected.length} 人
-        </span>
-      </div>
-      {departments.isError && (
-        <div role="alert">
-          无法加载部门路径。
-          <Button variant="outline" onClick={() => departments.refetch()}>
-            重试
-          </Button>
-        </div>
-      )}
-      {accounts.isPending ? (
-        <p role="status">正在加载员工与账号…</p>
-      ) : accounts.isError ? (
-        <div role="alert">
-          {error}
-          <Button variant="outline" onClick={() => accounts.refetch()}>
-            重试
-          </Button>
-        </div>
+      <UnmatchedIdentities
+        orgId={orgId}
+        initiallyOpen={filter === "identities"}
+      />
+      <AccountFilter
+        title="员工范围"
+        value={
+          filter === "appeals" ||
+          filter === "roles" ||
+          filter === "account-only"
+            ? filter
+            : "all"
+        }
+        labels={{
+          appeals: "有待处理争议",
+          roles: "有管理角色",
+          "account-only": "仅账号（没有员工身份）",
+        }}
+        onChange={(value) =>
+          navigate({
+            to: "/employees",
+            search: { filter: value === "all" ? undefined : value },
+          })
+        }
+      />
+      {filter === "account-only" ? (
+        <UnlinkedAccounts orgId={orgId} />
       ) : (
-        <AccountTable
-          data={accounts.data.data}
-          onResetPassword={setPasswordTarget}
-          count={accounts.data.count}
-          departments={new Map(options.map((d) => [d.id, d.name]))}
-          selected={selected}
-          onSelect={(id, checked) =>
-            setSelected((old) =>
-              checked ? [...old, id] : old.filter((value) => value !== id),
-            )
-          }
-          pagination={pagination}
-          onPaginationChange={(updater) => {
-            setSelected([])
-            setPagination(updater)
-          }}
-        />
+        <>
+          <div className="flex flex-wrap items-center gap-3">
+            <Input
+              className="max-w-xs"
+              aria-label="搜索姓名或工号"
+              placeholder="搜索姓名或工号…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <AccountFilter
+              title="部门"
+              value={department}
+              labels={Object.fromEntries(options.map((d) => [d.id, d.name]))}
+              onChange={(value) => {
+                setDepartment(value)
+                reset()
+              }}
+            />
+            <AccountFilter
+              title="账号状态"
+              value={status}
+              labels={accountLabels}
+              onChange={(value) => {
+                setStatus(value)
+                reset()
+              }}
+            />
+            <AccountFilter
+              title="在职状态"
+              value={employment}
+              labels={employmentLabels}
+              onChange={(value) => {
+                setEmployment(value)
+                reset()
+              }}
+            />
+            <span className="ml-auto text-sm text-muted-foreground">
+              共 {accounts.data?.count ?? "—"} 名员工 · 已选 {selected.length}{" "}
+              人
+            </span>
+          </div>
+          {departments.isError && (
+            <div role="alert">
+              无法加载部门路径。
+              <Button variant="outline" onClick={() => departments.refetch()}>
+                重试
+              </Button>
+            </div>
+          )}
+          {filter === "appeals" &&
+            (appeals.isPending ? (
+              <p role="status">正在加载争议…</p>
+            ) : appeals.isError ? (
+              <div role="alert">
+                无法加载待处理争议。
+                <Button onClick={() => appeals.refetch()}>重试</Button>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                仅显示当前页有待处理争议的员工，可翻页继续查看。
+              </p>
+            ))}
+          {accounts.isPending ? (
+            <p role="status">正在加载员工与账号…</p>
+          ) : accounts.isError ? (
+            <div role="alert">
+              {error}
+              <Button variant="outline" onClick={() => accounts.refetch()}>
+                重试
+              </Button>
+            </div>
+          ) : (
+            <AccountTable
+              data={accounts.data.data.filter((employee) =>
+                filter === "appeals"
+                  ? disputed.has(employee.id)
+                  : filter === "roles"
+                    ? employee.roles.length > 0
+                    : true,
+              )}
+              onResetPassword={setPasswordTarget}
+              count={accounts.data.count}
+              departments={new Map(options.map((d) => [d.id, d.name]))}
+              selected={selected}
+              onSelect={(id, checked) =>
+                setSelected((old) =>
+                  checked ? [...old, id] : old.filter((value) => value !== id),
+                )
+              }
+              pagination={pagination}
+              onPaginationChange={(updater) => {
+                setSelected([])
+                setPagination(updater)
+              }}
+            />
+          )}
+        </>
       )}
     </div>
   )
