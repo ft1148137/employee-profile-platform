@@ -117,9 +117,10 @@ test("onboard and transfer on the web, then offboard through the assistant", asy
     await (await request.get(`${base}/accounts`, { headers })).json()
   ).data[0]
   await page.goto("/admin/assistant")
+  const offboardMessage = `办理离职 ${employee.id}`
   await page
     .getByRole("textbox", { name: "发给管理助手的消息" })
-    .fill(`办理离职 ${employee.id}`)
+    .fill(offboardMessage)
   await page.getByRole("button", { name: "发送", exact: true }).click()
   const card = page.getByRole("region", { name: "设置改动确认卡" })
   await expect(card).toContainText("办理离职", { timeout: 30000 })
@@ -141,7 +142,8 @@ test("onboard and transfer on the web, then offboard through the assistant", asy
     (await (await request.get(`${base}/accounts`, { headers })).json()).data[0]
       .employment_status,
   ).toBe("inactive")
-  await expectChineseCopy(page, [employee.id])
+  // Session previews truncate the message at 40 characters, including the UUID.
+  await expectChineseCopy(page, [employee.id, offboardMessage.slice(0, 40)])
   await page.screenshot({
     path: testInfo.outputPath("personnel-offboard.png"),
     fullPage: true,
@@ -206,8 +208,22 @@ test("work attributes in personnel form and employee pages", async ({
     if (new URL(request.url()).pathname.startsWith(`${base}/employees/`))
       profileReads++
   })
-  await page.goto("/employees")
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === `${base}/accounts` &&
+        response.ok(),
+    ),
+    page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === `${base}/departments` &&
+        response.ok(),
+    ),
+    page.goto("/employees"),
+  ])
   const row = page.getByRole("row").filter({ hasText: "合成档案员工" })
+  await expect(page.getByText("共 1 名员工 · 已选 0 人")).toBeVisible()
+  await expect(row).not.toContainText("加载中…")
   await expect(row).toContainText("技术")
   await expect(row).toContainText("上海")
   await expect(row).toContainText("入职 3 年")
