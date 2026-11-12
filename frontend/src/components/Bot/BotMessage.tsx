@@ -118,27 +118,31 @@ export function BotMessage({
                 <h4 className="font-medium">{item.after.capability.name}</h4>
                 <p>
                   修改前：{item.before?.statement ?? "暂无判断"} · 等级：
-                  {item.before?.level
-                    ? levelLabel(
-                        dictionary?.data.find(
-                          (capability) =>
-                            capability.key === item.after.capability.key,
-                        )?.level_rubric,
-                        item.before.level,
-                      )
-                    : "未给等级"}
+                  {!dictionary && item.before?.level
+                    ? "等级暂不可用"
+                    : item.before?.level
+                      ? levelLabel(
+                          dictionary?.data.find(
+                            (capability) =>
+                              capability.key === item.after.capability.key,
+                          )?.level_rubric,
+                          item.before.level,
+                        )
+                      : "未给等级"}
                 </p>
                 <p>
                   修改后：{item.after.after?.statement ?? "撤回此判断"} · 等级：
-                  {item.after.after?.level
-                    ? levelLabel(
-                        dictionary?.data.find(
-                          (capability) =>
-                            capability.key === item.after.capability.key,
-                        )?.level_rubric,
-                        item.after.after.level,
-                      )
-                    : "未给等级"}
+                  {!dictionary && item.after.after?.level
+                    ? "等级暂不可用"
+                    : item.after.after?.level
+                      ? levelLabel(
+                          dictionary?.data.find(
+                            (capability) =>
+                              capability.key === item.after.capability.key,
+                          )?.level_rubric,
+                          item.after.after.level,
+                        )
+                      : "未给等级"}
                 </p>
                 {item.after.after && (
                   <StatusBadge

@@ -217,6 +217,11 @@ for (const width of [1440, 390]) {
     await expect(
       panel.getByText("另一标签页的经历", { exact: false }),
     ).toBeVisible()
+    await expect(
+      panel.getByText("修改后：合成模型能力建议 · 等级：需要协助", {
+        exact: true,
+      }),
+    ).toBeVisible()
     await expectChineseCopy(page)
     const bounds = await panel.boundingBox()
     expect(bounds!.width).toBeLessThanOrEqual(width)
