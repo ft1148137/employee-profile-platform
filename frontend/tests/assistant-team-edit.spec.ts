@@ -177,6 +177,8 @@ test("manager views and directly edits a team profile", async ({
     )
     await page.goto("/assistant")
     const panel = page.getByRole("region", { name: "助手", exact: true })
+    await expect(panel).toContainText("可以操作你本人和你管辖部门员工的画像")
+    await expect(panel).not.toContainText("只操作你本人的画像")
     await panel
       .getByLabel("发给机器人的消息")
       .fill("查看合成员工的画像，改为独立完成")
