@@ -167,9 +167,6 @@ def write_initial_request(
 ) -> bool:
     if employee.org_id != org_id:
         raise InvalidDraft("员工不属于当前企业")
-    items = [item for item in items if item.after.level is not None]
-    if not items:
-        return False
     session.exec(
         select(Organization).where(Organization.id == org_id).with_for_update()
     ).one()
@@ -177,6 +174,9 @@ def write_initial_request(
     active_ids = {c.id for c in list_capabilities(session, org_id, active.id)}
     if any(item.capability_id not in active_ids for item in items):
         raise InvalidDraft("词典已更新，请按当前词典重新起草")
+    items = [item for item in items if item.after.level is not None]
+    if not items:
+        return False
     request = session.exec(
         select(ProfileChangeRequest)
         .where(
