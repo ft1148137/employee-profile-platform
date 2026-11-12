@@ -60,6 +60,7 @@ test("complete setup with 30 employees, download accounts and first employee log
     ),
   )
   await page.reload()
+  await page.getByText("稍后处理的事项", { exact: true }).click()
   await page
     .getByRole("navigation", { name: "设置步骤" })
     .getByRole("button", { name: /导入员工名单/ })

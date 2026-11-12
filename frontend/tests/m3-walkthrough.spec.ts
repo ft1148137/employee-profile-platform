@@ -38,6 +38,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
     ),
   )
   await page.reload()
+  await page.getByText("稍后处理的事项", { exact: true }).click()
   await step(/导入员工名单/).click()
   await next()
   await page.getByRole("button", { name: /科技研发/ }).click()
