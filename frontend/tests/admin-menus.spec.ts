@@ -19,7 +19,6 @@ const groups = [
     path: "/admin/people",
     tabs: [
       ["accounts", "员工与账号"],
-      ["roster", "导入名单"],
       ["roles", "角色"],
       ["identities", "Jira 账号匹配"],
       ["appeals", "争议"],
@@ -156,7 +155,7 @@ test("legacy addresses redirect to their new locations", async ({ page }) => {
   test.setTimeout(90000)
   const aliases = [
     ["accounts", "/admin/people?tab=accounts"],
-    ["roster", "/admin/people?tab=roster"],
+    ["roster", "/admin/assistant"],
     ["roles", "/admin/people?tab=roles"],
     ["identities", "/admin/people?tab=identities"],
     ["appeals", "/admin/people?tab=appeals"],

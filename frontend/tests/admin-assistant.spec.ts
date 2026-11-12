@@ -74,7 +74,7 @@ for (const width of [1440, 390]) {
       })
     })
     for (const current of [
-      "/admin/people?tab=roster",
+      "/admin/people?tab=accounts",
       "/admin/data-ai?tab=bot",
     ]) {
       await page.goto(current)

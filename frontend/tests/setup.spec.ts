@@ -1,9 +1,11 @@
 import { execFileSync } from "node:child_process"
+import { readFileSync } from "node:fs"
 import path from "node:path"
 import type { Page } from "@playwright/test"
 import type { SetupPublic } from "../src/client"
 import { expectChineseCopy } from "./utils/copy"
 import { configureModel, expect, test } from "./utils/model"
+import { importRoster } from "./utils/roster"
 import { logOutUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -45,22 +47,23 @@ test("complete setup with 30 employees, download accounts and first employee log
     .getByRole("navigation", { name: "设置步骤" })
     .getByRole("button", { name: /导入员工名单/ })
     .click()
-  await page
-    .getByLabel("拖拽名单到这里，或选择文件上传")
-    .setInputFiles(
+  await expect(
+    page.getByRole("link", { name: "前往管理助手" }),
+  ).toHaveAttribute(
+    "href",
+    `/admin/assistant?prompt=${encodeURIComponent("帮我按这份名单导入员工")}`,
+  )
+  await importRoster(
+    page,
+    readFileSync(
       path.resolve(import.meta.dirname, "../../examples/roster/sample-30.csv"),
-    )
-  const preview = page.getByRole("region", { name: "名单预览" })
-  await expect(preview.getByText("新增 30 人", { exact: true })).toBeVisible()
-  await expect(preview.getByText("导入后的部门树")).toBeVisible()
-  await expect(preview.getByText(/研发中心 ·/)).toBeVisible()
-  await expectChineseCopy(page, ["sample"])
-  await page.screenshot({
-    path: testInfo.outputPath("roster-preview.png"),
-    fullPage: true,
-  })
-  await page.getByRole("button", { name: "确认导入", exact: true }).click()
-  await expect(page.getByText("导入成功，员工名单和部门已更新。")).toBeVisible()
+    ),
+  )
+  await page.reload()
+  await page
+    .getByRole("navigation", { name: "设置步骤" })
+    .getByRole("button", { name: /导入员工名单/ })
+    .click()
   await page.getByRole("button", { name: "完成此步骤并继续" }).click()
   await page.getByRole("button", { name: /科技研发/ }).click()
   await page.getByRole("button", { name: "启用此词典" }).click()

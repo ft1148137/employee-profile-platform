@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { expect, test } from "@playwright/test"
 import type { AccountsPublic, ExternalIdentitiesPublic } from "../src/client"
+import { importRoster } from "./utils/roster"
 import { saveCloud } from "./utils/sources"
 import { logInUser } from "./utils/user"
 
@@ -89,30 +90,17 @@ test("manual console completes all fifteen tabs without a model", async ({
     await screenshot("home")
   })
 
-  await test.step("people / roster: preview and apply the synthetic enterprise", async () => {
-    await page.getByRole("link", { name: "人员", exact: true }).click()
-    await page.getByRole("tab", { name: "导入名单", exact: true }).click()
-    await page.getByLabel("拖拽名单到这里，或选择文件上传").setInputFiles({
-      name: "roster.csv",
-      mimeType: "text/csv",
-      buffer: Buffer.from(
+  await test.step("prepare the synthetic roster through the retained API", async () => {
+    await importRoster(
+      page,
+      Buffer.from(
         (await readFile(sample("roster.csv"), "utf8")).replace(
           /@qiguang-aiot\.example\.com/g,
           `+${suffix}@qiguang-aiot.example.com`,
         ),
       ),
-    })
-    await expect(page.getByRole("region", { name: "名单预览" })).toContainText(
-      "新增",
     )
-    await page.getByRole("button", { name: "确认导入", exact: true }).click()
-    await expect(
-      page.getByText("导入成功，员工名单和部门已更新。"),
-    ).toBeVisible()
-    await page.reload()
-    await expect(page.getByRole("region", { name: "导入历史" })).toContainText(
-      "已导入",
-    )
+    await page.goto("/admin/people?tab=accounts")
     expect((await get("/accounts")).count).toBeGreaterThan(0)
   })
 

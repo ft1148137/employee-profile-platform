@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs"
 import path from "node:path"
 import { configureModel, expect, test } from "./utils/model"
+import { importRoster } from "./utils/roster"
 import { createSourcesOrg, saveCloud, syncJira } from "./utils/sources"
 import { logOutUser } from "./utils/user"
 
@@ -20,16 +22,20 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
   await step(/企业信息/).click()
   await next()
   await step(/导入员工名单/).click()
-  await page
-    .getByLabel("拖拽名单到这里，或选择文件上传")
-    .setInputFiles(
+  await importRoster(
+    page,
+    readFileSync(
       path.resolve(
         import.meta.dirname,
         "../../examples/test-enterprises/qiguang-aiot/roster.csv",
       ),
-    )
-  await page.getByRole("button", { name: "确认导入", exact: true }).click()
-  await expect(page.getByText("导入成功，员工名单和部门已更新。")).toBeVisible()
+    ),
+  )
+  await page.reload()
+  await page
+    .getByRole("navigation", { name: "设置步骤" })
+    .getByRole("button", { name: /导入员工名单/ })
+    .click()
   await next()
   await page.getByRole("button", { name: /智能硬件/ }).click()
   await page.getByRole("button", { name: "启用此词典" }).click()

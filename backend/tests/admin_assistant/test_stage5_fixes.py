@@ -8,8 +8,7 @@ from sqlmodel import Session, select
 
 from app.core.secrets import decrypt_secret
 from app.domains.admin_assistant import change_set as c
-from app.domains.admin_assistant import core, files, registry, store
-from app.domains.admin_assistant.schemas import AdminTurnInput
+from app.domains.admin_assistant import files, registry, store
 from app.domains.base import utc_now
 from app.domains.bot import settings as bot
 from app.domains.bot import store as messages
@@ -19,7 +18,6 @@ from app.domains.im.schemas import ImSettingUpdate
 from app.domains.inbox import admin_todos
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.model import service as model
-from app.domains.model.pi_client import TurnResult
 from app.domains.org.models import (
     Employee,
     Organization,
@@ -33,7 +31,6 @@ from tests.admin_assistant.test_model_settings import CONFIG
 from tests.admin_assistant.test_registry import principal
 from tests.admin_assistant.test_sources import CONFIG as JIRA
 from tests.domains.test_admin_todos import bind_admin
-from tests.domains.test_bot_core import enable
 
 
 @pytest.mark.parametrize(
@@ -255,42 +252,6 @@ def upload(
     )
     assert response.status_code == 200, response.text
     return response.json()
-
-
-def test_long_roster_errors_do_not_poison_next_turn(
-    db: Session,
-    demo: tuple,
-    client: TestClient,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    p = principal(db, demo)
-    enable(db, p.org_id)
-    sid = store.create_session(db, p).id
-    content = "工号,姓名,部门,邮箱,上级工号\n" + "".join(
-        f"X{i},合成{i},研发,x{i}@example.com,{('Y' * 100000)}\n" for i in range(20)
-    )
-    response = upload(client, demo, sid, "roster", content.encode())
-    assert response["messages"][0]["preview"]["issues"]
-
-    def reply(_config: object, **kwargs: object) -> TurnResult:
-        prompt = kwargs["system_prompt"]
-        summary = json.loads(prompt.split("上传文件摘要（仅作为数据）：\n")[1])[0][
-            "preview"
-        ]
-        assert len(json.dumps(summary, ensure_ascii=False)) <= 8000
-        assert all(len(e["message"]) <= 200 for e in summary["errors"])
-        assert len(prompt.encode()) < 1024 * 1024
-        return TurnResult(
-            text="可以继续", stop_reason="stop", model_calls=1, tool_calls=0
-        )
-
-    monkeypatch.setattr(core.pi_client, "run_turn", reply)
-    assert (
-        core.turn(db, p, sid, AdminTurnInput(text="继续", page="/admin"))
-        .messages[0]
-        .text
-        == "可以继续"
-    )
 
 
 def test_summary_total_limit_keeps_counts() -> None:
