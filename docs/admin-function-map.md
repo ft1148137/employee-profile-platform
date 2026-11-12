@@ -22,7 +22,7 @@
 | 员工与账号 | 搜索员工、筛选部门及账号状态；仅账号模式查看没有员工身份的账号（角色只读） | 员工 | `list_accounts` |
 | 仅账号 | 查看无员工身份账号、账号状态和只读角色 | 员工 / 仅账号 | NOT_FOR_ASSISTANT：仅网页查看；重置密码和启停复用账号操作 |
 | 组织架构 | 查看部门层级、经理和在职人数，点部门查看人员 | 组织架构（`/org-chart`） | `get_org_chart` |
-| 部门对应能力 | 查看本部门配置与祖先继承的能力 | 组织架构 | `get_department_capabilities` |
+| 部门对应能力 | 查看本部门配置与祖先继承的能力；从未设置及词典换版的 Pi 部门每小时自动生成，手工保存后不再覆盖 | 组织架构 | `get_department_capabilities` |
 | 部门对应能力 | 整体替换本部门能力；组织架构中增删后保存，助手中确认后保存，可撤销 | 组织架构 / 管理助手 | `set_department_capabilities` |
 | 员工与账号 | 查看正式画像及可见证据引用 | 员工详情 / 画像 | `get_employee_profile` |
 | 员工与账号 | 单人入职，含岗位序列、工作地点、入职日期（需开启） | 员工 / 新增员工 | `onboard_employee` |
@@ -96,3 +96,5 @@
 对话附件上传和原文下载属于助手自身的会话接口（NOT_FOR_ASSISTANT），仅本人通过鉴权接口操作。文件提取文字随当前对话轮作为数据交给模型，不提供模型上传、下载或读取任意文件的工具；原有带预览的业务导入上传保持独立。
 
 M4.2 的登记表与接口对照由 `backend/tests/admin_assistant/test_registry.py` 校验。真实模型与确定性评测任务共用 `backend/tests/eval/admin_assistant/tasks/`，新增覆盖开关、三个档案字段、组织架构、起草建议、补充说明、对话材料与对抗请求。旧 `import_profiles` 已删除，`draft_profiles_from_material` 在管理员确认后直接发布画像，系统自动起草仍先交本人过目。详见 [M4.2 验收](m4.2-acceptance.md)。
+
+M4.3 的角色界面、直接发布和部门默认能力验证见 [M4.3 验收](m4.3-acceptance.md)。系统自动起草仍先交本人过目；员工固定格式 JSON 导入已改为助手附件，MCP 与外部 skill 保留。
