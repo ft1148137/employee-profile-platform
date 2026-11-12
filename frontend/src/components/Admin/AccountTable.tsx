@@ -285,6 +285,7 @@ export function AccountMenu({
   const [issue, setIssue] = useState(false)
   if (!org) return null
   const disabled = e.account?.status === "disabled"
+  const name = e.display_name ?? e.account?.username ?? "员工"
   const refresh = () =>
     client.invalidateQueries({ queryKey: ["accounts", org.id] })
   return (
@@ -324,8 +325,8 @@ export function AccountMenu({
           title={disabled ? "启用" : "停用"}
           description={
             disabled
-              ? `确认启用 ${e.display_name} 的账号？`
-              : `确认停用 ${e.display_name} 的账号？停用后这名员工不能登录，画像和证据保留。`
+              ? `确认启用 ${name} 的账号？`
+              : `确认停用 ${name} 的账号？停用后这名员工不能登录，画像和证据保留。`
           }
           open={confirm}
           onOpenChange={setConfirm}
