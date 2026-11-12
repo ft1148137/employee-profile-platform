@@ -4,6 +4,7 @@ import { configureModel, expect, test } from "./utils/model"
 import { importRoster } from "./utils/roster"
 import {
   activateTemplate,
+  addDraftingEvidence,
   createSourcesOrg,
   saveCloud,
   syncJira,
@@ -89,6 +90,7 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
   await expect(page.getByLabel("全企业需要经理确认")).toBeChecked()
   await expect(page.getByLabel("员工过目期限（天）")).toHaveValue("14")
   await page.goto("/admin/data-ai?tab=model")
+  await addDraftingEvidence(page)
   page.once("dialog", (dialog) => dialog.accept())
   await page.getByRole("button", { name: "重新起草全部", exact: true }).click()
   await expect(

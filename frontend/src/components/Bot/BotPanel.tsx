@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { AxiosError } from "axios"
 import { Bot, LoaderCircle } from "lucide-react"
@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import {
   type AttachmentPublic,
   BotService,
+  EmployeeRequestsService,
   type SessionMessage,
   type TurnInput,
   type TurnResponse,
@@ -68,6 +69,12 @@ function Panel({
   const [conflict, setConflict] = useState(false)
   const bottom = useRef<HTMLDivElement>(null)
   const query = { org_id: orgId }
+  const dictionary = useQuery({
+    queryKey: ["my-capabilities", orgId],
+    queryFn: async () =>
+      (await EmployeeRequestsService.readMyCapabilities({ path: query })).data,
+    enabled: open,
+  })
   const initialize = useMutation({
     mutationFn: async (selection?: string) => {
       let expired = false
@@ -232,6 +239,7 @@ function Panel({
                 {"messages" in entry.payload
                   ? entry.payload.messages.map((message, i) => (
                       <BotMessage
+                        dictionary={dictionary.data}
                         key={i}
                         message={message}
                         disabled={busy || conflict}

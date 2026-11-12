@@ -1,6 +1,12 @@
 import { Link } from "@tanstack/react-router"
 import { useState } from "react"
-import type { QuestionAction, RequestAction, TurnResponse } from "@/client"
+import type {
+  CapabilitiesPublic,
+  QuestionAction,
+  RequestAction,
+  TurnResponse,
+} from "@/client"
+import { levelLabel } from "@/components/Profile/fields"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
 import { Button } from "@/components/ui/button"
 
@@ -22,10 +28,12 @@ const statuses: Record<string, string> = {
 
 export function BotMessage({
   message,
+  dictionary,
   disabled,
   onAction,
 }: {
   message: TurnResponse["messages"][number]
+  dictionary?: CapabilitiesPublic
   disabled: boolean
   onAction: (action: BotAction) => void
 }) {
@@ -110,11 +118,27 @@ export function BotMessage({
                 <h4 className="font-medium">{item.after.capability.name}</h4>
                 <p>
                   修改前：{item.before?.statement ?? "暂无判断"} · 等级：
-                  {item.before?.level ?? "未给等级"}
+                  {item.before?.level
+                    ? levelLabel(
+                        dictionary?.data.find(
+                          (capability) =>
+                            capability.key === item.after.capability.key,
+                        )?.level_rubric,
+                        item.before.level,
+                      )
+                    : "未给等级"}
                 </p>
                 <p>
                   修改后：{item.after.after?.statement ?? "撤回此判断"} · 等级：
-                  {item.after.after?.level ?? "未给等级"}
+                  {item.after.after?.level
+                    ? levelLabel(
+                        dictionary?.data.find(
+                          (capability) =>
+                            capability.key === item.after.capability.key,
+                        )?.level_rubric,
+                        item.after.after.level,
+                      )
+                    : "未给等级"}
                 </p>
                 {item.after.after && (
                   <StatusBadge

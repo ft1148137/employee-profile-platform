@@ -8,6 +8,7 @@ import type {
 } from "../src/client"
 import { expectChineseCopy } from "./utils/copy"
 import { enableAutoDrafting, expect, test } from "./utils/model"
+import { addDraftingEvidence } from "./utils/sources"
 import { logInUser, logOutUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -178,6 +179,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
   expect((await blocked.json()).detail.blockers.join(" ")).toContain(
     "名员工没有初始画像",
   )
+  await addDraftingEvidence(page)
   page.once("dialog", (dialog) => dialog.accept())
   await page.getByRole("button", { name: "重新起草全部", exact: true }).click()
   const accounts = await (
@@ -203,10 +205,13 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     ).ok(),
   ).toBeTruthy()
   await page.goto("/admin/data-ai?tab=sources")
-  const syncSection = page.getByRole("region", {
-    name: "同步记录",
-    exact: true,
-  })
+  const syncSection = page
+    .getByRole("region", {
+      name: "同步记录",
+      exact: true,
+    })
+    .getByRole("row")
+    .filter({ has: page.getByRole("cell", { name: "Jira", exact: true }) })
   await expect(syncSection.getByText("Jira", { exact: true })).toBeVisible()
   await expect(
     syncSection.getByRole("cell", { name: "已完成 1 次", exact: true }),
