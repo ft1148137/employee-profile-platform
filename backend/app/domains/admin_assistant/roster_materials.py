@@ -14,16 +14,16 @@ from app.domains.change_request.schemas import ToolInput
 from app.domains.org.employee_fields import FIELD_LABELS
 from app.domains.org.models import Organization
 from app.domains.org.roster import service
-from app.domains.org.roster.schemas import ApplyImport, ParsedRoster, RosterRow
-from app.domains.org.roster.single import current_roster
+from app.domains.org.roster.schemas import HEADERS, ApplyImport, ParsedRoster, RosterRow
+from app.domains.org.roster.single import PersonnelInput, current_roster
 
 
-class Offboard(ToolInput):
+class Offboard(PersonnelInput):
     action: Literal["offboard"]
     employee_code: str = Field(min_length=1, max_length=255)
 
 
-class RosterFields(ToolInput):
+class RosterFields(PersonnelInput):
     employee_code: str = Field(min_length=1, max_length=255)
     display_name: str | None = Field(default=None, min_length=1, max_length=255)
     department: str | None = Field(default=None, min_length=1, max_length=1000)
@@ -88,8 +88,8 @@ def prepare(db: Session, p: Principal, args: MaterialArgs) -> ParsedRoster:
         )
         if any(values.get(f, "") is None for f in ("display_name", "email")):
             raise service.RosterError(422, "姓名和邮箱不能为空")
-        for field, value in values.items():
-            setattr(row, field, value)
+        for name, value in values.items():
+            setattr(row, name, value)
         if "department" in change.model_fields_set:
             row.department_path = tuple(
                 part.strip()
@@ -124,6 +124,23 @@ def impact(db: Session, p: Principal, args: MaterialArgs) -> BaseModel:
     preview = service.create_import(
         db, p, prepare(db, p, args), "材料预览", persist=False
     )
+    field_labels = (
+        dict(
+            zip(
+                (
+                    "employee_code",
+                    "display_name",
+                    "department",
+                    "title",
+                    "manager",
+                    "email",
+                ),
+                HEADERS,
+                strict=True,
+            )
+        )
+        | FIELD_LABELS
+    )
     changes = preview.changes
     added = {c.employee_code for c in changes if c.kind in ("added", "reactivated")}
     removed = {c.employee_code for c in changes if c.kind == "deactivated"}
@@ -136,7 +153,8 @@ def impact(db: Session, p: Principal, args: MaterialArgs) -> BaseModel:
             else "离职"
             if c.employee_code in removed
             else "、".join(
-                f"{f.field}：{f.before or '空'} → {f.after or '空'}" for f in c.fields
+                f"{field_labels[f.field]}：{f.before or '空'} → {f.after or '空'}"
+                for f in c.fields
             )
         )
         labels.setdefault(c.display_name + f"（{c.employee_code}）", []).append(label)

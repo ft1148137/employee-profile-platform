@@ -10,14 +10,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 const fileKinds = {
-  roster: {
-    title: "员工名单",
-    form: "上传名单",
-    accept: ".xlsx,.csv",
-    limit: 5,
-    format: "Excel、CSV",
-    result: "更新名单",
-  },
   work_csv: {
     title: "工作记录",
     form: "上传工作记录",

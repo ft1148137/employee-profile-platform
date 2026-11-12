@@ -114,7 +114,8 @@ class FileUploadCard(RequestFile):
     type: Literal["file_upload"] = "file_upload"
 
 
-class FilePreviewCard(RequestFile):
+class FilePreviewCard(BaseModel):
+    kind: Literal["roster", "work_csv", "capabilities"]
     type: Literal["file_preview"] = "file_preview"
     preview: RosterImportPreview | FileSummary
 
@@ -154,6 +155,13 @@ class AdminTurnResponse(BaseModel):
                 if isinstance(card, dict)
                 and card.get("type") in ("file_upload", "file_preview")
                 and card.get("kind") == "profile_json"
+                else {
+                    "type": "text",
+                    "text": "名单上传框已下线，请在管理助手按材料整理人员变动。",
+                }
+                if isinstance(card, dict)
+                and card.get("type") == "file_upload"
+                and card.get("kind") == "roster"
                 else card
                 for card in value
             ]

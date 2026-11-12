@@ -554,7 +554,7 @@ export type Body_admin_assistant_upload_file = {
     /**
      * Kind
      */
-    kind: 'roster' | 'work_csv' | 'capabilities';
+    kind: 'work_csv' | 'capabilities';
     /**
      * File
      */
@@ -2233,7 +2233,7 @@ export type FileUploadCard = {
     /**
      * Kind
      */
-    kind: 'roster' | 'work_csv' | 'capabilities';
+    kind: 'work_csv' | 'capabilities';
     /**
      * Type
      */
@@ -9969,39 +9969,6 @@ export type rosterPreviewSingleChangeResponses = {
 };
 
 export type rosterPreviewSingleChangeResponse = rosterPreviewSingleChangeResponses[keyof rosterPreviewSingleChangeResponses];
-
-export type rosterDownloadTemplateData = {
-    body?: never;
-    path: {
-        /**
-         * Org Id
-         */
-        org_id: string;
-    };
-    query?: {
-        /**
-         * Format
-         */
-        format?: 'xlsx' | 'csv';
-    };
-    url: '/api/v1/orgs/{org_id}/roster/template';
-};
-
-export type rosterDownloadTemplateErrors = {
-    /**
-     * Validation Error
-     */
-    422: HTTPValidationError;
-};
-
-export type rosterDownloadTemplateError = rosterDownloadTemplateErrors[keyof rosterDownloadTemplateErrors];
-
-export type rosterDownloadTemplateResponses = {
-    /**
-     * Successful Response
-     */
-    200: unknown;
-};
 
 export type rosterReadImportsData = {
     body?: never;

@@ -30,10 +30,10 @@ export function EmployeeFields({ org }: { org: OrganizationPublic }) {
       <div>
         <h2 className="text-lg font-semibold">员工档案字段</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          这些字段不进入画像，不会交给 AI
+          这些字段不进入画像，不参与画像起草
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          开启后可通过名单文件、单人增改或管理助手维护；关闭只隐藏，保留已有值。切换后需要重新预览名单。
+          开启后可通过单人增改或管理助手维护；关闭只隐藏，保留已有值。切换后需要重新预览名单。
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">

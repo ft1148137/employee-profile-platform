@@ -17,7 +17,15 @@ import {
 import { PersonnelDialog } from "@/components/Admin/PersonnelDialog"
 import { ResetPasswordDialog } from "@/components/Admin/ResetPasswordDialog"
 import { OrgState } from "@/components/Profile/OrgState"
+import { EmployeeFields } from "@/components/Roster/EmployeeFields"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -36,7 +44,7 @@ export function AccountsPage() {
 
 function AccountsList({ orgId }: { orgId: string }) {
   const client = useQueryClient()
-  const { roles } = useOrg()
+  const { org, roles } = useOrg()
   const [department, setDepartment] = useState("all")
   const [status, setStatus] = useState<AccountStatus | "all">("all")
   const [employment, setEmployment] = useState<EmploymentStatus | "all">("all")
@@ -127,7 +135,22 @@ function AccountsList({ orgId }: { orgId: string }) {
           />
         )}
       </div>
-      {roles.includes("org_admin") && <PersonnelDialog orgId={orgId} />}
+      {roles.includes("org_admin") && (
+        <div className="flex flex-wrap gap-2">
+          <PersonnelDialog orgId={orgId} />
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline">档案字段</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>档案字段</DialogTitle>
+              </DialogHeader>
+              {org && <EmployeeFields org={org} />}
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
       {passwordTarget?.account && (
         <ResetPasswordDialog
           orgId={orgId}
