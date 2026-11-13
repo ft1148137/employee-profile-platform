@@ -14,7 +14,7 @@ import {
   type DataTableFeatures,
 } from "@/components/Common/DataTable"
 import { publishedLabel } from "@/components/Profile/EmployeeSummary"
-import { initialStatusLabels } from "@/components/Profile/initialStatus"
+import { initialStatusLabel } from "@/components/Profile/initialStatus"
 import { OrgState } from "@/components/Profile/OrgState"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
 import {
@@ -74,7 +74,7 @@ const columns: ColumnDef<DataTableFeatures, EmployeeSummary>[] = [
       header: ["填写进度", "初始画像", "审核状态"][i],
       cell: ({ row }: { row: { original: EmployeeSummary } }) =>
         kind === "inference_status" ? (
-          initialStatusLabels[row.original.progress.initial_profile_status]
+          initialStatusLabel(row.original.progress?.initial_profile_status)
         ) : (
           <StatusBadge kind={kind} value={row.original.progress?.[kind]} />
         ),
@@ -224,17 +224,15 @@ function EmployeesList({ orgId }: { orgId: string }) {
                   <dd>{employee.department?.name ?? "未分配部门"}</dd>
                   <dt className="text-muted-foreground">初始画像</dt>
                   <dd>
-                    {
-                      initialStatusLabels[
-                        employee.progress.initial_profile_status
-                      ]
-                    }
+                    {initialStatusLabel(
+                      employee.progress?.initial_profile_status,
+                    )}
                   </dd>
                   <dt className="text-muted-foreground">审核状态</dt>
                   <dd>
                     <StatusBadge
                       kind="review_status"
-                      value={employee.progress.review_status}
+                      value={employee.progress?.review_status}
                     />
                   </dd>
                 </dl>

@@ -4,7 +4,7 @@ import {
   tenureLabel,
 } from "@/components/Roster/EmployeeFields"
 import { useOrg } from "@/hooks/useOrg"
-import { initialStatusLabels } from "./initialStatus"
+import { initialStatusLabel } from "./initialStatus"
 import { StatusBadge } from "./StatusBadge"
 
 export function publishedLabel(value: EmployeeSummary["latest_published"]) {
@@ -44,7 +44,7 @@ export function EmployeeSummaryContent({
               </dt>
               <dd>
                 {kind === "inference_status" ? (
-                  initialStatusLabels[employee.progress.initial_profile_status]
+                  initialStatusLabel(employee.progress?.initial_profile_status)
                 ) : (
                   <StatusBadge kind={kind} value={employee.progress?.[kind]} />
                 )}

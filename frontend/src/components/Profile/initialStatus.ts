@@ -1,6 +1,6 @@
 import type { InitialProfileStatus } from "@/client"
 
-export const initialStatusLabels: Record<InitialProfileStatus, string> = {
+const initialStatusLabels: Record<InitialProfileStatus, string> = {
   waiting_source: "等待接入工作记录",
   no_records: "没有工作记录",
   waiting_draft: "等待起草",
@@ -11,12 +11,18 @@ export const initialStatusLabels: Record<InitialProfileStatus, string> = {
   done: "已处理",
 }
 
+export function initialStatusLabel(status: InitialProfileStatus | undefined) {
+  return status ? initialStatusLabels[status] : "状态待确认"
+}
+
 export function initialStatusReason(
-  status: InitialProfileStatus,
+  status: InitialProfileStatus | undefined,
   owner: boolean,
 ) {
   const subject = owner ? "你" : "该员工"
   switch (status) {
+    case undefined:
+      return "暂时无法确认初始画像状态，可以联系管理员核对。"
     case "waiting_source":
       return "企业还没有接入工作记录，可以联系管理员接入 Jira 或导入 CSV。"
     case "no_records":

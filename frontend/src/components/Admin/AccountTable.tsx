@@ -17,7 +17,7 @@ import {
   type DataTableFeatures,
 } from "@/components/Common/DataTable"
 import { publishedLabel } from "@/components/Profile/EmployeeSummary"
-import { initialStatusLabels } from "@/components/Profile/initialStatus"
+import { initialStatusLabel } from "@/components/Profile/initialStatus"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
 import {
   employeeFieldLabels,
@@ -261,7 +261,7 @@ function EmployeeProgress({
   return kind === "published" ? (
     publishedLabel(summary.data.latest_published)
   ) : kind === "inference_status" ? (
-    initialStatusLabels[summary.data.progress.initial_profile_status]
+    initialStatusLabel(summary.data.progress?.initial_profile_status)
   ) : (
     <StatusBadge kind={kind} value={summary.data.progress?.[kind]} />
   )

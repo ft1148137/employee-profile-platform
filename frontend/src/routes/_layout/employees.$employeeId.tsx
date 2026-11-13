@@ -163,7 +163,7 @@ function EmployeeDetails() {
                   </h2>
                   <p>
                     {initialStatusReason(
-                      query.data.employee.progress.initial_profile_status,
+                      query.data.employee.progress?.initial_profile_status,
                       ownEmployeeId === employeeId,
                     )}
                   </p>
