@@ -40,7 +40,7 @@ for (const deployment of ["cloud", "data_center"]) {
     await page.getByRole("button", { name: "保存", exact: true }).click()
     await expect(page.getByText("Jira 配置已保存。")).toBeVisible()
     await page.reload()
-    await expect(page.getByLabel("同步项目 key")).toHaveValue("EDGE")
+    await expect(page.getByLabel("同步项目标识")).toHaveValue("EDGE")
     await syncJira(page)
     const status = page
       .getByRole("status")
@@ -50,9 +50,9 @@ for (const deployment of ["cloud", "data_center"]) {
     await page.goto("/admin/sources")
     const history = page.getByRole("region", { name: "同步记录", exact: true })
     await expect(history).toContainText("项目范围：EDGE")
-    await page.getByLabel("同步项目 key").fill("fw,EDGE,fw")
+    await page.getByLabel("同步项目标识").fill("fw,EDGE,fw")
     await page.getByRole("button", { name: "保存", exact: true }).click()
-    await expect(page.getByLabel("同步项目 key")).toHaveValue("FW,EDGE")
+    await expect(page.getByLabel("同步项目标识")).toHaveValue("FW,EDGE")
     await expect(history).toContainText("项目范围：EDGE")
     await expect(page.getByText(/缩小范围不会删除已经同步的记录/)).toBeVisible()
   })
@@ -106,6 +106,7 @@ test("Cloud connection, secret preservation, sync and complete source step", asy
   ).toContainText("记录 36")
   await expectChineseCopy(page, [
     "Jira Admin",
+    "EDGE", // Project identifiers come from Jira, not interface copy.
     "Cloud",
     "Data Center",
     "Server",

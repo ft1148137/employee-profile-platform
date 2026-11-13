@@ -267,7 +267,7 @@ function JiraForm({
             </p>
           </DraftField>
           <DraftField changed={assistant.changed("project_keys")}>
-            <Label htmlFor="jira-projects">同步项目 key</Label>
+            <Label htmlFor="jira-projects">同步项目标识</Label>
             <Input
               id="jira-projects"
               value={(config.project_keys ?? []).join(",")}
@@ -285,7 +285,7 @@ function JiraForm({
               id="jira-projects-help"
               className="text-xs text-muted-foreground"
             >
-              可直接填写项目 key（逗号分隔，最多 50
+              可直接填写项目标识（逗号分隔，最多 50
               个），或保存后测试连接并勾选。缩小范围不会删除已经同步的记录。
             </p>
             {projects.length > 0 && (
