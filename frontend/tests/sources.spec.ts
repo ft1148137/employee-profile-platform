@@ -47,7 +47,6 @@ for (const deployment of ["cloud", "data_center"]) {
       .filter({ hasText: "Jira 同步：成功" })
     await expect(status).toContainText("记录 20")
     await expect(status).toContainText("新增任务 20")
-    await page.goto("/admin/sources")
     const history = page.getByRole("region", { name: "同步记录", exact: true })
     await expect(history).toContainText("项目范围：EDGE")
     await page.getByLabel("同步项目标识").fill("fw,EDGE,fw")

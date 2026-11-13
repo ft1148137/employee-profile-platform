@@ -106,7 +106,10 @@ function JiraForm({
   const sync = useMutation({
     mutationFn: () => SourcesService.startJiraSync({ path: { org_id: orgId } }),
     onSuccess: () =>
-      client.invalidateQueries({ queryKey: ["source-runs", orgId] }),
+      Promise.all([
+        client.invalidateQueries({ queryKey: ["source-runs", orgId] }),
+        client.invalidateQueries({ queryKey: ["sync-runs", orgId] }),
+      ]),
   })
   function change(patch: Partial<JiraConfig>) {
     if (
