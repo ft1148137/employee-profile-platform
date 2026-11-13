@@ -8,10 +8,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { CapabilityDetailDialog } from "./CapabilityDetailDialog"
 import { CapabilityPicker } from "./CapabilityPicker"
 import { EvidenceRows } from "./EvidenceList"
 import { dateLabel, levelLabel } from "./fields"
 import { labels } from "./labels"
+import { ProfileVisibility } from "./ProfileVisibility"
 import { StatusBadge } from "./StatusBadge"
 
 export function CapabilityList({
@@ -35,6 +37,7 @@ export function CapabilityList({
 }) {
   const [added, setAdded] = useState(new Set<string>())
   const [picking, setPicking] = useState(false)
+  const [viewing, setViewing] = useState<ProfileItem | null>(null)
   // Historical snapshots omit departmentConfigured and keep every frozen item.
   const visible = items.filter(
     (item) =>
@@ -56,6 +59,7 @@ export function CapabilityList({
   }
   return (
     <div className="space-y-8">
+      <ProfileVisibility />
       {departmentConfigured === false && (
         <p className="rounded-lg border bg-muted/20 p-4 text-sm">
           本部门还没有设置对应能力
@@ -76,9 +80,19 @@ export function CapabilityList({
             className={`rounded-md px-3 py-1 text-sm ${label.className}`}
           >
             {label.label}{" "}
-            {visible.filter((item) => item.status === status).length}
+            {
+              visible.filter(
+                (item) =>
+                  item.status === status &&
+                  (status !== "confirmed" || item.claim?.level),
+              ).length
+            }
           </span>
         ))}
+        <span className="rounded-md bg-muted px-3 py-1 text-sm">
+          未定级{" "}
+          {visible.filter((item) => item.claim && !item.claim.level).length}
+        </span>
       </section>
       {!visible.length && (
         <p className="py-8 text-muted-foreground">暂无可显示的能力。</p>
@@ -95,6 +109,7 @@ export function CapabilityList({
                 item={item}
                 compact={compact}
                 directEdit={directEdit}
+                onView={() => setViewing(item)}
                 onEvidence={onEvidence}
                 pending={pendingCapabilityIds?.has(item.capability.id)}
                 onEdit={!item.retired ? onEdit : undefined}
@@ -125,6 +140,14 @@ export function CapabilityList({
           }}
         />
       )}
+      {viewing && (
+        <CapabilityDetailDialog
+          item={viewing}
+          directEdit={directEdit}
+          onEdit={onEdit}
+          onClose={() => setViewing(null)}
+        />
+      )}
     </div>
   )
 }
@@ -144,7 +167,9 @@ function ClaimCard({
   otherDepartment,
   compact = false,
   directEdit = false,
+  onView,
 }: {
+  onView: () => void
   directEdit?: boolean
   item: ProfileItem
   compact?: boolean
@@ -169,17 +194,13 @@ function ClaimCard({
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h3 className="font-semibold">
-            {onEdit ? (
-              <button
-                type="button"
-                className="text-left underline-offset-4 hover:underline focus-visible:outline-ring"
-                onClick={() => onEdit({ capability, status, claim })}
-              >
-                {capability.name}
-              </button>
-            ) : (
-              capability.name
-            )}
+            <button
+              type="button"
+              className="text-left underline-offset-4 hover:underline focus-visible:outline-ring"
+              onClick={onView}
+            >
+              {capability.name}
+            </button>
           </h3>
           {pending && (
             <p className="mt-1 text-xs text-muted-foreground">有待处理的改动</p>
@@ -190,16 +211,30 @@ function ClaimCard({
           {!compact && evidence_stale && (
             <Badge variant="outline">证据较旧</Badge>
           )}
-          <StatusBadge kind="assessment_status" value={status} />
+          {status === "confirmed" && claim && !claim.level ? (
+            <Badge variant="outline">未定级</Badge>
+          ) : (
+            <StatusBadge kind="assessment_status" value={status} />
+          )}
         </div>
       </div>
       {compact ? (
-        <p className="text-sm">
-          等级：
-          {claim?.level
-            ? levelLabel(capability.level_rubric, claim.level)
-            : "未给等级"}
-        </p>
+        <>
+          <p className="text-sm">
+            等级：
+            {claim?.level
+              ? levelLabel(capability.level_rubric, claim.level)
+              : claim
+                ? "未定级"
+                : "未给等级"}
+          </p>
+          {claim && !claim.level && (
+            <p className="mt-2 break-words text-sm">
+              {Array.from(claim.statement).slice(0, 40).join("")}
+              {Array.from(claim.statement).length > 40 && "…"}
+            </p>
+          )}
+        </>
       ) : claim ? (
         <>
           <p className="leading-relaxed">{claim.statement}</p>

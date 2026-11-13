@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useBlocker } from "@tanstack/react-router"
 import { isAxiosError } from "axios"
 import { useEffect, useRef, useState } from "react"
 import {
@@ -17,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { levelLabel, record } from "./fields"
+import { ProfileVisibility } from "./ProfileVisibility"
 
 export type EditorSelection = {
   request?: ChangeRequestPublic
@@ -72,6 +74,18 @@ export function ChangeRequestEditor({
         : [],
   )
   const [preview, setPreview] = useState<RequestPreview | null>(null)
+  const [savedItems, setSavedItems] = useState(() => JSON.stringify(items))
+  const [confirmClose, setConfirmClose] = useState(false)
+  const dirty = JSON.stringify(items) !== savedItems
+  const blocker = useBlocker({
+    shouldBlockFn: () => dirty,
+    enableBeforeUnload: dirty,
+    withResolver: true,
+  })
+  const finishClose = () => {
+    if (blocker.status === "blocked") blocker.proceed()
+    onClose()
+  }
   const [showPreview, setShowPreview] = useState(!!selection.preview)
   const [notice, setNotice] = useState("")
   const [evidenceSkip, setEvidenceSkip] = useState(0)
@@ -122,6 +136,7 @@ export function ChangeRequestEditor({
           })
         : await EmployeeRequestsService.createDraft({ path, body: { items } })
       setRequestId(result.data.id)
+      setSavedItems(JSON.stringify(items))
       if (andPreview) {
         const resultPreview = await EmployeeRequestsService.previewRequest({
           path: { ...path, request_id: result.data.id },
@@ -159,18 +174,18 @@ export function ChangeRequestEditor({
         path: { ...path, request_id: requestId! },
       })
       setPreview(result.data)
-      setItems(
-        result.data.items.map(({ after: item }) => ({
-          op: item.op,
-          capability_key: item.capability.key,
-          statement: item.after?.statement ?? "撤回这条判断",
-          level: item.after?.level,
-          owner_statement: item.owner_statement,
-          objection: item.objection,
-          uncertainty: item.uncertainty,
-          evidence_ids: (item.evidence ?? []).map((e) => e.evidence_id),
-        })),
-      )
+      const reloadedItems = result.data.items.map(({ after: item }) => ({
+        op: item.op,
+        capability_key: item.capability.key,
+        statement: item.after?.statement ?? "撤回这条判断",
+        level: item.after?.level,
+        owner_statement: item.owner_statement,
+        objection: item.objection,
+        uncertainty: item.uncertainty,
+        evidence_ids: (item.evidence ?? []).map((e) => e.evidence_id),
+      }))
+      setItems(reloadedItems)
+      setSavedItems(JSON.stringify(reloadedItems))
       setShowPreview(true)
       setNotice("")
       submit.reset()
@@ -194,7 +209,10 @@ export function ChangeRequestEditor({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !busy) onClose()
+        if (!open && !busy) {
+          if (dirty) setConfirmClose(true)
+          else onClose()
+        }
       }}
     >
       <DialogContent
@@ -205,9 +223,43 @@ export function ChangeRequestEditor({
         <DialogDescription>
           画像不用于绩效、薪酬和晋升。提交后按企业审批规则处理；待审批的改动可以在批准前撤回。
         </DialogDescription>
+        <ProfileVisibility />
         <SetupError error={error} />
         {notice && <p role="status">{notice}</p>}
-        {notice === "内容已变化，请重新预览" ? (
+        {confirmClose || blocker.status === "blocked" ? (
+          <section className="space-y-3" aria-label="未保存的内容">
+            <p>有没保存的内容，确定放弃吗？</p>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                disabled={
+                  busy ||
+                  !items.length ||
+                  items.some((item) => !item.statement.trim())
+                }
+                onClick={() => save.mutate(false, { onSuccess: finishClose })}
+              >
+                保存草稿
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={busy}
+                onClick={finishClose}
+              >
+                放弃
+              </Button>
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  setConfirmClose(false)
+                  blocker.reset?.()
+                }}
+              >
+                继续编辑
+              </Button>
+            </div>
+          </section>
+        ) : notice === "内容已变化，请重新预览" ? (
           <Button disabled={busy} onClick={() => reloadPreview.mutate()}>
             重新预览最新内容
           </Button>

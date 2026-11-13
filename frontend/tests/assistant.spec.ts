@@ -5,6 +5,139 @@ import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
+test("admin unsent text returns with its conversation after leaving the page", async ({
+  page,
+}) => {
+  const session = crypto.randomUUID()
+  await page.route("**/admin-assistant/availability?*", (route) =>
+    route.fulfill({ json: { available: true, reason: "" } }),
+  )
+  await page.route(
+    `**/admin-assistant/sessions/${session}/messages?*`,
+    (route) => route.fulfill({ json: [] }),
+  )
+  await logInUser(
+    page,
+    "admin@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  await page.goto(`/admin/assistant?session=${session}`)
+  const input = page.getByLabel("发给管理助手的消息")
+  await expect(input).toBeEnabled()
+  await input.fill("尚未发送的合成管理说明")
+  await page.getByRole("link", { name: "员工", exact: true }).click()
+  await expect(page).toHaveURL("/employees")
+  await page.goBack()
+  await expect(input).toHaveValue("尚未发送的合成管理说明")
+})
+
+test("mobile unsent text survives page navigation, stays in its session and clears after sending", async ({
+  page,
+}) => {
+  const email = `draft-${crypto.randomUUID()}@example.com`
+  const password = "synthetic-draft-password-2026"
+  await createUser({ email, password, withEmptyProfile: true })
+  const session = crypto.randomUUID()
+  await page.route("**/bot/sessions?*", (route) =>
+    route.request().method() === "GET"
+      ? route.fulfill({
+          json: {
+            data: [
+              {
+                id: session,
+                preview: "合成草稿会话",
+                started_at: new Date().toISOString(),
+                last_activity_at: new Date().toISOString(),
+                turn_count: 1,
+              },
+            ],
+            retention_days: 0,
+          },
+        })
+      : route.continue(),
+  )
+  await page.route(`**/bot/sessions/${session}/messages?*`, (route) =>
+    route.fulfill({ json: [] }),
+  )
+  await page.setViewportSize({ width: 390, height: 844 })
+  await logInUser(page, email, password)
+  const input = page.getByLabel("发给机器人的消息")
+  await expect(input).toBeEnabled()
+  const currentSession = () =>
+    page.evaluate(
+      () =>
+        Object.entries(localStorage).find(([key]) =>
+          key.startsWith("bot-session:"),
+        )?.[1],
+    )
+  const chooseSession = async () => {
+    const previousInput = await input.elementHandle()
+    await page.getByRole("button", { name: "会话", exact: true }).click()
+    await page
+      .getByRole("dialog", { name: "会话", exact: true })
+      .getByRole("button", { name: /合成草稿会话/ })
+      .click()
+    await expect(page).toHaveURL(`/assistant?session=${session}`)
+    await expect.poll(currentSession).toBe(session)
+    await expect
+      .poll(() => previousInput!.evaluate((element) => element.isConnected))
+      .toBe(false)
+    await expect(input).toBeEnabled()
+  }
+  await chooseSession()
+  await expect(input).toBeEnabled()
+  await input.fill("尚未发送的合成经历")
+  await page.getByRole("link", { name: "我的画像", exact: true }).click()
+  await page.getByRole("link", { name: "聊天", exact: true }).click()
+  await expect(input).toHaveValue("尚未发送的合成经历")
+  await page.getByRole("button", { name: "会话", exact: true }).click()
+  await page
+    .getByRole("dialog", { name: "会话", exact: true })
+    .getByRole("button", { name: "新对话", exact: true })
+    .click()
+  await expect(page).toHaveURL("/assistant")
+  await expect
+    .poll(async () => {
+      const id = await currentSession()
+      return !!id && id !== session
+    })
+    .toBe(true)
+  await expect(input).toBeEnabled()
+  await expect(input).toHaveValue("")
+  await chooseSession()
+  await expect(input).toHaveValue("尚未发送的合成经历")
+  await page.getByRole("button", { name: "会话", exact: true }).click()
+  await page
+    .getByRole("dialog", { name: "会话", exact: true })
+    .getByRole("button", { name: "新对话", exact: true })
+    .click()
+  await expect
+    .poll(async () => {
+      const id = await currentSession()
+      return !!id && id !== session
+    })
+    .toBe(true)
+  await expect(input).toBeEnabled()
+  await page.goBack()
+  await expect(page).toHaveURL(`/assistant?session=${session}`)
+  await expect(input).toHaveValue("尚未发送的合成经历")
+  await page.route("**/turns?*", (route) =>
+    route.fulfill({
+      contentType: "application/x-ndjson",
+      body: `${JSON.stringify({ type: "final", response: { text: "合成回复", cards: [], stopped: false } })}\n`,
+    }),
+  )
+  await page.getByRole("button", { name: "发送", exact: true }).click()
+  await expect(input).toHaveValue("")
+  await page.getByRole("link", { name: "我的画像", exact: true }).click()
+  await page.getByRole("link", { name: "聊天", exact: true }).click()
+  await expect(input).toHaveValue("")
+  await input.fill("刷新后不保留")
+  await page.reload()
+  await expect(input).toBeEnabled()
+  await expect(input).toHaveValue("")
+})
+
 for (const manager of [false, true]) {
   test(`${manager ? "manager" : "employee"} lands in the shared assistant with role menus`, async ({
     page,
