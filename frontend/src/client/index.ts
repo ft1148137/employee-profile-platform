@@ -1008,6 +1008,7 @@ export type {
   setupSkipStepResponses,
   SetupStatus,
   SetupStepPublic,
+  SetupTodoStep,
   SetupTokenInput,
   SetupTokenResult,
   sourcesGetJiraData,

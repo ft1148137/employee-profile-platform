@@ -87,15 +87,34 @@ export function TodayPanel({
             {overview.data.todos.map((todo) => (
               <li
                 key={todo.kind}
-                className="flex items-center justify-between gap-4 py-2"
+                className="flex flex-wrap items-center justify-between gap-4 py-2"
               >
                 <span>{todo.title}</span>
-                <div className="flex shrink-0 flex-wrap">
-                  <Button variant="link" asChild>
-                    <a href={todo.page}>去处理</a>
-                  </Button>
-                  {assistantButton(todo.assistant_prompt)}
-                </div>
+                {todo.steps && todo.steps.length > 0 ? (
+                  <ul className="w-full space-y-1">
+                    {todo.steps.map((step) => (
+                      <li
+                        key={step.title}
+                        className="flex flex-wrap items-center justify-between gap-2"
+                      >
+                        <span>{step.title}</span>
+                        <div className="flex flex-wrap">
+                          <Button variant="link" asChild>
+                            <a href={step.page}>去处理</a>
+                          </Button>
+                          {assistantButton(step.assistant_prompt)}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="flex shrink-0 flex-wrap">
+                    <Button variant="link" asChild>
+                      <a href={todo.page}>去处理</a>
+                    </Button>
+                    {assistantButton(todo.assistant_prompt)}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
