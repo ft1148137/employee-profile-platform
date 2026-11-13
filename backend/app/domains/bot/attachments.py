@@ -362,7 +362,6 @@ def prepare(
     for row in rows:
         if row.kind == "file":
             text += "\n" + file_text(row)
-    text += manifest(db, p, kind, session_id)
     return (
         [public(row) for row in rows],
         text,

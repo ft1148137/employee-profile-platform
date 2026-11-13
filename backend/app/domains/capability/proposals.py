@@ -56,7 +56,13 @@ class SuggestionLimitReached(HTTPException):
 
 
 def suggest_capability(
-    principal: Principal, session: Session, name: str, description: str, reason: str
+    principal: Principal,
+    session: Session,
+    name: str,
+    description: str,
+    reason: str,
+    *,
+    commit: bool = True,
 ) -> CapabilitySuggestionResult:
     employee = session.exec(
         select(Employee).where(
@@ -134,7 +140,8 @@ def suggest_capability(
             target_id=str(row.id),
             details={},
         )
-        session.commit()
+        if commit:
+            session.commit()
     return CapabilitySuggestionResult(
         message="已提交给企业管理员，加进词典后就可以在这里添加"
     )
