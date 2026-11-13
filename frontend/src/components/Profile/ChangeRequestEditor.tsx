@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { levelLabel, record } from "./fields"
+import { RequestReviewers } from "./RequestReviewers"
 
 export type EditorSelection = {
   request?: ChangeRequestPublic
@@ -214,6 +215,12 @@ export function ChangeRequestEditor({
         ) : showPreview ? (
           <>
             {!displayedPreview && <p role="status">正在读取预览…</p>}
+            {displayedPreview && (
+              <RequestReviewers
+                reviewers={displayedPreview.reviewers}
+                preview
+              />
+            )}
             {displayedPreview?.items.map(({ before, after, warning }) => (
               <section
                 key={after.id}

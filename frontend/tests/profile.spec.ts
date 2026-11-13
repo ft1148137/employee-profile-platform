@@ -446,7 +446,7 @@ test("initial draft read failure can be retried", async ({ page }) => {
   ).toBeVisible()
 })
 
-test("pending change shows before and after levels without its statement or basis", async ({
+test("pending change shows levels and expandable statement while keeping basis hidden", async ({
   page,
 }) => {
   await page.route(
@@ -483,7 +483,7 @@ test("pending change shows before and after levels without its statement or basi
                   after: {
                     ...initial.items[0].after,
                     level: null,
-                    statement: "不应显示的陈述",
+                    statement: "本人提交的陈述\n".repeat(8),
                   },
                   owner_statement: "不应显示的依据",
                 },
@@ -498,11 +498,19 @@ test("pending change shows before and after levels without its statement or basi
   await openE02(page, "employee.platform@demo.example.com")
   const pending = page.getByRole("region", { name: "其他待处理请求" })
   await expect(pending).toContainText("修改前：能独立完成复杂任务")
-  await expect(pending).toContainText("修改后：未给等级")
+  await expect(pending).toContainText("修改后：未定级")
   await expect(pending).toContainText("已确认")
   await expect(pending).toContainText("暂定")
-  for (const text of ["不应显示的陈述", "不应显示的依据"])
-    await expect(page.getByText(text)).toHaveCount(0)
+  const statement = pending.locator("p").filter({ hasText: "本人提交的陈述" })
+  await expect(statement).toBeVisible()
+  const collapsedHeight = (await statement.boundingBox())!.height
+  await pending.getByRole("button", { name: "展开陈述" }).click()
+  expect((await statement.boundingBox())!.height).toBeGreaterThan(
+    collapsedHeight,
+  )
+  await pending.getByRole("button", { name: "收起陈述" }).click()
+  expect((await statement.boundingBox())!.height).toBe(collapsedHeight)
+  await expect(page.getByText("不应显示的依据")).toHaveCount(0)
   await expect(
     pending.getByRole("button", { name: "撤回", exact: true }),
   ).toBeVisible()

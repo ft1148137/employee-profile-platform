@@ -21,6 +21,7 @@ from app.domains.change_request.schemas import (
     ChangeItemPublic,
     ChangeRequestPublic,
     ChangeRequestsPublic,
+    RequestReviewer,
 )
 from app.domains.evidence.models import Visibility
 from app.domains.profile.models import (
@@ -30,6 +31,71 @@ from app.domains.profile.models import (
 )
 from app.domains.profile.schemas import ClaimEvidencePublic
 from app.domains.review.models import AppealStatus, ReviewAppeal
+
+
+def _reviewers(
+    session: Session, org_id: UUID, employee_id: UUID
+) -> list[RequestReviewer]:
+    from app.authz.deps import get_org_principal
+    from app.domains.org.models import Employee, OrgMembership, ReportingLine
+    from app.domains.review.routing import active_delegations, reviewers_for
+    from app.models import User
+
+    reviewers = reviewers_for(session, org_id, employee_id)
+    delegates = active_delegations(session, org_id, reviewers)
+    delegated = {row.delegate_user_id for row in delegates}
+    line = session.exec(
+        select(ReportingLine).where(
+            ReportingLine.org_id == org_id,
+            ReportingLine.employee_id == employee_id,
+            col(ReportingLine.valid_to).is_(None),
+        )
+    ).one_or_none()
+    subject = session.exec(
+        select(Employee).where(Employee.org_id == org_id, Employee.id == employee_id)
+    ).one()
+    people = session.exec(
+        select(OrgMembership, User, Employee)
+        .join(User, col(User.id) == OrgMembership.user_id)
+        .outerjoin(
+            Employee,
+            (col(Employee.org_id) == OrgMembership.org_id)
+            & (col(Employee.id) == OrgMembership.employee_id),
+        )
+        .where(
+            OrgMembership.org_id == org_id,
+            col(OrgMembership.user_id).in_(set(reviewers) | delegated),
+        )
+    ).all()
+    by_user = {user.id: (member, user, employee) for member, user, employee in people}
+    result = []
+    for user_id in reviewers + sorted(delegated - set(reviewers)):
+        member, user, employee = by_user[user_id]
+        if member.employee_id == employee_id:
+            continue
+        role: Literal["直属上级", "部门经理", "代理审批", "企业管理员"]
+        if user_id not in reviewers:
+            role = "代理审批"
+        elif (
+            subject.department_id
+            in get_org_principal(org_id, user, session).managed_department_ids
+        ):
+            role = (
+                "直属上级"
+                if line and member.employee_id == line.manager_employee_id
+                else "部门经理"
+            )
+        else:
+            role = "企业管理员"
+        result.append(
+            RequestReviewer(
+                name=employee.display_name
+                if employee
+                else user.full_name or "企业管理员",
+                role=role,
+            )
+        )
+    return result
 
 
 def list_requests(
@@ -70,6 +136,15 @@ def list_requests(
         )
     ).all()
     requests = {row.id: ChangeRequestPublic.model_validate(row) for row in request_rows}
+    if principal.employee_id == employee_id and requests:
+        reviewers = _reviewers(session, principal.org_id, employee_id)
+        for request in requests.values():
+            if request.status in (
+                RequestStatus.DRAFT,
+                RequestStatus.PENDING_OWNER,
+                RequestStatus.PENDING_REVIEW,
+            ):
+                request.reviewers = reviewers
     reviewable = {
         row.id for row in request_rows if review_access(session, principal, row)
     }

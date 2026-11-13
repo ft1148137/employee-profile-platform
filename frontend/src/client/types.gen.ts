@@ -1056,6 +1056,10 @@ export type ChangeRequestPublic = {
    * Items
    */
   items?: Array<ChangeItemPublic>
+  /**
+   * Reviewers
+   */
+  reviewers?: Array<RequestReviewer>
 }
 
 /**
@@ -3598,6 +3602,10 @@ export type PreviewCard = {
    */
   items: Array<app__domains__bot__schemas__PreviewItem>
   /**
+   * Reviewers
+   */
+  reviewers?: Array<RequestReviewer>
+  /**
    * Type
    */
   type?: "preview_card"
@@ -4051,6 +4059,24 @@ export type RequestPreview = {
    * Items
    */
   items: Array<app__domains__change_request__schemas__PreviewItem>
+  /**
+   * Reviewers
+   */
+  reviewers?: Array<RequestReviewer>
+}
+
+/**
+ * RequestReviewer
+ */
+export type RequestReviewer = {
+  /**
+   * Name
+   */
+  name: string
+  /**
+   * Role
+   */
+  role: "直属上级" | "部门经理" | "代理审批" | "企业管理员"
 }
 
 /**
@@ -5531,6 +5557,10 @@ export type app__domains__bot__schemas__StatusCard = {
    * Items
    */
   items: Array<app__domains__bot__schemas__ChangeItem>
+  /**
+   * Reviewers
+   */
+  reviewers?: Array<RequestReviewer>
   /**
    * Type
    */

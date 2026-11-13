@@ -892,6 +892,7 @@ export type {
   RequestGeneratedBy,
   RequestOrigin,
   RequestPreview,
+  RequestReviewer,
   RequestStatus,
   ResolveAppealInput,
   ReviewAction,

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -38,6 +39,11 @@ class ChangeItemPublic(SQLModel):
     evidence: list[ClaimEvidencePublic] = Field(default_factory=list)
 
 
+class RequestReviewer(SQLModel):
+    name: str
+    role: Literal["直属上级", "部门经理", "代理审批", "企业管理员"]
+
+
 class ChangeRequestPublic(SQLModel):
     id: UUID
     origin: RequestOrigin
@@ -52,6 +58,7 @@ class ChangeRequestPublic(SQLModel):
     decided_at: datetime | None = None
     parent_request_id: UUID | None = None
     items: list[ChangeItemPublic] = Field(default_factory=list)
+    reviewers: list[RequestReviewer] = Field(default_factory=list)
 
 
 class ChangeRequestsPublic(SQLModel):
@@ -92,3 +99,4 @@ class RequestPreview(SQLModel):
     request_id: UUID
     revision: int
     items: list[PreviewItem]
+    reviewers: list[RequestReviewer] = Field(default_factory=list)

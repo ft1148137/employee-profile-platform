@@ -305,6 +305,7 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
     return RequestPreview(
         request_id=request.id,
         revision=request.revision,
+        reviewers=public.reviewers,
         items=[
             PreviewItem(
                 before=claims.get(i.target_claim_id) if i.target_claim_id else None,
