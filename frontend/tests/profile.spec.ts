@@ -215,7 +215,7 @@ for (const [email, title] of [
       draft.getByText(
         email === "admin@demo.example.com"
           ? "等级：未给等级"
-          : "→ 修改后：未给等级",
+          : "→ 修改后：未定级",
         { exact: true },
       ),
     ).toHaveCount(2)

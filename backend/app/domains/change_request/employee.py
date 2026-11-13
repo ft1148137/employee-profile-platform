@@ -31,7 +31,11 @@ from app.domains.change_request.schemas import (
     PreviewItem,
     RequestPreview,
 )
-from app.domains.change_request.service import list_requests, transition
+from app.domains.change_request.service import (
+    list_requests,
+    request_reviewers,
+    transition,
+)
 from app.domains.evidence.models import (
     Evidence,
     EvidenceKind,
@@ -305,7 +309,7 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
     return RequestPreview(
         request_id=request.id,
         revision=request.revision,
-        reviewers=public.reviewers,
+        reviewers=request_reviewers(session, principal.org_id, employee_id(principal)),
         items=[
             PreviewItem(
                 before=claims.get(i.target_claim_id) if i.target_claim_id else None,

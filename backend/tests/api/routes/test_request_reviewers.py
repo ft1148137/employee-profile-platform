@@ -121,7 +121,13 @@ def test_preview_carries_reviewers_and_other_employee_cannot_read(
     preview = client.get(
         f"{url}/me/requests/{draft['id']}/preview", headers=auth["employee"]
     ).json()
-    assert preview["reviewers"] == draft["reviewers"]
+    assert draft["reviewers"] == []
+    assert all(
+        row.reviewers == []
+        for row in employee.my_requests(
+            principal_for(db, demo[1]["E02"].org_id), db
+        ).data
+    )
     assert preview["reviewers"][0]["role"] == "直属上级"
     card = tools.preview_card(
         db, principal_for(db, demo[1]["E02"].org_id), UUID(draft["id"])

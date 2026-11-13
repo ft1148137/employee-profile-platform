@@ -33,7 +33,7 @@ from app.domains.profile.schemas import ClaimEvidencePublic
 from app.domains.review.models import AppealStatus, ReviewAppeal
 
 
-def _reviewers(
+def request_reviewers(
     session: Session, org_id: UUID, employee_id: UUID
 ) -> list[RequestReviewer]:
     from app.authz.deps import get_org_principal
@@ -136,14 +136,13 @@ def list_requests(
         )
     ).all()
     requests = {row.id: ChangeRequestPublic.model_validate(row) for row in request_rows}
-    if principal.employee_id == employee_id and requests:
-        reviewers = _reviewers(session, principal.org_id, employee_id)
-        for request in requests.values():
-            if request.status in (
-                RequestStatus.DRAFT,
-                RequestStatus.PENDING_OWNER,
-                RequestStatus.PENDING_REVIEW,
-            ):
+    if principal.employee_id == employee_id:
+        pending = [
+            r for r in requests.values() if r.status == RequestStatus.PENDING_REVIEW
+        ]
+        if pending:
+            reviewers = request_reviewers(session, principal.org_id, employee_id)
+            for request in pending:
                 request.reviewers = reviewers
     reviewable = {
         row.id for row in request_rows if review_access(session, principal, row)
