@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { levelLabel, record } from "./fields"
+import { ProfileVisibility } from "./ProfileVisibility"
 
 export function DirectEditDialog({
   orgId,
@@ -100,6 +101,7 @@ export function DirectEditDialog({
         <DialogDescription>
           直接发布，不需要本人同意，会通知本人。
         </DialogDescription>
+        <ProfileVisibility />
         {conflict ? (
           <>
             <p role="alert">画像已变化，请刷新后再改</p>

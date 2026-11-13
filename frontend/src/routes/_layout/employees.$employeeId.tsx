@@ -20,6 +20,7 @@ import { EmployeeDetailTabs } from "@/components/Profile/EmployeeDetailTabs"
 import { EvidenceList } from "@/components/Profile/EvidenceList"
 import { EvidenceSheet } from "@/components/Profile/EvidenceSheet"
 import { levelLabel } from "@/components/Profile/fields"
+import { initialStatusReason } from "@/components/Profile/initialStatus"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { VersionHistory } from "@/components/Profile/VersionHistory"
@@ -161,10 +162,24 @@ function EmployeeDetails() {
                       : "该员工的画像还没有内容"}
                   </h2>
                   <p>
-                    {ownEmployeeId === employeeId
-                      ? "企业接入工作记录后，系统会先起草一份画像给你本人过目，你确认或修改后才会提交审核。"
-                      : "企业接入工作记录后，系统会先起草一份画像给该员工本人过目，由本人确认或修改后才会提交审核。"}
+                    {initialStatusReason(
+                      query.data.employee.progress?.initial_profile_status,
+                      ownEmployeeId === employeeId,
+                    )}
                   </p>
+                  {ownEmployeeId === employeeId ? (
+                    <p>
+                      你可以在下面的「添加能力」里自己补充，或者
+                      <Link to="/assistant" className="text-primary underline">
+                        去助手
+                      </Link>
+                      里描述你的经历。
+                    </p>
+                  ) : (
+                    <p>
+                      该员工可以通过「添加能力」自己补充，或去助手里描述经历。
+                    </p>
+                  )}
                   <p>
                     画像只用来帮助跨部门找到合适的人，不用于绩效、薪酬和晋升。
                   </p>

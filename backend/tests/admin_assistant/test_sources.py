@@ -78,6 +78,18 @@ def test_duplicate_credential_targets_are_rejected(db: Session, demo: tuple) -> 
     )
 
 
+def test_project_scope_uses_shared_schema_and_can_be_undone(
+    db: Session, demo: tuple
+) -> None:
+    setup(db, demo)
+    p = principal(db, demo)
+    row = draft(db, demo, {"project_keys": ["qg", "QG", "OTHER"]})
+    assert c.apply(db, p, row.id, row.revision).status == "applied"
+    assert service.read_jira(db, p.org_id).config["project_keys"] == ["QG", "OTHER"]
+    assert c.undo(db, p, row.id).status == "applied"
+    assert service.read_jira(db, p.org_id).config["project_keys"] == []
+
+
 def test_unlink_rejects_employee_on_confirmation_card(db: Session, demo: tuple) -> None:
     identity = setup(db, demo)
     with pytest.raises(c.ChangeSetError) as error:

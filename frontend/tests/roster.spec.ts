@@ -80,3 +80,54 @@ test("opt-in work attributes import and personnel tenure", async ({
   await page.goto(`/admin/people/${people[1].id}?tab=fields`)
   await expect(page.getByText("不满 1 年", { exact: true })).toBeVisible()
 })
+
+test("deployer can add their existing administrator account to the roster", async ({
+  page,
+  request,
+}) => {
+  const email = `owner-${crypto.randomUUID()}@example.com`
+  const token = await request.post("/api/v1/private/setup-tokens", {
+    data: { purpose: "new_org" },
+  })
+  expect(token.ok()).toBeTruthy()
+  const initialized = await request.post("/api/v1/setup/initialize", {
+    data: {
+      token: (await token.json()).token,
+      org_name: "合成负责人兼员工企业",
+      admin_username: email,
+      admin_full_name: "合成负责人",
+      admin_password: "synthetic-password-2026",
+    },
+  })
+  expect(initialized.ok()).toBeTruthy()
+  const { access_token, org_id } = await initialized.json()
+  await page.goto("/login")
+  await page.evaluate(
+    ({ token, orgId }) => {
+      localStorage.setItem("access_token", token)
+      localStorage.setItem("current_org_id", orgId)
+    },
+    { token: access_token, orgId: org_id },
+  )
+  await page.goto("/employees")
+  await page.getByRole("button", { name: "新增员工", exact: true }).click()
+  const dialog = page.getByRole("dialog")
+  await dialog.getByLabel("工号", { exact: true }).fill("CEO")
+  await dialog.getByLabel("姓名", { exact: true }).fill("合成负责人")
+  await dialog.getByLabel("邮箱", { exact: true }).fill(email)
+  await dialog.getByLabel("部门", { exact: true }).fill("总经办")
+  await dialog.getByRole("button", { name: "预览变动" }).click()
+  await expect(dialog.getByLabel("名单预览")).toContainText(
+    `将关联现有账号 ${email}，不重置密码`,
+  )
+  await dialog.getByRole("button", { name: "确认新增员工" }).click()
+  await expect(dialog).toBeHidden()
+  await page.getByRole("link", { name: "我的画像", exact: true }).click()
+  await expect(page).toHaveURL(/\/employees\/[0-9a-f-]+$/)
+  await expect(
+    page.getByRole("heading", { name: "合成负责人", exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole("tab", { name: "能力画像", exact: true }),
+  ).toBeVisible()
+})

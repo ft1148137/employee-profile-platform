@@ -39,6 +39,42 @@ def make_connection(body: dict[str, Any]) -> SourceConnection:
     )
 
 
+@pytest.mark.parametrize("deployment", ["cloud", "data_center"])
+def test_project_scope(request: pytest.FixtureRequest, deployment: str) -> None:
+    http = request.getfixturevalue("jira")
+    body = {**BODY, "project_keys": ["plat", "PLAT"]}
+    if deployment == "data_center":
+        body.update(deployment=deployment, auth_type="pat", secret="mock-dc-pat")
+    with jira_client_for(make_connection(body), http) as adapter:
+        assert adapter.config.project_keys == ["PLAT"]
+        assert adapter.projects()
+        rows = adapter.search(SINCE, None).issues
+        assert rows and all(row.key.startswith("PLAT-") for row in rows)
+
+
+@pytest.mark.parametrize("deployment", ["cloud", "data_center"])
+def test_project_list_limit(deployment: str) -> None:
+    body = dict(BODY)
+    if deployment == "data_center":
+        body.update(deployment=deployment, auth_type="pat", secret="mock-dc-pat")
+    projects = [{"key": f"P{i}", "name": f"合成项目{i}"} for i in range(101)]
+
+    def respond(req: httpx.Request) -> httpx.Response:
+        expected = "3/project/search" if deployment == "cloud" else "2/project"
+        assert req.url.path.endswith(expected)
+        if deployment == "cloud":
+            assert req.url.params["maxResults"] == "100"
+        return httpx.Response(
+            200, json={"values": projects} if deployment == "cloud" else projects
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as http:
+        with jira_client_for(make_connection(body), http) as adapter:
+            assert [p.key for p in adapter.projects()] == [
+                p["key"] for p in projects[:100]
+            ]
+
+
 @pytest.mark.parametrize("description", [False, True])
 def test_adapters(request: pytest.FixtureRequest, description: bool) -> None:
     http = request.getfixturevalue("jira")
@@ -229,6 +265,14 @@ def test_settings(
         {"deployment": "data_center"},
         {"username": ""},
         {"secret": ""},
+        {"project_keys": ["1QG"]},
+        {"project_keys": ['QG") OR project = OTHER']},
+        {"project_keys": ["QG-1"]},
+        {"project_keys": ["中"]},
+        {"project_keys": [""]},
+        {"project_keys": ["A" * 51]},
+        {"project_keys": [f"P{i}" for i in range(51)]},
+        {"project_keys": "QG"},
     ],
 )
 def test_validation(
@@ -300,6 +344,8 @@ def test_connection(
             headers={"Retry-After": "12", "Location": "https://other.example.com"},
             json={"displayName": "Synthetic Admin"}
             if req.url.path.endswith("myself")
+            else {"values": [{"key": "QG", "name": "合成项目"}]}
+            if req.url.path.endswith("project/search")
             else {"issues": [], "isLast": True},
         )
 
@@ -321,7 +367,8 @@ def test_connection(
     assert result["ok"] == (outcome == 200)
     assert result["account_name"] == ("Synthetic Admin" if outcome == 200 else None)
     if outcome == 200:
-        assert len(calls) == 2 and json.loads(calls[1].content)["maxResults"] == 1
+        assert len(calls) == 3 and json.loads(calls[1].content)["maxResults"] == 1
+        assert result["projects"] == [{"key": "QG", "name": "合成项目"}]
     else:
         assert len(calls) <= (2 if outcome == 403 else 1)
     assert BODY["secret"] not in response.text + caplog.text

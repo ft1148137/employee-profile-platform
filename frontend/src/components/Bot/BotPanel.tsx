@@ -12,7 +12,7 @@ import {
   type TurnResponse,
 } from "@/client"
 import { AssistantLayout } from "@/components/Chat/AssistantLayout"
-import { ChatComposer } from "@/components/Chat/ChatComposer"
+import { ChatComposer, readChatDraft } from "@/components/Chat/ChatComposer"
 import { ChatMessages } from "@/components/Chat/ChatMessages"
 import { useStreamingTurn } from "@/components/Chat/useStreamingTurn"
 import { SetupError } from "@/components/Setup/SetupError"
@@ -133,6 +133,7 @@ export function BotConversation({
       setConflict(false)
       send.reset()
       setSessionId(data.id)
+      setText((current) => current || readChatDraft(`${storageKey}:${data.id}`))
       setMessages(data.messages)
     },
   })
@@ -345,6 +346,7 @@ export function BotConversation({
       </div>
       <ChatComposer
         key={sessionId}
+        draftKey={sessionId ? `${storageKey}:${sessionId}` : undefined}
         id="bot-input"
         label="发给机器人的消息"
         placeholder="给画像机器人发消息…"

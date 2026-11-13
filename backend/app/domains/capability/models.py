@@ -72,6 +72,7 @@ class CapabilityProposal(TenantRecord, table=True):
     __tablename__ = "capability_proposal"
     __table_args__ = (
         UniqueConstraint("org_id", "id"),
+        tenant_fk("proposed_by_employee_id", "employee"),
         ForeignKeyConstraint(
             ["org_id", "decided_by_user_id"],
             ["org_membership.org_id", "org_membership.user_id"],
@@ -96,6 +97,7 @@ class CapabilityProposal(TenantRecord, table=True):
         default_factory=utc_now, sa_type=DateTime(timezone=True)
     )
     decided_by_user_id: uuid.UUID | None = None
+    proposed_by_employee_id: uuid.UUID | None = None
     decided_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
 

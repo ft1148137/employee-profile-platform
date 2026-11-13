@@ -89,7 +89,14 @@ def save_jira(
         raise InvalidSourceSetting(
             "更换了 Jira 类型、认证方式或站点地址，请重新填写凭据"
         )
-    if any(config[k] != connection.config.get(k) for k in ("deployment", "base_url")):
+    previous_projects = (
+        JiraConfig.model_validate(connection.config).project_keys
+        if connection.config
+        else []
+    )
+    if any(
+        config[k] != connection.config.get(k) for k in ("deployment", "base_url")
+    ) or set(body.project_keys) != set(previous_projects):
         connection.synced_until = None
     if body.secret is not None:
         connection.secret_ciphertext = encrypt_secret(body.secret.get_secret_value())
@@ -177,6 +184,7 @@ def _probe_jira(config: JiraConfig, client: JiraClient) -> JiraConnectionTest:
         with client as jira:
             account = jira.current_account()
             jira.search(datetime.combine(config.start_date, time.min, UTC), None, 1)
+            projects = jira.projects()
     except (
         SourceAuthError,
         SourceUnreachable,
@@ -184,4 +192,6 @@ def _probe_jira(config: JiraConfig, client: JiraClient) -> JiraConnectionTest:
         SecretUnavailable,
     ) as error:
         return JiraConnectionTest(ok=False, message=str(error))
-    return JiraConnectionTest(ok=True, message="Jira 连接成功", account_name=account)
+    return JiraConnectionTest(
+        ok=True, message="Jira 连接成功", account_name=account, projects=projects
+    )

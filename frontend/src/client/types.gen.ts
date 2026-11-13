@@ -766,6 +766,33 @@ export type Capability = {
 }
 
 /**
+ * CapabilityChange
+ */
+export type CapabilityChange = {
+  /**
+   * Key
+   */
+  key: string
+  /**
+   * Name
+   */
+  name: string
+  /**
+   * Category
+   */
+  category: string
+  /**
+   * Description
+   */
+  description: string
+  level_rubric: DictionaryRubric
+  /**
+   * Changed Fields
+   */
+  changed_fields?: Array<string>
+}
+
+/**
  * CapabilityProposalPublic
  */
 export type CapabilityProposalPublic = {
@@ -805,6 +832,10 @@ export type CapabilityProposalPublic = {
    * Employee Count
    */
   employee_count: number
+  /**
+   * Proposed By Employee Name
+   */
+  proposed_by_employee_name?: string | null
 }
 
 /**
@@ -883,6 +914,16 @@ export type CapabilityStatsPublic = {
    * Data
    */
   data: Array<CapabilityStats>
+}
+
+/**
+ * CapabilitySuggestionResult
+ */
+export type CapabilitySuggestionResult = {
+  /**
+   * Message
+   */
+  message: string
 }
 
 /**
@@ -1703,6 +1744,24 @@ export type DepartmentsPublic = {
    * Count
    */
   count: number
+}
+
+/**
+ * DictionaryChanges
+ */
+export type DictionaryChanges = {
+  /**
+   * Added
+   */
+  added?: Array<CapabilityChange>
+  /**
+   * Modified
+   */
+  modified?: Array<CapabilityChange>
+  /**
+   * Removed
+   */
+  removed?: Array<CapabilityChange>
 }
 
 /**
@@ -2734,6 +2793,7 @@ export type ImSettingUpdate = {
  * Impact
  */
 export type Impact = {
+  dictionary?: DictionaryChanges | null
   /**
    * Count
    */
@@ -2881,6 +2941,19 @@ export type InitialPassword = {
 }
 
 /**
+ * InitialProfileStatus
+ */
+export type InitialProfileStatus =
+  | "waiting_source"
+  | "no_records"
+  | "waiting_draft"
+  | "drafting"
+  | "pending_owner"
+  | "no_judgment"
+  | "failed"
+  | "done"
+
+/**
  * InitializationStatus
  */
 export type InitializationStatus = {
@@ -3016,6 +3089,10 @@ export type JiraConfig = {
    * Include Description
    */
   include_description?: boolean
+  /**
+   * Project Keys
+   */
+  project_keys?: Array<string>
 }
 
 /**
@@ -3065,6 +3142,10 @@ export type JiraConnectionTest = {
    * Account Name
    */
   account_name?: string | null
+  /**
+   * Projects
+   */
+  projects?: Array<JiraProject>
 }
 
 /**
@@ -3096,6 +3177,10 @@ export type JiraConnectionUpdate = {
    */
   include_description?: boolean
   /**
+   * Project Keys
+   */
+  project_keys?: Array<string>
+  /**
    * Sync Schedule
    */
   sync_schedule?: "off" | "monthly" | "quarterly" | "yearly"
@@ -3103,6 +3188,20 @@ export type JiraConnectionUpdate = {
    * Secret
    */
   secret?: null
+}
+
+/**
+ * JiraProject
+ */
+export type JiraProject = {
+  /**
+   * Key
+   */
+  key: string
+  /**
+   * Name
+   */
+  name: string
 }
 
 export type JsonValue = unknown
@@ -3858,6 +3957,7 @@ export type ProgressPublic = {
   inference_status: InferenceStatus
   review_status: ProgressReviewStatus
   evidence_quality: EvidenceQuality
+  initial_profile_status: InitialProfileStatus
 }
 
 /**
@@ -4734,6 +4834,24 @@ export type SubmitInput = {
 }
 
 /**
+ * SuggestCapability
+ */
+export type SuggestCapability = {
+  /**
+   * Name
+   */
+  name: string
+  /**
+   * Description
+   */
+  description: string
+  /**
+   * Reason
+   */
+  reason: string
+}
+
+/**
  * SyncRunPublic
  */
 export type SyncRunPublic = {
@@ -4771,6 +4889,10 @@ export type SyncRunPublic = {
    * Filename
    */
   filename: string | null
+  /**
+   * Project Keys
+   */
+  project_keys?: Array<string> | null
   /**
    * Created At
    */
@@ -5659,6 +5781,10 @@ export type JiraConnectionUpdateWritable = {
    * Include Description
    */
   include_description?: boolean
+  /**
+   * Project Keys
+   */
+  project_keys?: Array<string>
   /**
    * Sync Schedule
    */
@@ -9756,6 +9882,38 @@ export type capabilitiesReadCapabilityProposalsResponses = {
 
 export type capabilitiesReadCapabilityProposalsResponse =
   capabilitiesReadCapabilityProposalsResponses[keyof capabilitiesReadCapabilityProposalsResponses]
+
+export type capabilitiesSuggestNewCapabilityData = {
+  body: SuggestCapability
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capabilities/proposals"
+}
+
+export type capabilitiesSuggestNewCapabilityErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capabilitiesSuggestNewCapabilityError =
+  capabilitiesSuggestNewCapabilityErrors[keyof capabilitiesSuggestNewCapabilityErrors]
+
+export type capabilitiesSuggestNewCapabilityResponses = {
+  /**
+   * Successful Response
+   */
+  200: CapabilitySuggestionResult
+}
+
+export type capabilitiesSuggestNewCapabilityResponse =
+  capabilitiesSuggestNewCapabilityResponses[keyof capabilitiesSuggestNewCapabilityResponses]
 
 export type capabilitiesDismissCapabilityProposalData = {
   body?: never

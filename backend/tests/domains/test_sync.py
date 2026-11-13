@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import json
+import shutil
 from collections.abc import Generator
 from copy import deepcopy
 from datetime import timedelta
@@ -23,7 +24,7 @@ from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
 from app.domains.evidence.models import Evidence
 from app.domains.org.models import ExternalIdentity, Organization
-from app.domains.source import sync
+from app.domains.source import service, sync
 from app.domains.source.models import SourceConnection, SyncRun
 from app.domains.work.models import Task, WorkEvent
 from app.worker.app import app
@@ -79,6 +80,131 @@ def start(client: TestClient, base: str, auth: dict[str, str]) -> str:
     response = client.post(base + "/sources/jira/sync", headers=auth)
     assert response.status_code == 202, response.text
     return response.json()["id"]
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_retry_preserves_original_projects(
+    context: tuple, client: TestClient, db: Session, legacy: bool
+) -> None:
+    org, base, auth, *_ = context
+    body = {**BODY, "start_date": "2000-01-01", "project_keys": ["PLAT"]}
+    assert (
+        client.put(base + "/sources/jira", headers=auth, json=body).status_code == 200
+    )
+    run_id = start(client, base, auth)
+    run = db.get(SyncRun, UUID(run_id))
+    run.status = "failed"
+    if legacy:
+        run.input = None
+    db.add(run)
+    db.commit()
+    assert (
+        client.put(
+            base + "/sources/jira",
+            headers=auth,
+            json={**body, "project_keys": ["AI"] if legacy else []},
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(base + f"/sync-runs/{run_id}/retry", headers=auth).status_code
+        == 202
+    )
+    retried = run_sync(db, org, run_id)
+    assert retried.counts["records"] == (37 if legacy else 10)
+    assert service.public_jira(service.read_jira(db, org)).synced_until is None
+    assert run_sync(db, org, start(client, base, auth)).counts["records"] == (
+        9 if legacy else 37
+    )
+
+
+@pytest.mark.parametrize("deployment", ["cloud", "data_center"])
+def test_project_scope_and_retained_records(
+    context: tuple,
+    client: TestClient,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    deployment: str,
+) -> None:
+    org, base, auth, employees, _ = context
+    directory = tmp_path / "demo-org"
+    shutil.copytree(EXAMPLES / "demo-org", directory)
+    path = directory / "jira/issues.json"
+    rows = json.loads(path.read_text())["issues"][:2]
+    for row, key in zip(rows, ["QG", "OTHER"], strict=True):
+        row["key"] = f"{key}-1"
+        row["fields"]["project"] = {"key": key, "name": f"合成项目{key}"}
+        row["fields"]["assignee"] = {"accountId": "demo-jira-01"}
+    # The newly included project's issue predates the first sync watermark.
+    rows[0]["fields"]["updated"] = "2026-10-01T00:00:00+0000"
+    rows[1]["fields"]["updated"] = "2026-01-01T00:00:00+0000"
+    path.write_text(json.dumps({"issues": rows}))
+    identity = (
+        "demo-jira-01"
+        if deployment == "cloud"
+        else "JIRAUSER" + str(int(hashlib.sha256(b"demo-jira-01").hexdigest()[:12], 16))
+    )
+    db.add(
+        ExternalIdentity(
+            org_id=org, source="jira", external_id=identity, employee_id=employees[0].id
+        )
+    )
+    db.commit()
+    body = {**BODY, "start_date": "2000-01-01", "project_keys": ["qg", "QG"]}
+    if deployment == "data_center":
+        body.update(deployment=deployment, auth_type="pat", secret="mock-dc-pat")
+    with TestClient(create_mock_app(tmp_path)) as http:
+        monkeypatch.setattr(sync, "jira_client_for", lambda c: jira_client_for(c, http))
+        monkeypatch.setattr(
+            service, "jira_client_for", lambda c: jira_client_for(c, http)
+        )
+        saved = client.put(base + "/sources/jira", headers=auth, json=body)
+        assert saved.json()["config"]["project_keys"] == ["QG"]
+        probe = client.post(base + "/sources/jira/test", headers=auth).json()
+        assert probe["ok"] and probe["projects"] == [
+            {"key": "OTHER", "name": "合成项目OTHER"},
+            {"key": "QG", "name": "合成项目QG"},
+        ]
+        first = start(client, base, auth)
+        assert run_sync(db, org, first).counts["records"] == 1
+        assert [
+            t.external_key
+            for t in db.exec(select(Task).where(Task.org_id == org)).all()
+        ] == ["QG-1"]
+        assert (
+            client.put(
+                base + "/sources/jira", headers=auth, json={**body, "project_keys": []}
+            ).json()["synced_until"]
+            is None
+        )
+        assert run_sync(db, org, start(client, base, auth)).counts["records"] == 2
+        tasks = db.exec(select(Task).where(Task.org_id == org)).all()
+        evidence = [
+            e.model_dump()
+            for e in db.exec(select(Evidence).where(Evidence.org_id == org)).all()
+        ]
+        assert len(tasks) == 2 and evidence
+        assert (
+            client.put(base + "/sources/jira", headers=auth, json=body).status_code
+            == 200
+        )
+        assert run_sync(db, org, start(client, base, auth)).counts["records"] == 1
+        assert [
+            e.model_dump()
+            for e in db.exec(select(Evidence).where(Evidence.org_id == org)).all()
+        ] == evidence
+        assert len(db.exec(select(Task).where(Task.org_id == org)).all()) == 2
+        history = client.get(base + "/sync-runs", headers=auth).json()["data"]
+        assert [r["project_keys"] for r in history] == [["QG"], [], ["QG"]]
+        connection = service.read_jira(db, org)
+        connection.config = {
+            k: v for k, v in connection.config.items() if k != "project_keys"
+        }
+        connection.synced_until = None
+        db.add(connection)
+        db.commit()
+        assert run_sync(db, org, start(client, base, auth)).counts["records"] == 2
 
 
 @pytest.mark.parametrize("deployment", ["cloud", "data_center"])

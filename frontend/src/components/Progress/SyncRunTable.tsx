@@ -60,6 +60,7 @@ export function SyncRunTable({ orgId }: { orgId: string }) {
             <tr className="border-b">
               {[
                 "类型 / 文件名",
+                "项目范围",
                 "状态 / 尝试次数",
                 "计数",
                 "错误说明",
@@ -78,6 +79,13 @@ export function SyncRunTable({ orgId }: { orgId: string }) {
                 <td className="p-3">
                   {run.kind === "jira" ? "Jira" : "CSV"}
                   <p>{run.filename}</p>
+                </td>
+                <td className="p-3">
+                  {run.kind === "jira"
+                    ? run.project_keys?.length
+                      ? run.project_keys.join("、")
+                      : "全部项目"
+                    : "—"}
                 </td>
                 <td className="p-3 whitespace-nowrap">
                   {statuses[run.status]}

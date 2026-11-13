@@ -11,6 +11,62 @@ import { logInUser } from "./utils/user"
 test.use({ storageState: { cookies: [], origins: [] } })
 const base = "http://mock-jira:8080/qiguang-aiot"
 
+for (const deployment of ["cloud", "data_center"]) {
+  test(`${deployment}: choose project scope before syncing`, async ({
+    page,
+  }) => {
+    test.setTimeout(120000)
+    await createSourcesOrg(page)
+    if (deployment === "cloud") {
+      await saveCloud(page, base, "jira-admin@example.com", "mock-cloud-token")
+    } else {
+      await page.getByLabel("Jira Data Center / Server").check()
+      await page.getByLabel("站点地址").fill(base)
+      await page.getByLabel("个人访问令牌", { exact: true }).fill("mock-dc-pat")
+      await page.getByRole("button", { name: "保存", exact: true }).click()
+      await expect(page.getByText("Jira 配置已保存。")).toBeVisible()
+    }
+    await expect(
+      page.getByText("将同步：全部项目", { exact: true }),
+    ).toBeVisible()
+    await page.getByRole("button", { name: "测试连接" }).click()
+    await page
+      .getByRole("checkbox", { name: "EDGE（EDGE）", exact: true })
+      .check()
+    await expect(
+      page.getByText("将同步：EDGE（EDGE）", { exact: true }),
+    ).toBeVisible()
+    await expect(page.getByRole("button", { name: "立即同步" })).toBeDisabled()
+    await page.getByRole("button", { name: "保存", exact: true }).click()
+    await expect(page.getByText("Jira 配置已保存。")).toBeVisible()
+    await page.reload()
+    await expect(page.getByLabel("同步项目标识")).toHaveValue("EDGE")
+    await syncJira(page)
+    const status = page
+      .getByRole("status")
+      .filter({ hasText: "Jira 同步：成功" })
+    await expect(status).toContainText("记录 20")
+    await expect(status).toContainText("新增任务 20")
+    const history = page.getByRole("region", { name: "同步记录", exact: true })
+    await expect(
+      history.getByRole("cell", { name: "Jira", exact: true }),
+    ).toBeVisible()
+    await expect(
+      history.getByRole("columnheader", { name: "项目范围", exact: true }),
+    ).toBeVisible()
+    await expect(
+      history.getByRole("cell", { name: "EDGE", exact: true }),
+    ).toBeVisible()
+    await page.getByLabel("同步项目标识").fill("fw,EDGE,fw")
+    await page.getByRole("button", { name: "保存", exact: true }).click()
+    await expect(page.getByLabel("同步项目标识")).toHaveValue("FW,EDGE")
+    await expect(
+      history.getByRole("cell", { name: "EDGE", exact: true }),
+    ).toBeVisible()
+    await expect(page.getByText(/缩小范围不会删除已经同步的记录/)).toBeVisible()
+  })
+}
+
 test("Cloud connection, secret preservation, sync and complete source step", async ({
   page,
 }, testInfo) => {
@@ -59,6 +115,7 @@ test("Cloud connection, secret preservation, sync and complete source step", asy
   ).toContainText("记录 36")
   await expectChineseCopy(page, [
     "Jira Admin",
+    "EDGE", // Project identifiers come from Jira, not interface copy.
     "Cloud",
     "Data Center",
     "Server",

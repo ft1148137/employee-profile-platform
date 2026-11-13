@@ -46,7 +46,10 @@ def public_run(run: SyncRun, kind: str) -> SyncRunPublic:
         {
             **run.model_dump(exclude={"input"}),
             "kind": kind,
-            "filename": str(run.input["filename"]) if run.input else None,
+            "filename": run.input.get("filename") if run.input else None,
+            "project_keys": run.input.get("project_keys")
+            if kind == "jira" and run.input
+            else ([] if kind == "jira" else None),
         }
     )
 
@@ -110,7 +113,11 @@ def create_run(
         org_id=principal.org_id,
         connection_id=connection.id,
         requested_by_user_id=principal.user_id,
-        input=input_data,
+        input=JiraConfig.model_validate(connection.config).model_dump(
+            mode="json", include={"project_keys"}
+        )
+        if kind == "jira"
+        else input_data,
         counts={"records": 0, **IngestCounts().model_dump()},
     )
     session.add(run)
@@ -294,6 +301,10 @@ def _ingest(
             start += len(batch)
         return
     config = JiraConfig.model_validate(connection.config)
+    current_project_keys = config.project_keys
+    config = JiraConfig.model_validate(
+        {**connection.config, "project_keys": (run.input or {}).get("project_keys", [])}
+    )
     if "since" not in run.cursor:
         since = (
             connection.synced_until - timedelta(days=1)
@@ -309,6 +320,7 @@ def _ingest(
         session.commit()
     since = datetime.fromisoformat(str(run.cursor["since"]))
     with jira_client_for(connection) as jira:
+        jira.config.project_keys = config.project_keys
         while not run.cursor.get("complete"):
             cursor = run.cursor["next_cursor"]
             page = jira.search(
@@ -330,7 +342,7 @@ def _ingest(
                 },
             )
     maximum = run.cursor.get("max_updated")
-    if maximum:
+    if maximum and set(config.project_keys) == set(current_project_keys):
         connection.synced_until = datetime.fromisoformat(str(maximum))
         session.add(connection)
 
