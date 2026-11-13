@@ -92,7 +92,7 @@ class JiraConfig(BaseModel):
         keys = [key.upper() for key in keys]
         if any(not re.fullmatch(r"[A-Z][A-Z0-9_]{0,49}", key) for key in keys):
             raise ValueError(
-                "项目 key 须以字母开头，只含英文字母、数字和下划线，最多 50 位"
+                "项目标识须以字母开头，只含英文字母、数字和下划线，最多 50 位"
             )
         return list(dict.fromkeys(keys))
 

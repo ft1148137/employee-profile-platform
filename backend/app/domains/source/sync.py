@@ -302,10 +302,9 @@ def _ingest(
         return
     config = JiraConfig.model_validate(connection.config)
     current_project_keys = config.project_keys
-    if run.input is not None:
-        config = JiraConfig.model_validate(
-            {**connection.config, "project_keys": run.input["project_keys"]}
-        )
+    config = JiraConfig.model_validate(
+        {**connection.config, "project_keys": (run.input or {}).get("project_keys", [])}
+    )
     if "since" not in run.cursor:
         since = (
             connection.synced_until - timedelta(days=1)
