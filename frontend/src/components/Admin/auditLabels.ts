@@ -38,6 +38,7 @@ export const auditLabels: Record<string, string> = {
   "evidence.superseded": "更正证据",
   "evidence.retracted": "撤销证据",
   "account.issued": "生成账号",
+  "employee.account_linked": "员工关联现有账号",
   "account.password_reset": "重置密码",
   "account.disabled": "停用账号",
   "account.enabled": "启用账号",

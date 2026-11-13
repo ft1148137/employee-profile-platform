@@ -4,7 +4,7 @@ from uuid import UUID
 from email_validator import EmailNotValidError, validate_email
 from fastapi import HTTPException
 from pydantic import JsonValue
-from sqlalchemy import case, func, or_
+from sqlalchemy import String, case, cast, func, or_
 from sqlalchemy.sql.elements import Case
 from sqlmodel import Session, col, select
 
@@ -24,6 +24,7 @@ from app.domains.account.schemas import (
     UnlinkedAccount,
     UnlinkedAccountsPublic,
 )
+from app.domains.audit.models import AuditEvent
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.org.models import (
@@ -194,18 +195,30 @@ def issue_accounts(
     session: Session, p: Principal, body: IssueAccounts
 ) -> tuple[Organization, list[list[str]]]:
     require_admin(p)
+    linked_event_filters = (
+        AuditEvent.org_id == p.org_id,
+        AuditEvent.action == "employee.account_linked",
+        AuditEvent.target_type == "user",
+    )
     query = select(Employee).where(Employee.org_id == p.org_id)
     if body.employee_ids is None:
         query = query.where(
             Employee.employment_status == EmploymentStatus.ACTIVE,
             col(Employee.employee_code).is_not(None),
             func.length(func.trim(Employee.employee_code)) > 0,
-            ~select(OrgMembership.id)
-            .where(
-                OrgMembership.org_id == p.org_id,
-                OrgMembership.employee_id == Employee.id,
-            )
-            .exists(),
+            or_(
+                ~select(OrgMembership.id)
+                .where(
+                    OrgMembership.org_id == p.org_id,
+                    OrgMembership.employee_id == Employee.id,
+                )
+                .exists(),
+                cast(Employee.id, String).in_(
+                    select(col(AuditEvent.details)["employee_id"].as_string()).where(
+                        *linked_event_filters
+                    )
+                ),
+            ),
         )
     else:
         query = query.where(col(Employee.id).in_(body.employee_ids))
@@ -233,6 +246,18 @@ def issue_accounts(
             .with_for_update(of=User)
         ).all()
     }
+    preserved_links = set(
+        session.exec(
+            select(
+                AuditEvent.target_id, col(AuditEvent.details)["employee_id"].as_string()
+            ).where(
+                *linked_event_filters,
+                col(AuditEvent.target_id).in_(
+                    [str(u.id) for u in linked_accounts.values()]
+                ),
+            )
+        ).all()
+    )
     shared_accounts = set(
         session.exec(
             select(OrgMembership.user_id).where(
@@ -273,6 +298,13 @@ def issue_accounts(
         elif linked:
             if linked.is_superuser or linked.id in shared_accounts:
                 reason = "这个账号同时属于其他企业，只能由部署人员在服务器上处理"
+            if (
+                reason is None
+                and linked.is_active
+                and (str(linked.id), str(employee.id)) in preserved_links
+            ):
+                candidates.append((employee, linked))
+                continue
             if reason is None and not (
                 body.regenerate_pending
                 and linked.is_active
@@ -309,6 +341,20 @@ def issue_accounts(
     rows = []
     for index, (employee, user) in enumerate(candidates):
         note = ""
+        if user is not None and (str(user.id), str(employee.id)) in preserved_links:
+            rows.append(
+                [
+                    user.username,
+                    employee.display_name,
+                    departments.get(employee.department_id, "")
+                    if employee.department_id
+                    else "",
+                    str(settings.FRONTEND_HOST),
+                    "",
+                    "已有账号",
+                ]
+            )
+            continue
         if user is None:
             email = (employee.work_email or "").strip().lower()
             user = User(

@@ -138,6 +138,20 @@ def compute_roster_diff(
             if identifier:
                 owners[identifier.strip().lower()].add(user.id)
     shared_accounts = {u.id for u, _, shared in accounts if shared or u.is_superuser}
+    linkable = {
+        u.id
+        for u, membership, _ in accounts
+        if membership is not None
+        and membership.employee_id is None
+        and u.is_active
+        and u.id not in shared_accounts
+    }
+    incoming_owners = Counter(
+        owner
+        for row in roster.rows
+        if row.email
+        for owner in owners.get(row.email.lower(), set())
+    )
     columns = set(roster.column_mapping.values())
     used: set[tuple[str, ...]] = set()
     counts: Counter[tuple[str, ...]] = Counter()
@@ -162,9 +176,23 @@ def compute_roster_diff(
             row_number=row.row_number,
         )
         account = linked.get(matched.id) if matched else None
-        if row.email and owners.get(row.email.lower(), set()) - (
-            {account.id} if account else set()
-        ):
+        email_owners = owners.get(row.email.lower(), set()) if row.email else set()
+        will_link = (
+            matched is None
+            and len(email_owners) == 1
+            and email_owners <= linkable
+            and all(incoming_owners[owner] == 1 for owner in email_owners)
+        )
+        if will_link:
+            warnings.append(
+                RosterIssue(
+                    severity="warning",
+                    row_number=row.row_number,
+                    column="邮箱",
+                    message=f"将关联现有账号 {row.email}，不重置密码",
+                )
+            )
+        elif email_owners - ({account.id} if account else set()):
             blockers.append(
                 f"第 {row.row_number} 行「邮箱」：已被其他账号使用，请补上未被占用的邮箱"
             )

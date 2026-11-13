@@ -177,6 +177,14 @@ def apply_import(
     ]
     if errors:
         raise RosterError(422, errors)
+    # Lock both sides of the link before revalidating the preview.
+    memberships = session.exec(
+        select(OrgMembership, User)
+        .join(User)
+        .where(OrgMembership.org_id == principal.org_id)
+        .with_for_update(of=(OrgMembership, User))
+        .execution_options(populate_existing=True)
+    ).all()
     diff = compute_roster_diff(session, principal.org_id, roster)
     if diff.blockers:
         raise RosterError(422, diff.blockers)
@@ -208,17 +216,14 @@ def apply_import(
         select(Employee).where(Employee.org_id == principal.org_id)
     ).all()
     by_code = {e.employee_code.casefold(): e for e in employees if e.employee_code}
-    accounts = dict(
-        session.exec(
-            select(OrgMembership.employee_id, User)
-            .join(User)
-            .where(
-                OrgMembership.org_id == principal.org_id,
-                col(OrgMembership.employee_id).is_not(None),
-            )
-            .with_for_update(of=User)
-        ).all()
-    )
+    accounts = {m.employee_id: u for m, u in memberships if m.employee_id}
+    unlinked = {
+        identifier.strip().lower(): (m, u)
+        for m, u in memberships
+        if m.employee_id is None
+        for identifier in (u.email, u.username)
+        if identifier
+    }
     columns = set(roster.column_mapping.values())
     now = utc_now()
     for row in roster.rows:
@@ -230,6 +235,21 @@ def apply_import(
                 display_name=row.display_name,
             )
             by_code[row.employee_code.casefold()] = employee
+            if row.email and row.email.lower() in unlinked:
+                membership, user = unlinked[row.email.lower()]
+                membership.employee_id = employee.id
+                session.add(membership)
+                record_audit(
+                    session,
+                    org_id=principal.org_id,
+                    actor_type=principal.actor_type,
+                    actor_id=str(principal.user_id),
+                    action="employee.account_linked",
+                    target_type="user",
+                    target_id=str(user.id),
+                    details={"user_id": str(user.id), "employee_id": str(employee.id)},
+                    flush=False,
+                )
         employee.display_name = row.display_name
         employee.department_id = paths[row.department_path]
         employee.employment_status = EmploymentStatus.ACTIVE
