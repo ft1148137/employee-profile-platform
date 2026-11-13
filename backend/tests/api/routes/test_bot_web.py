@@ -164,9 +164,9 @@ def test_assistant_identity_and_tool_boundaries(
                 assert "error" in call(name, {**args, field: str(owner.employee_id)})
         profile = call("get_my_profile", {})
         assert profile["items"] == tools.redact(
-            s.Profile.model_validate(employee.my_profile(p, db)).model_dump(
-                mode="json"
-            )["items"]
+            tools.name_levels(
+                db, p, s.Profile.model_validate(employee.my_profile(p, db))
+            ).model_dump(mode="json")["items"]
         )
         evidence = call("list_my_evidence", {})
         assert evidence == tools.redact(

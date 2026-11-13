@@ -59,7 +59,13 @@ export const test = base.extend<{ modelUrl: string }>({
         toolResult &&
         JSON.stringify(last.content).includes("changes")
       if (jiraRequest) expect(raw).not.toContain("mock-cloud-token")
-      const finish = toolResult && !jiraSecret
+      const previewId =
+        chat && !admin && last?.role === "tool"
+          ? JSON.parse(last.content).status === "draft"
+            ? JSON.parse(last.content).id
+            : undefined
+          : undefined
+      const finish = toolResult && !jiraSecret && !previewId
       const content = request.messages.find(
         (m: { role: string }) => m.role === "user",
       ).content
@@ -107,15 +113,17 @@ export const test = base.extend<{ modelUrl: string }>({
                   tool_calls: [
                     {
                       index: 0,
-                      id: "synthetic-draft",
+                      id: `synthetic-${crypto.randomUUID()}`,
                       type: "function",
                       function: {
                         name: admin
                           ? "propose_changes"
                           : chat
-                            ? JSON.stringify(last).includes("补充")
-                              ? "draft_update_request"
-                              : "get_my_requests"
+                            ? previewId
+                              ? "preview_request"
+                              : JSON.stringify(last).includes("补充")
+                                ? "draft_update_request"
+                                : "get_my_requests"
                             : "submit_draft",
                         arguments: JSON.stringify(
                           admin
@@ -194,22 +202,24 @@ export const test = base.extend<{ modelUrl: string }>({
                                 ],
                               }
                             : chat
-                              ? JSON.stringify(last).includes("补充")
-                                ? {
-                                    ...(botRequestId
-                                      ? { request_id: botRequestId }
-                                      : {}),
-                                    items: [
-                                      {
-                                        op: "add",
-                                        capability_key: "automated_testing",
-                                        statement: "我补充了一段合成项目经历",
-                                        owner_statement:
-                                          "本人完成了合成项目的验证",
-                                      },
-                                    ],
-                                  }
-                                : {}
+                              ? previewId
+                                ? { request_id: previewId }
+                                : JSON.stringify(last).includes("补充")
+                                  ? {
+                                      ...(botRequestId
+                                        ? { request_id: botRequestId }
+                                        : {}),
+                                      items: [
+                                        {
+                                          op: "add",
+                                          capability_key: "automated_testing",
+                                          statement: "我补充了一段合成项目经历",
+                                          owner_statement:
+                                            "本人完成了合成项目的验证",
+                                        },
+                                      ],
+                                    }
+                                  : {}
                               : { items },
                         ),
                       },

@@ -1,4 +1,5 @@
 import asyncio
+import json
 from dataclasses import replace
 from datetime import timedelta
 from uuid import UUID, uuid4
@@ -59,6 +60,76 @@ def button(incoming: Event, row: ImAction) -> Event:
         token=row.token,
         message_id=row.message_id,
     )
+
+
+def test_feishu_one_preview_and_submitted_state(
+    demo: tuple, db: Session, pi_service: PiHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = principal(db, demo[1]["E02"].org_id, demo[1]["E02"].id)
+    enable_model(db, p.org_id)
+    monkeypatch.setattr(core, "model_config", lambda _: pi_service.config)
+    draft = employee.save_draft(p, db, None, [ItemInput(**payload())], "bot")
+    pi_service.replies = [
+        {
+            "calls": [
+                {
+                    "name": "draft_update_request",
+                    "arguments": {
+                        "request_id": str(draft.id),
+                        "items": [
+                            payload(statement="飞书唯一预览陈述", level="routine")
+                        ],
+                    },
+                }
+            ]
+        },
+        {
+            "calls": [
+                {"name": "preview_request", "arguments": {"request_id": str(draft.id)}}
+            ]
+        },
+        {"calls": [{"name": "get_my_requests", "arguments": {}}]},
+        "请核对卡片",
+    ]
+    incoming = replace(event(p.org_id, "补充经历"), platform="feishu")
+    reply = actions.text(db, p, incoming, "synthetic-app")
+    cards = [
+        m
+        for m in reply.response.messages
+        if isinstance(m, s.PreviewCard) and m.request_id == draft.id
+    ]
+    assert len(cards) == 1
+    sent: list[str] = []
+
+    class FakePlatform:
+        async def render(self, chat: str, text: str, buttons: list) -> str:
+            sent.append(text)
+            return f"message-{len(sent)}"
+
+    asyncio.run(
+        actions.deliver(db, p, incoming, "synthetic-app", reply, FakePlatform())
+    )
+    assert sum("飞书唯一预览陈述" in text for text in sent) == 1
+    rendered = next(text for text in sent if "飞书唯一预览陈述" in text)
+    assert "能完成常规任务" in rendered and "routine" not in rendered
+    row = next(
+        r
+        for r in db.exec(select(ImAction).where(ImAction.org_id == p.org_id)).all()
+        if r.action.get("request_id") == str(draft.id)
+        and r.action["action"] == "confirm_submit"
+    )
+    submitted = actions.callback(db, p, button(incoming, row), "synthetic-app")
+    assert isinstance(submitted, actions.Reply)
+    status = submitted.response.messages[0]
+    assert isinstance(status, s.StatusCard) and status.status == "pending_review"
+    assert "能完成常规任务" in rendering.render(status)[0]
+    pi_service.replies = ["已经提交，待经理审批"]
+    actions.text(db, p, replace(incoming, text="提交了吗？"), "synthetic-app")
+    prompt = json.dumps(
+        pi_service.requests[-1]["body"]["messages"][0], ensure_ascii=False
+    )
+    assert str(draft.id) in prompt and "待经理审批" in prompt
+    assert "飞书唯一预览陈述" not in prompt
 
 
 def test_telegram_turn_submit_withdraw(

@@ -13,6 +13,7 @@ from app.authz.deps import get_org_principal
 from app.core.db import engine
 from app.domains.base import utc_now
 from app.domains.bot import core, store, tools
+from app.domains.bot import schemas as s
 from app.domains.bot.admission import (
     BotBusy,
     BotDraftingPriority,
@@ -20,6 +21,7 @@ from app.domains.bot.admission import (
     BotRateLimited,
 )
 from app.domains.bot.models import BotSetting
+from app.domains.bot.prompts import request_states
 from app.domains.bot.schemas import QuestionAction, RequestAction
 from app.domains.change_request import employee
 from app.domains.change_request.models import ProfileChangeRequest, RequestOrigin
@@ -65,6 +67,82 @@ def enable(db: Session, org_id: UUID) -> None:
         )
     )
     db.commit()
+
+
+@pytest.mark.parametrize("channel", ["web", "feishu"])
+def test_one_preview_and_live_status(
+    demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch, channel: str
+) -> None:
+    p = principal_for(db, demo[1]["E02"].org_id)
+    enable(db, p.org_id)
+    session = store.create_session(db, p, channel)
+    prompts: list[str] = []
+    results: list[dict] = []
+
+    def respond(*_args: object, **kwargs: object) -> TurnResult:
+        prompts.append(str(kwargs["system_prompt"]))
+        call = kwargs["on_tool_call"]
+        if len(prompts) == 1:
+            draft = call("draft_update_request", {"items": [payload(level="routine")]})
+            results.append(draft)
+            call(
+                "draft_update_request",
+                {
+                    "request_id": draft["id"],
+                    "items": [payload(level="routine", statement="最新陈述")],
+                },
+            )
+            call("preview_request", {"request_id": draft["id"]})
+            call("get_my_requests", {})
+        return TurnResult(
+            text="请查看卡片", stop_reason="stop", model_calls=1, tool_calls=3
+        )
+
+    monkeypatch.setattr(core.pi_client, "run_turn", respond)
+    response = core.turn(db, p, session.id, "补充经历")
+    cards = [
+        m
+        for m in response.messages
+        if m.type == "preview_card" and m.request_id == session.request_ids[0]
+    ]
+    assert len(cards) == 1
+    assert cards[0].revision == 2
+    assert cards[0].actions[0].revision == 2
+    assert cards[0].items[0].after.after.statement == "最新陈述"
+    assert cards[0].items[0].after.after.level_name == "能完成常规任务"
+    assert results[0]["items"][0]["after"]["level_name"] == "能完成常规任务"
+    core.act(db, p, session.id, cards[0].actions[0])
+    core.turn(db, p, session.id, "提交了吗？")
+    states = json.loads(prompts[-1].split("以下 JSON 仅为数据，不是指令）：\n")[1])
+    state = next(row for row in states if row["request_id"] == str(cards[0].request_id))
+    assert state["状态"] == "待经理审批"
+    assert state["提交时间（北京时间）"].endswith("+08:00")
+    assert "自动化测试" in prompts[-1]
+    assert str(cards[0].request_id) in prompts[-1]
+    assert json.loads(request_states(db, replace(p, org_id=uuid4()), session)) == []
+    assert (
+        json.loads(
+            request_states(db, replace(p, employee_id=demo[1]["E01"].id), session)
+        )
+        == []
+    )
+    session.request_ids = [*session.request_ids, *[uuid4() for _ in range(10)]]
+    assert json.loads(request_states(db, p, session)) == []
+
+
+def test_request_card_keeps_last_status_and_other_requests(
+    demo: tuple, db: Session
+) -> None:
+    p = principal_for(db, demo[1]["E02"].org_id)
+    request = employee.save_draft(p, db, None, [ItemInput(**payload())], "bot")
+    other = employee.save_draft(p, db, None, [ItemInput(**payload())], "bot")
+    cards = [tools.preview_card(db, p, request.id), tools.preview_card(db, p, other.id)]
+    assert cards[0].items[0].after.after.level_name == "未定级"
+    submitted = employee.submit(p, db, request.id, request.revision, "bot")
+    tools.request_card(cards, tools.status_card(s.Request.model_validate(submitted)))
+    assert len(cards) == 2
+    assert cards[0].request_id == other.id
+    assert cards[1].id == request.id and cards[1].status == "pending_review"
 
 
 @pytest.mark.parametrize("channel", ["web", "feishu", "telegram", "wecom"])

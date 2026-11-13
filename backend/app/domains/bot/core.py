@@ -18,6 +18,7 @@ from app.domains.bot.admission import (
     BotRateLimited,
     begin_turn,
 )
+from app.domains.bot.levels import name_levels
 from app.domains.bot.models import BotSession
 from app.domains.bot.prompts import system_prompt
 from app.domains.change_request import employee
@@ -117,7 +118,7 @@ def turn(
                 mode="chat",
                 images=images,
                 session_state=store.load_state(db, session),
-                system_prompt=system_prompt(db, p, session.channel),
+                system_prompt=system_prompt(db, p, session.channel, session),
                 input=tools.redact_text(model_input),
                 tools=tools.definitions(p),
                 on_tool_call=call,
@@ -286,7 +287,9 @@ def act(
                 if action.action == "confirm_submit"
                 else employee.withdraw(p, db, action.request_id)
             )
-            messages = [tools.status_card(s.Request.model_validate(request))]
+            messages = [
+                tools.status_card(name_levels(db, p, s.Request.model_validate(request)))
+            ]
     response = _save(db, session, messages)
     if commit:
         db.commit()
