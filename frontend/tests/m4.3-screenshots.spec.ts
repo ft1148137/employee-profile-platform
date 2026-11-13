@@ -238,6 +238,7 @@ test("M4.3 screenshots: file preview, web approval, profiles, settings and direc
         .getByTestId("app-rail")
         .getByRole("link", { name: "我的团队", exact: true }),
     ).toHaveCount(0)
+    await expect(page.getByLabel("选择对话附件")).toBeEnabled()
     const upload = page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&

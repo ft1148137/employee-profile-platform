@@ -9,6 +9,7 @@ import {
   AdminAssistantService,
   type ChangeSetApplied,
   type ChangeSetPublic,
+  type DictionaryChanges,
 } from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
@@ -35,6 +36,7 @@ const labels: Record<string, string> = {
   auth_type: "认证方式",
   username: "账号",
   start_date: "同步起始日期",
+  project_keys: "同步的 Jira 项目",
   include_description: "同步任务描述",
   sync_schedule: "同步周期",
   identity_id: "工作记录账号",
@@ -105,6 +107,59 @@ const statuses = {
   discarded: "已放弃",
   stale: "内容已变化，请重新预览",
   undone: "已撤销",
+}
+
+function DictionaryDiff({ changes }: { changes: DictionaryChanges }) {
+  return (
+    <section className="space-y-3 text-sm" aria-label="词典改动明细">
+      {(
+        [
+          ["新增", changes.added],
+          ["修改", changes.modified],
+          ["删除", changes.removed],
+        ] as const
+      )
+        .filter(
+          ([label, definitions]) =>
+            label !== "删除" || Boolean(definitions?.length),
+        )
+        .map(([label, definitions]) => (
+          <div key={label}>
+            <p className="font-semibold">
+              {label} {definitions?.length ?? 0} 项
+            </p>
+            <ul className="space-y-2">
+              {definitions?.map((definition) => (
+                <li key={definition.key} className="rounded-lg bg-muted/40 p-3">
+                  <p className="font-medium">{definition.name}</p>
+                  <p>分类：{definition.category || "未分类"}</p>
+                  <p>
+                    等级：
+                    {definition.level_rubric.levels
+                      .map((level) => level.label)
+                      .join("、")}
+                  </p>
+                  {label === "修改" && (
+                    <p>修改了：{definition.changed_fields?.join("、")}</p>
+                  )}
+                  <details>
+                    <summary className="cursor-pointer">查看说明</summary>
+                    <p className="whitespace-pre-wrap">
+                      {definition.description || "暂无说明"}
+                    </p>
+                    {definition.level_rubric.levels.map((level) => (
+                      <p key={level.key}>
+                        {level.label}：{level.description}
+                      </p>
+                    ))}
+                  </details>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+    </section>
+  )
 }
 
 export function ChangeSetCard({
@@ -210,7 +265,11 @@ export function ChangeSetCard({
               「{String(item.before?.name ?? "能力建议")}」
             </p>
           )}
+          {item.impact?.dictionary && (
+            <DictionaryDiff changes={item.impact.dictionary} />
+          )}
           {item.undoable &&
+            !item.impact?.dictionary &&
             item.function !== "dismiss_capability_proposal" &&
             Object.keys(item.after)
               .filter(

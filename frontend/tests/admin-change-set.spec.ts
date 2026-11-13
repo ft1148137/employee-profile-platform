@@ -505,3 +505,120 @@ test("saving credentials and retesting clear the previous apply error", async ({
   ).toBeVisible()
   await expect(oldError).toHaveCount(0)
 })
+
+for (const functionName of [
+  "update_capability_dictionary",
+  "apply_capability_template",
+  "draft_dictionary_from_material",
+]) {
+  test(`${functionName} shows readable capability changes`, async ({
+    page,
+  }) => {
+    await page.route("**/admin-assistant/availability?*", (route) =>
+      route.fulfill({ json: { available: true, reason: "" } }),
+    )
+    const definition = {
+      key: "synthetic_skill",
+      name: "合成需求分析",
+      category: "产品研发",
+      description: "合成能力说明，默认收起",
+      level_rubric: {
+        levels: [{ key: "l1", label: "熟练处理", description: "可以独立完成" }],
+      },
+      changed_fields: [],
+    }
+    const id = crypto.randomUUID()
+    const draft = {
+      id,
+      revision: 1,
+      status: "draft",
+      undo_of_id: null,
+      items: [
+        {
+          function: functionName,
+          title: "更新能力词典",
+          args: {},
+          before: { definitions: [] },
+          after: { capabilities: [definition] },
+          risk: "normal",
+          undoable: true,
+          impact: {
+            count: 2,
+            text: "模板「合成模板」，2 项能力；会替换当前词典，可以撤销",
+            dictionary: {
+              added: [
+                definition,
+                {
+                  ...definition,
+                  key: "synthetic_delivery",
+                  name: "合成交付协作",
+                },
+              ],
+              modified: [
+                {
+                  ...definition,
+                  key: "synthetic_modified",
+                  name: "合成修改能力",
+                  changed_fields: ["名称", "等级"],
+                },
+              ],
+              removed: [
+                {
+                  ...definition,
+                  key: "synthetic_removed",
+                  name: "合成删除能力",
+                },
+              ],
+            },
+          },
+        },
+      ],
+    }
+    const saveReply = await mockAdminMessages(page)
+    await page.route("**/admin-assistant/sessions/*/turns?*", (route) => {
+      const reply = {
+        messages: [{ type: "admin_change_set", change_set: draft }],
+      }
+      saveReply(route.request().url(), reply)
+      return route.fulfill({
+        contentType: "application/x-ndjson",
+        body: `${JSON.stringify({ type: "final", response: reply })}\n`,
+      })
+    })
+    await page.route(`**/change-sets/${id}`, (route) =>
+      route.fulfill({ json: draft }),
+    )
+    await logInUser(
+      page,
+      "admin@demo.example.com",
+      process.env.DEMO_USER_PASSWORD!,
+    )
+    await page.goto("/admin/assistant")
+    await page
+      .getByRole("textbox", { name: "发给管理助手的消息" })
+      .fill("整理能力词典")
+    await page.getByRole("button", { name: "发送", exact: true }).click()
+    const card = page.getByRole("region", { name: "设置改动确认卡" })
+    await expect(card.getByText("新增 2 项", { exact: true })).toBeVisible()
+    await expect(card.getByText("修改 1 项", { exact: true })).toBeVisible()
+    await expect(card.getByText("删除 1 项", { exact: true })).toBeVisible()
+    await expect(card.getByText("合成需求分析", { exact: true })).toBeVisible()
+    await expect(card.getByText("合成交付协作", { exact: true })).toBeVisible()
+    await expect(
+      card.getByText("修改了：名称、等级", { exact: true }),
+    ).toBeVisible()
+    await expect(
+      card.getByText("分类：产品研发", { exact: true }).first(),
+    ).toBeVisible()
+    await expect(
+      card.getByText("等级：熟练处理", { exact: true }).first(),
+    ).toBeVisible()
+    await expect(card).not.toContainText('{"')
+    const description = card
+      .getByText("合成能力说明，默认收起", { exact: true })
+      .first()
+    await expect(description).not.toBeVisible()
+    await card.getByText("查看说明", { exact: true }).first().click()
+    await expect(description).toBeVisible()
+  })
+}

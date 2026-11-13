@@ -67,6 +67,10 @@ def test_web_parity(
             return
         assert response.status_code == 200, response.text
         expected.append(response.json())
+    if name == "list_capability_templates":
+        expected.append(
+            client.get("/api/v1/capability-templates", headers=auth["admin"]).json()
+        )
     web = expected[0]
     if name == "get_progress":
         web = {"sync_runs": expected[0], "drafting": expected[1]}
@@ -124,6 +128,33 @@ def test_table_limit() -> None:
     assert card and len(card.rows) == 20 and card.total == 123
     assert card.columns == ["名称"] and card.page == "/employees"
     assert r._table(r.FUNCTIONS["list_roles"], []).total == 0
+
+
+def test_capability_template_discovery(db: Session, shared_demo: tuple) -> None:
+    from app.core.config import settings
+    from app.domains.capability.templates import load_catalog
+
+    p = principal(db, shared_demo)
+    catalog = load_catalog(settings.CAPABILITY_TEMPLATES_DIR)
+    result = call(db, p, "list_capability_templates")["data"]
+    assert result == [t.public().model_dump(mode="json") for t in catalog]
+    template = catalog[0]
+    detail = call(
+        db, p, "list_capability_templates", {"template_id": template.entry.id}
+    )["data"]
+    assert len(detail["capabilities"]) == len(template.capabilities)
+    assert detail["capabilities"][0]["name"] == template.capabilities[0].name
+    assert detail["capabilities"][0]["category"] == template.capabilities[0].category
+    assert (
+        "error"
+        in call(db, p, "list_capability_templates", {"template_id": "missing"})["data"]
+    )
+    assert (
+        "需要企业管理员权限"
+        in call(
+            db, principal(db, shared_demo, "employee"), "list_capability_templates"
+        )["data"]["error"]
+    )
 
 
 def test_endpoint_coverage() -> None:
@@ -422,3 +453,14 @@ def test_today_fallback_opens_sources(db: Session, shared_demo: tuple) -> None:
     assert cards == [
         LinkCard(title="查看数据来源和同步", page="/admin/data-ai?tab=sources")
     ]
+
+
+def test_template_prompt_keeps_selection_in_assistant(
+    db: Session, shared_demo: tuple
+) -> None:
+    from app.domains.admin_assistant.prompts import system_prompt
+
+    prompt = system_prompt(principal(db, shared_demo), "/admin/assistant")
+    assert "list_capability_templates 列出模板让管理员选择" in prompt
+    assert "再起草 apply_capability_template 确认卡" in prompt
+    assert "词典页面没有模板选择器" in prompt
