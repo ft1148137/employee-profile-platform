@@ -187,8 +187,23 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       { headers: ownerHeaders, data: { revision: draft.revision } },
     )
     expect(submitted.ok()).toBeTruthy()
+    await enter(ownerToken, `/employees/${subject.id}`)
+    const pendingCard = page.locator(`[id="request-${draft.id}"]`)
+    await expect(pendingCard).toContainText(
+      reviewer === "admin"
+        ? "待经理审批：合成管理员（企业管理员）"
+        : "待经理审批：合成经理（直属上级）",
+    )
+    await expect(pendingCard).toContainText("合成陈述1")
+    await expect(pendingCard).toContainText("独立完成")
+    await pendingCard.getByRole("button", { name: "展开陈述" }).first().click()
+    await expect(
+      pendingCard.getByRole("button", { name: "收起陈述" }),
+    ).toBeVisible()
     await enter(ownerToken, `/reviews/${draft.id}`)
-    await expect(page.getByRole("alert")).toContainText("404")
+    await expect(page.getByRole("alert")).toContainText(
+      "这条请求已经处理完、已撤回，或者你没有审批权限",
+    )
     await expect(page.getByRole("link", { name: /^待审批/ })).toHaveCount(0)
     await enter(reviewerToken, "/inbox")
     await page.getByRole("link", { name: "查看并审批", exact: true }).click()
@@ -213,11 +228,40 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       ).toHaveCount(0)
       await page.unroute(`**/orgs/${admin.org_id}/reviews`)
     }
+    let nextId: string | undefined
+    if (reviewer === "manager") {
+      const nextDraft = await (
+        await request.post(`${base}/me/requests`, {
+          headers: ownerHeaders,
+          data: {
+            items: [
+              {
+                op: "add",
+                capability_key: "skill_3",
+                statement: "下一条合成陈述",
+                level: "routine",
+              },
+            ],
+          },
+        })
+      ).json()
+      expect(
+        (
+          await request.post(`${base}/me/requests/${nextDraft.id}/submit`, {
+            headers: ownerHeaders,
+            data: { revision: nextDraft.revision },
+          })
+        ).ok(),
+      ).toBeTruthy()
+      nextId = nextDraft.id
+    }
     await page.goto("/reviews")
     await expect(
-      page.getByRole("listitem").filter({ hasText: "合成员工" }),
+      page
+        .getByRole("listitem")
+        .filter({ has: page.locator(`a[href="/reviews/${draft.id}"]`) }),
     ).toContainText("3 项改动")
-    await page.getByRole("link", { name: "查看并审批", exact: true }).click()
+    await page.locator(`a[href="/reviews/${draft.id}"]`).click()
     await page.setViewportSize({ width: 390, height: 844 })
     const choose = async () => {
       await page.getByLabel("合成能力1的决定").selectOption("approved")
@@ -292,8 +336,40 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
     await page.getByRole("button", { name: "核对并提交" }).click()
     await expect(page.getByRole("dialog")).toContainText("合成能力2：退回修改")
     await expect(page.getByRole("dialog")).toContainText("请补充独立完成的依据")
+    let releaseList = () => {}
+    const listGate = new Promise<void>((resolve) => {
+      releaseList = resolve
+    })
+    const listPattern = `**/orgs/${admin.org_id}/reviews`
+    if (nextId)
+      await page.route(listPattern, async (route) => {
+        const response = await route.fetch()
+        await listGate
+        await route.fulfill({ response })
+      })
     await page.getByRole("button", { name: "确认提交决定" }).click()
     await expect(page.getByRole("status")).toContainText("审批已提交")
+    if (nextId) {
+      try {
+        await page
+          .getByRole("link", { name: "返回待审批", exact: true })
+          .click()
+        await expect(page.locator(`a[href="/reviews/${nextId}"]`)).toBeVisible()
+        await expect(
+          page.locator(`a[href="/reviews/${draft.id}"]`),
+        ).toHaveCount(0, { timeout: 1000 })
+        await page.locator(`a[href="/reviews/${nextId}"]`).click()
+        await expect(
+          page.getByRole("heading", { name: "逐项审批" }),
+        ).toBeVisible()
+        await expect(
+          page.getByText("下一条合成陈述", { exact: true }),
+        ).toBeVisible()
+      } finally {
+        releaseList()
+      }
+      await page.unrouteAll({ behavior: "wait" })
+    }
     if (reviewer === "admin") {
       await page.setViewportSize({ width: 1280, height: 900 })
       await page.getByRole("link", { name: "员工", exact: true }).click()
@@ -386,6 +462,13 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
     await editor
       .getByRole("button", { name: "预览并提交", exact: true })
       .click()
+    await expect(editor).toContainText(
+      reviewer === "admin"
+        ? "提交后由 合成管理员（企业管理员）审批"
+        : reviewer === "delegate"
+          ? "提交后由 合成经理（直属上级）、合成管理员（代理审批）审批"
+          : "提交后由 合成经理（直属上级）审批",
+    )
     await editor.getByRole("button", { name: "确认提交", exact: true }).click()
     await expect(editor).toBeHidden()
     expect(

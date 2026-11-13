@@ -10,6 +10,7 @@ import type {
   TurnResponse,
 } from "@/client"
 import { levelLabel } from "@/components/Profile/fields"
+import { RequestReviewers } from "@/components/Profile/RequestReviewers"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
 import { Button } from "@/components/ui/button"
 
@@ -241,6 +242,13 @@ export function BotMessage({
               ? "提交前预览"
               : (statuses[message.status] ?? "请求状态已更新")}
           </h3>
+          {(message.type === "preview_card" ||
+            message.status === "pending_review") && (
+            <RequestReviewers
+              reviewers={message.reviewers}
+              preview={message.type === "preview_card"}
+            />
+          )}
           {message.type === "preview_card" ? (
             message.items.map((item, index) => (
               <div key={index} className="space-y-2 border-t pt-3">

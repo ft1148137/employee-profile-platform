@@ -94,6 +94,11 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
             f"{item.after.capability.name}\n修改前：{item.before.statement if item.before else '暂无判断'}；等级：{(item.before.level_name or '未定级') if item.before else '未定级'}\n修改后：{item_text(item.after)}"
             for item in message.items
         )
+        text += "\n" + (
+            f"提交后由 {'、'.join(f'{r.name}（{r.role}）' for r in message.reviewers)}审批"
+            if message.reviewers
+            else "暂时没有可用的审批人，企业管理员会处理"
+        )
         if len(text) > 12000:
             return "预览内容较长，请在网页查看完整内容并确认提交。", []
     else:
@@ -101,4 +106,10 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
             f"请求状态：{LABELS.get(message.status, message.status)}\n"
             + "\n\n".join(item_text(i) for i in message.items)
         )
+        if message.status == "pending_review":
+            text += "\n" + (
+                f"待经理审批：{'、'.join(f'{r.name}（{r.role}）' for r in message.reviewers)}"
+                if message.reviewers
+                else "暂时没有可用的审批人，企业管理员会处理"
+            )
     return text, [a.model_dump(mode="json") for a in message.actions[:3]]

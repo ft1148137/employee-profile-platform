@@ -2,7 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { isAxiosError } from "axios"
 import { useState } from "react"
-import { type DecisionInput, ReviewsService } from "@/client"
+import {
+  type DecisionInput,
+  type PendingReviews,
+  ReviewsService,
+} from "@/client"
 import { EvidenceSheet } from "@/components/Profile/EvidenceSheet"
 import { levelLabel } from "@/components/Profile/fields"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
@@ -71,7 +75,14 @@ function ReviewForm({
           comment: comment.trim() || null,
         },
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
+      const queryKey = ["reviews", orgId]
+      await cache.cancelQueries({ queryKey })
+      cache.setQueryData<PendingReviews>(queryKey, (previous) => {
+        if (!previous) return previous
+        const data = previous.data.filter((request) => request.id !== requestId)
+        return { ...previous, data, count: data.length }
+      })
       setConfirm(false)
       cache.invalidateQueries()
     },
@@ -101,11 +112,16 @@ function ReviewForm({
       [403, 404].includes(query.error.response?.status ?? 0)
     )
       return (
-        <p role="alert">
-          {stale
-            ? "内容已变化，请重新查看"
-            : "404 · 未找到请求或你没有审批权限"}
-        </p>
+        <div role="alert" className="space-y-4">
+          <p>
+            {stale
+              ? "内容已变化，请重新查看"
+              : "这条请求已经处理完、已撤回，或者你没有审批权限"}
+          </p>
+          <Link className="text-primary underline" to="/reviews">
+            返回待审批
+          </Link>
+        </div>
       )
     return <ProfileError retry={() => query.refetch()} />
   }

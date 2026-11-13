@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.domains.bot.attachments import AttachmentPublic
-from app.domains.change_request.schemas import ToolInput
+from app.domains.change_request.schemas import RequestReviewer, ToolInput
 from app.domains.profile.models import AssessmentStatus
 from app.domains.review.direct import DirectEditInput
 from app.domains.review.schemas import DecisionInput
@@ -86,6 +86,7 @@ class Request(Projection):
     revision: int
     status: str
     items: list[ChangeItem]
+    reviewers: list[RequestReviewer] = Field(default_factory=list)
 
 
 class Requests(Projection):
@@ -103,6 +104,7 @@ class Preview(Projection):
     request_id: UUID
     revision: int
     items: list[PreviewItem]
+    reviewers: list[RequestReviewer] = Field(default_factory=list)
 
 
 class Question(Projection):

@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useId, useState } from "react"
 import {
   type ChangeItemPublic,
   type ChangeRequestPublic,
@@ -11,7 +12,8 @@ import { Button } from "@/components/ui/button"
 import { AppealItem } from "./AppealItem"
 import type { EditorSelection } from "./ChangeRequestEditor"
 import { EvidenceRows } from "./EvidenceList"
-import { levelLabel } from "./fields"
+import { levelLabel, record } from "./fields"
+import { RequestReviewers } from "./RequestReviewers"
 import { decisionLabels, RequestTimeline } from "./RequestTimeline"
 import { StatusBadge } from "./StatusBadge"
 
@@ -222,11 +224,13 @@ export function ChangeRequestCard({
                   >
                     {statusLabels[request.status]} ·{" "}
                     {request.items?.length ?? 0} 项改动
+                    {isOwner && request.status === "pending_review" && (
+                      <RequestReviewers reviewers={request.reviewers} />
+                    )}
                     {!compact && request.submitted_via === "admin_handover" && (
                       <span> · 员工未过目</span>
                     )}
-                    {compact &&
-                      open.includes(request) &&
+                    {open.includes(request) &&
                       request.items?.map((item) => (
                         <CompactChange
                           key={item.id}
@@ -308,9 +312,24 @@ function CompactChange({
   item: ChangeItemPublic
   profileItems: ProfileItem[]
 }) {
+  const [expanded, setExpanded] = useState(false)
+  const statementId = useId()
   const before = profileItems.find(
     (entry) => entry.claim?.id === item.target_claim_id,
   )?.claim
+  const displayLevel = (level: string | null | undefined) => {
+    if (!level) return "未定级"
+    const rubric = item.capability.level_rubric
+    if (
+      !record(rubric) ||
+      !Array.isArray(rubric.levels) ||
+      !rubric.levels.some(
+        (entry: unknown) => record(entry) && entry.key === level,
+      )
+    )
+      return "等级暂不可用"
+    return levelLabel(rubric, level)
+  }
   return (
     <div className="space-y-2">
       <h3 className="font-semibold">{item.capability.name}</h3>
@@ -318,9 +337,9 @@ function CompactChange({
         <span>
           修改前：
           {before?.level
-            ? levelLabel(item.capability.level_rubric, before.level)
+            ? displayLevel(before.level)
             : before
-              ? "未给等级"
+              ? "未定级"
               : item.target_claim_id
                 ? "历史判断"
                 : "暂无判断"}
@@ -333,9 +352,7 @@ function CompactChange({
         )}
         <span>
           → 修改后：
-          {item.after?.level
-            ? levelLabel(item.capability.level_rubric, item.after.level)
-            : "未给等级"}
+          {item.after?.level ? displayLevel(item.after.level) : "未定级"}
         </span>
         {item.after ? (
           <StatusBadge
@@ -346,6 +363,25 @@ function CompactChange({
           <span>撤回</span>
         )}
       </div>
+      <p
+        id={statementId}
+        className={`whitespace-pre-wrap break-words ${expanded ? "" : "line-clamp-2"}`}
+      >
+        {item.after?.statement ??
+          before?.statement ??
+          (item.op === "retract" ? "撤回这条判断" : "补充依据，保留原判断")}
+      </p>
+      {(item.after?.statement || before?.statement) && (
+        <Button
+          variant="link"
+          size="sm"
+          aria-controls={statementId}
+          aria-expanded={expanded}
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? "收起陈述" : "展开陈述"}
+        </Button>
+      )}
     </div>
   )
 }
