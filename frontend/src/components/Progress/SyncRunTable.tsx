@@ -78,6 +78,14 @@ export function SyncRunTable({ orgId }: { orgId: string }) {
                 <td className="p-3">
                   {run.kind === "jira" ? "Jira" : "CSV"}
                   <p>{run.filename}</p>
+                  {run.kind === "jira" && (
+                    <p>
+                      项目范围：
+                      {run.project_keys?.length
+                        ? run.project_keys.join("、")
+                        : "全部项目"}
+                    </p>
+                  )}
                 </td>
                 <td className="p-3 whitespace-nowrap">
                   {statuses[run.status]}

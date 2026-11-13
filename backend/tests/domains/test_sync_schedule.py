@@ -113,6 +113,9 @@ def test_concurrent_dispatch_and_missed_periods(
     request: pytest.FixtureRequest, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     org = request.getfixturevalue("context")[0]
+    connection = connection_for(db, org)
+    connection.config = {**connection.config, "project_keys": ["PLAT"]}
+    db.add(connection)
     make_due(db, org)
     now = datetime(2030, 4, 20, tzinfo=UTC)
     queued, release = Event(), Event()
@@ -140,6 +143,7 @@ def test_concurrent_dispatch_and_missed_periods(
     db.expire_all()
     runs = db.exec(select(SyncRun).where(SyncRun.org_id == org)).all()
     assert len(runs) == 1 and runs[0].trigger == "schedule"
+    assert runs[0].input == {"project_keys": ["PLAT"]}
     assert connection_for(db, org).next_sync_at == datetime(2030, 5, 15, tzinfo=UTC)
     schedule.dispatch_due_syncs(db, now)
     assert db.exec(select(SyncRun).where(SyncRun.org_id == org)).all() == runs

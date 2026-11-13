@@ -3,6 +3,7 @@ import { useCallback, useState } from "react"
 import {
   type JiraConfig,
   type JiraConnectionPublic,
+  type JiraProject,
   SourcesService,
 } from "@/client"
 import { DraftField } from "@/components/AdminAssistant/DraftField"
@@ -59,6 +60,7 @@ function JiraForm({
   const [secret, setSecret] = useState("")
   const [hasSecret, setHasSecret] = useState(connection.has_secret)
   const [dirty, setDirty] = useState(false)
+  const [projects, setProjects] = useState<JiraProject[]>([])
   const assistant = usePageDraft(
     orgId,
     "update_jira_connection",
@@ -83,11 +85,13 @@ function JiraForm({
         path: { org_id: orgId },
         body: {
           ...config,
+          project_keys: config.project_keys?.filter(Boolean),
           sync_schedule: schedule,
           secret: secret || undefined,
         },
       }),
     onSuccess: ({ data }) => {
+      if (data.config) setConfig(data.config)
       setSecret("")
       setHasSecret(data.has_secret)
       setDirty(false)
@@ -97,6 +101,7 @@ function JiraForm({
   })
   const test = useMutation({
     mutationFn: () => SourcesService.testJira({ path: { org_id: orgId } }),
+    onSuccess: ({ data }) => setProjects(data.ok ? (data.projects ?? []) : []),
   })
   const sync = useMutation({
     mutationFn: () => SourcesService.startJiraSync({ path: { org_id: orgId } }),
@@ -104,6 +109,13 @@ function JiraForm({
       client.invalidateQueries({ queryKey: ["source-runs", orgId] }),
   })
   function change(patch: Partial<JiraConfig>) {
+    if (
+      patch.base_url !== undefined ||
+      patch.deployment !== undefined ||
+      patch.username !== undefined ||
+      patch.auth_type !== undefined
+    )
+      setProjects([])
     setConfig({ ...config, ...patch })
     setDirty(true)
     save.reset()
@@ -225,6 +237,7 @@ function JiraForm({
               value={secret}
               onChange={(e) => {
                 setSecret(e.target.value)
+                setProjects([])
                 setDirty(true)
                 save.reset()
                 test.reset()
@@ -252,6 +265,62 @@ function JiraForm({
             <p className="text-xs text-muted-foreground">
               首次同步只读取这个日期之后的工作记录，默认从一年前开始。
             </p>
+          </DraftField>
+          <DraftField changed={assistant.changed("project_keys")}>
+            <Label htmlFor="jira-projects">同步项目 key</Label>
+            <Input
+              id="jira-projects"
+              value={(config.project_keys ?? []).join(",")}
+              placeholder="例如 QG,AB；留空同步全部项目"
+              aria-describedby="jira-projects-help"
+              onChange={(e) =>
+                change({
+                  project_keys: e.target.value
+                    .split(/[,，]/)
+                    .map((key) => key.trim()),
+                })
+              }
+            />
+            <p
+              id="jira-projects-help"
+              className="text-xs text-muted-foreground"
+            >
+              可直接填写项目 key（逗号分隔，最多 50
+              个），或保存后测试连接并勾选。缩小范围不会删除已经同步的记录。
+            </p>
+            {projects.length > 0 && (
+              <fieldset className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-md border p-3">
+                <legend className="px-1 text-sm">
+                  可见项目（最多显示 100 个）
+                </legend>
+                {projects.map((project) => (
+                  <label
+                    key={project.key}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={(config.project_keys ?? []).some(
+                        (key) => key.toUpperCase() === project.key,
+                      )}
+                      onChange={(e) =>
+                        change({
+                          project_keys: e.target.checked
+                            ? [
+                                ...(config.project_keys ?? []).filter(Boolean),
+                                project.key,
+                              ]
+                            : (config.project_keys ?? []).filter(
+                                (key) => key.toUpperCase() !== project.key,
+                              ),
+                        })
+                      }
+                    />
+                    {project.key}（{project.name}）
+                  </label>
+                ))}
+              </fieldset>
+            )}
           </DraftField>
           <DraftField changed={assistant.changed("sync_schedule")}>
             <Label htmlFor="jira-schedule">同步周期</Label>
@@ -303,6 +372,22 @@ function JiraForm({
         </fieldset>
         <p className="text-xs text-muted-foreground">
           修改后请先保存，再测试连接或立即同步。
+        </p>
+        <p className="text-sm font-medium">
+          将同步：
+          {config.project_keys?.filter(Boolean).length
+            ? config.project_keys
+                .filter(Boolean)
+                .map((key) => {
+                  const project = projects.find(
+                    (p) => p.key === key.toUpperCase(),
+                  )
+                  return project
+                    ? `${project.key}（${project.name}）`
+                    : key.toUpperCase()
+                })
+                .join("、")
+            : "全部项目"}
         </p>
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={busy || syncing || assistant.blocked}>

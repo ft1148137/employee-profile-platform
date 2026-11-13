@@ -702,6 +702,7 @@ export type {
   JiraConnectionTest,
   JiraConnectionUpdate,
   JiraConnectionUpdateWritable,
+  JiraProject,
   JsonValue,
   LinkCard,
   loginLoginAccessTokenData,

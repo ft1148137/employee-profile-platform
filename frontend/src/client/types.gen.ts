@@ -3008,6 +3008,10 @@ export type JiraConfig = {
    * Include Description
    */
   include_description?: boolean
+  /**
+   * Project Keys
+   */
+  project_keys?: Array<string>
 }
 
 /**
@@ -3057,6 +3061,10 @@ export type JiraConnectionTest = {
    * Account Name
    */
   account_name?: string | null
+  /**
+   * Projects
+   */
+  projects?: Array<JiraProject>
 }
 
 /**
@@ -3088,6 +3096,10 @@ export type JiraConnectionUpdate = {
    */
   include_description?: boolean
   /**
+   * Project Keys
+   */
+  project_keys?: Array<string>
+  /**
    * Sync Schedule
    */
   sync_schedule?: "off" | "monthly" | "quarterly" | "yearly"
@@ -3095,6 +3107,20 @@ export type JiraConnectionUpdate = {
    * Secret
    */
   secret?: null
+}
+
+/**
+ * JiraProject
+ */
+export type JiraProject = {
+  /**
+   * Key
+   */
+  key: string
+  /**
+   * Name
+   */
+  name: string
 }
 
 export type JsonValue = unknown
@@ -4726,6 +4752,10 @@ export type SyncRunPublic = {
    */
   filename: string | null
   /**
+   * Project Keys
+   */
+  project_keys?: Array<string> | null
+  /**
    * Created At
    */
   created_at: string
@@ -5609,6 +5639,10 @@ export type JiraConnectionUpdateWritable = {
    * Include Description
    */
   include_description?: boolean
+  /**
+   * Project Keys
+   */
+  project_keys?: Array<string>
   /**
    * Sync Schedule
    */

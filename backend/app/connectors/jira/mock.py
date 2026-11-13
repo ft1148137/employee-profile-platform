@@ -77,7 +77,9 @@ def filter_issues(issues: list[dict[str, Any]], jql: str) -> list[dict[str, Any]
         for clause in re.split(r"\s+AND\s+", parts[0].strip(), flags=re.I):
             project = re.fullmatch(r"project\s*=\s*([\w-]+)", clause, re.I)
             projects = re.fullmatch(
-                r"project\s+in\s*\(\s*([\w-]+(?:\s*,\s*[\w-]+)*)\s*\)", clause, re.I
+                r'project\s+in\s*\(\s*((?:"[\w-]+"|[\w-]+)(?:\s*,\s*(?:"[\w-]+"|[\w-]+))*)\s*\)',
+                clause,
+                re.I,
             )
             updated = re.fullmatch(
                 r'updated\s*>=\s*"(\d{4}[-/]\d{2}[-/]\d{2}(?: \d{2}:\d{2})?)"',
@@ -87,7 +89,7 @@ def filter_issues(issues: list[dict[str, Any]], jql: str) -> list[dict[str, Any]
             if project or projects:
                 matched = project or projects
                 assert matched is not None
-                keys = {key.strip() for key in matched[1].split(",")}
+                keys = {key.strip().strip('"') for key in matched[1].split(",")}
                 result = [
                     issue for issue in result if issue["key"].rsplit("-", 1)[0] in keys
                 ]
@@ -221,6 +223,25 @@ def create_mock_app(examples_dir: Path) -> FastAPI:
     def removed_search(request: Request, ds: str) -> None:
         authorize(request, ds, "3")
         raise MockJiraError("Use /rest/api/3/search/jql", 410)
+
+    def project_list(request: Request, ds: str, version: str) -> list[dict[str, str]]:
+        issues = authorize(request, ds, version)
+        projects = {
+            issue["key"].rsplit("-", 1)[0]: (issue["fields"].get("project") or {}).get(
+                "name", issue["key"].rsplit("-", 1)[0]
+            )
+            for issue in issues
+        }
+        return [{"key": key, "name": name} for key, name in sorted(projects.items())]
+
+    @mock.get("/{ds}/rest/api/3/project/search")
+    def cloud_projects(request: Request, ds: str) -> dict[str, Any]:
+        projects = project_list(request, ds, "3")
+        return {"values": projects[:100], "isLast": len(projects) <= 100}
+
+    @mock.get("/{ds}/rest/api/2/project")
+    def dc_projects(request: Request, ds: str) -> list[dict[str, str]]:
+        return project_list(request, ds, "2")
 
     async def search(request: Request, ds: str, version: str) -> dict[str, Any]:
         issues = authorize(request, ds, version)

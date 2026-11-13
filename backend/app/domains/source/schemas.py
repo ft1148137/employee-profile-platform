@@ -1,9 +1,18 @@
+import re
 from calendar import monthrange
 from datetime import date, datetime
 from typing import Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, Field, HttpUrl, SecretStr, TypeAdapter, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    HttpUrl,
+    SecretStr,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
 
 from app.domains.org.models import EmploymentStatus
 from app.domains.org.schemas import DepartmentSummary
@@ -75,6 +84,17 @@ class JiraConfig(BaseModel):
     username: str | None = Field(default=None, max_length=255)
     start_date: date = Field(default_factory=default_start_date)
     include_description: bool = False
+    project_keys: list[str] = Field(default_factory=list, max_length=50)
+
+    @field_validator("project_keys")
+    @classmethod
+    def validate_project_keys(cls, keys: list[str]) -> list[str]:
+        keys = [key.upper() for key in keys]
+        if any(not re.fullmatch(r"[A-Z][A-Z0-9_]{0,49}", key) for key in keys):
+            raise ValueError(
+                "项目 key 须以字母开头，只含英文字母、数字和下划线，最多 50 位"
+            )
+        return list(dict.fromkeys(keys))
 
     @model_validator(mode="after")
     def validate_config(self) -> Self:
@@ -113,10 +133,16 @@ class JiraConnectionPublic(BaseModel):
     updated_at: datetime | None = None
 
 
+class JiraProject(BaseModel):
+    key: str
+    name: str
+
+
 class JiraConnectionTest(BaseModel):
     ok: bool
     message: str
     account_name: str | None = None
+    projects: list[JiraProject] = Field(default_factory=list)
 
 
 class SyncRunPublic(BaseModel):
@@ -128,6 +154,7 @@ class SyncRunPublic(BaseModel):
     counts: dict[str, int]
     error: str | None
     filename: str | None
+    project_keys: list[str] | None = None
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
