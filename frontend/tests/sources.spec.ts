@@ -48,11 +48,21 @@ for (const deployment of ["cloud", "data_center"]) {
     await expect(status).toContainText("记录 20")
     await expect(status).toContainText("新增任务 20")
     const history = page.getByRole("region", { name: "同步记录", exact: true })
-    await expect(history).toContainText("项目范围：EDGE")
+    await expect(
+      history.getByRole("cell", { name: "Jira", exact: true }),
+    ).toBeVisible()
+    await expect(
+      history.getByRole("columnheader", { name: "项目范围", exact: true }),
+    ).toBeVisible()
+    await expect(
+      history.getByRole("cell", { name: "EDGE", exact: true }),
+    ).toBeVisible()
     await page.getByLabel("同步项目标识").fill("fw,EDGE,fw")
     await page.getByRole("button", { name: "保存", exact: true }).click()
     await expect(page.getByLabel("同步项目标识")).toHaveValue("FW,EDGE")
-    await expect(history).toContainText("项目范围：EDGE")
+    await expect(
+      history.getByRole("cell", { name: "EDGE", exact: true }),
+    ).toBeVisible()
     await expect(page.getByText(/缩小范围不会删除已经同步的记录/)).toBeVisible()
   })
 }
