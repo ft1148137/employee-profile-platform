@@ -41,3 +41,5 @@
 - [ADR-0038：首次设置使用持久管理对话](0038-setup-conversation.md)
 - [ADR-0040：管理员和经理直接修改画像](0040-direct-profile-edits.md)
 - [ADR-0041：Pi 生成部门默认对应能力](0041-department-default-capabilities.md)
+
+- [ADR-0042：初始画像状态与直属上级摘要](0042-initial-profile-status-and-manager-reference.md)

@@ -4,6 +4,7 @@ import {
   tenureLabel,
 } from "@/components/Roster/EmployeeFields"
 import { useOrg } from "@/hooks/useOrg"
+import { initialStatusLabels } from "./initialStatus"
 import { StatusBadge } from "./StatusBadge"
 
 export function publishedLabel(value: EmployeeSummary["latest_published"]) {
@@ -39,10 +40,14 @@ export function EmployeeSummaryContent({
           (kind, i) => (
             <div key={kind}>
               <dt className="mb-2 text-sm text-muted-foreground">
-                {["填写进度", "推断进度", "审核状态"][i]}
+                {["填写进度", "初始画像", "审核状态"][i]}
               </dt>
               <dd>
-                <StatusBadge kind={kind} value={employee.progress?.[kind]} />
+                {kind === "inference_status" ? (
+                  initialStatusLabels[employee.progress.initial_profile_status]
+                ) : (
+                  <StatusBadge kind={kind} value={employee.progress?.[kind]} />
+                )}
               </dd>
             </div>
           ),

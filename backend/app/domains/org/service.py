@@ -1,8 +1,9 @@
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import aliased
+from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.selectable import Subquery
 from sqlmodel import Session, col, select
 from sqlmodel.sql.expression import Select
@@ -10,7 +11,14 @@ from sqlmodel.sql.expression import Select
 from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
 from app.domains.audit.service import record_audit
+from app.domains.change_request.models import (
+    ChangeItem,
+    ProfileChangeRequest,
+    RequestOrigin,
+    RequestStatus,
+)
 from app.domains.change_request.service import review_statuses
+from app.domains.evidence.models import Evidence, EvidenceKind, EvidenceStatus
 from app.domains.org.models import (
     Department,
     Employee,
@@ -28,6 +36,7 @@ from app.domains.org.schemas import (
     EmployeeReference,
     EmployeesPublic,
     EmployeeSummary,
+    InitialProfileStatus,
     OrganizationPublic,
     OrgChartDepartment,
     OrgChartPerson,
@@ -36,10 +45,12 @@ from app.domains.org.schemas import (
     PublishedSummary,
 )
 from app.domains.profile.models import (
+    InferenceStatus,
     ProfileProgress,
     ProfileVersion,
     ProgressReviewStatus,
 )
+from app.domains.source.models import SourceConnection
 from app.models import User
 
 
@@ -148,9 +159,104 @@ def _reporting_managers(principal: Principal) -> Subquery:
         .where(
             ReportingLine.org_id == principal.org_id,
             col(ReportingLine.valid_to).is_(None),
-            employee_scope_clause(principal),
+            col(ReportingLine.employee_id).in_(
+                select(Employee.id)
+                .where(employee_scope_clause(principal))
+                .correlate(None)
+            ),
         )
         .subquery()
+    )
+
+
+def _initial_profile_status() -> ColumnElement[str]:
+    initial = (
+        select(ProfileChangeRequest.id)
+        .where(
+            ProfileChangeRequest.org_id == Employee.org_id,
+            ProfileChangeRequest.subject_employee_id == Employee.id,
+            ProfileChangeRequest.origin == RequestOrigin.INITIAL_SYNC,
+        )
+        .correlate(Employee)
+    )
+    has_items = (
+        select(ChangeItem.id)
+        .where(
+            ChangeItem.org_id == ProfileChangeRequest.org_id,
+            ChangeItem.request_id == ProfileChangeRequest.id,
+        )
+        .exists()
+    )
+    awaiting = [RequestStatus.DRAFT, RequestStatus.PENDING_OWNER]
+    pending = initial.where(
+        col(ProfileChangeRequest.status).in_(awaiting), has_items
+    ).exists()
+    handled = initial.where(~col(ProfileChangeRequest.status).in_(awaiting)).exists()
+    submitted = (
+        select(ProfileChangeRequest.id)
+        .where(
+            ProfileChangeRequest.org_id == Employee.org_id,
+            ProfileChangeRequest.subject_employee_id == Employee.id,
+            col(ProfileChangeRequest.submitted_at).is_not(None),
+        )
+        .correlate(Employee)
+        .exists()
+    )
+    published = (
+        select(ProfileVersion.id)
+        .where(
+            ProfileVersion.org_id == Employee.org_id,
+            ProfileVersion.subject_employee_id == Employee.id,
+        )
+        .correlate(Employee)
+        .exists()
+    )
+    records = (
+        select(Evidence.id)
+        .where(
+            Evidence.org_id == Employee.org_id,
+            Evidence.subject_employee_id == Employee.id,
+            Evidence.kind == EvidenceKind.WORK_RECORD,
+            Evidence.status == EvidenceStatus.ACTIVE,
+        )
+        .correlate(Employee)
+        .exists()
+    )
+    source = (
+        select(SourceConnection.id)
+        .where(SourceConnection.org_id == Employee.org_id)
+        .correlate(Employee)
+        .exists()
+    )
+    imported = (
+        select(Evidence.id)
+        .where(
+            Evidence.org_id == Employee.org_id,
+            Evidence.kind == EvidenceKind.WORK_RECORD,
+        )
+        .correlate(Employee)
+        .exists()
+    )
+    # Requests with items take priority; submitted/handled requests or a publication
+    # are done. Running/failed comes from progress. Otherwise active work evidence
+    # distinguishes no records from no judgment after generation (including old empty
+    # initial requests), or waiting to draft. No connection/import means waiting source.
+    return case(
+        (pending, "pending_owner"),
+        (handled | submitted | published, "done"),
+        (col(ProfileProgress.inference_status) == InferenceStatus.RUNNING, "drafting"),
+        (col(ProfileProgress.inference_status) == InferenceStatus.FAILED, "failed"),
+        (
+            records
+            & (
+                (col(ProfileProgress.inference_status) == InferenceStatus.GENERATED)
+                | initial.exists()
+            ),
+            "no_judgment",
+        ),
+        (records, "waiting_draft"),
+        (source | imported, "no_records"),
+        else_="waiting_source",
     )
 
 
@@ -195,7 +301,7 @@ def employee_summary(
     session: Session, employee: Employee, principal: Principal
 ) -> EmployeeSummary:
     managers = _reporting_managers(principal)
-    department, progress, version, manager_id, manager_name, fields = session.exec(
+    row = session.exec(
         Select[
             tuple[
                 Department | None,
@@ -204,6 +310,7 @@ def employee_summary(
                 UUID | None,
                 str | None,
                 list[EmployeeField],
+                str,
             ]
         ](
             Department,
@@ -212,6 +319,7 @@ def employee_summary(
             managers.c.id,
             managers.c.display_name,
             col(Organization.employee_fields),
+            _initial_profile_status(),
         )
         .select_from(Employee)
         .join(Organization, col(Organization.id) == Employee.org_id)
@@ -235,6 +343,7 @@ def employee_summary(
         .order_by(col(ProfileVersion.revision).desc())
         .limit(1)
     ).one()
+    department, progress, version, manager_id, manager_name, fields, initial = row
     return _employee_summary(
         employee,
         department,
@@ -246,6 +355,7 @@ def employee_summary(
         )[employee.id],
         manager_id,
         manager_name,
+        initial,
     )
 
 
@@ -258,6 +368,7 @@ def _employee_summary(
     review_status: ProgressReviewStatus,
     manager_id: UUID | None,
     manager_name: str | None,
+    initial_status: str,
 ) -> EmployeeSummary:
     return EmployeeSummary(
         **{f: getattr(employee, f) for f in fields},
@@ -271,6 +382,7 @@ def _employee_summary(
                 or ProfileProgress(org_id=employee.org_id, employee_id=employee.id)
             ).model_dump(),
             review_status=review_status,
+            initial_profile_status=InitialProfileStatus(initial_status),
         ),
         latest_published=PublishedSummary.model_validate(version) if version else None,
         manager=EmployeeReference(id=manager_id, display_name=manager_name)
@@ -326,6 +438,7 @@ def list_employees(
                 ProfileVersion | None,
                 UUID | None,
                 str | None,
+                str,
             ]
         ](
             Employee,
@@ -334,6 +447,7 @@ def list_employees(
             latest_version,
             managers.c.id,
             managers.c.display_name,
+            _initial_profile_status(),
         )
         .where(*filters)
         .outerjoin(managers, col(Employee.id) == managers.c.employee_id)
@@ -365,9 +479,17 @@ def list_employees(
     return EmployeesPublic(
         data=[
             _employee_summary(
-                e, d, p, v, fields, statuses[e.id], manager_id, manager_name
+                e,
+                d,
+                p,
+                v,
+                fields,
+                statuses[e.id],
+                manager_id,
+                manager_name,
+                initial_status,
             )
-            for e, d, p, v, manager_id, manager_name in rows
+            for e, d, p, v, manager_id, manager_name, initial_status in rows
         ],
         count=count,
     )

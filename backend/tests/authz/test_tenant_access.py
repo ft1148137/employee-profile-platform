@@ -281,6 +281,7 @@ def test_employee_list_query_bound(tenant_data: tuple, db: Session) -> None:
         "inference_status": "pending",
         "review_status": "none",
         "evidence_quality": "unknown",
+        "initial_profile_status": "waiting_source",
     }
     assert by_id[employees[1].id].latest_published is None
     tail = list_employees(

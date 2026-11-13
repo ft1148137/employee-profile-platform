@@ -17,6 +17,7 @@ import {
   type DataTableFeatures,
 } from "@/components/Common/DataTable"
 import { publishedLabel } from "@/components/Profile/EmployeeSummary"
+import { initialStatusLabels } from "@/components/Profile/initialStatus"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
 import {
   employeeFieldLabels,
@@ -151,7 +152,7 @@ export function AccountTable({
       ["fill_status", "inference_status", "review_status", "published"] as const
     ).map((kind, index) => ({
       id: kind,
-      header: ["填写进度", "推断进度", "审核状态", "最近发布版本"][index],
+      header: ["填写进度", "初始画像", "审核状态", "最近发布版本"][index],
       cell: ({ row }: { row: { original: EmployeeAccount } }) =>
         org ? (
           <EmployeeProgress
@@ -259,6 +260,8 @@ function EmployeeProgress({
     )
   return kind === "published" ? (
     publishedLabel(summary.data.latest_published)
+  ) : kind === "inference_status" ? (
+    initialStatusLabels[summary.data.progress.initial_profile_status]
   ) : (
     <StatusBadge kind={kind} value={summary.data.progress?.[kind]} />
   )

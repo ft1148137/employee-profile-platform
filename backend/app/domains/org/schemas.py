@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from enum import StrEnum
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -75,11 +76,23 @@ class OrgChartPublic(SQLModel):
     people: list[OrgChartPerson]
 
 
+class InitialProfileStatus(StrEnum):
+    WAITING_SOURCE = "waiting_source"
+    NO_RECORDS = "no_records"
+    WAITING_DRAFT = "waiting_draft"
+    DRAFTING = "drafting"
+    PENDING_OWNER = "pending_owner"
+    NO_JUDGMENT = "no_judgment"
+    FAILED = "failed"
+    DONE = "done"
+
+
 class ProgressPublic(SQLModel):
     fill_status: FillStatus
     inference_status: InferenceStatus
     review_status: ProgressReviewStatus
     evidence_quality: EvidenceQuality
+    initial_profile_status: InitialProfileStatus
 
 
 class PublishedSummary(SQLModel):

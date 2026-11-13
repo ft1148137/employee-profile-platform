@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, select
+from sqlmodel import Session, col, delete, select
 
 from app.domains.base import utc_now
 from app.domains.org.models import (
@@ -168,7 +168,10 @@ def test_department_people_and_current_reporting_scope(
         manager = client.get(
             url + f"/employees/{employees[0][1].id}", headers=auth
         ).json()["manager"]
-        assert (manager is None) == (actor == 1)
+        assert manager == {
+            "id": str(employees[0][0].id),
+            "display_name": employees[0][0].display_name,
+        }
     for department in (departments[0][0], departments[0][3], departments[1][0]):
         response = client.get(
             url + "/employees",
@@ -219,3 +222,47 @@ def test_chart_reporting_cycle_returns_people(
     people = {row["id"]: row for row in response.json()["people"]}
     assert people[str(employees[0][0].id)]["manager_id"] == str(employees[0][2].id)
     assert people[str(employees[0][2].id)]["manager_id"] == str(employees[0][1].id)
+
+
+def test_employee_reads_only_manager_reference(
+    chart_data: tuple, client: TestClient, db: Session
+) -> None:
+    orgs, _, employees, users, _ = chart_data
+    membership = db.exec(
+        select(OrgMembership).where(
+            OrgMembership.org_id == orgs[0].id,
+            OrgMembership.user_id == users[1].id,
+        )
+    ).one()
+    db.exec(
+        delete(RoleGrant).where(
+            col(RoleGrant.org_id) == orgs[0].id,
+            col(RoleGrant.membership_id) == membership.id,
+        )
+    )
+    db.commit()
+    auth = headers(users[1])
+    base = f"/api/v1/orgs/{orgs[0].id}/employees"
+    own = employees[0][1]
+    expected = {
+        "id": str(employees[0][0].id),
+        "display_name": employees[0][0].display_name,
+    }
+    for suffix in (f"/{own.id}", f"/{own.id}/profile"):
+        response = client.get(base + suffix, headers=auth)
+        assert response.status_code == 200
+        body = response.json()
+        assert (body["employee"] if suffix.endswith("/profile") else body)[
+            "manager"
+        ] == expected
+    mine = client.get(f"/api/v1/orgs/{orgs[0].id}/me/profile", headers=auth)
+    assert mine.status_code == 200
+    assert mine.json()["employee"]["manager"] == expected
+    listed = client.get(base, headers=auth).json()
+    assert listed["count"] == 1 and listed["data"][0]["manager"] == expected
+    for other in (employees[0][0], employees[0][2], employees[1][0]):
+        for suffix in ("", "/profile", "/change-requests"):
+            assert (
+                client.get(f"{base}/{other.id}{suffix}", headers=auth).status_code
+                == 404
+            )
