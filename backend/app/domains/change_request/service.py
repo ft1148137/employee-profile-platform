@@ -91,7 +91,7 @@ def _reviewers(
             RequestReviewer(
                 name=employee.display_name
                 if employee
-                else user.full_name or "企业管理员",
+                else user.full_name or user.username,
                 role=role,
             )
         )

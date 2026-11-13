@@ -9,6 +9,7 @@ from app.domains.bot import tools
 from app.domains.change_request import employee
 from app.domains.im.rendering import render
 from app.domains.org.models import ReportingLine, Role, RoleGrant
+from app.models import User
 from tests.api.routes.test_employee_requests import principal_for
 from tests.api.routes.test_review_delegations import setup_delegation
 from tests.api.routes.test_reviews import pending
@@ -77,6 +78,19 @@ def test_request_reviewers(
         if response.status_code == 200:
             assert all(row["reviewers"] == [] for row in response.json()["data"])
     assert client.get(f"{url}/me/requests", headers=auth["foreign"]).status_code == 404
+
+
+def test_reviewer_without_name_uses_existing_account_label(
+    demo: tuple, db: Session
+) -> None:
+    delegation = setup_delegation(db, demo)
+    delegate = db.get(User, delegation.delegate_user_id)
+    assert delegate is not None
+    delegate.full_name = None
+    db.commit()
+    _, request = pending(db, demo)
+    assert request.reviewers[-1].role == "代理审批"
+    assert request.reviewers[-1].name == delegate.username
 
 
 def test_preview_carries_reviewers_and_other_employee_cannot_read(
