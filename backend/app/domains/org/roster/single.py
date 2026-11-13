@@ -303,6 +303,9 @@ def impact(db: Session, p: Principal, args: SingleChange) -> BaseModel:
         for field, label in FIELD_LABELS.items():
             if field in args.model_fields_set:
                 text += f"；{label}：{getattr(row, field) or '清空'}"
+        if isinstance(args, Onboard):
+            preview = service.create_import(db, p, roster, "人员预览", persist=False)
+            text += "".join(f"；{issue.message}" for issue in preview.issues)
     return RootModel(
         {"count": len(employees) if isinstance(args, Offboard) else 1, "text": text}
     )
