@@ -16,6 +16,7 @@ from app.domains.admin_assistant.schemas import (
     RequestFile,
     SecretInputCard,
 )
+from app.domains.bot import attachments
 from app.domains.change_request.import_json import InvalidImport
 from app.domains.change_request.schemas import ToolInput
 from app.domains.drafting.settings import AutoDraftDisabled
@@ -56,6 +57,7 @@ def title(name: str, args: dict[str, JsonValue]) -> str:
             else "起草变更"
         )
     return {
+        "read_attachment": "读取会话附件",
         "get_today": "查看今天要处理的事",
         "list_admin_functions": "查看管理功能",
         "request_file": "请求上传文件",
@@ -65,6 +67,7 @@ def title(name: str, args: dict[str, JsonValue]) -> str:
 
 def definitions() -> list[ToolDefinition]:
     return [
+        attachments.READ_TOOL,
         ToolDefinition(
             name="request_file",
             description="显示文件上传框；只接收文件种类，文件内容由管理员直接上传",
@@ -109,6 +112,16 @@ def call(
     *,
     session_id: UUID | None = None,
 ) -> JsonValue:
+    if name == "read_attachment" and session_id:
+        try:
+            body_attachment = attachments.ReadAttachmentInput.model_validate(args)
+            return attachments.read_attachment(
+                db, principal, "admin", session_id, body_attachment.attachment_id
+            )
+        except ValidationError:
+            return {"error": "工具参数不正确"}
+        except HTTPException:
+            return {"error": "附件不存在"}
     try:
         if name == "request_file" and session_id:
             store.get_session(db, principal, session_id)

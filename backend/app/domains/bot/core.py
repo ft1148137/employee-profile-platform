@@ -20,6 +20,7 @@ from app.domains.bot.admission import (
 )
 from app.domains.bot.levels import name_levels
 from app.domains.bot.models import BotSession
+from app.domains.bot.presentation import DEADLINE_MESSAGE, retry_time
 from app.domains.bot.prompts import system_prompt
 from app.domains.change_request import employee
 from app.domains.change_request.models import ReviewVia
@@ -146,9 +147,9 @@ def turn(
     except BotDraftingPriority:
         message = "正在起草画像，请稍后再试"
     except BotRateLimited as error:
-        message = f"每小时 30 轮已用完，{error.retry_at.isoformat()} 恢复"
+        message = f"每小时 30 轮已用完，{retry_time(error.retry_at)} 恢复"
     except BotQuotaPaused as error:
-        message = f"模型额度暂时用完，预计 {error.retry_at.isoformat()} 恢复"
+        message = f"模型额度暂时用完，预计 {retry_time(error.retry_at)} 恢复"
     except pi_client.PiSessionInvalid:
         store.save_state(db, session, None)
         logger.warning("session_id=%s code=bad_request", session.id)
@@ -161,7 +162,9 @@ def turn(
             (monotonic() - started) * 1000,
         )
         message = (
-            str(error)
+            DEADLINE_MESSAGE
+            if error.code == "deadline"
+            else str(error)
             if isinstance(error, ModelServiceError)
             else "模型服务暂时不可用，请稍后再试"
         )

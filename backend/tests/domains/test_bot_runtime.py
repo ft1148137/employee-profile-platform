@@ -422,6 +422,14 @@ def test_expired_lease_successor_and_failure_release(
         old = begin_turn(first, p, row, "前一轮")
         old.__enter__()
         monkeypatch.setattr(admission, "utc_now", lambda: now + timedelta(seconds=80))
+        with pytest.raises(BotBusy):
+            with begin_turn(second, p, row, "原期限后仍在处理"):
+                pytest.fail("the three-minute turn lost its lease")
+        monkeypatch.setattr(
+            admission,
+            "utc_now",
+            lambda: now + timedelta(seconds=admission.LEASE_SECONDS + 5),
+        )
         with begin_turn(second, p, row, "接管"):
             old.__exit__(None, None, None)
             second.expire_all()
@@ -450,7 +458,9 @@ def test_takeover_immediately_after_admission_commit(
 
         def pause_after_commit(_db: Session) -> None:
             monkeypatch.setattr(
-                admission, "utc_now", lambda: now + timedelta(seconds=80)
+                admission,
+                "utc_now",
+                lambda: now + timedelta(seconds=admission.LEASE_SECONDS + 5),
             )
             successor.__enter__()
 

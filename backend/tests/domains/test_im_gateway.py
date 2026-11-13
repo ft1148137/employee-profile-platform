@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator
+from dataclasses import replace
 from datetime import timedelta
 from uuid import UUID, uuid4
 
@@ -797,3 +798,142 @@ def test_network_backoff_and_shutdown(
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(g.run())
     assert all(task.done() for _, task in g.tasks.values())
+
+
+def test_poll_handles_other_people_while_preserving_sender_order(
+    demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = principal(db, demo[1]["E02"].org_id, demo[1]["E02"].id)
+    setting = enable(db, p)
+
+    async def run() -> None:
+        first_started, other_replied = asyncio.Event(), asyncio.Event()
+        order = []
+        active = 0
+        peak = 0
+
+        class Fake:
+            def __init__(self, *_args: object) -> None:
+                self.closed = False
+
+            async def test_connection(self) -> str:
+                return "12345"
+
+            async def poll(self) -> AsyncIterator[Event]:
+                yield replace(event(p.org_id, "first"), external_user_id="A")
+                yield replace(
+                    event(p.org_id, "button"),
+                    external_user_id="A",
+                    callback_id="button",
+                )
+                for i in range(8):
+                    yield replace(event(p.org_id, str(i)), external_user_id=str(i))
+                await asyncio.Event().wait()
+
+            async def close(self) -> None:
+                assert active == 0
+                self.closed = True
+
+        async def handle(incoming: Event, *_args: object) -> None:
+            nonlocal active, peak
+            active += 1
+            peak = max(peak, active)
+            try:
+                order.append(incoming.text)
+                if incoming.text == "first":
+                    first_started.set()
+                    await asyncio.wait_for(other_replied.wait(), 1)
+                elif incoming.callback_id:
+                    assert other_replied.is_set()
+                else:
+                    await first_started.wait()
+                    other_replied.set()
+                    await asyncio.sleep(0.01)
+            finally:
+                active -= 1
+
+        g = gateway.Gateway(engine)
+        monkeypatch.setitem(gateway.ADAPTERS, "telegram", Fake)
+        monkeypatch.setattr(g, "handle", handle)
+        connection = asyncio.create_task(
+            g.connect(p.org_id, "telegram", setting.credentials)
+        )
+        try:
+            await asyncio.wait_for(other_replied.wait(), 2)
+            while len(order) < 10:
+                await asyncio.sleep(0)
+            assert order.index("first") < order.index("button")
+            assert 2 <= peak <= 4
+        finally:
+            connection.cancel()
+            await asyncio.gather(connection, return_exceptions=True)
+            assert active == 0
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("code", ["recipient_unavailable", "timeout"])
+def test_concurrent_poll_errors_and_cancellation(
+    demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch, code: str
+) -> None:
+    p = principal(db, demo[1]["E02"].org_id, demo[1]["E02"].id)
+    setting = enable(db, p)
+
+    async def run() -> None:
+        instances = []
+        idle_started, idle_stopped, reconnected = (asyncio.Event() for _ in range(3))
+
+        class Fake:
+            def __init__(self, *_args: object) -> None:
+                self.number = len(instances)
+                instances.append(self)
+
+            async def test_connection(self) -> str:
+                if self.number:
+                    reconnected.set()
+                return "12345"
+
+            async def poll(self) -> AsyncIterator[Event]:
+                if self.number == 0:
+                    yield replace(event(p.org_id, "idle"), external_user_id="A")
+                    yield replace(event(p.org_id, "error"), external_user_id="B")
+                    yield replace(event(p.org_id, "after"), external_user_id="C")
+                await asyncio.Event().wait()
+
+            async def close(self) -> None:
+                assert idle_stopped.is_set()
+
+        async def handle(incoming: Event, *_args: object) -> None:
+            if incoming.text == "idle":
+                idle_started.set()
+                try:
+                    await asyncio.Event().wait()
+                finally:
+                    idle_stopped.set()
+            elif incoming.text == "error":
+                await idle_started.wait()
+                raise ImError(code, retryable=True)
+            else:
+                if code == "recipient_unavailable":
+                    reconnected.set()
+
+        async def backoff(_seconds: float) -> None:
+            assert idle_stopped.is_set()
+
+        monkeypatch.setitem(gateway.ADAPTERS, "telegram", Fake)
+        monkeypatch.setattr(gateway.asyncio, "sleep", backoff)
+        g = gateway.Gateway(engine)
+        monkeypatch.setattr(g, "handle", handle)
+        connection = asyncio.create_task(
+            g.connect(p.org_id, "telegram", setting.credentials)
+        )
+        try:
+            await asyncio.wait_for(reconnected.wait(), 2)
+            assert len(instances) == (1 if code == "recipient_unavailable" else 2)
+            assert not connection.done()
+        finally:
+            connection.cancel()
+            await asyncio.gather(connection, return_exceptions=True)
+            assert idle_stopped.is_set()
+
+    asyncio.run(run())

@@ -20,6 +20,7 @@ from app.domains.bot import admission
 from app.domains.bot import store as messages
 from app.domains.bot.admission import BotBusy, BotRateLimited, begin_turn
 from app.domains.bot.models import BotSetting
+from app.domains.bot.presentation import DEADLINE_MESSAGE
 from app.domains.model.client import (
     ModelRateLimited,
     ModelServiceError,
@@ -120,6 +121,7 @@ def test_turn_and_private_sessions(
     def reply(_config: object, **kwargs: object) -> TurnResult:
         assert body["page"] in kwargs["system_prompt"]
         assert [t.name for t in kwargs["tools"]] == [
+            "read_attachment",
             "request_file",
             "request_secret_input",
             "get_today",
@@ -338,7 +340,9 @@ def test_model_failure_logs_only_metadata(
     )
     assert response.messages[0].type == "text"
     assert response.messages[0].text == (
-        "模型暂时不可用，请稍后重试，也可以继续使用手工页面。"
+        DEADLINE_MESSAGE
+        if code == "deadline"
+        else "模型暂时不可用，请稍后重试，也可以继续使用手工页面。"
     )
     records = [r for r in caplog.records if r.name == core.__name__]
     assert len(records) == 1

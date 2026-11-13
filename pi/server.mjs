@@ -164,14 +164,14 @@ export function quota(headers = {}, message = '', now = Date.now()) {
   return { retry_at: new Date(Math.max(now, at)).toISOString(), estimated };
 }
 
-export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60000, streamFn = streamSimple,
+export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 180000, streamFn = streamSimple,
   lookup, login, loginLifetime, refresh, localAuthFile, localAuthDirectory = '/run/pi-auth',
   environment, log = entry => console.log(JSON.stringify(entry)) } = {}) {
   if (localAuthFile && environment !== 'development') throw new Error('Local auth requires development');
   if (process.env.PI_EGRESS_ALLOW_FAKE_IP === '1' && environment !== 'development')
     throw new Error('Fake IP egress requires development');
   if (!text(token) || !Number.isFinite(deadlineMs) || deadlineMs <= 0 || deadlineMs > 120000 ||
-      !Number.isFinite(chatDeadlineMs) || chatDeadlineMs <= 0 || chatDeadlineMs > 60000)
+      !Number.isFinite(chatDeadlineMs) || chatDeadlineMs <= 0 || chatDeadlineMs > 180000)
     throw new Error('Invalid Pi service configuration');
   const digest = value => createHash('sha256').update(value).digest();
   const expected = digest(`Bearer ${token}`);
@@ -343,7 +343,7 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
         }
       });
       const timer = setTimeout(() => run.cancel('deadline'),
-        body.mode === 'chat' ? Math.min(deadlineMs, chatDeadlineMs) : deadlineMs);
+        body.mode === 'chat' ? chatDeadlineMs : deadlineMs);
       res.on('close', () => { if (!res.writableEnded) run.cancel('cancelled'); });
       run.finished = (async () => {
         let local;
@@ -380,6 +380,6 @@ export function createPiServer({ token, deadlineMs = 120000, chatDeadlineMs = 60
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   createPiServer({ token: process.env.PI_SERVICE_TOKEN, deadlineMs: Number(process.env.PI_DEADLINE_MS ?? 120000),
     localAuthFile: process.env.CHATGPT_CODEX_AUTH_FILE, environment: process.env.FASTAPI_ENV,
-    chatDeadlineMs: Number(process.env.PI_CHAT_DEADLINE_MS ?? 60000) })
+    chatDeadlineMs: Number(process.env.PI_CHAT_DEADLINE_MS ?? 180000) })
     .listen(Number(process.env.PORT ?? 8081), process.env.PI_HOST ?? '0.0.0.0');
 }
