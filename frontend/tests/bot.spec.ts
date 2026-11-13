@@ -92,6 +92,9 @@ for (const width of [1440, 390]) {
       ).ok(),
     ).toBeTruthy()
     await logInUser(page, email, password)
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem("current_org_id")))
+      .toBe(orgId)
     await addDraftingEvidence(page)
     expect(
       (
@@ -174,6 +177,9 @@ for (const width of [1440, 390]) {
     expect((await readRequests())[0].status).toBe("pending_owner")
     await panel.getByRole("button", { name: "继续修改", exact: true }).click()
     await expect(panel.getByText("请告诉我需要修改的内容")).toBeVisible()
+    const previewsBefore = await panel
+      .getByRole("region", { name: "提交前预览" })
+      .count()
     await panel.getByLabel("发给机器人的消息").fill("补充一段合成项目经历")
     await panel.getByRole("button", { name: "发送", exact: true }).click()
     await expect(
@@ -182,6 +188,9 @@ for (const width of [1440, 390]) {
     await expect(
       panel.getByText("我补充了一段合成项目经历", { exact: false }),
     ).toBeVisible()
+    await expect(panel.getByRole("region", { name: "提交前预览" })).toHaveCount(
+      previewsBefore + 1,
+    )
     const current = (await readRequests())[0]
     expect(current.id).toBe(initial.id)
     expect(current.status).toBe("draft")

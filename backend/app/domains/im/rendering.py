@@ -35,13 +35,13 @@ LABELS = {
 def claim_text(claim: s.Claim | None) -> str:
     if claim is None:
         return "暂无判断"
-    return f"{claim.statement}；等级：{claim.level or '未给等级'}；状态：{LABELS.get(claim.assessment_status, claim.assessment_status)}"
+    return f"{claim.statement}；等级：{claim.level_name or '未定级'}；状态：{LABELS.get(claim.assessment_status, claim.assessment_status)}"
 
 
 def item_text(item: s.ChangeItem) -> str:
     lines = [
         f"{item.capability.name}：{LABELS.get(item.op, item.op)}",
-        f"{item.after.statement}；等级：{item.after.level or '未给等级'}"
+        f"{item.after.statement}；等级：{item.after.level_name or '未定级'}"
         if item.after
         else "撤回此判断",
     ]
@@ -91,7 +91,7 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
         )
     if isinstance(message, s.PreviewCard):
         text = "改动预览\n" + "\n\n".join(
-            f"{item.after.capability.name}\n修改前：{item.before.statement if item.before else '暂无判断'}；等级：{item.before.level if item.before else '未给等级'}\n修改后：{item_text(item.after)}"
+            f"{item.after.capability.name}\n修改前：{item.before.statement if item.before else '暂无判断'}；等级：{(item.before.level_name or '未定级') if item.before else '未定级'}\n修改后：{item_text(item.after)}"
             for item in message.items
         )
         if len(text) > 12000:

@@ -14,6 +14,7 @@ from app.core.security import create_access_token
 from app.domains.base import utc_now
 from app.domains.bot import core, store, tools
 from app.domains.bot import schemas as s
+from app.domains.change_request import employee
 from app.domains.change_request.employee import InvalidItems, RequestConflict
 from app.domains.change_request.models import (
     ChangeItem,
@@ -47,6 +48,50 @@ def prepared(db: Session, demo: tuple) -> tuple:
     }
     tools.call(db, p, session, cards, "prepare_review_decision", args)
     return owner, request, p, session, cards[0], args
+
+
+def test_pending_review_summary_and_chinese_levels(demo: tuple, db: Session) -> None:
+    owner, request, p, session, card, _ = prepared(db, demo)
+    result = tools.call(db, p, session, [], "list_pending_reviews", {})
+    row = next(row for row in result["data"] if row["id"] == str(request.id))
+    assert row["employee_name"] == demo[1]["E02"].display_name
+    assert row["department_name"]
+    assert "后端" in row["capabilities"]
+    assert row["item_count"] == 1
+    assert row["submitted_at"].endswith("+08:00")
+    detail = tools.call(
+        db, p, session, [], "get_review", {"request_id": str(request.id)}
+    )
+    assert detail["items"][0]["after"]["after"]["level_name"] == "能完成常规任务"
+    text = rendering.render(card)[0]
+    assert "能完成常规任务" in text and "routine" not in text
+    assert tools.call(db, owner, session, [], "list_pending_reviews", {})["count"] == 0
+    capabilities = employee.capability_dictionary(owner, db).data[:4]
+    current = {
+        item.capability.key
+        for item in employee.my_profile(owner, db).items
+        if item.claim
+    }
+    _, multiple = pending(
+        db,
+        demo,
+        items=[
+            {
+                "op": "modify" if c.key in current else "add",
+                "capability_key": c.key,
+                "statement": "合成陈述",
+                "level": "routine",
+            }
+            for c in capabilities
+        ],
+    )
+    result = tools.call(db, p, session, [], "list_pending_reviews", {})
+    summary = next(row for row in result["data"] if row["id"] == str(multiple.id))
+    assert summary["item_count"] == 4
+    assert (
+        summary["capabilities"]
+        == "、".join(c.name for c in capabilities[:3]) + "等 4 项"
+    )
 
 
 def test_telegram_review_roundtrip(

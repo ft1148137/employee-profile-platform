@@ -100,6 +100,9 @@ def test_team_read_confirm_and_notify(
     assert profile["revision"] == args["base_revision"]
     assert "evidence" not in json.dumps(profile) and "source" not in json.dumps(profile)
     assert set(profile["items"][0]) == {"capability", "claim", "status"}
+    assert profile["items"][0]["claim"]["level_name"] == "能独立完成复杂任务"
+    assert card.items[0].after.level_name == "能完成常规任务"
+    assert "routine" not in rendering.render(card)[0]
     assert "确认后立即发布" in rendering.render(card)[0]
     core._save(db, session, [card])
     db.add(

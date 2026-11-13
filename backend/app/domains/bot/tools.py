@@ -9,6 +9,7 @@ from sqlmodel import Session, col, select
 from app.authz.principal import Principal
 from app.domains.bot import reviews
 from app.domains.bot import schemas as s
+from app.domains.bot.levels import name_levels
 from app.domains.bot.models import BotSession
 from app.domains.change_request import employee
 from app.domains.change_request.schemas import ToolInput
@@ -141,18 +142,21 @@ def team_call(
             s.ProfileEditAction(action=a, card_id=card.card_id)
             for a in ("confirm_profile_edit", "continue_profile_edit")
         ]
+        card = name_levels(db, p, card)
         cards.append(card)
-        return {"card_id": str(card.card_id), **preview.model_dump(mode="json")}
+        return {
+            "card_id": str(card.card_id),
+            "items": [i.model_dump(mode="json") for i in card.items],
+            "revision": card.revision,
+        }
     profile = read_profile(db, p, subject.id)
+    projected = name_levels(db, p, s.Profile.model_validate(profile))
     return {
         "employee_id": str(subject.id),
         "revision": profile.latest_published.revision
         if profile.latest_published
         else None,
-        "items": [
-            s.ProfileItem.model_validate(i).model_dump(mode="json")
-            for i in profile.items
-        ],
+        "items": [item.model_dump(mode="json") for item in projected.items],
     }
 
 
@@ -206,7 +210,9 @@ def redact(value: JsonValue) -> JsonValue:
 
 
 def preview_card(db: Session, p: Principal, request_id: UUID) -> s.PreviewCard:
-    preview = s.Preview.model_validate(employee.preview(p, db, request_id))
+    preview = name_levels(
+        db, p, s.Preview.model_validate(employee.preview(p, db, request_id))
+    )
     return s.PreviewCard(
         **preview.model_dump(),
         actions=[
@@ -238,6 +244,21 @@ def question_card(question: s.Question) -> s.QuestionCard:
     )
 
 
+def request_card(cards: list[s.Message], card: s.PreviewCard | s.StatusCard) -> None:
+    request_id = card.request_id if isinstance(card, s.PreviewCard) else card.id
+    cards[:] = [
+        existing
+        for existing in cards
+        if not (
+            isinstance(existing, s.PreviewCard)
+            and existing.request_id == request_id
+            or isinstance(existing, s.StatusCard)
+            and existing.id == request_id
+        )
+    ]
+    cards.append(card)
+
+
 def call(
     db: Session,
     p: Principal,
@@ -261,6 +282,7 @@ def call(
     if name == "draft_update_request":
         kwargs.update(via="bot", client_name="内置机器人")
     result = PROJECTIONS[name].model_validate(tool.handler(p, db, **kwargs))
+    result = name_levels(db, p, result)
     if isinstance(result, s.Profile):
         auto = read_auto_draft(db, p)
         result.auto_draft_enabled = auto.enabled and not auto.org_disabled
@@ -269,13 +291,17 @@ def call(
         if request_id not in session.request_ids:
             session.request_ids = [*session.request_ids, request_id]
             db.add(session)
-        cards.append(preview_card(db, p, request_id))
+        request_card(cards, preview_card(db, p, request_id))
     if isinstance(result, s.Requests):
         for request in result.data:
-            cards.append(
+            if request.id not in session.request_ids:
+                session.request_ids = [*session.request_ids, request.id]
+                db.add(session)
+            request_card(
+                cards,
                 preview_card(db, p, request.id)
                 if request.status in ("draft", "pending_owner")
-                else status_card(request)
+                else status_card(request),
             )
     if isinstance(result, s.Questions):
         cards.extend(question_card(q) for q in result.data)

@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router"
 import { useState } from "react"
 import type {
   CapabilitiesPublic,
+  Claim,
   ProfileEditAction,
   QuestionAction,
   RequestAction,
@@ -44,6 +45,17 @@ export function BotMessage({
   onAction: (action: BotAction) => void
 }) {
   const [answer, setAnswer] = useState("")
+  const displayLevel = (claim: Claim | null | undefined, key: string) =>
+    claim?.level_name ??
+    (claim?.level
+      ? dictionary
+        ? levelLabel(
+            dictionary.data.find((capability) => capability.key === key)
+              ?.level_rubric,
+            claim.level,
+          )
+        : "等级暂不可用"
+      : "未定级")
   if (message.type === "text")
     return (
       <div className="space-y-2">
@@ -65,9 +77,6 @@ export function BotMessage({
       >
         <h3 className="font-semibold">直接修改画像：{message.employee_name}</h3>
         {message.items.map((item) => {
-          const rubric = dictionary?.data.find(
-            (capability) => capability.key === item.capability_key,
-          )?.level_rubric
           return (
             <div key={item.capability_key} className="space-y-2 border-t pt-3">
               <h4 className="font-medium">{item.capability_name}</h4>
@@ -77,11 +86,7 @@ export function BotMessage({
               ].map(({ label, claim }) => (
                 <p key={label}>
                   {label}：{claim?.statement ?? "暂无判断"} · 等级：
-                  {claim?.level
-                    ? dictionary
-                      ? levelLabel(rubric, claim.level)
-                      : "等级暂不可用"
-                    : "未给等级"}
+                  {displayLevel(claim, item.capability_key)}
                   {claim && (
                     <StatusBadge
                       kind="assessment_status"
@@ -122,9 +127,6 @@ export function BotMessage({
           审批决定复述（修订 {message.revision}）
         </h3>
         {message.items.map((item) => {
-          const rubric = dictionary?.data.find(
-            (capability) => capability.key === item.after.capability.key,
-          )?.level_rubric
           const decision = message.decisions.find(
             (d) => d.item_id === item.after.id,
           )
@@ -133,11 +135,7 @@ export function BotMessage({
               <h4 className="font-medium">{item.after.capability.name}</h4>
               <p>
                 修改前：{item.before?.statement ?? "暂无判断"} · 等级：
-                {!dictionary && item.before?.level
-                  ? "等级暂不可用"
-                  : item.before?.level
-                    ? levelLabel(rubric, item.before.level)
-                    : "未给等级"}
+                {displayLevel(item.before, item.after.capability.key)}
                 {item.before && (
                   <StatusBadge
                     kind="assessment_status"
@@ -147,11 +145,7 @@ export function BotMessage({
               </p>
               <p>
                 修改后：{item.after.after?.statement ?? "撤回此判断"} · 等级：
-                {!dictionary && item.after.after?.level
-                  ? "等级暂不可用"
-                  : item.after.after?.level
-                    ? levelLabel(rubric, item.after.after.level)
-                    : "未给等级"}
+                {displayLevel(item.after.after, item.after.capability.key)}
                 {item.after.after && (
                   <StatusBadge
                     kind="assessment_status"
@@ -253,31 +247,11 @@ export function BotMessage({
                 <h4 className="font-medium">{item.after.capability.name}</h4>
                 <p>
                   修改前：{item.before?.statement ?? "暂无判断"} · 等级：
-                  {!dictionary && item.before?.level
-                    ? "等级暂不可用"
-                    : item.before?.level
-                      ? levelLabel(
-                          dictionary?.data.find(
-                            (capability) =>
-                              capability.key === item.after.capability.key,
-                          )?.level_rubric,
-                          item.before.level,
-                        )
-                      : "未给等级"}
+                  {displayLevel(item.before, item.after.capability.key)}
                 </p>
                 <p>
                   修改后：{item.after.after?.statement ?? "撤回此判断"} · 等级：
-                  {!dictionary && item.after.after?.level
-                    ? "等级暂不可用"
-                    : item.after.after?.level
-                      ? levelLabel(
-                          dictionary?.data.find(
-                            (capability) =>
-                              capability.key === item.after.capability.key,
-                          )?.level_rubric,
-                          item.after.after.level,
-                        )
-                      : "未给等级"}
+                  {displayLevel(item.after.after, item.after.capability.key)}
                 </p>
               </div>
             ))
@@ -289,7 +263,8 @@ export function BotMessage({
               {message.items.map((item, index) => (
                 <p key={index}>
                   {item.capability.name}：
-                  {item.after?.statement ?? "撤回此判断"}
+                  {item.after?.statement ?? "撤回此判断"} · 等级：
+                  {displayLevel(item.after, item.capability.key)}
                 </p>
               ))}
             </>

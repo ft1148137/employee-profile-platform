@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.domains.bot.attachments import AttachmentPublic
 from app.domains.change_request.schemas import ToolInput
 from app.domains.profile.models import AssessmentStatus
-from app.domains.review.direct import DirectEditInput, DirectEditResult
+from app.domains.review.direct import DirectEditInput
 from app.domains.review.schemas import DecisionInput
 
 
@@ -43,6 +43,7 @@ class Dictionary(Projection):
 class Claim(Projection):
     statement: str
     level: str | None
+    level_name: str | None = None
     assessment_status: AssessmentStatus
 
 
@@ -182,7 +183,16 @@ class ReviewCard(Review):
     actions: list[ReviewAction] = Field(default_factory=list)
 
 
-class ProfileEditCard(DirectEditResult):
+class ProfileEditItem(Projection):
+    capability_key: str
+    capability_name: str
+    before: Claim | None
+    after: Claim
+
+
+class ProfileEditCard(Projection):
+    revision: int | None
+    items: list[ProfileEditItem]
     type: Literal["profile_edit_card"] = "profile_edit_card"
     card_id: UUID = Field(default_factory=uuid4)
     employee_id: UUID

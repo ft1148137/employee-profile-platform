@@ -844,6 +844,7 @@ export type {
   ProfileCounts,
   ProfileEditAction,
   ProfileEditCard,
+  ProfileEditItem,
   profileImportDownloadImportFileData,
   profileImportDownloadImportFileError,
   profileImportDownloadImportFileErrors,

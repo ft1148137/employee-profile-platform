@@ -1247,6 +1247,10 @@ export type Claim = {
    * Level
    */
   level: string | null
+  /**
+   * Level Name
+   */
+  level_name?: string | null
   assessment_status: AssessmentStatus
 }
 
@@ -3684,7 +3688,7 @@ export type ProfileEditCard = {
   /**
    * Items
    */
-  items: Array<DirectEditItem>
+  items: Array<ProfileEditItem>
   /**
    * Type
    */
@@ -3706,6 +3710,22 @@ export type ProfileEditCard = {
    * Actions
    */
   actions?: Array<ProfileEditAction>
+}
+
+/**
+ * ProfileEditItem
+ */
+export type ProfileEditItem = {
+  /**
+   * Capability Key
+   */
+  capability_key: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  before: Claim | null
+  after: Claim
 }
 
 /**

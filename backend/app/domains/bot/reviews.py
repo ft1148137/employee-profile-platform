@@ -1,13 +1,17 @@
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from pydantic import JsonValue, ValidationError
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.domains import manager_tools
 from app.domains.bot import schemas as s
+from app.domains.bot.levels import name_levels
 from app.domains.bot.models import BotSession
+from app.domains.capability.models import CapabilityDefinition
 from app.domains.change_request.employee import EmployeeRecordNotFound, RequestConflict
+from app.domains.change_request.models import ChangeItem
 from app.domains.change_request.schemas import ToolInput
 from app.domains.employee_tools import RequestInput
 from app.domains.model.pi_client import ToolDefinition
@@ -58,8 +62,43 @@ def call(
         return {"error": "请逐项给出决定，退回和拒绝必须说明原因"}
     if name == "list_pending_reviews":
         rows = manager_tools.list_pending_reviews(p, db)
+        names: dict[UUID, list[str]] = {}
+        for request_id, capability_name in db.exec(
+            select(ChangeItem.request_id, CapabilityDefinition.name)
+            .join(
+                CapabilityDefinition,
+                (col(CapabilityDefinition.id) == ChangeItem.capability_definition_id)
+                & (col(CapabilityDefinition.org_id) == ChangeItem.org_id),
+            )
+            .where(
+                ChangeItem.org_id == p.org_id,
+                col(ChangeItem.request_id).in_([r.id for r in rows.data]),
+                col(ChangeItem.decision).is_(None),
+            )
+            .order_by(col(ChangeItem.position))
+        ).all():
+            names.setdefault(request_id, []).append(capability_name)
         return {
-            "data": [{"id": str(r.id), "item_count": r.item_count} for r in rows.data],
+            "data": [
+                {
+                    "id": str(r.id),
+                    "item_count": r.item_count,
+                    "employee_name": r.employee_name,
+                    "department_name": r.department_name,
+                    "capabilities": "、".join(names.get(r.id, [])[:3])
+                    + (
+                        f"等 {len(names[r.id])} 项"
+                        if len(names.get(r.id, [])) > 3
+                        else ""
+                    ),
+                    "submitted_at": r.submitted_at.astimezone(
+                        ZoneInfo("Asia/Shanghai")
+                    ).isoformat()
+                    if r.submitted_at
+                    else None,
+                }
+                for r in rows.data
+            ],
             "count": rows.count,
         }
     assert isinstance(body, (RequestInput, PrepareInput))
@@ -68,7 +107,7 @@ def call(
         detail = manager_tools.get_review(p, db, request_id)
     except EmployeeRecordNotFound, service.ReviewForbidden:
         return None
-    projected = s.Review.model_validate(detail)
+    projected = name_levels(db, p, s.Review.model_validate(detail))
     if isinstance(body, PrepareInput):
         if body.revision != detail.revision:
             raise RequestConflict("内容已变化，请重新查看")
