@@ -67,7 +67,7 @@
 | 首次设置 | 标记步骤完成 | 管理助手 / 首次设置引导 | `complete_setup_step` |
 | 首次设置 | 跳过可选步骤（包括暂不配置模型） | 管理助手 / 首次设置引导 | `skip_setup_step` |
 | 设置 / 能力词典 | 查看、导出当前词典 | 能力与规则 / 能力词典 | `get_capability_dictionary`（导出按钮留在网页） |
-| 设置 / 能力词典 | 选择内置词典 | 管理助手 / 首次设置引导 | `apply_capability_template` |
+| 设置 / 能力词典 | 选择内置词典 | 管理助手 / 首次设置引导 | `list_capability_templates`、`apply_capability_template` |
 | 设置 / 能力词典 | 按任意材料整理词典，预览后发布新版本（replace 或至少十项改动需二次确认） | 管理助手 | `draft_dictionary_from_material` |
 | 词典兼容 API | 固定格式预览及保存版本 | 仅 API，保留回归调用；没有上传界面 | NOT_FOR_ASSISTANT：助手改用材料整理 |
 | 起草建议 | 查看名称、说明、理由和证据条数（助手不读取证据标题或正文） | 能力与规则 / 能力词典 | `list_capability_proposals` |

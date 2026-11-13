@@ -320,3 +320,94 @@ def test_disabled_drafting_rejected_before_confirmation(
     count = row.items[0]["impact"]["count"]
     assert row.items[0]["impact"]["text"] == f"将为 {count} 名员工起草"
     assert not registry.drafting.read_settings(db, p.org_id).enabled
+
+
+def test_template_confirmation_names_template_and_changes(
+    db: Session, demo: tuple
+) -> None:
+    from app.domains.capability.templates import get_template
+
+    template = get_template("saas-software")
+    row = proposal(
+        db,
+        demo,
+        items=[
+            {
+                "function": "apply_capability_template",
+                "args": {"template_id": template.entry.id},
+            }
+        ],
+    )
+    impact = c.public(row).items[0].impact
+    assert impact and template.entry.name in impact.text
+    assert str(len(template.capabilities)) in impact.text
+    assert "会替换当前词典，可以撤销" in impact.text
+    assert impact.dictionary is not None
+
+
+def test_dictionary_confirmation_diff(db: Session, demo: tuple) -> None:
+    p = principal(db, demo)
+    editor = read_editor(db, p)
+    definitions = [d.model_dump(mode="json") for d in editor.definitions]
+    removed = definitions.pop()
+    modified = definitions[0]
+    modified.update(name="合成新名称", category="合成分类", description="合成说明")
+    modified["level_rubric"]["levels"][0]["label"] = "合成新等级"
+    added = {**modified, "key": "synthetic_added", "name": "合成新增能力"}
+    definitions.append(added)
+    row = proposal(
+        db,
+        demo,
+        items=[
+            {
+                "function": "update_capability_dictionary",
+                "args": {
+                    "definitions": definitions,
+                    "expected_version": editor.expected_version,
+                },
+            }
+        ],
+    )
+    changes = c.public(row).items[0].impact.dictionary
+    assert [d.key for d in changes.added] == ["synthetic_added"]
+    assert [d.key for d in changes.removed] == [removed["key"]]
+    assert changes.modified[0].changed_fields == ["名称", "分类", "说明", "等级"]
+    assert changes.modified[0].level_rubric.levels[0].label == "合成新等级"
+
+
+def test_first_template_explains_undo_limit(
+    db: Session, shared_demo: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.domains.admin_assistant import rules
+
+    p = principal(db, shared_demo)
+    empty = read_editor(db, p).model_copy(update={"definitions": []})
+    monkeypatch.setattr(rules, "read_editor", lambda *_: empty)
+    impact = rules.dictionary_impact(
+        db, p, rules.TemplateArgs(template_id="saas-software")
+    ).model_dump()
+    assert "没有旧版本可撤销" in impact["text"]
+    assert impact["dictionary"]["added"]
+    assert not impact["dictionary"]["removed"]
+    with pytest.raises(rules.DictionaryRestoreUnavailable):
+        rules.restore_dictionary(db, p, {"definitions": []})
+
+
+def test_dictionary_merge_keeps_unmentioned_capabilities(
+    db: Session, shared_demo: tuple
+) -> None:
+    from app.domains.admin_assistant import dictionary_materials as materials
+
+    p = principal(db, shared_demo)
+    definition = read_editor(db, p).definitions[0].model_dump(mode="json")
+    definition["levels"] = definition.pop("level_rubric")["levels"]
+    definition.update(key="synthetic_merge", name="合成增补能力")
+    args = materials.MaterialArgs(
+        materials=[{"attachment_id": None, "label": "合成文字"}],
+        mode="merge",
+        capabilities=[definition],
+    )
+    impact = materials.impact(db, p, args).model_dump()
+    assert len(impact["dictionary"]["added"]) == 1
+    assert not impact["dictionary"]["removed"]
+    assert not impact["dictionary"]["modified"]

@@ -8,6 +8,7 @@ from sqlmodel import Session
 
 from app.authz.principal import Principal
 from app.domains.account.service import require_admin
+from app.domains.admin_assistant.dictionary_preview import compare_dictionary
 from app.domains.admin_assistant.materials import Material, validate_attachments
 from app.domains.capability.publish import save_dictionary
 from app.domains.capability.schemas import (
@@ -85,7 +86,15 @@ def impact(db: Session, p: Principal, args: MaterialArgs) -> BaseModel:
         pending = changes.removed_item_counts[key]
         if count or pending:
             text += f"；删除「{names[key]}」：{count} 条判断保留，{pending} 条待提交改动项将移除"
-    return RootModel({"count": len(keys), "text": text})
+    return RootModel(
+        {
+            "count": len(keys),
+            "text": text,
+            "dictionary": compare_dictionary(
+                read_editor(db, p).definitions, changes.definitions
+            ).model_dump(),
+        }
+    )
 
 
 def apply(

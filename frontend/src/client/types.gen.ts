@@ -766,6 +766,33 @@ export type Capability = {
 }
 
 /**
+ * CapabilityChange
+ */
+export type CapabilityChange = {
+  /**
+   * Key
+   */
+  key: string
+  /**
+   * Name
+   */
+  name: string
+  /**
+   * Category
+   */
+  category: string
+  /**
+   * Description
+   */
+  description: string
+  level_rubric: DictionaryRubric
+  /**
+   * Changed Fields
+   */
+  changed_fields?: Array<string>
+}
+
+/**
  * CapabilityProposalPublic
  */
 export type CapabilityProposalPublic = {
@@ -1695,6 +1722,24 @@ export type DepartmentsPublic = {
    * Count
    */
   count: number
+}
+
+/**
+ * DictionaryChanges
+ */
+export type DictionaryChanges = {
+  /**
+   * Added
+   */
+  added?: Array<CapabilityChange>
+  /**
+   * Modified
+   */
+  modified?: Array<CapabilityChange>
+  /**
+   * Removed
+   */
+  removed?: Array<CapabilityChange>
 }
 
 /**
@@ -2726,6 +2771,7 @@ export type ImSettingUpdate = {
  * Impact
  */
 export type Impact = {
+  dictionary?: DictionaryChanges | null
   /**
    * Count
    */

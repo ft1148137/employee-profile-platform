@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, JsonValue, SecretStr, field_validator
 
+from app.domains.admin_assistant.dictionary_preview import DictionaryChanges
 from app.domains.admin_assistant.files import FileKind, FileSummary
 from app.domains.admin_assistant.outputs import OneTimeOutput
 from app.domains.admin_assistant.registry import TableCard as TableCard
@@ -75,6 +76,7 @@ class ProposeChanges(ToolInput):
 
 
 class Impact(BaseModel):
+    dictionary: DictionaryChanges | None = None
     count: int = Field(ge=0)
     text: str
 

@@ -8,10 +8,19 @@ from sqlmodel import Session, select
 from sqlmodel._compat import SQLModelConfig
 
 from app.authz.principal import Principal
+from app.core.config import settings as app_settings
+from app.domains.admin_assistant.dictionary_preview import compare_dictionary
 from app.domains.audit.service import record_audit
 from app.domains.capability.publish import save_dictionary
-from app.domains.capability.schemas import ActiveSchemaPublic, SaveDictionary
+from app.domains.capability.schemas import (
+    ActiveSchemaPublic,
+    CapabilityTemplatePreview,
+    DictionaryDefinition,
+    SaveDictionary,
+    TemplateCapabilityPublic,
+)
 from app.domains.capability.service import activate_template, read_editor
+from app.domains.capability.templates import get_template, load_catalog
 from app.domains.change_request.handover import hand_over
 from app.domains.drafting import settings
 from app.domains.drafting.note import DraftingNoteInput, read_note, save_note
@@ -36,6 +45,10 @@ class RuleArgs(BaseModel):
 
 class TemplateArgs(RuleArgs):
     template_id: str
+
+
+class TemplateFilter(RuleArgs):
+    template_id: str | None = None
 
 
 class DraftArgs(RuleArgs):
@@ -141,10 +154,63 @@ def draft_impact(db: Session, p: Principal, args: Any) -> BaseModel:
     )
 
 
+def list_templates(_db: Session, _p: Principal, args: TemplateFilter) -> BaseModel:
+    if args.template_id is None:
+        return RootModel(
+            [t.public() for t in load_catalog(app_settings.CAPABILITY_TEMPLATES_DIR)]
+        )
+    template = get_template(args.template_id)
+    return CapabilityTemplatePreview(
+        **template.public().model_dump(),
+        capabilities=[
+            TemplateCapabilityPublic(
+                **c.model_dump(exclude={"level_rubric"}), levels=c.level_rubric.levels
+            )
+            for c in template.capabilities
+        ],
+    )
+
+
+def dictionary_impact(
+    db: Session, p: Principal, args: SaveDictionary | TemplateArgs
+) -> BaseModel:
+    previous = read_editor(db, p).definitions
+    if isinstance(args, TemplateArgs):
+        template = get_template(args.template_id)
+        definitions = [
+            DictionaryDefinition.model_validate(c.model_dump())
+            for c in template.capabilities
+        ]
+        text = f"模板「{template.entry.name}」，{len(definitions)} 项能力；"
+        text += (
+            "会替换当前词典，可以撤销"
+            if previous
+            else "将启用词典；没有旧版本可撤销，请发布新版本进行调整"
+        )
+        impact = {"count": len(active_employees(db, p.org_id)), "text": text}
+    else:
+        definitions = args.definitions
+        impact = draft_impact(db, p, args).model_dump()
+    return RootModel(
+        impact | {"dictionary": compare_dictionary(previous, definitions).model_dump()}
+    )
+
+
 def register_rules(functions: dict[str, AdminFunction]) -> None:
     from app.domains.admin_assistant.registry import AdminFunction, NoArgs
 
     entries = [
+        AdminFunction(
+            "list_capability_templates",
+            "rules",
+            "read",
+            "normal",
+            "列出内置词典模板的 ID、名称、行业和能力数；传 template_id 查看能力名称和分类",
+            TemplateFilter,
+            list_templates,
+            "/admin/assistant",
+            (),
+        ),
         AdminFunction(
             "update_drafting_note",
             "data_ai",
@@ -173,7 +239,7 @@ def register_rules(functions: dict[str, AdminFunction]) -> None:
                 ("PUT", "/capabilities"),
             ),
             snapshot=dictionary_snapshot,
-            impact=draft_impact,
+            impact=dictionary_impact,
             reverse=restore_dictionary,
         ),
         AdminFunction(
@@ -187,12 +253,7 @@ def register_rules(functions: dict[str, AdminFunction]) -> None:
             "/admin/rules?tab=dictionary",
             (("POST", "/capability-schema"),),
             snapshot=dictionary_snapshot,
-            impact=lambda d, p, a: RootModel(
-                {
-                    "count": len(active_employees(d, p.org_id)),
-                    "text": "更新这些员工可使用的能力词典",
-                }
-            ),
+            impact=dictionary_impact,
             reverse=restore_dictionary,
         ),
         AdminFunction(
