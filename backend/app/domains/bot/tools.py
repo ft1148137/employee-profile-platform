@@ -283,9 +283,9 @@ def call(
     if name == "suggest_capability":
         try:
             suggestion = SuggestCapability.model_validate(arguments)
-            return suggest_capability(p, db, **suggestion.model_dump()).model_dump(
-                mode="json"
-            )
+            return suggest_capability(
+                p, db, **suggestion.model_dump(), commit=False
+            ).model_dump(mode="json")
         except ValidationError:
             return {"error": "工具参数不正确"}
         except HTTPException as exc:

@@ -1,6 +1,7 @@
 import json
 from dataclasses import replace
-from uuid import uuid4
+from threading import Event
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,9 +12,12 @@ from app.domains.bot import core, store, tools
 from app.domains.capability.models import CapabilityDefinition, CapabilityProposal
 from app.domains.capability.proposals import name_key
 from app.domains.capability.schemas import SuggestCapability
+from app.domains.change_request.models import ProfileChangeRequest
 from app.domains.im import actions
+from app.domains.model import pi_client
+from app.domains.model.client import ModelUnavailable
 from app.domains.org.models import EmploymentStatus
-from tests.api.routes.test_employee_requests import principal_for
+from tests.api.routes.test_employee_requests import payload, principal_for
 from tests.domains.test_bot_core import enable
 from tests.domains.test_im_gateway import event
 from tests.utils.bot import final_response
@@ -21,6 +25,68 @@ from tests.utils.pi import PiHarness
 
 BODY = {"name": "研发费用归集", "description": "归集研发费用", "reason": "工作需要"}
 SUBMITTED = "已提交给企业管理员，加进词典后就可以在这里添加"
+
+
+@pytest.mark.parametrize("outcome", ["stop", "deadline", "cancelled"])
+@pytest.mark.parametrize("streaming", [False, True])
+def test_suggestion_respects_turn_transaction(
+    demo: tuple,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    outcome: str,
+    streaming: bool,
+) -> None:
+    p = principal_for(db, demo[1]["E02"].org_id)
+    enable(db, p.org_id)
+    row = store.create_session(db, p)
+    request_ids: list[UUID] = []
+    stream = pi_client.TurnStream(
+        run_id=str(uuid4()),
+        on_text=lambda _: None,
+        on_tool=lambda *_: None,
+        cancelled=Event(),
+    )
+
+    def run(*_args: object, **kwargs: object) -> pi_client.TurnResult:
+        call = kwargs["on_tool_call"]
+        draft = call("draft_update_request", {"items": [payload()]})
+        request_ids.append(UUID(draft["id"]))
+        assert call("suggest_capability", BODY) == {"message": SUBMITTED}
+        if outcome == "deadline":
+            raise ModelUnavailable(code="deadline")
+        if outcome == "cancelled":
+            raise pi_client.TurnCancelled()
+        return pi_client.TurnResult(
+            text="已保存", stop_reason="stop", model_calls=1, tool_calls=2
+        )
+
+    monkeypatch.setattr(pi_client, "run_turn", run)
+    response = core.turn(
+        db, p, row.id, "合成输入", stream=stream if streaming else None
+    )
+    db.rollback()
+    assert (db.get(ProfileChangeRequest, request_ids[0]) is not None) == (
+        outcome == "stop"
+    )
+    proposals = db.exec(
+        select(CapabilityProposal).where(CapabilityProposal.org_id == p.org_id)
+    ).all()
+    audits = db.exec(
+        select(AuditEvent).where(
+            AuditEvent.org_id == p.org_id,
+            AuditEvent.action == "capability_proposal.suggested",
+        )
+    ).all()
+    assert len(proposals) == len(audits) == (1 if outcome == "stop" else 0)
+    history = store.messages_for(db, row)
+    if outcome == "cancelled":
+        assert response.messages == []
+        assert len(history) == (0 if streaming else 1)
+    else:
+        assert len(history) == 2
+        assert response.messages[0].text == (
+            "已保存" if outcome == "stop" else core.DEADLINE_MESSAGE
+        )
 
 
 @pytest.mark.parametrize("channel", ["web", "feishu"])

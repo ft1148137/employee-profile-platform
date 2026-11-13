@@ -622,6 +622,10 @@ def test_images_follow_capability_and_only_pi_state_is_saved(
 
     def run(*_args: object, **kwargs: object) -> pi_client.TurnResult:
         calls.append(kwargs)
+        assert "本会话最近保留的附件" not in kwargs["input"]
+        assert "本会话最近保留的附件" in kwargs["system_prompt"]
+        assert str(image.id) in kwargs["system_prompt"]
+        assert str(text.id) in kwargs["system_prompt"]
         if len(calls) == 1:
             assert "合成文字" in kwargs["input"]
             if capability == "image":
