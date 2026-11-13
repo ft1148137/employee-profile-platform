@@ -700,6 +700,7 @@ export type {
   initialProfilesProgressErrors,
   initialProfilesProgressResponse,
   initialProfilesProgressResponses,
+  InitialProfileStatus,
   IssueAccounts,
   ItemDecision,
   ItemInput,

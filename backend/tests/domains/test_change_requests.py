@@ -148,6 +148,7 @@ def test_review_priority_and_query_count(seed_path: Path) -> None:
             "fill_status": "not_started",
             "inference_status": "pending",
             "evidence_quality": "unknown",
+            "initial_profile_status": "no_records",
             "review_status": "none",
         }
         session.rollback()

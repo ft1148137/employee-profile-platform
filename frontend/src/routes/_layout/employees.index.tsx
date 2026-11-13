@@ -14,6 +14,7 @@ import {
   type DataTableFeatures,
 } from "@/components/Common/DataTable"
 import { publishedLabel } from "@/components/Profile/EmployeeSummary"
+import { initialStatusLabel } from "@/components/Profile/initialStatus"
 import { OrgState } from "@/components/Profile/OrgState"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
 import {
@@ -70,10 +71,13 @@ const columns: ColumnDef<DataTableFeatures, EmployeeSummary>[] = [
   ...(["fill_status", "inference_status", "review_status"] as const).map(
     (kind, i) => ({
       id: kind,
-      header: ["填写进度", "推断进度", "审核状态"][i],
-      cell: ({ row }: { row: { original: EmployeeSummary } }) => (
-        <StatusBadge kind={kind} value={row.original.progress?.[kind]} />
-      ),
+      header: ["填写进度", "初始画像", "审核状态"][i],
+      cell: ({ row }: { row: { original: EmployeeSummary } }) =>
+        kind === "inference_status" ? (
+          initialStatusLabel(row.original.progress?.initial_profile_status)
+        ) : (
+          <StatusBadge kind={kind} value={row.original.progress?.[kind]} />
+        ),
     }),
   ),
   {
@@ -199,34 +203,105 @@ function EmployeesList({ orgId }: { orgId: string }) {
           </Button>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border">
-          <DataTable
-            columns={[
-              ...columns,
-              ...(org?.employee_fields ?? []).map((field) => ({
-                id: field,
-                header:
-                  field === "hire_date"
-                    ? "入职年限"
-                    : employeeFieldLabels[field],
-                cell: ({ row }: { row: { original: EmployeeSummary } }) =>
-                  field === "hire_date" && row.original.hire_date
-                    ? tenureLabel(row.original.hire_date)
-                    : (row.original[field] ?? "—"),
-              })),
-            ]}
-            data={employees.data.data}
-            pagination={pagination}
-            onPaginationChange={setPagination}
-            rowCount={employees.data.count}
-            onRowClick={(employee) =>
-              navigate({
-                to: "/employees/$employeeId",
-                params: { employeeId: employee.id },
-              })
-            }
-          />
-        </div>
+        <>
+          <section className="space-y-3 sm:hidden" aria-label="团队员工卡片">
+            {employees.data.data.length === 0 && <p>暂无员工。</p>}
+            {employees.data.data.map((employee) => (
+              <article
+                key={employee.id}
+                aria-label={employee.display_name}
+                className="rounded-xl border p-4 space-y-3 break-words"
+              >
+                <Link
+                  className="font-semibold text-primary hover:underline"
+                  to="/employees/$employeeId"
+                  params={{ employeeId: employee.id }}
+                >
+                  {employee.display_name}
+                </Link>
+                <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
+                  <dt className="text-muted-foreground">部门</dt>
+                  <dd>{employee.department?.name ?? "未分配部门"}</dd>
+                  <dt className="text-muted-foreground">初始画像</dt>
+                  <dd>
+                    {initialStatusLabel(
+                      employee.progress?.initial_profile_status,
+                    )}
+                  </dd>
+                  <dt className="text-muted-foreground">审核状态</dt>
+                  <dd>
+                    <StatusBadge
+                      kind="review_status"
+                      value={employee.progress?.review_status}
+                    />
+                  </dd>
+                </dl>
+              </article>
+            ))}
+            {employees.data.count > pagination.pageSize && (
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  variant="outline"
+                  disabled={pagination.pageIndex === 0}
+                  onClick={() =>
+                    setPagination((old) => ({
+                      ...old,
+                      pageIndex: old.pageIndex - 1,
+                    }))
+                  }
+                >
+                  上一页
+                </Button>
+                <span className="text-sm">
+                  第 {pagination.pageIndex + 1} 页
+                </span>
+                <Button
+                  variant="outline"
+                  disabled={
+                    (pagination.pageIndex + 1) * pagination.pageSize >=
+                    employees.data.count
+                  }
+                  onClick={() =>
+                    setPagination((old) => ({
+                      ...old,
+                      pageIndex: old.pageIndex + 1,
+                    }))
+                  }
+                >
+                  下一页
+                </Button>
+              </div>
+            )}
+          </section>
+          <div className="hidden sm:block overflow-hidden rounded-xl border">
+            <DataTable
+              columns={[
+                ...columns,
+                ...(org?.employee_fields ?? []).map((field) => ({
+                  id: field,
+                  header:
+                    field === "hire_date"
+                      ? "入职年限"
+                      : employeeFieldLabels[field],
+                  cell: ({ row }: { row: { original: EmployeeSummary } }) =>
+                    field === "hire_date" && row.original.hire_date
+                      ? tenureLabel(row.original.hire_date)
+                      : (row.original[field] ?? "—"),
+                })),
+              ]}
+              data={employees.data.data}
+              pagination={pagination}
+              onPaginationChange={setPagination}
+              rowCount={employees.data.count}
+              onRowClick={(employee) =>
+                navigate({
+                  to: "/employees/$employeeId",
+                  params: { employeeId: employee.id },
+                })
+              }
+            />
+          </div>
+        </>
       )}
     </div>
   )

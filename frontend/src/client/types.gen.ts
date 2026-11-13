@@ -2891,6 +2891,19 @@ export type InitialPassword = {
 }
 
 /**
+ * InitialProfileStatus
+ */
+export type InitialProfileStatus =
+  | "waiting_source"
+  | "no_records"
+  | "waiting_draft"
+  | "drafting"
+  | "pending_owner"
+  | "no_judgment"
+  | "failed"
+  | "done"
+
+/**
  * InitializationStatus
  */
 export type InitializationStatus = {
@@ -3864,6 +3877,7 @@ export type ProgressPublic = {
   inference_status: InferenceStatus
   review_status: ProgressReviewStatus
   evidence_quality: EvidenceQuality
+  initial_profile_status: InitialProfileStatus
 }
 
 /**
