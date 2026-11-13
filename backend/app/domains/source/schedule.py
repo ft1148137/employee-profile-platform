@@ -7,6 +7,7 @@ from sqlmodel import Session, col, select
 
 from app.domains.base import utc_now
 from app.domains.source.models import SourceConnection, SyncRun
+from app.domains.source.schemas import JiraConfig
 from app.domains.source.sync import _enqueue, active_sync
 from app.domains.work.ingest import IngestCounts
 
@@ -63,6 +64,9 @@ def dispatch_due_syncs(session: Session, now: datetime) -> None:
                 connection_id=connection.id,
                 requested_by_user_id=connection.updated_by_user_id,
                 trigger="schedule",
+                input=JiraConfig.model_validate(connection.config).model_dump(
+                    mode="json", include={"project_keys"}
+                ),
                 counts={"records": 0, **IngestCounts().model_dump()},
             )
             session.add(run)

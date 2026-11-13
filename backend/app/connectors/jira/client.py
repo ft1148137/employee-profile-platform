@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from app.connectors.jira.text import adf_to_text, wiki_to_text
 from app.core.secrets import decrypt_secret
 from app.domains.source.models import SourceConnection
-from app.domains.source.schemas import JiraConfig
+from app.domains.source.schemas import JiraConfig, JiraProject
 
 NETWORK_MESSAGE = (
     "平台服务器连不上这个地址。接 Jira Cloud 需要服务器能访问外网；"
@@ -121,6 +121,8 @@ class JiraClient:
             data = response.json()
             if isinstance(data, dict):
                 return data
+            if isinstance(data, list) and path == "project":
+                return {"values": data}
         except ValueError:
             pass
         raise SourceUnreachable("Jira 返回的数据格式不正确")
@@ -128,6 +130,17 @@ class JiraClient:
     def current_account(self) -> str:
         data = self._request("GET", "myself")
         return str(data.get("displayName") or data.get("name") or "")
+
+    def projects(self) -> list[JiraProject]:
+        data = self._request(
+            "GET",
+            "project/search" if self.version == "3" else "project",
+            params={"maxResults": 100} if self.version == "3" else {},
+        )
+        try:
+            return [JiraProject.model_validate(row) for row in data["values"][:100]]
+        except ValueError, KeyError, TypeError:
+            raise SourceUnreachable("Jira 返回的项目格式不正确") from None
 
     def search(
         self, since: datetime, cursor: str | None, page_size: int = 100
@@ -147,6 +160,9 @@ class JiraClient:
         if self.config.include_description:
             fields.append("description")
         jql = f'updated >= "{since.astimezone(UTC):%Y-%m-%d %H:%M}" ORDER BY updated ASC, key ASC'
+        if self.config.project_keys:
+            keys = ",".join(f'"{key}"' for key in self.config.project_keys)
+            jql = f"project in ({keys}) AND {jql}"
         data, next_cursor = self._search(jql, fields, cursor, page_size)
         try:
             return JiraPage(
