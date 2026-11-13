@@ -388,7 +388,7 @@ test("draft proposals enter the dictionary through preview and save", async ({
   await page.goto("/admin")
   await page
     .getByRole("listitem")
-    .filter({ hasText: "2 个起草时提议的新能力" })
+    .filter({ hasText: "2 个新增能力的提议" })
     .getByRole("link", { name: "去处理", exact: true })
     .click()
   const panel = page.getByRole("region", { name: "建议新增的能力" })

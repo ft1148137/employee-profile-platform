@@ -188,6 +188,41 @@ test("assistant shows status and appeal todo through resubmission", async ({
   await expect(page).toHaveURL("/admin/assistant")
   await expect(page.getByLabel("发给管理助手的消息")).toBeDisabled()
   const today = page.getByRole("region", { name: "今天要处理的事" })
+  for (const step of ["sources", "identities"]) {
+    expect(
+      (
+        await request.post(`${base}/setup/steps/${step}/skip`, { headers })
+      ).ok(),
+    ).toBeTruthy()
+  }
+  await page.reload()
+  const skipped = today.getByRole("listitem").filter({
+    has: page.getByText("有 2 步首次设置暂缓了：接数据来源、确认账号对应", {
+      exact: true,
+    }),
+  })
+  await expect(skipped).toBeVisible()
+  for (const [title, href] of [
+    ["接数据来源", "/admin/data-ai?tab=sources"],
+    ["确认账号对应", "/employees?filter=identities"],
+  ]) {
+    const step = skipped.getByRole("listitem").filter({ hasText: title })
+    await expect(step.getByRole("link", { name: "去处理" })).toHaveAttribute(
+      "href",
+      href,
+    )
+    await expect(step.getByRole("button", { name: "让助手处理" })).toBeVisible()
+  }
+  expect(
+    (
+      await request.post(`${base}/setup/steps/identities/complete`, { headers })
+    ).ok(),
+  ).toBeTruthy()
+  await page.reload()
+  await expect(
+    today.getByText("有 1 步首次设置暂缓了：接数据来源", { exact: true }),
+  ).toBeVisible()
+  await expect(today.getByText("确认账号对应", { exact: true })).toHaveCount(0)
   for (const name of ["飞书", "AI 模型", "数据同步", "自动起草"]) {
     await expect(
       today.getByRole("article", { name, exact: true }),

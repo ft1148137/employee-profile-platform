@@ -40,8 +40,15 @@ TodoKind = Literal[
     "unmatched_identities",
     "sync_failed",
     "setup_step",
+    "setup_skipped",
     "capability_proposals",
 ]
+
+
+class SetupTodoStep(BaseModel):
+    title: str
+    page: str
+    assistant_prompt: str
 
 
 class AdminTodo(BaseModel):
@@ -51,6 +58,7 @@ class AdminTodo(BaseModel):
     oldest_at: datetime | None
     page: str
     assistant_prompt: str
+    steps: list[SetupTodoStep] = Field(default_factory=list)
 
 
 class AdminOverviewPublic(BaseModel):
@@ -205,9 +213,9 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
     add(
         "capability_proposals",
         proposal_count,
-        f"{proposal_count} 个起草时提议的新能力",
+        f"{proposal_count} 个新增能力的提议",
         "/admin/rules?tab=dictionary#dictionary-editor",
-        "帮我查看起草时提议的新能力",
+        "帮我查看新增能力的提议",
     )
     disputes = list_disputes(principal, session)
     add(
@@ -260,7 +268,8 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
         "帮我检查同步失败",
         min((r.finished_at or r.created_at for r in failed_runs), default=None),
     )
-    steps = [s for s in read_setup(session, org_id).steps if s.status == "pending"]
+    setup = read_setup(session, org_id)
+    steps = [s for s in setup.steps if s.status == "pending"]
     titles = "、".join(s.title for s in steps[:2]) + ("…" if len(steps) > 2 else "")
     setup_session = session.exec(
         select(AdminAssistantSession.id).where(
@@ -278,6 +287,34 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
         else "/admin/assistant",
         "帮我完成首次设置",
     )
+    pages = {
+        "sources": "/admin/data-ai?tab=sources",
+        "identities": "/employees?filter=identities",
+        "model": "/admin/data-ai?tab=model",
+        "approval_policy": "/admin/rules?tab=approval",
+    }
+    skipped = [
+        SetupTodoStep(
+            title=s.title,
+            page=pages[s.key],
+            assistant_prompt=f"帮我继续暂缓的设置：{s.title}",
+        )
+        for s in setup.steps
+        if s.status == "skipped"
+    ]
+    if skipped:
+        titles = "、".join(s.title for s in skipped)
+        todos.append(
+            AdminTodo(
+                kind="setup_skipped",
+                count=len(skipped),
+                title=f"有 {len(skipped)} 步首次设置暂缓了：{titles}",
+                oldest_at=None,
+                page="/admin/assistant",
+                assistant_prompt=f"帮我继续暂缓的设置：{titles}",
+                steps=skipped,
+            )
+        )
     return AdminOverviewPublic(
         status_cards=[feishu, model, sync, drafting], todos=todos
     )

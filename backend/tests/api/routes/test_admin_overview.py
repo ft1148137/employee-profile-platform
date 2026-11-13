@@ -44,6 +44,73 @@ def model_setting(db: Session, demo: tuple) -> ModelSetting:
     return row
 
 
+def test_skipped_setup_todos(db: Session, client: TestClient, demo: tuple) -> None:
+    base, headers = demo[0], demo[2]["admin"]
+    pending = next(
+        t for t in overview(client, demo)["todos"] if t["kind"] == "setup_step"
+    )
+    for key in ("sources", "identities"):
+        assert (
+            client.post(f"{base}/setup/steps/{key}/skip", headers=headers).status_code
+            == 200
+        )
+    todos = overview(client, demo)["todos"]
+    skipped = next(t for t in todos if t["kind"] == "setup_skipped")
+    assert skipped["count"] == 2
+    assert skipped["title"] == "有 2 步首次设置暂缓了：接数据来源、确认账号对应"
+    assert [
+        (s["title"], s["page"], s["assistant_prompt"]) for s in skipped["steps"]
+    ] == [
+        ("接数据来源", "/admin/data-ai?tab=sources", "帮我继续暂缓的设置：接数据来源"),
+        (
+            "确认账号对应",
+            "/employees?filter=identities",
+            "帮我继续暂缓的设置：确认账号对应",
+        ),
+    ]
+    remaining = next(t for t in todos if t["kind"] == "setup_step")
+    assert remaining["count"] == pending["count"] - 2
+    assert remaining["assistant_prompt"] == pending["assistant_prompt"]
+    assert "暂缓" not in remaining["title"]
+    # A different tenant must not inherit these deferred steps.
+    foreign = client.get("/api/v1/me/memberships", headers=demo[2]["foreign"]).json()[
+        0
+    ]["org"]["id"]
+    principal = actor(db, demo[1]["E02"].org_id, "admin@demo.example.com")
+    foreign_overview = build_overview(db, replace(principal, org_id=UUID(foreign)))
+    assert "setup_skipped" not in {t.kind for t in foreign_overview.todos}
+    connection = SourceConnection(
+        org_id=principal.org_id, kind="jira", updated_by_user_id=principal.user_id
+    )
+    db.add(connection)
+    db.flush()
+    db.add(
+        SyncRun(
+            org_id=principal.org_id,
+            connection_id=connection.id,
+            requested_by_user_id=principal.user_id,
+            status="succeeded",
+        )
+    )
+    db.commit()
+    assert (
+        client.post(f"{base}/setup/steps/sources/complete", headers=headers).status_code
+        == 200
+    )
+    skipped = next(
+        t for t in overview(client, demo)["todos"] if t["kind"] == "setup_skipped"
+    )
+    assert skipped["count"] == 1
+    assert [s["title"] for s in skipped["steps"]] == ["确认账号对应"]
+    assert (
+        client.post(
+            f"{base}/setup/steps/identities/complete", headers=headers
+        ).status_code
+        == 200
+    )
+    assert "setup_skipped" not in {t["kind"] for t in overview(client, demo)["todos"]}
+
+
 @pytest.mark.parametrize(
     "role,status",
     [("admin", 200), ("manager", 403), ("employee", 403), ("foreign", 404)],

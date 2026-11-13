@@ -157,6 +157,7 @@ export type AdminTodo = {
     | "unmatched_identities"
     | "sync_failed"
     | "setup_step"
+    | "setup_skipped"
     | "capability_proposals"
   /**
    * Count
@@ -178,6 +179,10 @@ export type AdminTodo = {
    * Assistant Prompt
    */
   assistant_prompt: string
+  /**
+   * Steps
+   */
+  steps?: Array<SetupTodoStep>
 }
 
 /**
@@ -4773,6 +4778,24 @@ export type SetupStepPublic = {
    * Blockers
    */
   blockers: Array<string>
+}
+
+/**
+ * SetupTodoStep
+ */
+export type SetupTodoStep = {
+  /**
+   * Title
+   */
+  title: string
+  /**
+   * Page
+   */
+  page: string
+  /**
+   * Assistant Prompt
+   */
+  assistant_prompt: string
 }
 
 /**
