@@ -21,6 +21,7 @@ test("Inputs are visible, empty and editable", async ({ page }) => {
 
   await verifyInput(page, "email-input")
   await verifyInput(page, "password-input")
+  await expect(page.getByText("已退出登录", { exact: false })).toHaveCount(0)
 })
 
 test("Log In button is visible", async ({ page }) => {
@@ -90,20 +91,38 @@ test("Log in with invalid password", async ({ page }) => {
   await expect(page.locator("body")).not.toContainText("Something went wrong")
 })
 
-test("Successful log out", async ({ page }) => {
-  await page.goto("/login")
+for (const viewport of [
+  { width: 1280, height: 720 },
+  { width: 390, height: 844 },
+]) {
+  test(`Visible logout and one-time notice at ${viewport.width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport)
+    await page.goto("/login")
 
-  await fillForm(page, firstSuperuser, firstSuperuserPassword)
-  await page.getByRole("button", { name: "登录" }).click()
+    await fillForm(page, firstSuperuser, firstSuperuserPassword)
+    await page.getByRole("button", { name: "登录" }).click()
 
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"))
+    await page.waitForURL((url) => !url.pathname.startsWith("/login"))
 
-  await expect(page.getByTestId("user-menu")).toBeVisible()
+    const logout = page.getByRole("button", { name: "退出登录", exact: true })
+    await expect(logout).toBeInViewport({ ratio: 1 })
+    await expect(logout).toHaveText("退出登录")
+    await logout.click()
+    await page.waitForURL("/login")
+    await expect(page.getByRole("status")).toHaveText(
+      "已退出登录。在公用电脑上用完，请关闭浏览器。",
+    )
+    expect(
+      await page.evaluate(() => localStorage.getItem("access_token")),
+    ).toBeNull()
 
-  await page.getByTestId("user-menu").click()
-  await page.getByRole("menuitem", { name: "退出登录" }).click()
-  await page.waitForURL("/login")
-})
+    await page.reload()
+    await expect(page.getByTestId("email-input")).toBeVisible()
+    await expect(page.getByText("已退出登录", { exact: false })).toHaveCount(0)
+  })
+}
 
 test("Logged-out user cannot access protected routes", async ({ page }) => {
   await page.goto("/login")

@@ -138,7 +138,8 @@ function Tokens({
       )}
       {!setting.data.enabled && (
         <p className="rounded-lg border bg-muted/30 p-4">
-          企业已关闭外部 AI 助手，暂时不能生成新令牌。你仍可查看和吊销已有令牌。
+          企业管理员关闭了这个功能。需要使用的话，请联系企业管理员在「数据与 AI
+          → 外部 AI 助手」开启。你仍可查看和吊销已有令牌。
         </p>
       )}
       {!hasEmployee && <p>当前账号没有员工身份，不能生成令牌。</p>}
@@ -243,6 +244,12 @@ function Tokens({
         >
           {config}
         </pre>
+        {window.location.protocol === "http:" && (
+          <p className="text-sm text-muted-foreground">
+            你现在是用 HTTP 地址打开的，只适合在部署平台的这台电脑上测试；外部
+            AI 客户端需要 HTTPS 地址，请向部署平台的人要正式网址。
+          </p>
+        )}
         <Button variant="outline" onClick={() => copy(config)}>
           复制配置
         </Button>

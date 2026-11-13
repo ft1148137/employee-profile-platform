@@ -45,6 +45,7 @@ const useAuth = (next?: string) => {
   const logout = () => {
     localStorage.removeItem("access_token")
     queryClient.clear()
+    sessionStorage.setItem("logged_out", "true")
     navigate({ to: "/login" })
   }
 

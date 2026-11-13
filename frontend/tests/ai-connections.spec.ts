@@ -4,6 +4,41 @@ import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
+const httpNotice =
+  "你现在是用 HTTP 地址打开的，只适合在部署平台的这台电脑上测试；外部 AI 客户端需要 HTTPS 地址，请向部署平台的人要正式网址。"
+
+test("HTTPS connection examples do not show the local HTTP notice", async ({
+  page,
+  baseURL,
+}) => {
+  await page.route("https://platform.example.test/**", async (route) => {
+    const url = new URL(route.request().url())
+    const response = await route.fetch({
+      url: `${baseURL}${url.pathname}${url.search}`,
+    })
+    await route.fulfill({ response })
+  })
+  try {
+    await page.goto("https://platform.example.test/login")
+    await page
+      .getByTestId("email-input")
+      .fill("employee.platform@demo.example.com")
+    await page
+      .getByTestId("password-input")
+      .fill(process.env.DEMO_USER_PASSWORD!)
+    await page.getByRole("button", { name: "登录", exact: true }).click()
+    await expect(page.getByTestId("user-menu")).toBeVisible()
+    await page.goto("https://platform.example.test/settings")
+    await page.getByRole("tab", { name: "连接 AI 助手" }).click()
+    await expect(page.getByTestId("cursor-config")).toContainText(
+      "https://platform.example.test/mcp",
+    )
+    await expect(page.getByText(httpNotice)).toHaveCount(0)
+  } finally {
+    await page.unrouteAll({ behavior: "wait" })
+  }
+})
+
 test("enterprise switch and personal token lifecycle", async ({
   page,
   browser,
@@ -54,6 +89,7 @@ test("enterprise switch and personal token lifecycle", async ({
     employeeHeaders = { Authorization: `Bearer ${accessToken}` }
     await employee.goto("/settings")
     await employee.getByRole("tab", { name: "连接 AI 助手" }).click()
+    await expect(employee.getByText(httpNotice)).toBeVisible()
     await employee.getByLabel("令牌名称").fill(name)
     const created = employee.waitForResponse(
       (response) =>
@@ -99,6 +135,11 @@ test("enterprise switch and personal token lifecycle", async ({
     await expect(page.getByRole("status")).toHaveText("已保存")
     await employee.reload()
     await employee.getByRole("tab", { name: "连接 AI 助手" }).click()
+    await expect(
+      employee.getByText(
+        "企业管理员关闭了这个功能。需要使用的话，请联系企业管理员在「数据与 AI → 外部 AI 助手」开启。",
+      ),
+    ).toBeVisible()
     await expect(
       employee.getByRole("button", { name: "生成令牌" }),
     ).toBeDisabled()

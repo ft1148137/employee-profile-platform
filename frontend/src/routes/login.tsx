@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 
@@ -54,6 +55,13 @@ export const Route = createFileRoute("/login")({
 })
 
 function Login() {
+  const [loggedOut, setLoggedOut] = useState(false)
+  useEffect(() => {
+    if (sessionStorage.getItem("logged_out")) {
+      sessionStorage.removeItem("logged_out")
+      setLoggedOut(true)
+    }
+  }, [])
   const status = useQuery({
     queryKey: ["setup-status"],
     queryFn: async () => (await SetupService.readStatus()).data,
@@ -77,6 +85,11 @@ function Login() {
 
   return (
     <AuthLayout>
+      {loggedOut && (
+        <p role="status" className="mb-6 rounded-lg border p-4 text-sm">
+          已退出登录。在公用电脑上用完，请关闭浏览器。
+        </p>
+      )}
       {status.data?.initialized === false && (
         <p role="status" className="mb-6 rounded-lg border p-4 text-sm">
           系统还没有初始化。请使用部署时打印的初始化链接完成设置。
