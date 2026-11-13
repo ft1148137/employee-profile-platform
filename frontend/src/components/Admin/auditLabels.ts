@@ -52,6 +52,7 @@ export const auditLabels: Record<string, string> = {
   "org.employee_fields_updated": "修改员工档案字段开关",
   "capability_schema.activated": "启用能力词典",
   "capability_proposal.open": "撤销忽略能力建议",
+  "capability_proposal.suggested": "员工建议新增能力",
   "capability_proposal.accepted": "将能力建议加入词典",
   "capability_proposal.dismissed": "忽略能力建议",
   "seed.loaded": "导入演示数据",

@@ -139,7 +139,19 @@ class CapabilityProposalSummary(BaseModel):
 class CapabilityProposalPublic(CapabilityProposalSummary):
     evidence_titles: list[str]
     employee_count: int
+    proposed_by_employee_name: str | None = None
 
 
 class CapabilityProposalsPublic(BaseModel):
     data: list[CapabilityProposalPublic]
+
+
+class SuggestCapability(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    name: str = Field(min_length=1, max_length=40)
+    description: str = Field(min_length=1, max_length=300)
+    reason: str = Field(min_length=1, max_length=300)
+
+
+class CapabilitySuggestionResult(BaseModel):
+    message: str

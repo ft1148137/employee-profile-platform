@@ -165,6 +165,9 @@ import type {
   capabilitiesSaveDictionaryData,
   capabilitiesSaveDictionaryErrors,
   capabilitiesSaveDictionaryResponses,
+  capabilitiesSuggestNewCapabilityData,
+  capabilitiesSuggestNewCapabilityErrors,
+  capabilitiesSuggestNewCapabilityResponses,
   capabilitiesUpdateDictionaryData,
   capabilitiesUpdateDictionaryErrors,
   capabilitiesUpdateDictionaryResponses,
@@ -2876,6 +2879,28 @@ export class CapabilitiesService {
       security: [{ scheme: "bearer", type: "http" }],
       url: "/api/v1/orgs/{org_id}/capabilities/proposals",
       ...options,
+    })
+  }
+
+  /**
+   * Suggest New Capability
+   */
+  public static suggestNewCapability<ThrowOnError extends boolean = true>(
+    options: Options<capabilitiesSuggestNewCapabilityData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capabilitiesSuggestNewCapabilityResponses,
+      capabilitiesSuggestNewCapabilityErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capabilities/proposals",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
     })
   }
 

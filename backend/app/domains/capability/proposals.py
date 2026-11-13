@@ -1,4 +1,4 @@
-"""Store drafting suggestions without changing the dictionary or profiles."""
+"""Store capability suggestions without changing the dictionary or profiles."""
 
 import logging
 from collections import defaultdict
@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlmodel import Session, col, select
 
 from app.authz.deps import get_org_admin
@@ -13,13 +14,18 @@ from app.authz.principal import Principal
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.capability.models import (
+    CapabilityDefinition,
     CapabilityProposal,
     CapabilityProposalEvidence,
+    CapabilitySchemaVersion,
     ProposalStatus,
+    SchemaStatus,
 )
 from app.domains.capability.schemas import (
     CapabilityProposalPublic,
     CapabilityProposalsPublic,
+    CapabilitySuggestionResult,
+    SuggestCapability,
 )
 from app.domains.evidence.models import (
     Evidence,
@@ -27,7 +33,7 @@ from app.domains.evidence.models import (
     EvidenceStatus,
     Visibility,
 )
-from app.domains.org.models import Organization
+from app.domains.org.models import Employee, EmploymentStatus, Organization
 
 if TYPE_CHECKING:
     from app.domains.drafting.model import DraftProposal
@@ -37,6 +43,101 @@ logger = logging.getLogger(__name__)
 
 def name_key(name: str) -> str:
     return "".join(name.casefold().split())
+
+
+class SuggestionEmployeeRequired(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(403, "只有在职员工可以建议新增能力")
+
+
+class SuggestionLimitReached(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(429, "你已有 5 条待处理的能力建议，请等管理员处理后再提交")
+
+
+def suggest_capability(
+    principal: Principal, session: Session, name: str, description: str, reason: str
+) -> CapabilitySuggestionResult:
+    employee = session.exec(
+        select(Employee).where(
+            Employee.org_id == principal.org_id,
+            Employee.id == principal.employee_id,
+            Employee.employment_status == EmploymentStatus.ACTIVE,
+        )
+    ).first()
+    if employee is None:
+        raise SuggestionEmployeeRequired()
+    body = SuggestCapability(name=name, description=description, reason=reason)
+    # Use the same lock as drafting, dictionary publication and proposal decisions.
+    session.exec(
+        select(Organization.id)
+        .where(Organization.id == principal.org_id)
+        .with_for_update()
+    ).one()
+    key = name_key(body.name)
+    names = session.exec(
+        select(CapabilityDefinition.name)
+        .join(
+            CapabilitySchemaVersion,
+            (col(CapabilitySchemaVersion.org_id) == CapabilityDefinition.org_id)
+            & (CapabilitySchemaVersion.id == CapabilityDefinition.schema_version_id),
+        )
+        .where(
+            CapabilityDefinition.org_id == principal.org_id,
+            CapabilitySchemaVersion.status == SchemaStatus.ACTIVE,
+        )
+    ).all()
+    if existing := next((n for n in names if name_key(n) == key), None):
+        return CapabilitySuggestionResult(message=f"词典里已经有『{existing}』")
+    previous = session.exec(
+        select(CapabilityProposal)
+        .where(
+            CapabilityProposal.org_id == principal.org_id,
+            CapabilityProposal.name_key == key,
+        )
+        .order_by(col(CapabilityProposal.updated_at).desc())
+    ).first()
+    if previous and previous.status != ProposalStatus.OPEN:
+        decision = (
+            "已加入词典"
+            if previous.status == ProposalStatus.ACCEPTED
+            else "决定暂不收录"
+        )
+        return CapabilitySuggestionResult(message=f"管理员已经处理过这项：{decision}")
+    if previous is None:
+        pending = session.exec(
+            select(func.count())
+            .select_from(CapabilityProposal)
+            .where(
+                CapabilityProposal.org_id == principal.org_id,
+                CapabilityProposal.proposed_by_employee_id == employee.id,
+                CapabilityProposal.status == ProposalStatus.OPEN,
+            )
+        ).one()
+        if pending >= 5:
+            raise SuggestionLimitReached()
+        row = CapabilityProposal(
+            org_id=principal.org_id,
+            proposed_by_employee_id=employee.id,
+            name_key=key,
+            **body.model_dump(),
+        )
+        session.add(row)
+        session.flush()
+        record_audit(
+            session,
+            org_id=principal.org_id,
+            actor_type=principal.actor_type,
+            actor_id=str(principal.user_id),
+            action="capability_proposal.suggested",
+            target_type="capability_proposal",
+            target_id=str(row.id),
+            details={},
+        )
+        session.commit()
+    return CapabilitySuggestionResult(
+        message="已提交给企业管理员，加进词典后就可以在这里添加"
+    )
 
 
 def store_proposals(
@@ -149,10 +250,29 @@ def list_proposals(session: Session, principal: Principal) -> CapabilityProposal
     by_proposal: dict[UUID, list[tuple[str, UUID | None]]] = defaultdict(list)
     for id_, title, employee in refs:
         by_proposal[id_].append((title, employee))
+    names = (
+        dict(
+            session.exec(
+                select(Employee.id, Employee.display_name).where(
+                    Employee.org_id == principal.org_id,
+                    col(Employee.id).in_(
+                        [p.proposed_by_employee_id for p in proposals]
+                    ),
+                )
+            ).all()
+        )
+        if proposals
+        else {}
+    )
     return CapabilityProposalsPublic(
         data=[
             CapabilityProposalPublic(
                 **row.model_dump(),
+                proposed_by_employee_name=(
+                    names.get(row.proposed_by_employee_id)
+                    if row.proposed_by_employee_id
+                    else None
+                ),
                 evidence_count=len(
                     titles := [title for title, _ in by_proposal[row.id]]
                 ),

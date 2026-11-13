@@ -805,6 +805,10 @@ export type CapabilityProposalPublic = {
    * Employee Count
    */
   employee_count: number
+  /**
+   * Proposed By Employee Name
+   */
+  proposed_by_employee_name?: string | null
 }
 
 /**
@@ -883,6 +887,16 @@ export type CapabilityStatsPublic = {
    * Data
    */
   data: Array<CapabilityStats>
+}
+
+/**
+ * CapabilitySuggestionResult
+ */
+export type CapabilitySuggestionResult = {
+  /**
+   * Message
+   */
+  message: string
 }
 
 /**
@@ -4685,6 +4699,24 @@ export type SubmitInput = {
    * Revision
    */
   revision: number
+}
+
+/**
+ * SuggestCapability
+ */
+export type SuggestCapability = {
+  /**
+   * Name
+   */
+  name: string
+  /**
+   * Description
+   */
+  description: string
+  /**
+   * Reason
+   */
+  reason: string
 }
 
 /**
@@ -9706,6 +9738,38 @@ export type capabilitiesReadCapabilityProposalsResponses = {
 
 export type capabilitiesReadCapabilityProposalsResponse =
   capabilitiesReadCapabilityProposalsResponses[keyof capabilitiesReadCapabilityProposalsResponses]
+
+export type capabilitiesSuggestNewCapabilityData = {
+  body: SuggestCapability
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capabilities/proposals"
+}
+
+export type capabilitiesSuggestNewCapabilityErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capabilitiesSuggestNewCapabilityError =
+  capabilitiesSuggestNewCapabilityErrors[keyof capabilitiesSuggestNewCapabilityErrors]
+
+export type capabilitiesSuggestNewCapabilityResponses = {
+  /**
+   * Successful Response
+   */
+  200: CapabilitySuggestionResult
+}
+
+export type capabilitiesSuggestNewCapabilityResponse =
+  capabilitiesSuggestNewCapabilityResponses[keyof capabilitiesSuggestNewCapabilityResponses]
 
 export type capabilitiesDismissCapabilityProposalData = {
   body?: never
