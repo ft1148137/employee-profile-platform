@@ -11,6 +11,8 @@ from app.domains.bot import attachments, reviews
 from app.domains.bot import schemas as s
 from app.domains.bot.levels import name_levels
 from app.domains.bot.models import BotSession
+from app.domains.capability.proposals import suggest_capability
+from app.domains.capability.schemas import SuggestCapability
 from app.domains.change_request import employee
 from app.domains.change_request.schemas import ToolInput
 from app.domains.drafting.settings import read_auto_draft
@@ -23,6 +25,7 @@ from app.domains.review import direct
 TOOLS = {t.name: t for t in EMPLOYEE_TOOLS if t.bot_allowed}
 TITLES = {t.name: t.description for t in TOOLS.values()} | {
     "read_attachment": "读取会话附件",
+    "suggest_capability": "建议新增能力",
     "list_team_members": "查看团队成员",
     "get_member_profile": "查看下属画像",
     "prepare_profile_edit": "预览直接修改画像",
@@ -182,7 +185,15 @@ def definitions(p: Principal | None = None) -> list[ToolDefinition]:
     )
     return (
         team
-        + [attachments.READ_TOOL]
+        + [
+            attachments.READ_TOOL,
+            ToolDefinition(
+                name="suggest_capability",
+                description=TITLES["suggest_capability"]
+                + "；先复述名称和说明，员工明确同意后才调用；只建议，不改画像或词典。",
+                parameters=SuggestCapability.model_json_schema(),
+            ),
+        ]
         + reviews.definitions()
         + [
             ToolDefinition(
@@ -269,6 +280,16 @@ def call(
     name: str,
     arguments: dict[str, JsonValue],
 ) -> JsonValue:
+    if name == "suggest_capability":
+        try:
+            suggestion = SuggestCapability.model_validate(arguments)
+            return suggest_capability(p, db, **suggestion.model_dump()).model_dump(
+                mode="json"
+            )
+        except ValidationError:
+            return {"error": "工具参数不正确"}
+        except HTTPException as exc:
+            return {"error": exc.detail}
     if name == "read_attachment":
         try:
             body_attachment = attachments.ReadAttachmentInput.model_validate(arguments)
