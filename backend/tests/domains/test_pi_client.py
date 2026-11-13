@@ -58,7 +58,7 @@ def test_chat_roundtrip_with_state(pi_service: PiHarness) -> None:
     assert any(m["role"] == "assistant" and m.get("tool_calls") for m in messages)
 
 
-def test_chat_busy_has_typed_error_and_shorter_timeout(
+def test_chat_busy_has_typed_error_and_three_minute_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     real = httpx.Client
@@ -86,7 +86,7 @@ def test_chat_busy_has_typed_error_and_shorter_timeout(
             tools=[],
             on_tool_call=lambda *_: None,
         )
-    assert seen[0].extensions["timeout"]["read"] == 70
+    assert seen[0].extensions["timeout"]["read"] == 190
     assert json.loads(seen[0].content)["session_state"] == {
         "version": 1,
         "messages": [],

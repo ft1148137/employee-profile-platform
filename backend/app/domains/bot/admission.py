@@ -22,7 +22,7 @@ from app.domains.model.client import ModelRateLimited
 from app.domains.model.models import ModelSetting
 from app.domains.model.pi_client import PiBusy, TurnCancelled
 
-LEASE_SECONDS = 75
+LEASE_SECONDS = 195
 ORG_TURNS = 2
 HOURLY_TURNS = 30
 

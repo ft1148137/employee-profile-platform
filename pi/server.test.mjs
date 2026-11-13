@@ -388,7 +388,7 @@ test('deadline interrupts real SDK network waiting, not only platform tools', as
   const upstream = createServer((_req, res) => res.on('close', closed));
   upstream.listen(0, '127.0.0.1'); await once(upstream, 'listening');
   t.after(async () => { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); });
-  const { request, logs } = await setup(t, { streamFn: undefined, deadlineMs: 500 });
+  const { request, logs } = await setup(t, { streamFn: undefined, deadlineMs: 500, chatDeadlineMs: 500 });
   for (const data of [body(), chat()]) {
     data.model.baseUrl = `http://127.0.0.1:${upstream.address().port}/v1`;
     const response = await request('/v1/turns', 'POST', data);
@@ -586,6 +586,15 @@ test('fatal backend results abort before another model invocation', async t => {
 
 const chat = (input = '合成对话', history = []) => ({ ...body(), mode: 'chat', input, history });
 
+test('chat accepts a three-minute deadline independently of drafting', async t => {
+  const { start } = await setup(t, { chatDeadlineMs: 180000, deadlineMs: 40 });
+  const run = await start(chat());
+  const c = await run.next();
+  await new Promise(resolve => setTimeout(resolve, 80));
+  assert.equal((await run.result(c.call_id)).status, 200);
+  assert.equal((await run.next()).type, 'done');
+});
+
 test('chat validates history and draft refuses history', async t => {
   const { request } = await setup(t);
   for (const data of [
@@ -594,7 +603,7 @@ test('chat validates history and draft refuses history', async t => {
     chat('', [{ role: 'user', text: 'x', employee_id: 'forged' }]),
     chat('', [{ role: 'user', text: 'x'.repeat(24001) }]),
   ]) assert.equal((await request('/v1/turns', 'POST', data)).status, 400);
-  assert.throws(() => createPiServer({ token, chatDeadlineMs: 60001 }));
+  assert.throws(() => createPiServer({ token, chatDeadlineMs: 180001 }));
   assert.throws(() => createPiServer({ token, chatDeadlineMs: 0 }));
 });
 

@@ -3,6 +3,7 @@ import json
 import logging
 import re
 from datetime import timedelta
+from functools import partial
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -178,6 +179,47 @@ class Gateway:
                         raise
             await actions.deliver(db, p, event, identity, reply, adapter)
 
+    async def poll(self, adapter: Adapter, identity: str, credentials: str) -> None:
+        slots = asyncio.Semaphore(4)
+        pending: dict[str, asyncio.Task[None]] = {}
+        heartbeat_written_at = utc_now()
+
+        async def handle(event: Event, previous: asyncio.Task[None] | None) -> None:
+            if previous:
+                await previous
+            async with slots:
+                try:
+                    await self.handle(event, identity, credentials, adapter)
+                except ImError as error:
+                    if error.code != "recipient_unavailable":
+                        raise
+
+        def finished(user: str, task: asyncio.Task[None]) -> None:
+            if pending.get(user) is task:
+                del pending[user]
+
+        try:
+            async with asyncio.TaskGroup() as group:
+                while True:
+                    async for event in adapter.poll():
+                        user = event.external_user_id
+                        task = group.create_task(handle(event, pending.get(user)))
+                        pending[user] = task
+                        task.add_done_callback(partial(finished, user))
+                    if isinstance(
+                        adapter, Wecom
+                    ) and utc_now() - heartbeat_written_at >= timedelta(minutes=1):
+                        with Session(self.engine) as db:
+                            setting = db.get(ImSetting, (adapter.org_id, "wecom"))
+                            if setting and setting.credentials == credentials:
+                                setting.connection_checked_at = adapter.checked_at
+                                db.add(setting)
+                                db.commit()
+                                heartbeat_written_at = utc_now()
+        except ExceptionGroup as errors:
+            # TaskGroup joins all children before preserving the existing reconnect path.
+            raise errors.exceptions[0] from None
+
     async def connect(self, org_id: UUID, platform: Platform, credentials: str) -> None:
         delay = 1
         identity = None
@@ -213,25 +255,8 @@ class Gateway:
                         db.add(setting)
                         db.commit()
                     self.adapters[org_id, platform] = credentials, adapter
-                    heartbeat_written_at = utc_now()
-                    while True:
-                        async for event in adapter.poll():
-                            try:
-                                await self.handle(event, identity, credentials, adapter)
-                            except ImError as error:
-                                if error.code != "recipient_unavailable":
-                                    raise
-                        if isinstance(
-                            adapter, Wecom
-                        ) and utc_now() - heartbeat_written_at >= timedelta(minutes=1):
-                            with Session(self.engine) as db:
-                                setting = db.get(ImSetting, (org_id, platform))
-                                if setting and setting.credentials == credentials:
-                                    setting.connection_checked_at = adapter.checked_at
-                                    db.add(setting)
-                                    db.commit()
-                                    heartbeat_written_at = utc_now()
-                        delay = 1
+                    delay = 1
+                    await self.poll(adapter, identity, credentials)
                 except (
                     ImError,
                     SecretUnavailable,

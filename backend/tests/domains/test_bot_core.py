@@ -21,6 +21,7 @@ from app.domains.bot.admission import (
     BotRateLimited,
 )
 from app.domains.bot.models import BotSetting
+from app.domains.bot.presentation import DEADLINE_MESSAGE
 from app.domains.bot.prompts import request_states
 from app.domains.bot.schemas import QuestionAction, RequestAction
 from app.domains.change_request import employee
@@ -448,9 +449,7 @@ def test_model_failure_logs_only_metadata(
     response = core.turn(db, p, session.id, "synthetic-input-secret")
     assert response.messages[0].type == "text"
     assert response.messages[0].text == (
-        "模型服务暂时不可用，请稍后再试"
-        if code == "deadline"
-        else "模型服务暂时不可用，请稍后重试"
+        DEADLINE_MESSAGE if code == "deadline" else "模型服务暂时不可用，请稍后重试"
     )
     records = [r for r in caplog.records if r.name == core.__name__]
     assert len(records) == 1

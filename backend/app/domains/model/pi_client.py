@@ -187,7 +187,7 @@ def run_turn(
             headers={
                 "Authorization": f"Bearer {settings.PI_SERVICE_TOKEN.get_secret_value()}"
             },
-            timeout=httpx.Timeout(70 if mode == "chat" else 130, connect=5),
+            timeout=httpx.Timeout(190 if mode == "chat" else 130, connect=5),
             trust_env=False,
         ) as client:
             with client.stream("POST", "/v1/turns", json=body) as response:

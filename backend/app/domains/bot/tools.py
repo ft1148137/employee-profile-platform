@@ -7,7 +7,7 @@ from pydantic import Field, JsonValue, ValidationError
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
-from app.domains.bot import reviews
+from app.domains.bot import attachments, reviews
 from app.domains.bot import schemas as s
 from app.domains.bot.levels import name_levels
 from app.domains.bot.models import BotSession
@@ -22,6 +22,7 @@ from app.domains.review import direct
 
 TOOLS = {t.name: t for t in EMPLOYEE_TOOLS if t.bot_allowed}
 TITLES = {t.name: t.description for t in TOOLS.values()} | {
+    "read_attachment": "读取会话附件",
     "list_team_members": "查看团队成员",
     "get_member_profile": "查看下属画像",
     "prepare_profile_edit": "预览直接修改画像",
@@ -181,6 +182,7 @@ def definitions(p: Principal | None = None) -> list[ToolDefinition]:
     )
     return (
         team
+        + [attachments.READ_TOOL]
         + reviews.definitions()
         + [
             ToolDefinition(
@@ -267,6 +269,18 @@ def call(
     name: str,
     arguments: dict[str, JsonValue],
 ) -> JsonValue:
+    if name == "read_attachment":
+        try:
+            body_attachment = attachments.ReadAttachmentInput.model_validate(arguments)
+            return redact(
+                attachments.read_attachment(
+                    db, p, "bot", session.id, body_attachment.attachment_id
+                )
+            )
+        except ValidationError:
+            return {"error": "工具参数不正确"}
+        except HTTPException:
+            return {"error": "附件不存在"}
     if name in TEAM_INPUTS:
         return redact(team_call(db, p, cards, name, arguments))
     if name in reviews.INPUTS:
