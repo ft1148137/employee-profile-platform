@@ -4,7 +4,14 @@ import type { AttachmentPublic } from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 
+const drafts = new Map<string, string>()
+
+export function readChatDraft(key: string): string {
+  return drafts.get(key) ?? ""
+}
+
 export function ChatComposer({
+  draftKey,
   id,
   label,
   placeholder,
@@ -16,6 +23,7 @@ export function ChatComposer({
   onStop,
   onUpload,
 }: {
+  draftKey?: string
   id: string
   label: string
   placeholder: string
@@ -102,6 +110,7 @@ export function ChatComposer({
           pending.flatMap((item) => (item.attachment ? [item.attachment] : [])),
         )
       ) {
+        if (draftKey) drafts.delete(draftKey)
         update([])
         setError("")
       }
@@ -191,7 +200,13 @@ export function ChatComposer({
         maxLength={10000}
         value={text}
         disabled={busy || disabled}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => {
+          if (draftKey) {
+            if (event.target.value) drafts.set(draftKey, event.target.value)
+            else drafts.delete(draftKey)
+          }
+          onChange(event.target.value)
+        }}
         onPaste={(event) => {
           if (!event.clipboardData.files.length) return
           event.preventDefault()

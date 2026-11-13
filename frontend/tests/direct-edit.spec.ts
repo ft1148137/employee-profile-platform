@@ -167,12 +167,168 @@ async function chooseAddition(page: Page) {
 }
 
 isolated(
+  "manager reads a statement before choosing to edit from the team",
+  async ({ page, company }) => {
+    await logInUser(page, company.manager.account!.username, password)
+    await page.goto("/employees")
+    await page.getByRole("row").filter({ hasText: "合成员工" }).click()
+    await page.getByText("谁能看到", { exact: true }).click()
+    await expect(page.getByText(/查看不通知本人、不留记录/)).toBeVisible()
+    const card = page.getByRole("article", { name: "合成能力1", exact: true })
+    await card.getByRole("button", { name: "合成能力1", exact: true }).click()
+    const detail = page.getByRole("dialog")
+    await expect(detail).toContainText("原始合成陈述")
+    await expect(detail.getByRole("textbox")).toHaveCount(0)
+    await expect(detail).not.toContainText("直接发布")
+    for (const hidden of ["依据说明", "相关证据", "生成来源"])
+      await expect(detail).not.toContainText(hidden)
+    await detail.getByRole("button", { name: "直接修改", exact: true }).click()
+    await expect(
+      page.getByRole("textbox", { name: "陈述", exact: true }),
+    ).toBeVisible()
+    await page
+      .getByRole("dialog")
+      .getByText("谁能看到", { exact: true })
+      .click()
+    await expect(page.getByRole("dialog")).toContainText("草稿只有本人可见")
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "关闭", exact: true })
+      .click()
+    await card.getByRole("button", { name: "直接修改", exact: true }).click()
+    await expect(
+      page.getByRole("textbox", { name: "陈述", exact: true }),
+    ).toBeVisible()
+  },
+)
+
+isolated(
+  "owner can keep, discard or save unsaved edits on mobile",
+  async ({ page, company }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await logInUser(page, company.employee.account!.username, password)
+    await page.goto(`/employees/${company.employee.id}`)
+    await page
+      .getByRole("article", { name: "合成能力1", exact: true })
+      .getByRole("button", { name: "合成能力1", exact: true })
+      .click()
+    await page.getByRole("button", { name: "修改", exact: true }).last().click()
+    await page.getByRole("button", { name: "手动编辑", exact: true }).click()
+    const dialog = page.getByRole("dialog")
+    const input = dialog.getByRole("textbox", { name: "陈述", exact: true })
+    await dialog.getByText("谁能看到", { exact: true }).click()
+    await expect(dialog).toContainText("依据说明和受限自述本人和管辖经理可见")
+    await input.fill("尚未保存的合成陈述")
+    await dialog.getByRole("button", { name: "关闭", exact: true }).click()
+    await expect(dialog).toContainText("有没保存的内容，确定放弃吗？")
+    await dialog.getByRole("button", { name: "继续编辑", exact: true }).click()
+    await expect(input).toHaveValue("尚未保存的合成陈述")
+    await page.evaluate(() =>
+      document
+        .querySelector<HTMLAnchorElement>('a[href="/assistant"]')
+        ?.click(),
+    )
+    await expect(dialog).toContainText("有没保存的内容，确定放弃吗？")
+    await dialog.getByRole("button", { name: "继续编辑", exact: true }).click()
+    await expect(input).toHaveValue("尚未保存的合成陈述")
+    await page.keyboard.press("Escape")
+    await dialog.getByRole("button", { name: "保存草稿", exact: true }).click()
+    await expect(dialog).toBeHidden()
+    await expect(
+      page.getByRole("region", { name: "其他待处理请求" }),
+    ).toContainText("草稿 · 1 项改动")
+    await page.getByRole("button", { name: "继续修改", exact: true }).click()
+    await expect(input).toHaveValue("尚未保存的合成陈述")
+    await dialog.getByRole("button", { name: "关闭", exact: true }).click()
+    await expect(dialog).toBeHidden()
+    await page
+      .getByRole("article", { name: "合成能力1", exact: true })
+      .getByRole("button", { name: "修改", exact: true })
+      .click()
+    await page.getByRole("button", { name: "手动编辑", exact: true }).click()
+    await input.fill("应该放弃的合成陈述")
+    await page.keyboard.press("Escape")
+    await dialog.getByRole("button", { name: "放弃", exact: true }).click()
+    await expect(dialog).toBeHidden()
+    await expect(page.getByText("应该放弃的合成陈述")).toHaveCount(0)
+  },
+)
+
+isolated(
+  "approved ungraded negative statements are visible and excluded from confirmed totals",
+  async ({ page, company, request }) => {
+    const statement =
+      "我不具备这项能力，目前只协助过资料整理，尚未独立负责设计、实施或验收，需要同事继续指导并复核相关工作。"
+    await logInUser(page, company.employee.account!.username, password)
+    await page.goto(`/employees/${company.employee.id}`)
+    await chooseAddition(page)
+    await page.getByRole("button", { name: "手动编辑", exact: true }).click()
+    const dialog = page.getByRole("dialog")
+    await dialog
+      .getByRole("textbox", { name: "陈述", exact: true })
+      .fill(statement)
+    const created = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/me/requests") &&
+        response.request().method() === "POST",
+    )
+    await dialog
+      .getByRole("button", { name: "预览并提交", exact: true })
+      .click()
+    const response = await created
+    const draft = await response.json()
+    const base = new URL(response.url()).pathname.replace("/me/requests", "")
+    await dialog.getByRole("button", { name: "确认提交", exact: true }).click()
+    await expect(dialog).toBeHidden()
+    await logOutUser(page)
+    await logInUser(page, company.manager.account!.username, password)
+    const token = await page.evaluate(() =>
+      localStorage.getItem("access_token"),
+    )
+    const headers = { Authorization: `Bearer ${token}` }
+    const review = await (
+      await request.get(`${base}/reviews/${draft.id}`, { headers })
+    ).json()
+    const approved = await request.post(
+      `${base}/reviews/${draft.id}/decisions`,
+      {
+        headers,
+        data: {
+          revision: review.revision,
+          decisions: review.items.map((item: { after: { id: string } }) => ({
+            item_id: item.after.id,
+            decision: "approved",
+          })),
+        },
+      },
+    )
+    expect(approved.ok()).toBeTruthy()
+    await page.goto(`/employees/${company.employee.id}`)
+    const card = page.getByRole("article", { name: "合成能力2", exact: true })
+    await expect(card).toContainText("未定级")
+    await expect(card).not.toContainText("已确认")
+    await expect(card).toContainText(
+      `${Array.from(statement).slice(0, 40).join("")}…`,
+    )
+    const stats = page.getByRole("region", { name: "能力状态统计" })
+    await expect(stats).toContainText("已确认 1")
+    await expect(stats).toContainText("未定级 1")
+    await card.getByRole("button", { name: "合成能力2", exact: true }).click()
+    await expect(page.getByRole("dialog")).toContainText(statement)
+  },
+)
+
+isolated(
   "owner manually submits a capability for review and hands existing or new skills to the assistant",
   async ({ page, company }) => {
     await logInUser(page, company.employee.account!.username, password)
     await page.goto(`/employees/${company.employee.id}`)
     const card = page.getByRole("article", { name: "合成能力1", exact: true })
     await card.getByRole("button", { name: "合成能力1", exact: true }).click()
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "修改", exact: true })
+      .click()
     await page.getByRole("button", { name: "手动编辑", exact: true }).click()
     const dialog = page.getByRole("dialog")
     await dialog
@@ -190,10 +346,15 @@ isolated(
     await expect(card).toContainText("独立完成")
     for (const adding of [false, true]) {
       if (adding) await chooseAddition(page)
-      else
+      else {
         await card
           .getByRole("button", { name: "合成能力1", exact: true })
           .click()
+        await page
+          .getByRole("dialog")
+          .getByRole("button", { name: "修改", exact: true })
+          .click()
+      }
       let sends = 0
       const countSend = (request: import("@playwright/test").Request) => {
         if (

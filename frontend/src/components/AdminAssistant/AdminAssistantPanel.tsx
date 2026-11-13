@@ -16,7 +16,7 @@ import {
 } from "@/components/Admin/auditLabels"
 import { TodayPanel } from "@/components/Admin/TodayPanel"
 import { BotMessage } from "@/components/Bot/BotMessage"
-import { ChatComposer } from "@/components/Chat/ChatComposer"
+import { ChatComposer, readChatDraft } from "@/components/Chat/ChatComposer"
 import { ChatMessages } from "@/components/Chat/ChatMessages"
 import { useStreamingTurn } from "@/components/Chat/useStreamingTurn"
 import { RosterPreview } from "@/components/Roster/RosterPreview"
@@ -329,7 +329,10 @@ export function AdminAssistantPanel({
   useEffect(() => {
     if (sessionId || !preserveText.current)
       rememberConversation(storageKey, sessionId ?? "")
-    if (!preserveText.current) setText(prefill?.text ?? "")
+    if (!preserveText.current)
+      setText(
+        prefill?.text || readChatDraft(`${storageKey}:${sessionId ?? "new"}`),
+      )
     preserveText.current = false
     creatingSession.current = null
     turnSession.current = sessionId
@@ -596,6 +599,7 @@ export function AdminAssistantPanel({
       </div>
       <ChatComposer
         key={`${navigationKey}:${composerVersion}`}
+        draftKey={`${storageKey}:${sessionId ?? "new"}`}
         id="admin-assistant-input"
         label="发给管理助手的消息"
         placeholder="给管理助手发消息…"
