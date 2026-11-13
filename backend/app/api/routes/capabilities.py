@@ -8,7 +8,11 @@ from app.domains.capability.files import (
     dictionary_yaml,
     parse_dictionary,
 )
-from app.domains.capability.proposals import dismiss_proposal, list_proposals
+from app.domains.capability.proposals import (
+    dismiss_proposal,
+    list_proposals,
+    suggest_capability,
+)
 from app.domains.capability.publish import save_dictionary as publish_dictionary
 from app.domains.capability.schemas import (
     ActiveSchemaPublic,
@@ -16,8 +20,10 @@ from app.domains.capability.schemas import (
     CapabilityProposalsPublic,
     CapabilityPublic,
     CapabilityStatsPublic,
+    CapabilitySuggestionResult,
     DictionaryPreview,
     SaveDictionary,
+    SuggestCapability,
 )
 from app.domains.capability.service import (
     DictionaryConflict,
@@ -114,6 +120,13 @@ def read_capability_proposals(
     session: SessionDep, principal: OrgAdminDep
 ) -> CapabilityProposalsPublic:
     return list_proposals(session, principal)
+
+
+@router.post("/proposals", response_model=CapabilitySuggestionResult)
+def suggest_new_capability(
+    body: SuggestCapability, session: SessionDep, principal: OrgPrincipalDep
+) -> CapabilitySuggestionResult:
+    return suggest_capability(principal, session, **body.model_dump())
 
 
 @router.post("/proposals/{id}/dismiss", status_code=204)

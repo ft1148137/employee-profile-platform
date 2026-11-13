@@ -391,7 +391,7 @@ test("draft proposals enter the dictionary through preview and save", async ({
     .filter({ hasText: "2 个起草时提议的新能力" })
     .getByRole("link", { name: "去处理", exact: true })
     .click()
-  const panel = page.getByRole("region", { name: "起草时提议的能力" })
+  const panel = page.getByRole("region", { name: "建议新增的能力" })
   page.once("dialog", (dialog) => dialog.accept())
   await panel
     .getByRole("article", { name: "建议：将忽略的能力" })
@@ -423,4 +423,157 @@ test("draft proposals enter the dictionary through preview and save", async ({
   await page.getByRole("button", { name: "编辑词典", exact: true }).click()
   await expect(panel).toHaveCount(0)
   await expect(added).toBeVisible()
+})
+
+test("employee suggests a missing capability and can add it after admin acceptance", async ({
+  page,
+  request,
+  browser,
+}) => {
+  const password = "synthetic-password-2026"
+  const adminEmail = `suggestion-admin-${crypto.randomUUID()}@example.com`
+  const employeeEmail = `suggestion-employee-${crypto.randomUUID()}@example.com`
+  const token = await request.post("/api/v1/private/setup-tokens", {
+    data: { purpose: "new_org" },
+  })
+  const initialized = await request.post("/api/v1/setup/initialize", {
+    data: {
+      token: (await token.json()).token,
+      org_name: "员工建议合成企业",
+      admin_username: adminEmail,
+      admin_password: password,
+    },
+  })
+  expect(initialized.ok()).toBeTruthy()
+  const { access_token, org_id } = await initialized.json()
+  const headers = { Authorization: `Bearer ${access_token}` }
+  const base = `/api/v1/orgs/${org_id}`
+  expect(
+    (
+      await request.put(`${base}/capabilities`, {
+        headers,
+        data: {
+          expected_version: 0,
+          definitions: [
+            {
+              key: "existing",
+              name: "已有能力",
+              category: "工程",
+              description: "合成说明",
+              level_rubric: {
+                levels: [
+                  {
+                    key: "basic",
+                    label: "基础",
+                    description: "能在指导下完成",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      })
+    ).ok(),
+  ).toBeTruthy()
+  const roster = await request.post(`${base}/roster/imports`, {
+    headers,
+    multipart: {
+      file: {
+        name: "名单.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from(
+          `工号,姓名,部门,职位,上级工号,邮箱\n001,合成建议员工,工程部,,,${employeeEmail}\n`,
+        ),
+      },
+    },
+  })
+  const imported = await roster.json()
+  expect(
+    (
+      await request.post(`${base}/roster/imports/${imported.id}/apply`, {
+        headers,
+        data: { base_revision: imported.base_revision },
+      })
+    ).ok(),
+  ).toBeTruthy()
+  expect(
+    (await request.post(`${base}/accounts/issue`, { headers, data: {} })).ok(),
+  ).toBeTruthy()
+  const accounts = await (
+    await request.get(`${base}/accounts`, { headers })
+  ).json()
+  const employee = accounts.data[0]
+  const reset = await request.post(
+    `${base}/accounts/${employee.account.user_id}/reset-password`,
+    { headers },
+  )
+  expect(reset.ok()).toBeTruthy()
+  const initialPassword = (await reset.json()).initial_password
+  await page.goto("/login")
+  await page.getByTestId("email-input").fill(employeeEmail)
+  await page.getByTestId("password-input").fill(initialPassword)
+  await page.getByRole("button", { name: "登录", exact: true }).click()
+  await expect(page).toHaveURL("/change-password")
+  await page.getByLabel("当前密码", { exact: true }).fill(initialPassword)
+  await page.getByLabel("新密码", { exact: true }).fill(password)
+  await page.getByLabel("确认新密码", { exact: true }).fill(password)
+  await page.getByRole("button", { name: "保存密码", exact: true }).click()
+  await expect(page).toHaveURL("/assistant")
+  await page.goto(`/employees/${employee.id}`)
+  await page.getByRole("button", { name: "添加能力", exact: true }).click()
+  const picker = page.getByRole("dialog")
+  await picker.getByLabel("搜索能力").fill("研发费用归集")
+  await picker.getByRole("button", { name: "建议新增这项能力" }).click()
+  await expect(picker.getByLabel("能力名称")).toHaveValue("研发费用归集")
+  await picker.getByLabel("能力说明").fill("按研发项目归集费用")
+  await picker.getByLabel("为什么需要").fill("我的工作需要这项能力")
+  await picker.getByRole("button", { name: "提交建议" }).click()
+  await expect(picker.getByRole("status")).toHaveText(
+    "已提交给企业管理员，加进词典后就可以在这里添加",
+  )
+  await page.screenshot({ path: "test-results/capability-suggestion.png" })
+  const adminContext = await browser.newContext({
+    storageState: { cookies: [], origins: [] },
+  })
+  try {
+    const admin = await adminContext.newPage()
+    await logInUser(admin, adminEmail, password)
+    await admin.goto("/admin/rules?tab=dictionary#dictionary-editor")
+    const editor = admin.getByRole("region", { name: "网页编辑能力词典" })
+    const proposal = editor.getByRole("article", { name: "建议：研发费用归集" })
+    await expect(proposal).toContainText("员工建议：合成建议员工")
+    await proposal.screenshot({
+      path: "test-results/capability-suggestion-admin.png",
+    })
+    await proposal
+      .getByRole("button", { name: "加入词典", exact: true })
+      .click()
+    const added = editor.getByRole("article", {
+      name: "研发费用归集",
+      exact: true,
+    })
+    await added.getByLabel("能力标识").fill("research_cost")
+    await added.getByLabel("等级描述").fill("能按项目完成费用归集")
+    await editor.getByRole("button", { name: "预览改动" }).click()
+    await editor.getByRole("button", { name: "确认保存新版本" }).click()
+    await expect(
+      admin.getByRole("status").filter({ hasText: "新词典已启用" }),
+    ).toBeVisible()
+    await page.reload()
+    await page.getByRole("button", { name: "添加能力", exact: true }).click()
+    await picker.getByLabel("搜索能力").fill("研发费用归集")
+    await picker
+      .getByRole("button", { name: "研发费用归集", exact: true })
+      .click()
+    await expect(page.getByRole("dialog")).toContainText("研发费用归集")
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "手动编辑", exact: true })
+      .click()
+    await expect(
+      page.getByRole("dialog").getByLabel("陈述", { exact: true }),
+    ).toBeVisible()
+  } finally {
+    await adminContext.close()
+  }
 })

@@ -207,10 +207,10 @@ function Editor({
       <SetupError error={proposals.error} />
       {!!proposals.data?.data.length && (
         <section
-          aria-label="起草时提议的能力"
+          aria-label="建议新增的能力"
           className="space-y-3 rounded-lg border p-4"
         >
-          <h3 className="font-semibold">起草时提议的能力</h3>
+          <h3 className="font-semibold">建议新增的能力</h3>
           <p className="text-sm text-muted-foreground">
             加入后请填写能力标识和等级描述，预览并保存才会更新词典。已有判断保持不变。
           </p>
@@ -225,10 +225,17 @@ function Editor({
               </h4>
               <p>{proposal.description}</p>
               <p>理由：{proposal.reason}</p>
+              <p className="text-sm font-medium">
+                {proposal.proposed_by_employee_name
+                  ? `员工建议：${proposal.proposed_by_employee_name}`
+                  : `起草时提议（${proposal.evidence_count} 条工作记录）`}
+              </p>
               <p className="text-sm">
                 {proposal.evidence_count} 条证据 · 涉及{" "}
                 {proposal.employee_count} 名员工 · 更新于{" "}
-                {new Date(proposal.updated_at).toLocaleString("zh-CN")}
+                {new Date(proposal.updated_at).toLocaleString("zh-CN", {
+                  timeZone: "Asia/Shanghai",
+                })}
               </p>
               <ul className="list-disc pl-5 text-sm">
                 {proposal.evidence_titles.map((title, i) => (
