@@ -1,6 +1,8 @@
 # 架构与扩展位置
 
-M3 支持管理员接 Jira/CSV、确认账号对应，再用已启用的 Pi 模型起草待本人过目的请求；没有启用模型时不起草。员工通过表单、JSON、MCP 和内置机器人提交候选。FastAPI 提供 Web/API，React 构建产物由同一进程托管；所有业务数据和任务队列共用 PostgreSQL。演示企业仍由合成种子建立；经理审批与正式发布入口在 M4。
+管理员接 Jira/CSV、确认账号对应，再用已启用的 Pi 模型起草待本人过目的请求；没有启用模型时不起草。员工通过表单、MCP 和内置机器人提交候选，JSON 可作为助手附件。FastAPI 提供 Web/API，React 构建产物由同一进程托管；所有业务数据和任务队列共用 PostgreSQL。演示企业仍由合成种子建立。
+
+按 E21（M4.3），正式画像的判断通过两种方式改变：经理批准的请求（企业关闭某类能力的经理确认时，本人确认后发布为「暂定」），或企业管理员、管辖经理的直接修改（改后通知本人）。系统自动起草仍先交本人过目；助手直接修改须由有权用户点击确认卡。任何人都不能批准自己的请求，也不能直接改自己的画像。协议见 [ADR-0040](adr/0040-direct-profile-edits.md)；用户操作见[员工指南](employee-guide.md)、[经理指南](manager-guide.md)和[管理员指南](admin-guide.md)。
 
 ## 进程与模块
 
@@ -325,7 +327,7 @@ Pi SDK 固定 0.73.1（MIT），模型输入和工具输出经过投影校验；
 | Slot | 代码位置与边界 | 当前状态 |
 | --- | --- | --- |
 | Source Slot | `backend/app/connectors/` 接来源；`app/domains/work` 承接 Task/WorkEvent，证据服务追加 Evidence | Cloud/DC 两个适配器和 CSV/Excel，共用同步与身份推导；seed 仅导入合成样例 |
-| Profile Slot | `app/domains/drafting` 使用 Evidence 与版本化 capability 产生请求，批准后冻结 ProfileVersion | 起草生成 pending_owner；M3 员工提交 pending_review；经理审批在 M4 |
+| Profile Slot | `app/domains/drafting` 产生候选请求；审批与直接修改共用发布服务，冻结 ProfileVersion | 系统起草先交本人过目；本人更新按审批规则发布；管理员、管辖经理可直接修改他人画像 |
 | Interaction Slot | 后续连接待确认问题、人类回答及统一 Review 流程，回答回到证据/候选判断 | M3 已有 PendingQuestion、InboxItem 与员工回答；自动提问在 M4 |
 
 来源插件只提交事实和证据，不直接发布画像；模型只产生候选改动项。Pi 模型层可替换、可完全关闭，使用输入白名单并记录提供方、模型、提示词及 Schema 版本。
