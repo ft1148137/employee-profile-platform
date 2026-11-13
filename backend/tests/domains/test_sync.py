@@ -82,8 +82,9 @@ def start(client: TestClient, base: str, auth: dict[str, str]) -> str:
     return response.json()["id"]
 
 
+@pytest.mark.parametrize("legacy", [False, True])
 def test_retry_preserves_original_projects(
-    context: tuple, client: TestClient, db: Session
+    context: tuple, client: TestClient, db: Session, legacy: bool
 ) -> None:
     org, base, auth, *_ = context
     body = {**BODY, "start_date": "2000-01-01", "project_keys": ["PLAT"]}
@@ -93,11 +94,15 @@ def test_retry_preserves_original_projects(
     run_id = start(client, base, auth)
     run = db.get(SyncRun, UUID(run_id))
     run.status = "failed"
+    if legacy:
+        run.input = None
     db.add(run)
     db.commit()
     assert (
         client.put(
-            base + "/sources/jira", headers=auth, json={**body, "project_keys": []}
+            base + "/sources/jira",
+            headers=auth,
+            json={**body, "project_keys": ["AI"] if legacy else []},
         ).status_code
         == 200
     )
@@ -106,9 +111,11 @@ def test_retry_preserves_original_projects(
         == 202
     )
     retried = run_sync(db, org, run_id)
-    assert retried.counts["records"] == 10
+    assert retried.counts["records"] == (37 if legacy else 10)
     assert service.public_jira(service.read_jira(db, org)).synced_until is None
-    assert run_sync(db, org, start(client, base, auth)).counts["records"] == 37
+    assert run_sync(db, org, start(client, base, auth)).counts["records"] == (
+        9 if legacy else 37
+    )
 
 
 @pytest.mark.parametrize("deployment", ["cloud", "data_center"])
