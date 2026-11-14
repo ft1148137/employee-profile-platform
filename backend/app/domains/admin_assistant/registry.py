@@ -509,6 +509,7 @@ FUNCTIONS["set_department_capabilities"] = AdminFunction(
     page="/org-chart",
     endpoints=(("PUT", "/departments/{id}/capabilities"),),
     snapshot=department_capabilities.snapshot,
+    impact=department_capabilities.impact,
 )
 
 FUNCTIONS["update_update_settings"] = AdminFunction(
