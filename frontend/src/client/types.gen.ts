@@ -4087,6 +4087,52 @@ export type ProfileEditItem = {
 }
 
 /**
+ * ProfileExportRow
+ */
+export type ProfileExportRow = {
+  /**
+   * Employee Code
+   */
+  employee_code: string | null
+  /**
+   * Capability Key
+   */
+  capability_key: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  /**
+   * Level
+   */
+  level: string | null
+  /**
+   * Level Name
+   */
+  level_name: string | null
+  /**
+   * Status
+   */
+  status: string
+  /**
+   * Evidence Count
+   */
+  evidence_count: number
+  /**
+   * Latest Evidence At
+   */
+  latest_evidence_at: string | null
+  /**
+   * Published By
+   */
+  published_by: string
+  /**
+   * Published At
+   */
+  published_at: string
+}
+
+/**
  * ProfileItem
  */
 export type ProfileItem = {
@@ -6229,6 +6275,45 @@ export type peopleSearchSearchPeopleResponses = {
 
 export type peopleSearchSearchPeopleResponse =
   peopleSearchSearchPeopleResponses[keyof peopleSearchSearchPeopleResponses]
+
+export type peopleSearchExportProfilesData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: {
+    /**
+     * Format
+     */
+    format?: "csv" | "json"
+  }
+  url: "/api/v1/orgs/{org_id}/profile-export"
+}
+
+export type peopleSearchExportProfilesErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type peopleSearchExportProfilesError =
+  peopleSearchExportProfilesErrors[keyof peopleSearchExportProfilesErrors]
+
+export type peopleSearchExportProfilesResponses = {
+  /**
+   * Response People-Search-Export Profiles
+   *
+   * Successful Response
+   */
+  200: Array<ProfileExportRow>
+}
+
+export type peopleSearchExportProfilesResponse =
+  peopleSearchExportProfilesResponses[keyof peopleSearchExportProfilesResponses]
 
 export type adminAssistantListSessionsData = {
   body?: never

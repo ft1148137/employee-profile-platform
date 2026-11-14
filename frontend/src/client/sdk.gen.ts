@@ -387,6 +387,9 @@ import type {
   orgsUpdateEmployeeFieldsData,
   orgsUpdateEmployeeFieldsErrors,
   orgsUpdateEmployeeFieldsResponses,
+  peopleSearchExportProfilesData,
+  peopleSearchExportProfilesErrors,
+  peopleSearchExportProfilesResponses,
   peopleSearchSearchPeopleData,
   peopleSearchSearchPeopleErrors,
   peopleSearchSearchPeopleResponses,
@@ -539,6 +542,24 @@ export class PeopleSearchService {
       responseType: "json",
       security: [{ scheme: "bearer", type: "http" }],
       url: "/api/v1/orgs/{org_id}/people-search",
+      ...options,
+    })
+  }
+
+  /**
+   * Export Profiles
+   */
+  public static searchExportProfiles<ThrowOnError extends boolean = true>(
+    options: Options<peopleSearchExportProfilesData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      peopleSearchExportProfilesResponses,
+      peopleSearchExportProfilesErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/profile-export",
       ...options,
     })
   }

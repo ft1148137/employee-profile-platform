@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { isAxiosError } from "axios"
 import { useState } from "react"
@@ -12,6 +12,7 @@ import { dateLabel, record } from "@/components/Profile/fields"
 import { labels } from "@/components/Profile/labels"
 import { OrgState } from "@/components/Profile/OrgState"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
+import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -51,6 +52,22 @@ function PeopleSearch({ orgId }: { orgId: string }) {
   const { org, roles, managedDepartmentIds } = useOrg()
   const [filters, setFilters] = useState<Filters>({ capability_key: "" })
   const [query, setQuery] = useState<Filters>()
+  const download = useMutation({
+    mutationFn: async (format: "csv" | "json") => {
+      const { data } = await PeopleSearchService.searchExportProfiles({
+        path: { org_id: orgId },
+        query: { format },
+        responseType: "blob",
+      })
+      if (!(data instanceof Blob)) throw new Error("画像导出失败")
+      const url = URL.createObjectURL(data)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `已发布画像.${format}`
+      link.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    },
+  })
   const capabilities = useQuery({
     queryKey: ["capabilities", orgId],
     queryFn: async () =>
@@ -87,11 +104,31 @@ function PeopleSearch({ orgId }: { orgId: string }) {
   const error = results.error || capabilities.error || departments.error
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">按能力找人</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          在你的可见范围内，查找有已发布判断的在职员工。
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">按能力找人</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            在你的可见范围内，查找有已发布判断的在职员工。
+          </p>
+        </div>
+        <section aria-label="导出已发布画像" className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            {(["csv", "json"] as const).map((format) => (
+              <Button
+                key={format}
+                variant="outline"
+                disabled={download.isPending}
+                onClick={() => download.mutate(format)}
+              >
+                导出已发布画像（{format.toUpperCase()}）
+              </Button>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            导出本人可见的全部已发布判断，不受页面筛选影响。
+          </p>
+          <SetupError error={download.error} />
+        </section>
       </div>
       <form
         className="space-y-4 rounded-xl border bg-muted/20 p-5"
