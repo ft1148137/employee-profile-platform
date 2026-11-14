@@ -120,7 +120,6 @@ test("admin accepts suggestions without entering identifiers or level descriptio
     (await (await request.get(`${base}/proposals`, { headers })).json()).data,
   ).toEqual([])
   await page.reload()
-  await page.getByRole("button", { name: "编辑词典", exact: true }).click()
   await expect(
     editor.getByRole("article", { name: "新合成能力", exact: true }),
   ).toBeVisible()
