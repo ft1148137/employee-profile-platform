@@ -17,6 +17,7 @@ import { publishedLabel } from "@/components/Profile/EmployeeSummary"
 import { initialStatusLabel } from "@/components/Profile/initialStatus"
 import { OrgState } from "@/components/Profile/OrgState"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
+import { ProfileCoverage } from "@/components/Progress/ProfileCoverage"
 import {
   employeeFieldLabels,
   tenureLabel,
@@ -154,11 +155,19 @@ function EmployeesList({ orgId }: { orgId: string }) {
         <p className="mb-1 text-xs tracking-widest text-muted-foreground">
           组织 · 员工资源
         </p>
-        <h1 className="text-3xl font-semibold tracking-tight">员工</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">我的团队</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           了解工作经历与画像进度，让每项判断都有事实可循。
         </p>
       </div>
+      <ProfileCoverage
+        orgId={orgId}
+        department={department}
+        onDepartmentChange={(value) => {
+          setDepartment(value)
+          setPagination((old) => ({ ...old, pageIndex: 0 }))
+        }}
+      />
       <div className="flex flex-wrap items-center gap-3">
         <Input
           aria-label="搜索姓名"
