@@ -8,7 +8,8 @@ const initialStatusLabels: Record<InitialProfileStatus, string> = {
   pending_owner: "待本人过目",
   no_judgment: "未生成判断",
   failed: "起草失败",
-  done: "已处理",
+  owner_reviewed: "本人已过目",
+  direct_edited: "经理或管理员已直接修改",
 }
 
 export function initialStatusLabel(status: InitialProfileStatus | undefined) {
@@ -37,7 +38,9 @@ export function initialStatusReason(
       return `已有${subject}的工作记录，但起草时定不了等级，没有生成判断。这不表示${subject}不会这项能力。`
     case "failed":
       return "初始画像起草失败，可以联系管理员重试。"
-    case "done":
-      return `初始画像已提交、已发布或本人已过目，${subject}仍可补充能力；尚未发布的改动需要完成审核才会生效。`
+    case "owner_reviewed":
+      return `初始画像已由${subject}过目。`
+    case "direct_edited":
+      return `画像由经理或管理员直接修改过，没有经过${subject}过目。`
   }
 }

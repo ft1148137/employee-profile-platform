@@ -111,6 +111,13 @@ function EmployeeDetails() {
     query.data.employee.employment_status === "active" &&
     (isAdmin ||
       managedDepartmentIds.includes(query.data.employee.department?.id ?? ""))
+  const pendingSupplement = requests.data?.data.find(
+    (request) =>
+      request.status === "pending_review" && request.origin !== "initial_sync",
+  )
+  const reviewerNames = (pendingSupplement?.reviewers ?? [])
+    .map((reviewer) => `${reviewer.name}（${reviewer.role}）`)
+    .join("、")
   return (
     <div className="space-y-8">
       <EmployeeDetailTabs
@@ -167,6 +174,13 @@ function EmployeeDetails() {
                       ownEmployeeId === employeeId,
                     )}
                   </p>
+                  {ownEmployeeId === employeeId && pendingSupplement && (
+                    <p>
+                      {reviewerNames
+                        ? `你的补充正在等 ${reviewerNames} 审批。`
+                        : "你的补充正在等待审批，暂时没有可用的审批人，企业管理员会处理。"}
+                    </p>
+                  )}
                   {ownEmployeeId === employeeId ? (
                     <p>
                       你可以在下面的「添加能力」里自己补充，或者
