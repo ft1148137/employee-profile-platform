@@ -5,16 +5,23 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, RootModel
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.domains.account.service import require_admin
 from app.domains.admin_assistant.materials import Material, validate_attachments
 from app.domains.change_request.schemas import ToolInput
 from app.domains.org.employee_fields import FIELD_LABELS
-from app.domains.org.models import Organization
+from app.domains.org.models import Employee, EmploymentStatus, Organization
 from app.domains.org.roster import service
-from app.domains.org.roster.schemas import HEADERS, ApplyImport, ParsedRoster, RosterRow
+from app.domains.org.roster.rehire import previous_manager
+from app.domains.org.roster.schemas import (
+    HEADERS,
+    ApplyImport,
+    ParsedRoster,
+    RosterIssue,
+    RosterRow,
+)
 from app.domains.org.roster.single import PersonnelInput, current_roster
 
 
@@ -124,6 +131,44 @@ def risk(args: MaterialArgs) -> Literal["normal", "high"]:
     )
 
 
+def rehire_notices(
+    db: Session, p: Principal, roster: ParsedRoster
+) -> list[RosterIssue]:
+    inactive = {
+        e.employee_code.casefold(): e
+        for e in db.exec(
+            select(Employee).where(
+                Employee.org_id == p.org_id,
+                Employee.employment_status == EmploymentStatus.INACTIVE,
+                col(Employee.employee_code).is_not(None),
+            )
+        ).all()
+        if e.employee_code
+    }
+    notices = []
+    for row in roster.active().rows:
+        employee = inactive.get(row.employee_code.casefold())
+        if employee is None or row.manager_code:
+            continue
+        text = f"{row.display_name}：直属上级未设置"
+        manager = previous_manager(db, p, employee.id, roster)
+        if manager and not manager.is_active:
+            text += f"；原上级 {manager.display_name} 已离职，请重新设置"
+        elif manager and manager.can_restore:
+            text += f"；原上级 {manager.display_name} 仍在职，可让我恢复原上级"
+        else:
+            text += "，请重新设置"
+        notices.append(
+            RosterIssue(
+                severity="warning",
+                row_number=row.row_number,
+                column="上级工号",
+                message=text,
+            )
+        )
+    return notices
+
+
 def impact(db: Session, p: Principal, args: MaterialArgs) -> BaseModel:
     roster = prepare(db, p, args)
     preview = service.create_import(db, p, roster, "材料预览", persist=False)
@@ -192,6 +237,7 @@ def impact(db: Session, p: Principal, args: MaterialArgs) -> BaseModel:
     text += "".join(
         f"；第 {i.row_number} 行 {i.column or ''}：{i.message}" for i in preview.issues
     )
+    text += "".join(f"；{i.message}" for i in rehire_notices(db, p, roster))
     return RootModel(
         {"count": len(added | reactivated | adjusted | removed), "text": text}
     )
@@ -202,10 +248,12 @@ def apply(
 ) -> BaseModel:
     context = db.info["audit_context"]
     validate_attachments(db, p, args.materials, UUID(context["assistant_session_id"]))
+    roster = prepare(db, p, args)
+    notices = rehire_notices(db, p, roster)
     record = service.create_import(
         db,
         p,
-        prepare(db, p, args),
+        roster,
         "、".join(m.label for m in args.materials),
         commit=False,
     )
@@ -214,7 +262,7 @@ def apply(
         "material_names": [m.label for m in args.materials],
     }
     try:
-        return service.apply_import(
+        result = service.apply_import(
             db,
             p,
             record.id,
@@ -223,5 +271,7 @@ def apply(
             ),
             commit=commit,
         )
+        result.issues.extend(notices)
+        return result
     finally:
         db.info["audit_context"] = context

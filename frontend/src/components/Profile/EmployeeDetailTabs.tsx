@@ -6,6 +6,7 @@ import {
   type EmployeeSummary,
   OrgsService,
   RolesService,
+  RosterService,
 } from "@/client"
 import { AccountActions } from "@/components/Admin/AccountTable"
 import { ChangeHistory } from "@/components/Admin/ChangeHistory"
@@ -66,6 +67,17 @@ export function EmployeeDetailTabs({
     enabled: isAdmin,
     queryFn: async () =>
       (await OrgsService.readDepartments({ path: { org_id: orgId } })).data,
+  })
+  const previousManager = useQuery({
+    queryKey: ["previous-manager", orgId, employeeId],
+    enabled:
+      isAdmin && summary.employment_status === "active" && !summary.manager,
+    queryFn: async () =>
+      (
+        await RosterService.readPreviousManager({
+          path: { org_id: orgId, employee_id: employeeId },
+        })
+      ).data,
   })
   const refresh = () => {
     for (const queryKey of [
@@ -151,14 +163,44 @@ export function EmployeeDetailTabs({
             </section>
           )}
       </header>
-      {isAdmin && (person.isError || departments.isError) && (
-        <ProfileError
-          retry={() => {
-            person.refetch()
-            departments.refetch()
-          }}
-        />
-      )}
+      {summary.employment_status === "active" &&
+        !summary.manager &&
+        previousManager.data && (
+          <section
+            aria-label="重新设置直属上级"
+            className="space-y-3 rounded-xl border p-5"
+          >
+            <p>直属上级未设置</p>
+            {!previousManager.data.is_active ? (
+              <p>
+                原上级 {previousManager.data.display_name} 已离职，请重新设置
+              </p>
+            ) : previousManager.data.can_restore &&
+              employee &&
+              departments.isSuccess ? (
+              <PersonnelDialog
+                orgId={orgId}
+                employee={employee}
+                department={
+                  options.find((d) => d.id === summary.department?.id)?.name
+                }
+                initialManager={previousManager.data}
+              />
+            ) : (
+              <p>请重新设置直属上级</p>
+            )}
+          </section>
+        )}
+      {isAdmin &&
+        (person.isError || departments.isError || previousManager.isError) && (
+          <ProfileError
+            retry={() => {
+              person.refetch()
+              departments.refetch()
+              previousManager.refetch()
+            }}
+          />
+        )}
       <Tabs value={selected} onValueChange={onTabChange} className="gap-6">
         <TabsList
           aria-label="员工详情"
