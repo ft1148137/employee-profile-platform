@@ -40,6 +40,7 @@ class ReviewItem(SQLModel):
 
 class ReviewDetail(SQLModel):
     acting_for_name: str | None = None
+    assignment_reason: str | None = None
     owner_reviewed: bool = True
     id: UUID
     revision: int

@@ -47,7 +47,7 @@ from app.domains.review.publish import (
     jira_only,
     publish,
 )
-from app.domains.review.routing import can_review, reviewers_for
+from app.domains.review.routing import can_review, review_assignment, reviewers_for
 from app.domains.review.schemas import (
     DecisionInput,
     DecisionResult,
@@ -224,6 +224,13 @@ def get_review(
         items=result,
         owner_reviewed=request.submitted_via != SubmissionVia.ADMIN_HANDOVER,
         acting_for_name=(manager.full_name or manager.username) if manager else None,
+        assignment_reason=(
+            None
+            if manager
+            else review_assignment(
+                session, principal.org_id, request.subject_employee_id
+            )[1]
+        ),
     )
 
 
