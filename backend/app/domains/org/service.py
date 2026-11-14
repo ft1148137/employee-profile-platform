@@ -16,6 +16,8 @@ from app.domains.change_request.models import (
     ProfileChangeRequest,
     RequestOrigin,
     RequestStatus,
+    ReviewDecision,
+    ReviewVia,
 )
 from app.domains.change_request.service import review_statuses
 from app.domains.evidence.models import Evidence, EvidenceKind, EvidenceStatus
@@ -192,21 +194,18 @@ def _initial_profile_status() -> ColumnElement[str]:
         col(ProfileChangeRequest.status).in_(awaiting), has_items
     ).exists()
     handled = initial.where(~col(ProfileChangeRequest.status).in_(awaiting)).exists()
-    submitted = (
+    direct_edited = (
         select(ProfileChangeRequest.id)
+        .join(
+            ReviewDecision,
+            (col(ReviewDecision.org_id) == ProfileChangeRequest.org_id)
+            & (col(ReviewDecision.request_id) == ProfileChangeRequest.id),
+        )
         .where(
             ProfileChangeRequest.org_id == Employee.org_id,
             ProfileChangeRequest.subject_employee_id == Employee.id,
-            col(ProfileChangeRequest.submitted_at).is_not(None),
-        )
-        .correlate(Employee)
-        .exists()
-    )
-    published = (
-        select(ProfileVersion.id)
-        .where(
-            ProfileVersion.org_id == Employee.org_id,
-            ProfileVersion.subject_employee_id == Employee.id,
+            ProfileChangeRequest.status == RequestStatus.APPROVED,
+            ReviewDecision.via == ReviewVia.DIRECT,
         )
         .correlate(Employee)
         .exists()
@@ -237,13 +236,12 @@ def _initial_profile_status() -> ColumnElement[str]:
         .correlate(Employee)
         .exists()
     )
-    # Requests with items take priority; submitted/handled requests or a publication
-    # are done. Running/failed comes from progress. Otherwise active work evidence
-    # distinguishes no records from no judgment after generation (including old empty
-    # initial requests), or waiting to draft. No connection/import means waiting source.
+    # A pending initial draft takes priority over later direct edits.
+    # Ordinary supplements and publications do not imply initial owner review.
     return case(
         (pending, "pending_owner"),
-        (handled | submitted | published, "done"),
+        (handled, "owner_reviewed"),
+        (direct_edited, "direct_edited"),
         (col(ProfileProgress.inference_status) == InferenceStatus.RUNNING, "drafting"),
         (col(ProfileProgress.inference_status) == InferenceStatus.FAILED, "failed"),
         (

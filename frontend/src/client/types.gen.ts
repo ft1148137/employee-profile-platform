@@ -2956,7 +2956,8 @@ export type InitialProfileStatus =
   | "pending_owner"
   | "no_judgment"
   | "failed"
-  | "done"
+  | "owner_reviewed"
+  | "direct_edited"
 
 /**
  * InitializationStatus

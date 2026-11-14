@@ -84,7 +84,8 @@ class InitialProfileStatus(StrEnum):
     PENDING_OWNER = "pending_owner"
     NO_JUDGMENT = "no_judgment"
     FAILED = "failed"
-    DONE = "done"
+    OWNER_REVIEWED = "owner_reviewed"
+    DIRECT_EDITED = "direct_edited"
 
 
 class ProgressPublic(SQLModel):

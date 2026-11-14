@@ -32,10 +32,10 @@ from tests.authz.test_tenant_access import tenant_data as tenant_data
         (False, True, "generated", "pending_owner", False, "no_judgment"),
         (False, True, "generated", "pending_owner", True, "pending_owner"),
         (False, True, "generated", "draft", True, "pending_owner"),
-        (False, True, "failed", "pending_review", True, "done"),
-        (False, True, "generated", "withdrawn", True, "done"),
-        (False, True, "generated", "approved", True, "done"),
-        (False, True, "generated", "rejected", True, "done"),
+        (False, True, "failed", "pending_review", True, "owner_reviewed"),
+        (False, True, "generated", "withdrawn", True, "owner_reviewed"),
+        (False, True, "generated", "approved", True, "owner_reviewed"),
+        (False, True, "generated", "rejected", True, "owner_reviewed"),
     ],
 )
 def test_initial_status(
@@ -128,15 +128,14 @@ def test_initial_status(
     page = list_employees(db, principal, department_id=None, q=None, skip=0, limit=100)
     assert detail.progress.initial_profile_status == expected
     assert next(e for e in page.data if e.id == employee.id) == detail
-    assert (
-        next(
-            e for e in page.data if e.id == employees[0].id
-        ).progress.initial_profile_status
-        == "done"
+    assert next(
+        e for e in page.data if e.id == employees[0].id
+    ).progress.initial_profile_status == (
+        "no_records" if source or records else "waiting_source"
     )
 
 
-def test_submitted_manual_request_counts_as_handled(
+def test_submitted_manual_request_does_not_count_as_owner_reviewed(
     tenant_data: tuple, db: Session
 ) -> None:
     orgs, _, employees, _ = tenant_data
@@ -153,4 +152,4 @@ def test_submitted_manual_request_counts_as_handled(
     )
     db.commit()
     summary = employee_summary(db, employee, Principal.system_worker(orgs[0].id))
-    assert summary.progress.initial_profile_status == "done"
+    assert summary.progress.initial_profile_status == "waiting_source"
