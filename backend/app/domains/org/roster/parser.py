@@ -25,6 +25,7 @@ ALIASES = {
     "工号": ("员工编号", "员工工号", "编号"),
     "姓名": ("员工姓名", "名字"),
     "部门": ("所属部门", "部门路径"),
+    "上级部门": ("上级部门名称", "所属上级部门"),
     "职位": ("岗位", "职务"),
     "上级工号": ("直属上级工号", "汇报对象工号", "上级"),
     "邮箱": ("工作邮箱", "电子邮箱", "邮件"),
@@ -153,6 +154,7 @@ def _parse_rows(
     result: ParsedRoster, file_rows: Iterator[FileRow], enabled_fields: Collection[str]
 ) -> None:
     columns: dict[str, int] | None = None
+    department_parents: list[tuple[str, str, int]] = []
     for number, raw, missing_formulas in file_rows:
         values = [_clean(value) for value in raw]
         if not any(values) and not missing_formulas:
@@ -191,6 +193,10 @@ def _parse_rows(
             for part in fields["部门"].replace("／", "/").split("/")
             if part.strip()
         )
+        if "上级部门" in columns:
+            department_parents.append(
+                ("/".join(department), fields["上级部门"], number)
+            )
         for name in HEADERS[:3]:
             if not fields[name] or (name == "部门" and not department):
                 _issue(result, "不能为空", number, name)
@@ -247,6 +253,60 @@ def _parse_rows(
         )
     if columns is None:
         _issue(result, "文件中没有名单，请下载名单模板填写")
+    elif "上级部门" in columns:
+        _resolve_department_parents(result, department_parents)
+
+
+def _resolve_department_parents(
+    result: ParsedRoster, entries: list[tuple[str, str, int]]
+) -> None:
+    if "部门路径" in result.column_mapping or any(
+        len(row.department_path) > 1 for row in result.rows
+    ):
+        _issue(
+            result,
+            "同时提供了部门路径和上级部门，已以部门路径为准，忽略上级部门列",
+            column="上级部门",
+            severity="warning",
+        )
+        return
+    parents: dict[str, tuple[str, int]] = {}
+    for department, parent, number in entries:
+        if not department:
+            continue
+        if department in parents and parents[department][0] != parent:
+            _issue(
+                result,
+                f"同一部门的上级与第 {parents[department][1]} 行不一致，请只保留一个上级部门",
+                number,
+                "上级部门",
+            )
+        else:
+            parents.setdefault(department, (parent, number))
+    paths: dict[str, tuple[str, ...]] = {}
+    for department in parents:
+        chain: list[str] = []
+        seen: set[str] = set()
+        current = department
+        while current and current not in paths and current not in seen:
+            seen.add(current)
+            chain.append(current)
+            current = parents.get(current, ("", 0))[0]
+        if current in seen:
+            _issue(
+                result,
+                f"部门层级成环：{' → '.join([*chain, current])}",
+                parents[current][1],
+                "上级部门",
+            )
+            return
+        path = paths.get(current, ())
+        for name in reversed(chain):
+            path = (*path, name)
+            paths[name] = path
+    for row in result.rows:
+        if row.department_path:
+            row.department_path = paths[row.department_path[0]]
 
 
 def validate_roster(result: ParsedRoster) -> None:

@@ -125,9 +125,8 @@ def risk(args: MaterialArgs) -> Literal["normal", "high"]:
 
 
 def impact(db: Session, p: Principal, args: MaterialArgs) -> BaseModel:
-    preview = service.create_import(
-        db, p, prepare(db, p, args), "材料预览", persist=False
-    )
+    roster = prepare(db, p, args)
+    preview = service.create_import(db, p, roster, "材料预览", persist=False)
     field_labels = (
         dict(
             zip(
@@ -174,6 +173,22 @@ def impact(db: Session, p: Principal, args: MaterialArgs) -> BaseModel:
     )
     if len(labels) > 20:
         text += f"；另外 {len(labels) - 20} 人"
+    departments = sorted(
+        {
+            row.department_path[:depth]
+            for row in roster.active().rows
+            for depth in range(1, len(row.department_path) + 1)
+        }
+    )
+    hierarchy = [path for path in departments if len(path) > 1]
+    if hierarchy:
+        text += "；部门层级：" + "；".join(
+            f"{'/'.join(path)} → 上级 {'/'.join(path[:-1])}" for path in hierarchy[:20]
+        )
+        if len(hierarchy) > 20:
+            text += f"；另外 {len(hierarchy) - 20} 个下级部门"
+    elif len(departments) > 1:
+        text += "；所有部门都会建在第一层，没有上下级"
     text += "".join(
         f"；第 {i.row_number} 行 {i.column or ''}：{i.message}" for i in preview.issues
     )
