@@ -150,7 +150,14 @@ def preview_request(
 def submit_request(
     principal: OrgPrincipalDep, session: SessionDep, request_id: UUID, body: SubmitInput
 ) -> ChangeRequestPublic:
-    result = employee.submit(principal, session, request_id, body.revision, "web")
+    result = employee.submit(
+        principal,
+        session,
+        request_id,
+        body.revision,
+        "web",
+        base_revision=body.base_revision,
+    )
     session.commit()
     return result
 

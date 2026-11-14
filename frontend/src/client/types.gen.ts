@@ -3839,6 +3839,10 @@ export type PreviewCard = {
    */
   revision: number
   /**
+   * Base Revision
+   */
+  base_revision?: number | null
+  /**
    * Items
    */
   items: Array<app__domains__bot__schemas__PreviewItem>
@@ -4247,6 +4251,14 @@ export type QuestionsList = {
  */
 export type RequestAction = {
   /**
+   * Revision
+   */
+  revision: number
+  /**
+   * Base Revision
+   */
+  base_revision?: number | null
+  /**
    * Action
    */
   action: "confirm_submit" | "continue_editing" | "withdraw"
@@ -4254,10 +4266,6 @@ export type RequestAction = {
    * Request Id
    */
   request_id: string
-  /**
-   * Revision
-   */
-  revision: number
 }
 
 /**
@@ -4297,6 +4305,10 @@ export type RequestPreview = {
    * Revision
    */
   revision: number
+  /**
+   * Base Revision
+   */
+  base_revision?: number | null
   /**
    * Items
    */
@@ -4995,6 +5007,10 @@ export type SubmitInput = {
    * Revision
    */
   revision: number
+  /**
+   * Base Revision
+   */
+  base_revision?: number | null
 }
 
 /**

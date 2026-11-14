@@ -81,6 +81,35 @@ class InvalidItems(HTTPException):
         super().__init__(422, errors)
 
 
+class StaleInitialDraft(HTTPException):
+    def __init__(self, items: list[PreviewItem]) -> None:
+        self.message = (
+            "；".join(
+                f"经理或管理员在 {item.current_changed_at.isoformat()} 改过"
+                f"「{item.after.capability.name}」"
+                for item in items
+                if item.current_changed_at
+            )
+            + "，请先核对 preview_request 预览，再确认提交"
+        )
+        super().__init__(
+            409,
+            {
+                "code": "stale_initial_draft",
+                "message": self.message,
+                "capabilities": [
+                    {
+                        "key": item.after.capability.key,
+                        "name": item.after.capability.name,
+                        "changed_at": item.current_changed_at.isoformat(),
+                    }
+                    for item in items
+                    if item.current_changed_at
+                ],
+            },
+        )
+
+
 def employee_id(principal: Principal) -> UUID:
     if principal.employee_id is None:
         raise EmployeeRecordNotFound()
@@ -357,11 +386,8 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
     _lock_organization(principal, session)
     request = _request(principal, session, request_id)
     public = _public(principal, session, request.id)
-    claims = {
-        i.capability.key: i.claim
-        for i in my_profile(principal, session).items
-        if i.claim
-    }
+    profile = my_profile(principal, session)
+    claims = {i.capability.key: i.claim for i in profile.items if i.claim}
     initial = request.origin == RequestOrigin.INITIAL_SYNC and request.status in (
         RequestStatus.PENDING_OWNER,
         RequestStatus.DRAFT,
@@ -408,6 +434,9 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
     return RequestPreview(
         request_id=request.id,
         revision=request.revision,
+        base_revision=profile.latest_published.revision
+        if profile.latest_published
+        else None,
         reviewers=request_reviewers(session, principal.org_id, employee_id(principal)),
         items=previews,
     )
@@ -420,6 +449,7 @@ def submit(
     revision: int,
     via: EmployeeVia,
     client_name: str | None = None,
+    base_revision: int | None = None,
 ) -> ChangeRequestPublic:
     # Match the lock order used by manager publishing and dictionary changes.
     _lock_organization(principal, session)
@@ -435,6 +465,11 @@ def submit(
         raise RequestConflict("内容已变化，请重新预览")
     if request.status not in (RequestStatus.DRAFT, RequestStatus.PENDING_OWNER):
         raise RequestConflict()
+    if request.origin == RequestOrigin.INITIAL_SYNC:
+        confirmation = preview(principal, session, request_id)
+        changed = [i for i in confirmation.items if i.current_changed_at]
+        if changed and base_revision != confirmation.base_revision:
+            raise StaleInitialDraft(changed)
     items = session.exec(
         select(ChangeItem)
         .where(
