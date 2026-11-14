@@ -41,7 +41,9 @@ def work_queue() -> None:
         async with app.open_async():
             await asyncio.wait_for(app.run_worker_async(wait=False), timeout=30)
 
-    asyncio.run(run())
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(app.periodic_registry, "periodic_tasks", {})
+        asyncio.run(run())
 
 
 def test_stalled_drafting_recovers(

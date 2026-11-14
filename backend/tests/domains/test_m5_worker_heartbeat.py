@@ -2,7 +2,8 @@ import asyncio
 import subprocess
 import sys
 from collections.abc import Generator
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
@@ -10,7 +11,8 @@ import pytest
 from alembic.autogenerate import compare_metadata
 from alembic.runtime.migration import MigrationContext
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine, MetaData, delete, inspect
+from procrastinate import PsycopgConnector, periodic
+from sqlalchemy import Engine, MetaData, delete, inspect, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, select
 
@@ -130,6 +132,45 @@ def test_heartbeat_task_updates_singleton(db: Session) -> None:
     db.expire_all()
     rows = db.exec(select(WorkerHeartbeat)).all()
     assert len(rows) == 1 and rows[0].beat_at >= first_at
+
+
+@pytest.mark.parametrize("helper", ["profiles", "recovery"])
+def test_manual_worker_does_not_run_hourly_defaults(
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    helper: str,
+) -> None:
+    from tests.api.routes.test_initial_profiles import work_queue
+    from tests.test_worker import recover_stalled_jobs
+
+    now = datetime(2026, 11, 15, 1, 1, tzinfo=UTC).timestamp()
+    monkeypatch.setattr(periodic, "time", SimpleNamespace(time=lambda: now))
+    connector = PsycopgConnector(
+        conninfo=engine.url.set(drivername="postgresql").render_as_string(
+            hide_password=False
+        )
+    )
+
+    async def slow_ping() -> None:
+        await asyncio.sleep(0.2)
+
+    async def slow_recovery(context: object, timestamp: int) -> None:  # noqa: ARG001
+        await asyncio.sleep(0.2)
+
+    monkeypatch.setattr(tasks.ping, "func", slow_ping)
+    monkeypatch.setattr(tasks.retry_stalled_jobs, "func", slow_recovery)
+    with app.replace_connector(connector):
+        if helper == "profiles":
+            with app.open():
+                tasks.ping.defer()
+            work_queue()
+        else:
+            recover_stalled_jobs()
+    jobs = db.execute(text("SELECT task_name FROM procrastinate_jobs")).scalars().all()
+    assert "capabilities.fill_department_defaults" not in jobs
+    assert jobs == [
+        "system.ping" if helper == "profiles" else "system.retry_stalled_jobs"
+    ]
 
 
 @pytest.mark.parametrize("seconds", [None, 0, 240, 301])

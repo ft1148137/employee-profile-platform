@@ -272,6 +272,7 @@ def test_stalled_sync_resumes_committed_page(
     db.commit()
     assert client.post(base + "/sources/jira/sync", headers=auth).status_code == 409
     monkeypatch.setattr(sync, "_batch", original)
+    monkeypatch.setattr(app.periodic_registry, "periodic_tasks", {})
     recover_stalled_jobs()
 
     async def work() -> None:
@@ -426,7 +427,10 @@ def test_jira_resume_incremental_and_migration(
     assert not {"input", "cursor", "secret_ciphertext"} & listing["data"][0].keys()
 
 
-def test_csv_api_and_worker(context: tuple, client: TestClient, db: Session) -> None:
+def test_csv_api_and_worker(
+    context: tuple, client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(app.periodic_registry, "periodic_tasks", {})
     org, base, auth, _, users = context
     url = base + "/sources/csv/imports"
     before = len(db.exec(select(SyncRun).where(SyncRun.org_id == org)).all())
@@ -633,6 +637,8 @@ def test_real_queue_retry(
 
     monkeypatch.setattr(sync, "jira_client_for", connect)
     run_id = start(client, base, auth)
+
+    monkeypatch.setattr(app.periodic_registry, "periodic_tasks", {})
 
     async def work() -> None:
         # Scheduled retries must not depend on the app and DB clocks matching.
