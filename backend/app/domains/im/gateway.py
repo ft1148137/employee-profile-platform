@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 import re
+from collections.abc import Callable
+from contextlib import suppress
 from datetime import timedelta
 from functools import partial
 from uuid import UUID
@@ -46,7 +48,11 @@ class Gateway:
             return bool(row and row.enabled and row.credentials == credentials)
 
     def dispatch(
-        self, event: Event, identity: str, credentials: str
+        self,
+        event: Event,
+        identity: str,
+        credentials: str,
+        on_started: Callable[[], None] | None = None,
     ) -> str | actions.Reply | None:
         if not self.enabled(event.org_id, event.platform, credentials):
             return None
@@ -111,7 +117,7 @@ class Gateway:
                     return binding.GUIDE
                 if event.callback_id:
                     return actions.callback(db, p, event, identity)
-                return actions.text(db, p, event, identity)
+                return actions.text(db, p, event, identity, on_started=on_started)
             except AttachmentError as error:
                 db.rollback()
                 return str(error.detail)
@@ -151,33 +157,66 @@ class Gateway:
                             "已按企业邮箱绑定，可以在网页的个人设置中解绑。请继续发送消息。",
                         )
                         return
-        # Model turns are synchronous; keep polling tasks and setting refresh responsive.
-        reply = await asyncio.to_thread(self.dispatch, event, identity, credentials)
-        if not reply or not self.enabled(event.org_id, event.platform, credentials):
-            return
-        if isinstance(reply, str):
-            await adapter.send_text(event.external_chat_id, reply)
-            return
-        with Session(self.engine) as db:
-            p = binding.current_binding(
-                db,
-                event.org_id,
-                event.platform,
-                event.external_user_id,
-                event.external_chat_id,
-                identity,
-            )
-            if p is None:
-                return
-            if reply.clear_buttons and event.message_id:
-                try:
-                    await adapter.clear_buttons(
-                        event.external_chat_id, event.message_id
+        loop = asyncio.get_running_loop()
+        reminder: asyncio.Task[None] | None = None
+        finished = False
+
+        async def remind() -> None:
+            await asyncio.sleep(30)
+            try:
+                if self.enabled(event.org_id, event.platform, credentials):
+                    await adapter.send_text(
+                        event.external_chat_id, "还在处理，请再等一会儿"
                     )
-                except ImError as error:
-                    if error.code != "recipient_unavailable":
-                        raise
-            await actions.deliver(db, p, event, identity, reply, adapter)
+            except Exception:
+                logger.warning("IM processing reminder failed")
+
+        async def acknowledge() -> None:
+            nonlocal reminder
+            if finished or not self.enabled(event.org_id, event.platform, credentials):
+                return
+            reminder = asyncio.create_task(remind())
+            await adapter.send_text(event.external_chat_id, "收到，正在处理，请稍等")
+
+        def on_started() -> None:
+            asyncio.run_coroutine_threadsafe(acknowledge(), loop).result()
+
+        try:
+            # Model turns are synchronous; keep polling tasks and setting refresh responsive.
+            reply = await asyncio.to_thread(
+                self.dispatch, event, identity, credentials, on_started
+            )
+            if not reply or not self.enabled(event.org_id, event.platform, credentials):
+                return
+            if isinstance(reply, str):
+                await adapter.send_text(event.external_chat_id, reply)
+                return
+            with Session(self.engine) as db:
+                p = binding.current_binding(
+                    db,
+                    event.org_id,
+                    event.platform,
+                    event.external_user_id,
+                    event.external_chat_id,
+                    identity,
+                )
+                if p is None:
+                    return
+                if reply.clear_buttons and event.message_id:
+                    try:
+                        await adapter.clear_buttons(
+                            event.external_chat_id, event.message_id
+                        )
+                    except ImError as error:
+                        if error.code != "recipient_unavailable":
+                            raise
+                await actions.deliver(db, p, event, identity, reply, adapter)
+        finally:
+            finished = True
+            if reminder:
+                reminder.cancel()
+                with suppress(asyncio.CancelledError):
+                    await reminder
 
     async def poll(self, adapter: Adapter, identity: str, credentials: str) -> None:
         slots = asyncio.Semaphore(4)

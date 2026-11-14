@@ -1,4 +1,5 @@
 import secrets
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from uuid import UUID
@@ -44,7 +45,14 @@ def conversation(db: Session, p: Principal, event: Event, identity: str) -> BotS
     )
 
 
-def text(db: Session, p: Principal, event: Event, identity: str) -> Reply:
+def text(
+    db: Session,
+    p: Principal,
+    event: Event,
+    identity: str,
+    *,
+    on_started: Callable[[], None] | None = None,
+) -> Reply:
     session = conversation(db, p, event, identity)
     attachment_ids = []
     text = event.text or ""
@@ -93,7 +101,12 @@ def text(db: Session, p: Principal, event: Event, identity: str) -> Reply:
         db.commit()
     else:
         response = core.turn(
-            db, p, session.id, body.text, attachment_ids=attachment_ids
+            db,
+            p,
+            session.id,
+            body.text,
+            attachment_ids=attachment_ids,
+            on_started=on_started,
         )
     return Reply(session.id, response)
 

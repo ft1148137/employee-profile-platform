@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 from dataclasses import replace
 from time import monotonic
 from uuid import UUID
@@ -52,6 +53,7 @@ def turn(
     *,
     attachment_ids: list[UUID] | None = None,
     stream: pi_client.TurnStream | None = None,
+    on_started: Callable[[], None] | None = None,
 ) -> s.TurnResponse:
     session = store.get_session(db, p, session_id)
     setting = read_setting(db, p.org_id)
@@ -89,6 +91,11 @@ def turn(
             db, p, session, user_payload, stream.cancelled if stream else None
         ):
             admitted = True
+            if on_started:
+                try:
+                    on_started()
+                except Exception:
+                    logger.warning("Bot processing receipt failed")
             if setting is None or not setting.enabled or not setting.model:
                 return _save(
                     db,
