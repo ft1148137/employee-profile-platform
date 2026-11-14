@@ -351,6 +351,9 @@ import type {
   oauthRevokeAuthorizationData,
   oauthRevokeAuthorizationErrors,
   oauthRevokeAuthorizationResponses,
+  orgsDeleteDepartmentData,
+  orgsDeleteDepartmentErrors,
+  orgsDeleteDepartmentResponses,
   orgsReadDepartmentCapabilitiesData,
   orgsReadDepartmentCapabilitiesErrors,
   orgsReadDepartmentCapabilitiesResponses,
@@ -366,6 +369,9 @@ import type {
   orgsUpdateDepartmentCapabilitiesData,
   orgsUpdateDepartmentCapabilitiesErrors,
   orgsUpdateDepartmentCapabilitiesResponses,
+  orgsUpdateDepartmentData,
+  orgsUpdateDepartmentErrors,
+  orgsUpdateDepartmentResponses,
   orgsUpdateEmployeeFieldsData,
   orgsUpdateEmployeeFieldsErrors,
   orgsUpdateEmployeeFieldsResponses,
@@ -2288,6 +2294,46 @@ export class ExternalIdentitiesService {
 }
 
 export class OrgsService {
+  /**
+   * Delete Department
+   */
+  public static deleteDepartment<ThrowOnError extends boolean = true>(
+    options: Options<orgsDeleteDepartmentData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).delete<
+      orgsDeleteDepartmentResponses,
+      orgsDeleteDepartmentErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/departments/{id}",
+      ...options,
+    })
+  }
+
+  /**
+   * Update Department
+   */
+  public static updateDepartment<ThrowOnError extends boolean = true>(
+    options: Options<orgsUpdateDepartmentData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).patch<
+      orgsUpdateDepartmentResponses,
+      orgsUpdateDepartmentErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/departments/{id}",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
   /**
    * Read Department Capabilities
    */

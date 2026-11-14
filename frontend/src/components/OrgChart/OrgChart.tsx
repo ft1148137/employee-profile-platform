@@ -1,12 +1,26 @@
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { ChevronDown, ChevronRight, Network } from "lucide-react"
 import { type ReactNode, useState } from "react"
-import { type OrgChartPerson, OrgsService } from "@/client"
+import {
+  type OrgChartDepartment,
+  type OrgChartPerson,
+  OrgsService,
+} from "@/client"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
+import { SetupError } from "@/components/Setup/SetupError"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { useOrg } from "@/hooks/useOrg"
 import { cn } from "@/lib/utils"
 import { DepartmentCapabilities } from "./DepartmentCapabilities"
@@ -141,6 +155,13 @@ function Chart({ orgId, canEdit }: { orgId: string; canEdit: boolean }) {
               </span>
             </span>
           </button>
+          {canEdit && (
+            <DepartmentActions
+              orgId={orgId}
+              department={item}
+              departments={departments}
+            />
+          )}
           {childCount > 0 && (
             <button
               type="button"
@@ -226,7 +247,7 @@ function Chart({ orgId, canEdit }: { orgId: string; canEdit: boolean }) {
           <span className="text-xs text-muted-foreground">
             {department && !person
               ? `共 ${department.direct_count} 人`
-              : "只读 · 点击卡片查看"}
+              : "点击卡片查看"}
           </span>
         </header>
         <section
@@ -255,6 +276,178 @@ function Chart({ orgId, canEdit }: { orgId: string; canEdit: boolean }) {
         />
       )}
     </div>
+  )
+}
+
+function DepartmentActions({
+  orgId,
+  department,
+  departments,
+}: {
+  orgId: string
+  department: OrgChartDepartment
+  departments: OrgChartDepartment[]
+}) {
+  const client = useQueryClient()
+  const [action, setAction] = useState<"改名" | "移动到" | "删除" | null>(null)
+  const [name, setName] = useState(department.name)
+  const [parent, setParent] = useState(department.parent_department_id ?? "")
+  const blocked = new Set([department.id])
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const item of departments)
+      if (
+        item.parent_department_id &&
+        blocked.has(item.parent_department_id) &&
+        !blocked.has(item.id)
+      ) {
+        blocked.add(item.id)
+        changed = true
+      }
+  }
+  const pathLabel = (item: OrgChartDepartment): string => {
+    const names = [item.name]
+    const seen = new Set([item.id])
+    let ancestor = departments.find((d) => d.id === item.parent_department_id)
+    while (ancestor && !seen.has(ancestor.id)) {
+      seen.add(ancestor.id)
+      names.unshift(ancestor.name)
+      ancestor = departments.find(
+        (d) => d.id === ancestor?.parent_department_id,
+      )
+    }
+    return names.join(" / ")
+  }
+  const save = useMutation({
+    mutationFn: async () => {
+      const path = { org_id: orgId, id: department.id }
+      if (action === "删除") return OrgsService.deleteDepartment({ path })
+      return OrgsService.updateDepartment({
+        path,
+        body:
+          action === "改名"
+            ? { name }
+            : { parent_department_id: parent || null },
+      })
+    },
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["org-chart", orgId] })
+      client.invalidateQueries({ queryKey: ["departments", orgId] })
+      client.invalidateQueries({ queryKey: ["department-capabilities", orgId] })
+      client.invalidateQueries({ queryKey: ["profile", orgId] })
+      setAction(null)
+    },
+  })
+  return (
+    <>
+      <fieldset
+        className="flex justify-center gap-1 border-t p-1"
+        aria-label={`${department.name}部门操作`}
+      >
+        {(["改名", "移动到", "删除"] as const).map((label) => (
+          <Button
+            key={label}
+            variant="ghost"
+            size="sm"
+            aria-label={`${label}${department.name}`}
+            onClick={() => {
+              save.reset()
+              setName(department.name)
+              setParent(department.parent_department_id ?? "")
+              setAction(label)
+            }}
+          >
+            {label}
+          </Button>
+        ))}
+      </fieldset>
+      <Dialog
+        open={action !== null}
+        onOpenChange={(open) => {
+          if (!open && !save.isPending) setAction(null)
+        }}
+      >
+        <DialogContent>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault()
+              save.mutate()
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>
+                {action}「{department.name}」
+              </DialogTitle>
+              <DialogDescription>
+                {action === "删除"
+                  ? "只能删除没有员工（含离职员工）、下级部门和经理授权的空部门。对应能力设置一并删除，不可撤销。"
+                  : action === "移动到"
+                    ? "移动部门会改变部门经理的查看和审批范围，并改变继承的对应能力。请核对新上级后确认。"
+                    : "同一上级下的部门名称不能重复。"}
+              </DialogDescription>
+            </DialogHeader>
+            {action === "改名" && (
+              <label
+                className="block space-y-2"
+                htmlFor={`department-name-${department.id}`}
+              >
+                <span>部门名称</span>
+                <Input
+                  id={`department-name-${department.id}`}
+                  value={name}
+                  maxLength={100}
+                  required
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </label>
+            )}
+            {action === "移动到" && (
+              <label className="block space-y-2">
+                <span>上级部门</span>
+                <select
+                  className="w-full rounded-md border bg-background p-2"
+                  value={parent}
+                  onChange={(e) => setParent(e.target.value)}
+                >
+                  <option value="">第一层（无上级）</option>
+                  {departments
+                    .filter((item) => !blocked.has(item.id))
+                    .map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {pathLabel(item)}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            )}
+            <SetupError error={save.error} />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={save.isPending}
+                onClick={() => setAction(null)}
+              >
+                取消
+              </Button>
+              <Button
+                type="submit"
+                variant={action === "删除" ? "destructive" : "default"}
+                disabled={save.isPending || (action === "改名" && !name.trim())}
+              >
+                {save.isPending
+                  ? "正在保存…"
+                  : action === "删除"
+                    ? "确认删除"
+                    : "确认保存"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

@@ -1738,6 +1738,20 @@ export type DepartmentSummary = {
 }
 
 /**
+ * DepartmentUpdate
+ */
+export type DepartmentUpdate = {
+  /**
+   * Name
+   */
+  name?: string | null
+  /**
+   * Parent Department Id
+   */
+  parent_department_id?: string | null
+}
+
+/**
  * DepartmentsPublic
  */
 export type DepartmentsPublic = {
@@ -8985,6 +8999,78 @@ export type externalIdentitiesPostUnlinkResponses = {
 
 export type externalIdentitiesPostUnlinkResponse =
   externalIdentitiesPostUnlinkResponses[keyof externalIdentitiesPostUnlinkResponses]
+
+export type orgsDeleteDepartmentData = {
+  body?: never
+  path: {
+    /**
+     * Id
+     */
+    id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/departments/{id}"
+}
+
+export type orgsDeleteDepartmentErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type orgsDeleteDepartmentError =
+  orgsDeleteDepartmentErrors[keyof orgsDeleteDepartmentErrors]
+
+export type orgsDeleteDepartmentResponses = {
+  /**
+   * Successful Response
+   */
+  200: Message
+}
+
+export type orgsDeleteDepartmentResponse =
+  orgsDeleteDepartmentResponses[keyof orgsDeleteDepartmentResponses]
+
+export type orgsUpdateDepartmentData = {
+  body: DepartmentUpdate
+  path: {
+    /**
+     * Id
+     */
+    id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/departments/{id}"
+}
+
+export type orgsUpdateDepartmentErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type orgsUpdateDepartmentError =
+  orgsUpdateDepartmentErrors[keyof orgsUpdateDepartmentErrors]
+
+export type orgsUpdateDepartmentResponses = {
+  /**
+   * Successful Response
+   */
+  200: DepartmentPublic
+}
+
+export type orgsUpdateDepartmentResponse =
+  orgsUpdateDepartmentResponses[keyof orgsUpdateDepartmentResponses]
 
 export type orgsReadDepartmentCapabilitiesData = {
   body?: never

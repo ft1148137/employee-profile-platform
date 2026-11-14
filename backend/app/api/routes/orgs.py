@@ -6,6 +6,7 @@ from sqlmodel import col, select
 from app.api.deps import SessionDep
 from app.authz.deps import OrgAdminDep, OrgPrincipalDep
 from app.domains.capability import department as capabilities
+from app.domains.org import departments as edits
 from app.domains.org import service
 from app.domains.org.employee_fields import EmployeeFields, save_employee_fields
 from app.domains.org.models import Department
@@ -16,8 +17,23 @@ from app.domains.org.schemas import (
     OrganizationUpdate,
     OrgChartPublic,
 )
+from app.models import Message
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["orgs"])
+
+
+@router.patch("/departments/{id}")
+def update_department(
+    id: UUID, body: edits.DepartmentUpdate, session: SessionDep, principal: OrgAdminDep
+) -> DepartmentPublic:
+    return edits.update_department(session, principal, id, body)
+
+
+@router.delete("/departments/{id}")
+def delete_department(id: UUID, session: SessionDep, principal: OrgAdminDep) -> Message:
+    return edits.delete_department(
+        session, principal, capabilities.DepartmentArgs(department_id=id)
+    )
 
 
 @router.get("/departments/{id}/capabilities")
