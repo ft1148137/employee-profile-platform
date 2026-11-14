@@ -56,6 +56,7 @@ def test_employee_navigation_and_privacy(db: Session, demo: tuple) -> None:
     prompt = bot_prompts.system_prompt(db, p, "feishu")
     assert "「已处理请求」" in prompt and "「申诉」" in prompt
     assert "「我的团队」" in prompt and "「初始画像」列" in prompt
+    assert "兼任企业管理员时从「员工」页面查看同一列" in prompt
     assert (
         "数据保存在本企业自己部署的服务器上；存放位置、备份和保留期限请问企业管理员"
         in prompt
