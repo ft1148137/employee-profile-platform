@@ -60,6 +60,9 @@ class Department(TenantRecord, table=True):
     parent_department_id: uuid.UUID | None = None
     capability_source: str | None = None
     capability_schema_version_id: uuid.UUID | None = None
+    capability_failed_at: datetime | None = Field(
+        default=None, sa_type=DateTime(timezone=True)
+    )
 
 
 class Employee(TenantRecord, table=True):
