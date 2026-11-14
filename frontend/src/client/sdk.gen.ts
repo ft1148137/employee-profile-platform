@@ -378,6 +378,9 @@ import type {
   orgsUpdateEmployeeFieldsData,
   orgsUpdateEmployeeFieldsErrors,
   orgsUpdateEmployeeFieldsResponses,
+  peopleSearchSearchPeopleData,
+  peopleSearchSearchPeopleErrors,
+  peopleSearchSearchPeopleResponses,
   privateCreateSetupTokenData,
   privateCreateSetupTokenErrors,
   privateCreateSetupTokenResponses,
@@ -507,6 +510,26 @@ export type Options<
    * used to access values that aren't defined as part of the SDK function.
    */
   meta?: Record<string, unknown>
+}
+
+export class PeopleSearchService {
+  /**
+   * Search People
+   */
+  public static searchSearchPeople<ThrowOnError extends boolean = true>(
+    options: Options<peopleSearchSearchPeopleData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      peopleSearchSearchPeopleResponses,
+      peopleSearchSearchPeopleErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/people-search",
+      ...options,
+    })
+  }
 }
 
 export class AdminAssistantService {
