@@ -2201,6 +2201,10 @@ export type EmployeeSummary = {
    */
   title: string | null
   employment_status: EmploymentStatus
+  /**
+   * Employee Code
+   */
+  employee_code: string | null
   department: DepartmentSummary | null
   progress: ProgressPublic
   latest_published: PublishedSummary | null

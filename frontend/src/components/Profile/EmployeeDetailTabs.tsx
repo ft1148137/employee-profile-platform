@@ -94,7 +94,12 @@ export function EmployeeDetailTabs({
     return (
       <div className="space-y-6">
         <header className="border-b pb-6">
-          <h1 className="text-3xl font-semibold">{summary.display_name}</h1>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h1 className="text-3xl font-semibold">{summary.display_name}</h1>
+            <p className="text-sm text-muted-foreground">
+              工号 {summary.employee_code ?? "未填写"}
+            </p>
+          </div>
           <p className="mt-2 text-muted-foreground">
             {summary.title ?? "未填写职位"} ·{" "}
             {summary.department?.name ?? "未分配部门"}
@@ -111,7 +116,12 @@ export function EmployeeDetailTabs({
             <AvatarFallback>{summary.display_name.slice(0, 1)}</AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-3xl font-semibold">{summary.display_name}</h1>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h1 className="text-3xl font-semibold">{summary.display_name}</h1>
+              <p className="text-sm text-muted-foreground">
+                工号 {summary.employee_code ?? "未填写"}
+              </p>
+            </div>
             <p className="mt-2 text-muted-foreground">
               {summary.title ?? "未填写职位"} ·{" "}
               {summary.department?.name ?? "未分配部门"}
@@ -292,7 +302,6 @@ export function EmployeeDetailTabs({
 
 export function EmployeeFields({
   summary,
-  employeeCode,
   workEmail,
   departmentName,
 }: {
@@ -309,12 +318,8 @@ export function EmployeeFields({
         ? tenureLabel(summary.hire_date)
         : summary[field],
     ]),
-    ...(employeeCode !== undefined || workEmail !== undefined
-      ? [
-          ["工号", employeeCode],
-          ["邮箱", workEmail],
-        ]
-      : []),
+    ["工号", summary.employee_code],
+    ...(workEmail !== undefined ? [["邮箱", workEmail]] : []),
     ["部门", departmentName ?? summary.department?.name],
     ["职位", summary.title],
     ["在职状态", employmentLabels[summary.employment_status]],

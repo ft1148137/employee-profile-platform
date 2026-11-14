@@ -371,7 +371,13 @@ def _employee_summary(
     return EmployeeSummary(
         **{f: getattr(employee, f) for f in fields},
         **employee.model_dump(
-            include={"id", "display_name", "title", "employment_status"}
+            include={
+                "id",
+                "display_name",
+                "title",
+                "employment_status",
+                "employee_code",
+            }
         ),
         department=DepartmentSummary.model_validate(department) if department else None,
         progress=ProgressPublic(

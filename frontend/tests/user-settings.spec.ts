@@ -155,7 +155,12 @@ test.describe("employee settings", () => {
       const fields = page.getByRole("region", { name: "员工信息" })
       for (const label of ["部门", "职位", "在职状态", "直属上级"])
         await expect(fields.getByText(label, { exact: true })).toBeVisible()
-      await expect(fields.getByText("工号", { exact: true })).toHaveCount(0)
+      await expect(fields.getByText("工号", { exact: true })).toBeVisible()
+      await expect(
+        fields.getByText(email.startsWith("employee") ? "E02" : "E01", {
+          exact: true,
+        }),
+      ).toBeVisible()
       await expect(fields.locator("input, button")).toHaveCount(0)
       await page.getByRole("tab", { name: "个人信息", exact: true }).click()
       await expect(page.getByRole("tabpanel")).toContainText(email)
