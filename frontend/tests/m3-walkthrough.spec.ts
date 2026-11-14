@@ -176,10 +176,15 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   await editor.getByRole("button", { name: "确认提交", exact: true }).click()
   const pending = page.getByRole("region", { name: "其他待处理请求" })
   await expect(pending).toContainText("待经理审批")
+  page.once("dialog", (dialog) => dialog.accept())
   await pending
     .getByRole("button", { name: "撤回", exact: true })
     .first()
     .click()
+  await expect(pending).not.toBeVisible()
+  await expect(page.getByRole("region", { name: "已处理请求" })).toContainText(
+    "已撤回",
+  )
   await page.getByRole("link", { name: "聊天", exact: true }).click()
   const bot = page.getByRole("region", { name: "助手", exact: true })
   await bot.getByLabel("发给机器人的消息").fill("补充一段合成项目经历")
