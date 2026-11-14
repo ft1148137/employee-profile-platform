@@ -1,9 +1,19 @@
 import { useMutation } from "@tanstack/react-query"
 import { AxiosError, AxiosHeaders } from "axios"
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { TextEvent, ToolEvent } from "@/client"
+import type { ErrorEvent, TextEvent, ToolEvent } from "@/client"
 
 export type ToolProgress = ToolEvent
+
+function streamError(message: string): AxiosError {
+  return new AxiosError(message, undefined, undefined, undefined, {
+    data: { detail: message },
+    status: 200,
+    statusText: "OK",
+    headers: {},
+    config: { headers: new AxiosHeaders() },
+  })
+}
 
 export function useStreamingTurn<Input, Response>(
   url: string,
@@ -58,7 +68,7 @@ export function useStreamingTurn<Input, Response>(
               config: { headers: new AxiosHeaders() },
             },
           )
-        if (!response.body) throw new Error("对话连接中断，请重试")
+        if (!response.body) throw streamError("对话连接中断，请重试")
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
         let pending = ""
@@ -75,8 +85,10 @@ export function useStreamingTurn<Input, Response>(
               const event = JSON.parse(line) as
                 | TextEvent
                 | ToolEvent
+                | ErrorEvent
                 | { type: "final"; response: Response }
               if (abort.signal.aborted) return undefined
+              if (event.type === "error") throw streamError(event.message)
               if (event.type === "text") setText((text) => text + event.text)
               if (event.type === "tool") {
                 progress.push(event)
@@ -87,7 +99,7 @@ export function useStreamingTurn<Input, Response>(
             if (done) break
           }
           if (final === undefined || pending.trim())
-            throw new Error("对话连接中断，请重试")
+            throw streamError("对话连接中断，请重试")
           return {
             response: final,
             startedAt,
@@ -97,7 +109,11 @@ export function useStreamingTurn<Input, Response>(
           await reader.cancel()
         }
       } catch (error) {
-        if (!abort.signal.aborted) throw error
+        if (!abort.signal.aborted) {
+          if (error instanceof TypeError)
+            throw streamError("对话连接中断，请重试")
+          throw error
+        }
         return undefined
       } finally {
         if (controller.current === abort) {

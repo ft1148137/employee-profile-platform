@@ -584,6 +584,7 @@ export type {
   employeesReadEmployeesResponses,
   EmployeeSummary,
   EmploymentStatus,
+  ErrorEvent,
   EvidenceClaimPublic,
   EvidenceDetail,
   EvidenceKind,

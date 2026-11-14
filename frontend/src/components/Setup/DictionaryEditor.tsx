@@ -224,6 +224,7 @@ function Editor({
                 })}
               </p>
               <ul className="list-disc pl-5 text-sm">
+                {proposal.evidence_withdrawn && <li>依据已撤回</li>}
                 {proposal.evidence_titles.map((title, i) => (
                   <li key={i}>{title}</li>
                 ))}

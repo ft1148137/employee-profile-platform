@@ -15,7 +15,20 @@ from sqlmodel import Session
 from starlette.types import Send
 
 from app.core.db import engine
-from app.domains.model.pi_client import TurnStream, cancel_run
+from app.domains.bot.admission import (
+    BotBusy,
+    BotDraftingPriority,
+    BotQuotaPaused,
+    BotRateLimited,
+)
+from app.domains.bot.presentation import DEADLINE_MESSAGE, retry_time
+from app.domains.bot.store import BotSessionNotFound
+from app.domains.model.client import (
+    ModelRateLimited,
+    ModelServiceError,
+    ModelUnavailable,
+)
+from app.domains.model.pi_client import PiSessionInvalid, TurnStream, cancel_run
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +48,33 @@ class ToolEvent(BaseModel):
 class FinalEvent[T: BaseModel](BaseModel):
     type: Literal["final"]
     response: T
+
+
+class ErrorEvent(BaseModel):
+    type: Literal["error"]
+    message: str
+
+
+def _error_message(error: Exception) -> str:
+    if isinstance(error, (BotSessionNotFound, PiSessionInvalid)):
+        return "会话已过期，请重新开始对话"
+    if isinstance(error, BotRateLimited):
+        return f"对话次数已达上限，请在 {retry_time(error.retry_at)} 后重试"
+    if isinstance(error, (BotQuotaPaused, ModelRateLimited)):
+        return "模型额度暂时用完，请稍后重试"
+    if isinstance(error, BotDraftingPriority):
+        return "正在起草画像，请稍后再试"
+    if isinstance(error, BotBusy):
+        return "系统正忙，请稍后重试"
+    if isinstance(error, (TimeoutError, httpx.TimeoutException)):
+        return "对话处理超时，请稍后重试"
+    if isinstance(error, ModelUnavailable):
+        if error.code == "deadline":
+            return DEADLINE_MESSAGE
+        if isinstance(error, ModelServiceError):
+            return str(error)
+        return "模型服务暂时不可用，请稍后重试"
+    return "对话暂时出错，请稍后重试"
 
 
 class TurnStreamingResponse(StreamingResponse):
@@ -78,6 +118,12 @@ def response(
                     result = run(db, stream)
                 if not stream.cancelled.is_set():
                     emit({"type": "final", "response": result.model_dump(mode="json")})
+            except Exception as error:
+                logger.warning(
+                    "Streaming turn failed error_type=%s", type(error).__name__
+                )
+                if not stream.cancelled.is_set():
+                    emit({"type": "error", "message": _error_message(error)})
             finally:
                 emit(None)
 
