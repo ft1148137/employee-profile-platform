@@ -53,7 +53,7 @@ from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
 from app.domains.org.models import Employee, Organization
 from app.domains.org.service import visible_employee
-from app.domains.profile.models import AssessmentStatus, EvidenceRelation
+from app.domains.profile.models import AssessmentStatus, EvidenceRelation, ProfileClaim
 from app.domains.profile.schemas import ClaimPublic, ProfileView
 from app.domains.profile.service import read_profile
 
@@ -154,6 +154,8 @@ def _validate(
     principal: Principal,
     session: Session,
     items: list[ItemInput],
+    *,
+    align_initial: bool = False,
 ) -> tuple[dict[str, CapabilityPublic], dict[str, ClaimPublic]]:
     capabilities = {c.key: c for c in capability_dictionary(principal, session).data}
     current = {
@@ -167,6 +169,10 @@ def _validate(
     errors: list[dict[str, int | str]] = []
     seen: set[str] = set()
     for index, item in enumerate(items):
+        if align_initial and item.op in (ChangeOp.ADD, ChangeOp.MODIFY):
+            item.op = (
+                ChangeOp.MODIFY if item.capability_key in current else ChangeOp.ADD
+            )
         messages = []
         capability = capabilities.get(item.capability_key)
         if capability is None:
@@ -220,7 +226,13 @@ def save_draft(
         RequestStatus.PENDING_OWNER,
     ):
         raise RequestConflict()
-    capabilities, current = _validate(principal, session, items)
+    capabilities, current = _validate(
+        principal,
+        session,
+        items,
+        align_initial=request is not None
+        and request.origin == RequestOrigin.INITIAL_SYNC,
+    )
     if request is None:
         request = ProfileChangeRequest(
             org_id=principal.org_id,
@@ -304,23 +316,58 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
     request = _request(principal, session, request_id)
     public = _public(principal, session, request.id)
     claims = {
-        i.claim.id: i.claim for i in my_profile(principal, session).items if i.claim
+        i.capability.key: i.claim
+        for i in my_profile(principal, session).items
+        if i.claim
     }
+    initial = request.origin == RequestOrigin.INITIAL_SYNC and request.status in (
+        RequestStatus.PENDING_OWNER,
+        RequestStatus.DRAFT,
+    )
+    changed = (
+        {
+            row.id: row.created_at
+            for row in session.exec(
+                select(ProfileClaim).where(
+                    ProfileClaim.org_id == principal.org_id,
+                    ProfileClaim.subject_employee_id == employee_id(principal),
+                    col(ProfileClaim.id).in_([c.id for c in claims.values()]),
+                    col(ProfileClaim.generated_by)["via"].astext == "direct",
+                    ProfileClaim.created_at > request.created_at,
+                )
+            ).all()
+        }
+        if initial
+        else {}
+    )
+    previews = []
+    for item in public.items:
+        current = claims.get(item.capability.key)
+        before = (
+            current
+            if initial or (current and current.id == item.target_claim_id)
+            else None
+        )
+        if initial:
+            if item.op in (ChangeOp.ADD, ChangeOp.MODIFY):
+                item.op = ChangeOp.MODIFY if current else ChangeOp.ADD
+            item.target_claim_id = current.id if current else None
+        previews.append(
+            PreviewItem(
+                before=before,
+                after=item,
+                current_changed_at=changed.get(current.id) if current else None,
+                warning="等级已调整，请重新选择或清空"
+                if item.after
+                and not level_exists(item.capability.level_rubric, item.after.level)
+                else None,
+            )
+        )
     return RequestPreview(
         request_id=request.id,
         revision=request.revision,
         reviewers=request_reviewers(session, principal.org_id, employee_id(principal)),
-        items=[
-            PreviewItem(
-                before=claims.get(i.target_claim_id) if i.target_claim_id else None,
-                after=i,
-                warning="等级已调整，请重新选择或清空"
-                if i.after
-                and not level_exists(i.capability.level_rubric, i.after.level)
-                else None,
-            )
-            for i in public.items
-        ],
+        items=previews,
     )
 
 
@@ -356,20 +403,28 @@ def submit(
     if not items:
         raise InvalidItems([{"index": 0, "message": "至少需要一项改动"}])
     public = _public(principal, session, request.id)
-    _validate(
+    inputs = [
+        ItemInput(
+            op=i.op,
+            capability_key=i.capability.key,
+            statement=i.after.statement if i.after else "撤回或补充依据",
+            level=i.after.level if i.after else None,
+            evidence_ids=[e.evidence_id for e in i.evidence],
+        )
+        for i in public.items
+    ]
+    initial = request.origin == RequestOrigin.INITIAL_SYNC
+    _, current = _validate(
         principal,
         session,
-        [
-            ItemInput(
-                op=i.op,
-                capability_key=i.capability.key,
-                statement=i.after.statement if i.after else "撤回或补充依据",
-                level=i.after.level if i.after else None,
-                evidence_ids=[e.evidence_id for e in i.evidence],
-            )
-            for i in public.items
-        ],
+        inputs,
+        align_initial=initial,
     )
+    if initial:
+        for item, value in zip(items, inputs, strict=True):
+            item.op = value.op
+            target = current.get(value.capability_key)
+            item.target_claim_id = target.id if target else None
     transition(request, RequestStatus.PENDING_REVIEW)
     request.submitted_via, request.client_name, request.submitted_at = (
         SubmissionVia(via),

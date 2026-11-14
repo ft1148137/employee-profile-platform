@@ -93,6 +93,7 @@ class PreviewItem(SQLModel):
     before: ClaimPublic | None
     after: ChangeItemPublic
     warning: str | None = None
+    current_changed_at: datetime | None = None
 
 
 class RequestPreview(SQLModel):

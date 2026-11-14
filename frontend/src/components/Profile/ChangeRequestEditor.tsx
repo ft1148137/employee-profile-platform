@@ -206,6 +206,10 @@ export function ChangeRequestEditor({
     evidence.error ??
     initialPreview.error
   const busy = save.isPending || submit.isPending || reloadPreview.isPending
+  const detail = isAxiosError(error) ? error.response?.data?.detail : null
+  const itemErrors = Array.isArray(detail)
+    ? detail.filter(record).filter((item) => typeof item.message === "string")
+    : []
   return (
     <Dialog
       open
@@ -225,7 +229,17 @@ export function ChangeRequestEditor({
           画像不用于绩效、薪酬和晋升。提交后按企业审批规则处理；待审批的改动可以在批准前撤回。
         </DialogDescription>
         <ProfileVisibility />
-        <SetupError error={error} />
+        {itemErrors.length ? (
+          <div role="alert" className="text-sm text-destructive">
+            {itemErrors.map((item, index) => (
+              <p key={`${item.index}-${index}`}>
+                第 {Number(item.index) + 1} 项：{String(item.message)}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <SetupError error={error} />
+        )}
         {notice && <p role="status">{notice}</p>}
         {confirmClose || blocker.status === "blocked" ? (
           <section className="space-y-3" aria-label="未保存的内容">
@@ -273,57 +287,69 @@ export function ChangeRequestEditor({
                 preview
               />
             )}
-            {displayedPreview?.items.map(({ before, after, warning }) => (
-              <section
-                key={after.id}
-                className="space-y-3 rounded-lg border p-4"
-              >
-                <h3 className="font-semibold">{after.capability.name}</h3>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <p className="text-sm text-muted-foreground">修改前</p>
-                    <p>{before?.statement ?? "暂无判断"}</p>
-                    <p>
-                      等级：
-                      {before?.level
-                        ? levelLabel(
-                            after.capability.level_rubric,
-                            before.level,
-                          )
-                        : "未给等级"}
+            {displayedPreview?.items.map(
+              ({ before, after, warning, current_changed_at }) => (
+                <section
+                  key={after.id}
+                  className="space-y-3 rounded-lg border p-4"
+                >
+                  <h3 className="font-semibold">{after.capability.name}</h3>
+                  {current_changed_at && (
+                    <p role="status" className="text-sm text-muted-foreground">
+                      经理或管理员已在{" "}
+                      {new Date(current_changed_at).toLocaleString("zh-CN", {
+                        timeZone: "Asia/Shanghai",
+                        hour12: false,
+                      })}
+                      （北京时间）修改过这项。提交将以当前正式值为基础，仍按企业审批规则处理。
                     </p>
+                  )}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-sm text-muted-foreground">修改前</p>
+                      <p>{before?.statement ?? "暂无判断"}</p>
+                      <p>
+                        等级：
+                        {before?.level
+                          ? levelLabel(
+                              after.capability.level_rubric,
+                              before.level,
+                            )
+                          : "未给等级"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">修改后</p>
+                      <p>
+                        {after.op === "retract"
+                          ? "撤回这条判断"
+                          : after.after?.statement}
+                      </p>
+                      <p>
+                        等级：
+                        {after.after?.level
+                          ? levelLabel(
+                              after.capability.level_rubric,
+                              after.after.level,
+                            )
+                          : "未给等级"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">修改后</p>
-                    <p>
-                      {after.op === "retract"
-                        ? "撤回这条判断"
-                        : after.after?.statement}
-                    </p>
-                    <p>
-                      等级：
-                      {after.after?.level
-                        ? levelLabel(
-                            after.capability.level_rubric,
-                            after.after.level,
-                          )
-                        : "未给等级"}
-                    </p>
-                  </div>
-                </div>
-                {after.owner_statement && (
-                  <p>依据说明：{after.owner_statement}</p>
-                )}
-                {after.uncertainty && <p>不确定之处：{after.uncertainty}</p>}
-                {after.objection && <p>异议原因：{after.objection}</p>}
-                <p className="text-sm">
-                  相关证据：
-                  {(after.evidence ?? []).map((e) => e.title).join("、") ||
-                    "暂无"}
-                </p>
-                {warning && <p role="alert">等级需要重新选择：{warning}</p>}
-              </section>
-            ))}
+                  {after.owner_statement && (
+                    <p>依据说明：{after.owner_statement}</p>
+                  )}
+                  {after.uncertainty && <p>不确定之处：{after.uncertainty}</p>}
+                  {after.objection && <p>异议原因：{after.objection}</p>}
+                  <p className="text-sm">
+                    相关证据：
+                    {(after.evidence ?? []).map((e) => e.title).join("、") ||
+                      "暂无"}
+                  </p>
+                  {warning && <p role="alert">等级需要重新选择：{warning}</p>}
+                </section>
+              ),
+            )}
             <div className="flex flex-wrap gap-3">
               <Button
                 variant="outline"
