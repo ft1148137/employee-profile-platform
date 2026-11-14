@@ -817,6 +817,10 @@ NOT_FOR_ASSISTANT = {
         "/roster/imports",
     ): "仅 API，界面已删除，名单变动走 draft_roster_from_material",
     ("POST", "/roster/imports/{id}/apply"): "人员弹窗确认单人变动",
+    (
+        "GET",
+        "/roster/employees/{employee_id}/previous-manager",
+    ): "员工详情恢复原上级的只读提示；管理助手材料确认卡已包含相同提示",
     ("POST", "/capabilities/preview"): "兼容旧 API 调用；助手改用材料整理",
     ("POST", "/capabilities/versions"): "兼容旧 API 调用；助手改用材料整理",
     ("GET", "/model-setting/chatgpt/login"): "在模型页面操作",
