@@ -288,7 +288,9 @@ def pending_overlap(
     for request in employee.my_requests(p, db).data:
         if request.status != RequestStatus.PENDING_REVIEW:
             continue
-        matching = [i for i in request.items if i.capability.key in keys]
+        matching = [
+            i for i in request.items if i.decision is None and i.capability.key in keys
+        ]
         if not matching:
             continue
         blocked.update(i.capability.key for i in matching)
@@ -328,6 +330,7 @@ def pending_overlap(
                         ],
                     ).model_dump(mode="json")
                     for i in request.items
+                    if i.decision is None
                 ],
             }
         )
@@ -345,7 +348,7 @@ def pending_overlap(
             "请说明下面各能力的提交时间（北京时间）和正在等谁审批，并让员工选择："
             "等原请求审完再补充；或者点击撤回卡，撤回原请求后合并重提。"
             "员工明确选择合并重提时，先请其点击撤回卡；确认撤回成功后，"
-            "将 original_items 中原请求的全部内容与本次补充合并，"
+            "将 original_items 中原请求的全部待审内容与本次补充合并，"
             "复用 draft_update_request 的 items 参数新建草稿，保留原有等级和依据说明，"
             "再请员工核对预览并点击确认提交。其他不重叠的能力照常保存。",
         }

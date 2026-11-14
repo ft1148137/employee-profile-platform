@@ -16,6 +16,7 @@ from app.domains.change_request.schemas import ItemInput
 from app.domains.im import actions
 from app.domains.im.adapters.base import Event
 from app.domains.model.pi_client import TurnResult
+from app.domains.review.models import ApprovalPolicy
 from tests.api.routes.test_employee_requests import payload, principal_for
 from tests.domains.test_bot_core import enable
 
@@ -187,3 +188,48 @@ def test_overlap_cannot_read_employee_in_another_tenant(
         )
     assert error.value.status_code == 404
     assert cards == [] and session.request_ids == []
+
+
+def test_partially_published_request_only_blocks_and_restores_pending_items(
+    demo: tuple, db: Session
+) -> None:
+    p = principal_for(db, demo[1]["E02"].org_id)
+    db.add(
+        ApprovalPolicy(
+            org_id=p.org_id,
+            version=1,
+            created_by_user_id=p.user_id,
+            category_overrides={"AI 与数据": False},
+        )
+    )
+    db.commit()
+    draft = employee.save_draft(
+        p,
+        db,
+        None,
+        [ItemInput(**payload()), ItemInput(**payload("model_training"))],
+        "web",
+    )
+    submitted = employee.submit(p, db, draft.id, draft.revision, "web")
+    assert submitted.status == "pending_review"
+    assert submitted.items[1].decision == "approved"
+    db.commit()
+    session = store.create_session(db, p)
+    cards: list[s.Message] = []
+    result = tools.call(
+        db, p, session, cards, "draft_update_request", {"items": [payload()]}
+    )
+    assert [i["capability_key"] for i in result["overlaps"][0]["original_items"]] == [
+        "automated_testing"
+    ]
+    cards.clear()
+    result = tools.call(
+        db,
+        p,
+        session,
+        cards,
+        "draft_update_request",
+        {"items": [payload("model_training", op="modify")]},
+    )
+    assert result["status"] == "draft" and "overlaps" not in result
+    assert len(cards) == 1 and isinstance(cards[0], s.PreviewCard)
