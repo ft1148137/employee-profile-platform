@@ -1,0 +1,9 @@
+id: m47-appeal-entry
+menu: people
+actor: employee
+entry: employee_bot
+steps:
+  - type: say
+    text: 经理拒绝了我提交的改动，我想申诉，网页上具体在哪里点？
+    expect: {reply_contains: [已处理请求, 申诉]}
+expect: {unchanged: true}

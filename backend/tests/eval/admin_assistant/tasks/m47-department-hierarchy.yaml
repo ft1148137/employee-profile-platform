@@ -1,0 +1,7 @@
+id: m47-department-hierarchy
+menu: people
+steps:
+  - type: say
+    text: 我想在上传员工名单时建出部门层级，该用什么列？已经建好的部门在哪个页面改上级？
+    expect: {reply_contains: [部门路径, 上级部门, 没有, 重新上传名单]}
+expect: {unchanged: true}
