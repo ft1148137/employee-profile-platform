@@ -13,7 +13,12 @@ from app.domains.capability.schemas import (
     CapabilityPublic,
 )
 from app.domains.capability.service import get_schema, level_exists, list_capabilities
-from app.domains.change_request.claim import ClaimAfter
+from app.domains.change_request.claim import (
+    ITEMS_MAX,
+    ClaimAfter,
+    limit_message,
+    text_limit,
+)
 from app.domains.change_request.models import (
     ChangeItem,
     ChangeItemEvidence,
@@ -156,6 +161,8 @@ def _validate(
     items: list[ItemInput],
     *,
     align_initial: bool = False,
+    request_id: UUID | None = None,
+    submitting: bool = False,
 ) -> tuple[dict[str, CapabilityPublic], dict[str, ClaimPublic]]:
     capabilities = {c.key: c for c in capability_dictionary(principal, session).data}
     current = {
@@ -167,6 +174,21 @@ def _validate(
         session, principal, {id_ for i in items for id_ in i.evidence_ids}
     )
     errors: list[dict[str, int | str]] = []
+    if len(items) > ITEMS_MAX:
+        errors.append({"index": 0, "message": limit_message("items", len(items))})
+    stored = (
+        {
+            row.capability_definition_id: row
+            for row in session.exec(
+                select(ChangeItem).where(
+                    ChangeItem.org_id == principal.org_id,
+                    ChangeItem.request_id == request_id,
+                )
+            ).all()
+        }
+        if request_id
+        else {}
+    )
     seen: set[str] = set()
     for index, item in enumerate(items):
         if align_initial and item.op in (ChangeOp.ADD, ChangeOp.MODIFY):
@@ -175,6 +197,25 @@ def _validate(
             )
         messages = []
         capability = capabilities.get(item.capability_key)
+        old = stored.get(capability.id) if capability else None
+        target = current.get(item.capability_key)
+        if item.op in (ChangeOp.ADD, ChangeOp.MODIFY):
+            previous = target.statement if target else None
+            if item.statement != previous and not submitting and old and old.after:
+                previous = ClaimAfter.model_validate(old.after).statement
+            message = text_limit("statement", item.statement, index, previous)
+            if message:
+                messages.append(message)
+        for field in ("owner_statement", "objection", "uncertainty", "explanation"):
+            value = (
+                getattr(old, field)
+                if submitting and old
+                else getattr(item, field, None)
+            )
+            previous_text = getattr(old, field) if old and not submitting else None
+            message = text_limit(field, value, index, previous_text)
+            if message:
+                messages.append(message)
         if capability is None:
             messages.append("能力 key 不在当前启用的词典中")
         elif item.level is not None:
@@ -232,6 +273,7 @@ def save_draft(
         items,
         align_initial=request is not None
         and request.origin == RequestOrigin.INITIAL_SYNC,
+        request_id=request.id if request else None,
     )
     if request is None:
         request = ProfileChangeRequest(
@@ -419,6 +461,8 @@ def submit(
         session,
         inputs,
         align_initial=initial,
+        request_id=request.id,
+        submitting=True,
     )
     if initial:
         for item, value in zip(items, inputs, strict=True):

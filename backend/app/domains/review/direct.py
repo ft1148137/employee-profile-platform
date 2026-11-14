@@ -3,14 +3,20 @@ from uuid import UUID, uuid7
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from pydantic import JsonValue
-from sqlmodel import Field, Session, SQLModel, col, select
+from pydantic import Field, JsonValue
+from sqlmodel import Session, SQLModel, col, select
 
 from app.authz.principal import Principal
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.capability.service import get_schema, level_exists, list_capabilities
-from app.domains.change_request.claim import ClaimAfter
+from app.domains.change_request.claim import (
+    EXPLANATION_MAX,
+    ITEMS_MAX,
+    STATEMENT_MAX,
+    ClaimAfter,
+    text_limit,
+)
 from app.domains.change_request.employee import (
     EmployeeRecordNotFound,
     InvalidItems,
@@ -28,7 +34,7 @@ from app.domains.change_request.models import (
     ReviewVia,
     SubmissionVia,
 )
-from app.domains.change_request.schemas import ToolInput
+from app.domains.change_request.schemas import ProfileInput
 from app.domains.change_request.service import transition
 from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
@@ -39,16 +45,18 @@ from app.domains.review.publish import current_claims, publish
 from app.models import User
 
 
-class DirectItemInput(ToolInput):
+class DirectItemInput(ProfileInput):
     op: Literal[ChangeOp.ADD, ChangeOp.MODIFY, ChangeOp.RETRACT]
     capability_key: str
-    statement: str = Field(min_length=1)
+    statement: str = Field(min_length=1, json_schema_extra={"maxLength": STATEMENT_MAX})
     level: str | None = None
-    explanation: str | None = Field(default=None, max_length=300)
+    explanation: str | None = Field(
+        default=None, json_schema_extra={"maxLength": EXPLANATION_MAX}
+    )
 
 
-class DirectEditInput(ToolInput):
-    items: list[DirectItemInput] = Field(min_length=1, max_length=50)
+class DirectEditInput(ProfileInput):
+    items: list[DirectItemInput] = Field(min_length=1, max_length=ITEMS_MAX)
     base_revision: int | None = Field(default=None, ge=1)
 
 
@@ -120,6 +128,14 @@ def _prepare(
         capability = definitions.get(item.capability_key)
         target = current.get(item.capability_key)
         messages = []
+        for field in ("statement", "explanation"):
+            if field == "statement" and item.op == ChangeOp.RETRACT:
+                continue
+            message = text_limit(
+                field, getattr(item, field), index, getattr(target, field, None)
+            )
+            if message:
+                messages.append(message)
         if capability is None:
             messages.append("能力 key 不在当前启用的词典中")
         elif not level_exists(capability.level_rubric, item.level):
