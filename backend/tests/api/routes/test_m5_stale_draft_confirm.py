@@ -41,7 +41,7 @@ def test_unpreviewed_initial_stays_pending(
     detail = response.json()["detail"]
     assert detail["code"] == "stale_initial_draft"
     assert detail["capabilities"][0]["key"] == "automated_testing"
-    assert "请先核对" in detail["message"]
+    assert "请先打开预览核对，再确认提交" in detail["message"]
     requests = client.get(f"{demo[0]}/me/requests", headers=demo[2]["employee"]).json()
     assert next(r for r in requests["data"] if r["id"] == initial["id"]) == initial
     assert side_effects(db, demo[1]["E02"].org_id) == before
@@ -115,7 +115,7 @@ def test_mcp_requires_confirmation(
     detail = json.loads(result["content"][0]["text"])
     assert detail["status"] == 409
     assert detail["detail"]["capabilities"][0]["key"] == "automated_testing"
-    assert "preview_request" in detail["detail"]["message"]
+    assert "请先打开预览核对，再确认提交" in detail["detail"]["message"]
     assert (
         employee.my_requests(principal_for(db, demo[1]["E02"].org_id), db, "all")
         == before
@@ -187,7 +187,8 @@ def test_assistant_old_card_requires_new_click(
     assert employee.my_requests(p, db, "all") == before
     assert_formal_unchanged(client, demo, formal)
     assert any(
-        isinstance(m, s.TextMessage) and "请先核对" in m.text for m in response.messages
+        isinstance(m, s.TextMessage) and "请先打开预览核对，再确认提交" in m.text
+        for m in response.messages
     )
     latest = next(m for m in response.messages if isinstance(m, s.PreviewCard))
     assert latest.base_revision > card.base_revision
