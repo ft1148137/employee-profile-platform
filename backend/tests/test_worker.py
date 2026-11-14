@@ -25,7 +25,10 @@ def recover_stalled_jobs() -> None:
 
 
 @pytest.mark.parametrize("worker", ["missing", "healthy", "stalled"])
-def test_recover_only_stalled_jobs(db: Session, worker: str) -> None:
+def test_recover_only_stalled_jobs(
+    db: Session, worker: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(app.periodic_registry, "periodic_tasks", {})
     job_id = ping.configure(
         connection=db.connection().connection.driver_connection
     ).defer()
@@ -75,13 +78,17 @@ def test_department_defaults_are_hourly_and_locked() -> None:
     assert periodic.task.queueing_lock == "department_defaults"
 
 
-def test_ping_job_succeeds(db: Session) -> None:
+def test_ping_job_succeeds(db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     db.rollback()
+    # An empty registry stops Procrastinate's periodic deferrer without queuing jobs.
+    monkeypatch.setattr(app.periodic_registry, "periodic_tasks", {})
 
     async def run() -> int:
         async with app.open_async():
-            job_id = await ping.defer_async()
-            await asyncio.wait_for(app.run_worker_async(wait=False), timeout=20)
+            job_id = await ping.configure(queue="test_ping").defer_async()
+            await asyncio.wait_for(
+                app.run_worker_async(wait=False, queues=["test_ping"]), timeout=20
+            )
             return job_id
 
     job_id = asyncio.run(run())
