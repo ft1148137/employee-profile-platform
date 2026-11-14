@@ -1,7 +1,7 @@
 import { createServer } from "node:http"
 import { networkInterfaces } from "node:os"
 import { expect, test } from "@playwright/test"
-import type { ChangeSpec, EmployeeAccount } from "../src/client"
+import type { ChangeSetPublic, EmployeeAccount } from "../src/client"
 import { dictionaryDefinitions } from "./utils/model"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -61,7 +61,10 @@ test("administrator grant applies after two confirmations in the assistant", asy
   ).json()
   const employee = people.find((person) => person.work_email === employeeEmail)!
   const target = employee.account!
-  let proposedItems: ChangeSpec[] = [
+  let proposedItems: Pick<
+    ChangeSetPublic["items"][number],
+    "function" | "args"
+  >[] = [
     {
       function: "grant_role",
       args: { user_id: target.user_id, role: "org_admin" },
