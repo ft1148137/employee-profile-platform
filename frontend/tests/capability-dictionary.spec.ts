@@ -403,12 +403,11 @@ test("draft proposals enter the dictionary through preview and save", async ({
   await panel.getByRole("button", { name: "加入词典", exact: true }).click()
   const editor = page.getByRole("region", { name: "网页编辑能力词典" })
   const added = editor.getByRole("article", { name: "新合成能力", exact: true })
-  await expect(added.getByLabel("能力标识")).toHaveValue("")
+  await expect(added.getByLabel("能力标识")).toHaveCount(0)
   await expect(added.getByLabel("分类", { exact: true })).toHaveValue("工程")
   await expect(added.getByLabel("能力说明")).toHaveValue("合成能力说明")
   await expect(added.getByLabel("等级标识")).toHaveValue("routine")
-  await expect(added.getByLabel("等级描述")).toHaveValue("")
-  await added.getByLabel("能力标识").fill("capability_1")
+  await expect(added.getByLabel("等级描述")).toHaveValue("旧等级说明")
   await added.getByLabel("等级描述").fill("能独立完成合成任务")
   await editor.getByRole("button", { name: "预览改动", exact: true }).click()
   await editor
@@ -552,8 +551,8 @@ test("employee suggests a missing capability and can add it after admin acceptan
       name: "研发费用归集",
       exact: true,
     })
-    await added.getByLabel("能力标识").fill("research_cost")
-    await added.getByLabel("等级描述").fill("能按项目完成费用归集")
+    await expect(added.getByLabel("能力标识")).toHaveCount(0)
+    await expect(added.getByLabel("等级描述")).toHaveValue("能在指导下完成")
     await editor.getByRole("button", { name: "预览改动" }).click()
     await editor.getByRole("button", { name: "确认保存新版本" }).click()
     await expect(

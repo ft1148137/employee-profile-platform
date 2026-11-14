@@ -75,6 +75,7 @@ function Editor({
       .map((definition, index) => ({
         id: index,
         locked: true,
+        hideKey: false,
         definition,
       })),
   )
@@ -119,6 +120,7 @@ function Editor({
         ...proposed.map((definition, id) => ({
           id,
           locked: true,
+          hideKey: false,
           definition,
           removed: false,
         })),
@@ -127,6 +129,7 @@ function Editor({
           .map((definition, index) => ({
             id: proposed.length + index,
             locked: true,
+            hideKey: false,
             definition,
             removed: true,
           })),
@@ -142,33 +145,7 @@ function Editor({
       ),
     )
   }
-  function addProposal(proposal: CapabilityProposalPublic) {
-    const levels = [
-      ...new Map(
-        initial.definitions
-          .flatMap((definition) => definition.level_rubric.levels)
-          .map((level) => [level.key, level]),
-      ).values(),
-    ]
-    setRows((values) => [
-      ...values,
-      {
-        id: nextId.current++,
-        locked: false,
-        definition: {
-          key: "",
-          name: proposal.name,
-          category: proposal.category ?? "未分类",
-          description: proposal.description,
-          level_rubric: {
-            levels: levels.map((level) => ({ ...level, description: "" })),
-          },
-        },
-      },
-    ])
-    setPreview(null)
-  }
-  function add() {
+  function add(proposal?: CapabilityProposalPublic) {
     const used = new Set(
       [...initial.definitions, ...body.definitions].map((d) => d.key),
     )
@@ -179,13 +156,22 @@ function Editor({
       {
         id: nextId.current++,
         locked: false,
+        hideKey: !!proposal,
         definition: {
           key: `capability_${sequence}`,
-          name: "",
-          category: "未分类",
-          description: "",
+          name: proposal?.name ?? "",
+          category: proposal?.category ?? "未分类",
+          description: proposal?.description ?? "",
           level_rubric: {
-            levels: [{ key: "basic", label: "基础", description: "" }],
+            levels: proposal
+              ? [
+                  ...new Map(
+                    initial.definitions
+                      .flatMap((definition) => definition.level_rubric.levels)
+                      .map((level) => [level.key, level]),
+                  ).values(),
+                ]
+              : [{ key: "basic", label: "基础", description: "" }],
           },
         },
       },
@@ -201,7 +187,7 @@ function Editor({
         <h3 className="text-xl font-semibold">编辑能力与等级</h3>
         <p className="mt-2 text-sm text-muted-foreground">
           基于第 {baseVersion}{" "}
-          版。手工新增的能力标识由系统生成，建议能力需自行填写；保存后固定。编辑不会直接改变员工的判断。
+          版。新增能力的标识由系统生成，保存后固定。编辑不会直接改变员工的判断。
         </p>
       </header>
       <SetupError error={proposals.error} />
@@ -212,7 +198,7 @@ function Editor({
         >
           <h3 className="font-semibold">建议新增的能力</h3>
           <p className="text-sm text-muted-foreground">
-            加入后请填写能力标识和等级描述，预览并保存才会更新词典。已有判断保持不变。
+            加入后会自动生成标识，并预填当前词典的等级描述，可按需修改。预览并保存才会更新词典。已有判断保持不变。
           </p>
           {proposals.data.data.map((proposal) => (
             <article
@@ -249,7 +235,7 @@ function Editor({
                     rows.length >= 1000 ||
                     rows.some((r) => r.definition.name === proposal.name)
                   }
-                  onClick={() => addProposal(proposal)}
+                  onClick={() => add(proposal)}
                 >
                   加入词典
                 </Button>
@@ -281,7 +267,7 @@ function Editor({
       >
         <fieldset disabled={busy} className="min-w-0 space-y-6">
           {visibleRows.map(
-            ({ id, locked, definition: d, removed }, rowIndex) => (
+            ({ id, locked, hideKey, definition: d, removed }, rowIndex) => (
               <div key={id} className="space-y-4">
                 {(rowIndex === 0 ||
                   visibleRows[rowIndex - 1].definition.category !==
@@ -318,38 +304,40 @@ function Editor({
                           ["category", "分类", 200],
                           ["description", "能力说明", 4000],
                         ] as const
-                      ).map(([field, label, maxLength]) => (
-                        <label
-                          key={field}
-                          htmlFor={`${prefix}-${id}-${field}`}
-                          className="space-y-2 text-sm"
-                        >
-                          {label}
-                          <Input
-                            id={`${prefix}-${id}-${field}`}
-                            required={field === "name" || field === "key"}
-                            maxLength={maxLength}
-                            disabled={locked && field === "key"}
-                            value={d[field]}
-                            onChange={(e) =>
-                              update(id, { [field]: e.target.value })
-                            }
-                            onBlur={
-                              field === "category"
-                                ? () =>
-                                    setRows((values) =>
-                                      [...values].sort((a, b) =>
-                                        a.definition.category.localeCompare(
-                                          b.definition.category,
-                                          "zh-CN",
+                      )
+                        .filter(([field]) => field !== "key" || !hideKey)
+                        .map(([field, label, maxLength]) => (
+                          <label
+                            key={field}
+                            htmlFor={`${prefix}-${id}-${field}`}
+                            className="space-y-2 text-sm"
+                          >
+                            {label}
+                            <Input
+                              id={`${prefix}-${id}-${field}`}
+                              required={field === "name" || field === "key"}
+                              maxLength={maxLength}
+                              disabled={locked && field === "key"}
+                              value={d[field]}
+                              onChange={(e) =>
+                                update(id, { [field]: e.target.value })
+                              }
+                              onBlur={
+                                field === "category"
+                                  ? () =>
+                                      setRows((values) =>
+                                        [...values].sort((a, b) =>
+                                          a.definition.category.localeCompare(
+                                            b.definition.category,
+                                            "zh-CN",
+                                          ),
                                         ),
-                                      ),
-                                    )
-                                : undefined
-                            }
-                          />
-                        </label>
-                      ))}
+                                      )
+                                  : undefined
+                              }
+                            />
+                          </label>
+                        ))}
                     </div>
                     <fieldset className="min-w-0 space-y-3">
                       <legend className="mb-2 text-sm font-medium">等级</legend>
@@ -450,7 +438,7 @@ function Editor({
               type="button"
               variant="outline"
               disabled={rows.length >= 1000}
-              onClick={add}
+              onClick={() => add()}
             >
               新增能力
             </Button>
