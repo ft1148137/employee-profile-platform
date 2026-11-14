@@ -1966,6 +1966,28 @@ export type DirectItemInput = {
 }
 
 /**
+ * DirectReport
+ */
+export type DirectReport = {
+  /**
+   * Employee Name
+   */
+  employee_name: string
+  /**
+   * Employee Code
+   */
+  employee_code: string | null
+  /**
+   * Reviewers
+   */
+  reviewers: Array<RequestReviewer>
+  /**
+   * Is Reviewer
+   */
+  is_reviewer: boolean
+}
+
+/**
  * DraftBody
  */
 export type DraftBody = {
@@ -7786,6 +7808,40 @@ export type meReadMembershipsResponses = {
 
 export type meReadMembershipsResponse =
   meReadMembershipsResponses[keyof meReadMembershipsResponses]
+
+export type employeeRequestsReadMyDirectReportsData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/me/direct-reports"
+}
+
+export type employeeRequestsReadMyDirectReportsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type employeeRequestsReadMyDirectReportsError =
+  employeeRequestsReadMyDirectReportsErrors[keyof employeeRequestsReadMyDirectReportsErrors]
+
+export type employeeRequestsReadMyDirectReportsResponses = {
+  /**
+   * Response Employee Requests-Read My Direct Reports
+   *
+   * Successful Response
+   */
+  200: Array<DirectReport>
+}
+
+export type employeeRequestsReadMyDirectReportsResponse =
+  employeeRequestsReadMyDirectReportsResponses[keyof employeeRequestsReadMyDirectReportsResponses]
 
 export type employeeRequestsReadMyExternalIdentitiesData = {
   body?: never

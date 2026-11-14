@@ -1,10 +1,11 @@
 from uuid import UUID
 
-from sqlmodel import Session, col, or_, select
+from sqlmodel import Session, SQLModel, col, or_, select
 
 from app.authz.principal import Principal
 from app.domains.base import utc_now
 from app.domains.change_request.models import ProfileChangeRequest
+from app.domains.change_request.schemas import RequestReviewer
 from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
 from app.domains.org.models import (
@@ -19,6 +20,44 @@ from app.domains.org.models import (
 from app.domains.org.service import managed_scope
 from app.domains.review.models import ReviewDelegation
 from app.models import User
+
+
+class DirectReport(SQLModel):
+    employee_name: str
+    employee_code: str | None
+    reviewers: list[RequestReviewer]
+    is_reviewer: bool
+
+
+def direct_reports(session: Session, principal: Principal) -> list[DirectReport]:
+    from app.domains.change_request.service import request_reviewers
+
+    if principal.employee_id is None:
+        return []
+    reports = session.exec(
+        select(Employee)
+        .join(
+            ReportingLine,
+            (col(ReportingLine.org_id) == Employee.org_id)
+            & (col(ReportingLine.employee_id) == Employee.id),
+        )
+        .where(
+            Employee.org_id == principal.org_id,
+            Employee.employment_status == EmploymentStatus.ACTIVE,
+            ReportingLine.manager_employee_id == principal.employee_id,
+            col(ReportingLine.valid_to).is_(None),
+        )
+        .order_by(Employee.display_name, col(Employee.employee_code), col(Employee.id))
+    ).all()
+    return [
+        DirectReport(
+            employee_name=report.display_name,
+            employee_code=report.employee_code,
+            reviewers=request_reviewers(session, principal.org_id, report.id),
+            is_reviewer=can_review(session, principal, report.id) is not None,
+        )
+        for report in reports
+    ]
 
 
 def reviewers_for(

@@ -13,6 +13,7 @@ from app.domains.capability.schemas import CapabilityPublic
 from app.domains.change_request.models import (
     ChangeItem,
     ChangeItemEvidence,
+    ItemDecision,
     ProfileChangeRequest,
     RequestOrigin,
     RequestStatus,
@@ -169,6 +170,8 @@ def list_requests(
         ):
             public.owner_statement = public.objection = None
             public.decision_reason = None
+            if public.after is not None and item.decision != ItemDecision.APPROVED:
+                public.after.statement = "未发布的陈述仅本人、管辖经理和审批人可见"
         items[item.id] = public
         requests[item.request_id].items.append(public)
     for appeal in session.exec(
