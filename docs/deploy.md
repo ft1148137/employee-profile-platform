@@ -168,6 +168,58 @@ docker compose logs backup # 查看自动备份错误
 
 M4.2 下线管理员批量画像页面、上传模板、`profile-imports` 接口及 `import_profiles` 助手功能，改用对话附件或文字整理初始画像请求；员工本人 JSON 导入不受影响。已有待本人过目请求保留。新增 PDF 文本提取依赖精确锁定 `pypdf==6.21.4`（BSD-3-Clause，兼容 Apache-2.0）；升级需重建后端镜像。附件加密保存并按聊天保留期清理，支持图片的模型会接收本轮图片。新增员工档案字段默认关闭，启用后由管理员维护。
 
+### M5 升级说明
+
+从 M4.7 升级到 M5，沿用 `./upgrade.sh origin/master`：先备份数据库和 `.env`，重建镜像，由 prestart 顺序执行以下三个迁移后再启动应用。更早版本还会执行其间未应用的迁移，不能只手工添加三个新对象。
+
+| 顺序 / revision | 变更 | downgrade 影响 |
+| --- | --- | --- |
+| 1. `b615001dc001`，接 `b489001bc001` | `department.capability_failed_at` 记录部门能力生成失败时间，失败至少冷却 24 小时 | 删除失败时间，失去重试冷却记录 |
+| 2. `b617001dc001` | `organization.timezone`，已有企业默认为 `Asia/Shanghai` | 删除企业时区设置 |
+| 3. `b622001dc001` | 单行系统状态表 `worker_heartbeat` | 删除运行心跳记录 |
+
+该迁移链只有一个 head：`b489001bc001 → b615001dc001 → b617001dc001 → b622001dc001`。不修改原始证据。生产回退仍按下文恢复升级前备份并回退代码，不要直接降级数据库继续运行新代码。
+
+升级后请管理员核对「能力与规则 → 定期提醒」里的企业时区。没有时区的工作记录按它解析，默认仍为北京时间；部门能力生成任务仍每小时检查，但失败后至少等 24 小时才重试。详情见[管理员指南](admin-guide.md)。
+
+Worker 新增心跳健康检查，首次心跳前可能尚未健康，启动宽限为 120 秒。让升级脚本等待，不要因短暂的 unhealthy 删卷重装；超过宽限仍不健康时按下节排查。健康检查失败只标记状态，不会自动重启卡死进程。
+
+### 后台任务心跳与排障
+
+`system.heartbeat` 每分钟更新一次数据库中的 Worker 心跳。Compose 健康检查先运行 Procrastinate 的配置、连接、队列表检查，再运行 `python -m app.worker.health`；没有心跳、超过五分钟未更新或无法读库时失败。检查间隔十秒、超时五秒、连续失败五次才标记 unhealthy，启动宽限 120 秒。容器内运行同一检查也会返回非零退出码。
+
+管理员在管理助手空白页的「后台任务」卡看到距上次心跳时间及处理步骤。IM 进程每十秒独立检查，写入管理员收件箱，并在已启用通知、飞书绑定等条件满足时推送；同一次停顿去重。IM 自身停机时没有飞书提醒，网页状态与容器状态仍须检查。设计见 [ADR-0002](adr/0002-worker-and-compose-layout.md)。
+
+维护人员在**实际安装目录**沿用原 `.env`、Compose 文件和项目名执行以下步骤；不要连到其他部署或修改健康阈值来掩盖问题。
+
+1. 查看服务状态和最近日志，先确认数据库与 prestart 是否正常，再查看 worker：
+
+   ```bash
+   docker compose ps
+   docker compose logs --tail=100 prestart db worker im
+   ```
+
+2. 检查磁盘、数据库连接、迁移结果及 worker 是否仍运行。需要单独确认心跳时，从仍响应的 backend 容器运行相同检查：
+
+   ```bash
+   docker compose exec -T backend python -m app.worker.health
+   ```
+
+   无输出且退出码 0 表示心跳新鲜；非零表示失败。不要向外粘贴带凭据的配置或未脱敏日志。容器暂停时容器内检查也会暂停，不能只靠先前显示的 healthy 判断。
+
+3. 排除原因后重启本部署的 worker；如果已确认它处于人为暂停状态，先解除暂停：
+
+   ```bash
+   # 仅在 worker 确实被暂停时执行
+   docker compose unpause worker
+   docker compose restart worker
+   docker compose ps
+   ```
+
+   等新心跳写入后，再核对状态卡和健康检查恢复；同步、起草进度到对应页面查看。仍异常时保留日志和时间交维护人员继续处理，不要删除数据库卷或反复重建部署。
+
+心跳只证明 Worker 近期执行过系统任务，不代表每个同步或起草任务都成功；业务失败仍看「数据与 AI」的记录与原因。
+
 ### M4.3 升级说明
 
 本次须重建后端和 Pi 镜像，并让 prestart 完成下列两个迁移，顺序为 `b368001ss001 → b373001bc001 → b381001dc001`（唯一 head）：
@@ -177,7 +229,7 @@ M4.2 下线管理员批量画像页面、上传模板、`profile-imports` 接口
 | `b373001bc001_direct_profile_edits.py` | 新增直接修改决定和画像修改通知类型；downgrade 保留记录，但将 direct 映射为 web、profile_edited 映射为 status_changed，丢失类型区分 |
 | `b381001dc001_department_defaults.py` | 增加部门能力来源和词典版本；已有手工设置及可从审计识别的清空标为 admin。downgrade 删除 Pi 生成的能力行和来源标记，保留手工行及审计 |
 
-Worker 每小时执行一次 `capabilities.fill_department_defaults`，为从未设置及词典已换版的 Pi 部门生成对应能力。保持 worker 运行并配置可用模型；升级后、新建部门或模型恢复都等待下一轮，最多约一小时。管理员保存过的部门不再自动覆盖，模型不可用跳过，词典没有适合项可保存空列表，不保证每个部门都有能力。这个任务不受「自动起草画像」开关控制。设计见 [ADR-0041](adr/0041-department-default-capabilities.md)。
+Worker 每小时执行一次 `capabilities.fill_department_defaults`，为从未设置及词典已换版的 Pi 部门生成对应能力。保持 worker 运行并配置可用模型；升级后、新建部门或模型恢复都等待下一轮，未处于失败冷却期时最多约一小时。M5 起失败后至少隔 24 小时重试，见上文。管理员保存过的部门不再自动覆盖，模型不可用跳过，词典没有适合项可保存空列表，不保证每个部门都有能力。这个任务不受「自动起草画像」开关控制。设计见 [ADR-0041](adr/0041-department-default-capabilities.md)。
 
 飞书应用需在开放平台开通并发布 `im:resource` 权限，才能读取私聊文件和图片。未授权时用户会看到「无法读取文件，请让管理员在飞书开放平台开通文件权限」。网页附件不依赖飞书权限；真实应用权限和收发由部署方验证。
 
