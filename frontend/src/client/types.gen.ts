@@ -5854,7 +5854,7 @@ export type app__domains__admin__overview__StatusCard = {
   /**
    * Key
    */
-  key: "feishu" | "model" | "sync" | "drafting"
+  key: "feishu" | "model" | "sync" | "drafting" | "worker"
   /**
    * Level
    */

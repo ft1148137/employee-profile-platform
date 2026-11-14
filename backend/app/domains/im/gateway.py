@@ -26,6 +26,7 @@ from app.domains.im.adapters.wecom import Wecom
 from app.domains.im.models import ImEvent, ImSetting
 from app.domains.im.notifications import send_pending
 from app.domains.im.schemas import Platform
+from app.worker.monitor import dispatch_worker_alerts
 
 ADAPTERS: dict[Platform, type[Adapter]] = {
     "telegram": Telegram,
@@ -364,6 +365,8 @@ class Gateway:
             while True:
                 await self.refresh()
                 try:
+                    with Session(self.engine) as db:
+                        dispatch_worker_alerts(db, utc_now())
                     await send_pending(self.engine, self.adapters)
                 except SQLAlchemyError:
                     logger.warning("IM notification delivery stopped: code=storage")

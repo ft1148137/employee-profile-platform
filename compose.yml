@@ -97,7 +97,8 @@ services:
       prestart:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "procrastinate", "--app=app.worker.app.app", "healthchecks"]
+      test: ["CMD-SHELL", "procrastinate --app=app.worker.app.app healthchecks && python -m app.worker.health"]
+      start_period: 120s
       interval: 10s
       timeout: 5s
       retries: 5

@@ -128,6 +128,7 @@ def test_permissions(
             "model",
             "sync",
             "drafting",
+            "worker",
         ]
 
 

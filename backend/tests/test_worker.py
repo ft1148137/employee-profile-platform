@@ -21,7 +21,9 @@ def recover_stalled_jobs() -> None:
                 app.run_worker_async(wait=False, queues=["recovery"]), timeout=20
             )
 
-    asyncio.run(run())
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(app.periodic_registry, "periodic_tasks", {})
+        asyncio.run(run())
 
 
 @pytest.mark.parametrize("worker", ["missing", "healthy", "stalled"])
