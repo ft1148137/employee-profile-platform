@@ -194,6 +194,9 @@ import type {
   draftingSettingsGetDraftingSettingsData,
   draftingSettingsGetDraftingSettingsErrors,
   draftingSettingsGetDraftingSettingsResponses,
+  draftingSettingsGetOrgTimezoneData,
+  draftingSettingsGetOrgTimezoneErrors,
+  draftingSettingsGetOrgTimezoneResponses,
   draftingSettingsGetUpdateSettingsData,
   draftingSettingsGetUpdateSettingsErrors,
   draftingSettingsGetUpdateSettingsResponses,
@@ -206,6 +209,9 @@ import type {
   draftingSettingsPutDraftingSettingsData,
   draftingSettingsPutDraftingSettingsErrors,
   draftingSettingsPutDraftingSettingsResponses,
+  draftingSettingsPutOrgTimezoneData,
+  draftingSettingsPutOrgTimezoneErrors,
+  draftingSettingsPutOrgTimezoneResponses,
   draftingSettingsPutUpdateSettingsData,
   draftingSettingsPutUpdateSettingsErrors,
   draftingSettingsPutUpdateSettingsResponses,
@@ -2767,6 +2773,46 @@ export class DraftingSettingsService {
       responseType: "json",
       security: [{ scheme: "bearer", type: "http" }],
       url: "/api/v1/orgs/{org_id}/update-settings",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * Get Org Timezone
+   */
+  public static settingsGetOrgTimezone<ThrowOnError extends boolean = true>(
+    options: Options<draftingSettingsGetOrgTimezoneData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      draftingSettingsGetOrgTimezoneResponses,
+      draftingSettingsGetOrgTimezoneErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/update-settings/timezone",
+      ...options,
+    })
+  }
+
+  /**
+   * Put Org Timezone
+   */
+  public static settingsPutOrgTimezone<ThrowOnError extends boolean = true>(
+    options: Options<draftingSettingsPutOrgTimezoneData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).put<
+      draftingSettingsPutOrgTimezoneResponses,
+      draftingSettingsPutOrgTimezoneErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/update-settings/timezone",
       ...options,
       headers: {
         "Content-Type": "application/json",

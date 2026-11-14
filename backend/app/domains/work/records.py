@@ -1,11 +1,12 @@
 import csv
 from collections.abc import Iterator
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from io import BytesIO, StringIO
 from pathlib import Path
 from typing import Literal
 from xml.etree.ElementTree import ParseError
 from zipfile import BadZipFile
+from zoneinfo import ZoneInfo
 
 from openpyxl import Workbook
 from openpyxl.utils.exceptions import InvalidFileException
@@ -101,7 +102,9 @@ def _issue(
     )
 
 
-def _occurred_at(value: str, result: ParsedWorkRecords, number: int) -> datetime | None:
+def _occurred_at(
+    value: str, result: ParsedWorkRecords, number: int, timezone: ZoneInfo
+) -> datetime | None:
     try:
         parsed = datetime.fromisoformat(value.replace("/", "-"))
     except ValueError:
@@ -113,11 +116,12 @@ def _occurred_at(value: str, result: ParsedWorkRecords, number: int) -> datetime
         )
         return None
     if parsed.tzinfo is None:
-        # shortcut: Assume Beijing time until organization timezone settings are available.
-        parsed = parsed.replace(tzinfo=timezone(timedelta(hours=8)))
+        parsed = parsed.replace(tzinfo=timezone)
+        label = "北京时间" if timezone.key == "Asia/Shanghai" else timezone.key
+        offset = parsed.strftime("%z")
         _issue(
             result,
-            "时间没有时区，已按北京时间（+08:00）处理",
+            f"时间没有时区，已按{label}（{offset[:3]}:{offset[3:]}）处理",
             number,
             "occurred_at",
             "warning",
@@ -154,7 +158,9 @@ def _participants(
     return people
 
 
-def _parse_rows(result: ParsedWorkRecords, file_rows: Iterator[FileRow]) -> None:
+def _parse_rows(
+    result: ParsedWorkRecords, file_rows: Iterator[FileRow], timezone: ZoneInfo
+) -> None:
     columns: dict[str, int] | None = None
     seen: dict[tuple[str, str], int] = {}
     count = 0
@@ -209,7 +215,7 @@ def _parse_rows(result: ParsedWorkRecords, file_rows: Iterator[FileRow]) -> None
             if len(fields[name]) > limit:
                 _issue(result, f"不能超过 {limit} 字", number, name)
         occurred = (
-            _occurred_at(fields["occurred_at"], result, number)
+            _occurred_at(fields["occurred_at"], result, number, timezone)
             if fields["occurred_at"]
             else None
         )
@@ -253,7 +259,9 @@ def _parse_rows(result: ParsedWorkRecords, file_rows: Iterator[FileRow]) -> None
         _issue(result, "文件中没有工作记录，请下载模板填写")
 
 
-def parse_work_records(content: bytes, filename: str) -> ParsedWorkRecords:
+def parse_work_records(
+    content: bytes, filename: str, *, timezone: str = "Asia/Shanghai"
+) -> ParsedWorkRecords:
     result = ParsedWorkRecords()
     extension = Path(filename).suffix.lower()
     if extension not in (".csv", ".xlsx"):
@@ -263,7 +271,7 @@ def parse_work_records(content: bytes, filename: str) -> ParsedWorkRecords:
         read_csv_rows(content) if extension == ".csv" else read_xlsx_rows(content)
     )
     try:
-        _parse_rows(result, file_rows)
+        _parse_rows(result, file_rows, ZoneInfo(timezone))
     except (
         UnicodeError,
         csv.Error,

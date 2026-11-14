@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useCallback, useState } from "react"
 import { DraftingSettingsService, type UpdateSettingsInput } from "@/client"
 import { ChangeHistory } from "@/components/Admin/ChangeHistory"
+import { OrganizationTimezoneSettings } from "@/components/Admin/OrganizationTimezoneSettings"
 import { DraftField } from "@/components/AdminAssistant/DraftField"
 import { PageDraft } from "@/components/AdminAssistant/PageDraft"
 import { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
@@ -139,6 +140,7 @@ export function UpdateSettings({ orgId }: { orgId: string }) {
         </Button>
       </form>
       <ChangeHistory targetType="update_setting" />
+      <OrganizationTimezoneSettings orgId={orgId} />
     </section>
   )
 }

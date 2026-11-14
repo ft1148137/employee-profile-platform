@@ -40,6 +40,7 @@ from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
 from app.domains.org.models import Employee, EmploymentStatus
 from app.domains.org.service import visible_employee
+from app.domains.org.timezone import read_timezone
 from app.domains.profile.models import AssessmentStatus, ProfileVersion
 from app.domains.review.publish import current_claims, publish
 from app.models import User
@@ -276,8 +277,9 @@ def direct_edit(
     actor = session.get(User, principal.user_id)
     assert actor is not None
     names = "、".join(i.capability_name for i in result.items)
-    # shortcut: 按北京时间显示，企业有时区设置后改用企业时区。
-    display_time = now.astimezone(ZoneInfo("Asia/Shanghai"))
+    display_time = now.astimezone(
+        ZoneInfo(read_timezone(session, principal.org_id).timezone)
+    )
     notify(
         session,
         request,

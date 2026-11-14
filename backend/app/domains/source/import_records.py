@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlmodel import Session
 
 from app.authz.principal import Principal
+from app.domains.org.timezone import read_timezone
 from app.domains.source.schemas import SyncRunPublic
 from app.domains.source.sync import create_run
 from app.domains.work.records import (
@@ -40,10 +41,12 @@ class WorkRecordsTooLarge(HTTPException):
         super().__init__(413, "文件超过 5 MB，请拆分后再上传")
 
 
-def preview_work_records(content: bytes, filename: str) -> ParsedWorkRecords:
+def preview_work_records(
+    content: bytes, filename: str, *, timezone: str
+) -> ParsedWorkRecords:
     if len(content) > MAX_FILE_SIZE:
         raise WorkRecordsTooLarge()
-    return parse_work_records(content, filename)
+    return parse_work_records(content, filename, timezone=timezone)
 
 
 def import_work_records(
@@ -54,7 +57,9 @@ def import_work_records(
     *,
     commit: bool = True,
 ) -> CsvImportPublic:
-    parsed = preview_work_records(content, filename)
+    parsed = preview_work_records(
+        content, filename, timezone=read_timezone(session, principal.org_id).timezone
+    )
     if parsed.has_errors:
         raise InvalidWorkRecords(parsed.issues)
     run = create_run(

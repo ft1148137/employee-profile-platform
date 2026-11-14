@@ -98,8 +98,7 @@ def fill_defaults(timestamp: int) -> None:  # noqa: ARG001
         tenant_task(org_id, fill_department_defaults)
 
 
-# shortcut: Fixed UTC 01:00 (09:00 in China); use organization timezones when configurable.
-@app.periodic(cron="0 1 * * *")
+@app.periodic(cron="0 * * * *")
 @app.task(name="admin.dispatch_todos", queueing_lock="admin_dispatch_todos")
 def dispatch_admin_digest(timestamp: int) -> None:
     from datetime import UTC, datetime

@@ -31,6 +31,9 @@ class Organization(Record, table=True):
     __tablename__ = "organization"
     slug: str = Field(unique=True)
     name: str
+    timezone: str = Field(
+        default="Asia/Shanghai", sa_column_kwargs={"server_default": "Asia/Shanghai"}
+    )
     employee_fields: list[EmployeeField] = Field(
         default_factory=list,
         sa_column=Column(JSONB, nullable=False, server_default=text("'[]'::jsonb")),

@@ -65,7 +65,7 @@ def test_daily_counts_are_private_and_feishu_only(db: Session, demo: tuple) -> N
             )
         )
     db.commit()
-    now = utc_now()
+    now = utc_now().replace(hour=1, minute=0, second=0, microsecond=0)
     admin_todos.dispatch_admin_todos(db, now)
     admin_todos.dispatch_admin_todos(db, now)
     items = db.exec(
@@ -152,7 +152,9 @@ def test_digest_skips_ineligible_recipients(
         db.delete(grant)
     db.add(bound)
     db.commit()
-    admin_todos.dispatch_admin_todos(db, utc_now())
+    admin_todos.dispatch_admin_todos(
+        db, utc_now().replace(hour=1, minute=0, second=0, microsecond=0)
+    )
     assert not db.exec(
         select(InboxItem).where(
             InboxItem.org_id == p.org_id, InboxItem.kind == InboxKind.ADMIN_TODOS

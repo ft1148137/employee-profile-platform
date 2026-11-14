@@ -2,8 +2,9 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Annotated, Literal
 from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 from sqlmodel import SQLModel
 
 from app.domains.org.models import EmploymentStatus, Role
@@ -26,6 +27,20 @@ class OrganizationUpdate(SQLModel):
     name: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
     ]
+
+
+class OrganizationTimezone(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    timezone: str = Field(min_length=1, max_length=100)
+
+    @field_validator("timezone")
+    @classmethod
+    def valid_timezone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except ZoneInfoNotFoundError, ValueError:
+            raise ValueError("请选择有效的 IANA 时区名称") from None
+        return value
 
 
 class MembershipPublic(SQLModel):
