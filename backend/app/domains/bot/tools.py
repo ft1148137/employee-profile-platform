@@ -355,6 +355,49 @@ def pending_overlap(
     return [item for item in items if item.capability_key not in blocked], notice
 
 
+def checked_preview_card(
+    db: Session,
+    p: Principal,
+    session: BotSession,
+    cards: list[s.Message],
+    request_id: UUID,
+) -> dict[str, JsonValue]:
+    request = next(
+        r for r in employee.my_requests(p, db, "all").data if r.id == request_id
+    )
+    if request.status in ("draft", "pending_owner"):
+        remaining, notice = pending_overlap(
+            db,
+            p,
+            session,
+            cards,
+            [
+                ItemInput(
+                    op=i.op,
+                    capability_key=i.capability.key,
+                    statement=i.after.statement if i.after else "撤回或补充依据",
+                )
+                for i in request.items
+            ],
+        )
+        if notice:
+            keys = {i.capability_key for i in remaining}
+            names = "、".join(
+                i.capability.name for i in request.items if i.capability.key not in keys
+            )
+            request_card(
+                cards,
+                status_card(name_levels(db, p, s.Request.model_validate(request))),
+            )
+            return {
+                "request_id": str(request_id),
+                "message": f"这份旧草稿的{names}已有待审请求，暂不提供确认提交预览。"
+                "可以等审完再处理，或者在画像页删除这份草稿。",
+            }
+    request_card(cards, preview_card(db, p, request_id))
+    return {}
+
+
 def call(
     db: Session,
     p: Principal,
@@ -410,25 +453,30 @@ def call(
     if isinstance(result, s.Profile):
         auto = read_auto_draft(db, p)
         result.auto_draft_enabled = auto.enabled and not auto.org_disabled
+    blocked_drafts: list[JsonValue] = []
     if isinstance(result, (s.Request, s.Preview)):
         request_id = result.id if isinstance(result, s.Request) else result.request_id
         if request_id not in session.request_ids:
             session.request_ids = [*session.request_ids, request_id]
             db.add(session)
-        request_card(cards, preview_card(db, p, request_id))
+        blocked = checked_preview_card(db, p, session, cards, request_id)
+        if blocked:
+            blocked_drafts.append(blocked)
     if isinstance(result, s.Requests):
         for request in result.data:
             if request.id not in session.request_ids:
                 session.request_ids = [*session.request_ids, request.id]
                 db.add(session)
-            request_card(
-                cards,
-                preview_card(db, p, request.id)
-                if request.status in ("draft", "pending_owner")
-                else status_card(request),
-            )
+            if request.status in ("draft", "pending_owner"):
+                blocked = checked_preview_card(db, p, session, cards, request.id)
+                if blocked:
+                    blocked_drafts.append(blocked)
+            else:
+                request_card(cards, status_card(request))
     if isinstance(result, s.Questions):
         cards.extend(question_card(q) for q in result.data)
     if isinstance(result, s.Question):
         cards.append(question_card(result))
+    if blocked_drafts:
+        notice["blocked_drafts"] = blocked_drafts
     return redact(result.model_dump(mode="json") | notice)
