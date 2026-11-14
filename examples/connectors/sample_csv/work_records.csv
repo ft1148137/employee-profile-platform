@@ -1,0 +1,2 @@
+record_id,source,record_type,occurred_at,actor_account,actor_name,actor_role,participants,project,title,detail,status
+SAMPLE-001,sample_csv,工作记录,2026-01-01T09:00:00+08:00,sample.lin,示例林,执行人,sample.chen:参与人,合成项目,示例：完成接口联调,仅为合成工作说明，不包含评论、工时或附件。,已完成
