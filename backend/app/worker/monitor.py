@@ -1,10 +1,12 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from sqlmodel import Session, col, select
 
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.inbox.service import add_item
 from app.domains.org.models import Organization, OrgMembership, Role, RoleGrant
+from app.domains.org.timezone import read_timezone
 from app.models import User
 from app.worker.health import WORKER_ALERT_PREFIX, is_fresh
 from app.worker.models import WorkerHeartbeat
@@ -32,9 +34,15 @@ def dispatch_worker_alerts(db: Session, now: datetime) -> None:
         if is_fresh(beat_at, now):
             db.rollback()
             continue
+        timezone = ZoneInfo(read_timezone(db, org_id).timezone)
+        last_beat = (
+            beat_at.astimezone(timezone).strftime("%Y-%m-%d %H:%M")
+            if beat_at
+            else "尚未收到"
+        )
         message = (
             f"{WORKER_ALERT_PREFIX}自动起草、同步和定期提醒可能已停止。"
-            f"最后心跳：{beat_at.isoformat() if beat_at else '尚未收到'}。"
+            f"最后心跳：{last_beat}。"
             "请在网页管理助手的「后台任务」状态卡查看处理步骤。"
         )
         admins = db.exec(
