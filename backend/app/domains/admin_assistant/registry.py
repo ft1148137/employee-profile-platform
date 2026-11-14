@@ -59,6 +59,7 @@ from app.domains.org.models import EmploymentStatus, Organization
 from app.domains.org.roster import service as roster
 from app.domains.org.roster import single
 from app.domains.org.service import read_org_chart, visible_employee
+from app.domains.profile.coverage import read_coverage
 from app.domains.profile.service import read_profile
 from app.domains.review import appeal
 from app.domains.review.policy import PolicyInput, policy_view, read_policy, save_policy
@@ -245,6 +246,15 @@ FUNCTIONS = {
             lambda d, p, a: build_overview(d, p),
             "/admin/assistant",
             "GET /admin/overview",
+        ),
+        _f(
+            "get_coverage",
+            "people",
+            "查看在职员工画像覆盖率、各部门人数和审批积压",
+            NoArgs,
+            lambda d, p, a: read_coverage(d, p),
+            "/employees",
+            "GET /coverage",
         ),
         _f(
             "get_progress",

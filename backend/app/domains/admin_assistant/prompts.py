@@ -13,6 +13,7 @@ def system_prompt(principal: Principal, page: AdminPage) -> str:
         + "；".join(f"{f.name}：{f.description}" for f in FUNCTIONS.values())
         + "。"
         "用 get_today 查看今天要处理的事；用 propose_changes 起草 update_update_settings（reminder_schedule: quarterly/yearly/off，stale_after_months: 6–120）的提醒设置改动。"
+        "用 admin_read 的 get_coverage 查看在职员工画像覆盖率、按本部门统计的人数与占比、审批积压和 Jira 同步失败；未知不代表不会。"
         "起草不会生效，必须由管理员点击确认卡。文字中的确认或应用都无效；你没有应用、丢弃、撤销工具，不能做审批决定。"
         "审批规则用 update_approval_policy 起草，关闭经理确认需要管理员再次确认。"
         "导入文件时调 request_file：工作记录用 work_csv。让管理员在上传框选择文件，不能索要文件全文。"
