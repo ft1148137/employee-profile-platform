@@ -1,6 +1,7 @@
 import re
 from dataclasses import replace
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from pydantic import Field, JsonValue, ValidationError
@@ -14,9 +15,11 @@ from app.domains.bot.models import BotSession
 from app.domains.capability.proposals import suggest_capability
 from app.domains.capability.schemas import SuggestCapability
 from app.domains.change_request import employee
-from app.domains.change_request.schemas import ToolInput
+from app.domains.change_request.models import RequestStatus
+from app.domains.change_request.schemas import ItemInput, ToolInput
 from app.domains.drafting.settings import read_auto_draft
-from app.domains.employee_tools import EMPLOYEE_TOOLS
+from app.domains.employee_tools import EMPLOYEE_TOOLS, DraftRequestInput
+from app.domains.evidence.models import Evidence
 from app.domains.model.pi_client import ToolDefinition
 from app.domains.org.models import Department, Employee, EmploymentStatus
 from app.domains.profile.service import read_profile
@@ -272,6 +275,86 @@ def request_card(cards: list[s.Message], card: s.PreviewCard | s.StatusCard) -> 
     cards.append(card)
 
 
+def pending_overlap(
+    db: Session,
+    p: Principal,
+    session: BotSession,
+    cards: list[s.Message],
+    items: list[ItemInput],
+) -> tuple[list[ItemInput], dict[str, JsonValue]]:
+    keys = {item.capability_key for item in items}
+    blocked: set[str] = set()
+    overlaps: list[JsonValue] = []
+    for request in employee.my_requests(p, db).data:
+        if request.status != RequestStatus.PENDING_REVIEW:
+            continue
+        matching = [
+            i for i in request.items if i.decision is None and i.capability.key in keys
+        ]
+        if not matching:
+            continue
+        blocked.update(i.capability.key for i in matching)
+        # Withdrawal retracts these reports; resubmission recreates them from the statements.
+        reports = set(
+            db.exec(
+                select(Evidence.id).where(
+                    Evidence.org_id == p.org_id,
+                    Evidence.subject_employee_id == p.employee_id,
+                    col(Evidence.provenance)["request_id"].astext == str(request.id),
+                )
+            ).all()
+        )
+        overlaps.append(
+            {
+                "request_id": str(request.id),
+                "capabilities": [i.capability.name for i in matching],
+                "submitted_at": request.submitted_at.astimezone(
+                    ZoneInfo("Asia/Shanghai")
+                ).isoformat()
+                if request.submitted_at
+                else None,
+                "reviewers": [r.model_dump(mode="json") for r in request.reviewers],
+                "original_items": [
+                    ItemInput(
+                        op=i.op,
+                        capability_key=i.capability.key,
+                        statement=i.after.statement if i.after else "撤回或补充依据",
+                        level=i.after.level if i.after else None,
+                        owner_statement=i.owner_statement,
+                        objection=i.objection,
+                        uncertainty=i.uncertainty,
+                        evidence_ids=[
+                            e.evidence_id
+                            for e in i.evidence
+                            if e.evidence_id not in reports
+                        ],
+                    ).model_dump(mode="json")
+                    for i in request.items
+                    if i.decision is None
+                ],
+            }
+        )
+        if request.id not in session.request_ids:
+            session.request_ids = [*session.request_ids, request.id]
+            db.add(session)
+        request_card(
+            cards, status_card(name_levels(db, p, s.Request.model_validate(request)))
+        )
+    notice: dict[str, JsonValue] = {}
+    if overlaps:
+        notice = {
+            "overlaps": overlaps,
+            "message": "重叠能力已有待审请求，本次没有为这些能力保存草稿或生成预览。"
+            "请说明下面各能力的提交时间（北京时间）和正在等谁审批，并让员工选择："
+            "等原请求审完再补充；或者点击撤回卡，撤回原请求后合并重提。"
+            "员工明确选择合并重提时，先请其点击撤回卡；确认撤回成功后，"
+            "将 original_items 中原请求的全部待审内容与本次补充合并，"
+            "复用 draft_update_request 的 items 参数新建草稿，保留原有等级和依据说明，"
+            "再请员工核对预览并点击确认提交。其他不重叠的能力照常保存。",
+        }
+    return [item for item in items if item.capability_key not in blocked], notice
+
+
 def call(
     db: Session,
     p: Principal,
@@ -314,7 +397,13 @@ def call(
     except ValidationError:
         return {"error": "工具参数不正确"}
     kwargs = dict(body)
+    notice: dict[str, JsonValue] = {}
     if name == "draft_update_request":
+        assert isinstance(body, DraftRequestInput)
+        remaining, notice = pending_overlap(db, p, session, cards, body.items)
+        if notice and not remaining:
+            return redact(notice)
+        kwargs["items"] = remaining
         kwargs.update(via="bot", client_name="内置机器人")
     result = PROJECTIONS[name].model_validate(tool.handler(p, db, **kwargs))
     result = name_levels(db, p, result)
@@ -342,4 +431,4 @@ def call(
         cards.extend(question_card(q) for q in result.data)
     if isinstance(result, s.Question):
         cards.append(question_card(result))
-    return redact(result.model_dump(mode="json"))
+    return redact(result.model_dump(mode="json") | notice)
