@@ -7,6 +7,7 @@
 - [企业管理员指南](admin-guide.md)
 - [员工指南](employee-guide.md)
 - [经理指南](manager-guide.md)
+- [外部 MCP 客户端接入说明](mcp-clients.md)
 - [已发布画像导出字段与只读接口](profile-export.md)
 - [M1 验收记录](m1-acceptance.md)
 - [Docker Compose 部署说明](deployment-docker-compose.md)
