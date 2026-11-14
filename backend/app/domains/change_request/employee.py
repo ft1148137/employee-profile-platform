@@ -1,5 +1,6 @@
 from typing import Literal
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from sqlmodel import Session, col, delete, select
@@ -58,6 +59,7 @@ from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
 from app.domains.org.models import Employee, Organization
 from app.domains.org.service import visible_employee
+from app.domains.org.timezone import read_timezone
 from app.domains.profile.models import AssessmentStatus, EvidenceRelation, ProfileClaim
 from app.domains.profile.schemas import ClaimPublic, ProfileView
 from app.domains.profile.service import read_profile
@@ -82,15 +84,15 @@ class InvalidItems(HTTPException):
 
 
 class StaleInitialDraft(HTTPException):
-    def __init__(self, items: list[PreviewItem]) -> None:
+    def __init__(self, items: list[PreviewItem], timezone: ZoneInfo) -> None:
         self.message = (
             "；".join(
-                f"经理或管理员在 {item.current_changed_at.isoformat()} 改过"
+                f"经理或管理员在 {item.current_changed_at.astimezone(timezone):%Y-%m-%d %H:%M} 改过"
                 f"「{item.after.capability.name}」"
                 for item in items
                 if item.current_changed_at
             )
-            + "，请先核对 preview_request 预览，再确认提交"
+            + "，请先打开预览核对，再确认提交"
         )
         super().__init__(
             409,
@@ -469,7 +471,9 @@ def submit(
         confirmation = preview(principal, session, request_id)
         changed = [i for i in confirmation.items if i.current_changed_at]
         if changed and base_revision != confirmation.base_revision:
-            raise StaleInitialDraft(changed)
+            raise StaleInitialDraft(
+                changed, ZoneInfo(read_timezone(session, principal.org_id).timezone)
+            )
     items = session.exec(
         select(ChangeItem)
         .where(
