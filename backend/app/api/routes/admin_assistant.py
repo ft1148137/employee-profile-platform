@@ -70,6 +70,7 @@ def list_messages(
     response_class=streaming.TurnStreamingResponse,
     response_model=streaming.TextEvent
     | streaming.ToolEvent
+    | streaming.ErrorEvent
     | streaming.FinalEvent[AdminTurnResponse],
 )
 def turn(

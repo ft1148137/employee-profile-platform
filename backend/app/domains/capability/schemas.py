@@ -138,6 +138,7 @@ class CapabilityProposalSummary(BaseModel):
 
 class CapabilityProposalPublic(CapabilityProposalSummary):
     evidence_titles: list[str]
+    evidence_withdrawn: bool = False
     employee_count: int
     proposed_by_employee_name: str | None = None
 

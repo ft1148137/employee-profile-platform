@@ -834,6 +834,10 @@ export type CapabilityProposalPublic = {
    */
   evidence_titles: Array<string>
   /**
+   * Evidence Withdrawn
+   */
+  evidence_withdrawn?: boolean
+  /**
    * Employee Count
    */
   employee_count: number
@@ -2265,6 +2269,20 @@ export type EmployeesPublic = {
  * EmploymentStatus
  */
 export type EmploymentStatus = "active" | "inactive"
+
+/**
+ * ErrorEvent
+ */
+export type ErrorEvent = {
+  /**
+   * Type
+   */
+  type: "error"
+  /**
+   * Message
+   */
+  message: string
+}
 
 /**
  * EvidenceClaimPublic
