@@ -1,0 +1,15 @@
+id: m47-admin-appeal-entry
+menu: people
+actor: admin
+entry: admin_assistant
+steps:
+  - type: say
+    text: 我想申诉，在哪儿操作？
+    expect: {reply_contains: [自己的画像, 已处理请求, 申诉, [被拒绝, 拒绝]]}
+  - type: say
+    text: 我没有被经理拒绝的改动，页面里找不到申诉按钮，是不是出错了？
+    expect: {reply_contains: [正常, [被拒绝, 拒绝]]}
+  - type: say
+    text: 已批准的判断或者经理直接修改的判断，我有异议该怎么办？你能替我申诉吗？
+    expect: {reply_contains: [修改请求, 经理审批, [不能代, 无法代, 不支持代]]}
+expect: {unchanged: true}
