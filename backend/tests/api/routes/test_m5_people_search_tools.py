@@ -27,6 +27,7 @@ from tests.api.routes.test_mcp import call, initialize, token_for
 from tests.domains.test_bot_core import enable
 from tests.domains.test_im_gateway import principal
 from tests.utils.bot import final_response
+from tests.utils.pi import PiHarness
 
 
 @pytest.fixture
@@ -488,6 +489,33 @@ def test_find_people_uses_shared_input() -> None:
     assert manager_tool.input_model is PeopleSearchInput
     assert tools.TEAM_INPUTS["find_people"] is PeopleSearchInput
     assert not manager_tool.writes and not manager_tool.bot_allowed
+
+
+def test_real_pi_manager_find_people(
+    people: tuple,
+    db: Session,
+    pi_service: PiHarness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    demo, capability, _, _ = people
+    subject = demo[1]["E01"]
+    p = principal(db, subject.org_id, subject.id)
+    enable(db, p.org_id)
+    monkeypatch.setattr(core, "model_config", lambda _: pi_service.config)
+    pi_service.replies = [
+        {
+            "calls": [
+                {
+                    "name": "find_people",
+                    "arguments": {"capability_key": capability["key"]},
+                }
+            ]
+        },
+        "请查看匹配员工的画像",
+    ]
+    response = core.turn(db, p, store.create_session(db, p).id, "按能力找人")
+    assert any(step.name == "按能力找人" and step.ok for step in response.steps)
+    assert pi_service.requests
 
 
 @pytest.mark.parametrize("field", ["org_id", "employee_id", "is_org_admin"])
