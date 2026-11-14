@@ -5,6 +5,7 @@ export const auditLabels: Record<string, string> = {
   "department.moved": "移动部门",
   "department.deleted": "删除空部门",
   "profile.direct_edited": "直接修改员工画像",
+  "profile.exported": "导出已发布画像",
   "appeal.open": "提交申诉",
   "appeal.upheld": "申诉维持原决定",
   "appeal.reopened": "申诉允许重新提交",
