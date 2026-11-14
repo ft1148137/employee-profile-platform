@@ -55,92 +55,94 @@ export function UpdateSettings({ orgId }: { orgId: string }) {
   if (settings.isError) return <ProfileError retry={() => settings.refetch()} />
   const current = suggestion.values(changes ?? settings.data)
   return (
-    <section
-      className="rounded-xl border p-6 space-y-4"
-      aria-labelledby="updates-title"
-    >
-      <h2 id="updates-title" className="text-lg font-semibold">
-        持续更新提醒
-      </h2>
-      <p className="text-sm text-muted-foreground">
-        到期时在员工收件箱中询问一两个问题；回答只保存为本人自述。证据较旧只作提醒，判断状态保持不变。
-      </p>
-      <PageDraft
-        orgId={orgId}
-        draft={suggestion.draft}
-        error={suggestion.error}
-      />
-      <form
-        className="space-y-4"
-        onSubmit={(e) => {
-          e.preventDefault()
-          if (suggestion.blocked) return
-          save.mutate({
-            reminder_schedule: current.reminder_schedule,
-            stale_after_months: current.stale_after_months,
-          })
-        }}
+    <div className="space-y-4">
+      <section
+        className="rounded-xl border p-6 space-y-4"
+        aria-labelledby="updates-title"
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <DraftField changed={suggestion.changed("reminder_schedule")}>
-            <Label htmlFor="reminder-schedule">提醒周期</Label>
-            <Select
-              value={current.reminder_schedule}
-              disabled={save.isPending || suggestion.blocked}
-              onValueChange={(
-                value: NonNullable<UpdateSettingsInput["reminder_schedule"]>,
-              ) => {
-                setChanges({ ...current, reminder_schedule: value })
-                setMessage("")
-              }}
-            >
-              <SelectTrigger id="reminder-schedule">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="quarterly">每季度</SelectItem>
-                <SelectItem value="yearly">每年</SelectItem>
-                <SelectItem value="off">关闭</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              选择周期后，员工会定期收到更新画像的提醒；关闭后不再定期提醒。
-            </p>
-          </DraftField>
-          <DraftField changed={suggestion.changed("stale_after_months")}>
-            <Label htmlFor="stale-months">证据较旧期限（月）</Label>
-            <Input
-              id="stale-months"
-              type="number"
-              min={6}
-              max={120}
-              required
-              value={current.stale_after_months}
-              disabled={save.isPending || suggestion.blocked}
-              onChange={(e) => {
-                setChanges({
-                  ...current,
-                  stale_after_months: Number(e.target.value),
-                })
-                setMessage("")
-              }}
-            />
-            <p className="text-xs text-muted-foreground">
-              6–120 个月，默认 24
-              个月。超过期限的证据会标为较旧，提醒核对，不会自动降低能力等级。
-            </p>
-          </DraftField>
-        </div>
-        {message && <p role={save.isError ? "alert" : "status"}>{message}</p>}
-        <Button
-          disabled={save.isPending || suggestion.blocked || !changes}
-          type="submit"
+        <h2 id="updates-title" className="text-lg font-semibold">
+          持续更新提醒
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          到期时在员工收件箱中询问一两个问题；回答只保存为本人自述。证据较旧只作提醒，判断状态保持不变。
+        </p>
+        <PageDraft
+          orgId={orgId}
+          draft={suggestion.draft}
+          error={suggestion.error}
+        />
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (suggestion.blocked) return
+            save.mutate({
+              reminder_schedule: current.reminder_schedule,
+              stale_after_months: current.stale_after_months,
+            })
+          }}
         >
-          {save.isPending ? "正在保存…" : "保存提醒设置"}
-        </Button>
-      </form>
-      <ChangeHistory targetType="update_setting" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <DraftField changed={suggestion.changed("reminder_schedule")}>
+              <Label htmlFor="reminder-schedule">提醒周期</Label>
+              <Select
+                value={current.reminder_schedule}
+                disabled={save.isPending || suggestion.blocked}
+                onValueChange={(
+                  value: NonNullable<UpdateSettingsInput["reminder_schedule"]>,
+                ) => {
+                  setChanges({ ...current, reminder_schedule: value })
+                  setMessage("")
+                }}
+              >
+                <SelectTrigger id="reminder-schedule">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="quarterly">每季度</SelectItem>
+                  <SelectItem value="yearly">每年</SelectItem>
+                  <SelectItem value="off">关闭</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                选择周期后，员工会定期收到更新画像的提醒；关闭后不再定期提醒。
+              </p>
+            </DraftField>
+            <DraftField changed={suggestion.changed("stale_after_months")}>
+              <Label htmlFor="stale-months">证据较旧期限（月）</Label>
+              <Input
+                id="stale-months"
+                type="number"
+                min={6}
+                max={120}
+                required
+                value={current.stale_after_months}
+                disabled={save.isPending || suggestion.blocked}
+                onChange={(e) => {
+                  setChanges({
+                    ...current,
+                    stale_after_months: Number(e.target.value),
+                  })
+                  setMessage("")
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                6–120 个月，默认 24
+                个月。超过期限的证据会标为较旧，提醒核对，不会自动降低能力等级。
+              </p>
+            </DraftField>
+          </div>
+          {message && <p role={save.isError ? "alert" : "status"}>{message}</p>}
+          <Button
+            disabled={save.isPending || suggestion.blocked || !changes}
+            type="submit"
+          >
+            {save.isPending ? "正在保存…" : "保存提醒设置"}
+          </Button>
+        </form>
+        <ChangeHistory targetType="update_setting" />
+      </section>
       <OrganizationTimezoneSettings orgId={orgId} />
-    </section>
+    </div>
   )
 }

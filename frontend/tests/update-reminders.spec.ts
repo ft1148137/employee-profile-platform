@@ -27,6 +27,10 @@ test("reminder settings persist and stale badges follow profile data", async ({
   try {
     await page.goto("/admin/rules?tab=reminders")
     const section = page.getByRole("region", { name: "持续更新提醒" })
+    await page
+      .getByRole("combobox", { name: "企业时区", exact: true })
+      .waitFor()
+    await expect(section.getByRole("combobox")).toHaveCount(1)
     for (const label of ["每年", "关闭", "每季度"]) {
       await section.getByRole("combobox", { name: "提醒周期" }).click()
       await page.getByRole("option", { name: label, exact: true }).click()
@@ -51,22 +55,8 @@ test("reminder settings persist and stale badges follow profile data", async ({
     await page.reload()
     await expect(
       timezoneSection.getByRole("combobox", { name: "企业时区", exact: true }),
-    ).toHaveText("东京时间（Asia/Tokyo）")
-    // The timezone choices intentionally show IANA identifiers beside Chinese names.
-    await expectChineseCopy(page, [
-      "Asia/Shanghai",
-      "Asia/Hong_Kong",
-      "Asia/Singapore",
-      "Asia/Tokyo",
-      "Asia/Kolkata",
-      "Asia/Dubai",
-      "Europe/London",
-      "Europe/Berlin",
-      "America/New_York",
-      "America/Los_Angeles",
-      "Pacific/Auckland",
-      "UTC",
-    ])
+    ).toHaveText("东京时间")
+    await expectChineseCopy(page)
     await page.route("**/employees/*/profile", async (route) => {
       const response = await route.fetch()
       const data = await response.json()

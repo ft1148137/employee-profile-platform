@@ -59,49 +59,51 @@ export function OrganizationTimezoneSettings({ orgId }: { orgId: string }) {
   if (settings.isError) return <ProfileError retry={() => settings.refetch()} />
   const timezone = selected ?? settings.data.timezone
   return (
-    <section className="space-y-4 border-t pt-4" aria-label="企业时区设置">
-      <form
-        className="space-y-3"
-        onSubmit={(event) => {
-          event.preventDefault()
-          save.mutate(timezone)
+    <section
+      className="space-y-4 rounded-xl border p-6"
+      aria-label="企业时区设置"
+    >
+      <Label htmlFor="org-timezone">企业时区</Label>
+      <Select
+        value={timezone}
+        disabled={save.isPending}
+        onValueChange={(value) => {
+          setSelected(value)
+          setMessage("")
         }}
       >
-        <Label htmlFor="org-timezone">企业时区</Label>
-        <Select
-          value={timezone}
-          disabled={save.isPending}
-          onValueChange={(value) => {
-            setSelected(value)
-            setMessage("")
-          }}
+        <SelectTrigger
+          id="org-timezone"
+          title={timezone}
+          className="w-full sm:max-w-md"
         >
-          <SelectTrigger id="org-timezone" className="w-full sm:max-w-md">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {timezones.map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}（{value}）
-              </SelectItem>
-            ))}
-            {!timezones.some(([value]) => value === timezone) && (
-              <SelectItem value={timezone}>{timezone}</SelectItem>
-            )}
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-muted-foreground">
-          用于直接修改画像的通知时间、没有时区的工作记录导入，以及当地上午 9
-          点的管理员每日待办。
-        </p>
-        {message && <p role={save.isError ? "alert" : "status"}>{message}</p>}
-        <Button
-          type="submit"
-          disabled={save.isPending || timezone === settings.data.timezone}
-        >
-          {save.isPending ? "正在保存…" : "保存企业时区"}
-        </Button>
-      </form>
+          <SelectValue>
+            {timezones.find(([value]) => value === timezone)?.[1] ?? timezone}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {timezones.map(([value, label]) => (
+            <SelectItem key={value} value={value}>
+              {label}（{value}）
+            </SelectItem>
+          ))}
+          {!timezones.some(([value]) => value === timezone) && (
+            <SelectItem value={timezone}>{timezone}</SelectItem>
+          )}
+        </SelectContent>
+      </Select>
+      <p className="text-xs text-muted-foreground">
+        用于直接修改画像的通知时间、没有时区的工作记录导入，以及当地上午 9
+        点的管理员每日待办。
+      </p>
+      {message && <p role={save.isError ? "alert" : "status"}>{message}</p>}
+      <Button
+        type="button"
+        onClick={() => save.mutate(timezone)}
+        disabled={save.isPending || timezone === settings.data.timezone}
+      >
+        {save.isPending ? "正在保存…" : "保存企业时区"}
+      </Button>
     </section>
   )
 }
