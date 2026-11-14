@@ -17,6 +17,7 @@ from app.domains.im import actions
 from app.domains.model import pi_client
 from app.domains.model.client import ModelUnavailable
 from app.domains.org.models import EmploymentStatus
+from app.domains.org.service import EmployeeNotFound
 from tests.api.routes.test_employee_requests import payload, principal_for
 from tests.domains.test_bot_core import enable
 from tests.domains.test_im_gateway import event
@@ -99,7 +100,7 @@ def test_suggestion_respects_turn_transaction(
         ("dismissed", "管理员已经处理过这项：决定暂不收录"),
         ("dictionary", "词典里已经有"),
         ("limit", "你已有 5 条待处理的能力建议，请等管理员处理后再提交"),
-        ("inactive", "只有在职员工可以建议新增能力"),
+        ("inactive", "未找到该员工或你没有权限查看"),
     ],
 )
 def test_suggestion_turn(
@@ -142,6 +143,34 @@ def test_suggestion_turn(
         people["E02"].employment_status = EmploymentStatus.INACTIVE
         db.add(people["E02"])
     db.commit()
+    if scenario == "inactive":
+        if channel == "web":
+            response = client.post(
+                "/api/v1/bot/sessions",
+                params={"org_id": str(p.org_id)},
+                headers=auth["employee"],
+            )
+            assert response.status_code == 404
+            assert response.json()["detail"] == expected
+        else:
+            incoming = replace(
+                event(p.org_id, "同意建议新增研发费用归集"), platform="feishu"
+            )
+            with pytest.raises(EmployeeNotFound) as denied:
+                actions.text(db, p, incoming, "synthetic-app")
+            assert denied.value.status_code == 404
+            assert denied.value.detail == expected
+        assert not pi_service.requests
+        assert not db.exec(
+            select(CapabilityProposal).where(CapabilityProposal.org_id == p.org_id)
+        ).all()
+        assert not db.exec(
+            select(AuditEvent).where(
+                AuditEvent.org_id == p.org_id,
+                AuditEvent.action == "capability_proposal.suggested",
+            )
+        ).all()
+        return
     pi_service.replies = [
         {"calls": [{"name": "suggest_capability", "arguments": body}]},
         "合成模型正常结束",
@@ -167,9 +196,7 @@ def test_suggestion_turn(
     assert result["messages"] == [
         {"type": "text", "text": "合成模型正常结束", "review_link": None}
     ]
-    assert result["steps"] == [
-        {"name": "建议新增能力", "ok": scenario not in ("limit", "inactive")}
-    ]
+    assert result["steps"] == [{"name": "建议新增能力", "ok": scenario != "limit"}]
     outgoing = pi_service.requests[-1]["body"]
     prompt = json.dumps(outgoing["messages"][0], ensure_ascii=False)
     for rule in (
@@ -189,9 +216,7 @@ def test_suggestion_turn(
         next(m["content"] for m in outgoing["messages"] if m["role"] == "tool")
     )
     assert tool_result == (
-        {"error": expected}
-        if scenario in ("limit", "inactive")
-        else {"message": expected}
+        {"error": expected} if scenario == "limit" else {"message": expected}
     )
     db.expire_all()
     rows = db.exec(
