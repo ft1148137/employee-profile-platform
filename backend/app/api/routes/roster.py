@@ -5,6 +5,7 @@ from fastapi import APIRouter, Query, UploadFile
 from app.api.deps import SessionDep
 from app.authz.deps import OrgAdminDep
 from app.domains.org.roster import service
+from app.domains.org.roster.rehire import PreviousManager, previous_manager
 from app.domains.org.roster.schemas import (
     ApplyImport,
     RosterImportPreview,
@@ -14,6 +15,13 @@ from app.domains.org.roster.schemas import (
 from app.domains.org.roster.single import SingleChange, preview
 
 router = APIRouter(prefix="/orgs/{org_id}/roster", tags=["roster"])
+
+
+@router.get("/employees/{employee_id}/previous-manager")
+def read_previous_manager(
+    employee_id: UUID, session: SessionDep, principal: OrgAdminDep
+) -> PreviousManager | None:
+    return previous_manager(session, principal, employee_id)
 
 
 @router.post("/single-change")
