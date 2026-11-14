@@ -27,6 +27,26 @@ const statusLabels: Record<RequestStatus, string> = {
   withdrawn: "已撤回",
 }
 
+function requestSummary(request: ChangeRequestPublic) {
+  const items = request.items ?? []
+  const labels = {
+    approved: "批准",
+    changes_requested: "退回",
+    rejected: "拒绝",
+    pending: "待决定",
+  }
+  const counts = Object.entries(labels)
+    .map(([decision, label]) => ({
+      label,
+      count: items.filter((item) => (item.decision ?? "pending") === decision)
+        .length,
+    }))
+    .filter(({ count }) => count > 0)
+  return counts.length > 1
+    ? counts.map(({ label, count }) => `${count} 项${label}`).join("、")
+    : `${statusLabels[request.status]} · ${items.length} 项改动`
+}
+
 export function ChangeRequestCard({
   requests,
   employeeId,
@@ -222,8 +242,7 @@ export function ChangeRequestCard({
                     id={`request-${request.id}`}
                     className="space-y-3 border-b py-3 last:border-0"
                   >
-                    {statusLabels[request.status]} ·{" "}
-                    {request.items?.length ?? 0} 项改动
+                    {requestSummary(request)}
                     {isOwner && request.status === "pending_review" && (
                       <RequestReviewers reviewers={request.reviewers} />
                     )}

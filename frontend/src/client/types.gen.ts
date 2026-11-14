@@ -5726,6 +5726,10 @@ export type app__domains__change_request__schemas__PreviewItem = {
    * Warning
    */
   warning?: string | null
+  /**
+   * Current Changed At
+   */
+  current_changed_at?: string | null
 }
 
 /**
