@@ -46,6 +46,9 @@ export function UnmatchedIdentities({
         <DialogHeader>
           <DialogTitle>未匹配 Jira 账号</DialogTitle>
         </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Jira 可能隐藏邮箱，显示名不一定是真名，请和 Jira 管理员核对账号。
+        </p>
         <IdentityTable orgId={orgId} initialSource="jira" />
       </DialogContent>
     </Dialog>
