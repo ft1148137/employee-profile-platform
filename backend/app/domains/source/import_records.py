@@ -42,7 +42,7 @@ class WorkRecordsTooLarge(HTTPException):
 
 
 def preview_work_records(
-    content: bytes, filename: str, *, timezone: str
+    content: bytes, filename: str, *, timezone: str = "Asia/Shanghai"
 ) -> ParsedWorkRecords:
     if len(content) > MAX_FILE_SIZE:
         raise WorkRecordsTooLarge()
