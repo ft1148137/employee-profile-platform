@@ -3706,6 +3706,16 @@ export type OrganizationPublic = {
 }
 
 /**
+ * OrganizationTimezone
+ */
+export type OrganizationTimezone = {
+  /**
+   * Timezone
+   */
+  timezone: string
+}
+
+/**
  * OrganizationUpdate
  */
 export type OrganizationUpdate = {
@@ -10014,6 +10024,70 @@ export type draftingSettingsPutUpdateSettingsResponses = {
 
 export type draftingSettingsPutUpdateSettingsResponse =
   draftingSettingsPutUpdateSettingsResponses[keyof draftingSettingsPutUpdateSettingsResponses]
+
+export type draftingSettingsGetOrgTimezoneData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/update-settings/timezone"
+}
+
+export type draftingSettingsGetOrgTimezoneErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type draftingSettingsGetOrgTimezoneError =
+  draftingSettingsGetOrgTimezoneErrors[keyof draftingSettingsGetOrgTimezoneErrors]
+
+export type draftingSettingsGetOrgTimezoneResponses = {
+  /**
+   * Successful Response
+   */
+  200: OrganizationTimezone
+}
+
+export type draftingSettingsGetOrgTimezoneResponse =
+  draftingSettingsGetOrgTimezoneResponses[keyof draftingSettingsGetOrgTimezoneResponses]
+
+export type draftingSettingsPutOrgTimezoneData = {
+  body: OrganizationTimezone
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/update-settings/timezone"
+}
+
+export type draftingSettingsPutOrgTimezoneErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type draftingSettingsPutOrgTimezoneError =
+  draftingSettingsPutOrgTimezoneErrors[keyof draftingSettingsPutOrgTimezoneErrors]
+
+export type draftingSettingsPutOrgTimezoneResponses = {
+  /**
+   * Successful Response
+   */
+  200: OrganizationTimezone
+}
+
+export type draftingSettingsPutOrgTimezoneResponse =
+  draftingSettingsPutOrgTimezoneResponses[keyof draftingSettingsPutOrgTimezoneResponses]
 
 export type employeesReadEmployeesData = {
   body?: never

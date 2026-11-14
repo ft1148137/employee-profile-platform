@@ -768,6 +768,8 @@ async def admin_read(
 
 
 NOT_FOR_ASSISTANT = {
+    ("GET", "/update-settings/timezone"): "企业时区仅在定期提醒页面设置",
+    ("PUT", "/update-settings/timezone"): "企业时区仅在定期提醒页面设置",
     ("GET", "/accounts/unlinked"): "员工列表的仅账号筛选，助手沿用现有账号和角色查询",
     (
         "POST",

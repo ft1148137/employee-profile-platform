@@ -373,7 +373,9 @@ def test_digest_failure_does_not_block_next_tenant(
         return original_overview(session, who)
 
     monkeypatch.setattr(admin_todos, "build_overview", overview)
-    admin_todos.dispatch_admin_todos(db, utc_now())
+    admin_todos.dispatch_admin_todos(
+        db, utc_now().replace(hour=1, minute=0, second=0, microsecond=0)
+    )
     assert calls == [foreign_id, p.org_id]
     assert db.exec(
         select(InboxItem).where(

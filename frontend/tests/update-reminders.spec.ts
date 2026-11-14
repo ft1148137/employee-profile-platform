@@ -20,9 +20,17 @@ test("reminder settings persist and stale badges follow profile data", async ({
   ).json()
   const url = `/api/v1/orgs/${memberships[0].org.id}/update-settings`
   const original = await (await request.get(url, { headers })).json()
+  const timezoneUrl = `${url}/timezone`
+  const originalTimezone = await (
+    await request.get(timezoneUrl, { headers })
+  ).json()
   try {
     await page.goto("/admin/rules?tab=reminders")
     const section = page.getByRole("region", { name: "持续更新提醒" })
+    await page
+      .getByRole("combobox", { name: "企业时区", exact: true })
+      .waitFor()
+    await expect(section.getByRole("combobox")).toHaveCount(1)
     for (const label of ["每年", "关闭", "每季度"]) {
       await section.getByRole("combobox", { name: "提醒周期" }).click()
       await page.getByRole("option", { name: label, exact: true }).click()
@@ -30,9 +38,24 @@ test("reminder settings persist and stale badges follow profile data", async ({
       await section.getByRole("button", { name: "保存提醒设置" }).click()
       await expect(section.getByRole("status")).toContainText("已保存")
       await page.reload()
-      await expect(section.getByRole("combobox")).toHaveText(label)
+      await expect(
+        section.getByRole("combobox", { name: "提醒周期" }),
+      ).toHaveText(label)
       await expect(section.getByLabel("证据较旧期限（月）")).toHaveValue("36")
     }
+    const timezoneSection = page.getByRole("region", { name: "企业时区设置" })
+    await timezoneSection
+      .getByRole("combobox", { name: "企业时区", exact: true })
+      .click()
+    await page
+      .getByRole("option", { name: "东京时间（Asia/Tokyo）", exact: true })
+      .click()
+    await timezoneSection.getByRole("button", { name: "保存企业时区" }).click()
+    await expect(timezoneSection.getByRole("status")).toContainText("已保存")
+    await page.reload()
+    await expect(
+      timezoneSection.getByRole("combobox", { name: "企业时区", exact: true }),
+    ).toHaveText("东京时间")
     await expectChineseCopy(page)
     await page.route("**/employees/*/profile", async (route) => {
       const response = await route.fetch()
@@ -59,6 +82,11 @@ test("reminder settings persist and stale badges follow profile data", async ({
     ).toHaveCount(0)
     await expectChineseCopy(page)
   } finally {
+    expect(
+      (
+        await request.put(timezoneUrl, { headers, data: originalTimezone })
+      ).ok(),
+    ).toBeTruthy()
     expect(
       (
         await request.put(url, {

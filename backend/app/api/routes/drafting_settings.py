@@ -24,6 +24,8 @@ from app.domains.drafting.update_settings import (
     read_update_settings,
     save_update_settings,
 )
+from app.domains.org.schemas import OrganizationTimezone
+from app.domains.org.timezone import read_timezone, save_timezone
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["drafting-settings"])
 
@@ -80,3 +82,17 @@ def put_update_settings(
     body: UpdateSettingsInput, session: SessionDep, principal: OrgAdminDep
 ) -> UpdateSettingsPublic:
     return save_update_settings(session, principal, body)
+
+
+@router.get("/update-settings/timezone", response_model=OrganizationTimezone)
+def get_org_timezone(
+    session: SessionDep, principal: OrgAdminDep
+) -> OrganizationTimezone:
+    return read_timezone(session, principal.org_id)
+
+
+@router.put("/update-settings/timezone", response_model=OrganizationTimezone)
+def put_org_timezone(
+    body: OrganizationTimezone, session: SessionDep, principal: OrgAdminDep
+) -> OrganizationTimezone:
+    return save_timezone(session, principal, body)

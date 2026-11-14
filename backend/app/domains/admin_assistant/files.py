@@ -16,6 +16,7 @@ from app.domains.admin_assistant.models import AdminAssistantSession
 from app.domains.bot import store as messages
 from app.domains.org.roster import service as roster
 from app.domains.org.roster.schemas import RosterImportPreview
+from app.domains.org.timezone import read_timezone
 from app.domains.source.import_records import import_work_records, preview_work_records
 from app.domains.work.records import COLUMNS
 
@@ -183,7 +184,9 @@ def _upload_other(
     filename = filename.replace("\\", "/").rsplit("/", 1)[-1][:200]
     args: dict[str, JsonValue] = {"filename": filename}
     function = "import_work_records"
-    parsed = preview_work_records(content, filename)
+    parsed = preview_work_records(
+        content, filename, timezone=read_timezone(db, p.org_id).timezone
+    )
     preview.counts = {
         "记录条数": len(parsed.rows),
         "涉及人数": len(

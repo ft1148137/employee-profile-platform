@@ -1,7 +1,8 @@
 """Daily, tenant-scoped counts from the same overview used by the web console."""
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from sqlmodel import Session, select
@@ -17,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 def dispatch_admin_todos(db: Session, now: datetime) -> None:
-    day = now.astimezone(UTC).date()
     org_ids = db.exec(select(Organization.id)).all()
     db.commit()
     for org_id in org_ids:
@@ -34,6 +34,11 @@ def dispatch_admin_todos(db: Session, now: datetime) -> None:
             if org is None:
                 db.rollback()
                 continue
+            local = now.astimezone(ZoneInfo(org.timezone))
+            if local.hour != 9:
+                db.rollback()
+                continue
+            day = local.date()
             # shortcut: Administrators without employee identities use the web; add user bindings when supported.
             bindings = db.exec(
                 select(ImBinding).where(

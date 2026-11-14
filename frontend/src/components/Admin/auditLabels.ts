@@ -53,6 +53,7 @@ export const auditLabels: Record<string, string> = {
   "department.capabilities_updated": "修改部门对应能力",
   "department.capabilities_generated": "自动生成部门对应能力",
   "org.renamed": "修改企业名称",
+  "org.timezone_updated": "修改企业时区",
   "org.employee_fields_updated": "修改员工档案字段开关",
   "capability_schema.activated": "启用能力词典",
   "capability_proposal.open": "撤销忽略能力建议",
