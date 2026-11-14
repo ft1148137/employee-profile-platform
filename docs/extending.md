@@ -33,6 +33,31 @@
 现有实现为 Jira Cloud、Data Center 和 CSV；第三个数据源立项时才设计通用适配器接口
 （ADR-0035 C），不要为新扩展预先引入注册框架。Jira 两种部署共享同步、身份关联和证据逻辑。
 
+### 先跑离线示例
+
+从 [sample_csv](../examples/connectors/sample_csv/README.md) 开始：`SampleCsvConnector.read()`
+读取合成 CSV，复用 `source/import_records.py::preview_work_records` 校验文件，
+再用 `source/sync.py::csv_record` 产出下述 `SourceRecord`。它是已有 CSV 格式的示例，
+没有通用 Connector 基类或动态插件注册，也不实现 Jira 的网络客户端。
+
+从仓库根目录准备 `.env`、进入 `backend/` 后运行：
+
+```bash
+uv sync --frozen
+PYTHONPATH=.. uv run python -m examples.connectors.sample_csv.connector
+```
+
+这一步只输出标准化记录，不连接数据库。准备好独立测试库并显式设置指向该库的
+`DATABASE_URL`、`POSTGRES_PORT` 后，在 `backend/` 执行：
+
+```bash
+uv run pytest tests/connectors/test_m5_sample_connector.py tests/test_extension_points.py -x -q
+```
+
+测试自行造合成数据，持有事务和企业行锁，直接调用 `ingest_record` 完成离线同步并回滚。
+不需要创建 `SourceConnection`、`SyncRun` 或修改生产注册表；下文文件清单针对正式新增来源。
+正式来源的任务锁、批处理、队列、重试和定期同步仍由现有同步服务负责。
+
 ### 接口与数据
 
 `backend/app/connectors/jira/client.py` 提供现有客户端形状：
@@ -89,6 +114,8 @@ class SourceRecord(BaseModel):
 这是字段形状，完整约束以源码为准：当前 `source` 仅允许 `jira` 或 `csv:<来源>`；
 key、external_id、event_ref 非空；同记录的 event_ref 唯一；时间必须带时区并统一为 UTC。
 `key` 和 event_ref 要在重试和增量同步中保持稳定，避免重复证据。
+CSV 中的 `source` 转成 `csv:<来源>`，`record_id` 转成 key，账号转成 event_ref；
+文件名与行号不参与标识。CSV 不提供邮箱，须由管理员关联外部账号，不按名称自动关联。
 
 ```python
 def ingest_record(
@@ -147,7 +174,8 @@ uv run pytest tests/test_extension_points.py tests/connectors/test_mock_jira.py 
 ```
 
 增加对应来源的测试文件；前端流程由 CI 运行 `frontend/tests/sources.spec.ts`。
-若涉及租户、证据、凭据或迁移，本地按交付流程跑全量 pytest 和迁移往返验证。
+若涉及租户、证据、凭据或迁移，本地按交付流程跑相关越权、跨租户、证据或迁移往返用例；
+全量 pytest 交给 CI，不在本地重复跑。
 
 ## 2. IM 入口
 
