@@ -11,6 +11,7 @@ from app.domains.im.models import ImBinding, ImNotification, ImSetting
 from app.domains.im.schemas import Platform
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.org.models import Organization, OrgMembership
+from app.worker.health import WORKER_ALERT_NOTIFICATION, WORKER_ALERT_PREFIX
 
 # Most kinds use fixed copy because inbox messages may contain private data.
 REMINDERS = {
@@ -163,7 +164,10 @@ async def send_pending(
                     async with asyncio.timeout(10):
                         await connection[1].send_text(
                             bound.external_chat_id,
-                            f"你有 {item.admin_todo_count} 条管理员待办，请在网页首页处理。"
+                            WORKER_ALERT_NOTIFICATION
+                            if item.kind == InboxKind.ADMIN_TODOS
+                            and item.message.startswith(WORKER_ALERT_PREFIX)
+                            else f"你有 {item.admin_todo_count} 条管理员待办，请在网页首页处理。"
                             if item.kind == InboxKind.ADMIN_TODOS
                             else item.message
                             if item.kind == InboxKind.PROFILE_EDITED

@@ -18,6 +18,7 @@ from app.domains.review import models as review
 from app.domains.setup import models as setup
 from app.domains.source import models as source
 from app.domains.work import models as work
+from app.worker import models as worker
 
 __all__ = [
     "access_token",
@@ -38,4 +39,5 @@ __all__ = [
     "setup",
     "source",
     "work",
+    "worker",
 ]

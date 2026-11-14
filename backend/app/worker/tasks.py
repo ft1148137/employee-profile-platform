@@ -4,6 +4,7 @@ from procrastinate.exceptions import JobRetry
 from procrastinate.job_context import JobContext
 from procrastinate.jobs import Job
 from procrastinate.retry import BaseRetryStrategy
+from sqlalchemy.dialects.postgresql import insert
 from sqlmodel import Session, select
 
 from app.core.db import engine
@@ -19,6 +20,7 @@ from app.domains.org.models import Organization
 from app.domains.source.schedule import dispatch_due_syncs
 from app.domains.source.sync import execute_sync
 from app.worker.app import app
+from app.worker.models import WorkerHeartbeat
 from app.worker.tenant import tenant_task
 
 
@@ -27,6 +29,19 @@ class SyncRetry(BaseRetryStrategy):
         self, exception: BaseException, job: Job
     ) -> JobRetry | None:
         return exception if isinstance(exception, JobRetry) else None
+
+
+@app.periodic(cron="* * * * *")
+@app.task(name="system.heartbeat", queueing_lock="system_heartbeat")
+def heartbeat(timestamp: int) -> None:  # noqa: ARG001
+    with Session(engine) as session:
+        now = utc_now()
+        session.connection().execute(
+            insert(WorkerHeartbeat)
+            .values(id=1, beat_at=now)
+            .on_conflict_do_update(index_elements=["id"], set_={"beat_at": now})
+        )
+        session.commit()
 
 
 @app.task(name="system.ping")

@@ -19,12 +19,14 @@ from app.domains.review.appeal import list_disputes
 from app.domains.setup.wizard import read_setup
 from app.domains.source.identities import list_identities
 from app.domains.source.models import SourceConnection, SyncRun
+from app.worker.health import WORKER_FIX_STEPS, heartbeat_summary, is_fresh
+from app.worker.models import WorkerHeartbeat
 
 REVIEW_BACKLOG_DAYS = 7
 
 
 class StatusCard(BaseModel):
-    key: Literal["feishu", "model", "sync", "drafting"]
+    key: Literal["feishu", "model", "sync", "drafting", "worker"]
     level: Literal["ok", "warn", "error", "off"]
     title: str
     summary: str
@@ -315,6 +317,18 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
                 steps=skipped,
             )
         )
+    heartbeat = session.get(WorkerHeartbeat, 1, populate_existing=True)
+    beat_at = heartbeat.beat_at if heartbeat else None
+    healthy = is_fresh(beat_at, now)
+    worker = StatusCard(
+        key="worker",
+        level="ok" if healthy else "error",
+        title="后台任务",
+        summary=heartbeat_summary(beat_at, now),
+        fix_steps=[] if healthy else WORKER_FIX_STEPS,
+        page="/admin/assistant",
+        assistant_prompt="帮我检查后台任务心跳，并说明如何联系部署维护人员处理",
+    )
     return AdminOverviewPublic(
-        status_cards=[feishu, model, sync, drafting], todos=todos
+        status_cards=[feishu, model, sync, drafting, worker], todos=todos
     )
