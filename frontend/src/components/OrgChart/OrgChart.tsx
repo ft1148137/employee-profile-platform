@@ -133,16 +133,16 @@ function Chart({ orgId, canEdit }: { orgId: string; canEdit: boolean }) {
             type="button"
             aria-label={`查看${item.name}人员`}
             onClick={() => setDepartment(id)}
-            className="w-full p-4 text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"
+            className="w-full p-2 text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"
           >
             <span className="block font-semibold">{item.name}</span>
-            <span className="mt-2 block text-xs text-muted-foreground">
+            <span className="mt-1 block text-xs text-muted-foreground">
               经理：
               {item.managers
                 ?.map((manager) => manager.display_name)
                 .join("、") || "未设置"}
             </span>
-            <span className="mt-3 flex justify-between text-xs text-muted-foreground">
+            <span className="mt-1 flex justify-between text-xs text-muted-foreground">
               <span>
                 本部门{" "}
                 <strong className="text-foreground">{item.direct_count}</strong>{" "}
