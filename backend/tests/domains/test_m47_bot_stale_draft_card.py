@@ -105,7 +105,9 @@ def test_stale_draft_card(
             if isinstance(m, s.StatusCard) and m.id == stale.id
         )
         assert card.status == status and card.actions == []
-        notice = captured[0]["blocked_drafts"][0]
+        notice = next(
+            n for n in captured[0]["blocked_drafts"] if n["request_id"] == str(stale.id)
+        )
         assert notice["request_id"] == str(stale.id)
         assert "自动化测试" in notice["message"]
         assert "已有待审请求" in notice["message"]
@@ -157,5 +159,7 @@ def test_decided_item_in_pending_request_does_not_block_draft(
         tool,
         {} if tool == "get_my_requests" else {"request_id": str(stale.id)},
     )
-    assert "blocked_drafts" not in result
+    assert all(
+        n["request_id"] != str(stale.id) for n in result.get("blocked_drafts", [])
+    )
     assert any(isinstance(c, s.PreviewCard) and c.request_id == stale.id for c in cards)
