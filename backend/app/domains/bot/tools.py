@@ -233,7 +233,10 @@ def preview_card(db: Session, p: Principal, request_id: UUID) -> s.PreviewCard:
         **preview.model_dump(),
         actions=[
             s.RequestAction(
-                action=a, request_id=preview.request_id, revision=preview.revision
+                action=a,
+                request_id=preview.request_id,
+                revision=preview.revision,
+                base_revision=preview.base_revision,
             )
             for a in ("confirm_submit", "continue_editing")
         ],

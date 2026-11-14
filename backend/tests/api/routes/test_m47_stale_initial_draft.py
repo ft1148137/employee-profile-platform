@@ -88,7 +88,10 @@ def test_stale_initial_preview_and_submission(
     result = client.post(
         f"{base}/submit",
         headers=auth["employee"],
-        json={"revision": preview["revision"]},
+        json={
+            "revision": preview["revision"],
+            "base_revision": preview.get("base_revision"),
+        },
     )
     assert result.status_code == 200, result.text
     assert result.json()["status"] == "pending_review"
@@ -127,7 +130,7 @@ def test_discard_one_stale_item(demo: tuple, client: TestClient) -> None:
 
 
 @pytest.mark.parametrize("preview_before", [False, True])
-def test_direct_submission_aligns_to_latest_without_publishing(
+def test_direct_submission_requires_latest_preview_without_publishing(
     demo: tuple, client: TestClient, preview_before: bool
 ) -> None:
     _, _, auth = demo
@@ -142,16 +145,27 @@ def test_direct_submission_aligns_to_latest_without_publishing(
     stale = client.post(
         f"{base}/submit",
         headers=auth["employee"],
-        json={"revision": preview["revision"]},
+        json={
+            "revision": preview["revision"],
+            "base_revision": preview.get("base_revision"),
+        },
     )
-    assert stale.status_code == 200, stale.text
-    assert stale.json()["status"] == "pending_review"
+    assert stale.status_code == 409, stale.text
+    assert stale.json()["detail"]["code"] == "stale_initial_draft"
+    latest = client.get(f"{base}/preview", headers=auth["employee"]).json()
+    submitted = client.post(
+        f"{base}/submit",
+        headers=auth["employee"],
+        json={"revision": latest["revision"], "base_revision": latest["base_revision"]},
+    )
+    assert submitted.status_code == 200, submitted.text
+    assert submitted.json()["status"] == "pending_review"
     current = next(
         i["claim"]
         for i in formal["items"]
         if i["capability"]["key"] == "automated_testing"
     )
-    assert stale.json()["items"][0]["target_claim_id"] == current["id"]
+    assert submitted.json()["items"][0]["target_claim_id"] == current["id"]
     assert_formal_unchanged(client, demo, formal)
 
 

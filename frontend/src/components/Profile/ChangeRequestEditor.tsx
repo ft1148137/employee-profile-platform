@@ -177,12 +177,26 @@ export function ChangeRequestEditor({
       try {
         await EmployeeRequestsService.submitRequest({
           path: { ...path, request_id: displayedPreview.request_id },
-          body: { revision: displayedPreview.revision },
+          body: {
+            revision: displayedPreview.revision,
+            base_revision: displayedPreview.base_revision,
+          },
         })
         refresh()
         onClose()
       } catch (error) {
         if (isAxiosError(error) && error.response?.status === 409) {
+          const detail = error.response.data?.detail
+          if (record(detail) && detail.code === "stale_initial_draft") {
+            const latest = await EmployeeRequestsService.previewRequest({
+              path: { ...path, request_id: displayedPreview.request_id },
+            })
+            setPreview(latest.data)
+            setShowPreview(true)
+            setNotice(String(detail.message))
+            refresh()
+            return
+          }
           setNotice("内容已变化，请重新预览")
           setPreview(null)
           setShowPreview(false)

@@ -181,6 +181,7 @@ class DraftInput(ProfileInput):
 
 class SubmitInput(ToolInput):
     revision: int = Field(ge=1)
+    base_revision: int | None = Field(default=None, ge=1)
 
 
 class PreviewItem(SQLModel):
@@ -193,5 +194,6 @@ class PreviewItem(SQLModel):
 class RequestPreview(SQLModel):
     request_id: UUID
     revision: int
+    base_revision: int | None = None
     items: list[PreviewItem]
     reviewers: list[RequestReviewer] = Field(default_factory=list)
