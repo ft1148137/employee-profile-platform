@@ -256,82 +256,99 @@ export function ChangeSetCard({
           {confirmAgain ? "请再次确认" : statuses[current.status]}
         </span>
       </div>
-      {current.items.map((item, i) => (
-        <div key={i} className="space-y-2">
-          <p className="text-sm font-medium">{item.title}</p>
-          {item.function === "dismiss_capability_proposal" && (
-            <p className="text-sm">
-              {item.before?.status === "dismissed" ? "恢复待处理建议" : "忽略"}
-              「{String(item.before?.name ?? "能力建议")}」
-            </p>
-          )}
-          {item.impact?.dictionary && (
-            <DictionaryDiff changes={item.impact.dictionary} />
-          )}
-          {item.undoable &&
-            !item.impact?.dictionary &&
-            item.function !== "dismiss_capability_proposal" &&
-            Object.keys(item.after)
-              .filter(
-                (field) =>
-                  JSON.stringify(item.before?.[field]) !==
-                  JSON.stringify(item.after[field]),
-              )
-              .map((field) => (
-                <div key={field} className="rounded-lg bg-muted/40 p-3 text-sm">
-                  <p className="mb-2 text-muted-foreground">
-                    {labels[field] ?? "设置项"}
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { title: "修改前", value: item.before?.[field] },
-                      { title: "修改后", value: item.after[field] },
-                    ].map(({ title, value }) => (
-                      <div key={title}>
-                        <p className="text-xs text-muted-foreground">{title}</p>
-                        <p
-                          className={
-                            title === "修改后"
-                              ? "font-semibold text-primary"
-                              : ""
-                          }
-                        >
-                          {value == null
-                            ? "未设置"
-                            : `${display(value, field)}${field === "stale_after_months" ? " 个月" : ""}`}
-                        </p>
-                      </div>
-                    ))}
+      {current.items.map((item, i) =>
+        item.function === "set_department_capabilities" &&
+        item.impact?.text === "" ? null : (
+          <div key={i} className="space-y-2">
+            <p className="text-sm font-medium">{item.title}</p>
+            {item.function === "dismiss_capability_proposal" && (
+              <p className="text-sm">
+                {item.before?.status === "dismissed"
+                  ? "恢复待处理建议"
+                  : "忽略"}
+                「{String(item.before?.name ?? "能力建议")}」
+              </p>
+            )}
+            {item.impact?.dictionary && (
+              <DictionaryDiff changes={item.impact.dictionary} />
+            )}
+            {item.undoable &&
+              !item.impact?.dictionary &&
+              (item.function !== "set_department_capabilities" ||
+                !item.impact) &&
+              item.function !== "dismiss_capability_proposal" &&
+              Object.keys(item.after)
+                .filter(
+                  (field) =>
+                    JSON.stringify(item.before?.[field]) !==
+                    JSON.stringify(item.after[field]),
+                )
+                .map((field) => (
+                  <div
+                    key={field}
+                    className="rounded-lg bg-muted/40 p-3 text-sm"
+                  >
+                    <p className="mb-2 text-muted-foreground">
+                      {labels[field] ?? "设置项"}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { title: "修改前", value: item.before?.[field] },
+                        { title: "修改后", value: item.after[field] },
+                      ].map(({ title, value }) => (
+                        <div key={title}>
+                          <p className="text-xs text-muted-foreground">
+                            {title}
+                          </p>
+                          <p
+                            className={
+                              title === "修改后"
+                                ? "font-semibold text-primary"
+                                : ""
+                            }
+                          >
+                            {value == null
+                              ? "未设置"
+                              : `${display(value, field)}${field === "stale_after_months" ? " 个月" : ""}`}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-          {item.impact && (
-            <p className="text-xs text-muted-foreground">
-              影响 {item.impact.count} 人 · {item.impact.text}
-            </p>
-          )}
-          {current.status === "draft" && item.testable && (
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                disabled={busy}
-                onClick={() => test.mutate(i)}
-              >
-                {test.isPending && test.variables === i
-                  ? "正在测试…"
-                  : "测试连接"}
-              </Button>
-              {test.data && test.variables === i && (
-                <p role={test.data.ok ? "status" : "alert"} className="text-sm">
-                  {test.data.ok
-                    ? "测试连接：成功"
-                    : `测试连接：失败，${test.data.message}`}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      ))}
+                ))}
+            {item.impact && (
+              <p className="text-xs text-muted-foreground">
+                {item.function !== "set_department_capabilities" &&
+                  `影响 ${item.impact.count} 人 · `}
+                {item.impact.text}
+              </p>
+            )}
+            {current.status === "draft" && item.testable && (
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => test.mutate(i)}
+                >
+                  {test.isPending && test.variables === i
+                    ? "正在测试…"
+                    : "测试连接"}
+                </Button>
+                {test.data && test.variables === i && (
+                  <p
+                    role={test.data.ok ? "status" : "alert"}
+                    className="text-sm"
+                  >
+                    {test.data.ok
+                      ? "测试连接：成功"
+                      : `测试连接：失败，${test.data.message}`}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        ),
+      )}
       {confirmAgain && (
         <div
           role="alert"

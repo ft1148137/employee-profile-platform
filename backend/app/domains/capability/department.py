@@ -3,7 +3,7 @@
 from uuid import UUID
 
 from fastapi import HTTPException
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, RootModel
 from sqlmodel import Session, col, delete, select
 from sqlmodel.sql.expression import SelectOfScalar
 
@@ -126,6 +126,37 @@ def snapshot(
     own, _ = department_keys(db, p.org_id, args.department_id)
     return SetDepartmentCapabilities(
         department_id=args.department_id, capability_keys=sorted(own)
+    )
+
+
+def impact(db: Session, p: Principal, args: SetDepartmentCapabilities) -> BaseModel:
+    department = visible_department(db, p, args.department_id)
+    before = set(snapshot(db, p, args).capability_keys)
+    after = set(args.capability_keys)
+    definitions = db.exec(
+        select(CapabilityDefinition)
+        .join(
+            CapabilitySchemaVersion,
+            (col(CapabilitySchemaVersion.id) == CapabilityDefinition.schema_version_id)
+            & (col(CapabilitySchemaVersion.org_id) == CapabilityDefinition.org_id),
+        )
+        .where(
+            CapabilityDefinition.org_id == p.org_id,
+            CapabilitySchemaVersion.status == SchemaStatus.ACTIVE,
+            col(CapabilityDefinition.key).in_(before ^ after),
+        )
+        .order_by(col(CapabilityDefinition.position), col(CapabilityDefinition.key))
+    ).all()
+    changes = [
+        f"{label} {'、'.join(names)}"
+        for label, keys in [("新增", after - before), ("移除", before - after)]
+        if (names := [d.name for d in definitions if d.key in keys])
+    ]
+    return RootModel(
+        {
+            "count": 0,
+            "text": f"{department.name}：{'；'.join(changes)}" if changes else "",
+        }
     )
 
 
