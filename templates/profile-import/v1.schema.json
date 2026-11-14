@@ -10,7 +10,7 @@
           "type": "string"
         },
         "statement": {
-          "maxLength": 4000,
+          "maxLength": 200,
           "minLength": 1,
           "title": "Statement",
           "type": "string"
@@ -81,7 +81,7 @@
           "items": {
             "$ref": "#/$defs/ImportItem"
           },
-          "maxItems": 200,
+          "maxItems": 50,
           "minItems": 1,
           "title": "Items",
           "type": "array"

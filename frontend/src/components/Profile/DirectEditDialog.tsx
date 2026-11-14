@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { levelLabel, record } from "./fields"
+import { characterCount, STATEMENT_MAX, textLimitMessage } from "./inputLimits"
 import { ProfileVisibility } from "./ProfileVisibility"
 
 export function DirectEditDialog({
@@ -37,6 +38,10 @@ export function DirectEditDialog({
   const [statement, setStatement] = useState(item.claim?.statement ?? "")
   const [level, setLevel] = useState(item.claim?.level ?? "")
   const [retract, setRetract] = useState(false)
+  const limitError =
+    !retract && statement !== item.claim?.statement
+      ? textLimitMessage(statement, STATEMENT_MAX, 0, "陈述")
+      : null
   const [preview, setPreview] = useState<DirectEditResult | null>(null)
   const path = { org_id: orgId, employee_id: employeeId }
   const body: DirectEditInput = {
@@ -45,7 +50,7 @@ export function DirectEditDialog({
       {
         capability_key: item.capability.key,
         op: retract ? "retract" : item.claim ? "modify" : "add",
-        statement: retract ? "撤回这条判断" : statement.trim(),
+        statement: retract ? "撤回这条判断" : statement,
         level: retract ? null : level || null,
       },
     ],
@@ -194,6 +199,14 @@ export function DirectEditDialog({
                           onChange={(event) => setStatement(event.target.value)}
                         />
                       </label>
+                      <p className="text-sm text-muted-foreground">
+                        {characterCount(statement)} / {STATEMENT_MAX} 字
+                      </p>
+                      {limitError && (
+                        <p role="alert" className="text-sm text-destructive">
+                          {limitError}
+                        </p>
+                      )}
                       <label className="block space-y-1">
                         等级
                         <select
@@ -219,7 +232,10 @@ export function DirectEditDialog({
                   )}
                   <Button
                     type="submit"
-                    disabled={!retract && (!statement.trim() || invalidLevel)}
+                    disabled={
+                      !!limitError ||
+                      (!retract && (!statement.trim() || invalidLevel))
+                    }
                   >
                     预览修改
                   </Button>

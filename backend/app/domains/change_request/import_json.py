@@ -4,26 +4,27 @@ from typing import Annotated, Literal
 from fastapi import HTTPException
 from pydantic import EmailStr, Field, RootModel
 
-from app.domains.change_request.schemas import ToolInput
+from app.domains.change_request.claim import EXPLANATION_MAX, ITEMS_MAX, STATEMENT_MAX
+from app.domains.change_request.schemas import ProfileInput
 
 FILES_DIR = Path(__file__).resolve().parents[4] / "templates/profile-import"
-Text = Annotated[str, Field(min_length=1, max_length=4000)]
+Text = Annotated[str, Field(min_length=1, max_length=EXPLANATION_MAX)]
 Key = Annotated[str, Field(min_length=1, max_length=100)]
 
 
-class ImportItem(ToolInput):
+class ImportItem(ProfileInput):
     capability_key: Key
-    statement: Text
+    statement: Annotated[str, Field(min_length=1, max_length=STATEMENT_MAX)]
     basis: Text
     level: Key | None = None
     uncertainty: Text | None = None
 
 
-class ImportPerson(ToolInput):
+class ImportPerson(ProfileInput):
     schema_version: Literal["1"]
     employee_email: Annotated[EmailStr, Field(max_length=254)]
     capability_schema_version: Annotated[int, Field(strict=True, ge=1)]
-    items: Annotated[list[ImportItem], Field(min_length=1, max_length=200)]
+    items: Annotated[list[ImportItem], Field(min_length=1, max_length=ITEMS_MAX)]
 
 
 class ProfileImport(

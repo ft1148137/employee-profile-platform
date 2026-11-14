@@ -276,7 +276,7 @@ def test_rejected_arguments_have_specific_errors_and_no_card(
         args["people"] *= 51
         expected = "people"
     elif problem == "item_limit":
-        person["items"] *= 21
+        person["items"] *= 51
         expected = "people.0.items"
     elif problem == "attachment":
         other = store.create_session(db, p).id
@@ -292,7 +292,7 @@ def test_rejected_arguments_have_specific_errors_and_no_card(
         args["materials"][0]["attachment_id"] = str(attachment.id)
         expected = "attachment_id"
     else:
-        item[problem] = "x" * (201 if problem == "statement" else 301)
+        item[problem] = "x" * (201 if problem == "statement" else 4001)
     before = snapshot(db, p.org_id)
     cards = []
     result = tools.call(

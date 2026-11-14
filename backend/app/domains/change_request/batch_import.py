@@ -6,9 +6,10 @@ from sqlmodel import Session, col, select
 from app.authz.deps import OrgAdminRequired
 from app.authz.principal import Principal
 from app.domains.capability.service import get_schema, level_exists, list_capabilities
+from app.domains.change_request.claim import EXPLANATION_MAX, ITEMS_MAX, STATEMENT_MAX
 from app.domains.change_request.import_json import InvalidImport
 from app.domains.change_request.models import ChangeOp
-from app.domains.change_request.schemas import ToolInput
+from app.domains.change_request.schemas import ProfileInput
 from app.domains.org.models import Department, Employee, EmploymentStatus, Organization
 from app.domains.profile.models import ProfileVersion
 from app.domains.review.direct import (
@@ -21,18 +22,18 @@ from app.domains.review.direct import (
 from app.domains.review.publish import current_claims
 
 
-class MaterialItem(ToolInput):
+class MaterialItem(ProfileInput):
     capability_key: str = Field(min_length=1, max_length=100)
-    statement: str = Field(min_length=1, max_length=200)
+    statement: str = Field(min_length=1, max_length=STATEMENT_MAX)
     level: str = Field(min_length=1, max_length=100)
-    basis: str = Field(min_length=1, max_length=300)
-    uncertainty: str | None = Field(default=None, max_length=300)
+    basis: str = Field(min_length=1, max_length=EXPLANATION_MAX)
+    uncertainty: str | None = Field(default=None, max_length=EXPLANATION_MAX)
 
 
-class MaterialPerson(ToolInput):
+class MaterialPerson(ProfileInput):
     employee_email: Annotated[EmailStr, Field(max_length=254)]
     base_revision: int | None = Field(default=None, ge=1)
-    items: list[MaterialItem] = Field(min_length=1, max_length=20)
+    items: list[MaterialItem] = Field(min_length=1, max_length=ITEMS_MAX)
 
 
 class ImportResult(BaseModel):
