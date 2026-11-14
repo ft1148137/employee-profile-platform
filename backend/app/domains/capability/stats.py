@@ -37,25 +37,9 @@ def read_stats(session: Session, principal: Principal) -> CapabilityStatsPublic:
             )
         ).all()
     )
-    snapshots = session.exec(
-        select(ProfileVersion.snapshot)
-        .join(
-            Employee,
-            (col(Employee.id) == ProfileVersion.subject_employee_id)
-            & (col(Employee.org_id) == ProfileVersion.org_id),
-        )
-        .where(
-            ProfileVersion.org_id == principal.org_id,
-            employee_scope_clause(principal),
-            Employee.employment_status == EmploymentStatus.ACTIVE,
-        )
-        .distinct(col(ProfileVersion.subject_employee_id))
-        .order_by(
-            col(ProfileVersion.subject_employee_id), col(ProfileVersion.revision).desc()
-        )
-    )
-    for snapshot in snapshots:
-        raw = snapshot.get("claims", [])
+    snapshots = latest_profiles(session, principal)
+    for _, version in snapshots:
+        raw = version.snapshot.get("claims", [])
         claims = (
             [SnapshotClaim.model_validate(c) for c in raw]
             if isinstance(raw, list)
@@ -71,3 +55,28 @@ def read_stats(session: Session, principal: Principal) -> CapabilityStatsPublic:
             stats.levels[level] = stats.levels.get(level, 0) + 1
             stats.statuses[claim.assessment_status] += 1
     return CapabilityStatsPublic(data=list(counts.values()))
+
+
+def latest_profiles(
+    session: Session, principal: Principal
+) -> list[tuple[Employee, ProfileVersion]]:
+    return list(
+        session.exec(
+            select(Employee, ProfileVersion)
+            .join(
+                Employee,
+                (col(Employee.id) == ProfileVersion.subject_employee_id)
+                & (col(Employee.org_id) == ProfileVersion.org_id),
+            )
+            .where(
+                ProfileVersion.org_id == principal.org_id,
+                employee_scope_clause(principal),
+                Employee.employment_status == EmploymentStatus.ACTIVE,
+            )
+            .distinct(col(ProfileVersion.subject_employee_id))
+            .order_by(
+                col(ProfileVersion.subject_employee_id),
+                col(ProfileVersion.revision).desc(),
+            )
+        ).all()
+    )

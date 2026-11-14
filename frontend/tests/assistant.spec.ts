@@ -155,7 +155,7 @@ for (const manager of [false, true]) {
       "收件箱",
       ...(manager ? ["待审批"] : []),
       "我的画像",
-      ...(manager ? ["我的团队", "组织架构"] : []),
+      ...(manager ? ["我的团队", "组织架构", "找人"] : []),
       "设置",
     ]
     await expect(rail.getByRole("link")).toHaveCount(names.length)

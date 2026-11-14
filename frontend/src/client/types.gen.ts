@@ -3752,6 +3752,79 @@ export type PendingReviews = {
 }
 
 /**
+ * PeopleSearchResult
+ */
+export type PeopleSearchResult = {
+  /**
+   * Data
+   */
+  data: Array<PeopleSearchRow>
+  /**
+   * Count
+   */
+  count: number
+}
+
+/**
+ * PeopleSearchRow
+ */
+export type PeopleSearchRow = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Display Name
+   */
+  display_name: string
+  /**
+   * Employee Code
+   */
+  employee_code: string | null
+  /**
+   * Department Name
+   */
+  department_name: string | null
+  /**
+   * Capability Key
+   */
+  capability_key: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  /**
+   * Statement
+   */
+  statement: string
+  /**
+   * Level
+   */
+  level: string | null
+  /**
+   * Level Name
+   */
+  level_name: string | null
+  /**
+   * Status
+   */
+  status: "confirmed" | "tentative" | "disputed"
+  /**
+   * Evidence Count
+   */
+  evidence_count: number
+  /**
+   * Latest Evidence At
+   */
+  latest_evidence_at: string | null
+  published_by: PublisherPublic
+  /**
+   * Published At
+   */
+  published_at: string
+}
+
+/**
  * PolicyInput
  */
 export type PolicyInput = {
@@ -6035,6 +6108,95 @@ export type ModelSettingUpdateWritable = {
     | "xhigh"
     | null
 }
+
+export type peopleSearchSearchPeopleData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query: {
+    /**
+     * Capability Key
+     */
+    capability_key: string
+    /**
+     * Minimum Level
+     */
+    minimum_level?: string | null
+    /**
+     * Include Ungraded
+     */
+    include_ungraded?: boolean
+    /**
+     * Statuses
+     */
+    statuses?: Array<"confirmed" | "tentative" | "disputed">
+    /**
+     * Evidence From
+     */
+    evidence_from?: string | null
+    /**
+     * Evidence To
+     */
+    evidence_to?: string | null
+    /**
+     * Department Id
+     */
+    department_id?: string | null
+    /**
+     * Department Capability Only
+     */
+    department_capability_only?: boolean
+    /**
+     * Job Family
+     */
+    job_family?: string | null
+    /**
+     * Work Location
+     */
+    work_location?: string | null
+    /**
+     * Hire Date From
+     */
+    hire_date_from?: string | null
+    /**
+     * Hire Date To
+     */
+    hire_date_to?: string | null
+    /**
+     * Skip
+     */
+    skip?: number
+    /**
+     * Limit
+     */
+    limit?: number
+  }
+  url: "/api/v1/orgs/{org_id}/people-search"
+}
+
+export type peopleSearchSearchPeopleErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type peopleSearchSearchPeopleError =
+  peopleSearchSearchPeopleErrors[keyof peopleSearchSearchPeopleErrors]
+
+export type peopleSearchSearchPeopleResponses = {
+  /**
+   * Successful Response
+   */
+  200: PeopleSearchResult
+}
+
+export type peopleSearchSearchPeopleResponse =
+  peopleSearchSearchPeopleResponses[keyof peopleSearchSearchPeopleResponses]
 
 export type adminAssistantListSessionsData = {
   body?: never
