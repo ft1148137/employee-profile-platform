@@ -26,10 +26,18 @@ from app.domains.inbox.schemas import (
 )
 from app.domains.inbox.service import mark_read, my_inbox
 from app.domains.profile.schemas import ProfileView
+from app.domains.review.routing import DirectReport, direct_reports
 from app.domains.source.identities import list_identities
 from app.domains.source.schemas import ExternalIdentitiesPublic
 
 router = APIRouter(prefix="/orgs/{org_id}/me", tags=["employee_requests"])
+
+
+@router.get("/direct-reports")
+def read_my_direct_reports(
+    principal: OrgPrincipalDep, session: SessionDep
+) -> list[DirectReport]:
+    return direct_reports(session, principal)
 
 
 @router.get("/external-identities")

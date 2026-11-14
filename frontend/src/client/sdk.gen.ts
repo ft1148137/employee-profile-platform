@@ -227,6 +227,9 @@ import type {
   employeeRequestsReadMyCapabilitiesData,
   employeeRequestsReadMyCapabilitiesErrors,
   employeeRequestsReadMyCapabilitiesResponses,
+  employeeRequestsReadMyDirectReportsData,
+  employeeRequestsReadMyDirectReportsErrors,
+  employeeRequestsReadMyDirectReportsResponses,
   employeeRequestsReadMyEvidenceData,
   employeeRequestsReadMyEvidenceErrors,
   employeeRequestsReadMyEvidenceResponses,
@@ -1629,6 +1632,24 @@ export class MeService {
 }
 
 export class EmployeeRequestsService {
+  /**
+   * Read My Direct Reports
+   */
+  public static readMyDirectReports<ThrowOnError extends boolean = true>(
+    options: Options<employeeRequestsReadMyDirectReportsData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      employeeRequestsReadMyDirectReportsResponses,
+      employeeRequestsReadMyDirectReportsErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/me/direct-reports",
+      ...options,
+    })
+  }
+
   /**
    * Read My External Identities
    */
