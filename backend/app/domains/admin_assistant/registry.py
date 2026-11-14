@@ -53,6 +53,7 @@ from app.domains.drafting.service import DraftProgress, active_employees, read_p
 from app.domains.im import settings as im
 from app.domains.im.schemas import Platform
 from app.domains.model import service as model
+from app.domains.org import departments
 from app.domains.org.employee_fields import EmployeeFields, save_employee_fields
 from app.domains.org.models import EmploymentStatus, Organization
 from app.domains.org.roster import service as roster
@@ -497,6 +498,68 @@ FUNCTIONS["get_department_capabilities"] = _f(
     department_capabilities.read_department_capabilities,
     "/org-chart",
     "GET /departments/{id}/capabilities",
+)
+
+FUNCTIONS["rename_department"] = AdminFunction(
+    name="rename_department",
+    area="people",
+    kind="change",
+    risk="normal",
+    description="部门改名；同一上级下不可重名，确认后保存，可撤销",
+    input_model=departments.RenameDepartment,
+    handler=lambda d, p, a, **kw: departments.update_department(
+        d, p, a.department_id, departments.DepartmentUpdate(name=a.name), **kw
+    ),
+    page="/org-chart",
+    endpoints=(("PATCH", "/departments/{id}"),),
+    snapshot=departments.snapshot,
+    impact=departments.rename_impact,
+    reverse=lambda d, p, b: (
+        "rename_department",
+        departments.RenameDepartment.model_validate(
+            {k: b[k] for k in ("department_id", "name")}
+        ),
+    ),
+)
+FUNCTIONS["move_department"] = AdminFunction(
+    name="move_department",
+    area="people",
+    kind="change",
+    risk="high",
+    description="部门移动到其他上级或第一层（parent_department_id=null）；会改变经理管辖范围，需要再次确认，可撤销",
+    input_model=departments.MoveDepartment,
+    handler=lambda d, p, a, **kw: departments.update_department(
+        d,
+        p,
+        a.department_id,
+        departments.DepartmentUpdate(parent_department_id=a.parent_department_id),
+        **kw,
+    ),
+    # Rename and move share the PATCH route, classified once above.
+    page="/org-chart",
+    endpoints=(),
+    snapshot=departments.snapshot,
+    impact=departments.move_impact,
+    reverse=lambda d, p, b: (
+        "move_department",
+        departments.MoveDepartment.model_validate(
+            {k: b[k] for k in ("department_id", "parent_department_id")}
+        ),
+    ),
+)
+FUNCTIONS["delete_department"] = AdminFunction(
+    name="delete_department",
+    area="people",
+    kind="change",
+    risk="high",
+    description="删除没有员工（含离职）、下级和经理授权的空部门及对应能力设置；不可撤销，需要再次确认",
+    input_model=department_capabilities.DepartmentArgs,
+    handler=departments.delete_department,
+    page="/org-chart",
+    endpoints=(("DELETE", "/departments/{id}"),),
+    snapshot=departments.snapshot,
+    impact=departments.delete_impact,
+    undoable=False,
 )
 FUNCTIONS["set_department_capabilities"] = AdminFunction(
     name="set_department_capabilities",

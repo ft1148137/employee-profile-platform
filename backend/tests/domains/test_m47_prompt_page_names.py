@@ -68,8 +68,11 @@ def test_department_hierarchy_guidance(db: Session, demo: tuple) -> None:
     p = principal_for(db, demo[1]["E02"].org_id)
     prompt = admin_prompts.system_prompt(p, "/admin/assistant")
     assert "部门路径" in prompt and "上级部门" in prompt
-    assert "已建部门改上级目前没有页面入口" in prompt
-    assert "重新上传名单" in prompt
+    assert "「组织架构」" in prompt and "「移动到」" in prompt
+    assert all(
+        name in prompt
+        for name in ("rename_department", "move_department", "delete_department")
+    )
 
 
 @pytest.mark.parametrize(
