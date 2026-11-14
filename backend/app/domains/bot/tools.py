@@ -4,7 +4,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from pydantic import Field, JsonValue, ValidationError
+from pydantic import BaseModel, Field, JsonValue, ValidationError
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
@@ -14,6 +14,7 @@ from app.domains.bot.levels import name_levels
 from app.domains.bot.models import BotSession
 from app.domains.capability.proposals import suggest_capability
 from app.domains.capability.schemas import SuggestCapability
+from app.domains.capability.search import PeopleSearchInput, find_people
 from app.domains.change_request import employee
 from app.domains.change_request.models import RequestStatus
 from app.domains.change_request.schemas import ItemInput, ToolInput, validation_message
@@ -30,6 +31,7 @@ TITLES = {t.name: t.description for t in TOOLS.values()} | {
     "read_attachment": "读取会话附件",
     "suggest_capability": "建议新增能力",
     "list_team_members": "查看团队成员",
+    "find_people": "按能力找人",
     "get_member_profile": "查看下属画像",
     "prepare_profile_edit": "预览直接修改画像",
     "list_pending_reviews": "查看待审批请求",
@@ -61,7 +63,8 @@ class ProfileEditInput(direct.DirectEditInput):
     employee_id: UUID
 
 
-TEAM_INPUTS: dict[str, type[ToolInput]] = {
+TEAM_INPUTS: dict[str, type[BaseModel]] = {
+    "find_people": PeopleSearchInput,
     "list_team_members": TeamListInput,
     "get_member_profile": MemberInput,
     "prepare_profile_edit": ProfileEditInput,
@@ -101,6 +104,11 @@ def team_call(
         body = TEAM_INPUTS[name].model_validate(arguments)
     except ValidationError as exc:
         return {"error": validation_message(exc, "工具参数不正确")}
+    if isinstance(body, PeopleSearchInput):
+        result = find_people(db, p, body).model_dump(mode="json")
+        for row in result["data"]:
+            row["profile_url"] = f"/employees/{row['employee_id']}"
+        return result
     if isinstance(body, TeamListInput):
         query = (
             select(Employee, Department)

@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlmodel import Session, SQLModel, select
 
 from app.authz.principal import Principal
+from app.domains.capability import search
 from app.domains.change_request.employee import EmployeeRecordNotFound
 from app.domains.change_request.models import ProfileChangeRequest, ReviewVia
 from app.domains.change_request.schemas import ToolInput
@@ -28,6 +29,14 @@ class TeamOverview(SQLModel):
     employee_count: int
     profile_status_counts: dict[ProgressReviewStatus, int]
     pending_review_count: int
+
+
+def find_people(
+    principal: Principal, session: Session, **filters: object
+) -> search.PeopleSearchResult:
+    return search.find_people(
+        session, principal, search.PeopleSearchInput.model_validate(filters)
+    )
 
 
 def list_pending_reviews(principal: Principal, session: Session) -> PendingReviews:
@@ -95,6 +104,14 @@ def get_team_overview(principal: Principal, session: Session) -> TeamOverview:
 
 
 MANAGER_TOOLS = (
+    EmployeeTool(
+        "find_people",
+        "只读按能力、等级、状态和最近证据时间找人；经理限管辖部门及下级部门，"
+        "企业管理员可查全企业；未知不等于不会",
+        search.PeopleSearchInput,
+        find_people,
+        bot_allowed=False,
+    ),
     EmployeeTool(
         "list_pending_reviews",
         "查看当前用户待审批的画像请求；MCP 需要员工身份，无员工身份的管理员请在网页审批",
