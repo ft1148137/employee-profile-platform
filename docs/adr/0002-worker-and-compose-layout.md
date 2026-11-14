@@ -17,7 +17,7 @@
 - 初次构建发现旧共享 uv 缓存中 psycopg-binary / mypy wheel 元数据损坏。使用项目专属、`sharing=locked` 的 BuildKit 缓存后依赖安装成功；没有降级 Python 或替换依赖。
 - 原始 schema SQL 内的 PL/pgSQL `%` 会被 psycopg 参数解析误读。Alembic 用 `exec_driver_sql(..., execution_options={"no_parameters": True})` 执行固定文件，保留原始 SQL，不做字符串拼接或业务 SQL 插值。
 - CLI `healthchecks` 只检查配置、连接、队列表存在性。NERE-622 增加 `system.heartbeat`，每分钟更新单行系统表 `worker_heartbeat(id, beat_at)`；它只记录共享 Worker 的运行状态，不含业务数据，因此不带 `org_id`。该状态可覆盖，不适用原始 Evidence 的只追加规则。迁移 `b622001dc001` 接在 S6 的 `b617001dc001` 后，downgrade 只删除此状态表。
-- Compose 先运行原有检查，再运行 `python -m app.worker.health`；无心跳或超过常量阈值 5 分钟即失败。`start_period: 120s` 给首次每分钟任务留出启动时间，生产覆盖文件与安装、升级脚本沿用此检查。容器暂停时 Docker 不执行健康检查，恢复后下一次检查才能更新其 unhealthy 状态；独立 IM 进程仍能在暂停期间识别超时。
+- Compose 先运行原有检查，再运行 `python -m app.worker.health`；无心跳或超过常量阈值 5 分钟即失败。`start_period: 120s` 给首次每分钟任务留出启动时间，生产覆盖文件与安装、升级脚本沿用此检查。容器暂停也会暂停容器内检查，已有检查可能因暂停而超时；暂停场景用独立进程执行同一心跳检查，IM 进程仍能识别心跳超时。
 - 网页展示共享 Worker 状态；IM 主循环每 10 秒检查并为各企业当前启用的管理员写入 `ADMIN_TODOS` 收件箱，再走现有飞书通知队列。以最后心跳时间标识停顿，收件箱持久化去重，企业行锁避免并发重复；心跳更新后再次超时可再次提醒。无员工绑定的管理员在网页查看，飞书仍遵守现有绑定与通知开关。没有增加外部监控或自动重启。
 
 ## Schema 与升级
