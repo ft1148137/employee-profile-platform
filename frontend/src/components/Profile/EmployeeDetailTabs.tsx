@@ -131,7 +131,9 @@ export function EmployeeDetailTabs({
             </p>
           </div>
           <Badge variant="secondary">
-            {employmentLabels[summary.employment_status]}
+            {summary.employment_status === "inactive"
+              ? "已离职 · 归档只读"
+              : employmentLabels[summary.employment_status]}
           </Badge>
         </div>
         {isAdmin &&

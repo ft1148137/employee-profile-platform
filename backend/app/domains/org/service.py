@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import case, func
+from sqlalchemy import case, func, or_
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.selectable import Subquery
@@ -132,6 +132,7 @@ def read_org_chart(session: Session, principal: Principal) -> OrgChartPublic:
             RoleGrant.org_id == principal.org_id,
             RoleGrant.role == Role.DEPT_MANAGER,
             col(RoleGrant.department_id).in_(nodes),
+            or_(col(Employee.id).is_(None), employee_scope_clause(principal)),
         )
         .order_by(User.username, col(User.id))
     ).all()

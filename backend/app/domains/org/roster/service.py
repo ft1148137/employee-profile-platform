@@ -11,6 +11,10 @@ from app.authz.principal import Principal
 from app.domains.account.service import lock_org
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
+from app.domains.change_request.models import ProfileChangeRequest, RequestStatus
+from app.domains.change_request.service import transition
+from app.domains.inbox.models import InboxKind
+from app.domains.inbox.service import notify
 from app.domains.org.employee_fields import FIELD_LABELS
 from app.domains.org.models import (
     Department,
@@ -296,6 +300,39 @@ def apply_import(
             account.is_active = False
             session.add(account)
     session.flush()
+    for request in session.exec(
+        select(ProfileChangeRequest)
+        .where(
+            ProfileChangeRequest.org_id == principal.org_id,
+            col(ProfileChangeRequest.subject_employee_id).in_(deactivated),
+            col(ProfileChangeRequest.status).in_(
+                [
+                    RequestStatus.DRAFT,
+                    RequestStatus.PENDING_OWNER,
+                    RequestStatus.PENDING_REVIEW,
+                ]
+            ),
+        )
+        .order_by(col(ProfileChangeRequest.id))
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).all():
+        if request.status == RequestStatus.PENDING_OWNER:
+            # shortcut: use one transition when pending_owner can move directly to withdrawn.
+            transition(request, RequestStatus.DRAFT)
+        transition(request, RequestStatus.WITHDRAWN)
+        session.add(request)
+        record_audit(
+            session,
+            org_id=principal.org_id,
+            actor_type=principal.actor_type,
+            actor_id=str(principal.user_id),
+            action="change_request.withdrawn",
+            target_type="profile_change_request",
+            target_id=str(request.id),
+            details={},
+        )
+        notify(session, request, InboxKind.STATUS_CHANGED, "员工已离职，请求已撤回")
     lines = {
         line.employee_id: line
         for line in session.exec(

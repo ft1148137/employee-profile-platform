@@ -276,14 +276,14 @@ def impact(db: Session, p: Principal, args: SingleChange) -> BaseModel:
                 ),
                 col(ProfileChangeRequest.status).in_(
                     [
+                        RequestStatus.DRAFT,
                         RequestStatus.PENDING_OWNER,
                         RequestStatus.PENDING_REVIEW,
-                        RequestStatus.CHANGES_REQUESTED,
                     ]
                 ),
             )
         ).one()
-        text = f"离职：{'、'.join(e.display_name for e in employees)}；名下有 {pending} 个待处理的画像请求；账号将停用，直属下属将清空上级，画像和证据保留"
+        text = f"离职：{'、'.join(e.display_name for e in employees)}；名下 {pending} 个待处理的画像请求将自动撤回；账号将停用，直属下属将清空上级；画像和证据归档只读，仅企业管理员可见，受限正文不显示"
     else:
         code = (
             args.employee_code
