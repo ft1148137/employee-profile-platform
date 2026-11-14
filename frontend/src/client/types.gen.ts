@@ -3934,6 +3934,28 @@ export type PreviewCard = {
 }
 
 /**
+ * PreviousManager
+ */
+export type PreviousManager = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Display Name
+   */
+  display_name: string
+  /**
+   * Is Active
+   */
+  is_active: boolean
+  /**
+   * Can Restore
+   */
+  can_restore: boolean
+}
+
+/**
  * PrivateUserCreate
  */
 export type PrivateUserCreate = {
@@ -11546,6 +11568,44 @@ export type rolesRevokeRoleResponses = {
 
 export type rolesRevokeRoleResponse =
   rolesRevokeRoleResponses[keyof rolesRevokeRoleResponses]
+
+export type rosterReadPreviousManagerData = {
+  body?: never
+  path: {
+    /**
+     * Employee Id
+     */
+    employee_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/roster/employees/{employee_id}/previous-manager"
+}
+
+export type rosterReadPreviousManagerErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type rosterReadPreviousManagerError =
+  rosterReadPreviousManagerErrors[keyof rosterReadPreviousManagerErrors]
+
+export type rosterReadPreviousManagerResponses = {
+  /**
+   * Response Roster-Read Previous Manager
+   *
+   * Successful Response
+   */
+  200: PreviousManager | null
+}
+
+export type rosterReadPreviousManagerResponse =
+  rosterReadPreviousManagerResponses[keyof rosterReadPreviousManagerResponses]
 
 export type rosterPreviewSingleChangeData = {
   /**

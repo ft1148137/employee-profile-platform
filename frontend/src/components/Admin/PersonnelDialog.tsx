@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useId, useState } from "react"
 import {
   type EmployeeAccount,
+  type EmployeeReference,
   EmployeesService,
   type RosterImportPreview,
   RosterService,
@@ -26,11 +27,13 @@ export function PersonnelDialog({
   employee,
   department = "",
   offboard = false,
+  initialManager,
 }: {
   orgId: string
   employee?: EmployeeAccount
   department?: string
   offboard?: boolean
+  initialManager?: EmployeeReference
 }) {
   const { org } = useOrg()
   const fields = org?.employee_fields ?? []
@@ -39,7 +42,7 @@ export function PersonnelDialog({
   const [open, setOpen] = useState(false)
   const [preview, setPreview] = useState<RosterImportPreview | null>(null)
   const [managerSearch, setManagerSearch] = useState("")
-  const [manager, setManager] = useState("keep")
+  const [manager, setManager] = useState(initialManager?.id ?? "keep")
   const title = offboard ? "离职" : employee ? "调岗" : "新增员工"
   const managers = useQuery({
     queryKey: ["employees", orgId, "manager-search", managerSearch],
@@ -109,13 +112,17 @@ export function PersonnelDialog({
         setOpen(next)
         setPreview(null)
         setManagerSearch("")
-        setManager("keep")
+        setManager(initialManager?.id ?? "keep")
         create.reset()
         apply.reset()
       }}
     >
       <DialogTrigger asChild>
-        <Button variant={offboard ? "destructive" : "outline"}>{title}</Button>
+        <Button variant={offboard ? "destructive" : "outline"}>
+          {initialManager
+            ? `恢复原上级：${initialManager.display_name}`
+            : title}
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
@@ -234,6 +241,14 @@ export function PersonnelDialog({
                       {employee ? "保持现有上级" : "暂无上级"}
                     </option>
                     <option value="none">清空上级</option>
+                    {initialManager &&
+                      !managers.data?.data.some(
+                        (e) => e.id === initialManager.id,
+                      ) && (
+                        <option value={initialManager.id}>
+                          {initialManager.display_name}
+                        </option>
+                      )}
                     {managers.data?.data
                       .filter(
                         (e) =>

@@ -447,6 +447,9 @@ import type {
   rosterReadImportsData,
   rosterReadImportsErrors,
   rosterReadImportsResponses,
+  rosterReadPreviousManagerData,
+  rosterReadPreviousManagerErrors,
+  rosterReadPreviousManagerResponses,
   rosterUploadImportData,
   rosterUploadImportErrors,
   rosterUploadImportResponses,
@@ -3626,6 +3629,24 @@ export class RolesService {
 }
 
 export class RosterService {
+  /**
+   * Read Previous Manager
+   */
+  public static readPreviousManager<ThrowOnError extends boolean = true>(
+    options: Options<rosterReadPreviousManagerData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      rosterReadPreviousManagerResponses,
+      rosterReadPreviousManagerErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/roster/employees/{employee_id}/previous-manager",
+      ...options,
+    })
+  }
+
   /**
    * Preview Single Change
    */
