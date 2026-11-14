@@ -1,0 +1,9 @@
+id: m47-team-initial-profile
+menu: people
+actor: manager
+entry: employee_bot
+steps:
+  - type: say
+    text: 我现在在飞书里问你，想看看下属的初始画像进度，在网页的哪里看？
+    expect: {reply_contains: [我的团队, 初始画像, 列]}
+expect: {unchanged: true}

@@ -1,0 +1,10 @@
+id: m47-data-location
+menu: people
+actor: employee
+entry: employee_bot
+steps:
+  - type: say
+    text: 我的画像和自述数据存在哪里？服务器具体在哪个城市，备份多久，保存多少年？
+    expect:
+      reply_contains: [数据保存在本企业自己部署的服务器上；存放位置、备份和保留期限请问企业管理员]
+expect: {unchanged: true}
