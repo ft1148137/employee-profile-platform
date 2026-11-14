@@ -59,6 +59,11 @@ const columns: ColumnDef<DataTableFeatures, EmployeeSummary>[] = [
     ),
   },
   {
+    accessorKey: "employee_code",
+    header: "工号",
+    cell: ({ row }) => row.original.employee_code ?? "未填写",
+  },
+  {
     accessorKey: "title",
     header: "职位",
     cell: ({ row }) => row.original.title ?? "—",
@@ -220,6 +225,8 @@ function EmployeesList({ orgId }: { orgId: string }) {
                   {employee.display_name}
                 </Link>
                 <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
+                  <dt className="text-muted-foreground">工号</dt>
+                  <dd>{employee.employee_code ?? "未填写"}</dd>
                   <dt className="text-muted-foreground">部门</dt>
                   <dd>{employee.department?.name ?? "未分配部门"}</dd>
                   <dt className="text-muted-foreground">初始画像</dt>

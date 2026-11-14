@@ -109,6 +109,7 @@ class EmployeeSummary(SQLModel):
     display_name: str
     title: str | None
     employment_status: EmploymentStatus
+    employee_code: str | None
     department: DepartmentSummary | None
     progress: ProgressPublic
     latest_published: PublishedSummary | None
