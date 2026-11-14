@@ -148,10 +148,12 @@ def limit_validation_message(error: ErrorDetails) -> str | None:
     return None
 
 
-def validation_message(exc: ValidationError) -> str:
+def validation_message(
+    exc: ValidationError, fallback: str = "工具参数无效，请核对字段和格式"
+) -> str:
     return (
         "；".join(filter(None, (limit_validation_message(e) for e in exc.errors())))
-        or "工具参数无效，请核对字段和格式"
+        or fallback
     )
 
 

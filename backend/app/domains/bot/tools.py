@@ -100,7 +100,7 @@ def team_call(
     try:
         body = TEAM_INPUTS[name].model_validate(arguments)
     except ValidationError as exc:
-        return {"error": validation_message(exc)}
+        return {"error": validation_message(exc, "工具参数不正确")}
     if isinstance(body, TeamListInput):
         query = (
             select(Employee, Department)
@@ -413,7 +413,7 @@ def call(
                 p, db, **suggestion.model_dump(), commit=False
             ).model_dump(mode="json")
         except ValidationError as exc:
-            return {"error": validation_message(exc)}
+            return {"error": validation_message(exc, "工具参数不正确")}
         except HTTPException as exc:
             return {"error": exc.detail}
     if name == "read_attachment":
@@ -425,7 +425,7 @@ def call(
                 )
             )
         except ValidationError as exc:
-            return {"error": validation_message(exc)}
+            return {"error": validation_message(exc, "工具参数不正确")}
         except HTTPException:
             return {"error": "附件不存在"}
     if name in TEAM_INPUTS:
@@ -441,7 +441,7 @@ def call(
     try:
         body = tool.input_model.model_validate(arguments)
     except ValidationError as exc:
-        return {"error": validation_message(exc)}
+        return {"error": validation_message(exc, "工具参数不正确")}
     kwargs = dict(body)
     notice: dict[str, JsonValue] = {}
     if name == "draft_update_request":
