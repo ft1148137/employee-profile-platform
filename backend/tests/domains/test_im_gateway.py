@@ -754,6 +754,7 @@ def test_supervisor_changes_and_duplicate_bot(
 def test_network_backoff_and_shutdown(
     demo: tuple, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr(gateway, "dispatch_worker_alerts", lambda *_args: None)
     _, people, _ = demo
     p = principal(db, people["E02"].org_id, people["E02"].id)
     setting = enable(db, p)

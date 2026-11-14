@@ -14,6 +14,8 @@ from sqlalchemy import Engine, MetaData, delete, inspect
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, select
 
+from app.api import deps
+from app.core import db as core_db
 from app.core.db import engine
 from app.core.security import create_access_token
 from app.domains.admin import overview
@@ -38,18 +40,18 @@ from tests.utils.migrations import migrate
 from tests.utils.org import delete_test_organization
 
 
-@pytest.fixture(autouse=True)
-def heartbeat_state(db: Session) -> Generator[None]:
-    previous = db.get(WorkerHeartbeat, 1)
-    previous_at = previous.beat_at if previous else None
-    db.execute(delete(WorkerHeartbeat))
-    db.commit()
-    yield
-    db.rollback()
-    db.execute(delete(WorkerHeartbeat))
-    if previous_at:
-        db.add(WorkerHeartbeat(beat_at=previous_at))
-    db.commit()
+@pytest.fixture
+def db(migration_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Generator[Session]:
+    # Global monitoring must not scan or write the shared demo used by other tests.
+    monkeypatch.setattr(core_db, "engine", migration_engine)
+    monkeypatch.setattr(deps, "engine", migration_engine)
+    monkeypatch.setattr(tasks, "engine", migration_engine)
+    monkeypatch.setattr(sys.modules[__name__], "engine", migration_engine)
+    monkeypatch.setenv(
+        "DATABASE_URL", migration_engine.url.render_as_string(hide_password=False)
+    )
+    with Session(migration_engine) as session:
+        yield session
 
 
 @pytest.fixture
