@@ -80,8 +80,10 @@ def test_ping_job_succeeds(db: Session) -> None:
 
     async def run() -> int:
         async with app.open_async():
-            job_id = await ping.defer_async()
-            await asyncio.wait_for(app.run_worker_async(wait=False), timeout=20)
+            job_id = await ping.configure(queue="test_ping").defer_async()
+            await asyncio.wait_for(
+                app.run_worker_async(wait=False, queues=["test_ping"]), timeout=20
+            )
             return job_id
 
     job_id = asyncio.run(run())
