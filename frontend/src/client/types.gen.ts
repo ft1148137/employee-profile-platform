@@ -4292,6 +4292,10 @@ export type ReviewDetail = {
    */
   acting_for_name?: string | null
   /**
+   * Assignment Reason
+   */
+  assignment_reason?: string | null
+  /**
    * Owner Reviewed
    */
   owner_reviewed?: boolean

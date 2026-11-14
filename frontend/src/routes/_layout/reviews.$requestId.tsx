@@ -149,6 +149,11 @@ function ReviewForm({
             代{query.data.acting_for_name}审批
           </p>
         )}
+        {query.data.assignment_reason && (
+          <p className="text-muted-foreground">
+            分配原因：{query.data.assignment_reason}
+          </p>
+        )}
         {subject && (
           <p>
             {subject.employee_name} · {subject.department_name ?? "未分配部门"}

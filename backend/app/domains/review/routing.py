@@ -24,13 +24,19 @@ from app.models import User
 def reviewers_for(
     session: Session, org_id: UUID, subject_employee_id: UUID
 ) -> list[UUID]:
+    return review_assignment(session, org_id, subject_employee_id)[0]
+
+
+def review_assignment(
+    session: Session, org_id: UUID, subject_employee_id: UUID
+) -> tuple[list[UUID], str | None]:
     subject = session.exec(
         select(Employee).where(
             Employee.org_id == org_id, Employee.id == subject_employee_id
         )
     ).one_or_none()
     if subject is None:
-        return []
+        return [], None
     rows = session.exec(
         select(OrgMembership, RoleGrant)
         .join(
@@ -70,14 +76,13 @@ def reviewers_for(
                 and subject.department_id
                 in managed_scope(session, org_id, frozenset([grant.department_id]))
             ):
-                return [member.user_id]
-    parents = dict(
-        session.exec(
-            select(Department.id, Department.parent_department_id).where(
-                Department.org_id == org_id
-            )
+                return [member.user_id], "申请人的直属上级，并且是该部门的部门经理"
+    departments = {
+        row.id: row
+        for row in session.exec(
+            select(Department).where(Department.org_id == org_id)
         ).all()
-    )
+    }
     department, visited = subject.department_id, set()
     while department is not None and department not in visited:
         visited.add(department)
@@ -87,9 +92,18 @@ def reviewers_for(
             if g.role == Role.DEPT_MANAGER and g.department_id == department
         }
         if managers:
-            return sorted(managers)
-        department = parents.get(department)
-    return sorted({m.user_id for m, g in candidates if g.role == Role.ORG_ADMIN})
+            reason = (
+                "申请人所在部门的部门经理"
+                if department == subject.department_id
+                else f"申请人上级部门 {departments[department].name} 的部门经理"
+            )
+            return sorted(managers), reason
+        row = departments.get(department)
+        department = row.parent_department_id if row else None
+    return (
+        sorted({m.user_id for m, g in candidates if g.role == Role.ORG_ADMIN}),
+        "申请人所在部门和上级部门都没有部门经理，由企业管理员审批",
+    )
 
 
 def active_delegations(
