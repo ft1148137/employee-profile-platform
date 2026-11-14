@@ -2,6 +2,7 @@
 
 import json
 import logging
+from datetime import timedelta
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
@@ -120,6 +121,11 @@ def claim_counts(db: Session, org_id: UUID, department_id: UUID) -> dict[str, in
 
 
 def needs_defaults(department: Department, schema_id: UUID) -> bool:
+    if (
+        department.capability_failed_at is not None
+        and department.capability_failed_at > utc_now() - timedelta(hours=24)
+    ):
+        return False
     return department.capability_source is None or (
         department.capability_source == "pi"
         and department.capability_schema_version_id != schema_id
@@ -189,6 +195,9 @@ def fill_department_defaults(p: Principal) -> None:
                 ModelOutputInvalid,
                 SecretUnavailable,
             ):
+                department.capability_failed_at = utc_now()
+                db.add(department)
+                db.commit()
                 logger.info(
                     "Department defaults skipped: org=%s department=%s",
                     p.org_id,
@@ -224,6 +233,7 @@ def fill_department_defaults(p: Principal) -> None:
             )
             department.capability_source = "pi"
             department.capability_schema_version_id = schema_id
+            department.capability_failed_at = None
             db.add(department)
             record_audit(
                 db,
