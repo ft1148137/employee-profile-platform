@@ -47,6 +47,7 @@ from app.domains.change_request.employee import (
     RequestConflict,
 )
 from app.domains.change_request.import_json import InvalidImport
+from app.domains.change_request.schemas import validation_message
 from app.domains.im.settings import InvalidImSetting
 from app.domains.model.service import InvalidModelSetting
 from app.domains.org.models import Organization
@@ -224,6 +225,10 @@ def _entry(
             {**args, **dict.fromkeys(entry.private_fields, "pending-secure-input")}
         )
     except ValueError as error:
+        if isinstance(error, ValidationError):
+            message = validation_message(error)
+            if message != "工具参数无效，请核对字段和格式":
+                raise ChangeSetError(message, 422) from None
         if name in (
             "draft_profiles_from_material",
             "draft_roster_from_material",

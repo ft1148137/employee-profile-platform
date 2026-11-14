@@ -33,6 +33,7 @@ from app.domains.access_token.service import get_setting
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.change_request.models import ReviewVia
+from app.domains.change_request.schemas import validation_message
 from app.domains.employee_tools import EMPLOYEE_TOOLS
 from app.domains.manager_tools import MANAGER_TOOLS
 from app.domains.org.employee_fields import FIELD_LABELS
@@ -109,8 +110,8 @@ def invoke(
                 ],
                 structured_content=data,
             )
-        except ValidationError:
-            message = "工具参数无效，请核对字段和格式"
+        except ValidationError as exc:
+            message = validation_message(exc)
         except HTTPException as exc:
             message = json.dumps(
                 {"status": exc.status_code, "detail": exc.detail}, ensure_ascii=False

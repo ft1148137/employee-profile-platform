@@ -357,6 +357,9 @@ import type {
   orgsDeleteDepartmentData,
   orgsDeleteDepartmentErrors,
   orgsDeleteDepartmentResponses,
+  orgsGetCoverageData,
+  orgsGetCoverageErrors,
+  orgsGetCoverageResponses,
   orgsReadDepartmentCapabilitiesData,
   orgsReadDepartmentCapabilitiesErrors,
   orgsReadDepartmentCapabilitiesResponses,
@@ -2318,6 +2321,24 @@ export class ExternalIdentitiesService {
 }
 
 export class OrgsService {
+  /**
+   * Get Coverage
+   */
+  public static getCoverage<ThrowOnError extends boolean = true>(
+    options: Options<orgsGetCoverageData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      orgsGetCoverageResponses,
+      orgsGetCoverageErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/coverage",
+      ...options,
+    })
+  }
+
   /**
    * Delete Department
    */

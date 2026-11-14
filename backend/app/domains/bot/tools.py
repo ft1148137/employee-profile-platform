@@ -16,7 +16,7 @@ from app.domains.capability.proposals import suggest_capability
 from app.domains.capability.schemas import SuggestCapability
 from app.domains.change_request import employee
 from app.domains.change_request.models import RequestStatus
-from app.domains.change_request.schemas import ItemInput, ToolInput
+from app.domains.change_request.schemas import ItemInput, ToolInput, validation_message
 from app.domains.drafting.settings import read_auto_draft
 from app.domains.employee_tools import EMPLOYEE_TOOLS, DraftRequestInput
 from app.domains.evidence.models import Evidence
@@ -99,8 +99,8 @@ def team_call(
     p = replace(p, is_org_admin=False)
     try:
         body = TEAM_INPUTS[name].model_validate(arguments)
-    except ValidationError:
-        return {"error": "工具参数不正确"}
+    except ValidationError as exc:
+        return {"error": validation_message(exc, "工具参数不正确")}
     if isinstance(body, TeamListInput):
         query = (
             select(Employee, Department)
@@ -233,7 +233,10 @@ def preview_card(db: Session, p: Principal, request_id: UUID) -> s.PreviewCard:
         **preview.model_dump(),
         actions=[
             s.RequestAction(
-                action=a, request_id=preview.request_id, revision=preview.revision
+                action=a,
+                request_id=preview.request_id,
+                revision=preview.revision,
+                base_revision=preview.base_revision,
             )
             for a in ("confirm_submit", "continue_editing")
         ],
@@ -412,8 +415,8 @@ def call(
             return suggest_capability(
                 p, db, **suggestion.model_dump(), commit=False
             ).model_dump(mode="json")
-        except ValidationError:
-            return {"error": "工具参数不正确"}
+        except ValidationError as exc:
+            return {"error": validation_message(exc, "工具参数不正确")}
         except HTTPException as exc:
             return {"error": exc.detail}
     if name == "read_attachment":
@@ -424,12 +427,15 @@ def call(
                     db, p, "bot", session.id, body_attachment.attachment_id
                 )
             )
-        except ValidationError:
-            return {"error": "工具参数不正确"}
+        except ValidationError as exc:
+            return {"error": validation_message(exc, "工具参数不正确")}
         except HTTPException:
             return {"error": "附件不存在"}
     if name in TEAM_INPUTS:
-        return redact(team_call(db, p, cards, name, arguments))
+        try:
+            return redact(team_call(db, p, cards, name, arguments))
+        except employee.InvalidItems as exc:
+            return {"error": "；".join(str(e["message"]) for e in exc.errors)}
     if name in reviews.INPUTS:
         return redact(reviews.call(db, p, session, cards, name, arguments))
     tool = TOOLS.get(name)
@@ -437,8 +443,8 @@ def call(
         return {"error": "不允许调用此工具，请使用卡片动作"}
     try:
         body = tool.input_model.model_validate(arguments)
-    except ValidationError:
-        return {"error": "工具参数不正确"}
+    except ValidationError as exc:
+        return {"error": validation_message(exc, "工具参数不正确")}
     kwargs = dict(body)
     notice: dict[str, JsonValue] = {}
     if name == "draft_update_request":
@@ -448,7 +454,10 @@ def call(
             return redact(notice)
         kwargs["items"] = remaining
         kwargs.update(via="bot", client_name="内置机器人")
-    result = PROJECTIONS[name].model_validate(tool.handler(p, db, **kwargs))
+    try:
+        result = PROJECTIONS[name].model_validate(tool.handler(p, db, **kwargs))
+    except employee.InvalidItems as exc:
+        return {"error": "；".join(str(e["message"]) for e in exc.errors)}
     result = name_levels(db, p, result)
     if isinstance(result, s.Profile):
         auto = read_auto_draft(db, p)

@@ -17,9 +17,15 @@ from app.domains.org.schemas import (
     OrganizationUpdate,
     OrgChartPublic,
 )
+from app.domains.profile.coverage import CoveragePublic, read_coverage
 from app.models import Message
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["orgs"])
+
+
+@router.get("/coverage")
+def get_coverage(session: SessionDep, principal: OrgPrincipalDep) -> CoveragePublic:
+    return read_coverage(session, principal)
 
 
 @router.patch("/departments/{id}")

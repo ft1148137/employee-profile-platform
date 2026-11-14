@@ -18,6 +18,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { levelLabel, record } from "./fields"
+import {
+  characterCount,
+  EXPLANATION_MAX,
+  ITEMS_MAX,
+  STATEMENT_MAX,
+  textLimitMessage,
+} from "./inputLimits"
 import { ProfileVisibility } from "./ProfileVisibility"
 import { RequestReviewers } from "./RequestReviewers"
 
@@ -77,6 +84,22 @@ export function ChangeRequestEditor({
   const [preview, setPreview] = useState<RequestPreview | null>(null)
   const [savedItems, setSavedItems] = useState(() => JSON.stringify(items))
   const [confirmClose, setConfirmClose] = useState(false)
+  const limitErrors = items
+    .flatMap((item, index) => [
+      item.op !== "retract" &&
+      item.op !== "attach_evidence" &&
+      item.statement !==
+        profileItems.find((p) => p.capability.key === item.capability_key)
+          ?.claim?.statement
+        ? textLimitMessage(item.statement, STATEMENT_MAX, index, "陈述")
+        : null,
+      ...[item.owner_statement, item.objection, item.uncertainty].map((text) =>
+        textLimitMessage(text ?? "", EXPLANATION_MAX, index),
+      ),
+    ])
+    .filter(Boolean)
+  if (items.length > ITEMS_MAX)
+    limitErrors.push(`每次最多 ${ITEMS_MAX} 条改动，本次有 ${items.length} 条`)
   const dirty = JSON.stringify(items) !== savedItems
   const blocker = useBlocker({
     shouldBlockFn: () => dirty,
@@ -154,12 +177,26 @@ export function ChangeRequestEditor({
       try {
         await EmployeeRequestsService.submitRequest({
           path: { ...path, request_id: displayedPreview.request_id },
-          body: { revision: displayedPreview.revision },
+          body: {
+            revision: displayedPreview.revision,
+            base_revision: displayedPreview.base_revision,
+          },
         })
         refresh()
         onClose()
       } catch (error) {
         if (isAxiosError(error) && error.response?.status === 409) {
+          const detail = error.response.data?.detail
+          if (record(detail) && detail.code === "stale_initial_draft") {
+            const latest = await EmployeeRequestsService.previewRequest({
+              path: { ...path, request_id: displayedPreview.request_id },
+            })
+            setPreview(latest.data)
+            setShowPreview(true)
+            setNotice(String(detail.message))
+            refresh()
+            return
+          }
           setNotice("内容已变化，请重新预览")
           setPreview(null)
           setShowPreview(false)
@@ -240,6 +277,15 @@ export function ChangeRequestEditor({
         ) : (
           <SetupError error={error} />
         )}
+        {limitErrors.map((message, index) => (
+          <p
+            key={`${index}-${message}`}
+            role="alert"
+            className="text-sm text-destructive"
+          >
+            {message}
+          </p>
+        ))}
         {notice && <p role="status">{notice}</p>}
         {confirmClose || blocker.status === "blocked" ? (
           <section className="space-y-3" aria-label="未保存的内容">
@@ -248,6 +294,7 @@ export function ChangeRequestEditor({
               <Button
                 disabled={
                   busy ||
+                  limitErrors.length > 0 ||
                   !items.length ||
                   items.some((item) => !item.statement.trim())
                 }
@@ -365,6 +412,7 @@ export function ChangeRequestEditor({
                 disabled={
                   busy ||
                   !displayedPreview?.items.length ||
+                  limitErrors.length > 0 ||
                   displayedPreview.items.some((i) => i.warning)
                 }
                 onClick={() => submit.mutate()}
@@ -420,6 +468,7 @@ export function ChangeRequestEditor({
                                 : undefined
                             }
                             required
+                            aria-label="陈述"
                             value={item.statement}
                             className="block min-h-24 w-full rounded-md border bg-background p-2"
                             onChange={(e) =>
@@ -427,6 +476,9 @@ export function ChangeRequestEditor({
                             }
                           />
                         </label>
+                        <p className="text-sm text-muted-foreground">
+                          {characterCount(item.statement)} / {STATEMENT_MAX} 字
+                        </p>
                         <label className="block space-y-1">
                           等级
                           <select
@@ -466,6 +518,10 @@ export function ChangeRequestEditor({
                         }
                       />
                     </label>
+                    <p className="text-sm text-muted-foreground">
+                      {characterCount(item.owner_statement ?? "")} /{" "}
+                      {EXPLANATION_MAX} 字
+                    </p>
                     {selection.request &&
                       ["initial_sync", "import"].includes(
                         selection.request.origin,
@@ -480,6 +536,7 @@ export function ChangeRequestEditor({
                                 : undefined
                             }
                             value={item.objection ?? ""}
+                            aria-label="异议原因"
                             className="block min-h-20 w-full rounded-md border bg-background p-2"
                             onChange={(e) =>
                               update(index, {
@@ -487,6 +544,10 @@ export function ChangeRequestEditor({
                               })
                             }
                           />
+                          <span className="text-sm text-muted-foreground">
+                            {characterCount(item.objection ?? "")} /{" "}
+                            {EXPLANATION_MAX} 字
+                          </span>
                         </label>
                       )}
                     <details>
@@ -554,6 +615,7 @@ export function ChangeRequestEditor({
               <label className="block space-y-1">
                 新增能力
                 <select
+                  disabled={items.length >= ITEMS_MAX}
                   value=""
                   className="block w-full rounded-md border bg-background p-2"
                   onChange={(e) => {
@@ -592,6 +654,7 @@ export function ChangeRequestEditor({
                 <Button
                   type="button"
                   variant="outline"
+                  disabled={limitErrors.length > 0}
                   onClick={() => save.mutate(false)}
                 >
                   保存草稿
@@ -599,6 +662,7 @@ export function ChangeRequestEditor({
                 <Button
                   type="submit"
                   disabled={
+                    limitErrors.length > 0 ||
                     !items.length ||
                     items.some(
                       (i) =>

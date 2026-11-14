@@ -290,16 +290,30 @@ def act(
         if action.action == "continue_editing":
             messages = [s.TextMessage(text="请告诉我需要修改的内容")]
         else:
-            request = (
-                employee.submit(
-                    p, db, action.request_id, action.revision, "bot", client_name
+            try:
+                request = (
+                    employee.submit(
+                        p,
+                        db,
+                        action.request_id,
+                        action.revision,
+                        "bot",
+                        client_name,
+                        base_revision=action.base_revision,
+                    )
+                    if action.action == "confirm_submit"
+                    else employee.withdraw(p, db, action.request_id)
                 )
-                if action.action == "confirm_submit"
-                else employee.withdraw(p, db, action.request_id)
-            )
-            messages = [
-                tools.status_card(name_levels(db, p, s.Request.model_validate(request)))
-            ]
+                messages = [
+                    tools.status_card(
+                        name_levels(db, p, s.Request.model_validate(request))
+                    )
+                ]
+            except employee.StaleInitialDraft as exc:
+                messages = [
+                    s.TextMessage(text=exc.message),
+                    tools.preview_card(db, p, action.request_id),
+                ]
     response = _save(db, session, messages)
     if commit:
         db.commit()

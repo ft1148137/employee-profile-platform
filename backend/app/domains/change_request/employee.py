@@ -13,7 +13,12 @@ from app.domains.capability.schemas import (
     CapabilityPublic,
 )
 from app.domains.capability.service import get_schema, level_exists, list_capabilities
-from app.domains.change_request.claim import ClaimAfter
+from app.domains.change_request.claim import (
+    ITEMS_MAX,
+    ClaimAfter,
+    limit_message,
+    text_limit,
+)
 from app.domains.change_request.models import (
     ChangeItem,
     ChangeItemEvidence,
@@ -74,6 +79,35 @@ class InvalidItems(HTTPException):
     def __init__(self, errors: list[dict[str, int | str]]) -> None:
         self.errors = errors
         super().__init__(422, errors)
+
+
+class StaleInitialDraft(HTTPException):
+    def __init__(self, items: list[PreviewItem]) -> None:
+        self.message = (
+            "；".join(
+                f"经理或管理员在 {item.current_changed_at.isoformat()} 改过"
+                f"「{item.after.capability.name}」"
+                for item in items
+                if item.current_changed_at
+            )
+            + "，请先核对 preview_request 预览，再确认提交"
+        )
+        super().__init__(
+            409,
+            {
+                "code": "stale_initial_draft",
+                "message": self.message,
+                "capabilities": [
+                    {
+                        "key": item.after.capability.key,
+                        "name": item.after.capability.name,
+                        "changed_at": item.current_changed_at.isoformat(),
+                    }
+                    for item in items
+                    if item.current_changed_at
+                ],
+            },
+        )
 
 
 def employee_id(principal: Principal) -> UUID:
@@ -156,6 +190,8 @@ def _validate(
     items: list[ItemInput],
     *,
     align_initial: bool = False,
+    request_id: UUID | None = None,
+    submitting: bool = False,
 ) -> tuple[dict[str, CapabilityPublic], dict[str, ClaimPublic]]:
     capabilities = {c.key: c for c in capability_dictionary(principal, session).data}
     current = {
@@ -167,6 +203,21 @@ def _validate(
         session, principal, {id_ for i in items for id_ in i.evidence_ids}
     )
     errors: list[dict[str, int | str]] = []
+    if len(items) > ITEMS_MAX:
+        errors.append({"index": 0, "message": limit_message("items", len(items))})
+    stored = (
+        {
+            row.capability_definition_id: row
+            for row in session.exec(
+                select(ChangeItem).where(
+                    ChangeItem.org_id == principal.org_id,
+                    ChangeItem.request_id == request_id,
+                )
+            ).all()
+        }
+        if request_id
+        else {}
+    )
     seen: set[str] = set()
     for index, item in enumerate(items):
         if align_initial and item.op in (ChangeOp.ADD, ChangeOp.MODIFY):
@@ -175,6 +226,25 @@ def _validate(
             )
         messages = []
         capability = capabilities.get(item.capability_key)
+        old = stored.get(capability.id) if capability else None
+        target = current.get(item.capability_key)
+        if item.op in (ChangeOp.ADD, ChangeOp.MODIFY):
+            previous = target.statement if target else None
+            if item.statement != previous and not submitting and old and old.after:
+                previous = ClaimAfter.model_validate(old.after).statement
+            message = text_limit("statement", item.statement, index, previous)
+            if message:
+                messages.append(message)
+        for field in ("owner_statement", "objection", "uncertainty", "explanation"):
+            value = (
+                getattr(old, field)
+                if submitting and old
+                else getattr(item, field, None)
+            )
+            previous_text = getattr(old, field) if old and not submitting else None
+            message = text_limit(field, value, index, previous_text)
+            if message:
+                messages.append(message)
         if capability is None:
             messages.append("能力 key 不在当前启用的词典中")
         elif item.level is not None:
@@ -232,6 +302,7 @@ def save_draft(
         items,
         align_initial=request is not None
         and request.origin == RequestOrigin.INITIAL_SYNC,
+        request_id=request.id if request else None,
     )
     if request is None:
         request = ProfileChangeRequest(
@@ -315,11 +386,8 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
     _lock_organization(principal, session)
     request = _request(principal, session, request_id)
     public = _public(principal, session, request.id)
-    claims = {
-        i.capability.key: i.claim
-        for i in my_profile(principal, session).items
-        if i.claim
-    }
+    profile = my_profile(principal, session)
+    claims = {i.capability.key: i.claim for i in profile.items if i.claim}
     initial = request.origin == RequestOrigin.INITIAL_SYNC and request.status in (
         RequestStatus.PENDING_OWNER,
         RequestStatus.DRAFT,
@@ -366,6 +434,9 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
     return RequestPreview(
         request_id=request.id,
         revision=request.revision,
+        base_revision=profile.latest_published.revision
+        if profile.latest_published
+        else None,
         reviewers=request_reviewers(session, principal.org_id, employee_id(principal)),
         items=previews,
     )
@@ -378,6 +449,7 @@ def submit(
     revision: int,
     via: EmployeeVia,
     client_name: str | None = None,
+    base_revision: int | None = None,
 ) -> ChangeRequestPublic:
     # Match the lock order used by manager publishing and dictionary changes.
     _lock_organization(principal, session)
@@ -393,6 +465,11 @@ def submit(
         raise RequestConflict("内容已变化，请重新预览")
     if request.status not in (RequestStatus.DRAFT, RequestStatus.PENDING_OWNER):
         raise RequestConflict()
+    if request.origin == RequestOrigin.INITIAL_SYNC:
+        confirmation = preview(principal, session, request_id)
+        changed = [i for i in confirmation.items if i.current_changed_at]
+        if changed and base_revision != confirmation.base_revision:
+            raise StaleInitialDraft(changed)
     items = session.exec(
         select(ChangeItem)
         .where(
@@ -419,6 +496,8 @@ def submit(
         session,
         inputs,
         align_initial=initial,
+        request_id=request.id,
+        submitting=True,
     )
     if initial:
         for item, value in zip(items, inputs, strict=True):

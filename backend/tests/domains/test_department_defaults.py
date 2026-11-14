@@ -226,6 +226,8 @@ def test_model_failure_skips_and_recovers(
     assert not events(db, p.org_id)
     assert department_keys(db, p.org_id, department.id)[0] == set()
     assert "synthetic-secret" not in caplog.text
+    department.capability_failed_at = utc_now() - timedelta(hours=25)
+    db.add(department)
     setting.enabled, setting.model, setting.paused_until = True, "synthetic", None
     db.add(setting)
     replies[:] = [{"capability_keys": keys[:1]}]
@@ -357,6 +359,12 @@ def test_worker_tenant_isolation_and_parent_first(
         return original(config, body, allowed)
 
     monkeypatch.setattr(d, "generate", generate)
+
+    def fill_owned(worker: Principal) -> None:
+        if worker.org_id in {p.org_id, foreign.id}:
+            d.fill_department_defaults(worker)
+
+    monkeypatch.setattr("app.worker.tasks.fill_department_defaults", fill_owned)
     fill_defaults(0)
     db.expire_all()
     assert child.capability_source == "pi"

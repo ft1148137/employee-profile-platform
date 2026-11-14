@@ -834,6 +834,10 @@ export type CapabilityProposalPublic = {
    */
   evidence_titles: Array<string>
   /**
+   * Evidence Withdrawn
+   */
+  evidence_withdrawn?: boolean
+  /**
    * Employee Count
    */
   employee_count: number
@@ -1469,6 +1473,48 @@ export type ConsentResult = {
 }
 
 /**
+ * CoveragePublic
+ */
+export type CoveragePublic = {
+  /**
+   * Total
+   */
+  total: number
+  /**
+   * Statuses
+   */
+  statuses: Array<CoverageStatus>
+  /**
+   * Departments
+   */
+  departments: Array<DepartmentCoverage>
+  /**
+   * Overdue Initial Requests
+   */
+  overdue_initial_requests: number
+  /**
+   * Review Backlog Requests
+   */
+  review_backlog_requests: number
+  jira_sync_failure: JiraSyncFailure | null
+}
+
+/**
+ * CoverageStatus
+ */
+export type CoverageStatus = {
+  status: ProgressReviewStatus
+  /**
+   * Count
+   */
+  count: number
+  /**
+   * Percentage
+   */
+  percentage: number
+}
+
+/**
  * CsvImportPublic
  */
 export type CsvImportPublic = {
@@ -1659,6 +1705,28 @@ export type DepartmentCapabilityPublic = {
    * Category
    */
   category: string | null
+}
+
+/**
+ * DepartmentCoverage
+ */
+export type DepartmentCoverage = {
+  /**
+   * Total
+   */
+  total: number
+  /**
+   * Statuses
+   */
+  statuses: Array<CoverageStatus>
+  /**
+   * Department Id
+   */
+  department_id: string
+  /**
+   * Department Name
+   */
+  department_name: string
 }
 
 /**
@@ -2265,6 +2333,20 @@ export type EmployeesPublic = {
  * EmploymentStatus
  */
 export type EmploymentStatus = "active" | "inactive"
+
+/**
+ * ErrorEvent
+ */
+export type ErrorEvent = {
+  /**
+   * Type
+   */
+  type: "error"
+  /**
+   * Message
+   */
+  message: string
+}
 
 /**
  * EvidenceClaimPublic
@@ -3250,6 +3332,20 @@ export type JiraProject = {
   name: string
 }
 
+/**
+ * JiraSyncFailure
+ */
+export type JiraSyncFailure = {
+  /**
+   * Connection Name
+   */
+  connection_name: string
+  /**
+   * Failed At
+   */
+  failed_at: string
+}
+
 export type JsonValue = unknown
 
 /**
@@ -3743,6 +3839,10 @@ export type PreviewCard = {
    */
   revision: number
   /**
+   * Base Revision
+   */
+  base_revision?: number | null
+  /**
    * Items
    */
   items: Array<app__domains__bot__schemas__PreviewItem>
@@ -4173,6 +4273,14 @@ export type QuestionsList = {
  */
 export type RequestAction = {
   /**
+   * Revision
+   */
+  revision: number
+  /**
+   * Base Revision
+   */
+  base_revision?: number | null
+  /**
    * Action
    */
   action: "confirm_submit" | "continue_editing" | "withdraw"
@@ -4180,10 +4288,6 @@ export type RequestAction = {
    * Request Id
    */
   request_id: string
-  /**
-   * Revision
-   */
-  revision: number
 }
 
 /**
@@ -4223,6 +4327,10 @@ export type RequestPreview = {
    * Revision
    */
   revision: number
+  /**
+   * Base Revision
+   */
+  base_revision?: number | null
   /**
    * Items
    */
@@ -4921,6 +5029,10 @@ export type SubmitInput = {
    * Revision
    */
   revision: number
+  /**
+   * Base Revision
+   */
+  base_revision?: number | null
 }
 
 /**
@@ -9077,6 +9189,38 @@ export type externalIdentitiesPostUnlinkResponses = {
 
 export type externalIdentitiesPostUnlinkResponse =
   externalIdentitiesPostUnlinkResponses[keyof externalIdentitiesPostUnlinkResponses]
+
+export type orgsGetCoverageData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/coverage"
+}
+
+export type orgsGetCoverageErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type orgsGetCoverageError =
+  orgsGetCoverageErrors[keyof orgsGetCoverageErrors]
+
+export type orgsGetCoverageResponses = {
+  /**
+   * Successful Response
+   */
+  200: CoveragePublic
+}
+
+export type orgsGetCoverageResponse =
+  orgsGetCoverageResponses[keyof orgsGetCoverageResponses]
 
 export type orgsDeleteDepartmentData = {
   body?: never

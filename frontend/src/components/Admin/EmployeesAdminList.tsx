@@ -21,6 +21,7 @@ import { ResetPasswordDialog } from "@/components/Admin/ResetPasswordDialog"
 import { UnlinkedAccounts } from "@/components/Admin/UnlinkedAccounts"
 import { UnmatchedIdentities } from "@/components/Identities/UnmatchedIdentities"
 import { OrgState } from "@/components/Profile/OrgState"
+import { ProfileCoverage } from "@/components/Progress/ProfileCoverage"
 import { EmployeeFields } from "@/components/Roster/EmployeeFields"
 import { Button } from "@/components/ui/button"
 import {
@@ -151,6 +152,14 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
           />
         )}
       </div>
+      <ProfileCoverage
+        orgId={orgId}
+        department={department}
+        onDepartmentChange={(value) => {
+          setDepartment(value)
+          reset()
+        }}
+      />
       {roles.includes("org_admin") && (
         <div className="flex flex-wrap gap-2">
           <PersonnelDialog orgId={orgId} />

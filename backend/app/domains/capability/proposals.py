@@ -241,7 +241,9 @@ def list_proposals(session: Session, principal: Principal) -> CapabilityProposal
             .join(
                 Evidence,
                 (col(Evidence.org_id) == CapabilityProposalEvidence.org_id)
-                & (Evidence.id == CapabilityProposalEvidence.evidence_id),
+                & (Evidence.id == CapabilityProposalEvidence.evidence_id)
+                & (Evidence.status == EvidenceStatus.ACTIVE),
+                isouter=True,
             )
             .where(
                 CapabilityProposalEvidence.org_id == principal.org_id,
@@ -256,7 +258,9 @@ def list_proposals(session: Session, principal: Principal) -> CapabilityProposal
     )
     by_proposal: dict[UUID, list[tuple[str, UUID | None]]] = defaultdict(list)
     for id_, title, employee in refs:
-        by_proposal[id_].append((title, employee))
+        if title is not None:
+            by_proposal[id_].append((title, employee))
+    linked_proposals = {id_ for id_, _, _ in refs}
     names = (
         dict(
             session.exec(
@@ -284,6 +288,7 @@ def list_proposals(session: Session, principal: Principal) -> CapabilityProposal
                     titles := [title for title, _ in by_proposal[row.id]]
                 ),
                 evidence_titles=titles,
+                evidence_withdrawn=row.id in linked_proposals and not titles,
                 employee_count=len(
                     {
                         employee

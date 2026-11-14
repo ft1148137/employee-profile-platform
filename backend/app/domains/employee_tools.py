@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.domains.change_request import employee
-from app.domains.change_request.schemas import DraftInput, ToolInput
+from app.domains.change_request.schemas import DraftInput, SubmitInput, ToolInput
 from app.domains.evidence.models import EvidenceKind
 from app.domains.inbox import service as inbox
 from app.domains.inbox.schemas import AnswerQuestionInput, QuestionsInput
@@ -33,8 +33,8 @@ class DraftRequestInput(DraftInput):
     request_id: UUID | None = None
 
 
-class SubmitRequestInput(RequestInput):
-    revision: int = Field(ge=1)
+class SubmitRequestInput(SubmitInput):
+    request_id: UUID
 
 
 @dataclass(frozen=True)
