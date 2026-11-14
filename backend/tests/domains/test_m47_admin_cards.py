@@ -2,6 +2,7 @@ from datetime import timedelta
 from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
@@ -15,7 +16,7 @@ from app.domains.capability.department import (
     set_department_capabilities,
 )
 from app.domains.capability.service import read_editor
-from app.domains.org.models import Department, OrgMembership
+from app.domains.org.models import Department, Organization, OrgMembership
 from app.models import User
 from tests.admin_assistant.test_change_set import proposal
 from tests.admin_assistant.test_registry import principal
@@ -160,3 +161,58 @@ def test_confirmation_denied(
     )
     assert response.status_code == 404
     assert not principal(db, demo, "employee").is_org_admin
+
+
+def test_grant_failure_preserves_reason_and_draft(
+    db: Session, demo: tuple, client: TestClient, target: Principal
+) -> None:
+    foreign = Organization(slug=str(uuid4()), name="合成外部企业")
+    db.add(foreign)
+    db.flush()
+    db.add(OrgMembership(org_id=foreign.id, user_id=target.user_id))
+    db.commit()
+    row = proposal(
+        db,
+        demo,
+        items=[
+            {
+                "function": "grant_role",
+                "args": {"user_id": str(target.user_id), "role": "org_admin"},
+            }
+        ],
+    )
+    path = demo[0] + f"/admin-assistant/change-sets/{row.id}"
+    headers = demo[2]["admin"]
+    assert (
+        client.post(
+            path + "/apply", headers=headers, json={"revision": row.revision}
+        ).json()["status"]
+        == "draft"
+    )
+    failed = client.post(
+        path + "/apply", headers=headers, json={"revision": row.revision}
+    )
+    assert failed.status_code == 409
+    assert "这个账号同时属于其他企业" in failed.json()["detail"]
+    assert client.get(path, headers=headers).json()["status"] == "draft"
+    assert not get_org_principal(
+        target.org_id, db.get_one(User, target.user_id), db
+    ).is_org_admin
+
+
+def test_department_preview_hides_foreign_department(db: Session, demo: tuple) -> None:
+    p = principal(db, demo)
+    foreign = db.exec(select(Department).where(Department.org_id != p.org_id)).first()
+    assert foreign is not None
+    with pytest.raises(HTTPException) as error:
+        proposal(
+            db,
+            demo,
+            items=[
+                {
+                    "function": "set_department_capabilities",
+                    "args": {"department_id": str(foreign.id), "capability_keys": []},
+                }
+            ],
+        )
+    assert error.value.status_code == 404
