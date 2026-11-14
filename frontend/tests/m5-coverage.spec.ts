@@ -9,26 +9,26 @@ test.use({
 for (const role of [
   {
     email: "admin@demo.example.com",
-    heading: "员工",
+    label: "员工",
     total: 12,
     filtered: 3,
     endpoint: "accounts",
   },
   {
     email: "manager.platform@demo.example.com",
-    heading: "我的团队",
+    label: "我的团队",
     total: 3,
     filtered: 3,
     endpoint: "employees",
   },
 ]) {
-  test(`${role.heading} shows scoped coverage and filters the list by department`, async ({
+  test(`${role.label} shows scoped coverage and filters the list by department`, async ({
     page,
   }) => {
     await logInUser(page, role.email, process.env.DEMO_USER_PASSWORD!)
     await page.goto("/employees")
     await expect(
-      page.getByRole("heading", { name: role.heading, exact: true }),
+      page.getByRole("heading", { name: "员工", exact: true }),
     ).toBeVisible()
     const coverage = page.getByRole("region", { name: "画像覆盖率" })
     await expect(
@@ -61,7 +61,10 @@ for (const role of [
     await expect(
       page.locator("tbody tr").filter({ hasText: "平台研发部" }),
     ).toHaveCount(role.filtered)
-    if (role.heading === "我的团队") {
+    if (role.label === "我的团队") {
+      await expect(
+        page.getByRole("link", { name: "我的团队", exact: true }),
+      ).toBeVisible()
       await expect(
         coverage.getByRole("button", { name: /算法与模型部/ }),
       ).toHaveCount(0)
