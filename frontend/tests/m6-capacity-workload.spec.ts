@@ -257,7 +257,9 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   ]) {
     await open(token)
     await expect(
-      page.getByText("需求与容量模块未开启", { exact: true }),
+      page.getByText("需求与容量功能已关闭，如需使用请联系企业管理员", {
+        exact: true,
+      }),
     ).toBeVisible()
     await expect(
       page.getByRole("link", { name: "需求与容量", exact: true }),

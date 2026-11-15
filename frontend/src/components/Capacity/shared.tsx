@@ -1,4 +1,6 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { AxiosError } from "axios"
+import { useEffect, useState } from "react"
 import { CapacityService, type WorkloadPublic } from "@/client"
 import { Badge } from "@/components/ui/badge"
 
@@ -9,7 +11,59 @@ export function useCapacitySettings(orgId?: string) {
       (await CapacityService.getCapacitySettings({ path: { org_id: orgId! } }))
         .data,
     enabled: !!orgId,
+    refetchOnWindowFocus: true,
   })
+}
+
+export function isCapacityDisabled(error: unknown, orgId: string) {
+  return (
+    error instanceof AxiosError &&
+    error.response?.status === 404 &&
+    error.response.data?.detail === "需求与容量模块未开启" &&
+    !!error.config?.url &&
+    new URL(error.config.url, window.location.origin).pathname.startsWith(
+      `/api/v1/orgs/${orgId}/capacity/`,
+    )
+  )
+}
+
+export function useCapacityDisabled(orgId?: string) {
+  const client = useQueryClient()
+  const [disabledOrgId, setDisabledOrgId] = useState<string>()
+  useEffect(() => {
+    setDisabledOrgId(undefined)
+    if (!orgId) return
+    const handleError = (error: unknown) => {
+      if (!isCapacityDisabled(error, orgId)) return
+      setDisabledOrgId(orgId)
+      client.invalidateQueries({ queryKey: ["capacity-settings", orgId] })
+    }
+    const unsubscribeQueries = client.getQueryCache().subscribe((event) => {
+      if (
+        event.type === "updated" &&
+        event.action.type === "success" &&
+        event.query.queryKey[0] === "capacity-settings" &&
+        event.query.queryKey[1] === orgId
+      )
+        setDisabledOrgId(undefined)
+      if (
+        event.type === "updated" &&
+        (event.action.type === "error" || event.action.type === "failed")
+      )
+        handleError(event.action.error)
+    })
+    const unsubscribeMutations = client
+      .getMutationCache()
+      .subscribe((event) => {
+        if (event.type === "updated" && event.action.type === "error")
+          handleError(event.action.error)
+      })
+    return () => {
+      unsubscribeQueries()
+      unsubscribeMutations()
+    }
+  }, [client, orgId])
+  return !!orgId && disabledOrgId === orgId
 }
 
 const bands = {
