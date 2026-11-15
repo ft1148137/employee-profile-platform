@@ -244,6 +244,18 @@ function InboxContent({
                         </Link>
                       </Button>
                     )}
+                  {item.kind === "capacity" && (
+                    <Button variant="outline" asChild>
+                      <Link
+                        to="/capacity"
+                        onClick={() => {
+                          if (!item.read_at) read.mutate(item.id)
+                        }}
+                      >
+                        查看需求与容量
+                      </Link>
+                    </Button>
+                  )}
                   {!item.read_at && (
                     <Button
                       variant="ghost"

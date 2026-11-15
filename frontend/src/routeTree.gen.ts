@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAssistantRouteImport } from './routes/_layout/assistant'
+import { Route as LayoutCapacityRouteImport } from './routes/_layout/capacity'
 import { Route as LayoutFindPeopleRouteImport } from './routes/_layout/find-people'
 import { Route as LayoutInboxRouteImport } from './routes/_layout/inbox'
 import { Route as LayoutOrgChartRouteImport } from './routes/_layout/org-chart'
@@ -74,6 +75,11 @@ const LayoutIndexRoute = LayoutIndexRouteImport.update({
 const LayoutAssistantRoute = LayoutAssistantRouteImport.update({
   id: '/assistant',
   path: '/assistant',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutCapacityRoute = LayoutCapacityRouteImport.update({
+  id: '/capacity',
+  path: '/capacity',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutFindPeopleRoute = LayoutFindPeopleRouteImport.update({
@@ -241,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/assistant': typeof LayoutAssistantRoute
+  '/capacity': typeof LayoutCapacityRoute
   '/find-people': typeof LayoutFindPeopleRoute
   '/inbox': typeof LayoutInboxRoute
   '/org-chart': typeof LayoutOrgChartRoute
@@ -278,6 +285,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/assistant': typeof LayoutAssistantRoute
+  '/capacity': typeof LayoutCapacityRoute
   '/find-people': typeof LayoutFindPeopleRoute
   '/inbox': typeof LayoutInboxRoute
   '/org-chart': typeof LayoutOrgChartRoute
@@ -318,6 +326,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/_layout/assistant': typeof LayoutAssistantRoute
+  '/_layout/capacity': typeof LayoutCapacityRoute
   '/_layout/find-people': typeof LayoutFindPeopleRoute
   '/_layout/inbox': typeof LayoutInboxRoute
   '/_layout/org-chart': typeof LayoutOrgChartRoute
@@ -359,6 +368,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/setup'
     | '/assistant'
+    | '/capacity'
     | '/find-people'
     | '/inbox'
     | '/org-chart'
@@ -396,6 +406,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/setup'
     | '/assistant'
+    | '/capacity'
     | '/find-people'
     | '/inbox'
     | '/org-chart'
@@ -435,6 +446,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/setup'
     | '/_layout/assistant'
+    | '/_layout/capacity'
     | '/_layout/find-people'
     | '/_layout/inbox'
     | '/_layout/org-chart'
@@ -518,6 +530,13 @@ declare module '@tanstack/react-router' {
       path: '/assistant'
       fullPath: '/assistant'
       preLoaderRoute: typeof LayoutAssistantRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/capacity': {
+      id: '/_layout/capacity'
+      path: '/capacity'
+      fullPath: '/capacity'
+      preLoaderRoute: typeof LayoutCapacityRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/find-people': {
@@ -753,6 +772,7 @@ const LayoutAdminPeopleRouteWithChildren =
 
 interface LayoutRouteChildren {
   LayoutAssistantRoute: typeof LayoutAssistantRoute
+  LayoutCapacityRoute: typeof LayoutCapacityRoute
   LayoutFindPeopleRoute: typeof LayoutFindPeopleRoute
   LayoutInboxRoute: typeof LayoutInboxRoute
   LayoutOrgChartRoute: typeof LayoutOrgChartRoute
@@ -788,6 +808,7 @@ interface LayoutRouteChildren {
 
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAssistantRoute: LayoutAssistantRoute,
+  LayoutCapacityRoute: LayoutCapacityRoute,
   LayoutFindPeopleRoute: LayoutFindPeopleRoute,
   LayoutInboxRoute: LayoutInboxRoute,
   LayoutOrgChartRoute: LayoutOrgChartRoute,

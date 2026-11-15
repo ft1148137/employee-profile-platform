@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import {
   BookOpen,
+  Gauge,
   Inbox,
   ListChecks,
   MessageCircle,
@@ -14,6 +15,7 @@ import {
   Users,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import { useCapacitySettings } from "@/components/Capacity/shared"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,6 +54,7 @@ export function AppSidebar() {
   const navigate = useNavigate()
   const location = useLocation()
   const administrator = roles.includes("org_admin")
+  const capacity = useCapacitySettings(org?.id)
   const content = useRef<HTMLDivElement>(null)
   const [slots, setSlots] = useState(11)
   useEffect(() => {
@@ -101,6 +104,11 @@ export function AppSidebar() {
     )
   if (administrator || roles.includes("dept_manager"))
     items.push({ icon: Search, title: "找人", path: "/find-people" })
+  if (
+    capacity.data?.enabled &&
+    (employeeId || administrator || roles.includes("dept_manager"))
+  )
+    items.push({ icon: Gauge, title: "需求与容量", path: "/capacity" })
   const visible = Math.max(0, Math.min(manual.length, slots - items.length - 1))
   const more: Item[] = [
     ...manual.slice(visible),

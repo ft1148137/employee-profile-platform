@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router"
 import { AdminTabs, tabSearch } from "@/components/Admin/AdminTabs"
 import { ApprovalPolicy } from "@/components/Admin/ApprovalPolicy"
 import { UpdateSettings } from "@/components/Admin/UpdateSettings"
+import { CapacitySettings } from "@/components/Capacity/CapacitySettings"
 import { CapabilityDictionary } from "@/components/Setup/CapabilityDictionary"
 import { useOrg } from "@/hooks/useOrg"
 
@@ -19,6 +20,7 @@ const tabs = [
   { value: "dictionary", title: "能力词典", component: CapabilityDictionary },
   { value: "approval", title: "审批规则", component: Approval },
   { value: "reminders", title: "定期提醒", component: Reminders },
+  { value: "capacity", title: "需求与容量", component: CapacitySettings },
 ]
 
 export const Route = createFileRoute("/_layout/admin/rules")({
