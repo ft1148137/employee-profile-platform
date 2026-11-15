@@ -15,7 +15,7 @@ class ReferenceInput(CapacityInput):
     minimum_level: str | None = Field(default=None, max_length=200)
 
 
-class CapacityReference(BaseModel):
+class DetailedCapacityReference(BaseModel):
     department_name: str
     capability_name: str
     count: int
@@ -23,6 +23,20 @@ class CapacityReference(BaseModel):
     full: int = 0
     overloaded: int = 0
     unconfirmed: int = 0
+
+
+LIMITED_REFERENCE_TEXT = (
+    "该部门具备这项能力的人较少，能否承接请提交需求，由对方部门经理答复"
+)
+
+
+class LimitedCapacityReference(BaseModel):
+    department_name: str
+    capability_name: str
+    limited: Literal[True]
+
+
+type CapacityReference = DetailedCapacityReference | LimitedCapacityReference
 
 
 class DemandInput(ReferenceInput):
@@ -112,10 +126,16 @@ class DemandBasisPerson(PeopleSearchRow):
     workload: WorkloadPublic
 
 
+class DemandOtherPerson(CapacityInput):
+    employee_id: UUID
+    display_name: str
+
+
 class DemandBasis(CapacityInput):
     data: list[DemandBasisPerson]
+    others: list[DemandOtherPerson]
     count: int
-    reference: CapacityReference
+    reference: DetailedCapacityReference
 
 
 class CommitmentChange(CapacityInput):

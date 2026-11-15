@@ -1146,39 +1146,9 @@ export type CapacityCard = {
   actions?: Array<CapacityAction>
 }
 
-/**
- * CapacityReference
- */
-export type CapacityReference = {
-  /**
-   * Department Name
-   */
-  department_name: string
-  /**
-   * Capability Name
-   */
-  capability_name: string
-  /**
-   * Count
-   */
-  count: number
-  /**
-   * Available
-   */
-  available?: number
-  /**
-   * Full
-   */
-  full?: number
-  /**
-   * Overloaded
-   */
-  overloaded?: number
-  /**
-   * Unconfirmed
-   */
-  unconfirmed?: number
-}
+export type CapacityReference =
+  | DetailedCapacityReference
+  | LimitedCapacityReference
 
 /**
  * CapacityRequestStatus
@@ -1922,10 +1892,14 @@ export type DemandBasis = {
    */
   data: Array<DemandBasisPerson>
   /**
+   * Others
+   */
+  others: Array<DemandOtherPerson>
+  /**
    * Count
    */
   count: number
-  reference: CapacityReference
+  reference: DetailedCapacityReference
 }
 
 /**
@@ -2094,6 +2068,20 @@ export type DemandList = {
    * Count
    */
   count: number
+}
+
+/**
+ * DemandOtherPerson
+ */
+export type DemandOtherPerson = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Display Name
+   */
+  display_name: string
 }
 
 /**
@@ -2352,6 +2340,40 @@ export type DepartmentsPublic = {
    * Count
    */
   count: number
+}
+
+/**
+ * DetailedCapacityReference
+ */
+export type DetailedCapacityReference = {
+  /**
+   * Department Name
+   */
+  department_name: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  /**
+   * Count
+   */
+  count: number
+  /**
+   * Available
+   */
+  available?: number
+  /**
+   * Full
+   */
+  full?: number
+  /**
+   * Overloaded
+   */
+  overloaded?: number
+  /**
+   * Unconfirmed
+   */
+  unconfirmed?: number
 }
 
 /**
@@ -3982,6 +4004,24 @@ export type JiraSyncFailure = {
 }
 
 export type JsonValue = unknown
+
+/**
+ * LimitedCapacityReference
+ */
+export type LimitedCapacityReference = {
+  /**
+   * Department Name
+   */
+  department_name: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  /**
+   * Limited
+   */
+  limited: true
+}
 
 /**
  * LinkCard

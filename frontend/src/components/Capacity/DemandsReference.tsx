@@ -5,6 +5,11 @@ export function DemandsReference({
 }: {
   reference: CapacityReference
 }) {
+  if ("limited" in reference) {
+    return (
+      <p>该部门具备这项能力的人较少，能否承接请提交需求，由对方部门经理答复</p>
+    )
+  }
   return (
     <p>
       {reference.department_name}达到要求的有 {reference.count} 人：有余量{" "}

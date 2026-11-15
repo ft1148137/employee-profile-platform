@@ -22,7 +22,10 @@ from app.domains.capacity.demand_schemas import (
     DemandEventPublic,
     DemandInput,
     DemandList,
+    DemandOtherPerson,
     DemandPublic,
+    DetailedCapacityReference,
+    LimitedCapacityReference,
     ReplyInput,
     RespondInput,
 )
@@ -106,7 +109,7 @@ def department_reference(
     target_department_id: UUID,
     capability_key: str,
     minimum_level: str | None = None,
-) -> CapacityReference:
+) -> DetailedCapacityReference:
     target = department(session, org_id, target_department_id)
     worker = Principal.system_worker(org_id)
     ids: set[UUID] = set()
@@ -132,7 +135,7 @@ def department_reference(
         for c in list_capabilities(session, org_id, get_schema(session, org_id).id)
         if c.key == capability_key
     )
-    result = CapacityReference(
+    result = DetailedCapacityReference(
         department_name=target.name, capability_name=capability.name, count=len(ids)
     )
     employees = list(
@@ -156,9 +159,34 @@ def capacity_reference(
     minimum_level: str | None = None,
 ) -> CapacityReference:
     require_requester(principal, session)
-    return department_reference(
-        session, principal.org_id, target_department_id, capability_key, minimum_level
+    return reference_for_viewer(
+        principal,
+        target_department_id,
+        department_reference(
+            session,
+            principal.org_id,
+            target_department_id,
+            capability_key,
+            minimum_level,
+        ),
     )
+
+
+def reference_for_viewer(
+    principal: Principal,
+    target_department_id: UUID,
+    reference: DetailedCapacityReference,
+) -> CapacityReference:
+    if (
+        not represents_department(principal, target_department_id)
+        and 0 < reference.count < 3
+    ):
+        return LimitedCapacityReference(
+            department_name=reference.department_name,
+            capability_name=reference.capability_name,
+            limited=True,
+        )
+    return reference
 
 
 def represents_department(principal: Principal, target_department_id: UUID) -> bool:
@@ -264,7 +292,11 @@ def demands_public(
                 outcome=e.outcome,
                 start_date=e.start_date,
                 end_date=e.end_date,
-                basis=CapacityReference.model_validate(e.basis)
+                basis=reference_for_viewer(
+                    principal,
+                    row.target_department_id,
+                    DetailedCapacityReference.model_validate(e.basis),
+                )
                 if e.kind == DemandEventKind.REPLIED and e.basis
                 else None,
                 **(
@@ -470,12 +502,29 @@ def get_demand_basis(
         ).all()
     )
     workloads = {w.employee_id: w for w in views(principal, session, employees)}
+    target_ids = managed_scope(
+        session, principal.org_id, frozenset({row.target_department_id})
+    )
+    others = session.exec(
+        select(Employee)
+        .where(
+            employee_scope_clause(principal),
+            Employee.employment_status == EmploymentStatus.ACTIVE,
+            col(Employee.department_id).in_(target_ids),
+            col(Employee.id).not_in(people),
+        )
+        .order_by(Employee.display_name, col(Employee.id))
+    ).all()
     return DemandBasis(
         data=[
             DemandBasisPerson(**p.model_dump(), workload=workloads[p.employee_id])
             for p in sorted(
                 people.values(), key=lambda p: (p.display_name, str(p.employee_id))
             )
+        ],
+        others=[
+            DemandOtherPerson(employee_id=p.id, display_name=p.display_name)
+            for p in others
         ],
         count=len(people),
         reference=department_reference(
