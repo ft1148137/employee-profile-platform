@@ -463,7 +463,7 @@ def test_migration_roundtrip_and_model_registration(migration_engine: Engine) ->
         check=True,
         capture_output=True,
     )
-    migrate(migration_engine, "downgrade", "-1")
+    migrate(migration_engine, "downgrade", "b617001dc001")
     assert "worker_heartbeat" not in inspect(migration_engine).get_table_names()
     migrate(migration_engine, "upgrade", "head")
     columns = inspect(migration_engine).get_columns("worker_heartbeat")
