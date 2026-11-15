@@ -363,54 +363,61 @@ def test_authorization_validation_and_terminal_states(case: tuple, db: Session) 
 
 
 def test_tools_enforce_scope_and_record_client(case: tuple, db: Session) -> None:
-    api, employees, members, body = case
-    tools = {t.name: t for t in CAPACITY_TOOLS}
-    b = get_org_principal(
-        employees["E01"].org_id,
-        db.get_one(User, members[employees["E05"].id].user_id),
-        db,
-    )
-    a = get_org_principal(
-        b.org_id, db.get_one(User, members[employees["E02"].id].user_id), db
-    )
-    row = api(body=body)
-    for name, payload in (
-        ("get_demand_basis", {}),
-        ("reply_demand", REPLY),
-        ("respond_demand", {"action": "accept", "revision": 2}),
-    ):
-        assert tools[name].writes == (name != "get_demand_basis")
-        valid = {"demand_id": row["id"], **payload}
-        tools[name].input_model.model_validate(valid)
-        with pytest.raises(ValidationError):
-            tools[name].input_model.model_validate({**valid, "org_id": str(uuid4())})
-    data = tools["reply_demand"].input_model.model_validate(
-        {"demand_id": row["id"], **REPLY, "basis": {"count": 1234}}
-    )
-    with pytest.raises(service.CapacityNotFound):
-        tools["get_demand_basis"].handler(a, db, demand_id=UUID(row["id"]))
-    result = tools["reply_demand"].handler(
-        b, db, **data.model_dump(), via="mcp", client_name="synthetic-client"
-    )
-    assert result.events[-1].basis.count == 5
-    db.commit()
-    data = tools["respond_demand"].input_model.model_validate(
-        {"demand_id": row["id"], "action": "withdraw", "revision": 2}
-    )
-    tools["respond_demand"].handler(
-        a, db, **data.model_dump(), via="mcp", client_name="synthetic-client"
-    )
-    db.commit()
-    events = db.exec(
-        select(AuditEvent).where(
-            AuditEvent.org_id == b.org_id,
-            AuditEvent.target_id == row["id"],
-            AuditEvent.action != "capacity.demand_submitted",
+    # Tools get a fresh request session, not metadata left on the suite fixture.
+    with Session(db.get_bind()) as tool_db:
+        api, employees, members, body = case
+        tools = {t.name: t for t in CAPACITY_TOOLS}
+        b = get_org_principal(
+            employees["E01"].org_id,
+            tool_db.get_one(User, members[employees["E05"].id].user_id),
+            tool_db,
         )
-    ).all()
-    assert len(events) == 2 and all(
-        e.details == {"via": "mcp", "client_name": "synthetic-client"} for e in events
-    )
+        a = get_org_principal(
+            b.org_id,
+            tool_db.get_one(User, members[employees["E02"].id].user_id),
+            tool_db,
+        )
+        row = api(body=body)
+        for name, payload in (
+            ("get_demand_basis", {}),
+            ("reply_demand", REPLY),
+            ("respond_demand", {"action": "accept", "revision": 2}),
+        ):
+            assert tools[name].writes == (name != "get_demand_basis")
+            valid = {"demand_id": row["id"], **payload}
+            tools[name].input_model.model_validate(valid)
+            with pytest.raises(ValidationError):
+                tools[name].input_model.model_validate(
+                    {**valid, "org_id": str(uuid4())}
+                )
+        data = tools["reply_demand"].input_model.model_validate(
+            {"demand_id": row["id"], **REPLY, "basis": {"count": 1234}}
+        )
+        with pytest.raises(service.CapacityNotFound):
+            tools["get_demand_basis"].handler(a, tool_db, demand_id=UUID(row["id"]))
+        result = tools["reply_demand"].handler(
+            b, tool_db, **data.model_dump(), via="mcp", client_name="synthetic-client"
+        )
+        assert result.events[-1].basis.count == 5
+        tool_db.commit()
+        data = tools["respond_demand"].input_model.model_validate(
+            {"demand_id": row["id"], "action": "withdraw", "revision": 2}
+        )
+        tools["respond_demand"].handler(
+            a, tool_db, **data.model_dump(), via="mcp", client_name="synthetic-client"
+        )
+        tool_db.commit()
+        events = tool_db.exec(
+            select(AuditEvent).where(
+                AuditEvent.org_id == b.org_id,
+                AuditEvent.target_id == row["id"],
+                AuditEvent.action != "capacity.demand_submitted",
+            )
+        ).all()
+        assert len(events) == 2 and all(
+            e.details == {"via": "mcp", "client_name": "synthetic-client"}
+            for e in events
+        )
 
 
 def test_concurrent_reply_revision(
