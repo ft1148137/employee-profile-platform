@@ -32,14 +32,36 @@ from app.domains.access_token.models import PersonalAccessToken
 from app.domains.access_token.service import get_setting
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
+from app.domains.capacity.models import RequesterPolicy
+from app.domains.capacity.settings import read_settings
+from app.domains.capacity.tools import CAPACITY_TOOLS
 from app.domains.change_request.models import ReviewVia
 from app.domains.change_request.schemas import validation_message
-from app.domains.employee_tools import EMPLOYEE_TOOLS
+from app.domains.employee_tools import EMPLOYEE_TOOLS, EmployeeTool
 from app.domains.manager_tools import MANAGER_TOOLS
 from app.domains.org.employee_fields import FIELD_LABELS
 from app.mcp.oauth import resource_url
 
 TOOLS = {tool.name: tool for tool in (*EMPLOYEE_TOOLS, *MANAGER_TOOLS)}
+
+
+def available_tools(principal: Principal, session: Session) -> dict[str, EmployeeTool]:
+    tools = TOOLS.copy()
+    setting = read_settings(principal, session)
+    if setting.enabled:
+        can_request = (
+            setting.requester_policy == RequesterPolicy.EVERYONE
+            or principal.is_org_admin
+            or bool(principal.managed_department_ids)
+        )
+        tools.update(
+            (tool.name, tool)
+            for tool in CAPACITY_TOOLS
+            if can_request
+            or tool.name
+            not in ("list_capacity_departments", "capacity_reference", "submit_demand")
+        )
+    return tools
 
 
 class McpRequestError(HTTPException):
@@ -48,19 +70,34 @@ class McpRequestError(HTTPException):
 
 
 async def list_tools(
-    _ctx: ServerRequestContext[Any, Request],
+    ctx: ServerRequestContext[Any, Request],
     _params: types.PaginatedRequestParams | None,
 ) -> types.ListToolsResult:
-    return types.ListToolsResult(
-        tools=[
-            types.Tool(
-                name=t.name,
-                description=t.description,
-                input_schema=t.input_model.model_json_schema(),
-            )
-            for t in TOOLS.values()
-        ]
-    )
+    assert ctx.request is not None
+    principal, _ = ctx.request.scope["mcp_identity"]
+
+    def listing() -> types.ListToolsResult:
+        with Session(engine) as session:
+            tools = []
+            for tool in available_tools(principal, session).values():
+                description = tool.description
+                if tool in CAPACITY_TOOLS:
+                    description += "。参考不是承诺。"
+                    if tool.writes:
+                        description += (
+                            "先向用户复述内容，用户明确同意后才调用；"
+                            "答复只写部门层面的结论，不写人名。"
+                        )
+                tools.append(
+                    types.Tool(
+                        name=tool.name,
+                        description=description,
+                        input_schema=tool.input_model.model_json_schema(),
+                    )
+                )
+            return types.ListToolsResult(tools=tools)
+
+    return await run_in_threadpool(listing)
 
 
 def invoke(
@@ -70,6 +107,7 @@ def invoke(
     principal, client_name = ctx.request.scope["mcp_identity"]
     with Session(engine) as session:
         try:
+            tools = available_tools(principal, session)
             record_audit(
                 session,
                 org_id=principal.org_id,
@@ -77,11 +115,11 @@ def invoke(
                 actor_id=str(principal.user_id),
                 action="mcp.tool_called",
                 target_type="mcp_tool",
-                target_id=params.name if params.name in TOOLS else None,
+                target_id=params.name if params.name in tools else None,
                 details={"request_id": str(ctx.request_id), "client_name": client_name},
             )
             session.commit()
-            tool = TOOLS.get(params.name)
+            tool = tools.get(params.name)
             if tool is None:
                 raise McpRequestError(404, "工具不存在")
             body = tool.input_model.model_validate(params.arguments or {})
@@ -90,6 +128,8 @@ def invoke(
                 arguments.update(via="mcp", client_name=client_name)
             if tool.name == "decide_review_items":
                 arguments.update(via=ReviewVia.MCP, client_name=client_name)
+            if tool in CAPACITY_TOOLS and tool.writes:
+                arguments.update(via="mcp", client_name=client_name)
             result = tool.handler(principal=principal, session=session, **arguments)
             session.commit()
             data = result.model_dump(
