@@ -13,8 +13,6 @@ from app.domains.capacity import demand
 from app.domains.capacity.assignment import assignment_rows
 from app.domains.capacity.demand_schemas import (
     DemandInput,
-    DemandList,
-    DemandPublic,
     ReplyDemandInput,
     RespondDemandInput,
 )
@@ -247,11 +245,6 @@ def call(
             tool = READS[name]
             body = tool.input_model.model_validate(arguments)
             result = tool.handler(p, db, **body.model_dump())
-            rows = result.data if isinstance(result, DemandList) else [result]
-            for row in rows:
-                if isinstance(row, DemandPublic):
-                    for event in row.events:
-                        event.responder_name = None
             return result.model_dump(mode="json")
         if name not in PREPARES:
             return {"error": "请使用预览工具，并点击卡片确认"}
