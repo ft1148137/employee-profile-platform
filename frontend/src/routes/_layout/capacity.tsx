@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { tabSearch } from "@/components/Admin/AdminTabs"
 import { IncomingDemands, OutgoingDemands } from "@/components/Capacity/Demands"
+import { MyAssignments } from "@/components/Capacity/MyAssignments"
 import { MyWorkload } from "@/components/Capacity/MyWorkload"
 import {
   useCapacitySettings,
@@ -29,7 +30,10 @@ function CapacityPage() {
   if (!settings.data.enabled) return <p role="status">需求与容量模块未开启</p>
   const tabs = [
     ...(employeeId
-      ? [{ value: "mine", title: "我的负荷", component: MyWorkload }]
+      ? [
+          { value: "mine", title: "我的负荷", component: MyWorkload },
+          { value: "assignments", title: "我的分配", component: MyAssignments },
+        ]
       : []),
     ...(roles.includes("org_admin") || roles.includes("dept_manager")
       ? [{ value: "team", title: "团队负荷", component: TeamWorkload }]

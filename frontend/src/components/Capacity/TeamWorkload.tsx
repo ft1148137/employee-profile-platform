@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useOrg } from "@/hooks/useOrg"
+import { ExtensionReviews } from "./ExtensionReviews"
 import { WorkloadBand } from "./shared"
 
 export function TeamWorkload({ orgId }: { orgId: string }) {
@@ -51,6 +52,7 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
   )
   return (
     <div className="space-y-6">
+      {managedDepartmentIds.length > 0 && <ExtensionReviews orgId={orgId} />}
       {managedDepartmentIds.length > 0 ? (
         <section aria-label="待处理的调整申请" className="space-y-3">
           <h2 className="text-lg font-semibold">待处理的调整申请</h2>

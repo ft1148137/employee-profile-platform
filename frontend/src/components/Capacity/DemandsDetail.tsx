@@ -12,6 +12,7 @@ import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DemandAssignments } from "./DemandAssignments"
 import { DemandsReference } from "./DemandsReference"
 import { WorkloadBand } from "./shared"
 
@@ -78,6 +79,9 @@ export function DemandsDetail({
             <p className="whitespace-pre-wrap break-words">
               {query.data.description}
             </p>
+            {query.data.committed_end_date && (
+              <p>当前承诺完成：{query.data.committed_end_date}</p>
+            )}
           </section>
           <section aria-label="事件时间线" className="space-y-3">
             <h3 className="font-semibold">事件时间线</h3>
@@ -88,11 +92,17 @@ export function DemandsDetail({
                   {event.responder_name && ` · 答复人：${event.responder_name}`}
                 </p>
                 {event.outcome && <p>结论：{outcomes[event.outcome]}</p>}
-                {(event.start_date || event.end_date) && (
+                {event.kind === "commitment_changed" ? (
                   <p>
-                    最早开始：{event.start_date ?? "未定"} · 承诺完成：
-                    {event.end_date ?? "未定"}
+                    承诺日期由 {event.previous_end_date} 改为 {event.end_date}
                   </p>
+                ) : (
+                  (event.start_date || event.end_date) && (
+                    <p>
+                      最早开始：{event.start_date ?? "未定"} · 承诺完成：
+                      {event.end_date ?? "未定"}
+                    </p>
+                  )
                 )}
                 <p className="whitespace-pre-wrap break-words">{event.text}</p>
                 {event.basis && (
@@ -106,6 +116,9 @@ export function DemandsDetail({
           </section>
           {side === "incoming" && (
             <DemandsBasis orgId={orgId} demandId={demandId} />
+          )}
+          {side === "incoming" && query.data.status === "accepted" && (
+            <DemandAssignments orgId={orgId} demand={query.data} />
           )}
           <DemandsAction
             key={query.data.revision}
