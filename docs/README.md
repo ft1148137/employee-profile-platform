@@ -10,6 +10,7 @@
 - [外部 MCP 客户端接入说明](mcp-clients.md)
 - [已发布画像导出字段与只读接口](profile-export.md)
 - [M1 验收记录](m1-acceptance.md)
+- [M5 验收记录](m5-acceptance.md)
 - [Docker Compose 部署说明](deployment-docker-compose.md)
 - [合成企业与演示数据](../examples/demo-org/README.md)
 - [能力词典模板](../templates/README.md)
