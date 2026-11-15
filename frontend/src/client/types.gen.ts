@@ -1008,6 +1008,22 @@ export type CapabilityTemplatePublic = {
 }
 
 /**
+ * CapacityRequestStatus
+ */
+export type CapacityRequestStatus = "pending" | "approved" | "returned"
+
+/**
+ * CapacitySettingsInput
+ */
+export type CapacitySettingsInput = {
+  /**
+   * Enabled
+   */
+  enabled?: boolean
+  requester_policy?: RequesterPolicy
+}
+
+/**
  * ChangeItemPublic
  */
 export type ChangeItemPublic = {
@@ -2935,6 +2951,7 @@ export type Impact = {
  * InboxKind
  */
 export type InboxKind =
+  | "capacity"
   | "profile_edited"
   | "initial_review"
   | "submitted"
@@ -3551,6 +3568,52 @@ export type ModelSettingUpdate = {
     | "high"
     | "xhigh"
     | null
+}
+
+/**
+ * MyWorkload
+ */
+export type MyWorkload = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Employee Name
+   */
+  employee_name: string
+  /**
+   * Department Id
+   */
+  department_id: string | null
+  /**
+   * Department Name
+   */
+  department_name: string | null
+  /**
+   * Jira Task Count
+   */
+  jira_task_count: number | null
+  /**
+   * Base Percent
+   */
+  base_percent: number | null
+  /**
+   * Platform Percent
+   */
+  platform_percent: number
+  /**
+   * Confirmed Percent
+   */
+  confirmed_percent: number | null
+  /**
+   * Band
+   */
+  band: "unconfirmed" | "available" | "full" | "overloaded"
+  /**
+   * Requests
+   */
+  requests: Array<WorkloadRequestPublic>
 }
 
 /**
@@ -4495,6 +4558,11 @@ export type RequestStatus =
   | "changes_requested"
   | "rejected"
   | "withdrawn"
+
+/**
+ * RequesterPolicy
+ */
+export type RequesterPolicy = "everyone" | "managers"
 
 /**
  * ResolveAppealInput
@@ -5848,6 +5916,161 @@ export type WorkRecordIssue = {
 }
 
 /**
+ * WorkloadAdjustInput
+ */
+export type WorkloadAdjustInput = {
+  /**
+   * Base Percent
+   */
+  base_percent: number
+  /**
+   * Note
+   */
+  note?: string | null
+}
+
+/**
+ * WorkloadDecisionInput
+ */
+export type WorkloadDecisionInput = {
+  /**
+   * Approve
+   */
+  approve: boolean
+  /**
+   * Note
+   */
+  note?: string | null
+}
+
+/**
+ * WorkloadList
+ */
+export type WorkloadList = {
+  /**
+   * Data
+   */
+  data: Array<WorkloadPublic>
+  /**
+   * Count
+   */
+  count: number
+}
+
+/**
+ * WorkloadPublic
+ */
+export type WorkloadPublic = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Employee Name
+   */
+  employee_name: string
+  /**
+   * Department Id
+   */
+  department_id: string | null
+  /**
+   * Department Name
+   */
+  department_name: string | null
+  /**
+   * Jira Task Count
+   */
+  jira_task_count: number | null
+  /**
+   * Base Percent
+   */
+  base_percent: number | null
+  /**
+   * Platform Percent
+   */
+  platform_percent: number
+  /**
+   * Confirmed Percent
+   */
+  confirmed_percent: number | null
+  /**
+   * Band
+   */
+  band: "unconfirmed" | "available" | "full" | "overloaded"
+}
+
+/**
+ * WorkloadRequestInput
+ */
+export type WorkloadRequestInput = {
+  /**
+   * Requested Percent
+   */
+  requested_percent: number
+  /**
+   * Reason
+   */
+  reason: string
+}
+
+/**
+ * WorkloadRequestList
+ */
+export type WorkloadRequestList = {
+  /**
+   * Data
+   */
+  data: Array<WorkloadRequestPublic>
+  /**
+   * Count
+   */
+  count: number
+}
+
+/**
+ * WorkloadRequestPublic
+ */
+export type WorkloadRequestPublic = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Requested Percent
+   */
+  requested_percent: number
+  /**
+   * Reason
+   */
+  reason: string
+  status: CapacityRequestStatus
+  /**
+   * Created At
+   */
+  created_at: string
+  /**
+   * Decided By User Id
+   */
+  decided_by_user_id: string | null
+  /**
+   * Decided For User Id
+   */
+  decided_for_user_id: string | null
+  /**
+   * Decision Note
+   */
+  decision_note: string | null
+  /**
+   * Decided At
+   */
+  decided_at: string | null
+}
+
+/**
  * StatusCard
  */
 export type app__domains__admin__overview__StatusCard = {
@@ -6186,6 +6409,275 @@ export type ModelSettingUpdateWritable = {
     | "xhigh"
     | null
 }
+
+export type capacityGetCapacitySettingsData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity-settings"
+}
+
+export type capacityGetCapacitySettingsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityGetCapacitySettingsError =
+  capacityGetCapacitySettingsErrors[keyof capacityGetCapacitySettingsErrors]
+
+export type capacityGetCapacitySettingsResponses = {
+  /**
+   * Successful Response
+   */
+  200: CapacitySettingsInput
+}
+
+export type capacityGetCapacitySettingsResponse =
+  capacityGetCapacitySettingsResponses[keyof capacityGetCapacitySettingsResponses]
+
+export type capacityPutCapacitySettingsData = {
+  body: CapacitySettingsInput
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity-settings"
+}
+
+export type capacityPutCapacitySettingsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityPutCapacitySettingsError =
+  capacityPutCapacitySettingsErrors[keyof capacityPutCapacitySettingsErrors]
+
+export type capacityPutCapacitySettingsResponses = {
+  /**
+   * Successful Response
+   */
+  200: CapacitySettingsInput
+}
+
+export type capacityPutCapacitySettingsResponse =
+  capacityPutCapacitySettingsResponses[keyof capacityPutCapacitySettingsResponses]
+
+export type capacityGetMyWorkloadData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/workloads/me"
+}
+
+export type capacityGetMyWorkloadErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityGetMyWorkloadError =
+  capacityGetMyWorkloadErrors[keyof capacityGetMyWorkloadErrors]
+
+export type capacityGetMyWorkloadResponses = {
+  /**
+   * Successful Response
+   */
+  200: MyWorkload
+}
+
+export type capacityGetMyWorkloadResponse =
+  capacityGetMyWorkloadResponses[keyof capacityGetMyWorkloadResponses]
+
+export type capacityListWorkloadsData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: {
+    /**
+     * Department Id
+     */
+    department_id?: string | null
+  }
+  url: "/api/v1/orgs/{org_id}/capacity/workloads"
+}
+
+export type capacityListWorkloadsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityListWorkloadsError =
+  capacityListWorkloadsErrors[keyof capacityListWorkloadsErrors]
+
+export type capacityListWorkloadsResponses = {
+  /**
+   * Successful Response
+   */
+  200: WorkloadList
+}
+
+export type capacityListWorkloadsResponse =
+  capacityListWorkloadsResponses[keyof capacityListWorkloadsResponses]
+
+export type capacityAdjustWorkloadData = {
+  body: WorkloadAdjustInput
+  path: {
+    /**
+     * Employee Id
+     */
+    employee_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/workloads/{employee_id}"
+}
+
+export type capacityAdjustWorkloadErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityAdjustWorkloadError =
+  capacityAdjustWorkloadErrors[keyof capacityAdjustWorkloadErrors]
+
+export type capacityAdjustWorkloadResponses = {
+  /**
+   * Successful Response
+   */
+  200: WorkloadPublic
+}
+
+export type capacityAdjustWorkloadResponse =
+  capacityAdjustWorkloadResponses[keyof capacityAdjustWorkloadResponses]
+
+export type capacityRequestWorkloadChangeData = {
+  body: WorkloadRequestInput
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/workloads/me/requests"
+}
+
+export type capacityRequestWorkloadChangeErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityRequestWorkloadChangeError =
+  capacityRequestWorkloadChangeErrors[keyof capacityRequestWorkloadChangeErrors]
+
+export type capacityRequestWorkloadChangeResponses = {
+  /**
+   * Successful Response
+   */
+  200: WorkloadRequestPublic
+}
+
+export type capacityRequestWorkloadChangeResponse =
+  capacityRequestWorkloadChangeResponses[keyof capacityRequestWorkloadChangeResponses]
+
+export type capacityListWorkloadRequestsData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/workload-requests"
+}
+
+export type capacityListWorkloadRequestsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityListWorkloadRequestsError =
+  capacityListWorkloadRequestsErrors[keyof capacityListWorkloadRequestsErrors]
+
+export type capacityListWorkloadRequestsResponses = {
+  /**
+   * Successful Response
+   */
+  200: WorkloadRequestList
+}
+
+export type capacityListWorkloadRequestsResponse =
+  capacityListWorkloadRequestsResponses[keyof capacityListWorkloadRequestsResponses]
+
+export type capacityDecideWorkloadRequestData = {
+  body: WorkloadDecisionInput
+  path: {
+    /**
+     * Request Id
+     */
+    request_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/workload-requests/{request_id}/decision"
+}
+
+export type capacityDecideWorkloadRequestErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityDecideWorkloadRequestError =
+  capacityDecideWorkloadRequestErrors[keyof capacityDecideWorkloadRequestErrors]
+
+export type capacityDecideWorkloadRequestResponses = {
+  /**
+   * Successful Response
+   */
+  200: WorkloadRequestPublic
+}
+
+export type capacityDecideWorkloadRequestResponse =
+  capacityDecideWorkloadRequestResponses[keyof capacityDecideWorkloadRequestResponses]
 
 export type peopleSearchSearchPeopleData = {
   body?: never
