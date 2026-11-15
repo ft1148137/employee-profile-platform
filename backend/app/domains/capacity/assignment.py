@@ -45,11 +45,8 @@ from app.domains.org.service import managed_scope
 
 
 class CommitmentConfirmationRequired(HTTPException):
-    def __init__(self) -> None:
-        super().__init__(
-            409,
-            "会推迟对需求方的承诺，你不能确认新的承诺日期：请把审批代理给目标部门经理，或退回让员工改到承诺日期之内",
-        )
+    def __init__(self, detail: str) -> None:
+        super().__init__(409, detail)
 
 
 def assignment_rows(
@@ -99,13 +96,18 @@ def change_due_date(
     if old is None:
         raise CapacityConflict()
     if due_date > old:
+        detail = (
+            "会推迟对需求方的承诺：请同时填写新的承诺日期（不早于本需求各分配的完成日期）和对外说明"
+            if represents_department(principal, demand.target_department_id)
+            else "会推迟对需求方的承诺，你不能确认新的承诺日期：请把审批代理给目标部门经理，或退回让员工改到承诺日期之内"
+        )
         if (
             commitment_note is None
             or new_committed_end_date is None
             or new_committed_end_date < due_date
             or not represents_department(principal, demand.target_department_id)
         ):
-            raise CommitmentConfirmationRequired()
+            raise CommitmentConfirmationRequired(detail)
         others = session.exec(
             select(col(CapacityAssignment.due_date)).where(
                 CapacityAssignment.org_id == principal.org_id,
@@ -115,7 +117,7 @@ def change_due_date(
             )
         ).all()
         if any(d > new_committed_end_date for d in others):
-            raise CommitmentConfirmationRequired()
+            raise CommitmentConfirmationRequired(detail)
         validate_department_text(
             principal, session, demand.target_department_id, commitment_note
         )
@@ -198,7 +200,11 @@ def create_assignment(
     ):
         raise CapacityNotFound()
     if demand.committed_end_date is None or body.due_date > demand.committed_end_date:
-        raise CommitmentConfirmationRequired()
+        raise CommitmentConfirmationRequired(
+            f"完成日期不能晚于对需求方的承诺日期 {demand.committed_end_date}；需要推迟承诺时，先在已有分配上调整"
+            if demand.committed_end_date is not None
+            else "会推迟对需求方的承诺：请同时填写新的承诺日期（不早于本需求各分配的完成日期）和对外说明"
+        )
     existing = session.exec(
         select(CapacityAssignment.id).where(
             CapacityAssignment.org_id == principal.org_id,

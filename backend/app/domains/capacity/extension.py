@@ -259,6 +259,8 @@ def list_extension_requests(principal: Principal, session: Session) -> Extension
     rows.sort(key=lambda item: (-item[0].created_at.timestamp(), item[0].id))
     reviewers: dict[UUID, UUID | None] = {}
     departments: dict[UUID, bool] = {}
+    reviewer_names: dict[UUID, str] = {}
+    confirmer_names: dict[UUID, list[str]] = {}
     data = []
     for request, row, demand, name in rows:
         result = extension_public(request, row, demand, name)
@@ -279,21 +281,26 @@ def list_extension_requests(principal: Principal, session: Session) -> Extension
             reviewer = reviewers[row.employee_id]
             assert reviewer is not None
             if reviewer != principal.user_id:
-                result.on_behalf_of_name = user_names(
-                    session, principal.org_id, {reviewer}
-                )[reviewer]
+                if reviewer not in reviewer_names:
+                    reviewer_names[reviewer] = user_names(
+                        session, principal.org_id, {reviewer}
+                    )[reviewer]
+                result.on_behalf_of_name = reviewer_names[reviewer]
             if (
-                demand.committed_end_date is not None
+                request.status == CapacityRequestStatus.PENDING
+                and demand.committed_end_date is not None
                 and request.requested_due_date > demand.committed_end_date
                 and not represents_department(principal, target)
             ):
-                result.commitment_confirmer_names = list(
-                    user_names(
-                        session,
-                        principal.org_id,
-                        responder_user_ids(session, principal.org_id, target),
-                    ).values()
-                )
+                if target not in confirmer_names:
+                    confirmer_names[target] = list(
+                        user_names(
+                            session,
+                            principal.org_id,
+                            responder_user_ids(session, principal.org_id, target),
+                        ).values()
+                    )
+                result.commitment_confirmer_names = confirmer_names[target]
         data.append(result)
     return ExtensionList(data=data, count=len(data))
 

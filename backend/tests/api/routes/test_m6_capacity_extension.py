@@ -317,9 +317,10 @@ def test_commitment_confirmation_atomicity_and_a_privacy(
         ),
     ):
         result = decide(api, pending, role, 409, **body)
-        assert (
-            result["detail"]
-            == "会推迟对需求方的承诺，你不能确认新的承诺日期：请把审批代理给目标部门经理，或退回让员工改到承诺日期之内"
+        assert result["detail"] == (
+            "会推迟对需求方的承诺：请同时填写新的承诺日期（不早于本需求各分配的完成日期）和对外说明"
+            if role == "bm"
+            else "会推迟对需求方的承诺，你不能确认新的承诺日期：请把审批代理给目标部门经理，或退回让员工改到承诺日期之内"
         )
     legacy = db.get_one(CapacityAssignment, UUID(other["id"]))
     legacy.due_date = date(2027, 1, 20)
