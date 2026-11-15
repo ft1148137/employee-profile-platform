@@ -248,6 +248,14 @@ function InboxContent({
                     <Button variant="outline" asChild>
                       <Link
                         to="/capacity"
+                        search={
+                          [
+                            "有负荷调整申请等你审批",
+                            "有延期申请等你审批",
+                          ].includes(item.message)
+                            ? { tab: "approvals" }
+                            : {}
+                        }
                         onClick={() => {
                           if (!item.read_at) read.mutate(item.id)
                         }}

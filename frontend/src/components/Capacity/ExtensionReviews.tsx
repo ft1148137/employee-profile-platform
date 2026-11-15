@@ -5,46 +5,29 @@ import {
   type ExtensionDecisionInput,
   type ExtensionPublic,
 } from "@/client"
-import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
-import { useOrg } from "@/hooks/useOrg"
 import {
   CapacityError,
   CommitmentFields,
   commitmentBody,
   NoteField,
   useCapacityRefresh,
-  useExtensions,
-  useMyAssignments,
 } from "./AssignmentFields"
 
-export function ExtensionReviews({ orgId }: { orgId: string }) {
-  const { employeeId } = useOrg()
-  const query = useExtensions(orgId)
-  const own = useMyAssignments(orgId, !!employeeId)
-  if (query.isPending || (employeeId && own.isPending))
-    return <ProfileLoading />
-  if (query.isError || own.isError)
-    return (
-      <ProfileError
-        retry={() => {
-          query.refetch()
-          if (employeeId) own.refetch()
-        }}
-      />
-    )
-  const pending = query.data.data.filter(
-    (request) =>
-      request.status === "pending" &&
-      !own.data?.data.some((row) => row.id === request.assignment_id),
-  )
+export function ExtensionReviews({
+  orgId,
+  requests,
+}: {
+  orgId: string
+  requests: ExtensionPublic[]
+}) {
   return (
     <section aria-label="延期审批" className="space-y-3">
       <h2 className="text-lg font-semibold">延期审批</h2>
-      {!pending.length && (
+      {!requests.length && (
         <p className="text-muted-foreground">暂无待处理的延期申请。</p>
       )}
-      {pending.map((request) => (
+      {requests.map((request) => (
         <ExtensionDecision key={request.id} orgId={orgId} request={request} />
       ))}
     </section>

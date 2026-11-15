@@ -21,6 +21,7 @@ from app.domains.capacity.models import (
     CapacityWorkloadRequest,
 )
 from app.domains.capacity.tools import CAPACITY_TOOLS
+from app.domains.capacity.workload import WORKLOAD_REVIEW_NOTICE
 from app.domains.im.models import ImBinding, ImNotification
 from app.domains.im.notifications import REMINDERS
 from app.domains.inbox.models import InboxItem, InboxKind
@@ -471,8 +472,17 @@ def test_requests_decisions_notifications_and_no_profile_change(
             InboxItem.org_id == org_id, InboxItem.kind == InboxKind.CAPACITY
         )
     ).all()
-    assert len(items) == 4 and all(
-        i.message == REMINDERS[InboxKind.CAPACITY] for i in items
+    assert len(items) == 4
+    reviewer_id = user_id(db, employees["E01"])
+    reviewer_items = [i for i in items if i.recipient_user_id == reviewer_id]
+    employee_items = [
+        i for i in items if i.recipient_employee_id == employees["E02"].id
+    ]
+    assert len(reviewer_items) == 2 and all(
+        i.message == WORKLOAD_REVIEW_NOTICE for i in reviewer_items
+    )
+    assert len(employee_items) == 2 and all(
+        i.message == REMINDERS[InboxKind.CAPACITY] for i in employee_items
     )
     assert (
         len(
