@@ -116,6 +116,11 @@ class DemandBasis(CapacityInput):
     reference: CapacityReference
 
 
+class CommitmentChange(CapacityInput):
+    previous_end_date: date
+    revision: int
+
+
 class DemandEventPublic(CapacityInput):
     kind: DemandEventKind
     text: str
@@ -126,6 +131,8 @@ class DemandEventPublic(CapacityInput):
     end_date: date | None = None
     basis: CapacityReference | None = None
     responder_name: str | None = None
+    previous_end_date: date | None = None
+    revision: int | None = None
 
 
 class DemandPublic(DemandInput):

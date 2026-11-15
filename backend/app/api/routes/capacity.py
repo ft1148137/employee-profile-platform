@@ -5,7 +5,13 @@ from fastapi import APIRouter, Query
 
 from app.api.deps import SessionDep
 from app.authz.deps import OrgPrincipalDep
-from app.domains.capacity import demand, settings, workload
+from app.domains.capacity import assignment, demand, settings, workload
+from app.domains.capacity.assignment_schemas import (
+    AssignmentInput,
+    AssignmentPublic,
+    AssignmentUpdateInput,
+    MyAssignmentList,
+)
 from app.domains.capacity.demand_schemas import (
     CapacityReference,
     DemandBasis,
@@ -31,6 +37,37 @@ from app.domains.capacity.schemas import (
 from app.domains.org.schemas import DepartmentsPublic
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["capacity"])
+
+
+@router.post("/capacity/demands/{demand_id}/assignments")
+def create_assignment(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    demand_id: UUID,
+    body: AssignmentInput,
+) -> AssignmentPublic:
+    result = assignment.create_assignment(principal, session, demand_id, body)
+    session.commit()
+    return result
+
+
+@router.patch("/capacity/assignments/{assignment_id}")
+def update_assignment(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    assignment_id: UUID,
+    body: AssignmentUpdateInput,
+) -> AssignmentPublic:
+    result = assignment.update_assignment(principal, session, assignment_id, body)
+    session.commit()
+    return result
+
+
+@router.get("/capacity/assignments/me")
+def list_my_assignments(
+    principal: OrgPrincipalDep, session: SessionDep
+) -> MyAssignmentList:
+    return assignment.list_my_assignments(principal, session)
 
 
 @router.get("/capacity/departments")

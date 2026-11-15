@@ -185,6 +185,9 @@ import type {
   capacityCapacityReferenceData,
   capacityCapacityReferenceErrors,
   capacityCapacityReferenceResponses,
+  capacityCreateAssignmentData,
+  capacityCreateAssignmentErrors,
+  capacityCreateAssignmentResponses,
   capacityDecideWorkloadRequestData,
   capacityDecideWorkloadRequestErrors,
   capacityDecideWorkloadRequestResponses,
@@ -206,6 +209,9 @@ import type {
   capacityListDemandsData,
   capacityListDemandsErrors,
   capacityListDemandsResponses,
+  capacityListMyAssignmentsData,
+  capacityListMyAssignmentsErrors,
+  capacityListMyAssignmentsResponses,
   capacityListWorkloadRequestsData,
   capacityListWorkloadRequestsErrors,
   capacityListWorkloadRequestsResponses,
@@ -227,6 +233,9 @@ import type {
   capacitySubmitDemandData,
   capacitySubmitDemandErrors,
   capacitySubmitDemandResponses,
+  capacityUpdateAssignmentData,
+  capacityUpdateAssignmentErrors,
+  capacityUpdateAssignmentResponses,
   changeRequestsReadChangeRequestsData,
   changeRequestsReadChangeRequestsErrors,
   changeRequestsReadChangeRequestsResponses,
@@ -576,6 +585,68 @@ export type Options<
 }
 
 export class CapacityService {
+  /**
+   * Create Assignment
+   */
+  public static createAssignment<ThrowOnError extends boolean = true>(
+    options: Options<capacityCreateAssignmentData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capacityCreateAssignmentResponses,
+      capacityCreateAssignmentErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/assignments",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * Update Assignment
+   */
+  public static updateAssignment<ThrowOnError extends boolean = true>(
+    options: Options<capacityUpdateAssignmentData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).patch<
+      capacityUpdateAssignmentResponses,
+      capacityUpdateAssignmentErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/assignments/{assignment_id}",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * List My Assignments
+   */
+  public static listMyAssignments<ThrowOnError extends boolean = true>(
+    options: Options<capacityListMyAssignmentsData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityListMyAssignmentsResponses,
+      capacityListMyAssignmentsErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/assignments/me",
+      ...options,
+    })
+  }
+
   /**
    * List Capacity Departments
    */
