@@ -5,6 +5,7 @@ import { IncomingDemands, OutgoingDemands } from "@/components/Capacity/Demands"
 import { MyAssignments } from "@/components/Capacity/MyAssignments"
 import { MyWorkload } from "@/components/Capacity/MyWorkload"
 import {
+  useCapacityDisabled,
   useCapacitySettings,
   workloadNotice,
 } from "@/components/Capacity/shared"
@@ -23,12 +24,14 @@ export const Route = createFileRoute("/_layout/capacity")({
 function CapacityPage() {
   const { org, roles, employeeId } = useOrg()
   const settings = useCapacitySettings(org?.id)
+  const disabled = useCapacityDisabled(org?.id)
   const { tab } = Route.useSearch()
   const navigate = Route.useNavigate()
   if (!org) return <OrgState />
+  if (disabled || settings.data?.enabled === false)
+    return <p role="status">需求与容量功能已关闭，如需使用请联系企业管理员</p>
   if (settings.isPending) return <ProfileLoading />
   if (settings.isError) return <ProfileError retry={() => settings.refetch()} />
-  if (!settings.data.enabled) return <p role="status">需求与容量模块未开启</p>
   const tabs = [
     ...(employeeId
       ? [
