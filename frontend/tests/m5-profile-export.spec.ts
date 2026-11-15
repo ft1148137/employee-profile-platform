@@ -71,7 +71,9 @@ test("manager downloads every visible published judgment despite page filters", 
   ).toBeTruthy()
   const lines = bytes.subarray(3).toString("utf8").trimEnd().split("\r\n")
   expect(lines).toHaveLength(expected.length + 1)
-  expect(lines[0]).toBe(Object.keys(jsonRows[0]).join(","))
+  expect(lines[0]).toBe(
+    "工号,能力,等级,判断状态,证据数,最近证据时间,批准人,批准时间",
+  )
   expect(lines.slice(1).map((line) => line.split(",")[0])).toEqual(
     expected.map((row) => row.employee_code ?? ""),
   )

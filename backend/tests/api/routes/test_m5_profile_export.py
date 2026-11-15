@@ -3,6 +3,7 @@ import io
 from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
@@ -27,6 +28,16 @@ COLUMNS = [
     "latest_evidence_at",
     "published_by",
     "published_at",
+]
+CSV_COLUMNS = [
+    "工号",
+    "能力",
+    "等级",
+    "判断状态",
+    "证据数",
+    "最近证据时间",
+    "批准人",
+    "批准时间",
 ]
 
 
@@ -166,7 +177,27 @@ def test_export_scope_fields_and_audit(
         csv.DictReader(io.StringIO(csv_response.content.decode("utf-8-sig")))
     )
     assert csv_rows == [
-        {k: "" if v is None else str(v) for k, v in row.items()} for row in rows
+        dict(
+            zip(
+                CSV_COLUMNS,
+                [
+                    row["employee_code"] or "",
+                    row["capability_name"],
+                    row["level_name"] or "未定级",
+                    "暂定" if row["status"] == "tentative" else "已确认",
+                    str(row["evidence_count"]),
+                    (now - timedelta(days=30))
+                    .astimezone(ZoneInfo("Asia/Shanghai"))
+                    .strftime("%Y-%m-%d %H:%M"),
+                    row["published_by"],
+                    (now - timedelta(days=1))
+                    .astimezone(ZoneInfo("Asia/Shanghai"))
+                    .strftime("%Y-%m-%d %H:%M"),
+                ],
+                strict=True,
+            )
+        )
+        for row in rows
     ]
     assert all(c["name"] in csv_response.text for c in capabilities)
     doc = (Path(__file__).resolve().parents[4] / "docs/profile-export.md").read_text()
@@ -258,7 +289,7 @@ def test_export_empty_and_invalid_format(
     )
     response = client.get(f"{url}/profile-export", headers=auth["manager"])
     assert list(csv.reader(io.StringIO(response.content.decode("utf-8-sig")))) == [
-        COLUMNS
+        CSV_COLUMNS
     ]
 
 
@@ -279,4 +310,4 @@ def test_csv_cells_are_safe_and_json_preserves_codes(
     response = client.get(f"{url}/profile-export?format=csv", headers=auth["manager"])
     rows = list(csv.DictReader(io.StringIO(response.content.decode("utf-8-sig"))))
     safe = code if code.startswith("合成") else "'" + code
-    assert sum(r["employee_code"] == safe for r in rows) == 2
+    assert sum(r["工号"] == safe for r in rows) == 2
