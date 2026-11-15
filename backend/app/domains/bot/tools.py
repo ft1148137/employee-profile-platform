@@ -28,21 +28,17 @@ from app.domains.profile.service import read_profile
 from app.domains.review import direct
 
 TOOLS = {t.name: t for t in EMPLOYEE_TOOLS if t.bot_allowed}
-TITLES = (
-    {t.name: t.description for t in TOOLS.values()}
-    | capacity.TITLES
-    | {
-        "read_attachment": "读取会话附件",
-        "suggest_capability": "建议新增能力",
-        "list_team_members": "查看团队成员",
-        "find_people": "按能力找人",
-        "get_member_profile": "查看下属画像",
-        "prepare_profile_edit": "预览直接修改画像",
-        "list_pending_reviews": "查看待审批请求",
-        "get_review": "查看审批详情",
-        "prepare_review_decision": "预览审批决定",
-    }
-)
+TITLES = {t.name: t.description for t in TOOLS.values()} | {
+    "read_attachment": "读取会话附件",
+    "suggest_capability": "建议新增能力",
+    "list_team_members": "查看团队成员",
+    "find_people": "按能力找人",
+    "get_member_profile": "查看下属画像",
+    "prepare_profile_edit": "预览直接修改画像",
+    "list_pending_reviews": "查看待审批请求",
+    "get_review": "查看审批详情",
+    "prepare_review_decision": "预览审批决定",
+}
 PROJECTIONS: dict[str, type[s.Projection]] = {
     "get_my_profile": s.Profile,
     "list_my_evidence": s.EvidenceList,

@@ -70,7 +70,7 @@ def turn(
     cards: list[s.Message] = []
 
     def call(name: str, args: dict[str, JsonValue]) -> JsonValue:
-        title = tools.TITLES.get(name, "不允许的工具")
+        title = tools.TITLES.get(name, capacity.TITLES.get(name, "不允许的工具"))
         if stream:
             stream.check()
             stream.on_tool(title, "start", True)
