@@ -208,7 +208,9 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
     await page.getByLabel("申请完成日期").fill(date)
     await page.getByLabel("延期原因").fill("合成内部原因")
     await page.getByRole("button", { name: "提交延期申请" }).click()
-    await expect(page.getByRole("status")).toContainText("已有延期申请待处理")
+    await expect(page.getByRole("status")).toContainText(
+      "已提交，等待 合成经理 审批",
+    )
     await expect(
       page.getByRole("button", { name: "提交延期申请", exact: true }),
     ).toHaveCount(0)

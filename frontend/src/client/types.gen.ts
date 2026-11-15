@@ -3105,6 +3105,18 @@ export type ExtensionPublic = {
    */
   employee_name: string
   /**
+   * Commitment Confirmer Names
+   */
+  commitment_confirmer_names?: Array<string>
+  /**
+   * On Behalf Of Name
+   */
+  on_behalf_of_name?: string | null
+  /**
+   * Reviewer Names
+   */
+  reviewer_names?: Array<string>
+  /**
    * Demand Id
    */
   demand_id: string
@@ -4257,6 +4269,10 @@ export type MyAssignment = {
    * Closed At
    */
   closed_at: string | null
+  /**
+   * Reviewer Names
+   */
+  reviewer_names: Array<string>
   /**
    * Requesting Department Name
    */
@@ -6798,6 +6814,10 @@ export type WorkloadRequestPublic = {
    * Employee Name
    */
   employee_name?: string | null
+  /**
+   * On Behalf Of Name
+   */
+  on_behalf_of_name?: string | null
   /**
    * Requested Percent
    */

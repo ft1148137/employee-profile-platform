@@ -208,6 +208,7 @@ def test_assignment_load_self_read_and_close(
         "requesting_department_name": "需求部门",
         "capability_name": "合成能力",
         "description": "合成工作说明",
+        "reviewer_names": [people["cm"].display_name],
     }
     load = api("/workloads/me", "w")
     assert (load["platform_percent"], load["confirmed_percent"], load["band"]) == (
@@ -343,7 +344,7 @@ def test_commitment_atomicity_notifications_timeline_and_audit(
         result = api(path, role, {"due_date": "2027-01-05", **body}, 409, "PATCH")
         assert (
             result["detail"]
-            == "会推迟对 A 部门的承诺，请 B 部门经理同时确认新的承诺日期"
+            == "会推迟对需求方的承诺，你不能确认新的承诺日期：请把审批代理给目标部门经理，或退回让员工改到承诺日期之内"
         )
     # A legacy active assignment may already exceed the current commitment.
     legacy = db.get_one(CapacityAssignment, UUID(other["id"]))

@@ -47,7 +47,8 @@ from app.domains.org.service import managed_scope
 class CommitmentConfirmationRequired(HTTPException):
     def __init__(self) -> None:
         super().__init__(
-            409, "会推迟对 A 部门的承诺，请 B 部门经理同时确认新的承诺日期"
+            409,
+            "会推迟对需求方的承诺，你不能确认新的承诺日期：请把审批代理给目标部门经理，或退回让员工改到承诺日期之内",
         )
 
 
@@ -279,6 +280,8 @@ def update_assignment(
 
 
 def list_my_assignments(principal: Principal, session: Session) -> MyAssignmentList:
+    from app.domains.capacity.extension import extension_reviewers, user_names
+
     require_enabled(principal, session)
     subject = employee(principal, session, principal.employee_id)
     rows = session.exec(
@@ -305,6 +308,14 @@ def list_my_assignments(principal: Principal, session: Session) -> MyAssignmentL
             requesting_department_name=department_name,
             capability_name=d.capability_name,
             description=d.description,
+            # shortcut: Resolve per assignment; batch if personal assignment lists grow.
+            reviewer_names=list(
+                user_names(
+                    session,
+                    principal.org_id,
+                    {u.id for u in extension_reviewers(principal, session, r, d)},
+                ).values()
+            ),
         )
         for r, d, department_name in rows
     ]

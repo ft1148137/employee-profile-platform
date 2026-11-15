@@ -355,6 +355,8 @@ def request_workload_change(
 def list_workload_requests(
     principal: Principal, session: Session
 ) -> WorkloadRequestList:
+    from app.domains.capacity.extension import user_names
+
     require_enabled(principal, session)
     query = (
         select(CapacityWorkloadRequest, Employee.display_name)
@@ -396,8 +398,18 @@ def list_workload_requests(
         if row.employee_id not in reviewers:
             reviewers[row.employee_id] = can_review(session, principal, row.employee_id)
         if reviewers[row.employee_id] is not None:
+            reviewer = reviewers[row.employee_id]
+            assert reviewer is not None
             data.append(
-                WorkloadRequestPublic(**row.model_dump(), employee_name=employee_name)
+                WorkloadRequestPublic(
+                    **row.model_dump(),
+                    employee_name=employee_name,
+                    on_behalf_of_name=user_names(session, principal.org_id, {reviewer})[
+                        reviewer
+                    ]
+                    if reviewer != principal.user_id
+                    else None,
+                )
             )
     return WorkloadRequestList(data=data, count=len(data))
 

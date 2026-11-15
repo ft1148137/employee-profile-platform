@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domains.capacity.models import CapacityRequestStatus
 from app.domains.capacity.schemas import CapacityInput, Note, WorkloadDecisionInput
@@ -38,6 +38,9 @@ class ExtensionPublic(BaseModel):
     id: UUID
     assignment_id: UUID
     employee_name: str
+    commitment_confirmer_names: list[str] = Field(default_factory=list)
+    on_behalf_of_name: str | None = None
+    reviewer_names: list[str] = Field(default_factory=list)
     demand_id: UUID
     capability_name: str
     current_due_date: date
