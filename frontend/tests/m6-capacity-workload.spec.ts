@@ -189,6 +189,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     .getByRole("button", { name: "调整", exact: true })
     .click()
   await expect(page.getByRole("dialog")).toContainText("改后会通知本人")
+  await expect(page.getByLabel("调整说明（选填）")).toHaveCount(0)
   await page.getByLabel("其他工作占比（%）").fill("110")
   await page.getByRole("button", { name: "确认调整", exact: true }).click()
   const row = page.getByRole("row").filter({ hasText: "合成员工" })

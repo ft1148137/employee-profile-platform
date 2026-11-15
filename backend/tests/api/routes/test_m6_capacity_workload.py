@@ -167,7 +167,7 @@ def test_scope_and_direct_adjustment(
         response = client.put(
             f"{url}/capacity/workloads/{employees['E02'].id}",
             headers=auth["manager"],
-            json={"base_percent": value, "note": "PRIVATE_NOTE"},
+            json={"base_percent": value},
         )
         assert response.status_code == 200, response.text
         assert response.json()["confirmed_percent"] == value
@@ -630,7 +630,7 @@ def test_direct_adjustment_notifies_employee(
     result = client.put(
         f"{url}/capacity/workloads/{subject.id}",
         headers=auth["manager"],
-        json={"base_percent": 20, "note": "PRIVATE_NOTE"},
+        json={"base_percent": 20},
     )
     assert result.status_code == 200
     item = db.exec(

@@ -161,12 +161,11 @@ function Adjustment({
 }) {
   const client = useQueryClient()
   const [percent, setPercent] = useState(String(workload.base_percent ?? ""))
-  const [note, setNote] = useState("")
   const save = useMutation({
     mutationFn: () =>
       CapacityService.adjustWorkload({
         path: { org_id: orgId, employee_id: workload.employee_id },
-        body: { base_percent: Number(percent), note: note.trim() || null },
+        body: { base_percent: Number(percent) },
       }),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ["capacity", orgId] })
@@ -194,16 +193,6 @@ function Adjustment({
             required
             value={percent}
             onChange={(event) => setPercent(event.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="adjustment-note">调整说明（选填）</Label>
-          <textarea
-            className="w-full rounded-md border bg-transparent p-3 text-sm"
-            id="adjustment-note"
-            maxLength={500}
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
           />
         </div>
         <SetupError error={save.error} />

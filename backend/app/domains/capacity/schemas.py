@@ -31,7 +31,6 @@ class CapacitySettingsInput(CapacityInput):
 
 class WorkloadAdjustInput(CapacityInput):
     base_percent: Percent
-    note: Note | None = None
 
 
 class WorkloadRequestInput(CapacityInput):
