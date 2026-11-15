@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { tabSearch } from "@/components/Admin/AdminTabs"
+import { IncomingDemands, OutgoingDemands } from "@/components/Capacity/Demands"
 import { MyWorkload } from "@/components/Capacity/MyWorkload"
 import {
   useCapacitySettings,
@@ -32,6 +33,14 @@ function CapacityPage() {
       : []),
     ...(roles.includes("org_admin") || roles.includes("dept_manager")
       ? [{ value: "team", title: "团队负荷", component: TeamWorkload }]
+      : []),
+    ...(roles.includes("org_admin") ||
+    roles.includes("dept_manager") ||
+    (employeeId && settings.data.requester_policy === "everyone")
+      ? [{ value: "outgoing", title: "我提的需求", component: OutgoingDemands }]
+      : []),
+    ...(roles.includes("org_admin") || roles.includes("dept_manager")
+      ? [{ value: "incoming", title: "收到的需求", component: IncomingDemands }]
       : []),
   ]
   if (!tabs.length)
