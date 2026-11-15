@@ -269,7 +269,9 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
     await expect(timeline).toContainText(`结论：${conclusion}`)
     await expect(timeline).toContainText("2026-12-05")
     await expect(timeline).toContainText("2026-12-25")
-    await expect(timeline).toContainText("答复人：合成答复经理")
+    // Requesters must not see the responding department's personal names.
+    await expect(timeline).toContainText("答复人：对方部门经理")
+    await expect(page.locator("body")).not.toContainText("合成答复经理")
     await expect(timeline).toContainText("部门级依据（答复时）")
     await privatePage()
     if (!index) {
