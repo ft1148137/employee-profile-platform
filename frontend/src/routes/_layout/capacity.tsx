@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { tabSearch } from "@/components/Admin/AdminTabs"
+import { Approvals } from "@/components/Capacity/Approvals"
 import { IncomingDemands, OutgoingDemands } from "@/components/Capacity/Demands"
 import { MyAssignments } from "@/components/Capacity/MyAssignments"
 import { MyWorkload } from "@/components/Capacity/MyWorkload"
@@ -35,6 +36,7 @@ function CapacityPage() {
           { value: "assignments", title: "我的分配", component: MyAssignments },
         ]
       : []),
+    { value: "approvals", title: "待我审批", component: Approvals },
     ...(roles.includes("org_admin") || roles.includes("dept_manager")
       ? [{ value: "team", title: "团队负荷", component: TeamWorkload }]
       : []),
@@ -47,8 +49,6 @@ function CapacityPage() {
       ? [{ value: "incoming", title: "收到的需求", component: IncomingDemands }]
       : []),
   ]
-  if (!tabs.length)
-    return <p role="alert">需要员工、部门经理或企业管理员身份。</p>
   return (
     <div className="min-w-0 space-y-6">
       <header>

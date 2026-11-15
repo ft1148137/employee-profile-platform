@@ -132,17 +132,17 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     await page.getByLabel("申请原因").fill(reason)
     await page.getByRole("button", { name: "提交申请", exact: true }).click()
     await expect(page.getByRole("status")).toContainText("已有申请待处理")
-    await open(tokens.get("M")!, "/capacity?tab=team")
+    await open(tokens.get("M")!, "/capacity?tab=approvals")
     await expect(
       page.getByRole("link", { name: "需求与容量", exact: true }),
     ).toBeVisible()
     await page.reload()
-    await expect(page.getByRole("tab", { name: "团队负荷" })).toHaveAttribute(
+    await expect(page.getByRole("tab", { name: "待我审批" })).toHaveAttribute(
       "aria-selected",
       "true",
     )
     const application = page.getByRole("article", {
-      name: "合成员工的调整申请",
+      name: "员工的调整申请",
     })
     if (percent === "85")
       await application

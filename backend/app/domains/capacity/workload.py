@@ -45,6 +45,8 @@ from app.domains.work.models import Task
 AVAILABLE_BELOW = 80
 OVERLOADED_ABOVE = 100
 NOTICE = "你有需求或负荷事项需要处理"
+WORKLOAD_REVIEW_NOTICE = "有负荷调整申请等你审批"
+EXTENSION_REVIEW_NOTICE = "有延期申请等你审批"
 
 
 def employee(
@@ -328,7 +330,7 @@ def request_workload_change(
                     org_id=principal.org_id,
                     recipient_user_id=user_id,
                     kind=InboxKind.CAPACITY,
-                    message=NOTICE,
+                    message=WORKLOAD_REVIEW_NOTICE,
                 ),
             )
     base = session.exec(

@@ -29,7 +29,11 @@ from app.domains.capacity.settings import (
     audit,
     require_enabled,
 )
-from app.domains.capacity.workload import NOTICE, employee, notify_employee
+from app.domains.capacity.workload import (
+    EXTENSION_REVIEW_NOTICE,
+    employee,
+    notify_employee,
+)
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.inbox.service import add_item
 from app.domains.org.models import Employee, EmploymentStatus, OrgMembership
@@ -143,7 +147,7 @@ def request_extension(
                     org_id=principal.org_id,
                     recipient_user_id=user.id,
                     kind=InboxKind.CAPACITY,
-                    message=NOTICE,
+                    message=EXTENSION_REVIEW_NOTICE,
                 ),
             )
     audit(
