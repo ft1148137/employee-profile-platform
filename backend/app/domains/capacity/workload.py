@@ -357,7 +357,7 @@ def list_workload_requests(
 ) -> WorkloadRequestList:
     require_enabled(principal, session)
     query = (
-        select(CapacityWorkloadRequest)
+        select(CapacityWorkloadRequest, Employee.display_name)
         .join(
             Employee,
             (col(Employee.org_id) == CapacityWorkloadRequest.org_id)
@@ -389,14 +389,16 @@ def list_workload_requests(
             ).limit(100)
         ).all()
     )
-    rows.sort(key=lambda r: (-r.created_at.timestamp(), r.id))
+    rows.sort(key=lambda r: (-r[0].created_at.timestamp(), r[0].id))
     reviewers: dict[UUID, UUID | None] = {}
     data = []
-    for row in rows:
+    for row, employee_name in rows:
         if row.employee_id not in reviewers:
             reviewers[row.employee_id] = can_review(session, principal, row.employee_id)
         if reviewers[row.employee_id] is not None:
-            data.append(WorkloadRequestPublic.model_validate(row))
+            data.append(
+                WorkloadRequestPublic(**row.model_dump(), employee_name=employee_name)
+            )
     return WorkloadRequestList(data=data, count=len(data))
 
 

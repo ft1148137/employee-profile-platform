@@ -86,7 +86,9 @@ function WorkloadDecision({
       aria-label="员工的调整申请"
       className="space-y-3 rounded-xl border p-4"
     >
-      <h3 className="font-medium">员工 · 申请 {request.requested_percent}%</h3>
+      <h3 className="font-medium">
+        {request.employee_name || "员工"} · 申请 {request.requested_percent}%
+      </h3>
       <p className="whitespace-pre-wrap break-words">{request.reason}</p>
       <Label htmlFor={`decision-${request.id}`}>处理说明（退回必填）</Label>
       <textarea

@@ -6759,6 +6759,10 @@ export type WorkloadRequestPublic = {
    */
   employee_id: string
   /**
+   * Employee Name
+   */
+  employee_name?: string | null
+  /**
    * Requested Percent
    */
   requested_percent: number
