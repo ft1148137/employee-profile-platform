@@ -2,6 +2,9 @@ import type { AuditEventPublic } from "@/client"
 
 export const auditLabels: Record<string, string> = {
   "capacity.demand_submitted": "提交部门需求",
+  "capacity.assignment_created": "分配部门工作",
+  "capacity.assignment_updated": "调整部门分配",
+  "capacity.commitment_changed": "更新部门承诺日期",
   "capacity.demand_replied": "答复部门需求",
   "capacity.demand_accepted": "接受部门需求",
   "capacity.demand_follow_up": "追问部门需求",
@@ -93,6 +96,7 @@ export const actorLabels: Record<string, string> = {
 export const targetLabels: Record<string, string> = {
   capacity_setting: "需求与容量设置",
   capacity_demand: "部门需求",
+  capacity_assignment: "部门工作分配",
   capacity_workload_request: "负荷调整申请",
   department: "部门",
   review_delegation: "代理审批",

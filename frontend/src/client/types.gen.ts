@@ -450,6 +450,78 @@ export type AssessmentStatus =
   | "disputed"
 
 /**
+ * AssignmentInput
+ */
+export type AssignmentInput = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Due Date
+   */
+  due_date: string
+}
+
+/**
+ * AssignmentPublic
+ */
+export type AssignmentPublic = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Due Date
+   */
+  due_date: string
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Demand Id
+   */
+  demand_id: string
+  status: AssignmentStatus
+  /**
+   * Closed At
+   */
+  closed_at: string | null
+}
+
+/**
+ * AssignmentStatus
+ */
+export type AssignmentStatus = "active" | "done" | "cancelled"
+
+/**
+ * AssignmentUpdateInput
+ */
+export type AssignmentUpdateInput = {
+  /**
+   * Due Date
+   */
+  due_date?: string | null
+  /**
+   * Status
+   */
+  status?: "done" | "cancelled" | null
+  /**
+   * New Committed End Date
+   */
+  new_committed_end_date?: string | null
+}
+
+/**
  * AttachmentPublic
  */
 export type AttachmentPublic = {
@@ -1842,6 +1914,14 @@ export type DemandEventPublic = {
    * Responder Name
    */
   responder_name?: string | null
+  /**
+   * Previous End Date
+   */
+  previous_end_date?: string | null
+  /**
+   * Revision
+   */
+  revision?: number | null
 }
 
 /**
@@ -3877,6 +3957,63 @@ export type ModelSettingUpdate = {
     | "high"
     | "xhigh"
     | null
+}
+
+/**
+ * MyAssignment
+ */
+export type MyAssignment = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Due Date
+   */
+  due_date: string
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Demand Id
+   */
+  demand_id: string
+  status: AssignmentStatus
+  /**
+   * Closed At
+   */
+  closed_at: string | null
+  /**
+   * Requesting Department Name
+   */
+  requesting_department_name: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  /**
+   * Description
+   */
+  description: string
+}
+
+/**
+ * MyAssignmentList
+ */
+export type MyAssignmentList = {
+  /**
+   * Data
+   */
+  data: Array<MyAssignment>
+  /**
+   * Count
+   */
+  count: number
 }
 
 /**
@@ -6759,6 +6896,110 @@ export type ModelSettingUpdateWritable = {
     | "xhigh"
     | null
 }
+
+export type capacityCreateAssignmentData = {
+  body: AssignmentInput
+  path: {
+    /**
+     * Demand Id
+     */
+    demand_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/assignments"
+}
+
+export type capacityCreateAssignmentErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityCreateAssignmentError =
+  capacityCreateAssignmentErrors[keyof capacityCreateAssignmentErrors]
+
+export type capacityCreateAssignmentResponses = {
+  /**
+   * Successful Response
+   */
+  200: AssignmentPublic
+}
+
+export type capacityCreateAssignmentResponse =
+  capacityCreateAssignmentResponses[keyof capacityCreateAssignmentResponses]
+
+export type capacityUpdateAssignmentData = {
+  body: AssignmentUpdateInput
+  path: {
+    /**
+     * Assignment Id
+     */
+    assignment_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/assignments/{assignment_id}"
+}
+
+export type capacityUpdateAssignmentErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityUpdateAssignmentError =
+  capacityUpdateAssignmentErrors[keyof capacityUpdateAssignmentErrors]
+
+export type capacityUpdateAssignmentResponses = {
+  /**
+   * Successful Response
+   */
+  200: AssignmentPublic
+}
+
+export type capacityUpdateAssignmentResponse =
+  capacityUpdateAssignmentResponses[keyof capacityUpdateAssignmentResponses]
+
+export type capacityListMyAssignmentsData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/assignments/me"
+}
+
+export type capacityListMyAssignmentsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityListMyAssignmentsError =
+  capacityListMyAssignmentsErrors[keyof capacityListMyAssignmentsErrors]
+
+export type capacityListMyAssignmentsResponses = {
+  /**
+   * Successful Response
+   */
+  200: MyAssignmentList
+}
+
+export type capacityListMyAssignmentsResponse =
+  capacityListMyAssignmentsResponses[keyof capacityListMyAssignmentsResponses]
 
 export type capacityListCapacityDepartmentsData = {
   body?: never

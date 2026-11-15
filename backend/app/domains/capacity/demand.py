@@ -15,6 +15,7 @@ from app.domains.capability.search import (
 from app.domains.capability.service import get_schema, list_capabilities
 from app.domains.capacity.demand_schemas import (
     CapacityReference,
+    CommitmentChange,
     DemandBasis,
     DemandBasisPerson,
     DemandEventPublic,
@@ -247,7 +248,14 @@ def demand_public(session: Session, row: CapacityDemand) -> DemandPublic:
             outcome=e.outcome,
             start_date=e.start_date,
             end_date=e.end_date,
-            basis=CapacityReference.model_validate(e.basis) if e.basis else None,
+            basis=CapacityReference.model_validate(e.basis)
+            if e.kind == DemandEventKind.REPLIED and e.basis
+            else None,
+            **(
+                CommitmentChange.model_validate(e.basis).model_dump()
+                if e.kind == DemandEventKind.COMMITMENT_CHANGED
+                else {}
+            ),
             responder_name=names.get(e.actor_user_id)
             if e.kind == DemandEventKind.REPLIED
             else None,
