@@ -1,5 +1,8 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { AxiosError } from "axios"
+import { useEffect } from "react"
 import { CapacityService, type WorkloadPublic } from "@/client"
+import { client } from "@/client/client.gen"
 import { Badge } from "@/components/ui/badge"
 
 export function useCapacitySettings(orgId?: string) {
@@ -9,7 +12,36 @@ export function useCapacitySettings(orgId?: string) {
       (await CapacityService.getCapacitySettings({ path: { org_id: orgId! } }))
         .data,
     enabled: !!orgId,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   })
+}
+
+export function useCapacityDisabledHandling(orgId?: string) {
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (!orgId) return
+    const interceptor = client.instance.interceptors.response.use(
+      undefined,
+      async (error: unknown) => {
+        if (
+          error instanceof AxiosError &&
+          error.response?.status === 404 &&
+          error.response.data?.detail === "需求与容量模块未开启" &&
+          new URL(
+            error.config?.url ?? "",
+            window.location.origin,
+          ).pathname.startsWith(`/api/v1/orgs/${orgId}/capacity/`)
+        ) {
+          await queryClient.invalidateQueries({
+            queryKey: ["capacity-settings", orgId],
+          })
+        }
+        return Promise.reject(error)
+      },
+    )
+    return () => client.instance.interceptors.response.eject(interceptor)
+  }, [orgId, queryClient])
 }
 
 const bands = {

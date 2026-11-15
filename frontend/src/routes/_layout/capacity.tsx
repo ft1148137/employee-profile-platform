@@ -5,6 +5,7 @@ import { IncomingDemands, OutgoingDemands } from "@/components/Capacity/Demands"
 import { MyAssignments } from "@/components/Capacity/MyAssignments"
 import { MyWorkload } from "@/components/Capacity/MyWorkload"
 import {
+  useCapacityDisabledHandling,
   useCapacitySettings,
   workloadNotice,
 } from "@/components/Capacity/shared"
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/_layout/capacity")({
 function CapacityPage() {
   const { org, roles, employeeId } = useOrg()
   const settings = useCapacitySettings(org?.id)
+  useCapacityDisabledHandling(org?.id)
   const { tab } = Route.useSearch()
   const navigate = Route.useNavigate()
   if (!org) return <OrgState />
