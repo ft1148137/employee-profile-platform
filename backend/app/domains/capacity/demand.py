@@ -1,9 +1,10 @@
+from collections import defaultdict
 from datetime import date
 from typing import Literal
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlmodel import Session, col, or_, select
+from sqlmodel import Session, col, func, or_, select
 
 from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
@@ -208,15 +209,22 @@ def responder_user_ids(
 
 
 def demand_public(session: Session, row: CapacityDemand) -> DemandPublic:
+    return demands_public(session, row.org_id, [row])[0]
+
+
+def demands_public(
+    session: Session, org_id: UUID, rows: list[CapacityDemand]
+) -> list[DemandPublic]:
+    if not rows:
+        return []
     events = session.exec(
         select(CapacityDemandEvent)
         .where(
-            CapacityDemandEvent.org_id == row.org_id,
-            CapacityDemandEvent.demand_id == row.id,
+            CapacityDemandEvent.org_id == org_id,
+            col(CapacityDemandEvent.demand_id).in_([row.id for row in rows]),
         )
         .order_by(col(CapacityDemandEvent.created_at), col(CapacityDemandEvent.id))
     ).all()
-    result = DemandPublic.model_validate(row)
     names = {
         user_id: employee_name or full_name or "企业管理员"
         for user_id, employee_name, full_name in session.exec(
@@ -228,7 +236,7 @@ def demand_public(session: Session, row: CapacityDemand) -> DemandPublic:
                 & (col(Employee.id) == OrgMembership.employee_id),
             )
             .where(
-                OrgMembership.org_id == row.org_id,
+                OrgMembership.org_id == org_id,
                 col(OrgMembership.user_id).in_(
                     {
                         e.actor_user_id
@@ -239,30 +247,37 @@ def demand_public(session: Session, row: CapacityDemand) -> DemandPublic:
             )
         ).all()
     }
-    result.events = [
-        DemandEventPublic(
-            kind=e.kind,
-            text=e.text,
-            created_at=e.created_at,
-            via=e.via,
-            outcome=e.outcome,
-            start_date=e.start_date,
-            end_date=e.end_date,
-            basis=CapacityReference.model_validate(e.basis)
-            if e.kind == DemandEventKind.REPLIED and e.basis
-            else None,
-            **(
-                CommitmentChange.model_validate(e.basis).model_dump()
-                if e.kind == DemandEventKind.COMMITMENT_CHANGED
-                else {}
-            ),
-            responder_name=names.get(e.actor_user_id)
-            if e.kind == DemandEventKind.REPLIED
-            else None,
-        )
-        for e in events
-    ]
-    return result
+    grouped: dict[UUID, list[CapacityDemandEvent]] = defaultdict(list)
+    for event in events:
+        grouped[event.demand_id].append(event)
+    results = []
+    for row in rows:
+        result = DemandPublic.model_validate(row)
+        result.events = [
+            DemandEventPublic(
+                kind=e.kind,
+                text=e.text,
+                created_at=e.created_at,
+                via=e.via,
+                outcome=e.outcome,
+                start_date=e.start_date,
+                end_date=e.end_date,
+                basis=CapacityReference.model_validate(e.basis)
+                if e.kind == DemandEventKind.REPLIED and e.basis
+                else None,
+                **(
+                    CommitmentChange.model_validate(e.basis).model_dump()
+                    if e.kind == DemandEventKind.COMMITMENT_CHANGED
+                    else {}
+                ),
+                responder_name=names.get(e.actor_user_id)
+                if e.kind == DemandEventKind.REPLIED
+                else None,
+            )
+            for e in grouped[row.id]
+        ]
+        results.append(result)
+    return results
 
 
 def demand_row(
@@ -297,6 +312,8 @@ def list_demands(
     principal: Principal,
     session: Session,
     side: Literal["outgoing", "incoming"] = "outgoing",
+    skip: int = 0,
+    limit: int = 50,
 ) -> DemandList:
     require_enabled(principal, session)
     query = select(CapacityDemand).where(CapacityDemand.org_id == principal.org_id)
@@ -313,10 +330,17 @@ def list_demands(
                 principal.managed_department_ids
             )
         )
-    rows = session.exec(
-        query.order_by(col(CapacityDemand.created_at).desc(), col(CapacityDemand.id))
-    ).all()
-    return DemandList(data=[demand_public(session, r) for r in rows], count=len(rows))
+    count = session.exec(select(func.count()).select_from(query.subquery())).one()
+    rows = list(
+        session.exec(
+            query.order_by(
+                col(CapacityDemand.created_at).desc(), col(CapacityDemand.id)
+            )
+            .offset(skip)
+            .limit(limit)
+        ).all()
+    )
+    return DemandList(data=demands_public(session, principal.org_id, rows), count=count)
 
 
 def submit_demand(

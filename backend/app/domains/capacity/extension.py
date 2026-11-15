@@ -1,7 +1,7 @@
 from datetime import date
 from uuid import UUID
 
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, or_, select
 
 from app.authz.deps import get_org_principal
 from app.authz.policies import employee_scope_clause
@@ -45,8 +45,18 @@ def extension_reviewer(
     target_department_id: UUID,
 ) -> UUID | None:
     reviewer = can_review(session, principal, employee_id)
-    if reviewer is None or represents_department(principal, target_department_id):
+    if reviewer is None or extension_department_allowed(
+        principal, session, target_department_id
+    ):
         return reviewer
+    return None
+
+
+def extension_department_allowed(
+    principal: Principal, session: Session, target_department_id: UUID
+) -> bool:
+    if represents_department(principal, target_department_id):
+        return True
     target_ids = managed_scope(
         session, principal.org_id, frozenset({target_department_id})
     )
@@ -58,7 +68,7 @@ def extension_reviewer(
             col(Employee.department_id).in_(target_ids),
         )
     ).first()
-    return reviewer if member is not None else None
+    return member is not None
 
 
 def extension_public(
@@ -153,7 +163,7 @@ def request_extension(
 
 def list_extension_requests(principal: Principal, session: Session) -> ExtensionList:
     require_enabled(principal, session)
-    rows = session.exec(
+    query = (
         select(
             CapacityExtensionRequest,
             CapacityAssignment,
@@ -178,28 +188,52 @@ def list_extension_requests(principal: Principal, session: Session) -> Extension
         .where(
             CapacityExtensionRequest.org_id == principal.org_id,
             Employee.employment_status == EmploymentStatus.ACTIVE,
+            or_(
+                CapacityExtensionRequest.status == CapacityRequestStatus.PENDING,
+                CapacityExtensionRequest.decided_by_user_id == principal.user_id,
+                CapacityExtensionRequest.decided_for_user_id == principal.user_id,
+                CapacityAssignment.employee_id == principal.employee_id,
+            ),
         )
         .order_by(
             col(CapacityExtensionRequest.created_at).desc(),
             col(CapacityExtensionRequest.id),
         )
-    ).all()
-    data = [
-        extension_public(r, row, demand, name)
-        for r, row, demand, name in rows
-        if row.employee_id == principal.employee_id
-        or (
-            (
-                r.status == CapacityRequestStatus.PENDING
-                or r.decided_by_user_id == principal.user_id
-                or r.decided_for_user_id == principal.user_id
+    )
+    rows = list(
+        session.exec(
+            query.where(
+                CapacityExtensionRequest.status == CapacityRequestStatus.PENDING
             )
-            and extension_reviewer(
-                principal, session, row.employee_id, demand.target_department_id
-            )
-            is not None
-        )
-    ]
+        ).all()
+    )
+    rows.extend(
+        session.exec(
+            query.where(
+                CapacityExtensionRequest.status != CapacityRequestStatus.PENDING
+            ).limit(100)
+        ).all()
+    )
+    rows.sort(key=lambda item: (-item[0].created_at.timestamp(), item[0].id))
+    reviewers: dict[UUID, UUID | None] = {}
+    departments: dict[UUID, bool] = {}
+    data = []
+    for request, row, demand, name in rows:
+        if row.employee_id != principal.employee_id:
+            if row.employee_id not in reviewers:
+                reviewers[row.employee_id] = can_review(
+                    session, principal, row.employee_id
+                )
+            if reviewers[row.employee_id] is None:
+                continue
+            target = demand.target_department_id
+            if target not in departments:
+                departments[target] = extension_department_allowed(
+                    principal, session, target
+                )
+            if not departments[target]:
+                continue
+        data.append(extension_public(request, row, demand, name))
     return ExtensionList(data=data, count=len(data))
 
 
