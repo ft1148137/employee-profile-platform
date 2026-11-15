@@ -236,7 +236,9 @@ def test_extension_delegates_keep_department_restriction(
             {"approve": True},
             404,
         )
-    assert api("/extension-requests", "w")["data"] == [pending]
+    assert api("/extension-requests", "w")["data"] == [
+        {**pending, "reviewer_names": []}
+    ]
     assert api("/extension-requests", "foreign", status=404) == {
         "detail": "未找到该企业或你没有权限访问"
     }
