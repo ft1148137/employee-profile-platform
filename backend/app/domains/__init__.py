@@ -6,6 +6,7 @@ from app.domains.admin_assistant import models as admin_assistant
 from app.domains.audit import models as audit
 from app.domains.bot import models as bot
 from app.domains.capability import models as capability
+from app.domains.capacity import models as capacity
 from app.domains.change_request import models as change_request
 from app.domains.drafting import models as drafting
 from app.domains.evidence import models as evidence
@@ -27,6 +28,7 @@ __all__ = [
     "audit",
     "bot",
     "capability",
+    "capacity",
     "change_request",
     "drafting",
     "evidence",
