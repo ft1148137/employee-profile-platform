@@ -7359,6 +7359,14 @@ export type capacityListDemandsData = {
      * Side
      */
     side?: "outgoing" | "incoming"
+    /**
+     * Skip
+     */
+    skip?: number
+    /**
+     * Limit
+     */
+    limit?: number
   }
   url: "/api/v1/orgs/{org_id}/capacity/demands"
 }

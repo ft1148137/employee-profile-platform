@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlmodel import Session, col, func, select
+from sqlmodel import Session, col, func, or_, select
 
 from app.authz.policies import can_view_employee, employee_scope_clause
 from app.authz.principal import Principal
@@ -196,7 +196,10 @@ def list_workloads(
             (col(Department.org_id) == Employee.org_id)
             & (col(Department.id) == Employee.department_id),
         )
-        .where(employee_scope_clause(principal))
+        .where(
+            employee_scope_clause(principal),
+            Employee.employment_status == EmploymentStatus.ACTIVE,
+        )
     )
     if department_id is not None:
         if (
@@ -351,7 +354,7 @@ def list_workload_requests(
     principal: Principal, session: Session
 ) -> WorkloadRequestList:
     require_enabled(principal, session)
-    rows = session.exec(
+    query = (
         select(CapacityWorkloadRequest)
         .join(
             Employee,
@@ -361,22 +364,37 @@ def list_workload_requests(
         .where(
             CapacityWorkloadRequest.org_id == principal.org_id,
             Employee.employment_status == EmploymentStatus.ACTIVE,
+            or_(
+                CapacityWorkloadRequest.status == CapacityRequestStatus.PENDING,
+                CapacityWorkloadRequest.decided_by_user_id == principal.user_id,
+                CapacityWorkloadRequest.decided_for_user_id == principal.user_id,
+            ),
         )
         .order_by(
             col(CapacityWorkloadRequest.created_at).desc(),
             col(CapacityWorkloadRequest.id),
         )
-    ).all()
-    data = [
-        WorkloadRequestPublic.model_validate(r)
-        for r in rows
-        if (
-            r.status == CapacityRequestStatus.PENDING
-            or r.decided_by_user_id == principal.user_id
-            or r.decided_for_user_id == principal.user_id
-        )
-        and can_review(session, principal, r.employee_id) is not None
-    ]
+    )
+    rows = list(
+        session.exec(
+            query.where(CapacityWorkloadRequest.status == CapacityRequestStatus.PENDING)
+        ).all()
+    )
+    rows.extend(
+        session.exec(
+            query.where(
+                CapacityWorkloadRequest.status != CapacityRequestStatus.PENDING
+            ).limit(100)
+        ).all()
+    )
+    rows.sort(key=lambda r: (-r.created_at.timestamp(), r.id))
+    reviewers: dict[UUID, UUID | None] = {}
+    data = []
+    for row in rows:
+        if row.employee_id not in reviewers:
+            reviewers[row.employee_id] = can_review(session, principal, row.employee_id)
+        if reviewers[row.employee_id] is not None:
+            data.append(WorkloadRequestPublic.model_validate(row))
     return WorkloadRequestList(data=data, count=len(data))
 
 
