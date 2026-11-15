@@ -461,6 +461,27 @@ def get_demand_basis(
     )
 
 
+def validate_department_text(
+    principal: Principal, session: Session, target_department_id: UUID, text: str
+) -> None:
+    target_ids = managed_scope(
+        session, principal.org_id, frozenset({target_department_id})
+    )
+    people = session.exec(
+        select(Employee).where(
+            employee_scope_clause(principal),
+            col(Employee.department_id).in_(target_ids),
+            Employee.employment_status == EmploymentStatus.ACTIVE,
+        )
+    ).all()
+    if any(
+        private and private in text
+        for person in people
+        for private in (person.display_name, person.employee_code, str(person.id))
+    ):
+        raise DemandReplyInvalid()
+
+
 def reply_demand(
     principal: Principal,
     session: Session,
@@ -488,22 +509,7 @@ def reply_demand(
         raise CapacityForbidden()
     if row.revision != revision or row.status != DemandStatus.SUBMITTED:
         raise CapacityConflict()
-    target_ids = managed_scope(
-        session, principal.org_id, frozenset({row.target_department_id})
-    )
-    people = session.exec(
-        select(Employee).where(
-            employee_scope_clause(principal),
-            col(Employee.department_id).in_(target_ids),
-            Employee.employment_status == EmploymentStatus.ACTIVE,
-        )
-    ).all()
-    if any(
-        private and private in body.text
-        for person in people
-        for private in (person.display_name, person.employee_code, str(person.id))
-    ):
-        raise DemandReplyInvalid()
+    validate_department_text(principal, session, row.target_department_id, body.text)
     reference = department_reference(
         session,
         principal.org_id,

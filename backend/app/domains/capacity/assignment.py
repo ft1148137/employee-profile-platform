@@ -4,13 +4,15 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlmodel import Session, col, select
 
-from app.authz.policies import can_view_employee
+from app.authz.policies import can_view_employee, employee_scope_clause
 from app.authz.principal import Principal
 from app.domains.base import utc_now
 from app.domains.capacity.assignment_schemas import (
     AssignmentInput,
     AssignmentPublic,
     AssignmentUpdateInput,
+    DemandAssignment,
+    DemandAssignmentList,
     MyAssignment,
     MyAssignmentList,
 )
@@ -18,6 +20,7 @@ from app.domains.capacity.demand import (
     demand_row,
     represents_department,
     responder_user_ids,
+    validate_department_text,
 )
 from app.domains.capacity.models import (
     AssignmentStatus,
@@ -37,7 +40,7 @@ from app.domains.capacity.settings import (
 from app.domains.capacity.workload import NOTICE, employee, notify_employee
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.inbox.service import add_item
-from app.domains.org.models import Department
+from app.domains.org.models import Department, Employee
 from app.domains.org.service import managed_scope
 
 
@@ -83,6 +86,7 @@ def change_due_date(
     demand: CapacityDemand,
     due_date: date,
     new_committed_end_date: date | None,
+    commitment_note: str | None,
     via: Via,
     client_name: str | None,
 ) -> None:
@@ -95,7 +99,8 @@ def change_due_date(
         raise CapacityConflict()
     if due_date > old:
         if (
-            new_committed_end_date is None
+            commitment_note is None
+            or new_committed_end_date is None
             or new_committed_end_date < due_date
             or not represents_department(principal, demand.target_department_id)
         ):
@@ -110,6 +115,9 @@ def change_due_date(
         ).all()
         if any(d > new_committed_end_date for d in others):
             raise CommitmentConfirmationRequired()
+        validate_department_text(
+            principal, session, demand.target_department_id, commitment_note
+        )
         demand.committed_end_date = new_committed_end_date
         demand.revision += 1
         session.add(demand)
@@ -119,7 +127,7 @@ def change_due_date(
                 demand_id=demand.id,
                 kind=DemandEventKind.COMMITMENT_CHANGED,
                 actor_user_id=principal.user_id,
-                text="部门确认调整工作安排，更新承诺完成日期",
+                text=commitment_note,
                 end_date=new_committed_end_date,
                 basis={
                     "previous_end_date": old.isoformat(),
@@ -248,6 +256,7 @@ def update_assignment(
             demand,
             body.due_date,
             body.new_committed_end_date,
+            body.commitment_note,
             via,
             client_name,
         )
@@ -300,3 +309,32 @@ def list_my_assignments(principal: Principal, session: Session) -> MyAssignmentL
         for r, d, department_name in rows
     ]
     return MyAssignmentList(data=data, count=len(data))
+
+
+def list_demand_assignments(
+    principal: Principal, session: Session, demand_id: UUID
+) -> DemandAssignmentList:
+    demand = demand_row(principal, session, demand_id)
+    if not represents_department(principal, demand.target_department_id):
+        raise CapacityNotFound()
+    rows = session.exec(
+        select(CapacityAssignment, Employee.display_name)
+        .join(
+            Employee,
+            (col(Employee.org_id) == CapacityAssignment.org_id)
+            & (col(Employee.id) == CapacityAssignment.employee_id),
+        )
+        .where(
+            CapacityAssignment.org_id == principal.org_id,
+            CapacityAssignment.demand_id == demand.id,
+            employee_scope_clause(principal),
+        )
+        .order_by(Employee.display_name, col(CapacityAssignment.id))
+    ).all()
+    data = [
+        DemandAssignment(
+            **AssignmentPublic.model_validate(row).model_dump(), employee_name=name
+        )
+        for row, name in rows
+    ]
+    return DemandAssignmentList(data=data, count=len(data))
