@@ -483,14 +483,18 @@ def reply_demand(
     target_ids = managed_scope(
         session, principal.org_id, frozenset({row.target_department_id})
     )
-    names = session.exec(
-        select(Employee.display_name).where(
+    people = session.exec(
+        select(Employee).where(
             employee_scope_clause(principal),
             col(Employee.department_id).in_(target_ids),
             Employee.employment_status == EmploymentStatus.ACTIVE,
         )
     ).all()
-    if any(name and name in body.text for name in names):
+    if any(
+        private and private in body.text
+        for person in people
+        for private in (person.display_name, person.employee_code, str(person.id))
+    ):
         raise DemandReplyInvalid()
     reference = department_reference(
         session,

@@ -324,11 +324,15 @@ def test_authorization_validation_and_terminal_states(case: tuple, db: Session) 
         {"outcome": "invalid"},
     ):
         api(path + "/reply", "b", {**REPLY, **patch}, 422)
-    for code in ("E04", "E05", "E08"):
+    for private in (
+        *(employees[code].display_name for code in ("E04", "E05", "E08")),
+        str(employees["E05"].id),
+        employees["E05"].employee_code,
+    ):
         api(
             path + "/reply",
             "b",
-            {**REPLY, "text": f"安排{employees[code].display_name}处理"},
+            {**REPLY, "text": f"安排{private}处理"},
             422,
         )
     api(path + "/respond", body={"action": "follow_up", "revision": 1}, status=422)
