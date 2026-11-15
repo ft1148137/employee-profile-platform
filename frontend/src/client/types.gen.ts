@@ -1008,6 +1008,40 @@ export type CapabilityTemplatePublic = {
 }
 
 /**
+ * CapacityReference
+ */
+export type CapacityReference = {
+  /**
+   * Department Name
+   */
+  department_name: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  /**
+   * Count
+   */
+  count: number
+  /**
+   * Available
+   */
+  available?: number
+  /**
+   * Full
+   */
+  full?: number
+  /**
+   * Overloaded
+   */
+  overloaded?: number
+  /**
+   * Unconfirmed
+   */
+  unconfirmed?: number
+}
+
+/**
  * CapacityRequestStatus
  */
 export type CapacityRequestStatus = "pending" | "approved" | "returned"
@@ -1690,6 +1724,160 @@ export type DelegationView = {
    */
   candidates: Array<DelegateCandidate>
 }
+
+/**
+ * DemandEventKind
+ */
+export type DemandEventKind =
+  | "submitted"
+  | "replied"
+  | "follow_up"
+  | "accepted"
+  | "withdrawn"
+  | "commitment_changed"
+
+/**
+ * DemandEventPublic
+ */
+export type DemandEventPublic = {
+  kind: DemandEventKind
+  /**
+   * Text
+   */
+  text: string
+  /**
+   * Created At
+   */
+  created_at: string
+  /**
+   * Via
+   */
+  via: string
+}
+
+/**
+ * DemandInput
+ */
+export type DemandInput = {
+  /**
+   * Target Department Id
+   */
+  target_department_id: string
+  /**
+   * Capability Key
+   */
+  capability_key: string
+  /**
+   * Minimum Level
+   */
+  minimum_level?: string | null
+  /**
+   * Requesting Department Id
+   */
+  requesting_department_id: string
+  /**
+   * Headcount
+   */
+  headcount: number
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Window Start
+   */
+  window_start: string
+  /**
+   * Window End
+   */
+  window_end: string
+  /**
+   * Description
+   */
+  description: string
+}
+
+/**
+ * DemandList
+ */
+export type DemandList = {
+  /**
+   * Data
+   */
+  data: Array<DemandPublic>
+  /**
+   * Count
+   */
+  count: number
+}
+
+/**
+ * DemandPublic
+ */
+export type DemandPublic = {
+  /**
+   * Target Department Id
+   */
+  target_department_id: string
+  /**
+   * Capability Key
+   */
+  capability_key: string
+  /**
+   * Minimum Level
+   */
+  minimum_level?: string | null
+  /**
+   * Requesting Department Id
+   */
+  requesting_department_id: string
+  /**
+   * Headcount
+   */
+  headcount: number
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Window Start
+   */
+  window_start: string
+  /**
+   * Window End
+   */
+  window_end: string
+  /**
+   * Description
+   */
+  description: string
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  status: DemandStatus
+  /**
+   * Revision
+   */
+  revision: number
+  /**
+   * Created At
+   */
+  created_at: string
+  /**
+   * Events
+   */
+  events?: Array<DemandEventPublic>
+}
+
+/**
+ * DemandStatus
+ */
+export type DemandStatus = "submitted" | "replied" | "accepted" | "withdrawn"
 
 /**
  * DepartmentCapabilitiesInput
@@ -6424,6 +6612,188 @@ export type ModelSettingUpdateWritable = {
     | "xhigh"
     | null
 }
+
+export type capacityListCapacityDepartmentsData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/departments"
+}
+
+export type capacityListCapacityDepartmentsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityListCapacityDepartmentsError =
+  capacityListCapacityDepartmentsErrors[keyof capacityListCapacityDepartmentsErrors]
+
+export type capacityListCapacityDepartmentsResponses = {
+  /**
+   * Successful Response
+   */
+  200: DepartmentsPublic
+}
+
+export type capacityListCapacityDepartmentsResponse =
+  capacityListCapacityDepartmentsResponses[keyof capacityListCapacityDepartmentsResponses]
+
+export type capacityCapacityReferenceData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query: {
+    /**
+     * Target Department Id
+     */
+    target_department_id: string
+    /**
+     * Capability Key
+     */
+    capability_key: string
+    /**
+     * Minimum Level
+     */
+    minimum_level?: string | null
+  }
+  url: "/api/v1/orgs/{org_id}/capacity/reference"
+}
+
+export type capacityCapacityReferenceErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityCapacityReferenceError =
+  capacityCapacityReferenceErrors[keyof capacityCapacityReferenceErrors]
+
+export type capacityCapacityReferenceResponses = {
+  /**
+   * Successful Response
+   */
+  200: CapacityReference
+}
+
+export type capacityCapacityReferenceResponse =
+  capacityCapacityReferenceResponses[keyof capacityCapacityReferenceResponses]
+
+export type capacityListDemandsData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: {
+    /**
+     * Side
+     */
+    side?: "outgoing" | "incoming"
+  }
+  url: "/api/v1/orgs/{org_id}/capacity/demands"
+}
+
+export type capacityListDemandsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityListDemandsError =
+  capacityListDemandsErrors[keyof capacityListDemandsErrors]
+
+export type capacityListDemandsResponses = {
+  /**
+   * Successful Response
+   */
+  200: DemandList
+}
+
+export type capacityListDemandsResponse =
+  capacityListDemandsResponses[keyof capacityListDemandsResponses]
+
+export type capacitySubmitDemandData = {
+  body: DemandInput
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/demands"
+}
+
+export type capacitySubmitDemandErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacitySubmitDemandError =
+  capacitySubmitDemandErrors[keyof capacitySubmitDemandErrors]
+
+export type capacitySubmitDemandResponses = {
+  /**
+   * Successful Response
+   */
+  200: DemandPublic
+}
+
+export type capacitySubmitDemandResponse =
+  capacitySubmitDemandResponses[keyof capacitySubmitDemandResponses]
+
+export type capacityGetDemandData = {
+  body?: never
+  path: {
+    /**
+     * Demand Id
+     */
+    demand_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}"
+}
+
+export type capacityGetDemandErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityGetDemandError =
+  capacityGetDemandErrors[keyof capacityGetDemandErrors]
+
+export type capacityGetDemandResponses = {
+  /**
+   * Successful Response
+   */
+  200: DemandPublic
+}
+
+export type capacityGetDemandResponse =
+  capacityGetDemandResponses[keyof capacityGetDemandResponses]
 
 export type capacityGetCapacitySettingsData = {
   body?: never
