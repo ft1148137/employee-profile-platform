@@ -3,17 +3,23 @@ from zoneinfo import ZoneInfo
 
 from sqlmodel import Session, col, select
 
+from app.domains.base import utc_now
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.inbox.service import add_item
 from app.domains.org.models import Organization, OrgMembership, Role, RoleGrant
 from app.domains.org.timezone import read_timezone
 from app.models import User
-from app.worker.health import WORKER_ALERT_PREFIX, is_fresh
+from app.worker.health import HEARTBEAT_TIMEOUT, WORKER_ALERT_PREFIX, is_fresh
 from app.worker.models import WorkerHeartbeat
+
+PROCESS_STARTED_AT = utc_now()
 
 
 def dispatch_worker_alerts(db: Session, now: datetime) -> None:
     heartbeat = db.get(WorkerHeartbeat, 1, populate_existing=True)
+    if heartbeat is None and now - PROCESS_STARTED_AT < HEARTBEAT_TIMEOUT:
+        db.rollback()
+        return
     if is_fresh(heartbeat.beat_at if heartbeat else None, now):
         db.rollback()
         return

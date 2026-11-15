@@ -54,6 +54,7 @@ from app.domains.review.publish import (
     jira_only,
     publish,
 )
+from app.worker.health import write_heartbeat
 
 OPEN = (RequestStatus.DRAFT, RequestStatus.PENDING_OWNER, RequestStatus.PENDING_REVIEW)
 
@@ -415,6 +416,8 @@ def run_incremental(
                     "增量起草失败，请重试；若仍失败请联系管理员",
                 )
                 session.commit()
+            finally:
+                write_heartbeat(engine)
 
 
 def queue_incremental(session: Session, org_id: UUID) -> None:

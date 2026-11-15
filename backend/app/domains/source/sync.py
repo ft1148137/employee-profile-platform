@@ -34,6 +34,7 @@ from app.domains.work.ingest import (
 )
 from app.domains.work.records import WorkRecordRow
 from app.worker.app import app
+from app.worker.health import write_heartbeat
 
 
 class SyncError(Exception):
@@ -281,6 +282,7 @@ def _batch(
     run.counts, run.cursor, run.updated_at = counts, cursor, utc_now()
     session.add(run)
     session.commit()
+    write_heartbeat(engine)
 
 
 def _ingest(
