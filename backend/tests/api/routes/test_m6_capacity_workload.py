@@ -555,6 +555,11 @@ def test_delegation_expiry_and_inactive_employee(
 
 def test_tools_use_shared_services() -> None:
     assert [(t.name, t.writes) for t in CAPACITY_TOOLS] == [
+        ("list_capacity_departments", False),
+        ("capacity_reference", False),
+        ("submit_demand", True),
+        ("list_demands", False),
+        ("get_demand", False),
         ("get_my_workload", False),
         ("request_workload_change", True),
     ]

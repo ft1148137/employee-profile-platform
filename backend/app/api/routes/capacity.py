@@ -1,10 +1,19 @@
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.api.deps import SessionDep
 from app.authz.deps import OrgPrincipalDep
-from app.domains.capacity import settings, workload
+from app.domains.capacity import demand, settings, workload
+from app.domains.capacity.demand_schemas import (
+    CapacityReference,
+    DemandInput,
+    DemandList,
+    DemandListInput,
+    DemandPublic,
+    ReferenceInput,
+)
 from app.domains.capacity.schemas import (
     CapacitySettingsInput,
     MyWorkload,
@@ -16,8 +25,50 @@ from app.domains.capacity.schemas import (
     WorkloadRequestList,
     WorkloadRequestPublic,
 )
+from app.domains.org.schemas import DepartmentsPublic
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["capacity"])
+
+
+@router.get("/capacity/departments")
+def list_capacity_departments(
+    principal: OrgPrincipalDep, session: SessionDep
+) -> DepartmentsPublic:
+    return demand.list_capacity_departments(principal, session)
+
+
+@router.get("/capacity/reference")
+def capacity_reference(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    query: Annotated[ReferenceInput, Query()],
+) -> CapacityReference:
+    return demand.capacity_reference(principal, session, **query.model_dump())
+
+
+@router.post("/capacity/demands")
+def submit_demand(
+    principal: OrgPrincipalDep, session: SessionDep, body: DemandInput
+) -> DemandPublic:
+    result = demand.submit_demand(principal, session, **body.model_dump())
+    session.commit()
+    return result
+
+
+@router.get("/capacity/demands")
+def list_demands(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    query: Annotated[DemandListInput, Query()],
+) -> DemandList:
+    return demand.list_demands(principal, session, **query.model_dump())
+
+
+@router.get("/capacity/demands/{demand_id}")
+def get_demand(
+    principal: OrgPrincipalDep, session: SessionDep, demand_id: UUID
+) -> DemandPublic:
+    return demand.get_demand(principal, session, demand_id)
 
 
 @router.get("/capacity-settings")

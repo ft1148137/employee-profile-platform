@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
+from app.domains.audit.models import ActorKind
 from app.domains.capability.models import CapabilityDefinition, DepartmentCapability
 from app.domains.capability.service import get_schema, list_capabilities
 from app.domains.capability.stats import CapabilityStatsForbidden, latest_profiles
@@ -72,7 +73,11 @@ class PeopleSearchInvalid(HTTPException):
 def find_people(
     session: Session, principal: Principal, args: PeopleSearchInput
 ) -> PeopleSearchResult:
-    if not principal.is_org_admin and not principal.managed_department_ids:
+    if (
+        principal.actor_type != ActorKind.SYSTEM_WORKER
+        and not principal.is_org_admin
+        and not principal.managed_department_ids
+    ):
         raise CapabilityStatsForbidden()
     for start, end in (
         (args.evidence_from, args.evidence_to),
@@ -103,6 +108,7 @@ def find_people(
         raise PeopleSearchInvalid("最低等级不在当前能力的等级描述中")
     if (
         args.department_id
+        and principal.actor_type != ActorKind.SYSTEM_WORKER
         and not principal.is_org_admin
         and args.department_id not in principal.managed_department_ids
     ):

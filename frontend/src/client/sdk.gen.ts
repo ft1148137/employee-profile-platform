@@ -182,15 +182,27 @@ import type {
   capacityAdjustWorkloadData,
   capacityAdjustWorkloadErrors,
   capacityAdjustWorkloadResponses,
+  capacityCapacityReferenceData,
+  capacityCapacityReferenceErrors,
+  capacityCapacityReferenceResponses,
   capacityDecideWorkloadRequestData,
   capacityDecideWorkloadRequestErrors,
   capacityDecideWorkloadRequestResponses,
   capacityGetCapacitySettingsData,
   capacityGetCapacitySettingsErrors,
   capacityGetCapacitySettingsResponses,
+  capacityGetDemandData,
+  capacityGetDemandErrors,
+  capacityGetDemandResponses,
   capacityGetMyWorkloadData,
   capacityGetMyWorkloadErrors,
   capacityGetMyWorkloadResponses,
+  capacityListCapacityDepartmentsData,
+  capacityListCapacityDepartmentsErrors,
+  capacityListCapacityDepartmentsResponses,
+  capacityListDemandsData,
+  capacityListDemandsErrors,
+  capacityListDemandsResponses,
   capacityListWorkloadRequestsData,
   capacityListWorkloadRequestsErrors,
   capacityListWorkloadRequestsResponses,
@@ -203,6 +215,9 @@ import type {
   capacityRequestWorkloadChangeData,
   capacityRequestWorkloadChangeErrors,
   capacityRequestWorkloadChangeResponses,
+  capacitySubmitDemandData,
+  capacitySubmitDemandErrors,
+  capacitySubmitDemandResponses,
   changeRequestsReadChangeRequestsData,
   changeRequestsReadChangeRequestsErrors,
   changeRequestsReadChangeRequestsResponses,
@@ -552,6 +567,100 @@ export type Options<
 }
 
 export class CapacityService {
+  /**
+   * List Capacity Departments
+   */
+  public static listCapacityDepartments<ThrowOnError extends boolean = true>(
+    options: Options<capacityListCapacityDepartmentsData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityListCapacityDepartmentsResponses,
+      capacityListCapacityDepartmentsErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/departments",
+      ...options,
+    })
+  }
+
+  /**
+   * Capacity Reference
+   */
+  public static capacityReference<ThrowOnError extends boolean = true>(
+    options: Options<capacityCapacityReferenceData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityCapacityReferenceResponses,
+      capacityCapacityReferenceErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/reference",
+      ...options,
+    })
+  }
+
+  /**
+   * List Demands
+   */
+  public static listDemands<ThrowOnError extends boolean = true>(
+    options: Options<capacityListDemandsData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityListDemandsResponses,
+      capacityListDemandsErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/demands",
+      ...options,
+    })
+  }
+
+  /**
+   * Submit Demand
+   */
+  public static submitDemand<ThrowOnError extends boolean = true>(
+    options: Options<capacitySubmitDemandData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capacitySubmitDemandResponses,
+      capacitySubmitDemandErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/demands",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * Get Demand
+   */
+  public static getDemand<ThrowOnError extends boolean = true>(
+    options: Options<capacityGetDemandData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityGetDemandResponses,
+      capacityGetDemandErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}",
+      ...options,
+    })
+  }
+
   /**
    * Get Capacity Settings
    */
