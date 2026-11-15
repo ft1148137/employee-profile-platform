@@ -160,7 +160,7 @@ OAuth 客户端只配 URL、通过网页登录，不添加上面的请求头。
 | 工具 | 用途与主要输入 |
 | --- | --- |
 | `list_capacity_departments` | 选择目标部门，只列部门名称和层级，无参数 |
-| `capacity_reference` | 按 `target_department_id`、`capability_key`、可选 `minimum_level` 读部门人数和负荷档位汇总 |
+| `capacity_reference` | 按 `target_department_id`、`capability_key`、可选 `minimum_level` 读部门人数和负荷档位汇总；A 方看到的匹配人数为 1–2 人时隐藏人数与余量，只提示提交需求由对方经理答复，0 人仍提示暂无匹配，3 人及以上正常显示 |
 | `submit_demand` | 写：提交需求；部门、能力、工作量、日期和说明见下文 |
 | `list_demands` | 读本人有权查看的需求，`side` 为 `outgoing`（默认）或 `incoming` |
 | `get_demand` | 按 `demand_id` 读详情、时间线和当前 `revision` |

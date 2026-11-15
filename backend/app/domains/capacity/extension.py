@@ -8,7 +8,7 @@ from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
 from app.domains.base import utc_now
 from app.domains.capacity.assignment import assignment_rows, change_due_date
-from app.domains.capacity.demand import represents_department
+from app.domains.capacity.demand import represents_department, responder_user_ids
 from app.domains.capacity.extension_schemas import (
     ExtensionDecisionInput,
     ExtensionInput,
@@ -91,6 +91,25 @@ def extension_public(
     )
 
 
+def user_names(session: Session, org_id: UUID, user_ids: set[UUID]) -> dict[UUID, str]:
+    return {
+        user_id: employee_name or full_name or "企业管理员"
+        for user_id, employee_name, full_name in session.exec(
+            select(OrgMembership.user_id, Employee.display_name, User.full_name)
+            .join(User, col(User.id) == OrgMembership.user_id)
+            .outerjoin(
+                Employee,
+                (col(Employee.org_id) == OrgMembership.org_id)
+                & (col(Employee.id) == OrgMembership.employee_id),
+            )
+            .where(
+                OrgMembership.org_id == org_id, col(OrgMembership.user_id).in_(user_ids)
+            )
+            .order_by(col(User.id))
+        ).all()
+    }
+
+
 def request_extension(
     principal: Principal,
     session: Session,
@@ -120,6 +139,42 @@ def request_extension(
         org_id=principal.org_id, assignment_id=row.id, **body.model_dump()
     )
     session.add(request)
+    users = extension_reviewers(principal, session, row, demand)
+    for user in users:
+        add_item(
+            session,
+            InboxItem(
+                org_id=principal.org_id,
+                recipient_user_id=user.id,
+                kind=InboxKind.CAPACITY,
+                message=EXTENSION_REVIEW_NOTICE,
+            ),
+        )
+    audit(
+        principal,
+        session,
+        "capacity.extension_requested",
+        "capacity_extension_request",
+        request.id,
+        via,
+        client_name,
+        {"requested_due_date": body.requested_due_date.isoformat()},
+    )
+    result = extension_public(
+        request, row, demand, employee(principal, session, row.employee_id).display_name
+    )
+    result.reviewer_names = list(
+        user_names(session, principal.org_id, {u.id for u in users}).values()
+    )
+    return result
+
+
+def extension_reviewers(
+    principal: Principal,
+    session: Session,
+    row: CapacityAssignment,
+    demand: CapacityDemand,
+) -> list[User]:
     managers, _ = review_assignment(session, principal.org_id, row.employee_id)
     delegates = active_delegations(session, principal.org_id, managers)
     recipients = set(managers) | {d.delegate_user_id for d in delegates}
@@ -133,36 +188,19 @@ def request_extension(
         )
         .order_by(col(User.id))
     ).all()
-    for user in users:
-        recipient = get_org_principal(principal.org_id, user, session)
+    return [
+        user
+        for user in users
         if (
             extension_reviewer(
-                recipient, session, row.employee_id, demand.target_department_id
+                get_org_principal(principal.org_id, user, session),
+                session,
+                row.employee_id,
+                demand.target_department_id,
             )
             is not None
-        ):
-            add_item(
-                session,
-                InboxItem(
-                    org_id=principal.org_id,
-                    recipient_user_id=user.id,
-                    kind=InboxKind.CAPACITY,
-                    message=EXTENSION_REVIEW_NOTICE,
-                ),
-            )
-    audit(
-        principal,
-        session,
-        "capacity.extension_requested",
-        "capacity_extension_request",
-        request.id,
-        via,
-        client_name,
-        {"requested_due_date": body.requested_due_date.isoformat()},
-    )
-    return extension_public(
-        request, row, demand, employee(principal, session, row.employee_id).display_name
-    )
+        )
+    ]
 
 
 def list_extension_requests(principal: Principal, session: Session) -> ExtensionList:
@@ -223,6 +261,7 @@ def list_extension_requests(principal: Principal, session: Session) -> Extension
     departments: dict[UUID, bool] = {}
     data = []
     for request, row, demand, name in rows:
+        result = extension_public(request, row, demand, name)
         if row.employee_id != principal.employee_id:
             if row.employee_id not in reviewers:
                 reviewers[row.employee_id] = can_review(
@@ -237,7 +276,25 @@ def list_extension_requests(principal: Principal, session: Session) -> Extension
                 )
             if not departments[target]:
                 continue
-        data.append(extension_public(request, row, demand, name))
+            reviewer = reviewers[row.employee_id]
+            assert reviewer is not None
+            if reviewer != principal.user_id:
+                result.on_behalf_of_name = user_names(
+                    session, principal.org_id, {reviewer}
+                )[reviewer]
+            if (
+                demand.committed_end_date is not None
+                and request.requested_due_date > demand.committed_end_date
+                and not represents_department(principal, target)
+            ):
+                result.commitment_confirmer_names = list(
+                    user_names(
+                        session,
+                        principal.org_id,
+                        responder_user_ids(session, principal.org_id, target),
+                    ).values()
+                )
+        data.append(result)
     return ExtensionList(data=data, count=len(data))
 
 

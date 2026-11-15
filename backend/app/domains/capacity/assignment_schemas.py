@@ -50,6 +50,7 @@ class DemandAssignmentList(CapacityInput):
 
 
 class MyAssignment(AssignmentPublic):
+    reviewer_names: list[str]
     requesting_department_name: str
     capability_name: str
     description: str

@@ -218,8 +218,9 @@ def test_own_request_permissions_validation_and_lifecycle(
     request(api, row, status=409)
     for role in ("w", "w2", "a", "am", "bm", "admin", "foreign"):
         decide(api, pending, role, 404)
-    assert api("/extension-requests", "w")["data"] == [pending]
-    assert api("/extension-requests", "cm")["data"] == [pending]
+    listed = {**pending, "reviewer_names": []}
+    assert api("/extension-requests", "w")["data"] == [listed]
+    assert api("/extension-requests", "cm")["data"] == [listed]
     for role in ("w2", "a", "am", "bm", "admin"):
         assert api("/extension-requests", role) == {"data": [], "count": 0}
     api("/extension-requests", "foreign", status=404)
@@ -318,7 +319,7 @@ def test_commitment_confirmation_atomicity_and_a_privacy(
         result = decide(api, pending, role, 409, **body)
         assert (
             result["detail"]
-            == "会推迟对 A 部门的承诺，请 B 部门经理同时确认新的承诺日期"
+            == "会推迟对需求方的承诺，你不能确认新的承诺日期：请把审批代理给目标部门经理，或退回让员工改到承诺日期之内"
         )
     legacy = db.get_one(CapacityAssignment, UUID(other["id"]))
     legacy.due_date = date(2027, 1, 20)
@@ -427,7 +428,9 @@ def test_tools_delegation_expiry_and_provenance(case: tuple, db: Session) -> Non
         ).all()
     ) == {users["cm"].id, users["w2"].id}
     pending = pending.model_dump(mode="json")
-    assert api("/extension-requests", "w2")["data"] == [pending]
+    assert api("/extension-requests", "w2")["data"] == [
+        {**pending, "reviewer_names": [], "on_behalf_of_name": "合成员工cm"}
+    ]
     delegation.ends_at = utc_now() - timedelta(minutes=1)
     db.add(delegation)
     db.commit()

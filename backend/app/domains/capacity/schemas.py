@@ -54,6 +54,7 @@ class WorkloadRequestPublic(BaseModel):
     id: UUID
     employee_id: UUID
     employee_name: str | None = None
+    on_behalf_of_name: str | None = None
     requested_percent: int
     reason: str
     status: CapacityRequestStatus

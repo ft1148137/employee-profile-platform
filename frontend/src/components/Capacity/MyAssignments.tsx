@@ -79,6 +79,9 @@ function MyAssignmentRow({
     onSuccess: refresh,
   })
   const pending = requests.some((request) => request.status === "pending")
+  const waitingNames = (
+    submit.data?.data.reviewer_names ?? row.reviewer_names
+  ).join("、")
   const nextDueDate = new Date(Date.parse(row.due_date) + 86_400_000)
     .toISOString()
     .slice(0, 10)
@@ -92,7 +95,13 @@ function MyAssignmentRow({
         % · 预计完成：{row.due_date}
       </p>
       <p className="whitespace-pre-wrap break-words">{row.description}</p>
-      {pending && <p role="status">已有延期申请待处理，请等待经理答复。</p>}
+      {pending && (
+        <p role="status">
+          {waitingNames
+            ? `已提交，等待 ${waitingNames} 审批`
+            : "目前没有能审批这条延期的经理，请联系企业管理员"}
+        </p>
+      )}
       {!pending && row.status === "active" && (
         <form
           aria-label="申请延期"
@@ -102,6 +111,11 @@ function MyAssignmentRow({
           }}
         >
           <h4 className="font-medium">申请延期</h4>
+          <p className="text-sm text-muted-foreground">
+            {row.reviewer_names.length
+              ? `将交给 ${row.reviewer_names.join("、")} 审批`
+              : "目前没有能审批这条延期的经理，请联系企业管理员"}
+          </p>
           <fieldset disabled={submit.isPending} className="space-y-3">
             <DateField
               label="申请完成日期"

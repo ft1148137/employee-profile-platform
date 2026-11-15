@@ -89,6 +89,12 @@ function WorkloadDecision({
       <h3 className="font-medium">
         {request.employee_name || "员工"} · 申请 {request.requested_percent}%
       </h3>
+      {request.on_behalf_of_name && (
+        <p className="text-sm text-muted-foreground">
+          代 {request.on_behalf_of_name} 审批（原审批人：
+          {request.on_behalf_of_name}）
+        </p>
+      )}
       <p className="whitespace-pre-wrap break-words">{request.reason}</p>
       <Label htmlFor={`decision-${request.id}`}>处理说明（退回必填）</Label>
       <textarea

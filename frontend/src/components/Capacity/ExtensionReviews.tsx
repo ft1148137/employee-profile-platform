@@ -68,6 +68,12 @@ function ExtensionDecision({
       <h3 className="font-semibold">
         {request.employee_name} · {request.capability_name}
       </h3>
+      {request.on_behalf_of_name && (
+        <p className="text-sm text-muted-foreground">
+          代 {request.on_behalf_of_name} 审批（原审批人：
+          {request.on_behalf_of_name}）
+        </p>
+      )}
       <p className="text-sm">
         当前完成：{request.current_due_date} → 申请完成：
         {request.requested_due_date} · 对外承诺：
@@ -89,6 +95,18 @@ function ExtensionDecision({
             <option value="return">退回</option>
           </select>
         </label>
+        {approve && !!request.commitment_confirmer_names?.length && (
+          <p className="text-sm rounded-lg border p-3">
+            这次延期会推迟对需求方的承诺日期，你不能确认新的承诺日期，需要{" "}
+            {request.commitment_confirmer_names.join("、")} 确认。可以：①{" "}
+            {request.on_behalf_of_name
+              ? `请原审批人 ${request.on_behalf_of_name} 把审批代理给 ${request.commitment_confirmer_names.join("、")}`
+              : `在「设置 → 代理审批」把审批代理给 ${request.commitment_confirmer_names.join("、")}`}
+            ， 对方会在「需求与容量 → 待我审批」里处理；②
+            选择「退回」，请员工把完成日期改到 {request.committed_end_date}{" "}
+            或之前再申请。代理设置适用于原审批人的全部审批，包括画像审批。
+          </p>
+        )}
         <NoteField
           label={approve ? "处理说明" : "处理说明（退回必填）"}
           name="note"
