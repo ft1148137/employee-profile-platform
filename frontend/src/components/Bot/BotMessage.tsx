@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router"
 import { useState } from "react"
 import type {
   CapabilitiesPublic,
+  CapacityAction,
   Claim,
   ProfileEditAction,
   QuestionAction,
@@ -19,6 +20,7 @@ export type BotAction =
   | QuestionAction
   | ReviewAction
   | ProfileEditAction
+  | CapacityAction
 const actionLabels = {
   confirm_submit: "确认提交",
   continue_editing: "继续修改",
@@ -57,8 +59,35 @@ export function BotMessage({
           )
         : "等级暂不可用"
       : "未定级")
-  // shortcut: Capacity cards are rendered by NERE-654 after the API foundation lands.
-  if (message.type === "capacity_card") return null
+  if (message.type === "capacity_card")
+    return (
+      <section
+        className="space-y-4 rounded-xl border bg-background p-4"
+        aria-label={message.title}
+      >
+        <h3 className="font-semibold">{message.title}</h3>
+        <p className="whitespace-pre-wrap break-words leading-7">
+          {message.content}
+        </p>
+        {message.result && <p role="status">{message.result}</p>}
+        {message.status === "pending" && (
+          <div className="flex flex-wrap gap-2">
+            {(message.actions ?? []).map((action) => (
+              <Button
+                key={action.action}
+                disabled={disabled}
+                variant={
+                  action.action === "confirm_capacity" ? "default" : "outline"
+                }
+                onClick={() => onAction(action)}
+              >
+                {action.action === "confirm_capacity" ? "确认" : "取消"}
+              </Button>
+            ))}
+          </div>
+        )}
+      </section>
+    )
   if (message.type === "text")
     return (
       <div className="space-y-2">

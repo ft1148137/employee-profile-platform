@@ -156,7 +156,13 @@ Action = (
 class CapacityCard(BaseModel):
     type: Literal["capacity_card"] = "capacity_card"
     card_id: UUID = Field(default_factory=uuid4)
-    kind: Literal["demand", "demand_response"]
+    kind: Literal[
+        "demand",
+        "demand_response",
+        "demand_reply",
+        "workload_request",
+        "extension_request",
+    ]
     title: str
     content: str
     arguments: dict[str, JsonValue]
