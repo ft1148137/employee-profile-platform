@@ -10,6 +10,7 @@ from app.domains.capacity.assignment_schemas import (
     AssignmentInput,
     AssignmentPublic,
     AssignmentUpdateInput,
+    DemandAssignmentList,
     MyAssignmentList,
 )
 from app.domains.capacity.demand_schemas import (
@@ -43,6 +44,13 @@ from app.domains.capacity.schemas import (
 from app.domains.org.schemas import DepartmentsPublic
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["capacity"])
+
+
+@router.get("/capacity/demands/{demand_id}/assignments")
+def list_demand_assignments(
+    principal: OrgPrincipalDep, session: SessionDep, demand_id: UUID
+) -> DemandAssignmentList:
+    return assignment.list_demand_assignments(principal, session, demand_id)
 
 
 @router.post("/capacity/demands/{demand_id}/assignments")

@@ -299,9 +299,21 @@ def test_commitment_confirmation_atomicity_and_a_privacy(
     )
     db.commit()
     for role, body in (
-        ("cm", {"new_committed_end_date": "2027-01-10"}),
+        (
+            "cm",
+            {
+                "new_committed_end_date": "2027-01-10",
+                "commitment_note": "部门调整交付安排",
+            },
+        ),
         ("bm", {}),
-        ("bm", {"new_committed_end_date": "2027-01-04"}),
+        (
+            "bm",
+            {
+                "new_committed_end_date": "2027-01-04",
+                "commitment_note": "部门调整交付安排",
+            },
+        ),
     ):
         result = decide(api, pending, role, 409, **body)
         assert (
@@ -312,7 +324,14 @@ def test_commitment_confirmation_atomicity_and_a_privacy(
     legacy.due_date = date(2027, 1, 20)
     db.add(legacy)
     db.commit()
-    decide(api, pending, "bm", 409, new_committed_end_date="2027-01-10")
+    decide(
+        api,
+        pending,
+        "bm",
+        409,
+        new_committed_end_date="2027-01-10",
+        commitment_note="部门调整交付安排",
+    )
     before = api(f"/demands/{demand.id}", "a")
     assert (
         before["revision"] == 1
@@ -329,7 +348,13 @@ def test_commitment_confirmation_atomicity_and_a_privacy(
         ).all()
         == []
     )
-    decide(api, pending, "bm", new_committed_end_date="2027-01-20")
+    decide(
+        api,
+        pending,
+        "bm",
+        new_committed_end_date="2027-01-20",
+        commitment_note="部门调整交付安排",
+    )
     public = api(f"/demands/{demand.id}", "a")
     assert (public["revision"], public["committed_end_date"]) == (2, "2027-01-20")
     assert public["events"][0]["kind"] == "commitment_changed"

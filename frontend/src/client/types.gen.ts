@@ -519,6 +519,10 @@ export type AssignmentUpdateInput = {
    * New Committed End Date
    */
   new_committed_end_date?: string | null
+  /**
+   * Commitment Note
+   */
+  commitment_note?: string | null
 }
 
 /**
@@ -1798,6 +1802,55 @@ export type DelegationView = {
 }
 
 /**
+ * DemandAssignment
+ */
+export type DemandAssignment = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Due Date
+   */
+  due_date: string
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Demand Id
+   */
+  demand_id: string
+  status: AssignmentStatus
+  /**
+   * Closed At
+   */
+  closed_at: string | null
+  /**
+   * Employee Name
+   */
+  employee_name: string
+}
+
+/**
+ * DemandAssignmentList
+ */
+export type DemandAssignmentList = {
+  /**
+   * Data
+   */
+  data: Array<DemandAssignment>
+  /**
+   * Count
+   */
+  count: number
+}
+
+/**
  * DemandBasis
  */
 export type DemandBasis = {
@@ -2916,6 +2969,10 @@ export type ExtensionDecisionInput = {
    * New Committed End Date
    */
   new_committed_end_date?: string | null
+  /**
+   * Commitment Note
+   */
+  commitment_note?: string | null
 }
 
 /**
@@ -2958,6 +3015,26 @@ export type ExtensionPublic = {
    * Assignment Id
    */
   assignment_id: string
+  /**
+   * Employee Name
+   */
+  employee_name: string
+  /**
+   * Demand Id
+   */
+  demand_id: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  /**
+   * Current Due Date
+   */
+  current_due_date: string
+  /**
+   * Committed End Date
+   */
+  committed_end_date: string | null
   /**
    * Requested Due Date
    */
@@ -6985,6 +7062,42 @@ export type ModelSettingUpdateWritable = {
     | "xhigh"
     | null
 }
+
+export type capacityListDemandAssignmentsData = {
+  body?: never
+  path: {
+    /**
+     * Demand Id
+     */
+    demand_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/assignments"
+}
+
+export type capacityListDemandAssignmentsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityListDemandAssignmentsError =
+  capacityListDemandAssignmentsErrors[keyof capacityListDemandAssignmentsErrors]
+
+export type capacityListDemandAssignmentsResponses = {
+  /**
+   * Successful Response
+   */
+  200: DemandAssignmentList
+}
+
+export type capacityListDemandAssignmentsResponse =
+  capacityListDemandAssignmentsResponses[keyof capacityListDemandAssignmentsResponses]
 
 export type capacityCreateAssignmentData = {
   body: AssignmentInput

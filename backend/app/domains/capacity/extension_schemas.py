@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from app.domains.capacity.models import CapacityRequestStatus
 from app.domains.capacity.schemas import CapacityInput, Note, WorkloadDecisionInput
@@ -18,12 +18,30 @@ class RequestExtensionInput(ExtensionInput):
 
 class ExtensionDecisionInput(WorkloadDecisionInput):
     new_committed_end_date: date | None = None
+    commitment_note: Note | None = None
+
+    @model_validator(mode="after")
+    def commitment_fields(self) -> ExtensionDecisionInput:
+        if not self.approve and (
+            self.new_committed_end_date is not None or self.commitment_note is not None
+        ):
+            raise ValueError("退回延期时不能修改承诺日期或填写承诺说明")
+        if self.new_committed_end_date is not None and self.commitment_note is None:
+            raise ValueError("推迟承诺时必须填写给对方部门的说明")
+        if self.new_committed_end_date is None and self.commitment_note is not None:
+            raise ValueError("未修改承诺日期时不能填写承诺说明")
+        return self
 
 
 class ExtensionPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     assignment_id: UUID
+    employee_name: str
+    demand_id: UUID
+    capability_name: str
+    current_due_date: date
+    committed_end_date: date | None
     requested_due_date: date
     reason: str
     status: CapacityRequestStatus

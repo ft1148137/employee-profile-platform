@@ -269,7 +269,11 @@ def test_scope_status_and_input_validation(case: tuple, db: Session) -> None:
         {"status": "active"},
         {"due_date": None},
         {"status": "done", "due_date": "2026-12-21"},
-        {"status": "done", "new_committed_end_date": "2027-01-01"},
+        {
+            "status": "done",
+            "new_committed_end_date": "2027-01-01",
+            "commitment_note": "部门调整交付安排",
+        },
         {"employee_id": str(people["a"].id)},
     ):
         api(f"/assignments/{row['id']}", body=body, status=422, method="PATCH")
@@ -321,8 +325,20 @@ def test_commitment_atomicity_notifications_timeline_and_audit(
     )
     for role, body in [
         ("bm", {}),
-        ("cm", {"new_committed_end_date": "2027-01-10"}),
-        ("bm", {"new_committed_end_date": "2027-01-04"}),
+        (
+            "cm",
+            {
+                "new_committed_end_date": "2027-01-10",
+                "commitment_note": "部门调整交付安排",
+            },
+        ),
+        (
+            "bm",
+            {
+                "new_committed_end_date": "2027-01-04",
+                "commitment_note": "部门调整交付安排",
+            },
+        ),
     ]:
         result = api(path, role, {"due_date": "2027-01-05", **body}, 409, "PATCH")
         assert (
@@ -336,7 +352,11 @@ def test_commitment_atomicity_notifications_timeline_and_audit(
     db.commit()
     api(
         path,
-        body={"due_date": "2027-01-05", "new_committed_end_date": "2027-01-10"},
+        body={
+            "due_date": "2027-01-05",
+            "new_committed_end_date": "2027-01-10",
+            "commitment_note": "部门调整交付安排",
+        },
         status=409,
         method="PATCH",
     )
@@ -345,7 +365,11 @@ def test_commitment_atomicity_notifications_timeline_and_audit(
     assert api(role="w")["data"][0]["due_date"] == "2026-12-25"
     api(
         path,
-        body={"due_date": "2027-01-05", "new_committed_end_date": "2027-01-20"},
+        body={
+            "due_date": "2027-01-05",
+            "new_committed_end_date": "2027-01-20",
+            "commitment_note": "部门调整交付安排",
+        },
         method="PATCH",
     )
     public = api(f"/demands/{demand.id}", "a")
@@ -405,7 +429,9 @@ def test_service_provenance_and_disabled_module(case: tuple, db: Session) -> Non
             session,
             UUID(row["id"]),
             AssignmentUpdateInput(
-                due_date="2027-01-01", new_committed_end_date="2027-01-02"
+                due_date="2027-01-01",
+                new_committed_end_date="2027-01-02",
+                commitment_note="部门调整交付安排",
             ),
             via="mcp",
             client_name="synthetic-client",
@@ -447,7 +473,11 @@ def test_concurrent_assignment_and_commitment_writes(case: tuple) -> None:
     def adjust(_: int) -> int:
         return api(
             f"/assignments/{row['id']}",
-            body={"due_date": "2027-01-01", "new_committed_end_date": "2027-01-01"},
+            body={
+                "due_date": "2027-01-01",
+                "new_committed_end_date": "2027-01-01",
+                "commitment_note": "部门调整交付安排",
+            },
             method="PATCH",
             status=None,
         ).status_code

@@ -209,6 +209,9 @@ import type {
   capacityListCapacityDepartmentsData,
   capacityListCapacityDepartmentsErrors,
   capacityListCapacityDepartmentsResponses,
+  capacityListDemandAssignmentsData,
+  capacityListDemandAssignmentsErrors,
+  capacityListDemandAssignmentsResponses,
   capacityListDemandsData,
   capacityListDemandsErrors,
   capacityListDemandsResponses,
@@ -594,6 +597,24 @@ export type Options<
 }
 
 export class CapacityService {
+  /**
+   * List Demand Assignments
+   */
+  public static listDemandAssignments<ThrowOnError extends boolean = true>(
+    options: Options<capacityListDemandAssignmentsData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityListDemandAssignmentsResponses,
+      capacityListDemandAssignmentsErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/assignments",
+      ...options,
+    })
+  }
+
   /**
    * Create Assignment
    */
