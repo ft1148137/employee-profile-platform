@@ -1515,6 +1515,20 @@ export type CoverageStatus = {
 }
 
 /**
+ * CoverageSummary
+ */
+export type CoverageSummary = {
+  /**
+   * Total
+   */
+  total: number
+  /**
+   * Statuses
+   */
+  statuses: Array<CoverageStatus>
+}
+
+/**
  * CsvImportPublic
  */
 export type CsvImportPublic = {
@@ -1727,6 +1741,7 @@ export type DepartmentCoverage = {
    * Department Name
    */
   department_name: string
+  with_descendants: CoverageSummary | null
 }
 
 /**

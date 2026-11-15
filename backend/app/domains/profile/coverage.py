@@ -37,6 +37,7 @@ class CoverageSummary(BaseModel):
 class DepartmentCoverage(CoverageSummary):
     department_id: UUID
     department_name: str
+    with_descendants: CoverageSummary | None
 
 
 class JiraSyncFailure(BaseModel):
@@ -114,6 +115,17 @@ def read_coverage(session: Session, principal: Principal) -> CoveragePublic:
             and employee.department_id in by_department
         ):
             by_department[employee.department_id].append(statuses[employee.id])
+    parent_ids = {d.id: d.parent_department_id for d in departments}
+    subtree_statuses = {id: list(values) for id, values in by_department.items()}
+    nonleaf = set()
+    for department in departments:
+        ancestor = department.parent_department_id
+        seen = {department.id}
+        while ancestor is not None and ancestor in parent_ids and ancestor not in seen:
+            seen.add(ancestor)
+            nonleaf.add(ancestor)
+            subtree_statuses[ancestor].extend(by_department[department.id])
+            ancestor = parent_ids[ancestor]
     requests = session.exec(
         select(ProfileChangeRequest).where(
             ProfileChangeRequest.org_id == org_id,
@@ -162,6 +174,9 @@ def read_coverage(session: Session, principal: Principal) -> CoveragePublic:
                 department_id=d.id,
                 department_name=d.name,
                 **_summary(by_department[d.id]).model_dump(),
+                with_descendants=_summary(subtree_statuses[d.id])
+                if d.id in nonleaf
+                else None,
             )
             for d in departments
         ],
