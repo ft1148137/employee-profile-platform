@@ -179,6 +179,30 @@ import type {
   capabilityTemplatesPreviewTemplateResponses,
   capabilityTemplatesReadTemplatesData,
   capabilityTemplatesReadTemplatesResponses,
+  capacityAdjustWorkloadData,
+  capacityAdjustWorkloadErrors,
+  capacityAdjustWorkloadResponses,
+  capacityDecideWorkloadRequestData,
+  capacityDecideWorkloadRequestErrors,
+  capacityDecideWorkloadRequestResponses,
+  capacityGetCapacitySettingsData,
+  capacityGetCapacitySettingsErrors,
+  capacityGetCapacitySettingsResponses,
+  capacityGetMyWorkloadData,
+  capacityGetMyWorkloadErrors,
+  capacityGetMyWorkloadResponses,
+  capacityListWorkloadRequestsData,
+  capacityListWorkloadRequestsErrors,
+  capacityListWorkloadRequestsResponses,
+  capacityListWorkloadsData,
+  capacityListWorkloadsErrors,
+  capacityListWorkloadsResponses,
+  capacityPutCapacitySettingsData,
+  capacityPutCapacitySettingsErrors,
+  capacityPutCapacitySettingsResponses,
+  capacityRequestWorkloadChangeData,
+  capacityRequestWorkloadChangeErrors,
+  capacityRequestWorkloadChangeResponses,
   changeRequestsReadChangeRequestsData,
   changeRequestsReadChangeRequestsErrors,
   changeRequestsReadChangeRequestsResponses,
@@ -525,6 +549,168 @@ export type Options<
    * used to access values that aren't defined as part of the SDK function.
    */
   meta?: Record<string, unknown>
+}
+
+export class CapacityService {
+  /**
+   * Get Capacity Settings
+   */
+  public static getCapacitySettings<ThrowOnError extends boolean = true>(
+    options: Options<capacityGetCapacitySettingsData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityGetCapacitySettingsResponses,
+      capacityGetCapacitySettingsErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity-settings",
+      ...options,
+    })
+  }
+
+  /**
+   * Put Capacity Settings
+   */
+  public static putCapacitySettings<ThrowOnError extends boolean = true>(
+    options: Options<capacityPutCapacitySettingsData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).put<
+      capacityPutCapacitySettingsResponses,
+      capacityPutCapacitySettingsErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity-settings",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * Get My Workload
+   */
+  public static getMyWorkload<ThrowOnError extends boolean = true>(
+    options: Options<capacityGetMyWorkloadData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityGetMyWorkloadResponses,
+      capacityGetMyWorkloadErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/workloads/me",
+      ...options,
+    })
+  }
+
+  /**
+   * List Workloads
+   */
+  public static listWorkloads<ThrowOnError extends boolean = true>(
+    options: Options<capacityListWorkloadsData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityListWorkloadsResponses,
+      capacityListWorkloadsErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/workloads",
+      ...options,
+    })
+  }
+
+  /**
+   * Adjust Workload
+   */
+  public static adjustWorkload<ThrowOnError extends boolean = true>(
+    options: Options<capacityAdjustWorkloadData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).put<
+      capacityAdjustWorkloadResponses,
+      capacityAdjustWorkloadErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/workloads/{employee_id}",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * Request Workload Change
+   */
+  public static requestWorkloadChange<ThrowOnError extends boolean = true>(
+    options: Options<capacityRequestWorkloadChangeData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capacityRequestWorkloadChangeResponses,
+      capacityRequestWorkloadChangeErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/workloads/me/requests",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * List Workload Requests
+   */
+  public static listWorkloadRequests<ThrowOnError extends boolean = true>(
+    options: Options<capacityListWorkloadRequestsData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityListWorkloadRequestsResponses,
+      capacityListWorkloadRequestsErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/workload-requests",
+      ...options,
+    })
+  }
+
+  /**
+   * Decide Workload Request
+   */
+  public static decideWorkloadRequest<ThrowOnError extends boolean = true>(
+    options: Options<capacityDecideWorkloadRequestData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capacityDecideWorkloadRequestResponses,
+      capacityDecideWorkloadRequestErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/workload-requests/{request_id}/decision",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
 }
 
 export class PeopleSearchService {

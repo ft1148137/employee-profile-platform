@@ -15,6 +15,7 @@ from app.worker.health import WORKER_ALERT_NOTIFICATION, WORKER_ALERT_PREFIX
 
 # Most kinds use fixed copy because inbox messages may contain private data.
 REMINDERS = {
+    InboxKind.CAPACITY: "你有需求或负荷事项需要处理",
     InboxKind.INITIAL_REVIEW: "你有新的画像请求待过目",
     InboxKind.PROFILE_EDITED: "你的画像已被直接修改",
     InboxKind.SUBMITTED: "你的画像请求已提交",
