@@ -4,7 +4,7 @@ import sys
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock
 from uuid import uuid4
 
 import pytest
@@ -17,15 +17,20 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, select
 
 from app.api import deps
+from app.authz.principal import Principal
 from app.core import db as core_db
 from app.core.db import engine
 from app.core.security import create_access_token
 from app.domains.admin import overview
 from app.domains.base import utc_now
+from app.domains.capability.service import activate_template
+from app.domains.drafting import incremental, model, service
+from app.domains.drafting.models import DraftingSetting
 from app.domains.im import gateway, notifications
 from app.domains.im.models import ImBinding, ImNotification, ImSetting
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.inbox.service import add_item
+from app.domains.model.models import ModelSetting
 from app.domains.org.models import (
     Employee,
     Organization,
@@ -33,8 +38,10 @@ from app.domains.org.models import (
     Role,
     RoleGrant,
 )
+from app.domains.source import sync
+from app.domains.source.models import SourceConnection, SyncRun
 from app.models import User
-from app.worker import health, tasks
+from app.worker import health, monitor, tasks
 from app.worker.app import app
 from app.worker.models import WorkerHeartbeat
 from app.worker.monitor import dispatch_worker_alerts
@@ -48,6 +55,9 @@ def db(migration_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Generator[S
     monkeypatch.setattr(core_db, "engine", migration_engine)
     monkeypatch.setattr(deps, "engine", migration_engine)
     monkeypatch.setattr(tasks, "engine", migration_engine)
+    monkeypatch.setattr(
+        monitor, "PROCESS_STARTED_AT", utc_now() - health.HEARTBEAT_TIMEOUT
+    )
     monkeypatch.setattr(sys.modules[__name__], "engine", migration_engine)
     monkeypatch.setenv(
         "DATABASE_URL", migration_engine.url.render_as_string(hide_password=False)
@@ -132,6 +142,128 @@ def test_heartbeat_task_updates_singleton(db: Session) -> None:
     db.expire_all()
     rows = db.exec(select(WorkerHeartbeat)).all()
     assert len(rows) == 1 and rows[0].beat_at >= first_at
+
+
+@pytest.mark.parametrize("kind", ["initial", "incremental", "jira"])
+def test_long_task_progress_keeps_worker_healthy(
+    db: Session,
+    tenants: list,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+) -> None:
+    member = tenants[0][0]
+    principal = Principal.system_worker(member.org_id)
+    now = utc_now()
+    started_at = now
+    monkeypatch.setattr(health, "utc_now", lambda: now)
+    for module in (service, incremental, sync):
+        monkeypatch.setattr(module, "engine", engine)
+    health.write_heartbeat(engine)
+    calls = 0
+
+    def progress(*_args: object, **_kwargs: object) -> model.DraftResult:
+        nonlocal now, calls
+        now += timedelta(minutes=2)
+        calls += 1
+        assert health.main() == 0
+        dispatch_worker_alerts(db, now)
+        assert not db.exec(select(InboxItem)).all()
+        return model.DraftResult([], {})
+
+    if kind == "jira":
+        connection = SourceConnection(
+            org_id=member.org_id,
+            updated_by_user_id=member.user_id,
+            kind="jira",
+            config={
+                "deployment": "cloud",
+                "base_url": "https://synthetic.example.com",
+                "auth_type": "api_token",
+                "username": "synthetic@example.com",
+            },
+        )
+        db.add(connection)
+        db.flush()
+        run = SyncRun(
+            org_id=member.org_id,
+            connection_id=connection.id,
+            requested_by_user_id=member.user_id,
+        )
+        db.add(run)
+        db.commit()
+
+        def page(*_args: object) -> SimpleNamespace:
+            progress()
+            return SimpleNamespace(
+                issues=[], next_cursor=str(calls) if calls < 3 else None
+            )
+
+        jira = MagicMock()
+        jira.__enter__.return_value.search.side_effect = page
+        monkeypatch.setattr(sync, "jira_client_for", lambda _: jira)
+        sync._ingest(db, run, connection, 100)
+    else:
+        activate_template(db, principal, "tech-rnd")
+        db.add(
+            DraftingSetting(
+                org_id=member.org_id,
+                auto_draft_enabled=True,
+                updated_by_user_id=member.user_id,
+            )
+        )
+        db.add(
+            ModelSetting(
+                org_id=member.org_id,
+                enabled=True,
+                kind="openai_compatible",
+                provider="openai-compatible",
+                base_url="https://synthetic.example.com/v1",
+                model="synthetic",
+                updated_by_user_id=member.user_id,
+            )
+        )
+        db.commit()
+        monkeypatch.setattr(service, "validate_capabilities", lambda *_: None)
+        monkeypatch.setattr(model, "draft", progress)
+        monkeypatch.setattr(incremental, "draft_employee", progress)
+        if kind == "initial":
+            service.run_drafting(principal, None)
+        else:
+            incremental.run_incremental(principal)
+    assert calls == 3 and now - started_at > health.HEARTBEAT_TIMEOUT
+    assert health.main() == 0
+    dispatch_worker_alerts(db, now)
+    assert not db.exec(select(InboxItem)).all()
+    now += health.HEARTBEAT_TIMEOUT + timedelta(seconds=1)
+    assert health.main() == 1
+    dispatch_worker_alerts(db, now)
+    assert len(db.exec(select(InboxItem)).all()) == 4
+
+
+def test_missing_heartbeat_has_startup_grace_and_alerts_once(
+    db: Session,
+    tenants: list,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert len(tenants) == 2
+    now = utc_now()
+    monkeypatch.setattr(monitor, "PROCESS_STARTED_AT", now)
+    for elapsed in (timedelta(0), health.HEARTBEAT_TIMEOUT - timedelta(seconds=1)):
+        dispatch_worker_alerts(db, now + elapsed)
+        assert not db.exec(select(InboxItem)).all()
+    for elapsed in (
+        health.HEARTBEAT_TIMEOUT,
+        health.HEARTBEAT_TIMEOUT + timedelta(minutes=1),
+    ):
+        dispatch_worker_alerts(db, now + elapsed)
+        assert len(db.exec(select(InboxItem)).all()) == 4
+    # A stale record is actionable even while this process is still starting.
+    db.add(
+        WorkerHeartbeat(beat_at=now - health.HEARTBEAT_TIMEOUT - timedelta(seconds=1))
+    )
+    db.commit()
+    dispatch_worker_alerts(db, now)
+    assert len(db.exec(select(InboxItem)).all()) == 8
 
 
 @pytest.mark.parametrize("helper", ["profiles", "recovery"])

@@ -1,6 +1,8 @@
 import sys
 from datetime import datetime, timedelta
 
+from sqlalchemy import Engine
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 
@@ -15,6 +17,16 @@ WORKER_FIX_STEPS = [
     "检查数据库连接和后台日志：docker compose logs --tail=100 worker。",
     "排除故障后重启后台任务：docker compose restart worker。",
 ]
+
+
+def write_heartbeat(engine: Engine) -> None:
+    now = utc_now()
+    with engine.begin() as connection:
+        connection.execute(
+            insert(WorkerHeartbeat)
+            .values(id=1, beat_at=now)
+            .on_conflict_do_update(index_elements=["id"], set_={"beat_at": now})
+        )
 
 
 def is_fresh(beat_at: datetime | None, now: datetime) -> bool:

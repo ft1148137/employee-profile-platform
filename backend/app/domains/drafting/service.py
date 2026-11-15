@@ -58,6 +58,7 @@ from app.domains.profile.models import (
     ProfileProgress,
     ProfileVersion,
 )
+from app.worker.health import write_heartbeat
 
 
 def postprocess(
@@ -417,6 +418,9 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                 )
                 session.commit()
                 counts["failed"] += 1
+            finally:
+                # shortcut: Per-employee retries can exceed five minutes; add finer progress if this becomes frequent.
+                write_heartbeat(engine)
     with Session(engine) as session:
         record_audit(
             session,
