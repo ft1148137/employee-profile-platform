@@ -40,6 +40,9 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
   )
   return (
     <div className="space-y-6">
+      <p className="text-sm text-muted-foreground">
+        这里的数字是当前的参考，不代表下周等未来时段的可用产能，也不是排班承诺；能否承接以部门经理的正式答复为准。
+      </p>
       {!managedDepartmentIds.length && (
         <p className="text-sm text-muted-foreground">
           企业管理员可查看团队负荷，调整由管辖经理确认。

@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy import Engine
 from sqlmodel import Session, col, select, update
 
+from app.core.config import settings
 from app.domains.base import utc_now
 from app.domains.im.adapters.base import Adapter, ImError
 from app.domains.im.models import ImBinding, ImNotification, ImSetting
@@ -74,6 +75,10 @@ async def send_pending(
     engine: Engine,
     adapters: dict[tuple[UUID, Platform], tuple[str, Adapter]],
 ) -> None:
+    from app.domains.capacity.workload import (
+        EXTENSION_REVIEW_NOTICE,
+        WORKLOAD_REVIEW_NOTICE,
+    )
     from app.domains.im.binding import principal_for
 
     with Session(engine) as db:
@@ -173,6 +178,10 @@ async def send_pending(
                             else item.message
                             if item.kind == InboxKind.PROFILE_EDITED
                             and row.platform == "feishu"
+                            else f"{REMINDERS[item.kind]}，在网页处理：{settings.FRONTEND_HOST.rstrip('/')}/capacity?tab=approvals"
+                            if item.kind == InboxKind.CAPACITY
+                            and item.message
+                            in (WORKLOAD_REVIEW_NOTICE, EXTENSION_REVIEW_NOTICE)
                             else REMINDERS[item.kind] + "，在网页或私聊我查看。",
                         )
                     row.status, row.sent_at, row.last_error_code = (
