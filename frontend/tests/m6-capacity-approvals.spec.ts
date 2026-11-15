@@ -228,6 +228,9 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
   )
   await expect(page.getByRole("tab", { name: "团队负荷" })).toHaveCount(0)
   await expect(
+    page.getByRole("heading", { name: "合成员工 · 申请 60%", exact: true }),
+  ).toBeVisible()
+  await expect(
     page.getByRole("article", { name: "员工的调整申请" }),
   ).toContainText("申请 60%")
   await expect(
