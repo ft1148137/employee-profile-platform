@@ -15,6 +15,7 @@ from app.domains.bot.models import BotSession
 from app.domains.capability.proposals import suggest_capability
 from app.domains.capability.schemas import SuggestCapability
 from app.domains.capability.search import PeopleSearchInput, find_people
+from app.domains.capacity import assistant as capacity
 from app.domains.change_request import employee
 from app.domains.change_request.models import RequestStatus
 from app.domains.change_request.schemas import ItemInput, ToolInput, validation_message
@@ -27,17 +28,21 @@ from app.domains.profile.service import read_profile
 from app.domains.review import direct
 
 TOOLS = {t.name: t for t in EMPLOYEE_TOOLS if t.bot_allowed}
-TITLES = {t.name: t.description for t in TOOLS.values()} | {
-    "read_attachment": "读取会话附件",
-    "suggest_capability": "建议新增能力",
-    "list_team_members": "查看团队成员",
-    "find_people": "按能力找人",
-    "get_member_profile": "查看下属画像",
-    "prepare_profile_edit": "预览直接修改画像",
-    "list_pending_reviews": "查看待审批请求",
-    "get_review": "查看审批详情",
-    "prepare_review_decision": "预览审批决定",
-}
+TITLES = (
+    {t.name: t.description for t in TOOLS.values()}
+    | capacity.TITLES
+    | {
+        "read_attachment": "读取会话附件",
+        "suggest_capability": "建议新增能力",
+        "list_team_members": "查看团队成员",
+        "find_people": "按能力找人",
+        "get_member_profile": "查看下属画像",
+        "prepare_profile_edit": "预览直接修改画像",
+        "list_pending_reviews": "查看待审批请求",
+        "get_review": "查看审批详情",
+        "prepare_review_decision": "预览审批决定",
+    }
+)
 PROJECTIONS: dict[str, type[s.Projection]] = {
     "get_my_profile": s.Profile,
     "list_my_evidence": s.EvidenceList,
@@ -175,7 +180,9 @@ def team_call(
     }
 
 
-def definitions(p: Principal | None = None) -> list[ToolDefinition]:
+def definitions(
+    p: Principal | None = None, *, db: Session | None = None, channel: str = "web"
+) -> list[ToolDefinition]:
     team = (
         [
             ToolDefinition(
@@ -195,7 +202,12 @@ def definitions(p: Principal | None = None) -> list[ToolDefinition]:
         else []
     )
     return (
-        team
+        (
+            capacity.definitions(db, p)
+            if db is not None and p and channel in ("web", "feishu")
+            else []
+        )
+        + team
         + [
             attachments.READ_TOOL,
             ToolDefinition(
@@ -417,6 +429,10 @@ def call(
     name: str,
     arguments: dict[str, JsonValue],
 ) -> JsonValue:
+    if name in capacity.TITLES or name in capacity.WRITES:
+        if session.channel not in ("web", "feishu"):
+            return {"error": "不允许调用此工具"}
+        return redact(capacity.call(db, p, cards, name, arguments))
     if name == "suggest_capability":
         try:
             suggestion = SuggestCapability.model_validate(arguments)

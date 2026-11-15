@@ -1080,6 +1080,64 @@ export type CapabilityTemplatePublic = {
 }
 
 /**
+ * CapacityAction
+ */
+export type CapacityAction = {
+  /**
+   * Action
+   */
+  action: "confirm_capacity" | "cancel_capacity"
+  /**
+   * Card Id
+   */
+  card_id: string
+}
+
+/**
+ * CapacityCard
+ */
+export type CapacityCard = {
+  /**
+   * Type
+   */
+  type?: "capacity_card"
+  /**
+   * Card Id
+   */
+  card_id?: string
+  /**
+   * Kind
+   */
+  kind: "demand" | "demand_response"
+  /**
+   * Title
+   */
+  title: string
+  /**
+   * Content
+   */
+  content: string
+  /**
+   * Arguments
+   */
+  arguments: {
+    [key: string]: JsonValue
+  }
+  /**
+   * Status
+   */
+  status?: "pending" | "confirmed" | "cancelled" | "failed"
+  /**
+   * Result
+   */
+  result?: string | null
+  /**
+   * Actions
+   */
+  actions?: Array<CapacityAction>
+}
+
+/**
  * CapacityReference
  */
 export type CapacityReference = {
@@ -6276,6 +6334,9 @@ export type TurnResponse = {
     | ({
         type: "profile_edit_card"
       } & ProfileEditCard)
+    | ({
+        type: "capacity_card"
+      } & CapacityCard)
   >
   /**
    * Steps
@@ -8893,7 +8954,12 @@ export type botActData = {
   /**
    * Body
    */
-  body: RequestAction | QuestionAction | ReviewAction | ProfileEditAction
+  body:
+    | RequestAction
+    | QuestionAction
+    | ReviewAction
+    | ProfileEditAction
+    | CapacityAction
   path: {
     /**
      * Session Id
