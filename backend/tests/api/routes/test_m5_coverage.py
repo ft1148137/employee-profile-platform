@@ -228,6 +228,7 @@ def read(client: TestClient, data: tuple, role: str) -> dict:
             "department_name",
             "total",
             "statuses",
+            "with_descendants",
         }
     if result["jira_sync_failure"]:
         assert set(result["jira_sync_failure"]) == {"connection_name", "failed_at"}

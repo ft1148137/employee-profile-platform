@@ -414,6 +414,7 @@ export type {
   ConsentResult,
   CoveragePublic,
   CoverageStatus,
+  CoverageSummary,
   CsvImportPublic,
   DecideInput,
   DecisionInput,

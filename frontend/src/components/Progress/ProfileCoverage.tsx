@@ -100,7 +100,7 @@ export function ProfileCoverage({
           </div>
           <details>
             <summary className="cursor-pointer text-sm font-medium">
-              按部门查看（仅本部门在职员工，不含下级汇总）
+              按部门查看（本部门在职人数；有下级时另列含下级合计）
             </summary>
             <p className="mt-2 text-xs text-muted-foreground">
               未分配部门的员工计入总人数。
@@ -127,6 +127,17 @@ export function ProfileCoverage({
                   <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                     <Counts summary={item} />
                   </dl>
+                  {item.with_descendants && (
+                    <p className="text-sm text-muted-foreground">
+                      含下级部门：{item.with_descendants.total} 人
+                      {statuses
+                        .map(
+                          ([status, title]) =>
+                            ` · ${title} ${item.with_descendants?.statuses.find((s) => s.status === status)?.count ?? 0}`,
+                        )
+                        .join("")}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
