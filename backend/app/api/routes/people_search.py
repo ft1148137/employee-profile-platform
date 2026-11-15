@@ -2,6 +2,7 @@ import csv
 import io
 from datetime import datetime
 from typing import Annotated, Literal
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse, Response
@@ -17,6 +18,7 @@ from app.domains.capability.search import (
 )
 from app.domains.capability.service import get_schema, list_capabilities
 from app.domains.capability.stats import CapabilityStatsForbidden
+from app.domains.org.timezone import read_timezone
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["people-search"])
 
@@ -96,16 +98,53 @@ def export_profiles(
     if format == "json":
         response = JSONResponse(rows, headers=headers)
     else:
+        timezone = ZoneInfo(read_timezone(session, principal.org_id).timezone)
+        status_labels = {
+            "confirmed": "已确认",
+            "tentative": "暂定",
+            "disputed": "存在争议",
+        }
+
+        def format_time(value: str | None) -> str:
+            return (
+                datetime.fromisoformat(value)
+                .astimezone(timezone)
+                .strftime("%Y-%m-%d %H:%M")
+                if value
+                else ""
+            )
+
         output = io.StringIO(newline="")
         writer = csv.writer(output)
-        writer.writerow(ProfileExportRow.model_fields)
+        writer.writerow(
+            [
+                "工号",
+                "能力",
+                "等级",
+                "判断状态",
+                "证据数",
+                "最近证据时间",
+                "批准人",
+                "批准时间",
+            ]
+        )
         for exported in rows:
+            values = [
+                exported["employee_code"],
+                exported["capability_name"],
+                exported["level_name"] or "未定级",
+                status_labels[exported["status"]],
+                exported["evidence_count"],
+                format_time(exported["latest_evidence_at"]),
+                exported["published_by"],
+                format_time(exported["published_at"]),
+            ]
             # Keep user-controlled cells from being interpreted as Excel formulas.
             writer.writerow(
                 "'" + value
                 if isinstance(value, str) and value.startswith(tuple("=+-@\t\r\n"))
                 else value
-                for value in exported.values()
+                for value in values
             )
         response = Response(
             output.getvalue().encode("utf-8-sig"),
