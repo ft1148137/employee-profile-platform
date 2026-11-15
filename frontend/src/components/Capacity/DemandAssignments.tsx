@@ -56,6 +56,15 @@ export function DemandAssignments({
       className="space-y-4 rounded-xl border p-5"
     >
       <h3 className="text-lg font-semibold">部门内分配</h3>
+      {basis.data &&
+        (!basis.data.data.length && !basis.data.others.length ? (
+          <p>本部门没有可分配的在职员工，请联系企业管理员核对部门人员</p>
+        ) : basis.data.count < demand.headcount ? (
+          <p>
+            依据中达到要求的有 {basis.data.count} 人，需要 {demand.headcount}{" "}
+            人。可以从本部门其他在职员工中选择；选择不会改变画像，也不会改变依据人数，需求方看到的内容不变。
+          </p>
+        ) : null)}
       <form
         aria-label="新增分配"
         className="space-y-3"
@@ -84,20 +93,33 @@ export function DemandAssignments({
               <option value="" disabled>
                 请选择
               </option>
-              {basis.data?.data
-                .filter(
-                  (person) =>
-                    !query.data?.data.some(
-                      (row) =>
-                        row.employee_id === person.employee_id &&
-                        row.status === "active",
-                    ),
-                )
-                .map((person) => (
-                  <option key={person.employee_id} value={person.employee_id}>
-                    {person.display_name}
-                  </option>
-                ))}
+              {[
+                { label: "依据中的员工", people: basis.data?.data },
+                {
+                  label: "本部门其他在职员工（不在依据中）",
+                  people: basis.data?.others,
+                },
+              ].map(({ label, people }) => (
+                <optgroup key={label} label={label}>
+                  {people
+                    ?.filter(
+                      (person) =>
+                        !query.data?.data.some(
+                          (row) =>
+                            row.employee_id === person.employee_id &&
+                            row.status === "active",
+                        ),
+                    )
+                    .map((person) => (
+                      <option
+                        key={person.employee_id}
+                        value={person.employee_id}
+                      >
+                        {person.display_name}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
             </select>
           </label>
           <label htmlFor={`${id}-percent`} className="space-y-2 text-sm">

@@ -12,7 +12,9 @@ from app.domains.capability.service import get_schema, list_capabilities
 from app.domains.capacity import demand
 from app.domains.capacity.assignment import assignment_rows
 from app.domains.capacity.demand_schemas import (
+    LIMITED_REFERENCE_TEXT,
     DemandInput,
+    LimitedCapacityReference,
     ReplyDemandInput,
     RespondDemandInput,
 )
@@ -124,14 +126,21 @@ def check_demand(db: Session, p: Principal, value: BaseModel) -> str:
         ),
         "未定级",
     )
+    reference_text = (
+        LIMITED_REFERENCE_TEXT
+        if isinstance(reference, LimitedCapacityReference)
+        else (
+            f"即时参考：符合要求 {reference.count} 人，有余量 {reference.available} 人，"
+            f"基本满 {reference.full} 人，超负荷 {reference.overloaded} 人，"
+            f"未确认 {reference.unconfirmed} 人。参考不是承诺，以对方部门经理正式答复为准。"
+        )
+    )
     return (
         f"需求方：{source.name}\n目标部门：{reference.department_name}\n"
         f"能力：{reference.capability_name}\n最低等级：{level}\n"
         f"人数：{body.headcount}\n每人投入：{body.allocation_percent}%\n"
         f"时间：{body.window_start} 至 {body.window_end}\n说明：{body.description}\n"
-        f"即时参考：符合要求 {reference.count} 人，有余量 {reference.available} 人，"
-        f"基本满 {reference.full} 人，超负荷 {reference.overloaded} 人，"
-        f"未确认 {reference.unconfirmed} 人。参考不是承诺，以对方部门经理正式答复为准。"
+        f"{reference_text}"
     )
 
 
