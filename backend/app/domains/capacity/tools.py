@@ -1,3 +1,4 @@
+from app.domains.capacity.assignment import list_my_assignments
 from app.domains.capacity.demand import (
     capacity_reference,
     get_demand,
@@ -16,6 +17,8 @@ from app.domains.capacity.demand_schemas import (
     ReplyDemandInput,
     RespondDemandInput,
 )
+from app.domains.capacity.extension import request_extension
+from app.domains.capacity.extension_schemas import RequestExtensionInput
 from app.domains.capacity.schemas import CapacityInput, WorkloadRequestInput
 from app.domains.capacity.workload import get_my_workload, request_workload_change
 from app.domains.employee_tools import EmployeeTool
@@ -71,6 +74,19 @@ CAPACITY_TOOLS = (
         "申请调整本人的负荷，等待经理审批",
         WorkloadRequestInput,
         request_workload_change,
+        True,
+    ),
+    EmployeeTool(
+        "list_my_assignments",
+        "查看分配给我的工作和完成日期",
+        CapacityInput,
+        list_my_assignments,
+    ),
+    EmployeeTool(
+        "request_extension",
+        "申请延后本人分配的完成日期",
+        RequestExtensionInput,
+        request_extension,
         True,
     ),
 )
