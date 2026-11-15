@@ -184,10 +184,7 @@ def test_demand_pagination_batches_timeline_and_preserves_privacy(
             body = response.json()
             assert body["count"] == 120
             assert [r["id"] for r in body["data"]] == ids
-            assert all(
-                r["events"][0]["responder_name"] == people["bm"].display_name
-                for r in body["data"]
-            )
+            assert all(r["events"][0]["responder_name"] is None for r in body["data"])
             assert sum(
                 "FROM capacity_demand_event" in sql for sql in statements
             ) == bool(ids)

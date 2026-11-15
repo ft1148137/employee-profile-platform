@@ -208,19 +208,21 @@ def responder_user_ids(
     return {user for user, role, _ in rows if role == Role.ORG_ADMIN}
 
 
-def demand_public(session: Session, row: CapacityDemand) -> DemandPublic:
-    return demands_public(session, row.org_id, [row])[0]
+def demand_public(
+    principal: Principal, session: Session, row: CapacityDemand
+) -> DemandPublic:
+    return demands_public(principal, session, [row])[0]
 
 
 def demands_public(
-    session: Session, org_id: UUID, rows: list[CapacityDemand]
+    principal: Principal, session: Session, rows: list[CapacityDemand]
 ) -> list[DemandPublic]:
     if not rows:
         return []
     events = session.exec(
         select(CapacityDemandEvent)
         .where(
-            CapacityDemandEvent.org_id == org_id,
+            CapacityDemandEvent.org_id == principal.org_id,
             col(CapacityDemandEvent.demand_id).in_([row.id for row in rows]),
         )
         .order_by(col(CapacityDemandEvent.created_at), col(CapacityDemandEvent.id))
@@ -236,7 +238,7 @@ def demands_public(
                 & (col(Employee.id) == OrgMembership.employee_id),
             )
             .where(
-                OrgMembership.org_id == org_id,
+                OrgMembership.org_id == principal.org_id,
                 col(OrgMembership.user_id).in_(
                     {
                         e.actor_user_id
@@ -272,6 +274,7 @@ def demands_public(
                 ),
                 responder_name=names.get(e.actor_user_id)
                 if e.kind == DemandEventKind.REPLIED
+                and represents_department(principal, row.target_department_id)
                 else None,
             )
             for e in grouped[row.id]
@@ -302,7 +305,7 @@ def demand_row(
 
 def get_demand(principal: Principal, session: Session, demand_id: UUID) -> DemandPublic:
     row = demand_row(principal, session, demand_id)
-    result = demand_public(session, row)
+    result = demand_public(principal, session, row)
     if represents_department(principal, row.target_department_id):
         result.basis_url = f"/orgs/{principal.org_id}/capacity/demands/{row.id}/basis"
     return result
@@ -340,7 +343,7 @@ def list_demands(
             .limit(limit)
         ).all()
     )
-    return DemandList(data=demands_public(session, principal.org_id, rows), count=count)
+    return DemandList(data=demands_public(principal, session, rows), count=count)
 
 
 def submit_demand(
@@ -429,7 +432,7 @@ def submit_demand(
         {},
     )
     session.flush()
-    return demand_public(session, row)
+    return demand_public(principal, session, row)
 
 
 def get_demand_basis(
@@ -579,7 +582,7 @@ def reply_demand(
         {},
     )
     session.flush()
-    return demand_public(session, row)
+    return demand_public(principal, session, row)
 
 
 def respond_demand(
@@ -674,4 +677,4 @@ def respond_demand(
         {},
     )
     session.flush()
-    return demand_public(session, row)
+    return demand_public(principal, session, row)

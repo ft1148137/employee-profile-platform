@@ -89,7 +89,8 @@ export function DemandsDetail({
               <article key={index} className="space-y-2 border-l-2 pl-4">
                 <p className="font-medium">
                   {events[event.kind]} · {dateLabel(event.created_at)}
-                  {event.responder_name && ` · 答复人：${event.responder_name}`}
+                  {event.kind === "replied" &&
+                    ` · 答复人：${event.responder_name ?? "对方部门经理"}`}
                 </p>
                 {event.outcome && <p>结论：{outcomes[event.outcome]}</p>}
                 {event.kind === "commitment_changed" ? (
