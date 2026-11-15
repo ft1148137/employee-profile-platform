@@ -6642,10 +6642,6 @@ export type WorkloadAdjustInput = {
    * Base Percent
    */
   base_percent: number
-  /**
-   * Note
-   */
-  note?: string | null
 }
 
 /**
