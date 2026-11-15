@@ -1,0 +1,125 @@
+import { useMutation } from "@tanstack/react-query"
+import { useState } from "react"
+import {
+  CapacityService,
+  type ExtensionDecisionInput,
+  type ExtensionPublic,
+} from "@/client"
+import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
+import { Button } from "@/components/ui/button"
+import { useOrg } from "@/hooks/useOrg"
+import {
+  CapacityError,
+  CommitmentFields,
+  commitmentBody,
+  NoteField,
+  useCapacityRefresh,
+  useExtensions,
+  useMyAssignments,
+} from "./AssignmentFields"
+
+export function ExtensionReviews({ orgId }: { orgId: string }) {
+  const { employeeId } = useOrg()
+  const query = useExtensions(orgId)
+  const own = useMyAssignments(orgId, !!employeeId)
+  if (query.isPending || (employeeId && own.isPending))
+    return <ProfileLoading />
+  if (query.isError || own.isError)
+    return (
+      <ProfileError
+        retry={() => {
+          query.refetch()
+          if (employeeId) own.refetch()
+        }}
+      />
+    )
+  const pending = query.data.data.filter(
+    (request) =>
+      request.status === "pending" &&
+      !own.data?.data.some((row) => row.id === request.assignment_id),
+  )
+  return (
+    <section aria-label="延期审批" className="space-y-3">
+      <h2 className="text-lg font-semibold">延期审批</h2>
+      {!pending.length && (
+        <p className="text-muted-foreground">暂无待处理的延期申请。</p>
+      )}
+      {pending.map((request) => (
+        <ExtensionDecision key={request.id} orgId={orgId} request={request} />
+      ))}
+    </section>
+  )
+}
+
+function ExtensionDecision({
+  orgId,
+  request,
+}: {
+  orgId: string
+  request: ExtensionPublic
+}) {
+  const refresh = useCapacityRefresh(orgId)
+  const [approve, setApprove] = useState(true)
+  const decide = useMutation({
+    mutationFn: (body: ExtensionDecisionInput) =>
+      CapacityService.decideExtensionRequest({
+        path: { org_id: orgId, request_id: request.id },
+        body,
+      }),
+    onSuccess: refresh,
+  })
+  return (
+    <form
+      aria-label={`${request.employee_name}的延期申请`}
+      className="space-y-3 rounded-xl border p-5"
+      onSubmit={(event) => {
+        event.preventDefault()
+        const data = new FormData(event.currentTarget)
+        decide.mutate({
+          approve,
+          note: String(data.get("note")).trim() || null,
+          ...(approve ? commitmentBody(data) : {}),
+        })
+      }}
+    >
+      <h3 className="font-semibold">
+        {request.employee_name} · {request.capability_name}
+      </h3>
+      <p className="text-sm">
+        当前完成：{request.current_due_date} → 申请完成：
+        {request.requested_due_date} · 对外承诺：
+        {request.committed_end_date ?? "未定"}
+      </p>
+      <p className="whitespace-pre-wrap break-words">{request.reason}</p>
+      <fieldset disabled={decide.isPending} className="space-y-3">
+        <label className="block space-y-2 text-sm">
+          <span>处理方式</span>
+          <select
+            className="h-10 w-full rounded-md border bg-background px-3"
+            value={approve ? "approve" : "return"}
+            onChange={(event) => {
+              setApprove(event.target.value === "approve")
+              decide.reset()
+            }}
+          >
+            <option value="approve">同意</option>
+            <option value="return">退回</option>
+          </select>
+        </label>
+        <NoteField
+          label={approve ? "处理说明" : "处理说明（退回必填）"}
+          name="note"
+          required={!approve}
+        />
+        {approve && (
+          <CommitmentFields
+            dueDate={request.requested_due_date}
+            committedEndDate={request.committed_end_date}
+          />
+        )}
+        <Button type="submit">{approve ? "同意延期" : "退回延期"}</Button>
+      </fieldset>
+      <CapacityError error={decide.error} />
+    </form>
+  )
+}
