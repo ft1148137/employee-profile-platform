@@ -1726,6 +1726,81 @@ export type DelegationView = {
 }
 
 /**
+ * DemandBasis
+ */
+export type DemandBasis = {
+  /**
+   * Data
+   */
+  data: Array<DemandBasisPerson>
+  /**
+   * Count
+   */
+  count: number
+  reference: CapacityReference
+}
+
+/**
+ * DemandBasisPerson
+ */
+export type DemandBasisPerson = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Display Name
+   */
+  display_name: string
+  /**
+   * Employee Code
+   */
+  employee_code: string | null
+  /**
+   * Department Name
+   */
+  department_name: string | null
+  /**
+   * Capability Key
+   */
+  capability_key: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  /**
+   * Statement
+   */
+  statement: string
+  /**
+   * Level
+   */
+  level: string | null
+  /**
+   * Level Name
+   */
+  level_name: string | null
+  /**
+   * Status
+   */
+  status: "confirmed" | "tentative" | "disputed"
+  /**
+   * Evidence Count
+   */
+  evidence_count: number
+  /**
+   * Latest Evidence At
+   */
+  latest_evidence_at: string | null
+  published_by: PublisherPublic
+  /**
+   * Published At
+   */
+  published_at: string
+  workload: WorkloadPublic
+}
+
+/**
  * DemandEventKind
  */
 export type DemandEventKind =
@@ -1753,6 +1828,20 @@ export type DemandEventPublic = {
    * Via
    */
   via: string
+  outcome?: DemandOutcome | null
+  /**
+   * Start Date
+   */
+  start_date?: string | null
+  /**
+   * End Date
+   */
+  end_date?: string | null
+  basis?: CapacityReference | null
+  /**
+   * Responder Name
+   */
+  responder_name?: string | null
 }
 
 /**
@@ -1810,6 +1899,11 @@ export type DemandList = {
    */
   count: number
 }
+
+/**
+ * DemandOutcome
+ */
+export type DemandOutcome = "can_do" | "partial" | "not_now"
 
 /**
  * DemandPublic
@@ -1872,6 +1966,18 @@ export type DemandPublic = {
    * Events
    */
   events?: Array<DemandEventPublic>
+  /**
+   * Committed Start Date
+   */
+  committed_start_date?: string | null
+  /**
+   * Committed End Date
+   */
+  committed_end_date?: string | null
+  /**
+   * Basis Url
+   */
+  basis_url?: string | null
 }
 
 /**
@@ -4664,6 +4770,29 @@ export type QuestionsList = {
 }
 
 /**
+ * ReplyInput
+ */
+export type ReplyInput = {
+  outcome: DemandOutcome
+  /**
+   * Start Date
+   */
+  start_date?: string | null
+  /**
+   * End Date
+   */
+  end_date?: string | null
+  /**
+   * Text
+   */
+  text: string
+  /**
+   * Revision
+   */
+  revision: number
+}
+
+/**
  * RequestAction
  */
 export type RequestAction = {
@@ -4779,6 +4908,24 @@ export type ResolveAppealInput = {
    * Status
    */
   status: "upheld" | "reopened"
+}
+
+/**
+ * RespondInput
+ */
+export type RespondInput = {
+  /**
+   * Action
+   */
+  action: "accept" | "follow_up" | "withdraw"
+  /**
+   * Text
+   */
+  text?: string | null
+  /**
+   * Revision
+   */
+  revision: number
 }
 
 /**
@@ -6794,6 +6941,114 @@ export type capacityGetDemandResponses = {
 
 export type capacityGetDemandResponse =
   capacityGetDemandResponses[keyof capacityGetDemandResponses]
+
+export type capacityGetDemandBasisData = {
+  body?: never
+  path: {
+    /**
+     * Demand Id
+     */
+    demand_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/basis"
+}
+
+export type capacityGetDemandBasisErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityGetDemandBasisError =
+  capacityGetDemandBasisErrors[keyof capacityGetDemandBasisErrors]
+
+export type capacityGetDemandBasisResponses = {
+  /**
+   * Successful Response
+   */
+  200: DemandBasis
+}
+
+export type capacityGetDemandBasisResponse =
+  capacityGetDemandBasisResponses[keyof capacityGetDemandBasisResponses]
+
+export type capacityReplyDemandData = {
+  body: ReplyInput
+  path: {
+    /**
+     * Demand Id
+     */
+    demand_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/reply"
+}
+
+export type capacityReplyDemandErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityReplyDemandError =
+  capacityReplyDemandErrors[keyof capacityReplyDemandErrors]
+
+export type capacityReplyDemandResponses = {
+  /**
+   * Successful Response
+   */
+  200: DemandPublic
+}
+
+export type capacityReplyDemandResponse =
+  capacityReplyDemandResponses[keyof capacityReplyDemandResponses]
+
+export type capacityRespondDemandData = {
+  body: RespondInput
+  path: {
+    /**
+     * Demand Id
+     */
+    demand_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/respond"
+}
+
+export type capacityRespondDemandErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityRespondDemandError =
+  capacityRespondDemandErrors[keyof capacityRespondDemandErrors]
+
+export type capacityRespondDemandResponses = {
+  /**
+   * Successful Response
+   */
+  200: DemandPublic
+}
+
+export type capacityRespondDemandResponse =
+  capacityRespondDemandResponses[keyof capacityRespondDemandResponses]
 
 export type capacityGetCapacitySettingsData = {
   body?: never

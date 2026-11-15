@@ -560,6 +560,9 @@ def test_tools_use_shared_services() -> None:
         ("submit_demand", True),
         ("list_demands", False),
         ("get_demand", False),
+        ("get_demand_basis", False),
+        ("reply_demand", True),
+        ("respond_demand", True),
         ("get_my_workload", False),
         ("request_workload_change", True),
     ]

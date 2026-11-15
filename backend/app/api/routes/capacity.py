@@ -8,11 +8,14 @@ from app.authz.deps import OrgPrincipalDep
 from app.domains.capacity import demand, settings, workload
 from app.domains.capacity.demand_schemas import (
     CapacityReference,
+    DemandBasis,
     DemandInput,
     DemandList,
     DemandListInput,
     DemandPublic,
     ReferenceInput,
+    ReplyInput,
+    RespondInput,
 )
 from app.domains.capacity.schemas import (
     CapacitySettingsInput,
@@ -69,6 +72,31 @@ def get_demand(
     principal: OrgPrincipalDep, session: SessionDep, demand_id: UUID
 ) -> DemandPublic:
     return demand.get_demand(principal, session, demand_id)
+
+
+@router.get("/capacity/demands/{demand_id}/basis")
+def get_demand_basis(
+    principal: OrgPrincipalDep, session: SessionDep, demand_id: UUID
+) -> DemandBasis:
+    return demand.get_demand_basis(principal, session, demand_id)
+
+
+@router.post("/capacity/demands/{demand_id}/reply")
+def reply_demand(
+    principal: OrgPrincipalDep, session: SessionDep, demand_id: UUID, body: ReplyInput
+) -> DemandPublic:
+    result = demand.reply_demand(principal, session, demand_id, **body.model_dump())
+    session.commit()
+    return result
+
+
+@router.post("/capacity/demands/{demand_id}/respond")
+def respond_demand(
+    principal: OrgPrincipalDep, session: SessionDep, demand_id: UUID, body: RespondInput
+) -> DemandPublic:
+    result = demand.respond_demand(principal, session, demand_id, **body.model_dump())
+    session.commit()
+    return result
 
 
 @router.get("/capacity-settings")

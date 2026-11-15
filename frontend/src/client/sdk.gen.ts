@@ -191,6 +191,9 @@ import type {
   capacityGetCapacitySettingsData,
   capacityGetCapacitySettingsErrors,
   capacityGetCapacitySettingsResponses,
+  capacityGetDemandBasisData,
+  capacityGetDemandBasisErrors,
+  capacityGetDemandBasisResponses,
   capacityGetDemandData,
   capacityGetDemandErrors,
   capacityGetDemandResponses,
@@ -212,9 +215,15 @@ import type {
   capacityPutCapacitySettingsData,
   capacityPutCapacitySettingsErrors,
   capacityPutCapacitySettingsResponses,
+  capacityReplyDemandData,
+  capacityReplyDemandErrors,
+  capacityReplyDemandResponses,
   capacityRequestWorkloadChangeData,
   capacityRequestWorkloadChangeErrors,
   capacityRequestWorkloadChangeResponses,
+  capacityRespondDemandData,
+  capacityRespondDemandErrors,
+  capacityRespondDemandResponses,
   capacitySubmitDemandData,
   capacitySubmitDemandErrors,
   capacitySubmitDemandResponses,
@@ -658,6 +667,68 @@ export class CapacityService {
       security: [{ scheme: "bearer", type: "http" }],
       url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}",
       ...options,
+    })
+  }
+
+  /**
+   * Get Demand Basis
+   */
+  public static getDemandBasis<ThrowOnError extends boolean = true>(
+    options: Options<capacityGetDemandBasisData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityGetDemandBasisResponses,
+      capacityGetDemandBasisErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/basis",
+      ...options,
+    })
+  }
+
+  /**
+   * Reply Demand
+   */
+  public static replyDemand<ThrowOnError extends boolean = true>(
+    options: Options<capacityReplyDemandData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capacityReplyDemandResponses,
+      capacityReplyDemandErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/reply",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * Respond Demand
+   */
+  public static respondDemand<ThrowOnError extends boolean = true>(
+    options: Options<capacityRespondDemandData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capacityRespondDemandResponses,
+      capacityRespondDemandErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/respond",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
     })
   }
 
