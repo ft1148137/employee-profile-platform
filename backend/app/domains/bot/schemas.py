@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
 from app.domains.bot.attachments import AttachmentPublic
 from app.domains.change_request.schemas import RequestReviewer, SubmitInput, ToolInput
@@ -143,7 +143,26 @@ class ProfileEditAction(ToolInput):
     card_id: UUID
 
 
-Action = RequestAction | QuestionAction | ReviewAction | ProfileEditAction
+class CapacityAction(ToolInput):
+    action: Literal["confirm_capacity", "cancel_capacity"]
+    card_id: UUID
+
+
+Action = (
+    RequestAction | QuestionAction | ReviewAction | ProfileEditAction | CapacityAction
+)
+
+
+class CapacityCard(BaseModel):
+    type: Literal["capacity_card"] = "capacity_card"
+    card_id: UUID = Field(default_factory=uuid4)
+    kind: Literal["demand", "demand_response"]
+    title: str
+    content: str
+    arguments: dict[str, JsonValue]
+    status: Literal["pending", "confirmed", "cancelled", "failed"] = "pending"
+    result: str | None = None
+    actions: list[CapacityAction] = Field(default_factory=list)
 
 
 class TextMessage(BaseModel):
@@ -224,7 +243,8 @@ Message = Annotated[
     | StatusCard
     | QuestionCard
     | ReviewCard
-    | ProfileEditCard,
+    | ProfileEditCard
+    | CapacityCard,
     Field(discriminator="type"),
 ]
 

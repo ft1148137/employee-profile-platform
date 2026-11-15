@@ -57,6 +57,8 @@ export function BotMessage({
           )
         : "等级暂不可用"
       : "未定级")
+  // shortcut: Capacity cards are rendered by NERE-654 after the API foundation lands.
+  if (message.type === "capacity_card") return null
   if (message.type === "text")
     return (
       <div className="space-y-2">

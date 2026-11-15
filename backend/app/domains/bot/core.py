@@ -23,6 +23,7 @@ from app.domains.bot.levels import name_levels
 from app.domains.bot.models import BotSession
 from app.domains.bot.presentation import DEADLINE_MESSAGE, retry_time
 from app.domains.bot.prompts import system_prompt
+from app.domains.capacity import assistant as capacity
 from app.domains.change_request import employee
 from app.domains.change_request.models import ReviewVia
 from app.domains.inbox import service as inbox
@@ -69,7 +70,7 @@ def turn(
     cards: list[s.Message] = []
 
     def call(name: str, args: dict[str, JsonValue]) -> JsonValue:
-        title = tools.TITLES.get(name, "不允许的工具")
+        title = tools.TITLES.get(name, capacity.TITLES.get(name, "不允许的工具"))
         if stream:
             stream.check()
             stream.on_tool(title, "start", True)
@@ -128,7 +129,7 @@ def turn(
                 session_state=store.load_state(db, session),
                 system_prompt=system_prompt(db, p, session.channel, session),
                 input=tools.redact_text(model_input),
-                tools=tools.definitions(p),
+                tools=tools.definitions(p, db=db, channel=session.channel),
                 on_tool_call=call,
                 stream=replace(stream, on_tool=lambda *_: None) if stream else None,
             )
@@ -211,7 +212,9 @@ def act(
         for card in s.TurnResponse.model_validate(message.payload).messages
     ]
     messages: list[s.Message]
-    if isinstance(action, s.ProfileEditAction):
+    if isinstance(action, s.CapacityAction):
+        messages = [capacity.act(db, p, session, cards, action)]
+    elif isinstance(action, s.ProfileEditAction):
         edit_card = next(
             (
                 c

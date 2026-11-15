@@ -255,17 +255,17 @@ test('fifth concurrent run is busy; cancelled runs release their slots', async t
   await fresh.result(call.call_id); assert.equal((await fresh.next()).type, 'done');
 });
 
-test('seventeen tool definitions are accepted; eighteen are rejected before the model call', async t => {
+test('twenty-nine tool definitions are accepted; thirty are rejected before the model call', async t => {
   let modelCalls = 0;
   const { start, request } = await setup(t, { streamFn: fake(() => [], () => modelCalls++) });
   const data = body();
-  data.tools = Array.from({ length: 17 }, (_, i) => ({ ...data.tools[0], name: `tool_${i}` }));
+  data.tools = Array.from({ length: 29 }, (_, i) => ({ ...data.tools[0], name: `tool_${i}` }));
   const run = await start(data);
   assert.equal((await run.next()).type, 'done');
   await run.finished();
   assert.equal(modelCalls, 1);
   const rejected = await request('/v1/turns', 'POST', {
-    ...body(), tools: [...data.tools, { ...data.tools[0], name: 'tool_17' }],
+    ...body(), tools: [...data.tools, { ...data.tools[0], name: 'tool_29' }],
   });
   assert.equal(rejected.status, 400);
   assert.equal((await rejected.json()).code, 'bad_request');

@@ -87,7 +87,7 @@ function validate(body) {
   if (!only(body, ['version', 'run_id', 'mode', 'model', 'system_prompt', 'input', 'tools', 'history', 'session_state', 'images']) ||
       !([1, 2].includes(body.version)) || (body.mode === 'draft' && body.version !== 1) || !uuid.test(body.run_id) || !['draft', 'chat'].includes(body.mode) ||
       typeof body.system_prompt !== 'string' || typeof body.input !== 'string' ||
-      !Array.isArray(body.tools) || body.tools.length > 17) return false;
+      !Array.isArray(body.tools) || body.tools.length > 29) return false;
   if (body.version === 2 && (body.mode !== 'chat' || Object.hasOwn(body, 'history') || !validState(body.session_state))) return false;
   if (body.version === 1 && Object.hasOwn(body, 'session_state')) return false;
   if (Object.hasOwn(body, 'history') && (body.mode !== 'chat' || !Array.isArray(body.history) ||

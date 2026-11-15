@@ -15,6 +15,7 @@ from app.domains.bot.models import BotSession
 from app.domains.capability.proposals import suggest_capability
 from app.domains.capability.schemas import SuggestCapability
 from app.domains.capability.search import PeopleSearchInput, find_people
+from app.domains.capacity import assistant as capacity
 from app.domains.change_request import employee
 from app.domains.change_request.models import RequestStatus
 from app.domains.change_request.schemas import ItemInput, ToolInput, validation_message
@@ -175,7 +176,9 @@ def team_call(
     }
 
 
-def definitions(p: Principal | None = None) -> list[ToolDefinition]:
+def definitions(
+    p: Principal | None = None, *, db: Session | None = None, channel: str = "web"
+) -> list[ToolDefinition]:
     team = (
         [
             ToolDefinition(
@@ -195,7 +198,12 @@ def definitions(p: Principal | None = None) -> list[ToolDefinition]:
         else []
     )
     return (
-        team
+        (
+            capacity.definitions(db, p)
+            if db is not None and p and channel in ("web", "feishu")
+            else []
+        )
+        + team
         + [
             attachments.READ_TOOL,
             ToolDefinition(
@@ -417,6 +425,10 @@ def call(
     name: str,
     arguments: dict[str, JsonValue],
 ) -> JsonValue:
+    if name in capacity.TITLES or name in capacity.WRITES:
+        if session.channel not in ("web", "feishu"):
+            return {"error": "不允许调用此工具"}
+        return redact(capacity.call(db, p, cards, name, arguments))
     if name == "suggest_capability":
         try:
             suggestion = SuggestCapability.model_validate(arguments)
