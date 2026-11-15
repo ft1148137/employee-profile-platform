@@ -1,21 +1,32 @@
+from collections.abc import Callable
 from typing import Literal
 
 from fastapi import HTTPException
-from pydantic import JsonValue, ValidationError
-from sqlmodel import Session
+from pydantic import BaseModel, JsonValue, ValidationError
+from sqlmodel import Session, select
 
 from app.authz.principal import Principal
 from app.domains.bot import schemas as s
 from app.domains.bot.models import BotSession
 from app.domains.capability.service import get_schema, list_capabilities
 from app.domains.capacity import demand
+from app.domains.capacity.assignment import assignment_rows
 from app.domains.capacity.demand_schemas import (
     DemandInput,
     DemandList,
     DemandPublic,
+    ReplyDemandInput,
     RespondDemandInput,
 )
-from app.domains.capacity.models import DemandOutcome, DemandStatus
+from app.domains.capacity.extension_schemas import RequestExtensionInput
+from app.domains.capacity.models import (
+    AssignmentStatus,
+    CapacityExtensionRequest,
+    CapacityRequestStatus,
+    DemandOutcome,
+    DemandStatus,
+)
+from app.domains.capacity.schemas import WorkloadRequestInput
 from app.domains.capacity.settings import (
     CapacityConflict,
     CapacityForbidden,
@@ -24,15 +35,25 @@ from app.domains.capacity.settings import (
     require_enabled,
 )
 from app.domains.capacity.tools import CAPACITY_TOOLS
-from app.domains.capacity.workload import employee
+from app.domains.capacity.workload import employee, get_my_workload
 from app.domains.change_request.schemas import validation_message
 from app.domains.model.pi_client import ToolDefinition
 
 READS = {t.name: t for t in CAPACITY_TOOLS if not t.writes}
 WRITES = {t.name: t for t in CAPACITY_TOOLS if t.writes}
-PREPARES: dict[str, tuple[Literal["demand", "demand_response"], str, str]] = {
+CardKind = Literal[
+    "demand", "demand_response", "demand_reply", "workload_request", "extension_request"
+]
+PREPARES: dict[str, tuple[CardKind, str, str]] = {
     "prepare_demand": ("demand", "submit_demand", "提交部门需求"),
     "prepare_demand_response": ("demand_response", "respond_demand", "回应部门需求"),
+    "prepare_demand_reply": ("demand_reply", "reply_demand", "答复部门需求"),
+    "prepare_workload_request": (
+        "workload_request",
+        "request_workload_change",
+        "申请调整负荷",
+    ),
+    "prepare_extension_request": ("extension_request", "request_extension", "申请延期"),
 }
 TITLES = {name: t.description for name, t in READS.items()} | {
     name: title for name, (_, _, title) in PREPARES.items()
@@ -65,11 +86,20 @@ def definitions(db: Session, p: Principal) -> list[ToolDefinition]:
             or name
             not in {"prepare_demand", "capacity_reference", "list_capacity_departments"}
         )
-        and (p.is_org_admin or p.managed_department_ids or name != "get_demand_basis")
+        and (
+            p.is_org_admin
+            or p.managed_department_ids
+            or name not in {"get_demand_basis", "prepare_demand_reply"}
+        )
+        and (
+            p.employee_id is not None
+            or name not in {"prepare_workload_request", "prepare_extension_request"}
+        )
     ]
 
 
-def check_demand(db: Session, p: Principal, body: DemandInput) -> str:
+def check_demand(db: Session, p: Principal, value: BaseModel) -> str:
+    body = DemandInput.model_validate(value)
     demand.require_requester(p, db)
     source = demand.department(db, p.org_id, body.requesting_department_id)
     if not p.is_org_admin:
@@ -107,7 +137,8 @@ def check_demand(db: Session, p: Principal, body: DemandInput) -> str:
     )
 
 
-def check_demand_response(db: Session, p: Principal, body: RespondDemandInput) -> str:
+def check_demand_response(db: Session, p: Principal, value: BaseModel) -> str:
+    body = RespondDemandInput.model_validate(value)
     row = demand.demand_row(p, db, body.demand_id)
     if p.user_id is None or not (
         row.requester_user_id == p.user_id
@@ -133,6 +164,76 @@ def check_demand_response(db: Session, p: Principal, body: RespondDemandInput) -
     )
 
 
+def check_demand_reply(db: Session, p: Principal, value: BaseModel) -> str:
+    body = ReplyDemandInput.model_validate(value)
+    row = demand.demand_row(p, db, body.demand_id)
+    if not demand.represents_department(p, row.target_department_id):
+        raise CapacityNotFound("未找到该需求")
+    if p.user_id is None or p.user_id == row.requester_user_id:
+        raise CapacityForbidden()
+    if row.revision != body.revision or row.status != DemandStatus.SUBMITTED:
+        raise CapacityConflict()
+    content = (
+        f"需求：{row.capability_name}\n结论："
+        f"{ {'can_do': '能做', 'partial': '能做一部分', 'not_now': '暂时不能'}[body.outcome] }\n"
+        f"承诺日期：{body.start_date or '未定'} 至 {body.end_date or '未定'}\n"
+        f"说明：{body.text}\n修订：{body.revision}"
+    )
+    demand.validate_department_text(p, db, row.target_department_id, content)
+    return content
+
+
+def check_workload_request(db: Session, p: Principal, value: BaseModel) -> str:
+    body = WorkloadRequestInput.model_validate(value)
+    if p.user_id is None:
+        raise CapacityForbidden()
+    current = get_my_workload(p, db)
+    if any(r.status == CapacityRequestStatus.PENDING for r in current.requests):
+        raise CapacityConflict()
+    return (
+        f"申请调整本人负荷\n其他工作占比：{body.requested_percent}%\n"
+        f"原因：{body.reason}\n提交后等待经理审批"
+    )
+
+
+def check_extension_request(db: Session, p: Principal, value: BaseModel) -> str:
+    body = RequestExtensionInput.model_validate(value)
+    row, _ = assignment_rows(p, db, body.assignment_id)
+    if p.user_id is None or row.employee_id != p.employee_id:
+        raise CapacityNotFound()
+    if row.status != AssignmentStatus.ACTIVE or body.requested_due_date <= row.due_date:
+        raise CapacityConflict()
+    pending = db.exec(
+        select(CapacityExtensionRequest.id).where(
+            CapacityExtensionRequest.org_id == p.org_id,
+            CapacityExtensionRequest.assignment_id == row.id,
+            CapacityExtensionRequest.status == CapacityRequestStatus.PENDING,
+        )
+    ).first()
+    if pending:
+        raise CapacityConflict()
+    return (
+        f"申请延期\n分配编号：{row.id}\n原完成日期：{row.due_date}\n"
+        f"申请完成日期：{body.requested_due_date}\n原因：{body.reason}\n提交后等待经理审批"
+    )
+
+
+CHECKS: dict[CardKind, Callable[[Session, Principal, BaseModel], str]] = {
+    "demand": check_demand,
+    "demand_response": check_demand_response,
+    "demand_reply": check_demand_reply,
+    "workload_request": check_workload_request,
+    "extension_request": check_extension_request,
+}
+RESULTS = {
+    "demand": "需求已提交",
+    "demand_response": "需求回应已提交",
+    "demand_reply": "部门答复已发送",
+    "workload_request": "负荷调整申请已提交，等待经理审批",
+    "extension_request": "延期申请已提交，等待经理审批",
+}
+
+
 def call(
     db: Session,
     p: Principal,
@@ -156,11 +257,7 @@ def call(
             return {"error": "请使用预览工具，并点击卡片确认"}
         kind, write_name, title = PREPARES[name]
         body = WRITES[write_name].input_model.model_validate(arguments)
-        if isinstance(body, DemandInput):
-            content = check_demand(db, p, body)
-        else:
-            assert isinstance(body, RespondDemandInput)
-            content = check_demand_response(db, p, body)
+        content = CHECKS[kind](db, p, body)
         card = s.CapacityCard(
             kind=kind,
             title=title,
@@ -196,6 +293,19 @@ def act(
     )
     if card is None or card.status != "pending" or action not in card.actions:
         raise CapacityConflict()
+    if card.kind == "demand_reply":
+        latest = next(
+            (
+                c
+                for c in reversed(cards)
+                if isinstance(c, s.CapacityCard)
+                and c.kind == card.kind
+                and c.arguments.get("demand_id") == card.arguments.get("demand_id")
+            ),
+            None,
+        )
+        if latest is None or latest.card_id != card.card_id:
+            raise CapacityConflict()
     card = card.model_copy(deep=True)
     card.actions = []
     if action.action == "cancel_capacity":
@@ -213,7 +323,9 @@ def act(
             client_name=session.channel,
         )
         card.status = "confirmed"
-        card.result = f"已提交，需求编号：{result.model_dump(mode='json')['id']}"
+        card.result = (
+            f"{RESULTS[card.kind]}，编号：{result.model_dump(mode='json')['id']}"
+        )
     except HTTPException as exc:
         card.status, card.result = "failed", str(exc.detail)
     return card

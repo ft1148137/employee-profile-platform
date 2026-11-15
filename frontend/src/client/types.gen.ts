@@ -1112,7 +1112,12 @@ export type CapacityCard = {
   /**
    * Kind
    */
-  kind: "demand" | "demand_response"
+  kind:
+    | "demand"
+    | "demand_response"
+    | "demand_reply"
+    | "workload_request"
+    | "extension_request"
   /**
    * Title
    */
