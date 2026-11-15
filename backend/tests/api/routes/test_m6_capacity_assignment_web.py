@@ -227,8 +227,10 @@ def test_commitment_note_validation_privacy_and_context(
             "committed_end_date": "2026-12-31",
         }
         assert {k: pending[k] for k in context} == context
-        assert api("/extension-requests")["data"] == [pending]
-        assert api("/extension-requests", "w2")["data"] == [pending]
+        assert pending["reviewer_names"] == [people["bm"].display_name]
+        listed = {**pending, "reviewer_names": []}
+        assert api("/extension-requests")["data"] == [listed]
+        assert api("/extension-requests", "w2")["data"] == [listed]
         for role in ("a", "am"):
             assert api("/extension-requests", role) == {"data": [], "count": 0}
         path = f"/extension-requests/{pending['id']}/decision"
@@ -348,7 +350,10 @@ def test_outside_delegate_cannot_read_b_context(
     assert people["w"].display_name not in raw and "PRIVATE_REASON" not in raw
     for body in ({"approve": True}, {"approve": False, "note": "退回"}):
         api(f"/extension-requests/{pending['id']}/decision", role, body, 404)
-    assert api("/extension-requests", "w")["data"] == [pending]
+    assert pending["reviewer_names"] == [people["cm"].display_name]
+    assert api("/extension-requests", "w")["data"] == [
+        {**pending, "reviewer_names": []}
+    ]
     assert api(role="w")["data"][0]["due_date"] == "2026-12-20"
     assert not db.exec(
         select(InboxItem).where(
