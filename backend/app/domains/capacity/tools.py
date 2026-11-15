@@ -1,8 +1,11 @@
 from app.domains.capacity.demand import (
     capacity_reference,
     get_demand,
+    get_demand_basis,
     list_capacity_departments,
     list_demands,
+    reply_demand,
+    respond_demand,
     submit_demand,
 )
 from app.domains.capacity.demand_schemas import (
@@ -10,6 +13,8 @@ from app.domains.capacity.demand_schemas import (
     DemandInput,
     DemandListInput,
     ReferenceInput,
+    ReplyDemandInput,
+    RespondDemandInput,
 )
 from app.domains.capacity.schemas import CapacityInput, WorkloadRequestInput
 from app.domains.capacity.workload import get_my_workload, request_workload_change
@@ -35,6 +40,26 @@ CAPACITY_TOOLS = (
         "list_demands", "查看我方发出或收到的需求", DemandListInput, list_demands
     ),
     EmployeeTool("get_demand", "查看需求详情和事件时间线", DemandIdInput, get_demand),
+    EmployeeTool(
+        "get_demand_basis",
+        "查看本部门需求依据和个人负荷，仅限答复方",
+        DemandIdInput,
+        get_demand_basis,
+    ),
+    EmployeeTool(
+        "reply_demand",
+        "代表本部门答复需求并确认承诺日期",
+        ReplyDemandInput,
+        reply_demand,
+        True,
+    ),
+    EmployeeTool(
+        "respond_demand",
+        "接受、追问或撤回我方需求",
+        RespondDemandInput,
+        respond_demand,
+        True,
+    ),
     EmployeeTool(
         "get_my_workload",
         "查看我的 Jira 参考值和经理确认负荷",

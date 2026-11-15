@@ -2,27 +2,39 @@ from datetime import date
 from typing import Literal
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlmodel import Session, col, or_, select
 
 from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
-from app.domains.capability.search import PeopleSearchInput, find_people
+from app.domains.capability.search import (
+    PeopleSearchInput,
+    PeopleSearchRow,
+    find_people,
+)
 from app.domains.capability.service import get_schema, list_capabilities
 from app.domains.capacity.demand_schemas import (
     CapacityReference,
+    DemandBasis,
+    DemandBasisPerson,
     DemandEventPublic,
     DemandInput,
     DemandList,
     DemandPublic,
+    ReplyInput,
+    RespondInput,
 )
 from app.domains.capacity.models import (
     CapacityDemand,
     CapacityDemandEvent,
     DemandEventKind,
+    DemandOutcome,
+    DemandStatus,
     RequesterPolicy,
 )
 from app.domains.capacity.schemas import Via
 from app.domains.capacity.settings import (
+    CapacityConflict,
     CapacityForbidden,
     CapacityNotFound,
     audit,
@@ -41,7 +53,13 @@ from app.domains.org.models import (
     RoleGrant,
 )
 from app.domains.org.schemas import DepartmentPublic, DepartmentsPublic
+from app.domains.org.service import managed_scope
 from app.models import User
+
+
+class DemandReplyInvalid(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(422, "答复会发给对方部门，请不要写本部门员工的姓名")
 
 
 def require_requester(principal: Principal, session: Session) -> None:
@@ -198,25 +216,73 @@ def demand_public(session: Session, row: CapacityDemand) -> DemandPublic:
         .order_by(col(CapacityDemandEvent.created_at), col(CapacityDemandEvent.id))
     ).all()
     result = DemandPublic.model_validate(row)
-    result.events = [DemandEventPublic.model_validate(e) for e in events]
+    names = {
+        user_id: employee_name or full_name or "企业管理员"
+        for user_id, employee_name, full_name in session.exec(
+            select(OrgMembership.user_id, Employee.display_name, User.full_name)
+            .join(User, col(User.id) == OrgMembership.user_id)
+            .outerjoin(
+                Employee,
+                (col(Employee.org_id) == OrgMembership.org_id)
+                & (col(Employee.id) == OrgMembership.employee_id),
+            )
+            .where(
+                OrgMembership.org_id == row.org_id,
+                col(OrgMembership.user_id).in_(
+                    {
+                        e.actor_user_id
+                        for e in events
+                        if e.kind == DemandEventKind.REPLIED
+                    }
+                ),
+            )
+        ).all()
+    }
+    result.events = [
+        DemandEventPublic(
+            kind=e.kind,
+            text=e.text,
+            created_at=e.created_at,
+            via=e.via,
+            outcome=e.outcome,
+            start_date=e.start_date,
+            end_date=e.end_date,
+            basis=CapacityReference.model_validate(e.basis) if e.basis else None,
+            responder_name=names.get(e.actor_user_id)
+            if e.kind == DemandEventKind.REPLIED
+            else None,
+        )
+        for e in events
+    ]
     return result
 
 
-def get_demand(principal: Principal, session: Session, demand_id: UUID) -> DemandPublic:
+def demand_row(
+    principal: Principal, session: Session, demand_id: UUID, *, lock: bool = False
+) -> CapacityDemand:
     require_enabled(principal, session)
-    row = session.exec(
-        select(CapacityDemand).where(
-            CapacityDemand.org_id == principal.org_id,
-            CapacityDemand.id == demand_id,
-        )
-    ).one_or_none()
+    query = select(CapacityDemand).where(
+        CapacityDemand.org_id == principal.org_id,
+        CapacityDemand.id == demand_id,
+    )
+    if lock:
+        query = query.with_for_update().execution_options(populate_existing=True)
+    row = session.exec(query).one_or_none()
     if row is None or not (
         row.requester_user_id == principal.user_id
         or row.requesting_department_id in principal.managed_department_ids
         or represents_department(principal, row.target_department_id)
     ):
         raise CapacityNotFound("未找到该需求")
-    return demand_public(session, row)
+    return row
+
+
+def get_demand(principal: Principal, session: Session, demand_id: UUID) -> DemandPublic:
+    row = demand_row(principal, session, demand_id)
+    result = demand_public(session, row)
+    if represents_department(principal, row.target_department_id):
+        result.basis_url = f"/orgs/{principal.org_id}/capacity/demands/{row.id}/basis"
+    return result
 
 
 def list_demands(
@@ -324,6 +390,241 @@ def submit_demand(
         principal,
         session,
         "capacity.demand_submitted",
+        "capacity_demand",
+        row.id,
+        via,
+        client_name,
+        {},
+    )
+    session.flush()
+    return demand_public(session, row)
+
+
+def get_demand_basis(
+    principal: Principal, session: Session, demand_id: UUID
+) -> DemandBasis:
+    row = demand_row(principal, session, demand_id)
+    if not represents_department(principal, row.target_department_id):
+        raise CapacityNotFound("未找到该需求")
+    people: dict[UUID, PeopleSearchRow] = {}
+    skip = 0
+    while True:
+        page = find_people(
+            session,
+            principal,
+            PeopleSearchInput(
+                department_id=row.target_department_id,
+                capability_key=row.capability_key,
+                minimum_level=row.minimum_level,
+                skip=skip,
+                limit=100,
+            ),
+        )
+        for person in page.data:
+            if person.level is not None:
+                people.setdefault(person.employee_id, person)
+        skip += len(page.data)
+        if skip >= page.count or not page.data:
+            break
+    employees = list(
+        session.exec(
+            select(Employee).where(
+                employee_scope_clause(principal),
+                col(Employee.id).in_(people),
+            )
+        ).all()
+    )
+    workloads = {w.employee_id: w for w in views(principal, session, employees)}
+    return DemandBasis(
+        data=[
+            DemandBasisPerson(**p.model_dump(), workload=workloads[p.employee_id])
+            for p in sorted(
+                people.values(), key=lambda p: (p.display_name, str(p.employee_id))
+            )
+        ],
+        count=len(people),
+        reference=department_reference(
+            session,
+            principal.org_id,
+            row.target_department_id,
+            row.capability_key,
+            row.minimum_level,
+        ),
+    )
+
+
+def reply_demand(
+    principal: Principal,
+    session: Session,
+    demand_id: UUID,
+    outcome: DemandOutcome,
+    text: str,
+    revision: int,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    *,
+    via: Via = "web",
+    client_name: str | None = None,
+) -> DemandPublic:
+    body = ReplyInput(
+        outcome=outcome,
+        text=text,
+        revision=revision,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    row = demand_row(principal, session, demand_id, lock=True)
+    if not represents_department(principal, row.target_department_id):
+        raise CapacityNotFound("未找到该需求")
+    if principal.user_id is None or principal.user_id == row.requester_user_id:
+        raise CapacityForbidden()
+    if row.revision != revision or row.status != DemandStatus.SUBMITTED:
+        raise CapacityConflict()
+    target_ids = managed_scope(
+        session, principal.org_id, frozenset({row.target_department_id})
+    )
+    names = session.exec(
+        select(Employee.display_name).where(
+            employee_scope_clause(principal),
+            col(Employee.department_id).in_(target_ids),
+            Employee.employment_status == EmploymentStatus.ACTIVE,
+        )
+    ).all()
+    if any(name and name in body.text for name in names):
+        raise DemandReplyInvalid()
+    reference = department_reference(
+        session,
+        principal.org_id,
+        row.target_department_id,
+        row.capability_key,
+        row.minimum_level,
+    )
+    session.add(
+        CapacityDemandEvent(
+            org_id=principal.org_id,
+            demand_id=row.id,
+            kind=DemandEventKind.REPLIED,
+            actor_user_id=principal.user_id,
+            text=body.text,
+            outcome=body.outcome,
+            start_date=body.start_date,
+            end_date=body.end_date,
+            basis=reference.model_dump(mode="json"),
+            via=via,
+        )
+    )
+    row.status = DemandStatus.REPLIED
+    row.committed_start_date, row.committed_end_date = body.start_date, body.end_date
+    row.revision += 1
+    session.add(row)
+    add_item(
+        session,
+        InboxItem(
+            org_id=principal.org_id,
+            recipient_user_id=row.requester_user_id,
+            kind=InboxKind.CAPACITY,
+            message=NOTICE,
+        ),
+    )
+    audit(
+        principal,
+        session,
+        "capacity.demand_replied",
+        "capacity_demand",
+        row.id,
+        via,
+        client_name,
+        {},
+    )
+    session.flush()
+    return demand_public(session, row)
+
+
+def respond_demand(
+    principal: Principal,
+    session: Session,
+    demand_id: UUID,
+    action: Literal["accept", "follow_up", "withdraw"],
+    revision: int,
+    text: str | None = None,
+    *,
+    via: Via = "web",
+    client_name: str | None = None,
+) -> DemandPublic:
+    body = RespondInput(action=action, revision=revision, text=text)
+    row = demand_row(principal, session, demand_id, lock=True)
+    if principal.user_id is None or not (
+        row.requester_user_id == principal.user_id
+        or row.requesting_department_id in principal.managed_department_ids
+    ):
+        raise CapacityNotFound("未找到该需求")
+    if row.revision != revision or row.status in (
+        DemandStatus.ACCEPTED,
+        DemandStatus.WITHDRAWN,
+    ):
+        raise CapacityConflict()
+    if action != "withdraw" and row.status != DemandStatus.REPLIED:
+        raise CapacityConflict()
+    if action == "accept":
+        latest_reply = session.exec(
+            select(CapacityDemandEvent)
+            .where(
+                CapacityDemandEvent.org_id == principal.org_id,
+                CapacityDemandEvent.demand_id == row.id,
+                CapacityDemandEvent.kind == DemandEventKind.REPLIED,
+            )
+            .order_by(
+                col(CapacityDemandEvent.created_at).desc(),
+                col(CapacityDemandEvent.id).desc(),
+            )
+        ).first()
+        if latest_reply is None or latest_reply.outcome == DemandOutcome.NOT_NOW:
+            raise CapacityConflict()
+    kind = {
+        "accept": DemandEventKind.ACCEPTED,
+        "follow_up": DemandEventKind.FOLLOW_UP,
+        "withdraw": DemandEventKind.WITHDRAWN,
+    }[action]
+    row.status = {
+        "accept": DemandStatus.ACCEPTED,
+        "follow_up": DemandStatus.SUBMITTED,
+        "withdraw": DemandStatus.WITHDRAWN,
+    }[action]
+    if action != "accept":
+        row.committed_start_date = row.committed_end_date = None
+    row.revision += 1
+    session.add(row)
+    session.add(
+        CapacityDemandEvent(
+            org_id=principal.org_id,
+            demand_id=row.id,
+            kind=kind,
+            actor_user_id=principal.user_id,
+            text=body.text or "",
+            via=via,
+        )
+    )
+    for user_id in sorted(
+        responder_user_ids(session, principal.org_id, row.target_department_id)
+        - {principal.user_id}
+    ):
+        add_item(
+            session,
+            InboxItem(
+                org_id=principal.org_id,
+                recipient_user_id=user_id,
+                kind=InboxKind.CAPACITY,
+                message=NOTICE,
+            ),
+        )
+    audit(
+        principal,
+        session,
+        {
+            "accept": "capacity.demand_accepted",
+            "follow_up": "capacity.demand_follow_up",
+            "withdraw": "capacity.demand_withdrawn",
+        }[action],
         "capacity_demand",
         row.id,
         via,
