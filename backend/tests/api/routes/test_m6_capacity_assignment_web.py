@@ -10,6 +10,7 @@ from sqlalchemy import delete
 from sqlmodel import Session, select
 
 from app.core.security import create_access_token
+from app.domains.base import utc_now
 from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityDemand,
@@ -25,6 +26,7 @@ from app.domains.org.models import (
     OrgMembership,
     RoleGrant,
 )
+from app.domains.review.models import ReviewDelegation
 from app.models import User
 from tests.utils.org import delete_test_organization
 
@@ -44,6 +46,7 @@ def case(db: Session, client: TestClient) -> Generator[tuple]:
     for role, dept in {
         "a": a,
         "am": a,
+        "other": Department(org_id=org.id, name="其他合成部门"),
         "bm": b,
         "cm": child,
         "w": child,
@@ -51,6 +54,9 @@ def case(db: Session, client: TestClient) -> Generator[tuple]:
         "admin": None,
         "foreign": None,
     }.items():
+        if role == "other":
+            db.add(dept)
+            db.flush()
         user = User(
             username=str(uuid4()),
             email=f"{uuid4()}@example.com",
@@ -301,6 +307,7 @@ def test_commitment_note_validation_privacy_and_context(
             status=422,
             method=method,
         )
+
         api(
             path,
             body={
@@ -311,3 +318,40 @@ def test_commitment_note_validation_privacy_and_context(
             status=409,
             method=method,
         )
+
+
+@pytest.mark.parametrize("role", ["a", "am", "other"])
+def test_outside_delegate_cannot_read_b_context(
+    case: tuple, db: Session, role: str
+) -> None:
+    api, create, _, people, users, org = case
+    row = create()
+    db.add(
+        ReviewDelegation(
+            org_id=org.id,
+            manager_user_id=users["cm"].id,
+            delegate_user_id=users[role].id,
+            created_by_user_id=users["cm"].id,
+            starts_at=utc_now() - timedelta(hours=1),
+            ends_at=utc_now() + timedelta(hours=1),
+        )
+    )
+    db.commit()
+    pending = api(
+        f"/assignments/{row['id']}/extension-requests",
+        "w",
+        {"requested_due_date": "2026-12-25", "reason": "PRIVATE_REASON"},
+    )
+    result = api("/extension-requests", role)
+    assert result == {"data": [], "count": 0}
+    raw = json.dumps(result, ensure_ascii=False)
+    assert people["w"].display_name not in raw and "PRIVATE_REASON" not in raw
+    for body in ({"approve": True}, {"approve": False, "note": "退回"}):
+        api(f"/extension-requests/{pending['id']}/decision", role, body, 404)
+    assert api("/extension-requests", "w")["data"] == [pending]
+    assert api(role="w")["data"][0]["due_date"] == "2026-12-20"
+    assert not db.exec(
+        select(InboxItem).where(
+            InboxItem.org_id == org.id, InboxItem.recipient_user_id == users[role].id
+        )
+    ).all()

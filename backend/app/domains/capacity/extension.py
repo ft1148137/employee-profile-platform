@@ -3,9 +3,12 @@ from uuid import UUID
 
 from sqlmodel import Session, col, select
 
+from app.authz.deps import get_org_principal
+from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
 from app.domains.base import utc_now
 from app.domains.capacity.assignment import assignment_rows, change_due_date
+from app.domains.capacity.demand import represents_department
 from app.domains.capacity.extension_schemas import (
     ExtensionDecisionInput,
     ExtensionInput,
@@ -29,8 +32,33 @@ from app.domains.capacity.settings import (
 from app.domains.capacity.workload import NOTICE, employee, notify_employee
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.inbox.service import add_item
-from app.domains.org.models import Employee, EmploymentStatus
+from app.domains.org.models import Employee, EmploymentStatus, OrgMembership
+from app.domains.org.service import managed_scope
 from app.domains.review.routing import active_delegations, can_review, review_assignment
+from app.models import User
+
+
+def extension_reviewer(
+    principal: Principal,
+    session: Session,
+    employee_id: UUID,
+    target_department_id: UUID,
+) -> UUID | None:
+    reviewer = can_review(session, principal, employee_id)
+    if reviewer is None or represents_department(principal, target_department_id):
+        return reviewer
+    target_ids = managed_scope(
+        session, principal.org_id, frozenset({target_department_id})
+    )
+    member = session.exec(
+        select(Employee.id).where(
+            employee_scope_clause(principal),
+            Employee.id == principal.employee_id,
+            Employee.employment_status == EmploymentStatus.ACTIVE,
+            col(Employee.department_id).in_(target_ids),
+        )
+    ).first()
+    return reviewer if member is not None else None
 
 
 def extension_public(
@@ -80,13 +108,30 @@ def request_extension(
     session.add(request)
     managers, _ = review_assignment(session, principal.org_id, row.employee_id)
     delegates = active_delegations(session, principal.org_id, managers)
-    for user_id in sorted(set(managers) | {d.delegate_user_id for d in delegates}):
-        if user_id != principal.user_id:
+    recipients = set(managers) | {d.delegate_user_id for d in delegates}
+    users = session.exec(
+        select(User)
+        .join(OrgMembership, col(OrgMembership.user_id) == User.id)
+        .where(
+            OrgMembership.org_id == principal.org_id,
+            col(User.id).in_(recipients),
+            User.is_active,
+        )
+        .order_by(col(User.id))
+    ).all()
+    for user in users:
+        recipient = get_org_principal(principal.org_id, user, session)
+        if (
+            extension_reviewer(
+                recipient, session, row.employee_id, demand.target_department_id
+            )
+            is not None
+        ):
             add_item(
                 session,
                 InboxItem(
                     org_id=principal.org_id,
-                    recipient_user_id=user_id,
+                    recipient_user_id=user.id,
                     kind=InboxKind.CAPACITY,
                     message=NOTICE,
                 ),
@@ -149,7 +194,10 @@ def list_extension_requests(principal: Principal, session: Session) -> Extension
                 or r.decided_by_user_id == principal.user_id
                 or r.decided_for_user_id == principal.user_id
             )
-            and can_review(session, principal, row.employee_id) is not None
+            and extension_reviewer(
+                principal, session, row.employee_id, demand.target_department_id
+            )
+            is not None
         )
     ]
     return ExtensionList(data=data, count=len(data))
@@ -175,7 +223,9 @@ def decide_extension_request(
         raise CapacityNotFound()
     row, demand = assignment_rows(principal, session, request.assignment_id)
     session.refresh(request, with_for_update=True)
-    manager_id = can_review(session, principal, row.employee_id)
+    manager_id = extension_reviewer(
+        principal, session, row.employee_id, demand.target_department_id
+    )
     if manager_id is None:
         raise CapacityNotFound()
     if request.status != CapacityRequestStatus.PENDING:
