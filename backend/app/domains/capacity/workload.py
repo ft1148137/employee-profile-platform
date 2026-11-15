@@ -370,11 +370,12 @@ def list_workload_requests(
     data = [
         WorkloadRequestPublic.model_validate(r)
         for r in rows
-        if r.decided_by_user_id == principal.user_id
-        or (
+        if (
             r.status == CapacityRequestStatus.PENDING
-            and can_review(session, principal, r.employee_id) is not None
+            or r.decided_by_user_id == principal.user_id
+            or r.decided_for_user_id == principal.user_id
         )
+        and can_review(session, principal, r.employee_id) is not None
     ]
     return WorkloadRequestList(data=data, count=len(data))
 

@@ -640,3 +640,75 @@ def test_direct_adjustment_notifies_employee(
         "via": "web",
         "client_name": None,
     }
+
+
+@pytest.mark.parametrize("loss", ["grant", "delegation", "department"])
+def test_processed_requests_require_current_authority(
+    capacity: tuple, db: Session, client: TestClient, loss: str
+) -> None:
+    url, employees, auth = capacity
+    enable(client, capacity)
+    manager = user_id(db, employees["E01"])
+    actor = auth["manager"]
+    delegation = ReviewDelegation(
+        org_id=employees["E01"].org_id,
+        manager_user_id=manager,
+        delegate_user_id=user_id(db, employees["E05"]),
+        created_by_user_id=manager,
+        starts_at=utc_now() - timedelta(hours=1),
+        ends_at=utc_now() + timedelta(hours=1),
+    )
+    if loss == "delegation":
+        db.add(delegation)
+        db.commit()
+        actor = headers(db, employees["E05"])
+    response = client.post(
+        f"{url}/capacity/workloads/me/requests",
+        headers=auth["employee"],
+        json={"requested_percent": 40, "reason": "PRIVATE_HISTORY_REASON"},
+    )
+    assert response.status_code == 200
+    request_id = response.json()["id"]
+    decision = f"{url}/capacity/workload-requests/{request_id}/decision"
+    assert (
+        client.post(decision, headers=actor, json={"approve": True}).status_code == 200
+    )
+    listing = f"{url}/capacity/workload-requests"
+    assert [r["id"] for r in client.get(listing, headers=actor).json()["data"]] == [
+        request_id
+    ]
+    if loss == "grant":
+        member = db.exec(
+            select(OrgMembership).where(
+                OrgMembership.org_id == employees["E01"].org_id,
+                OrgMembership.user_id == manager,
+            )
+        ).one()
+        db.execute(
+            delete(RoleGrant).where(
+                RoleGrant.org_id == member.org_id,
+                RoleGrant.membership_id == member.id,
+                RoleGrant.role == "dept_manager",
+            )
+        )
+    elif loss == "delegation":
+        delegation.ends_at = utc_now() - timedelta(minutes=1)
+        db.add(delegation)
+    else:
+        employees["E02"].department_id = employees["E04"].department_id
+        db.add(employees["E02"])
+    db.commit()
+    result = client.get(listing, headers=actor)
+    assert result.json() == {"data": [], "count": 0}
+    assert "PRIVATE_HISTORY_REASON" not in result.text
+    assert (
+        client.post(decision, headers=actor, json={"approve": True}).status_code == 404
+    )
+    # The requester retains access to their own history through the self endpoint.
+    own = client.get(f"{url}/capacity/workloads/me", headers=auth["employee"])
+    assert own.json()["requests"][0]["id"] == request_id
+    if loss == "delegation":
+        # The original reviewer may see decisions made on their behalf while authorized.
+        assert [
+            r["id"] for r in client.get(listing, headers=auth["manager"]).json()["data"]
+        ] == [request_id]
