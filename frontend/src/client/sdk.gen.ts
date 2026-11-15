@@ -188,6 +188,9 @@ import type {
   capacityCreateAssignmentData,
   capacityCreateAssignmentErrors,
   capacityCreateAssignmentResponses,
+  capacityDecideExtensionRequestData,
+  capacityDecideExtensionRequestErrors,
+  capacityDecideExtensionRequestResponses,
   capacityDecideWorkloadRequestData,
   capacityDecideWorkloadRequestErrors,
   capacityDecideWorkloadRequestResponses,
@@ -209,6 +212,9 @@ import type {
   capacityListDemandsData,
   capacityListDemandsErrors,
   capacityListDemandsResponses,
+  capacityListExtensionRequestsData,
+  capacityListExtensionRequestsErrors,
+  capacityListExtensionRequestsResponses,
   capacityListMyAssignmentsData,
   capacityListMyAssignmentsErrors,
   capacityListMyAssignmentsResponses,
@@ -224,6 +230,9 @@ import type {
   capacityReplyDemandData,
   capacityReplyDemandErrors,
   capacityReplyDemandResponses,
+  capacityRequestExtensionData,
+  capacityRequestExtensionErrors,
+  capacityRequestExtensionResponses,
   capacityRequestWorkloadChangeData,
   capacityRequestWorkloadChangeErrors,
   capacityRequestWorkloadChangeResponses,
@@ -955,6 +964,68 @@ export class CapacityService {
       responseType: "json",
       security: [{ scheme: "bearer", type: "http" }],
       url: "/api/v1/orgs/{org_id}/capacity/workload-requests/{request_id}/decision",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * Request Extension
+   */
+  public static requestExtension<ThrowOnError extends boolean = true>(
+    options: Options<capacityRequestExtensionData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capacityRequestExtensionResponses,
+      capacityRequestExtensionErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/assignments/{assignment_id}/extension-requests",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * List Extension Requests
+   */
+  public static listExtensionRequests<ThrowOnError extends boolean = true>(
+    options: Options<capacityListExtensionRequestsData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityListExtensionRequestsResponses,
+      capacityListExtensionRequestsErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/extension-requests",
+      ...options,
+    })
+  }
+
+  /**
+   * Decide Extension Request
+   */
+  public static decideExtensionRequest<ThrowOnError extends boolean = true>(
+    options: Options<capacityDecideExtensionRequestData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capacityDecideExtensionRequestResponses,
+      capacityDecideExtensionRequestErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/extension-requests/{request_id}/decision",
       ...options,
       headers: {
         "Content-Type": "application/json",

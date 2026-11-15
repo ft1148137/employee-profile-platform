@@ -2,6 +2,9 @@ import type { AuditEventPublic } from "@/client"
 
 export const auditLabels: Record<string, string> = {
   "capacity.demand_submitted": "提交部门需求",
+  "capacity.extension_requested": "申请延期",
+  "capacity.extension_approved": "同意延期申请",
+  "capacity.extension_returned": "退回延期申请",
   "capacity.assignment_created": "分配部门工作",
   "capacity.assignment_updated": "调整部门分配",
   "capacity.commitment_changed": "更新部门承诺日期",

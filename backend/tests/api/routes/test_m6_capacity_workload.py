@@ -565,6 +565,8 @@ def test_tools_use_shared_services() -> None:
         ("respond_demand", True),
         ("get_my_workload", False),
         ("request_workload_change", True),
+        ("list_my_assignments", False),
+        ("request_extension", True),
     ]
 
 

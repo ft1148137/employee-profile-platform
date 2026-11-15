@@ -2901,6 +2901,95 @@ export type EvidenceTitle = {
 }
 
 /**
+ * ExtensionDecisionInput
+ */
+export type ExtensionDecisionInput = {
+  /**
+   * Approve
+   */
+  approve: boolean
+  /**
+   * Note
+   */
+  note?: string | null
+  /**
+   * New Committed End Date
+   */
+  new_committed_end_date?: string | null
+}
+
+/**
+ * ExtensionInput
+ */
+export type ExtensionInput = {
+  /**
+   * Requested Due Date
+   */
+  requested_due_date: string
+  /**
+   * Reason
+   */
+  reason: string
+}
+
+/**
+ * ExtensionList
+ */
+export type ExtensionList = {
+  /**
+   * Data
+   */
+  data: Array<ExtensionPublic>
+  /**
+   * Count
+   */
+  count: number
+}
+
+/**
+ * ExtensionPublic
+ */
+export type ExtensionPublic = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Assignment Id
+   */
+  assignment_id: string
+  /**
+   * Requested Due Date
+   */
+  requested_due_date: string
+  /**
+   * Reason
+   */
+  reason: string
+  status: CapacityRequestStatus
+  /**
+   * Created At
+   */
+  created_at: string
+  /**
+   * Decided By User Id
+   */
+  decided_by_user_id: string | null
+  /**
+   * Decided For User Id
+   */
+  decided_for_user_id: string | null
+  /**
+   * Decision Note
+   */
+  decision_note: string | null
+  /**
+   * Decided At
+   */
+  decided_at: string | null
+}
+
+/**
  * ExternalIdentitiesPublic
  */
 export type ExternalIdentitiesPublic = {
@@ -7559,6 +7648,110 @@ export type capacityDecideWorkloadRequestResponses = {
 
 export type capacityDecideWorkloadRequestResponse =
   capacityDecideWorkloadRequestResponses[keyof capacityDecideWorkloadRequestResponses]
+
+export type capacityRequestExtensionData = {
+  body: ExtensionInput
+  path: {
+    /**
+     * Assignment Id
+     */
+    assignment_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/assignments/{assignment_id}/extension-requests"
+}
+
+export type capacityRequestExtensionErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityRequestExtensionError =
+  capacityRequestExtensionErrors[keyof capacityRequestExtensionErrors]
+
+export type capacityRequestExtensionResponses = {
+  /**
+   * Successful Response
+   */
+  200: ExtensionPublic
+}
+
+export type capacityRequestExtensionResponse =
+  capacityRequestExtensionResponses[keyof capacityRequestExtensionResponses]
+
+export type capacityListExtensionRequestsData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/extension-requests"
+}
+
+export type capacityListExtensionRequestsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityListExtensionRequestsError =
+  capacityListExtensionRequestsErrors[keyof capacityListExtensionRequestsErrors]
+
+export type capacityListExtensionRequestsResponses = {
+  /**
+   * Successful Response
+   */
+  200: ExtensionList
+}
+
+export type capacityListExtensionRequestsResponse =
+  capacityListExtensionRequestsResponses[keyof capacityListExtensionRequestsResponses]
+
+export type capacityDecideExtensionRequestData = {
+  body: ExtensionDecisionInput
+  path: {
+    /**
+     * Request Id
+     */
+    request_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/extension-requests/{request_id}/decision"
+}
+
+export type capacityDecideExtensionRequestErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityDecideExtensionRequestError =
+  capacityDecideExtensionRequestErrors[keyof capacityDecideExtensionRequestErrors]
+
+export type capacityDecideExtensionRequestResponses = {
+  /**
+   * Successful Response
+   */
+  200: ExtensionPublic
+}
+
+export type capacityDecideExtensionRequestResponse =
+  capacityDecideExtensionRequestResponses[keyof capacityDecideExtensionRequestResponses]
 
 export type peopleSearchSearchPeopleData = {
   body?: never

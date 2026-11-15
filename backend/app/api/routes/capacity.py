@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query
 
 from app.api.deps import SessionDep
 from app.authz.deps import OrgPrincipalDep
-from app.domains.capacity import assignment, demand, settings, workload
+from app.domains.capacity import assignment, demand, extension, settings, workload
 from app.domains.capacity.assignment_schemas import (
     AssignmentInput,
     AssignmentPublic,
@@ -22,6 +22,12 @@ from app.domains.capacity.demand_schemas import (
     ReferenceInput,
     ReplyInput,
     RespondInput,
+)
+from app.domains.capacity.extension_schemas import (
+    ExtensionDecisionInput,
+    ExtensionInput,
+    ExtensionList,
+    ExtensionPublic,
 )
 from app.domains.capacity.schemas import (
     CapacitySettingsInput,
@@ -200,5 +206,38 @@ def decide_workload_request(
     body: WorkloadDecisionInput,
 ) -> WorkloadRequestPublic:
     result = workload.decide_workload_request(principal, session, request_id, body)
+    session.commit()
+    return result
+
+
+@router.post("/capacity/assignments/{assignment_id}/extension-requests")
+def request_extension(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    assignment_id: UUID,
+    body: ExtensionInput,
+) -> ExtensionPublic:
+    result = extension.request_extension(
+        principal, session, assignment_id, **body.model_dump()
+    )
+    session.commit()
+    return result
+
+
+@router.get("/capacity/extension-requests")
+def list_extension_requests(
+    principal: OrgPrincipalDep, session: SessionDep
+) -> ExtensionList:
+    return extension.list_extension_requests(principal, session)
+
+
+@router.post("/capacity/extension-requests/{request_id}/decision")
+def decide_extension_request(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    request_id: UUID,
+    body: ExtensionDecisionInput,
+) -> ExtensionPublic:
+    result = extension.decide_extension_request(principal, session, request_id, body)
     session.commit()
     return result
