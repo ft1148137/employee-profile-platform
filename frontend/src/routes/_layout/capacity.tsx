@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { tabSearch } from "@/components/Admin/AdminTabs"
 import { Approvals } from "@/components/Capacity/Approvals"
 import { IncomingDemands, OutgoingDemands } from "@/components/Capacity/Demands"
+import { DemandsDetail } from "@/components/Capacity/DemandsDetail"
 import { MyAssignments } from "@/components/Capacity/MyAssignments"
 import { MyWorkload } from "@/components/Capacity/MyWorkload"
 import {
@@ -17,7 +18,13 @@ import { useOrg } from "@/hooks/useOrg"
 
 export const Route = createFileRoute("/_layout/capacity")({
   component: CapacityPage,
-  validateSearch: tabSearch,
+  validateSearch: (search: Record<string, unknown>) => ({
+    ...tabSearch(search),
+    ...(typeof search.demand === "string" ? { demand: search.demand } : {}),
+    ...(search.plans === "1" || search.plans === 1
+      ? { plans: "1" as const }
+      : {}),
+  }),
   head: () => ({ meta: [{ title: "需求与容量 - 员工画像平台" }] }),
 })
 
@@ -25,7 +32,7 @@ function CapacityPage() {
   const { org, roles, employeeId } = useOrg()
   const settings = useCapacitySettings(org?.id)
   const disabled = useCapacityDisabled(org?.id)
-  const { tab } = Route.useSearch()
+  const { tab, demand, plans } = Route.useSearch()
   const navigate = Route.useNavigate()
   if (!org) return <OrgState />
   if (disabled || settings.data?.enabled === false)
@@ -72,7 +79,17 @@ function CapacityPage() {
         </TabsList>
         {tabs.map((item) => (
           <TabsContent key={item.value} value={item.value}>
-            <item.component orgId={org.id} />
+            {item.value === "incoming" && demand ? (
+              <DemandsDetail
+                orgId={org.id}
+                demandId={demand}
+                side="incoming"
+                plansOpen={plans === "1"}
+                back={() => navigate({ search: { tab: "incoming" } })}
+              />
+            ) : (
+              <item.component orgId={org.id} />
+            )}
           </TabsContent>
         ))}
       </Tabs>

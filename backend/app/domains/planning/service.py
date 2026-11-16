@@ -23,7 +23,12 @@ from app.domains.planning.models import (
     PlanningSnapshot,
     PlanVerdict,
 )
-from app.domains.planning.schemas import CasePublic, OptionInput, OptionPublic
+from app.domains.planning.schemas import (
+    CasePerson,
+    CasePublic,
+    OptionInput,
+    OptionPublic,
+)
 
 CaseAccess = tuple[PlanningCase, PlanningSnapshot, CapacityDemand]
 
@@ -112,6 +117,18 @@ def _view(
     options = sorted(
         options, key=lambda option: (order[option.kind], option.created_at, option.id)
     )
+    candidates = cast("list[dict[str, str]]", latest.data.get("candidates", []))
+    candidate_ids = {UUID(person["employee_id"]) for person in candidates}
+    people = (
+        session.exec(
+            select(Employee.id, Employee.display_name).where(
+                employee_scope_clause(principal),
+                col(Employee.id).in_(candidate_ids),
+            )
+        ).all()
+        if candidate_ids
+        else []
+    )
     return CasePublic(
         id=row.id,
         demand_id=row.demand_id,
@@ -121,6 +138,10 @@ def _view(
         stale=snapshot.current_fingerprint(session, principal, demand)
         != latest.fingerprint,
         notes=notes,
+        people=[
+            CasePerson(employee_id=employee_id, display_name=name)
+            for employee_id, name in people
+        ],
         options=[OptionPublic.model_validate(o, from_attributes=True) for o in options],
     )
 

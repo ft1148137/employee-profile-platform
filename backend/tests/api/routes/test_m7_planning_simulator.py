@@ -308,6 +308,7 @@ def test_case_creates_options_without_capacity_writes(
             "conditions",
             "newcomer_count",
             "affected_assignment_ids",
+            "approvers",
         }
         for o in case["options"]
     )

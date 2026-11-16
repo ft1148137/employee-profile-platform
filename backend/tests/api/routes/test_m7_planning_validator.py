@@ -139,6 +139,7 @@ def test_verdict_rules(data: dict, plan: dict, verdict: str, code: str | None) -
         "conditions",
         "newcomer_count",
         "affected_assignment_ids",
+        "approvers",
     }
 
 

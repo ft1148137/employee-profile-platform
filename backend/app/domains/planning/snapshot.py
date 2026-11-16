@@ -82,6 +82,7 @@ def _inputs(
     dict[UUID, tuple[str | None, UUID | None]],
     dict[str, Any],
     list[dict[str, object]],
+    list[CapacityAssignment],
 ]:
     scope = managed_scope(
         session, principal.org_id, frozenset({demand.target_department_id})
@@ -215,7 +216,7 @@ def _inputs(
         ],
         "external_departments": [(d["department_id"], d["count"]) for d in departments],
     }
-    return candidates, claims, raw_inputs, departments
+    return candidates, claims, raw_inputs, departments, assignments
 
 
 def _fingerprint(raw_inputs: dict[str, Any]) -> str:
@@ -229,7 +230,9 @@ def _fingerprint(raw_inputs: dict[str, Any]) -> str:
 def build(
     session: Session, principal: Principal, demand: CapacityDemand
 ) -> tuple[dict[str, Any], str, list[dict[str, object]]]:
-    candidates, claims, raw, departments = _inputs(session, principal, demand)
+    candidates, claims, raw, departments, assignments = _inputs(
+        session, principal, demand
+    )
     basis = get_demand_basis(principal, session, demand.id)
     basis_ids = {p.employee_id for p in basis.data}
     start = max(
@@ -294,6 +297,19 @@ def build(
             }
             for e in candidates
         ],
+        "assignments": [
+            {
+                "assignment_id": str(a.id),
+                "employee_id": str(a.employee_id),
+                "start_date": a.start_date.isoformat() if a.start_date else None,
+                "counted_from": (
+                    a.start_date or week_start(a.created_at.date())
+                ).isoformat(),
+                "due_date": a.due_date.isoformat(),
+                "allocation_percent": a.allocation_percent,
+            }
+            for a in assignments
+        ],
         "rules": {
             "fresh_days": FRESH_DAYS,
             "minimum_percent": 10,
@@ -309,5 +325,5 @@ def current_fingerprint(
     principal: Principal,
     demand: CapacityDemand,
 ) -> str:
-    _, _, raw, _ = _inputs(session, principal, demand)
+    _, _, raw, _, _ = _inputs(session, principal, demand)
     return _fingerprint(raw)

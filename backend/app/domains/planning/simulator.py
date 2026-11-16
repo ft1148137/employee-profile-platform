@@ -84,7 +84,7 @@ def _option(
     params: dict[str, Any],
     condition: str | None = None,
 ) -> dict[str, Any]:
-    result = validator.validate(data, params)
+    result = validator.validate(data, params, kind=kind)
     if condition is not None:
         result.findings.append(
             {"code": kind, "level": "conditional", "message": condition}
@@ -245,5 +245,9 @@ def borrow(data: dict[str, Any], departments: list[dict[str, Any]]) -> dict[str,
             "conditions": [condition],
             "newcomer_count": 0,
             "affected_assignment_ids": [],
+            "approvers": [
+                "本部门经理确认答复",
+                "原部门经理和被借调员工本人同意",
+            ],
         },
     }
