@@ -33,6 +33,7 @@ export function DemandAssignments({
   demand: DemandPublic
 }) {
   const id = useId()
+  const [employeeId, setEmployeeId] = useState("")
   const refresh = useCapacityRefresh(orgId)
   const { managedDepartmentIds } = useOrg()
   const path = { org_id: orgId, demand_id: demand.id }
@@ -74,6 +75,8 @@ export function DemandAssignments({
           create.mutate({
             employee_id: String(data.get("employee_id")),
             allocation_percent: Number(data.get("allocation_percent")),
+            start_date: String(data.get("start_date")),
+            outside_basis: data.has("outside_basis"),
             due_date: String(data.get("due_date")),
           })
         }}
@@ -88,7 +91,8 @@ export function DemandAssignments({
               name="employee_id"
               required
               className="h-10 w-full rounded-md border bg-background px-3"
-              defaultValue=""
+              value={employeeId}
+              onChange={(event) => setEmployeeId(event.target.value)}
             >
               <option value="" disabled>
                 请选择
@@ -136,10 +140,33 @@ export function DemandAssignments({
             />
           </label>
           <DateField
+            label="开始日期"
+            name="start_date"
+            min={demand.committed_start_date ?? undefined}
+          />
+          <DateField
             label="预计完成日期"
             name="due_date"
             max={demand.committed_end_date ?? undefined}
           />
+          {basis.data?.others.some(
+            (person) => person.employee_id === employeeId,
+          ) && (
+            <label
+              htmlFor={`${id}-outside`}
+              key={employeeId}
+              className="flex items-center gap-2 text-sm sm:col-span-3"
+            >
+              <Input
+                id={`${id}-outside`}
+                type="checkbox"
+                name="outside_basis"
+                required
+                className="size-4"
+              />
+              该员工不在依据中，我确认按自己的判断安排
+            </label>
+          )}
           <Button type="submit">确认分配</Button>
         </fieldset>
         <CapacityError error={create.error} />
@@ -156,10 +183,11 @@ export function DemandAssignments({
           )}
           {query.data.data.map((row) => (
             <AssignmentRow
-              key={`${row.id}:${row.due_date}`}
+              key={`${row.id}:${row.start_date}:${row.due_date}`}
               orgId={orgId}
               row={row}
               committedEndDate={demand.committed_end_date ?? null}
+              committedStartDate={demand.committed_start_date ?? null}
               canEdit={managedDepartmentIds.includes(
                 demand.target_department_id,
               )}
@@ -175,11 +203,13 @@ function AssignmentRow({
   orgId,
   row,
   committedEndDate,
+  committedStartDate,
   canEdit,
 }: {
   orgId: string
   row: DemandAssignment
   committedEndDate: string | null
+  committedStartDate: string | null
   canEdit: boolean
 }) {
   const refresh = useCapacityRefresh(orgId)
@@ -201,7 +231,9 @@ function AssignmentRow({
         {row.employee_name} · {assignmentStatuses[row.status]}
       </h4>
       <p className="text-sm">
-        投入 {row.allocation_percent}% · 预计完成：{row.due_date}
+        投入 {row.allocation_percent}% ·{" "}
+        {row.start_date ? `开始：${row.start_date}` : "开始日期未确认"} ·
+        预计完成：{row.due_date}
       </p>
       {canEdit && row.status === "active" && (
         <>
@@ -222,6 +254,29 @@ function AssignmentRow({
             </Button>
           </div>
           <form
+            aria-label="修改开始日期"
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault()
+              update.mutate({
+                start_date: String(
+                  new FormData(event.currentTarget).get("start_date"),
+                ),
+              })
+            }}
+          >
+            <fieldset disabled={update.isPending} className="space-y-3">
+              <DateField
+                label="调整后的开始日期"
+                name="start_date"
+                defaultValue={row.start_date ?? ""}
+                min={committedStartDate ?? undefined}
+                max={row.due_date}
+              />
+              <Button type="submit">保存开始日期</Button>
+            </fieldset>
+          </form>
+          <form
             aria-label="修改完成日期"
             className="space-y-3"
             onSubmit={(event) => {
@@ -235,6 +290,7 @@ function AssignmentRow({
             <fieldset disabled={update.isPending} className="space-y-3">
               <DateField
                 label="调整后的完成日期"
+                min={row.start_date ?? undefined}
                 value={dueDate}
                 onChange={(event) => setDueDate(event.target.value)}
               />

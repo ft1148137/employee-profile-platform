@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import Field, model_validator
+from pydantic import Field, StrictBool, model_validator
 
 from app.domains.capacity.models import AssignmentStatus
 from app.domains.capacity.schemas import CapacityInput, Note
@@ -11,10 +11,13 @@ from app.domains.capacity.schemas import CapacityInput, Note
 class AssignmentInput(CapacityInput):
     employee_id: UUID
     allocation_percent: int = Field(strict=True, ge=10, le=100)
+    start_date: date
     due_date: date
+    outside_basis: StrictBool = False
 
 
 class AssignmentUpdateInput(CapacityInput):
+    start_date: date | None = None
     due_date: date | None = None
     status: Literal["done", "cancelled"] | None = None
     new_committed_end_date: date | None = None
@@ -22,10 +25,13 @@ class AssignmentUpdateInput(CapacityInput):
 
     @model_validator(mode="after")
     def one_change(self) -> AssignmentUpdateInput:
-        if (self.due_date is None) == (self.status is None):
-            raise ValueError("请修改完成日期或关闭分配")
-        if self.status and self.new_committed_end_date:
-            raise ValueError("关闭分配时不能修改承诺日期")
+        if (
+            sum(v is not None for v in (self.due_date, self.start_date, self.status))
+            != 1
+        ):
+            raise ValueError("请只修改完成日期、开始日期或关闭分配中的一项")
+        if self.due_date is None and self.new_committed_end_date:
+            raise ValueError("只有修改完成日期时才能修改承诺日期")
         if self.new_committed_end_date is not None and self.commitment_note is None:
             raise ValueError("推迟承诺时必须填写给对方部门的说明")
         if self.new_committed_end_date is None and self.commitment_note is not None:
@@ -33,7 +39,11 @@ class AssignmentUpdateInput(CapacityInput):
         return self
 
 
-class AssignmentPublic(AssignmentInput):
+class AssignmentPublic(CapacityInput):
+    employee_id: UUID
+    allocation_percent: int
+    start_date: date | None
+    due_date: date
     id: UUID
     demand_id: UUID
     status: AssignmentStatus

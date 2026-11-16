@@ -13,6 +13,7 @@ from app.authz.deps import get_org_principal
 from app.core.security import create_access_token
 from app.domains.base import utc_now
 from app.domains.capacity import assistant
+from app.domains.capacity.calendar import week_start
 from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityDemand,
@@ -105,6 +106,17 @@ def case(db: Session, client: TestClient) -> Generator[tuple]:
                 org_id=tenant.id, enabled=True, updated_by_user_id=users[role].id
             )
         )
+    for code in ("w", "w2"):
+        for offset in range(8):
+            db.add(
+                CapacityWeek(
+                    org_id=org.id,
+                    employee_id=people[code].id,
+                    week_start=week_start(date(2026, 12, 1)) + timedelta(weeks=offset),
+                    other_percent=0,
+                    confirmed_by_user_id=users["bm"].id,
+                )
+            )
     demand = CapacityDemand(
         org_id=org.id,
         requesting_department_id=a.id,
@@ -151,6 +163,8 @@ def case(db: Session, client: TestClient) -> Generator[tuple]:
             body={
                 "employee_id": str(employee_ids[code]),
                 "allocation_percent": 20,
+                "start_date": "2026-12-01",
+                "outside_basis": True,
                 "due_date": "2026-12-20",
             },
         )

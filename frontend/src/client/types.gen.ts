@@ -462,9 +462,17 @@ export type AssignmentInput = {
    */
   allocation_percent: number
   /**
+   * Start Date
+   */
+  start_date: string
+  /**
    * Due Date
    */
   due_date: string
+  /**
+   * Outside Basis
+   */
+  outside_basis?: boolean
 }
 
 /**
@@ -479,6 +487,10 @@ export type AssignmentPublic = {
    * Allocation Percent
    */
   allocation_percent: number
+  /**
+   * Start Date
+   */
+  start_date: string | null
   /**
    * Due Date
    */
@@ -507,6 +519,10 @@ export type AssignmentStatus = "active" | "done" | "cancelled"
  * AssignmentUpdateInput
  */
 export type AssignmentUpdateInput = {
+  /**
+   * Start Date
+   */
+  start_date?: string | null
   /**
    * Due Date
    */
@@ -1865,6 +1881,10 @@ export type DemandAssignment = {
    * Allocation Percent
    */
   allocation_percent: number
+  /**
+   * Start Date
+   */
+  start_date: string | null
   /**
    * Due Date
    */
@@ -4289,6 +4309,10 @@ export type MyAssignment = {
    * Allocation Percent
    */
   allocation_percent: number
+  /**
+   * Start Date
+   */
+  start_date: string | null
   /**
    * Due Date
    */

@@ -92,7 +92,8 @@ function MyAssignmentRow({
       </h3>
       <p className="text-sm">
         需求方：{row.requesting_department_name} · 投入 {row.allocation_percent}
-        % · 预计完成：{row.due_date}
+        % · {row.start_date ? `开始：${row.start_date}` : "开始日期未确认"} ·
+        预计完成：{row.due_date}
       </p>
       <p className="whitespace-pre-wrap break-words">{row.description}</p>
       {pending && (

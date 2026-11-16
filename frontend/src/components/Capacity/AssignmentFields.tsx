@@ -25,6 +25,40 @@ export function CapacityError({ error }: { error: Error | null }) {
       </div>
     )
   }
+  if (
+    detail &&
+    typeof detail === "object" &&
+    "message" in detail &&
+    typeof detail.message === "string"
+  ) {
+    const weeks =
+      "weeks" in detail && Array.isArray(detail.weeks) ? detail.weeks : []
+    const over =
+      "over_weeks" in detail && Array.isArray(detail.over_weeks)
+        ? detail.over_weeks
+        : []
+    return (
+      <div role="alert" className="space-y-1 text-sm text-destructive">
+        <p>{detail.message}</p>
+        <ul>
+          {weeks.map((week) => (
+            <li key={week.week_start}>
+              {week.week_start}：
+              {week.status === "stale" ? "需重新确认" : "未确认"}
+            </li>
+          ))}
+          {over.map((week) => (
+            <li key={week.week_start}>
+              {week.week_start}：超出 {week.over_percent}%
+            </li>
+          ))}
+        </ul>
+        <a href="/capacity?tab=team" className="underline">
+          去确认团队负荷
+        </a>
+      </div>
+    )
+  }
   return <SetupError error={error} />
 }
 

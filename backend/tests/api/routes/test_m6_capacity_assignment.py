@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from typing import Any
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,6 +14,7 @@ from sqlmodel import Session, select
 from app.authz.deps import get_org_principal
 from app.core.security import create_access_token
 from app.domains.audit.models import AuditEvent
+from app.domains.base import utc_now
 from app.domains.capacity import assignment
 from app.domains.capacity.assignment_schemas import AssignmentUpdateInput
 from app.domains.capacity.calendar import this_week
@@ -33,6 +35,11 @@ from app.domains.org.models import (
 )
 from app.models import User
 from tests.utils.org import delete_test_organization
+
+
+def day(offset: int) -> date:
+    today = utc_now().astimezone(ZoneInfo("Asia/Shanghai")).date()
+    return today - timedelta(days=today.weekday()) + timedelta(days=offset)
 
 
 @pytest.fixture
@@ -118,6 +125,19 @@ def case(db: Session, client: TestClient) -> Generator[tuple]:
             confirmed_by_user_id=users["bm"].id,
         )
     )
+    for code in ("w", "w2"):
+        for offset in range(9):
+            if offset == 0:
+                continue
+            db.add(
+                CapacityWeek(
+                    org_id=org.id,
+                    employee_id=people[code].id,
+                    week_start=day(7 * offset),
+                    other_percent=0,
+                    confirmed_by_user_id=users["bm"].id,
+                )
+            )
     demand = CapacityDemand(
         org_id=org.id,
         requesting_department_id=a.id,
@@ -127,10 +147,10 @@ def case(db: Session, client: TestClient) -> Generator[tuple]:
         capability_name="合成能力",
         headcount=2,
         allocation_percent=50,
-        window_start=date(2026, 12, 1),
-        window_end=date(2026, 12, 31),
-        committed_start_date=date(2026, 12, 1),
-        committed_end_date=date(2026, 12, 31),
+        window_start=day(0),
+        window_end=day(30),
+        committed_start_date=day(0),
+        committed_end_date=day(30),
         status="accepted",
         description="合成工作说明",
     )
@@ -163,7 +183,7 @@ def case(db: Session, client: TestClient) -> Generator[tuple]:
         code: str = "w",
         percent: int = 20,
         status: int | None = 200,
-        due: str = "2026-12-20",
+        due: str = day(19).isoformat(),
     ) -> Any:
         return api(
             f"/demands/{demand_id}/assignments",
@@ -171,6 +191,8 @@ def case(db: Session, client: TestClient) -> Generator[tuple]:
             {
                 "employee_id": str(employee_ids[code]),
                 "allocation_percent": percent,
+                "start_date": day(7 if code == "w2" else 0).isoformat(),
+                "outside_basis": True,
                 "due_date": due,
             },
             status,
@@ -201,7 +223,27 @@ def test_assignment_load_self_read_and_close(
     case: tuple, db: Session, percent: int, band: str, status: str
 ) -> None:
     api, create, demand, people, _, org = case
+    if percent == 40:
+        api(
+            "/weeks",
+            body={
+                "items": [{"employee_id": str(people["w"].id), "other_percent": 0}],
+                "start_week": day(0).isoformat(),
+                "end_week": day(0).isoformat(),
+            },
+            method="PUT",
+        )
     row = create(percent=percent)
+    if percent == 40:
+        api(
+            "/weeks",
+            body={
+                "items": [{"employee_id": str(people["w"].id), "other_percent": 70}],
+                "start_week": day(0).isoformat(),
+                "end_week": day(0).isoformat(),
+            },
+            method="PUT",
+        )
     create(status=409)
     create(code="w2")
     own = api(role="w")
@@ -229,7 +271,7 @@ def test_assignment_load_self_read_and_close(
     )
     api(
         f"/assignments/{row['id']}",
-        body={"due_date": "2026-12-21"},
+        body={"due_date": day(20).isoformat()},
         method="PATCH",
         status=409,
     )
@@ -263,18 +305,24 @@ def test_scope_status_and_input_validation(case: tuple, db: Session) -> None:
         create(code=code, status=404)
     for percent in (9, 101, True):
         create(percent=percent, status=422)
-    create(due="2027-01-01", status=409)
+    create(due=day(31).isoformat(), status=409)
     row = create()
     for role in ("a", "am", "w", "foreign", "admin"):
-        api(f"/assignments/{row['id']}", role, {"due_date": "2026-12-21"}, 404, "PATCH")
+        api(
+            f"/assignments/{row['id']}",
+            role,
+            {"due_date": day(20).isoformat()},
+            404,
+            "PATCH",
+        )
     for body in (
         {},
         {"status": "active"},
         {"due_date": None},
-        {"status": "done", "due_date": "2026-12-21"},
+        {"status": "done", "due_date": day(20).isoformat()},
         {
             "status": "done",
-            "new_committed_end_date": "2027-01-01",
+            "new_committed_end_date": day(31).isoformat(),
             "commitment_note": "部门调整交付安排",
         },
         {"employee_id": str(people["a"].id)},
@@ -296,7 +344,9 @@ def test_scope_status_and_input_validation(case: tuple, db: Session) -> None:
         {
             "employee_id": str(people["w"].id),
             "allocation_percent": 20,
-            "due_date": "2026-12-20",
+            "start_date": day(0).isoformat(),
+            "outside_basis": True,
+            "due_date": day(19).isoformat(),
         },
         404,
         other_org=True,
@@ -316,7 +366,7 @@ def test_commitment_atomicity_notifications_timeline_and_audit(
     api, create, demand, people, users, org = case
     row, other = create(), create(code="w2")
     path = f"/assignments/{row['id']}"
-    api(path, "cm", {"due_date": "2026-12-25"}, method="PATCH")
+    api(path, "cm", {"due_date": day(24).isoformat()}, method="PATCH")
     assert api(f"/demands/{demand.id}", "a")["revision"] == 1
     assert (
         db.exec(
@@ -331,19 +381,21 @@ def test_commitment_atomicity_notifications_timeline_and_audit(
         (
             "cm",
             {
-                "new_committed_end_date": "2027-01-10",
+                "new_committed_end_date": day(40).isoformat(),
                 "commitment_note": "部门调整交付安排",
             },
         ),
         (
             "bm",
             {
-                "new_committed_end_date": "2027-01-04",
+                "new_committed_end_date": day(34).isoformat(),
                 "commitment_note": "部门调整交付安排",
             },
         ),
     ]:
-        result = api(path, role, {"due_date": "2027-01-05", **body}, 409, "PATCH")
+        result = api(
+            path, role, {"due_date": day(35).isoformat(), **body}, 409, "PATCH"
+        )
         assert result["detail"] == (
             "会推迟对需求方的承诺：请同时填写新的承诺日期（不早于本需求各分配的完成日期）和对外说明"
             if role == "bm"
@@ -351,40 +403,45 @@ def test_commitment_atomicity_notifications_timeline_and_audit(
         )
     # A legacy active assignment may already exceed the current commitment.
     legacy = db.get_one(CapacityAssignment, UUID(other["id"]))
-    legacy.due_date = date(2027, 1, 20)
+    legacy.due_date = day(50)
     db.add(legacy)
     db.commit()
     api(
         path,
         body={
-            "due_date": "2027-01-05",
-            "new_committed_end_date": "2027-01-10",
+            "due_date": day(35).isoformat(),
+            "new_committed_end_date": day(40).isoformat(),
             "commitment_note": "部门调整交付安排",
         },
         status=409,
         method="PATCH",
     )
     before = api(f"/demands/{demand.id}", "a")
-    assert before["committed_end_date"] == "2026-12-31" and before["events"] == []
-    assert api(role="w")["data"][0]["due_date"] == "2026-12-25"
+    assert (
+        before["committed_end_date"] == day(30).isoformat() and before["events"] == []
+    )
+    assert api(role="w")["data"][0]["due_date"] == day(24).isoformat()
     api(
         path,
         body={
-            "due_date": "2027-01-05",
-            "new_committed_end_date": "2027-01-20",
+            "due_date": day(35).isoformat(),
+            "new_committed_end_date": day(50).isoformat(),
             "commitment_note": "部门调整交付安排",
         },
         method="PATCH",
     )
     public = api(f"/demands/{demand.id}", "a")
     event = public["events"][-1]
-    assert (public["revision"], public["committed_end_date"]) == (2, "2027-01-20")
+    assert (public["revision"], public["committed_end_date"]) == (
+        2,
+        day(50).isoformat(),
+    )
     assert (
         event["kind"],
         event["previous_end_date"],
         event["end_date"],
         event["revision"],
-    ) == ("commitment_changed", "2026-12-31", "2027-01-20", 2)
+    ) == ("commitment_changed", day(30).isoformat(), day(50).isoformat(), 2)
     assert event["text"] and event["basis"] is None and event["responder_name"] is None
     raw = json.dumps(public, ensure_ascii=False)
     for person in people.values():
@@ -433,8 +490,8 @@ def test_service_provenance_and_disabled_module(case: tuple, db: Session) -> Non
             session,
             UUID(row["id"]),
             AssignmentUpdateInput(
-                due_date="2027-01-01",
-                new_committed_end_date="2027-01-02",
+                due_date=day(31).isoformat(),
+                new_committed_end_date=day(32).isoformat(),
                 commitment_note="部门调整交付安排",
             ),
             via="mcp",
@@ -478,8 +535,8 @@ def test_concurrent_assignment_and_commitment_writes(case: tuple) -> None:
         return api(
             f"/assignments/{row['id']}",
             body={
-                "due_date": "2027-01-01",
-                "new_committed_end_date": "2027-01-01",
+                "due_date": day(31).isoformat(),
+                "new_committed_end_date": day(31).isoformat(),
                 "commitment_note": "部门调整交付安排",
             },
             method="PATCH",
