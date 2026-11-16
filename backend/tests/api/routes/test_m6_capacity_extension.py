@@ -16,12 +16,14 @@ from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
 from app.domains.capacity import extension
 from app.domains.capacity.extension_schemas import ExtensionDecisionInput
+from app.domains.capacity.calendar import week_start
 from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityDemand,
     CapacityDemandEvent,
     CapacityExtensionRequest,
     CapacitySetting,
+    CapacityWeek,
 )
 from app.domains.capacity.settings import CapacityNotFound
 from app.domains.capacity.tools import CAPACITY_TOOLS
@@ -106,6 +108,17 @@ def case(db: Session, client: TestClient) -> Generator[tuple]:
                 org_id=tenant.id, enabled=True, updated_by_user_id=users[role].id
             )
         )
+    for code in ("w", "w2"):
+        for offset in range(8):
+            db.add(
+                CapacityWeek(
+                    org_id=org.id,
+                    employee_id=people[code].id,
+                    week_start=week_start(date(2026, 12, 1)) + timedelta(weeks=offset),
+                    other_percent=0,
+                    confirmed_by_user_id=users["bm"].id,
+                )
+            )
     demand = CapacityDemand(
         org_id=org.id,
         requesting_department_id=a.id,
@@ -152,6 +165,8 @@ def case(db: Session, client: TestClient) -> Generator[tuple]:
             body={
                 "employee_id": str(employee_ids[code]),
                 "allocation_percent": 20,
+                "start_date": "2026-12-01",
+                "outside_basis": True,
                 "due_date": "2026-12-20",
             },
         )
@@ -159,11 +174,13 @@ def case(db: Session, client: TestClient) -> Generator[tuple]:
     yield api, create, demand, people, users, org
     db.rollback()
     for model in (
+        CapacityWeek,
         CapacityExtensionRequest,
         CapacityAssignment,
         CapacityDemandEvent,
         CapacityDemand,
         CapacitySetting,
+        CapacityWeek,
     ):
         db.execute(delete(model).where(model.org_id == org.id))
     db.commit()

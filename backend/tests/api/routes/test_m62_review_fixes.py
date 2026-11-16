@@ -49,6 +49,8 @@ def test_assignment_creation_explains_commitment_limit(case: tuple) -> None:
         body={
             "employee_id": str(people["w"].id),
             "allocation_percent": 20,
+            "start_date": "2026-12-01",
+            "outside_basis": True,
             "due_date": "2027-01-05",
         },
         status=409,

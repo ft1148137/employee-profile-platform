@@ -214,6 +214,16 @@ test("小样本隐藏及零依据时选择本部门其他员工", async ({ page,
     { action: "accept", revision: reply.revision },
     a,
   )
+  await api(
+    `${base}/capacity/weeks`,
+    {
+      items: [{ employee_id: person("B2").id, other_percent: 0 }],
+      start_week: "2026-11-30",
+      end_week: "2026-12-21",
+    },
+    m,
+    "PUT",
+  )
   await open(m, "incoming")
   await page.getByRole("button", { name: "查看详情", exact: true }).click()
   const assignment = page.getByRole("region", { name: "部门内分配" })
@@ -233,6 +243,10 @@ test("小样本隐藏及零依据时选择本部门其他员工", async ({ page,
   await assignment
     .getByLabel("预计完成日期", { exact: true })
     .fill("2026-12-20")
+  await assignment.getByLabel("开始日期", { exact: true }).fill("2026-12-01")
+  await assignment
+    .getByLabel("该员工不在依据中，我确认按自己的判断安排")
+    .check()
   await assignment.getByRole("button", { name: "确认分配" }).click()
   await expect(
     assignment.getByRole("article", { name: person("B2").display_name }),

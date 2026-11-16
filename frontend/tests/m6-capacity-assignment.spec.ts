@@ -139,20 +139,9 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
       },
       admin.access_token,
     )
-  await api(
-    `${base}/capacity/weeks`,
-    {
-      items: [{ employee_id: person("B1").id, other_percent: 20 }],
-      start_week: (
-        await api(`${base}/capacity/workloads/me`, undefined, m, "GET")
-      ).weeks[0].week_start,
-      end_week: (
-        await api(`${base}/capacity/workloads/me`, undefined, m, "GET")
-      ).weeks[0].week_start,
-    },
-    m,
-    "PUT",
-  )
+  const startWeek = (
+    await api(`${base}/capacity/workloads/me`, undefined, m, "GET")
+  ).weeks[0].week_start
   const demand = await api(
     `${base}/capacity/demands`,
     {
@@ -161,7 +150,7 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
       capability_key: "delivery",
       headcount: 2,
       allocation_percent: 50,
-      window_start: "2026-12-01",
+      window_start: startWeek,
       window_end: "2026-12-31",
       description: "合成联调需求",
     },
@@ -172,7 +161,7 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
     {
       revision: demand.revision,
       outcome: "can_do",
-      start_date: "2026-12-01",
+      start_date: startWeek,
       end_date: "2026-12-25",
       text: "可以承接",
     },
@@ -193,9 +182,33 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
     await assignment
       .getByLabel("从依据中选择员工")
       .selectOption(person(code).id)
+    await assignment.getByLabel("开始日期", { exact: true }).fill(startWeek)
     await assignment
       .getByLabel("预计完成日期", { exact: true })
       .fill("2026-12-20")
+    await assignment.getByRole("button", { name: "确认分配" }).click()
+    await expect(assignment.getByRole("alert")).toContainText(
+      "请先确认这些周的容量",
+    )
+    await expect(assignment.getByRole("alert")).toContainText(startWeek)
+    await expect(
+      assignment.getByRole("link", { name: "去确认团队负荷" }),
+    ).toHaveAttribute("href", "/capacity?tab=team")
+    await api(
+      `${base}/capacity/weeks`,
+      {
+        items: [
+          {
+            employee_id: person(code).id,
+            other_percent: code === "B1" ? 20 : 0,
+          },
+        ],
+        start_week: startWeek,
+        end_week: "2027-01-04",
+      },
+      m,
+      "PUT",
+    )
     await assignment.getByRole("button", { name: "确认分配" }).click()
     await expect(
       assignment.getByRole("article", { name: person(code).display_name }),
