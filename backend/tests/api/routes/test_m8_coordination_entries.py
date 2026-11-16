@@ -110,6 +110,9 @@ def test_bot_privacy_and_proposal_card(
     )
     assert plan["case_id"]
     choice = plan["options"][0]["id"]
+    plan_count = len(b_cards)
+    assert plan_count == len(plan["options"])
+    assert all(isinstance(card, s.PlanCard) for card in b_cards)
     before = business_rows(db, row.org_id)
     rejected = tools.call(
         db,
@@ -124,7 +127,7 @@ def test_bot_privacy_and_proposal_card(
         },
     )
     assert rejected == {"error": "答复只写部门层面的结论，不写人名"}
-    assert not b_cards
+    assert len(b_cards) == plan_count
     assert business_rows(db, row.org_id) == before
     result = tools.call(
         db,
@@ -139,9 +142,9 @@ def test_bot_privacy_and_proposal_card(
         },
     )
     assert result["status"] == "pending"
-    assert len(b_cards) == 1 and isinstance(b_cards[0], s.CapacityCard)
-    assert b_cards[0].kind == "demand_reply"
-    assert_no_b_people(b_cards[0].model_dump(mode="json"), people)
+    assert len(b_cards) == plan_count + 1 and isinstance(b_cards[-1], s.CapacityCard)
+    assert b_cards[-1].kind == "demand_reply"
+    assert_no_b_people(b_cards[-1].model_dump(mode="json"), people)
     assert business_rows(db, row.org_id) == before
     db.refresh(row)
     assert row.status == "submitted"
@@ -190,7 +193,7 @@ def test_bot_privacy_and_proposal_card(
         s.TurnResponse(messages=b_cards).model_dump(mode="json"),
     )
     db.commit()
-    confirmed = core.act(db, b, b_session.id, b_cards[0].actions[0])
+    confirmed = core.act(db, b, b_session.id, b_cards[-1].actions[0])
     assert isinstance(confirmed.messages[0], s.CapacityCard)
     assert confirmed.messages[0].status == "confirmed"
     db.refresh(row)

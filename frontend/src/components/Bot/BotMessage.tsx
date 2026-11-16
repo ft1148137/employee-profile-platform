@@ -66,9 +66,39 @@ export function BotMessage({
         aria-label={message.title}
       >
         <h3 className="font-semibold">{message.title}</h3>
-        <p className="whitespace-pre-wrap break-words leading-7">
-          {message.content}
-        </p>
+        {!!message.questions?.length && (
+          <div className="rounded-md bg-amber-50 p-3 text-amber-950">
+            <p className="font-medium">请先确认</p>
+            {message.questions?.map((question) => (
+              <p key={question}>{question}</p>
+            ))}
+          </div>
+        )}
+        {message.fields?.length ? (
+          <>
+            <dl className="space-y-2">
+              {message.fields?.map((field) => (
+                <div
+                  key={field.label}
+                  className={field.unclear ? "rounded-md bg-amber-50 p-2" : ""}
+                >
+                  <dt className="inline font-medium">{field.label}：</dt>
+                  <dd className="inline break-words">{field.value}</dd>
+                  {field.unclear && (
+                    <span className="ml-2 font-medium text-amber-900">
+                      请确认
+                    </span>
+                  )}
+                </div>
+              ))}
+            </dl>
+            <p>{message.content.split("\n").slice(-1)[0]}</p>
+          </>
+        ) : (
+          <p className="whitespace-pre-wrap break-words leading-7">
+            {message.content}
+          </p>
+        )}
         {message.result && <p role="status">{message.result}</p>}
         {message.status === "pending" && (
           <div className="flex flex-wrap gap-2">
@@ -88,6 +118,27 @@ export function BotMessage({
         )}
       </section>
     )
+  if (message.type === "plan_card")
+    return (
+      <section
+        className="space-y-4 rounded-xl border bg-background p-4"
+        aria-label={message.title}
+      >
+        <h3 className="font-semibold">{message.title}</h3>
+        <dl className="space-y-2">
+          {message.fields.map((field) => (
+            <div key={field.label}>
+              <dt className="inline font-medium">{field.label}：</dt>
+              <dd className="inline break-words">{field.value}</dd>
+            </div>
+          ))}
+        </dl>
+        {message.changes && <p>这次改了什么：{message.changes}</p>}
+        <a href={message.link} className="underline">
+          在方案页修改
+        </a>
+      </section>
+    )
   if (message.type === "text")
     return (
       <div className="space-y-2">
@@ -99,6 +150,11 @@ export function BotMessage({
             去审批页
           </Link>
         )}
+        {message.capacity_links?.map((link) => (
+          <a key={link.href} href={link.href} className="mr-4 underline">
+            前往{link.label}
+          </a>
+        ))}
       </div>
     )
   if (message.type === "profile_edit_card")

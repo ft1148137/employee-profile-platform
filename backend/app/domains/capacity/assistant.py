@@ -2,7 +2,7 @@ from collections.abc import Callable
 from typing import Literal
 
 from fastapi import HTTPException
-from pydantic import BaseModel, JsonValue, ValidationError
+from pydantic import BaseModel, Field, JsonValue, ValidationError
 from sqlmodel import Session, select
 
 from app.authz.principal import Principal
@@ -61,6 +61,23 @@ TITLES = {name: t.description for name, t in READS.items()} | {
 }
 RESPONSES = {"accept": "接受", "follow_up": "追问", "withdraw": "撤回"}
 
+DemandField = Literal[
+    "requesting_department_id",
+    "target_department_id",
+    "capability_key",
+    "minimum_level",
+    "headcount",
+    "allocation_percent",
+    "window_start",
+    "window_end",
+    "description",
+]
+
+
+class PrepareDemandInput(DemandInput):
+    unclear_fields: list[DemandField] = Field(default_factory=list)
+    questions: list[str] = Field(default_factory=list, max_length=2)
+
 
 def definitions(db: Session, p: Principal) -> list[ToolDefinition]:
     if not read_settings(p, db).enabled:
@@ -76,7 +93,9 @@ def definitions(db: Session, p: Principal) -> list[ToolDefinition]:
             description=TITLES[name]
             + ("；只出预览卡，用户点击确认才写入" if name in PREPARES else ""),
             parameters=(
-                WRITES[PREPARES[name][1]].input_model
+                PrepareDemandInput
+                if name == "prepare_demand"
+                else WRITES[PREPARES[name][1]].input_model
                 if name in PREPARES
                 else READS[name].input_model
             ).model_json_schema(),
@@ -99,7 +118,9 @@ def definitions(db: Session, p: Principal) -> list[ToolDefinition]:
     ]
 
 
-def check_demand(db: Session, p: Principal, value: BaseModel) -> str:
+def check_demand(
+    db: Session, p: Principal, value: BaseModel, unclear: set[str]
+) -> tuple[str, list[s.CardField]]:
     body = DemandInput.model_validate(value)
     demand.require_requester(p, db)
     source = demand.department(db, p.org_id, body.requesting_department_id)
@@ -138,13 +159,28 @@ def check_demand(db: Session, p: Principal, value: BaseModel) -> str:
             f"未确认 {reference.unconfirmed} 人"
         )
     )
-    return (
+    content = (
         f"需求方：{source.name}\n目标部门：{reference.department_name}\n"
         f"能力：{reference.capability_name}\n最低等级：{level}\n"
         f"人数：{body.headcount}\n每人投入：{body.allocation_percent}%\n"
         f"时间：{body.window_start} 至 {body.window_end}\n说明：{body.description}\n"
         f"{reference_text}。参考不是承诺，以对方部门经理正式答复为准。"
     )
+    values = (
+        ("requesting_department_id", "需求方", source.name),
+        ("target_department_id", "目标部门", reference.department_name),
+        ("capability_key", "能力", reference.capability_name),
+        ("minimum_level", "最低等级", level),
+        ("headcount", "人数", str(body.headcount)),
+        ("allocation_percent", "每人投入", f"{body.allocation_percent}%"),
+        ("window_start", "开始日期", str(body.window_start)),
+        ("window_end", "结束日期", str(body.window_end)),
+        ("description", "说明", body.description),
+    )
+    return content, [
+        s.CardField(label=label, value=value, unclear=key in unclear)
+        for key, label, value in values
+    ]
 
 
 def check_demand_response(db: Session, p: Principal, value: BaseModel) -> str:
@@ -234,7 +270,6 @@ def check_extension_request(db: Session, p: Principal, value: BaseModel) -> str:
 
 
 CHECKS: dict[CardKind, Callable[[Session, Principal, BaseModel], str]] = {
-    "demand": check_demand,
     "demand_response": check_demand_response,
     "demand_reply": check_demand_reply,
     "workload_request": check_workload_request,
@@ -266,12 +301,24 @@ def call(
         if name not in PREPARES:
             return {"error": "请使用预览工具，并点击卡片确认"}
         kind, write_name, title = PREPARES[name]
-        body = WRITES[write_name].input_model.model_validate(arguments)
-        content = CHECKS[kind](db, p, body)
+        fields: list[s.CardField] = []
+        questions: list[str] = []
+        if name == "prepare_demand":
+            preview = PrepareDemandInput.model_validate(arguments)
+            body = DemandInput.model_validate(
+                preview.model_dump(exclude={"unclear_fields", "questions"})
+            )
+            content, fields = check_demand(db, p, body, set(preview.unclear_fields))
+            questions = preview.questions
+        else:
+            body = WRITES[write_name].input_model.model_validate(arguments)
+            content = CHECKS[kind](db, p, body)
         card = s.CapacityCard(
             kind=kind,
             title=title,
             content=content,
+            fields=fields,
+            questions=questions,
             arguments=body.model_dump(mode="json"),
         )
         card.actions = [

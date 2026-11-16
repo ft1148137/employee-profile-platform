@@ -54,8 +54,38 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
     if isinstance(message, s.TextMessage):
         return message.text, []
     if isinstance(message, s.CapacityCard):
-        text = f"{message.title}\n{message.content}\n{message.result or '请核对后点击确认，或取消。'}"
+        questions = "\n".join(message.questions)
+        fields = "\n".join(
+            f"{field.label}：{field.value}{'（请确认）' if field.unclear else ''}"
+            for field in message.fields
+        )
+        text = "\n".join(
+            filter(
+                None,
+                [
+                    message.title,
+                    questions,
+                    fields,
+                    message.content,
+                    message.result or "请核对后点击确认，或取消。",
+                ],
+            )
+        )
         return text, [a.model_dump(mode="json") for a in message.actions]
+    if isinstance(message, s.PlanCard):
+        fields = "\n".join(f"{field.label}：{field.value}" for field in message.fields)
+        text = "\n".join(
+            filter(
+                None,
+                [
+                    message.title,
+                    fields,
+                    f"这次改了什么：{message.changes}" if message.changes else "",
+                    f"在方案页修改：{settings.FRONTEND_HOST.rstrip('/')}{message.link}",
+                ],
+            )
+        )
+        return text, []
     if isinstance(message, s.ProfileEditCard):
         text = (
             f"直接修改画像：{message.employee_name}\n"
