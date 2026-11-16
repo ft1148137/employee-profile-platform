@@ -29,7 +29,8 @@ export function CapacityError({ error }: { error: Error | null }) {
     detail &&
     typeof detail === "object" &&
     "message" in detail &&
-    typeof detail.message === "string"
+    typeof detail.message === "string" &&
+    ("weeks" in detail || "over_weeks" in detail)
   ) {
     const weeks =
       "weeks" in detail && Array.isArray(detail.weeks) ? detail.weeks : []

@@ -30,7 +30,12 @@ def test_departed_create_is_actionable_only_for_target_manager(
 
     response = create(status=None)
     assert response.status_code == 409, response.text
-    assert response.json() == {"detail": "该员工已不在职，请刷新后重新选择"}
+    assert response.json() == {
+        "detail": {
+            "code": "employee_departed",
+            "message": "该员工已不在职，请刷新后重新选择",
+        }
+    }
     assert (
         db.exec(
             select(CapacityAssignment).where(CapacityAssignment.org_id == org.id)
@@ -124,7 +129,12 @@ def test_departed_create_for_admin_managing_target(case: tuple, db: Session) -> 
 
     response = create(role="admin", status=None)
     assert response.status_code == 409, response.text
-    assert response.json() == {"detail": "该员工已不在职，请刷新后重新选择"}
+    assert response.json() == {
+        "detail": {
+            "code": "employee_departed",
+            "message": "该员工已不在职，请刷新后重新选择",
+        }
+    }
     assert (
         db.exec(
             select(CapacityAssignment).where(CapacityAssignment.org_id == org.id)

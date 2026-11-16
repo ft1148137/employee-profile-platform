@@ -185,7 +185,12 @@ test("旧分配表单收到离职冲突后提示并刷新候选人", async ({ pa
         await route.fulfill({
           status: 409,
           contentType: "application/json",
-          body: JSON.stringify({ detail: "该员工已不在职，请刷新后重新选择" }),
+          body: JSON.stringify({
+            detail: {
+              code: "employee_departed",
+              message: "该员工已不在职，请刷新后重新选择",
+            },
+          }),
         })
       } else await route.continue()
     },
@@ -207,6 +212,9 @@ test("旧分配表单收到离职冲突后提示并刷新候选人", async ({ pa
   await expect(assignment.getByRole("alert")).toContainText(
     "该员工已不在职，请刷新后重新选择",
   )
+  await expect(
+    assignment.getByRole("link", { name: "去确认团队负荷" }),
+  ).toHaveCount(0)
   await expect.poll(() => basisReads).toBeGreaterThan(readsBefore)
   await expect(
     assignment
