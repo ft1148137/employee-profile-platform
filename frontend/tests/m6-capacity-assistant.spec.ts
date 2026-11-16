@@ -82,6 +82,13 @@ test("employee confirms a capacity request in the assistant", async ({
   expect(changed.ok()).toBeTruthy()
   const accessToken = (await changed.json()).access_token
   const employeeHeaders = { Authorization: `Bearer ${accessToken}` }
+  const week = (
+    await (
+      await request.get(`${base}/capacity/workloads/me`, {
+        headers: employeeHeaders,
+      })
+    ).json()
+  ).weeks[0].week_start
   const server = createServer(async (req, res) => {
     let raw = ""
     for await (const chunk of req) raw += chunk
@@ -109,6 +116,8 @@ test("employee confirms a capacity request in the assistant", async ({
                         arguments: JSON.stringify({
                           requested_percent: 80,
                           reason: "合成项目占用",
+                          start_week: week,
+                          end_week: week,
                         }),
                       },
                     },
