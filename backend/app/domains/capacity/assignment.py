@@ -2,6 +2,7 @@ from datetime import date
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy import and_, case, or_
 from sqlmodel import Session, col, select
 
 from app.authz.policies import can_view_employee, employee_scope_clause
@@ -14,6 +15,7 @@ from app.domains.capacity.assignment_schemas import (
     AssignmentUpdateInput,
     DemandAssignment,
     DemandAssignmentList,
+    DepartedDemandAssignment,
     MyAssignment,
     MyAssignmentList,
 )
@@ -42,7 +44,7 @@ from app.domains.capacity.settings import (
 from app.domains.capacity.workload import NOTICE, employee, notify_employee
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.inbox.service import add_item
-from app.domains.org.models import Department, Employee
+from app.domains.org.models import Department, Employee, EmploymentStatus
 from app.domains.org.service import managed_scope
 
 
@@ -109,7 +111,11 @@ def check_capacity(
 
 
 def assignment_rows(
-    principal: Principal, session: Session, assignment_id: UUID
+    principal: Principal,
+    session: Session,
+    assignment_id: UUID,
+    *,
+    allow_departed: bool = False,
 ) -> tuple[CapacityAssignment, CapacityDemand]:
     """Lock demand before assignment; callers enforce their operation's permission."""
     require_enabled(principal, session)
@@ -132,7 +138,17 @@ def assignment_rows(
         .execution_options(populate_existing=True)
     ).one()
     session.refresh(row, with_for_update=True)
-    employee(principal, session, row.employee_id, lock=True)
+    if allow_departed:
+        subject = session.exec(
+            select(Employee)
+            .where(Employee.org_id == principal.org_id, Employee.id == row.employee_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        ).one_or_none()
+        if subject is None:
+            raise CapacityNotFound()
+    else:
+        employee(principal, session, row.employee_id, lock=True)
     return row, demand
 
 
@@ -338,9 +354,32 @@ def update_assignment(
     via: Via = "web",
     client_name: str | None = None,
 ) -> AssignmentPublic:
-    row, demand = assignment_rows(principal, session, assignment_id)
-    subject = employee(principal, session, row.employee_id)
-    if (
+    cancelling = body.status == "cancelled"
+    row, demand = assignment_rows(
+        principal, session, assignment_id, allow_departed=cancelling
+    )
+    subject = (
+        session.exec(
+            select(Employee).where(
+                Employee.org_id == principal.org_id, Employee.id == row.employee_id
+            )
+        ).one()
+        if cancelling
+        else employee(principal, session, row.employee_id)
+    )
+    if subject.employment_status == EmploymentStatus.INACTIVE:
+        if (
+            not cancelling
+            or principal.is_org_admin
+            or not represents_department(principal, demand.target_department_id)
+            or subject.department_id not in principal.managed_department_ids
+            or subject.department_id
+            not in managed_scope(
+                session, principal.org_id, frozenset({demand.target_department_id})
+            )
+        ):
+            raise CapacityNotFound()
+    elif (
         not can_view_employee(principal, subject)
         or subject.department_id not in principal.managed_department_ids
     ):
@@ -448,8 +487,19 @@ def list_demand_assignments(
     demand = demand_row(principal, session, demand_id)
     if not represents_department(principal, demand.target_department_id):
         raise CapacityNotFound()
+    visible_name = (
+        col(Employee.display_name)
+        if principal.is_org_admin
+        else case(
+            (
+                col(Employee.employment_status) == EmploymentStatus.INACTIVE,
+                "已离职员工",
+            ),
+            else_=col(Employee.display_name),
+        )
+    )
     rows = session.exec(
-        select(CapacityAssignment, Employee.display_name)
+        select(CapacityAssignment, Employee)
         .join(
             Employee,
             (col(Employee.org_id) == CapacityAssignment.org_id)
@@ -458,14 +508,40 @@ def list_demand_assignments(
         .where(
             CapacityAssignment.org_id == principal.org_id,
             CapacityAssignment.demand_id == demand.id,
-            employee_scope_clause(principal),
+            or_(
+                employee_scope_clause(principal),
+                and_(
+                    col(Employee.employment_status) == EmploymentStatus.INACTIVE,
+                    col(CapacityAssignment.status) == AssignmentStatus.ACTIVE,
+                    col(Employee.department_id).in_(principal.managed_department_ids),
+                    col(Employee.department_id).in_(
+                        managed_scope(
+                            session,
+                            principal.org_id,
+                            frozenset({demand.target_department_id}),
+                        )
+                    ),
+                ),
+            ),
         )
-        .order_by(Employee.display_name, col(CapacityAssignment.id))
+        .order_by(visible_name, col(CapacityAssignment.id))
     ).all()
     data = [
-        DemandAssignment(
-            **AssignmentPublic.model_validate(row).model_dump(), employee_name=name
+        DepartedDemandAssignment(
+            id=row.id,
+            allocation_percent=row.allocation_percent,
+            start_date=row.start_date,
+            due_date=row.due_date,
+            employee_name="已离职员工",
+            employee_departed=True,
         )
-        for row, name in rows
+        if subject.employment_status == EmploymentStatus.INACTIVE
+        and not can_view_employee(principal, subject)
+        else DemandAssignment(
+            **AssignmentPublic.model_validate(row).model_dump(),
+            employee_name=subject.display_name,
+            employee_departed=subject.employment_status == EmploymentStatus.INACTIVE,
+        )
+        for row, subject in rows
     ]
     return DemandAssignmentList(data=data, count=len(data))
