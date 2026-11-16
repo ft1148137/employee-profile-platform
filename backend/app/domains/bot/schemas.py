@@ -196,7 +196,9 @@ class TextMessage(BaseModel):
     type: Literal["text"] = "text"
     text: str
     review_link: Literal["/reviews"] | None = None
-    capacity_links: list[CardLink] = Field(default_factory=list)
+    capacity_links: list[CardLink] = Field(
+        default_factory=list, exclude_if=lambda links: not links
+    )
 
 
 class ReviewAfter(Projection):
