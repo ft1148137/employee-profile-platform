@@ -10,6 +10,7 @@ from app.domains.capacity.models import (
     CapacityDemandEvent,
     CapacityExtensionRequest,
 )
+from app.domains.im.models import ImNotification
 from app.domains.inbox.models import InboxItem
 from tests.api.routes.test_m6_capacity_assignment import case as assignment_fixture
 from tests.api.routes.test_m6_capacity_assignment import day
@@ -40,7 +41,9 @@ def state(db: Session, org_id: UUID) -> list[list[dict]]:
     return [
         [
             row.model_dump(mode="json")
-            for row in db.exec(select(model).where(model.org_id == org_id)).all()
+            for row in db.exec(
+                select(model).where(model.org_id == org_id).order_by(model.id)
+            ).all()
         ]
         for model in (
             CapacityDemand,
@@ -48,6 +51,7 @@ def state(db: Session, org_id: UUID) -> list[list[dict]]:
             CapacityExtensionRequest,
             CapacityDemandEvent,
             InboxItem,
+            ImNotification,
             AuditEvent,
         )
     ]
