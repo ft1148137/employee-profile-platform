@@ -21,7 +21,7 @@ from app.domains.bot.admission import (
 )
 from app.domains.bot.levels import name_levels
 from app.domains.bot.models import BotSession
-from app.domains.bot.presentation import DEADLINE_MESSAGE, retry_time
+from app.domains.bot.presentation import DEADLINE_MESSAGE, capacity_failure, retry_time
 from app.domains.bot.prompts import system_prompt
 from app.domains.capacity import assistant as capacity
 from app.domains.change_request import employee
@@ -40,9 +40,18 @@ def _save(
     session: BotSession,
     messages: list[s.Message],
     steps: list[s.ToolStep] | None = None,
+    principal: Principal | None = None,
 ) -> s.TurnResponse:
     response = s.TurnResponse(messages=messages, steps=steps or [])
-    store.append_message(db, session, "assistant", response.model_dump(mode="json"))
+    payload = response.model_dump(mode="json")
+    if principal is not None:
+        payload["scope"] = store.session_scope(db, principal)
+    store.append_message(
+        db,
+        session,
+        "assistant",
+        payload,
+    )
     return response
 
 
@@ -68,6 +77,7 @@ def turn(
     started = monotonic()
     steps: list[s.ToolStep] = []
     cards: list[s.Message] = []
+    manual_fallback = False
 
     def call(name: str, args: dict[str, JsonValue]) -> JsonValue:
         title = tools.TITLES.get(
@@ -81,6 +91,12 @@ def turn(
             stream.on_tool(title, "start", True)
         try:
             result = tools.call(db, p, session, cards, name, args)
+            if (
+                name in {"coordination", "prepare_plan_proposal"}
+                and isinstance(result, dict)
+                and "error" in result
+            ):
+                raise ModelUnavailable(code="coordination_tool")
         except Exception:
             steps.append(s.ToolStep(name=title, ok=False))
             if stream:
@@ -93,6 +109,7 @@ def turn(
         return result
 
     try:
+        session_state = store.state_for_turn(db, p, session)
         with begin_turn(
             db, p, session, user_payload, stream.cancelled if stream else None
         ):
@@ -107,8 +124,10 @@ def turn(
                     db,
                     session,
                     [
-                        s.TextMessage(
-                            text="\n".join(
+                        capacity_failure(
+                            db,
+                            p,
+                            "\n".join(
                                 filter(
                                     None,
                                     [
@@ -116,9 +135,10 @@ def turn(
                                         "机器人需要先配置模型，你也可以在画像页直接修改",
                                     ],
                                 )
-                            )
+                            ),
                         )
                     ],
+                    principal=p,
                 )
             config = model_config(setting)
             images = []
@@ -131,7 +151,7 @@ def turn(
                 config,
                 mode="chat",
                 images=images,
-                session_state=store.load_state(db, session),
+                session_state=session_state,
                 system_prompt=system_prompt(db, p, session.channel, session),
                 input=tools.redact_text(model_input),
                 tools=tools.definitions(p, db=db, channel=session.channel),
@@ -143,7 +163,7 @@ def turn(
             # Only completed model turns may leave drafts or replies behind.
             if result.stop_reason != "stop":
                 raise ModelUnavailable()
-            store.save_state(db, session, result.session_state)
+            store.save_scoped_state(db, p, session, result.session_state)
             messages: list[s.Message] = (
                 [s.TextMessage(text="\n".join(filter(None, [notice, result.text])))]
                 if result.text or notice
@@ -152,7 +172,7 @@ def turn(
             messages.extend(cards)
             if stream:
                 stream.check()
-            return _save(db, session, messages, steps)
+            return _save(db, session, messages, steps, principal=p)
     except pi_client.TurnCancelled:
         return s.TurnResponse(messages=[])
     except BotBusy:
@@ -168,6 +188,7 @@ def turn(
         logger.warning("session_id=%s code=bad_request", session.id)
         message = "之前的对话上下文已失效，已经重新开始，请再说一次"
     except ModelUnavailable as error:
+        manual_fallback = True
         logger.warning(
             "session_id=%s code=%s elapsed_ms=%d",
             session.id,
@@ -181,7 +202,10 @@ def turn(
             if isinstance(error, ModelServiceError)
             else "模型服务暂时不可用，请稍后再试"
         )
-    messages = [s.TextMessage(text="\n".join(filter(None, [notice, message])))]
+    text = "\n".join(filter(None, [notice, message]))
+    messages = [
+        capacity_failure(db, p, text) if manual_fallback else s.TextMessage(text=text)
+    ]
     if stream and stream.cancelled.is_set():
         db.rollback()
         return s.TurnResponse(messages=[])
@@ -189,7 +213,7 @@ def turn(
         if stream:
             session.turn_count += 1
             store.append_message(db, session, "user", user_payload)
-        response = _save(db, session, messages, steps)
+        response = _save(db, session, messages, steps, principal=p)
         if stream and stream.cancelled.is_set():
             db.rollback()
             return s.TurnResponse(messages=[])
@@ -212,7 +236,7 @@ def act(
         return s.TurnResponse(messages=[s.TextMessage(text="忙，请稍后再试")])
     cards = [
         card
-        for message in store.list_messages(db, p, session_id)
+        for message in store.messages_for(db, session)
         if message.role == "assistant" and isinstance(message.payload, dict)
         for card in s.TurnResponse.model_validate(message.payload).messages
     ]
@@ -322,7 +346,7 @@ def act(
                     s.TextMessage(text=exc.message),
                     tools.preview_card(db, p, action.request_id),
                 ]
-    response = _save(db, session, messages)
+    response = _save(db, session, messages, None, p)
     if commit:
         db.commit()
     return response

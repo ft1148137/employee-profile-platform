@@ -1165,6 +1165,14 @@ export type CapacityCard = {
    */
   content: string
   /**
+   * Fields
+   */
+  fields?: Array<CardField>
+  /**
+   * Questions
+   */
+  questions?: Array<string>
+  /**
    * Arguments
    */
   arguments: {
@@ -1203,6 +1211,38 @@ export type CapacitySettingsInput = {
    */
   enabled?: boolean
   requester_policy?: RequesterPolicy
+}
+
+/**
+ * CardField
+ */
+export type CardField = {
+  /**
+   * Label
+   */
+  label: string
+  /**
+   * Value
+   */
+  value: string
+  /**
+   * Unclear
+   */
+  unclear?: boolean
+}
+
+/**
+ * CardLink
+ */
+export type CardLink = {
+  /**
+   * Label
+   */
+  label: string
+  /**
+   * Href
+   */
+  href: string
 }
 
 /**
@@ -4905,6 +4945,32 @@ export type PeopleSearchRow = {
 }
 
 /**
+ * PlanCard
+ */
+export type PlanCard = {
+  /**
+   * Type
+   */
+  type?: "plan_card"
+  /**
+   * Title
+   */
+  title: string
+  /**
+   * Fields
+   */
+  fields: Array<CardField>
+  /**
+   * Changes
+   */
+  changes?: string | null
+  /**
+   * Link
+   */
+  link: string
+}
+
+/**
  * PlanVerdict
  */
 export type PlanVerdict =
@@ -6537,6 +6603,10 @@ export type TextMessage = {
    * Review Link
    */
   review_link?: "/reviews" | null
+  /**
+   * Capacity Links
+   */
+  capacity_links?: Array<CardLink>
 }
 
 /**
@@ -6802,6 +6872,9 @@ export type TurnResponse = {
     | ({
         type: "capacity_card"
       } & CapacityCard)
+    | ({
+        type: "plan_card"
+      } & PlanCard)
   >
   /**
    * Steps
