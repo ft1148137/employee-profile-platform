@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from typing import Any
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,6 +14,7 @@ from sqlmodel import Session, select
 from app.authz.deps import get_org_principal
 from app.core.security import create_access_token
 from app.domains.audit.models import AuditEvent
+from app.domains.base import utc_now
 from app.domains.capacity import assignment
 from app.domains.capacity.assignment_schemas import AssignmentUpdateInput
 from app.domains.capacity.calendar import this_week
@@ -36,7 +38,7 @@ from tests.utils.org import delete_test_organization
 
 
 def day(offset: int) -> date:
-    today = date.today()
+    today = utc_now().astimezone(ZoneInfo("Asia/Shanghai")).date()
     return today - timedelta(days=today.weekday()) + timedelta(days=offset)
 
 
