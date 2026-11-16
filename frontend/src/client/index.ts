@@ -579,6 +579,7 @@ export type {
   DemandOutcome,
   DemandPublic,
   DemandStatus,
+  DepartedAssignmentCancelled,
   DepartedDemandAssignment,
   DepartmentCapabilitiesInput,
   DepartmentCapabilitiesPublic,

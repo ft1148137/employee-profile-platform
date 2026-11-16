@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
+import { AxiosError } from "axios"
 import { useId, useState } from "react"
 import {
   type AssignmentInput,
@@ -51,6 +52,16 @@ export function DemandAssignments({
     mutationFn: (body: AssignmentInput) =>
       CapacityService.createAssignment({ path, body }),
     onSuccess: refresh,
+    onError: (error) => {
+      if (
+        error instanceof AxiosError &&
+        error.response?.status === 409 &&
+        error.response.data?.detail === "该员工已不在职，请刷新后重新选择"
+      ) {
+        setEmployeeId("")
+        void basis.refetch()
+      }
+    },
   })
   return (
     <section

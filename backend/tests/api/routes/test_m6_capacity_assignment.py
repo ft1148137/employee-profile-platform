@@ -263,6 +263,7 @@ def test_assignment_load_self_read_and_close(
     assert api("/workloads/me", "w2")["band"] == "unconfirmed"
     closed = api(f"/assignments/{row['id']}", body={"status": status}, method="PATCH")
     assert closed["closed_at"] and closed["status"] == status
+    assert closed["employee_id"] == row["employee_id"]
     load = api("/workloads/me", "w")
     assert (load["platform_percent"], load["confirmed_percent"], load["band"]) == (
         0,
@@ -301,8 +302,11 @@ def test_scope_status_and_input_validation(case: tuple, db: Session) -> None:
     db.commit()
     for role in ("a", "am", "cm", "w", "foreign"):
         create(role=role, status=404)
-    for code in ("a", "inactive"):
-        create(code=code, status=404)
+    create(code="a", status=404)
+    assert (
+        create(code="inactive", status=409)["detail"]
+        == "该员工已不在职，请刷新后重新选择"
+    )
     for percent in (9, 101, True):
         create(percent=percent, status=422)
     create(due=day(31).isoformat(), status=409)
