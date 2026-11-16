@@ -4513,6 +4513,10 @@ export type MyWorkload = {
    * Requests
    */
   requests: Array<WorkloadRequestPublic>
+  /**
+   * Reviewer Names
+   */
+  reviewer_names: Array<string>
 }
 
 /**
@@ -7168,6 +7172,10 @@ export type WorkloadRequestPublic = {
    * On Behalf Of Name
    */
   on_behalf_of_name?: string | null
+  /**
+   * Reviewer Names
+   */
+  reviewer_names?: Array<string>
   /**
    * Requested Percent
    */

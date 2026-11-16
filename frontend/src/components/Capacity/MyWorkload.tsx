@@ -41,6 +41,8 @@ export function MyWorkload({ orgId }: { orgId: string }) {
   const pending = query.data.requests.some(
     (request) => request.status === "pending",
   )
+  const reviewerNames = query.data.reviewer_names.join("、")
+  const submittedNames = submit.data?.data.reviewer_names?.join("、")
   return (
     <div className="space-y-6">
       <WorkloadNumbers workload={query.data} />
@@ -79,6 +81,11 @@ export function MyWorkload({ orgId }: { orgId: string }) {
         <h2 className="text-lg font-semibold">申请调整</h2>
         <p className="text-sm text-muted-foreground">
           填写平台外其他工作的占比（0–200%），平台内分配将另行计入经理确认值。
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {reviewerNames
+            ? `将交给 ${reviewerNames} 审批`
+            : "暂无审批人，请联系企业管理员"}
         </p>
         <fieldset disabled={pending || submit.isPending} className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -137,6 +144,13 @@ export function MyWorkload({ orgId }: { orgId: string }) {
           </Button>
         </fieldset>
         {pending && <p role="status">已有申请待处理，请等待经理答复。</p>}
+        {submit.isSuccess && (
+          <p aria-live="polite">
+            {submittedNames
+              ? `已交给 ${submittedNames} 审批`
+              : "暂无审批人，请联系企业管理员"}
+          </p>
+        )}
         <SetupError error={submit.error} />
       </form>
       <section aria-label="调整申请记录" className="space-y-3">
