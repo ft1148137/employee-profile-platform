@@ -1,7 +1,7 @@
 # M8 协调 Agent 评测
 
 - 日期：2026-11-17
-- 测试代码基线提交：`93dda4c109ee6a1d3ccef9a82041d6fb32fead32`
+- master 基线提交：`93dda4c109ee6a1d3ccef9a82041d6fb32fead32`
 - 模型：chatgpt/gpt-6.1-sol；思考档位：high
 - 环境：独立 Docker Compose 项目 `nere741`；数据库 `localhost:15741`；后端端口预留 `18741`。 Pi 开发服务通过 `compose.chatgpt-local.yml` 只读挂载本机授权，监听 `127.0.0.1:20741`。
 - 环境变量：`COMPOSE_PROJECT_NAME=nere741`、`POSTGRES_PORT=15741`、`API_PORT=18741`、本任务独立数据库的 `DATABASE_URL`。 真实模型另设 `FASTAPI_ENV=development`、`CHATGPT_LOCAL_AUTH=true`、`PI_URL=http://127.0.0.1:20741`。

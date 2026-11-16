@@ -18,7 +18,7 @@ CASES = sorted((BACKEND / "tests/eval/planning/cases").glob("*.yaml"))
 def report(rows: list[dict[str, Any]], model: str, thinking: str, fake: bool) -> str:
     # shortcut: Pi omits token usage; add token cost when its protocol exposes it.
     baseline = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
+        ["git", "merge-base", "HEAD", "origin/master"],
         cwd=BACKEND,
         capture_output=True,
         text=True,
@@ -28,7 +28,7 @@ def report(rows: list[dict[str, Any]], model: str, thinking: str, fake: bool) ->
         "# M8 协调 Agent 评测",
         "",
         f"- 日期：{date.today().isoformat()}",
-        f"- 测试代码基线提交：`{baseline}`",
+        f"- master 基线提交：`{baseline}`",
         f"- 模型：{'脚本假模型' if fake else model}；思考档位：{thinking}",
         "- 环境：独立 Docker Compose 项目 `nere741`；数据库 `localhost:15741`；后端端口预留 `18741`。"
         + (
