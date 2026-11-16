@@ -133,11 +133,23 @@ test("延期显示审批人、受阻指引和代理标示，代理给目标经�
     revision: reply.revision,
   })
   await api(
+    `${base}/capacity/weeks`,
+    tokens.get("M"),
+    {
+      items: [{ employee_id: person("E").id, other_percent: 0 }],
+      start_week: "2026-11-30",
+      end_week: "2027-01-04",
+    },
+    "PUT",
+  )
+  await api(
     `${base}/capacity/demands/${demand.id}/assignments`,
     tokens.get("M"),
     {
       employee_id: person("E").id,
       allocation_percent: 30,
+      start_date: "2026-12-01",
+      outside_basis: true,
       due_date: "2026-12-20",
     },
   )

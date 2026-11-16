@@ -139,6 +139,8 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     },
     root,
   )
+  const startWeek = (await api(`${base}/capacity/workloads/me`, undefined, e))
+    .weeks[0].week_start
   const demand = await api(
     `${base}/capacity/demands`,
     {
@@ -147,7 +149,7 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
       capability_key: "delivery",
       headcount: 1,
       allocation_percent: 30,
-      window_start: "2026-12-01",
+      window_start: startWeek,
       window_end: "2026-12-31",
       description: "合成需求",
     },
@@ -158,7 +160,7 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     {
       revision: demand.revision,
       outcome: "can_do",
-      start_date: "2026-12-01",
+      start_date: startWeek,
       end_date: "2026-12-31",
       text: "可以承接",
     },
@@ -169,11 +171,23 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     { action: "accept", revision: reply.revision },
     a,
   )
+  await api(
+    `${base}/capacity/weeks`,
+    {
+      items: [{ employee_id: person("E").id, other_percent: 0 }],
+      start_week: startWeek,
+      end_week: "2026-12-21",
+    },
+    m,
+    "PUT",
+  )
   const assignment = await api(
     `${base}/capacity/demands/${demand.id}/assignments`,
     {
       employee_id: person("E").id,
       allocation_percent: 30,
+      start_date: startWeek,
+      outside_basis: true,
       due_date: "2026-12-20",
     },
     m,
