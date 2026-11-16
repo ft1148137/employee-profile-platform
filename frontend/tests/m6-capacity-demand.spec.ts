@@ -200,8 +200,9 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
   await page.getByLabel("最低等级").selectOption("routine")
   const reference = page.getByRole("region", { name: "即时参考" })
   await expect(reference).toContainText(
-    "达到要求的有 4 人：有余量 1、基本满 1、超负荷 1、未确认 1",
+    "达到要求的有 4 人；各人负荷只有对方部门经理能看到",
   )
+  await expect(reference).not.toContainText(/有余量|基本满|超负荷|未确认/)
   await expect(reference).toContainText("这只是参考，不是承诺")
   await page.getByLabel("最低等级").selectOption("advanced")
   await expect(reference).toContainText("达到要求的有 0 人")

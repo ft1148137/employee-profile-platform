@@ -50,7 +50,10 @@ def assert_reference(value: dict, count: int, *, own: bool = False) -> None:
         assert not COUNTS.intersection(value)
     else:
         assert value["count"] == count
-        assert COUNTS.issubset(value)
+        if own:
+            assert COUNTS.issubset(value)
+        else:
+            assert not (COUNTS - {"count"}).intersection(value)
 
 
 @pytest.mark.parametrize("count", [0, 1, 2, 3])

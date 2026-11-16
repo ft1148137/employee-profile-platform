@@ -1147,6 +1147,7 @@ export type CapacityCard = {
 }
 
 export type CapacityReference =
+  | CountCapacityReference
   | DetailedCapacityReference
   | LimitedCapacityReference
 
@@ -1629,6 +1630,24 @@ export type ConsentResult = {
    * Redirect To
    */
   redirect_to: string
+}
+
+/**
+ * CountCapacityReference
+ */
+export type CountCapacityReference = {
+  /**
+   * Department Name
+   */
+  department_name: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  /**
+   * Count
+   */
+  count: number
 }
 
 /**

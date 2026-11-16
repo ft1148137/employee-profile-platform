@@ -160,6 +160,30 @@ test("小样本隐藏及零依据时选择本部门其他员工", async ({ page,
   )
   await page.getByLabel("能力", { exact: true }).selectOption("empty")
   await expect(reference).toContainText("达到要求的有 0 人")
+  for (const code of ["M", "B2"]) {
+    await api(
+      `${base}/employees/${person(code).id}/profile/direct-edits`,
+      {
+        base_revision: null,
+        items: [
+          {
+            op: "add",
+            capability_key: "delivery",
+            statement: "合成能力",
+            level: "routine",
+          },
+        ],
+      },
+      admin.access_token,
+    )
+  }
+  await page.getByLabel("能力", { exact: true }).selectOption("delivery")
+  await expect(reference).toContainText(
+    "研发达到要求的有 3 人；各人负荷只有对方部门经理能看到",
+  )
+  await expect(reference).not.toContainText(/有余量|基本满|超负荷|未确认/)
+  await page.getByLabel("能力", { exact: true }).selectOption("empty")
+  await expect(reference).toContainText("达到要求的有 0 人")
   const demand = await api(
     `${base}/capacity/demands`,
     {

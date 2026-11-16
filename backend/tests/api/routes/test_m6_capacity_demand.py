@@ -160,10 +160,6 @@ def test_reference_privacy_submission_and_profile_invariance(
         "department_name": "算法与模型部",
         "capability_name": before[-2].json()["data"][0]["capability_name"],
         "count": 4,
-        "available": 1,
-        "full": 1,
-        "overloaded": 1,
-        "unconfirmed": 1,
     }
     assert (
         api(

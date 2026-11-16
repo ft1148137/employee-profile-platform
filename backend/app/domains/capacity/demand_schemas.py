@@ -25,6 +25,12 @@ class DetailedCapacityReference(BaseModel):
     unconfirmed: int = 0
 
 
+class CountCapacityReference(BaseModel):
+    department_name: str
+    capability_name: str
+    count: int
+
+
 LIMITED_REFERENCE_TEXT = (
     "该部门具备这项能力的人较少，能否承接请提交需求，由对方部门经理答复"
 )
@@ -36,7 +42,9 @@ class LimitedCapacityReference(BaseModel):
     limited: Literal[True]
 
 
-type CapacityReference = DetailedCapacityReference | LimitedCapacityReference
+type CapacityReference = (
+    CountCapacityReference | DetailedCapacityReference | LimitedCapacityReference
+)
 
 
 class DemandInput(ReferenceInput):
