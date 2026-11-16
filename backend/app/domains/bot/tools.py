@@ -1,5 +1,6 @@
 import re
 from dataclasses import replace
+from typing import Literal, cast
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -16,6 +17,8 @@ from app.domains.capability.proposals import suggest_capability
 from app.domains.capability.schemas import SuggestCapability
 from app.domains.capability.search import PeopleSearchInput, find_people
 from app.domains.capacity import assistant as capacity
+from app.domains.capacity import demand as capacity_demand
+from app.domains.capacity.settings import read_settings as read_capacity_settings
 from app.domains.change_request import employee
 from app.domains.change_request.models import RequestStatus
 from app.domains.change_request.schemas import ItemInput, ToolInput, validation_message
@@ -24,10 +27,13 @@ from app.domains.employee_tools import EMPLOYEE_TOOLS, DraftRequestInput
 from app.domains.evidence.models import Evidence
 from app.domains.model.pi_client import ToolDefinition
 from app.domains.org.models import Department, Employee, EmploymentStatus
+from app.domains.planning import service as planning_service
+from app.domains.planning.tools import COORDINATION_TOOLS
 from app.domains.profile.service import read_profile
 from app.domains.review import direct
 
 TOOLS = {t.name: t for t in EMPLOYEE_TOOLS if t.bot_allowed}
+COORDINATION = {t.name: t for t in COORDINATION_TOOLS}
 TITLES = {t.name: t.description for t in TOOLS.values()} | {
     "read_attachment": "读取会话附件",
     "suggest_capability": "建议新增能力",
@@ -38,6 +44,10 @@ TITLES = {t.name: t.description for t in TOOLS.values()} | {
     "list_pending_reviews": "查看待审批请求",
     "get_review": "查看审批详情",
     "prepare_review_decision": "预览审批决定",
+}
+COORDINATION_TITLES = {
+    "coordination": "调查并模拟部门协调方案",
+    "prepare_plan_proposal": "预览部门方案答复",
 }
 PROJECTIONS: dict[str, type[s.Projection]] = {
     "get_my_profile": s.Profile,
@@ -62,6 +72,24 @@ class MemberInput(ToolInput):
 
 class ProfileEditInput(direct.DirectEditInput):
     employee_id: UUID
+
+
+class CoordinationInput(BaseModel):
+    function: Literal[
+        "read_coordination_context",
+        "inspect_capacity",
+        "search_qualified_candidates",
+        "simulate_plan",
+        "compare_plan_options",
+        "get_approval_status",
+    ]
+    arguments: dict[str, JsonValue]
+
+
+class PreparePlanProposalInput(BaseModel):
+    case_id: UUID
+    option_id: UUID
+    text: str = Field(min_length=1, max_length=2000)
 
 
 TEAM_INPUTS: dict[str, type[BaseModel]] = {
@@ -179,6 +207,12 @@ def team_call(
 def definitions(
     p: Principal | None = None, *, db: Session | None = None, channel: str = "web"
 ) -> list[ToolDefinition]:
+    coordination_enabled = bool(
+        db is not None
+        and p
+        and channel in ("web", "feishu")
+        and read_capacity_settings(p, db).enabled
+    )
     team = (
         [
             ToolDefinition(
@@ -199,11 +233,40 @@ def definitions(
     )
     return (
         (
-            capacity.definitions(db, p)
+            [
+                tool
+                for tool in capacity.definitions(db, p)
+                if not coordination_enabled
+                or tool.name not in {"get_demand", "get_demand_basis"}
+            ]
             if db is not None and p and channel in ("web", "feishu")
             else []
         )
         + team
+        + (
+            [
+                ToolDefinition(
+                    name="coordination",
+                    description="按当前用户权限调查、模拟和比较部门方案；方案不是承诺。",
+                    parameters=CoordinationInput.model_json_schema(),
+                )
+            ]
+            if coordination_enabled
+            else []
+        )
+        + (
+            [
+                ToolDefinition(
+                    name="prepare_plan_proposal",
+                    description="只为答复方生成需求答复确认卡；经理点击确认才发送承诺。",
+                    parameters=PreparePlanProposalInput.model_json_schema(),
+                )
+            ]
+            if coordination_enabled
+            and p
+            and (p.is_org_admin or p.managed_department_ids)
+            else []
+        )
         + [
             attachments.READ_TOOL,
             ToolDefinition(
@@ -425,6 +488,64 @@ def call(
     name: str,
     arguments: dict[str, JsonValue],
 ) -> JsonValue:
+    if name in {"coordination", "prepare_plan_proposal"}:
+        if (
+            session.channel not in ("web", "feishu")
+            or not read_capacity_settings(p, db).enabled
+        ):
+            return {"error": "不允许调用此工具"}
+        try:
+            if name == "coordination":
+                coord_request = CoordinationInput.model_validate(arguments)
+                coord_tool = COORDINATION[coord_request.function]
+                input_body = coord_tool.input_model.model_validate(
+                    coord_request.arguments
+                )
+                with db.begin_nested():
+                    result = coord_tool.handler(p, db, input_body)
+                return redact(result.model_dump(mode="json"))
+            proposal = PreparePlanProposalInput.model_validate(arguments)
+            case = planning_service.get_case(p, db, proposal.case_id)
+            row = capacity_demand.demand_row(p, db, case.demand_id)
+            if not capacity_demand.represents_department(p, row.target_department_id):
+                return {"error": "无权查看方案"}
+            option = next((o for o in case.options if o.id == proposal.option_id), None)
+            if option is None or case.stale:
+                return {"error": "方案已变化，请重新模拟"}
+            if any(
+                person.display_name and person.display_name in proposal.text
+                for person in case.people
+            ):
+                return {"error": "答复只写部门层面的结论，不写人名"}
+            assignees = cast("list[dict[str, str]]", option.params.get("assignees", []))
+            start_date = min((a["start_date"] for a in assignees), default=None)
+            end_date = max((a["end_date"] for a in assignees), default=None)
+            outcome = {
+                "feasible": "can_do",
+                "conditional": "partial",
+                "infeasible": "not_now",
+                "insufficient_data": "not_now",
+            }[option.verdict]
+            return redact(
+                capacity.call(
+                    db,
+                    p,
+                    cards,
+                    "prepare_demand_reply",
+                    {
+                        "demand_id": str(row.id),
+                        "revision": row.revision,
+                        "outcome": outcome,
+                        "start_date": start_date,
+                        "end_date": end_date,
+                        "text": proposal.text,
+                    },
+                )
+            )
+        except HTTPException, ValidationError:
+            return {"error": "操作未完成，请检查权限或参数"}
+        except Exception:
+            return {"error": "操作失败，请稍后重试"}
     if name in capacity.TITLES or name in capacity.WRITES:
         if session.channel not in ("web", "feishu"):
             return {"error": "不允许调用此工具"}

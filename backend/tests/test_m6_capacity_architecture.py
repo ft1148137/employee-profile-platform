@@ -64,6 +64,8 @@ def violations(root: Path) -> list[str]:
                             "app.domains.capacity.demand.represents_department",
                             "app.domains.capacity.demand.department_reference",
                             "app.domains.capacity.demand.get_demand_basis",
+                            "app.domains.capacity.demand.get_demand",
+                            "app.domains.capacity.demand.reference_for_viewer",
                         }
                     )
                 )

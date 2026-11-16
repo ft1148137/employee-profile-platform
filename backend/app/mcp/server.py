@@ -40,6 +40,7 @@ from app.domains.change_request.schemas import validation_message
 from app.domains.employee_tools import EMPLOYEE_TOOLS, EmployeeTool
 from app.domains.manager_tools import MANAGER_TOOLS
 from app.domains.org.employee_fields import FIELD_LABELS
+from app.domains.planning.tools import COORDINATION_TOOLS
 from app.mcp.oauth import resource_url
 
 TOOLS = {tool.name: tool for tool in (*EMPLOYEE_TOOLS, *MANAGER_TOOLS)}
@@ -60,6 +61,13 @@ def available_tools(principal: Principal, session: Session) -> dict[str, Employe
             if can_request
             or tool.name
             not in ("list_capacity_departments", "capacity_reference", "submit_demand")
+        )
+        tools.update(
+            (tool.name, tool)
+            for tool in COORDINATION_TOOLS
+            if tool.name not in {"simulate_plan", "compare_plan_options"}
+            or principal.is_org_admin
+            or principal.managed_department_ids
         )
     return tools
 
@@ -90,6 +98,8 @@ async def list_tools(
                             "不要写个人负荷，只写能否承接、时间和条件。"
                             "答复和承诺说明不写任何负荷说法，也不能换说法。"
                         )
+                if tool in COORDINATION_TOOLS:
+                    description += "。方案不是承诺；只按当前用户权限返回结果。"
                 tools.append(
                     types.Tool(
                         name=tool.name,
@@ -110,18 +120,22 @@ def invoke(
     with Session(engine) as session:
         try:
             tools = available_tools(principal, session)
-            record_audit(
-                session,
-                org_id=principal.org_id,
-                actor_type=principal.actor_type,
-                actor_id=str(principal.user_id),
-                action="mcp.tool_called",
-                target_type="mcp_tool",
-                target_id=params.name if params.name in tools else None,
-                details={"request_id": str(ctx.request_id), "client_name": client_name},
-            )
-            session.commit()
             tool = tools.get(params.name)
+            if tool not in COORDINATION_TOOLS:
+                record_audit(
+                    session,
+                    org_id=principal.org_id,
+                    actor_type=principal.actor_type,
+                    actor_id=str(principal.user_id),
+                    action="mcp.tool_called",
+                    target_type="mcp_tool",
+                    target_id=params.name if tool is not None else None,
+                    details={
+                        "request_id": str(ctx.request_id),
+                        "client_name": client_name,
+                    },
+                )
+                session.commit()
             if tool is None:
                 raise McpRequestError(404, "工具不存在")
             body = tool.input_model.model_validate(params.arguments or {})
@@ -132,7 +146,17 @@ def invoke(
                 arguments.update(via=ReviewVia.MCP, client_name=client_name)
             if tool in CAPACITY_TOOLS and tool.writes:
                 arguments.update(via="mcp", client_name=client_name)
-            result = tool.handler(principal=principal, session=session, **arguments)
+            result = (
+                tool.handler(principal, session, body)
+                if tool in COORDINATION_TOOLS
+                else tool.handler(principal=principal, session=session, **arguments)
+            )
+            if tool in COORDINATION_TOOLS and result.model_dump().get("error"):
+                session.rollback()
+                return types.CallToolResult(
+                    is_error=True,
+                    content=[types.TextContent(type="text", text="无权查看方案")],
+                )
             session.commit()
             data = result.model_dump(
                 mode="json",
@@ -153,10 +177,19 @@ def invoke(
                 structured_content=data,
             )
         except ValidationError as exc:
-            message = validation_message(exc)
+            message = (
+                "工具参数不正确"
+                if params.name in {t.name for t in COORDINATION_TOOLS}
+                else validation_message(exc)
+            )
         except HTTPException as exc:
-            message = json.dumps(
-                {"status": exc.status_code, "detail": exc.detail}, ensure_ascii=False
+            message = (
+                "操作未完成，请检查权限或参数"
+                if params.name in {t.name for t in COORDINATION_TOOLS}
+                else json.dumps(
+                    {"status": exc.status_code, "detail": exc.detail},
+                    ensure_ascii=False,
+                )
             )
         except Exception:
             # Never let SDK exception logging include SQL, credentials or input text.
