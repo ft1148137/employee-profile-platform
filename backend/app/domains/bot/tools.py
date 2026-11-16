@@ -28,6 +28,7 @@ from app.domains.evidence.models import Evidence
 from app.domains.model.pi_client import ToolDefinition
 from app.domains.org.models import Department, Employee, EmploymentStatus
 from app.domains.planning import service as planning_service
+from app.domains.planning.schemas import VERDICT_LABELS, CasePublic, OptionPublic
 from app.domains.planning.tools import COORDINATION_TOOLS
 from app.domains.profile.service import read_profile
 from app.domains.review import direct
@@ -304,6 +305,76 @@ def redact(value: JsonValue) -> JsonValue:
     return value
 
 
+def plan_card(option: OptionPublic, case: CasePublic) -> s.PlanCard:
+    names = {str(person.employee_id): person.display_name for person in case.people}
+    assignees = cast("list[dict[str, JsonValue]]", option.params.get("assignees", []))
+    summary = option.summary
+    affected = cast("list[str]", summary.get("affected_assignment_ids", []))
+    findings = option.findings
+    people = (
+        "、".join(
+            names.get(str(person.get("employee_id")), "待确认人员")
+            for person in assignees
+        )
+        or "尚未确定具体人员"
+    )
+    risks = (
+        "；".join(str(item.get("message", "")) for item in findings) or "暂无已发现风险"
+    )
+    approvers = cast("list[str]", summary.get("approvers", []))
+    fields = [
+        s.CardField(label="类型", value=option.kind_label),
+        s.CardField(label="结论", value=option.verdict_label),
+        s.CardField(label="交付日期", value=str(summary.get("finish_date") or "未定")),
+        s.CardField(
+            label="覆盖人数", value=f"{summary.get('covered_headcount', 0)} 人"
+        ),
+        s.CardField(label="缺口", value=f"{summary.get('gap_person_weeks', 0)} 人周"),
+        s.CardField(label="人员", value=people),
+        s.CardField(label="受影响的工作数", value=f"{len(affected)} 项"),
+        s.CardField(label="风险", value=risks),
+        s.CardField(label="审批人", value="、".join(approvers) or "未定"),
+    ]
+    changes = None
+    if isinstance(summary.get("diff"), dict):
+        diff = cast("dict[str, dict[str, JsonValue]]", summary["diff"])
+        parts = [str(summary.get("changes") or "已修改方案")]
+        for key, label in (
+            ("verdict", "结论"),
+            ("finish_date", "交付日期"),
+            ("covered_headcount", "覆盖人数"),
+            ("gap_person_weeks", "缺口"),
+        ):
+            values = diff.get(key)
+            if isinstance(values, dict) and values.get("before") != values.get("after"):
+                before, after = values.get("before"), values.get("after")
+                if key == "verdict":
+                    before = next(
+                        (
+                            label
+                            for verdict, label in VERDICT_LABELS.items()
+                            if verdict.value == before
+                        ),
+                        str(before),
+                    )
+                    after = next(
+                        (
+                            label
+                            for verdict, label in VERDICT_LABELS.items()
+                            if verdict.value == after
+                        ),
+                        str(after),
+                    )
+                parts.append(f"{label}：{before or '未定'} → {after or '未定'}")
+        changes = "；".join(parts)
+    return s.PlanCard(
+        title=f"{option.kind_label}方案",
+        fields=fields,
+        changes=changes,
+        link=f"/capacity?tab=incoming&demand={case.demand_id}&plans=1",
+    )
+
+
 def preview_card(db: Session, p: Principal, request_id: UUID) -> s.PreviewCard:
     preview = name_levels(
         db, p, s.Preview.model_validate(employee.preview(p, db, request_id))
@@ -503,7 +574,29 @@ def call(
                 )
                 with db.begin_nested():
                     result = coord_tool.handler(p, db, input_body)
-                return redact(result.model_dump(mode="json"))
+                data = result.model_dump(mode="json")
+                if (
+                    coord_request.function in {"simulate_plan", "compare_plan_options"}
+                    and "error" not in data
+                ):
+                    case = planning_service.get_case(p, db, UUID(data["case_id"]))
+                    row = capacity_demand.demand_row(p, db, case.demand_id)
+                    if not capacity_demand.represents_department(
+                        p, row.target_department_id
+                    ):
+                        return {"error": "无权查看方案"}
+                    selected = [
+                        UUID(item["id"])
+                        for item in data.get("options", [data.get("option")])
+                        if item
+                    ]
+                    new_cards = [
+                        plan_card(option, case)
+                        for option in case.options
+                        if option.id in selected
+                    ]
+                    cards.extend(new_cards)
+                return redact(data)
             proposal = PreparePlanProposalInput.model_validate(arguments)
             case = planning_service.get_case(p, db, proposal.case_id)
             row = capacity_demand.demand_row(p, db, case.demand_id)

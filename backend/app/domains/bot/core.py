@@ -21,7 +21,7 @@ from app.domains.bot.admission import (
 )
 from app.domains.bot.levels import name_levels
 from app.domains.bot.models import BotSession
-from app.domains.bot.presentation import DEADLINE_MESSAGE, retry_time
+from app.domains.bot.presentation import DEADLINE_MESSAGE, capacity_failure, retry_time
 from app.domains.bot.prompts import system_prompt
 from app.domains.capacity import assistant as capacity
 from app.domains.change_request import employee
@@ -68,6 +68,7 @@ def turn(
     started = monotonic()
     steps: list[s.ToolStep] = []
     cards: list[s.Message] = []
+    manual_fallback = False
 
     def call(name: str, args: dict[str, JsonValue]) -> JsonValue:
         title = tools.TITLES.get(
@@ -81,6 +82,12 @@ def turn(
             stream.on_tool(title, "start", True)
         try:
             result = tools.call(db, p, session, cards, name, args)
+            if (
+                name in {"coordination", "prepare_plan_proposal"}
+                and isinstance(result, dict)
+                and "error" in result
+            ):
+                raise ModelUnavailable(code="coordination_tool")
         except Exception:
             steps.append(s.ToolStep(name=title, ok=False))
             if stream:
@@ -107,8 +114,10 @@ def turn(
                     db,
                     session,
                     [
-                        s.TextMessage(
-                            text="\n".join(
+                        capacity_failure(
+                            db,
+                            p,
+                            "\n".join(
                                 filter(
                                     None,
                                     [
@@ -116,7 +125,7 @@ def turn(
                                         "机器人需要先配置模型，你也可以在画像页直接修改",
                                     ],
                                 )
-                            )
+                            ),
                         )
                     ],
                 )
@@ -168,6 +177,7 @@ def turn(
         logger.warning("session_id=%s code=bad_request", session.id)
         message = "之前的对话上下文已失效，已经重新开始，请再说一次"
     except ModelUnavailable as error:
+        manual_fallback = True
         logger.warning(
             "session_id=%s code=%s elapsed_ms=%d",
             session.id,
@@ -181,7 +191,10 @@ def turn(
             if isinstance(error, ModelServiceError)
             else "模型服务暂时不可用，请稍后再试"
         )
-    messages = [s.TextMessage(text="\n".join(filter(None, [notice, message])))]
+    text = "\n".join(filter(None, [notice, message]))
+    messages = [
+        capacity_failure(db, p, text) if manual_fallback else s.TextMessage(text=text)
+    ]
     if stream and stream.cancelled.is_set():
         db.rollback()
         return s.TurnResponse(messages=[])

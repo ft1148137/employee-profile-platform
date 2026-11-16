@@ -153,6 +153,12 @@ Action = (
 )
 
 
+class CardField(BaseModel):
+    label: str
+    value: str
+    unclear: bool = False
+
+
 class CapacityCard(BaseModel):
     type: Literal["capacity_card"] = "capacity_card"
     card_id: UUID = Field(default_factory=uuid4)
@@ -165,16 +171,34 @@ class CapacityCard(BaseModel):
     ]
     title: str
     content: str
+    fields: list[CardField] = Field(default_factory=list)
+    questions: list[str] = Field(default_factory=list)
     arguments: dict[str, JsonValue]
     status: Literal["pending", "confirmed", "cancelled", "failed"] = "pending"
     result: str | None = None
     actions: list[CapacityAction] = Field(default_factory=list)
 
 
+class PlanCard(BaseModel):
+    type: Literal["plan_card"] = "plan_card"
+    title: str
+    fields: list[CardField]
+    changes: str | None = None
+    link: str
+
+
+class CardLink(BaseModel):
+    label: str
+    href: str
+
+
 class TextMessage(BaseModel):
     type: Literal["text"] = "text"
     text: str
     review_link: Literal["/reviews"] | None = None
+    capacity_links: list[CardLink] = Field(
+        default_factory=list, exclude_if=lambda links: not links
+    )
 
 
 class ReviewAfter(Projection):
@@ -250,7 +274,8 @@ Message = Annotated[
     | QuestionCard
     | ReviewCard
     | ProfileEditCard
-    | CapacityCard,
+    | CapacityCard
+    | PlanCard,
     Field(discriminator="type"),
 ]
 
