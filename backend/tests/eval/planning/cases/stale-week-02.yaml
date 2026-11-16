@@ -1,0 +1,20 @@
+id: stale-week-02
+category: 需重新确认
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: routine
+  other: 10
+  confirmed_days_ago: 40
+expect:
+  options:
+  - kind: direct
+    verdict: insufficient_data
+    findings:
+    - unconfirmed
+  absent_kinds:
+  - delay

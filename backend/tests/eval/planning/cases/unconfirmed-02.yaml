@@ -1,0 +1,21 @@
+id: unconfirmed-02
+category: 未确认
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: routine
+  other: 10
+  missing_weeks:
+  - 0
+expect:
+  options:
+  - kind: direct
+    verdict: insufficient_data
+    findings:
+    - unconfirmed
+  - kind: delay
+    verdict: conditional

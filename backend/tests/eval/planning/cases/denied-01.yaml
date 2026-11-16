@@ -1,0 +1,18 @@
+id: denied-01
+category: A 方读取被拒
+enterprise: qiguang-aiot
+roles:
+- QG001
+- QG006
+- QG002
+people:
+- code: QG007
+  level: routine
+  other: 10
+expect:
+  options:
+  - kind: direct
+    verdict: feasible
+  denied:
+  - a_manager
+  - a_employee

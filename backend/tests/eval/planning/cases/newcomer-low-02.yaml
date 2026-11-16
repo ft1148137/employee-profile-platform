@@ -1,0 +1,20 @@
+id: newcomer-low-02
+category: 新人可做
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: needs_support
+  other: 10
+  hire_days_ago: 5
+- code: HL008
+  level: routine
+  other: 10
+expect:
+  options:
+  - kind: direct
+    verdict: feasible
+  newcomer_required: false

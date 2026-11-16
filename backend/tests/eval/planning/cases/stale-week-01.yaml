@@ -1,0 +1,20 @@
+id: stale-week-01
+category: 需重新确认
+enterprise: qiguang-aiot
+roles:
+- QG001
+- QG006
+- QG002
+people:
+- code: QG007
+  level: routine
+  other: 10
+  confirmed_days_ago: 40
+expect:
+  options:
+  - kind: direct
+    verdict: insufficient_data
+    findings:
+    - unconfirmed
+  absent_kinds:
+  - delay

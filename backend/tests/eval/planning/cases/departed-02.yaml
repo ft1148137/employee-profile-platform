@@ -1,0 +1,18 @@
+id: departed-02
+category: 离职
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: routine
+  other: 10
+  inactive: true
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+    findings:
+    - headcount_gap

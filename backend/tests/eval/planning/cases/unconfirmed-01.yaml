@@ -1,0 +1,21 @@
+id: unconfirmed-01
+category: 未确认
+enterprise: qiguang-aiot
+roles:
+- QG001
+- QG006
+- QG002
+people:
+- code: QG007
+  level: routine
+  other: 10
+  missing_weeks:
+  - 0
+expect:
+  options:
+  - kind: direct
+    verdict: insufficient_data
+    findings:
+    - unconfirmed
+  - kind: delay
+    verdict: conditional

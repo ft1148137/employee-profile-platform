@@ -1,0 +1,23 @@
+id: legacy-02
+category: 旧分配没有开始日期
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: routine
+  other: 10
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+    findings:
+    - over_capacity
+  legacy_start: HL007
+assignments:
+- code: HL007
+  percent: 50
+  start_week: null
+  end_week: 1

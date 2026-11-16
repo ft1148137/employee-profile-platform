@@ -1,0 +1,18 @@
+id: departed-01
+category: 离职
+enterprise: qiguang-aiot
+roles:
+- QG001
+- QG006
+- QG002
+people:
+- code: QG007
+  level: routine
+  other: 10
+  inactive: true
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+    findings:
+    - headcount_gap

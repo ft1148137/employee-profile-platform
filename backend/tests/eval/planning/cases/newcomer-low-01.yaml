@@ -1,0 +1,20 @@
+id: newcomer-low-01
+category: 新人可做
+enterprise: qiguang-aiot
+roles:
+- QG001
+- QG006
+- QG002
+people:
+- code: QG007
+  level: needs_support
+  other: 10
+  hire_days_ago: 5
+- code: QG008
+  level: routine
+  other: 10
+expect:
+  options:
+  - kind: direct
+    verdict: feasible
+  newcomer_required: false

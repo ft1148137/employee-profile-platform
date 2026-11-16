@@ -1,0 +1,26 @@
+id: borrow-01
+category: 借调
+enterprise: qiguang-aiot
+roles:
+- QG001
+- QG006
+- QG002
+people:
+- code: QG007
+  level: routine
+  other: 70
+- code: QG012
+  level: routine
+  other: 10
+- code: QG013
+  level: routine
+  other: 10
+- code: QG014
+  level: routine
+  other: 10
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+  - kind: borrow
+    verdict: conditional

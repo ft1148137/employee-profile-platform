@@ -1,0 +1,17 @@
+id: reduce-02
+category: 缩小范围可行
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: routine
+  other: 60
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+  - kind: reduce_scope
+    verdict: conditional

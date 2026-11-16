@@ -1,0 +1,19 @@
+id: newcomer-yes-02
+category: 新人可做
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: routine
+  other: 10
+  hire_days_ago: 5
+expect:
+  options:
+  - kind: direct
+    verdict: feasible
+  - kind: newcomer
+    verdict: feasible
+  newcomer_required: true
