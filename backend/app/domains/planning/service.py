@@ -340,21 +340,36 @@ def revise_option(
             start, end = body.start_date.isoformat(), body.end_date.isoformat()
             if start > end:
                 raise PlanningInvalidRevision("开始日期不能晚于结束日期")
-            before = (changed[0]["start_date"], changed[0]["end_date"])
+            before = {(item["start_date"], item["end_date"]) for item in changed}
             for item in changed:
                 item["start_date"], item["end_date"] = start, end
-            description = (
-                f"把{name(target)}的日期改为{_date_label(start)}至{_date_label(end)}"
-                if target
-                else f"开始日期从{_date_label(before[0])}改到{_date_label(start)}，结束日期从{_date_label(before[1])}改到{_date_label(end)}"
-            )
+            if len(before) == 1:
+                old_start, old_end = next(iter(before))
+                parts = []
+                if old_start != start:
+                    parts.append(
+                        f"开始日期从{_date_label(old_start)}改到{_date_label(start)}"
+                    )
+                if old_end != end:
+                    parts.append(
+                        f"结束日期从{_date_label(old_end)}改到{_date_label(end)}"
+                    )
+                description = (f"{name(target)}的" if target else "") + (
+                    "，".join(parts) or "日期保持不变"
+                )
+            else:
+                description = (
+                    f"把未锁定人员的日期改为{_date_label(start)}至{_date_label(end)}"
+                )
         else:
-            before_percent = changed[0]["allocation_percent"]
+            before_percents = {item["allocation_percent"] for item in changed}
             for item in changed:
                 item["allocation_percent"] = body.allocation_percent
             prefix = f"把{name(target)}的" if target else "把未锁定人员的"
             description = (
-                f"{prefix}投入从{before_percent}%改到{body.allocation_percent}%"
+                f"{prefix}投入从{next(iter(before_percents))}%改到{body.allocation_percent}%"
+                if len(before_percents) == 1
+                else f"{prefix}投入改为{body.allocation_percent}%"
             )
     elif change == "phased":
         if locks:

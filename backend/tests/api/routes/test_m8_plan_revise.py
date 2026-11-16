@@ -112,6 +112,7 @@ def test_revise_each_change(
         )
     elif body["change"] == "dates":
         assert option["params"]["assignees"][0]["end_date"] == body["end_date"]
+        assert option["summary"]["changes"].startswith("结束日期从")
     elif body["change"] == "allocation":
         assert option["params"]["assignees"][0]["allocation_percent"] == 20
     elif body["change"] == "phased":
@@ -195,16 +196,16 @@ def test_revise_rejects_invalid_source_candidate_and_stale_snapshot(
     )
     assert rejected.status_code == 400
     assert rejected.json()["detail"] == "借调方案不能快捷修改，请在其他方案上修改"
+    assert business_rows(db, demand.org_id) == before
     demand.revision += 1
     db.commit()
+    after_revision = business_rows(db, demand.org_id)
     stale = client.post(
         path, headers=auth["b"], json={"change": "allocation", "allocation_percent": 20}
     )
     assert stale.status_code == 409
     assert stale.json()["detail"] == "数据已变化，请重新模拟"
-    assert (
-        business_rows(db, demand.org_id) != before
-    )  # Only the test's revision changed.
+    assert business_rows(db, demand.org_id) == after_revision
     refreshed = client.post(
         f"{planning_case[0]}/planning/demands/{demand.id}/cases", headers=auth["b"]
     )
@@ -213,6 +214,7 @@ def test_revise_rejects_invalid_source_candidate_and_stale_snapshot(
         path, headers=auth["b"], json={"change": "allocation", "allocation_percent": 20}
     )
     assert old.status_code == 409
+    assert business_rows(db, demand.org_id) == after_revision
 
 
 def test_revise_requires_same_case_access(
@@ -271,3 +273,51 @@ def test_create_option_accepts_locks(planning_case: tuple, client: TestClient) -
         json={**body, "locked_employee_ids": [str(employees["E01"].id)]},
     )
     assert invalid.status_code == 422
+
+
+def test_group_change_description_handles_different_original_values(
+    planning_case: tuple, client: TestClient
+) -> None:
+    url, employees, auth, demand, case = planning_case
+    base = client.post(
+        f"{url}/planning/cases/{case['id']}/options",
+        headers=auth["b"],
+        json={
+            "assignees": [
+                {
+                    "employee_id": str(employees["E04"].id),
+                    "allocation_percent": 50,
+                    "start_date": demand.window_start.isoformat(),
+                    "end_date": demand.window_end.isoformat(),
+                },
+                {
+                    "employee_id": str(employees["E05"].id),
+                    "allocation_percent": 30,
+                    "start_date": (demand.window_start + timedelta(days=7)).isoformat(),
+                    "end_date": demand.window_end.isoformat(),
+                },
+            ]
+        },
+    )
+    assert base.status_code == 200, base.text
+    path = f"{url}/planning/cases/{case['id']}/options/{base.json()['id']}/revise"
+    dates = client.post(
+        path,
+        headers=auth["b"],
+        json={
+            "change": "dates",
+            "start_date": demand.window_start.isoformat(),
+            "end_date": demand.window_end.isoformat(),
+        },
+    )
+    assert dates.status_code == 200, dates.text
+    assert (
+        dates.json()["summary"]["changes"]
+        == "把未锁定人员的日期改为"
+        + f"{demand.window_start.month} 月 {demand.window_start.day} 日至{demand.window_end.month} 月 {demand.window_end.day} 日"
+    )
+    allocation = client.post(
+        path, headers=auth["b"], json={"change": "allocation", "allocation_percent": 20}
+    )
+    assert allocation.status_code == 200, allocation.text
+    assert allocation.json()["summary"]["changes"] == "把未锁定人员的投入改为20%"
