@@ -335,4 +335,37 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBeTruthy()
+
+  await api(
+    `${base}/capacity/demands/${demand.id}/assignments`,
+    {
+      employee_id: person("B2").id,
+      allocation_percent: 20,
+      start_date: startWeek,
+      due_date: "2026-12-20",
+      outside_basis: true,
+    },
+    m,
+  )
+  const preview = await api(
+    `${base}/roster/single-change`,
+    { kind: "offboard", employee_ids: [person("B2").id] },
+    admin.access_token,
+  )
+  await api(
+    `${base}/roster/imports/${preview.id}/apply`,
+    { base_revision: preview.base_revision, confirm_mass_deactivation: true },
+    admin.access_token,
+  )
+  await details(m, "incoming")
+  const departed = assignment.getByRole("article", { name: "已离职员工" })
+  await expect(departed).toBeVisible()
+  await expect(departed).toContainText("进行中")
+  await expect(departed.getByRole("button")).toHaveCount(1)
+  await expect(departed.getByRole("button", { name: "标记完成" })).toHaveCount(
+    0,
+  )
+  await expect(departed.getByRole("form")).toHaveCount(0)
+  await departed.getByRole("button", { name: "取消分配" }).click()
+  await expect(departed).toHaveCount(0)
 })

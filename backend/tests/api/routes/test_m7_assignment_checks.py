@@ -392,7 +392,7 @@ def test_legacy_start_repair_and_inactive_writes(window: tuple, db: Session) -> 
     for body in (
         {"start_date": start.isoformat()},
         {"due_date": row.due_date.isoformat()},
-        {"status": "cancelled"},
+        {"status": "done"},
     ):
         api(path, body=body, status=404, method="PATCH")
     api(f"/extension-requests/{pending.id}/decision", "cm", {"approve": True}, 404)

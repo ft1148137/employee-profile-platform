@@ -6,6 +6,7 @@ import {
   CapacityService,
   type DemandAssignment,
   type DemandPublic,
+  type DepartedDemandAssignment,
 } from "@/client"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
@@ -110,6 +111,7 @@ export function DemandAssignments({
                       (person) =>
                         !query.data?.data.some(
                           (row) =>
+                            "employee_id" in row &&
                             row.employee_id === person.employee_id &&
                             row.status === "active",
                         ),
@@ -207,7 +209,7 @@ function AssignmentRow({
   canEdit,
 }: {
   orgId: string
-  row: DemandAssignment
+  row: DemandAssignment | DepartedDemandAssignment
   committedEndDate: string | null
   committedStartDate: string | null
   canEdit: boolean
@@ -228,23 +230,26 @@ function AssignmentRow({
       className="space-y-3 rounded-lg border p-4"
     >
       <h4 className="font-medium">
-        {row.employee_name} · {assignmentStatuses[row.status]}
+        {row.employee_name} ·{" "}
+        {"status" in row ? assignmentStatuses[row.status] : "进行中"}
       </h4>
       <p className="text-sm">
         投入 {row.allocation_percent}% ·{" "}
         {row.start_date ? `开始：${row.start_date}` : "开始日期未确认"} ·
         预计完成：{row.due_date}
       </p>
-      {canEdit && row.status === "active" && (
+      {canEdit && (!("status" in row) || row.status === "active") && (
         <>
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              disabled={update.isPending}
-              onClick={() => update.mutate({ status: "done" })}
-            >
-              标记完成
-            </Button>
+            {"status" in row && (
+              <Button
+                variant="outline"
+                disabled={update.isPending}
+                onClick={() => update.mutate({ status: "done" })}
+              >
+                标记完成
+              </Button>
+            )}
             <Button
               variant="outline"
               disabled={update.isPending}
@@ -253,54 +258,58 @@ function AssignmentRow({
               取消分配
             </Button>
           </div>
-          <form
-            aria-label="修改开始日期"
-            className="space-y-3"
-            onSubmit={(event) => {
-              event.preventDefault()
-              update.mutate({
-                start_date: String(
-                  new FormData(event.currentTarget).get("start_date"),
-                ),
-              })
-            }}
-          >
-            <fieldset disabled={update.isPending} className="space-y-3">
-              <DateField
-                label="调整后的开始日期"
-                name="start_date"
-                defaultValue={row.start_date ?? ""}
-                min={committedStartDate ?? undefined}
-                max={row.due_date}
-              />
-              <Button type="submit">保存开始日期</Button>
-            </fieldset>
-          </form>
-          <form
-            aria-label="修改完成日期"
-            className="space-y-3"
-            onSubmit={(event) => {
-              event.preventDefault()
-              update.mutate({
-                due_date: dueDate,
-                ...commitmentBody(new FormData(event.currentTarget)),
-              })
-            }}
-          >
-            <fieldset disabled={update.isPending} className="space-y-3">
-              <DateField
-                label="调整后的完成日期"
-                min={row.start_date ?? undefined}
-                value={dueDate}
-                onChange={(event) => setDueDate(event.target.value)}
-              />
-              <CommitmentFields
-                dueDate={dueDate}
-                committedEndDate={committedEndDate}
-              />
-              <Button type="submit">保存完成日期</Button>
-            </fieldset>
-          </form>
+          {"status" in row && (
+            <form
+              aria-label="修改开始日期"
+              className="space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault()
+                update.mutate({
+                  start_date: String(
+                    new FormData(event.currentTarget).get("start_date"),
+                  ),
+                })
+              }}
+            >
+              <fieldset disabled={update.isPending} className="space-y-3">
+                <DateField
+                  label="调整后的开始日期"
+                  name="start_date"
+                  defaultValue={row.start_date ?? ""}
+                  min={committedStartDate ?? undefined}
+                  max={row.due_date}
+                />
+                <Button type="submit">保存开始日期</Button>
+              </fieldset>
+            </form>
+          )}
+          {"status" in row && (
+            <form
+              aria-label="修改完成日期"
+              className="space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault()
+                update.mutate({
+                  due_date: dueDate,
+                  ...commitmentBody(new FormData(event.currentTarget)),
+                })
+              }}
+            >
+              <fieldset disabled={update.isPending} className="space-y-3">
+                <DateField
+                  label="调整后的完成日期"
+                  min={row.start_date ?? undefined}
+                  value={dueDate}
+                  onChange={(event) => setDueDate(event.target.value)}
+                />
+                <CommitmentFields
+                  dueDate={dueDate}
+                  committedEndDate={committedEndDate}
+                />
+                <Button type="submit">保存完成日期</Button>
+              </fieldset>
+            </form>
+          )}
         </>
       )}
       <CapacityError error={update.error} />

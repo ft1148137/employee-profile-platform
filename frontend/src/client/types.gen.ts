@@ -1964,6 +1964,10 @@ export type DemandAssignment = {
    * Employee Name
    */
   employee_name: string
+  /**
+   * Employee Departed
+   */
+  employee_departed: boolean
 }
 
 /**
@@ -1973,7 +1977,7 @@ export type DemandAssignmentList = {
   /**
    * Data
    */
-  data: Array<DemandAssignment>
+  data: Array<DemandAssignment | DepartedDemandAssignment>
   /**
    * Count
    */
@@ -2265,6 +2269,36 @@ export type DemandPublic = {
  * DemandStatus
  */
 export type DemandStatus = "submitted" | "replied" | "accepted" | "withdrawn"
+
+/**
+ * DepartedDemandAssignment
+ */
+export type DepartedDemandAssignment = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Start Date
+   */
+  start_date: string | null
+  /**
+   * Due Date
+   */
+  due_date: string
+  /**
+   * Employee Name
+   */
+  employee_name: "已离职员工"
+  /**
+   * Employee Departed
+   */
+  employee_departed: true
+}
 
 /**
  * DepartmentCapabilitiesInput

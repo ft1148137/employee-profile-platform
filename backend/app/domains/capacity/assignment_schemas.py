@@ -52,10 +52,20 @@ class AssignmentPublic(CapacityInput):
 
 class DemandAssignment(AssignmentPublic):
     employee_name: str
+    employee_departed: bool
+
+
+class DepartedDemandAssignment(CapacityInput):
+    id: UUID
+    allocation_percent: int
+    start_date: date | None
+    due_date: date
+    employee_name: Literal["已离职员工"]
+    employee_departed: Literal[True]
 
 
 class DemandAssignmentList(CapacityInput):
-    data: list[DemandAssignment]
+    data: list[DemandAssignment | DepartedDemandAssignment]
     count: int
 
 

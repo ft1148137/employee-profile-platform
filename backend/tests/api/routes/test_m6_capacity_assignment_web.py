@@ -210,7 +210,16 @@ def test_demand_assignment_scope_and_inactive(case: tuple, db: Session) -> None:
     people["w"].employment_status = "inactive"
     db.add(people["w"])
     db.commit()
-    assert [r["id"] for r in api(path)["data"]] == [second["id"]]
+    assert {r["id"] for r in api(path)["data"]} == {first["id"], second["id"]}
+    departed = next(r for r in api(path)["data"] if r["id"] == first["id"])
+    assert departed == {
+        "id": first["id"],
+        "allocation_percent": 20,
+        "start_date": "2026-12-01",
+        "due_date": "2026-12-20",
+        "employee_name": "已离职员工",
+        "employee_departed": True,
+    }
     assert api(path, "admin")["count"] == 2
     setting = db.exec(
         select(CapacitySetting).where(CapacitySetting.org_id == demand.org_id)
