@@ -22,8 +22,32 @@
 | 验收 | 本地命令与结果 | 自动断言 |
 | --- | --- | --- |
 | 1. 同人同周并发不超额 | `for run in 1 2 3; do uv run pytest tests/api/routes/test_m7_assignment_checks.py::test_concurrent_commitments_cannot_overbook -q --no-cov -n 2 --dist loadgroup; done`：三轮均通过，每轮 20 轮 × 两种 `extension_race` = 40 个参数用例 | [test_m7_assignment_checks.py](../backend/tests/api/routes/test_m7_assignment_checks.py) 以两个线程和独立会话竞争同一员工的容量，断言不会同时写成超额承诺；[test_m7_assignment_past_weeks.py](../backend/tests/api/routes/test_m7_assignment_past_weeks.py) 检查过去周跳过、未来周仍校验 |
-| 2. 无数据返回「未确认」 | 接口：`uv run pytest tests/api/routes/test_m7_weekly_capacity.py::test_missing_weeks_are_unconfirmed -q --no-cov -n 2 --dist loadgroup`，通过。页面：`PLAYWRIGHT_BASE_URL=http://127.0.0.1:18699 bun x playwright test --workers=1 --reporter=line tests/m6-capacity-workload.spec.ts tests/m6-capacity-assignment.spec.ts`（在 `frontend/` 执行）：含登录准备共 `3 passed`；截图 `team.png`、`mine-mobile.png`、`assignment-mobile.png` 仅附在 NERE-699 结果评论。助手与 MCP 的临时实测命令与原测试边界见下文 | [test_m7_weekly_capacity.py](../backend/tests/api/routes/test_m7_weekly_capacity.py) 断言 8 周 `status=unconfirmed`、`band=unconfirmed`、`last_confirmed=null`，且不出现「有余量」或「有空」；页面断言 8 周显示「未确认」、无「有余量」，确认 4 周后余下 4 周仍未确认；未确认周创建分配返回引导确认的错误 |
-| 3. 同需求可比较多方案，且不改真实分配 | `uv run pytest tests/api/routes/test_m7_planning_validator.py tests/api/routes/test_m7_planning_simulator.py tests/api/routes/test_m7_planning_readonly.py tests/eval/planning/test_planning_eval.py -q --no-cov -n 2 --dist loadgroup`，通过；`uv run python scripts/eval_planning.py --report ../m7-699-baseline-check.md`：36 个测试通过（其中 34 个 YAML 案例）；生成报告为 34/34、均值 2.24、新人 2 案，和仓库基线同口径，临时报告已删除 | [test_m7_planning_simulator.py](../backend/tests/api/routes/test_m7_planning_simulator.py) 检查同一快照的直接、新人、延期、缩小范围、分阶段和借调方案；[test_m7_planning_validator.py](../backend/tests/api/routes/test_m7_planning_validator.py) 检查四种结论、过期和权限；[test_m7_planning_readonly.py](../backend/tests/api/routes/test_m7_planning_readonly.py) 在创建、读取和生成方案前后比较 Capacity 业务行及审计行，确认不写真实分配 |
+| 2. 无数据返回「未确认」 | 接口：下述组合回归命令包含 `test_m7_weekly_capacity.py::test_missing_weeks_are_unconfirmed`，该节点通过。页面：`PLAYWRIGHT_BASE_URL=http://127.0.0.1:18699 bun x playwright test --workers=1 --reporter=line tests/m6-capacity-workload.spec.ts tests/m6-capacity-assignment.spec.ts`（在 `frontend/` 执行）：含登录准备共 `3 passed`；截图 `team.png`、`mine-mobile.png`、`assignment-mobile.png` 仅附在 NERE-699 结果评论。助手与 MCP 的临时实测命令与原测试边界见下文 | [test_m7_weekly_capacity.py](../backend/tests/api/routes/test_m7_weekly_capacity.py) 断言 8 周 `status=unconfirmed`、`band=unconfirmed`、`last_confirmed=null`，且不出现「有余量」或「有空」；页面断言 8 周显示「未确认」、无「有余量」，确认 4 周后余下 4 周仍未确认；未确认周创建分配返回引导确认的错误 |
+| 3. 同需求可比较多方案，且不改真实分配 | 下述组合回归命令包含 Validator、Simulator、Readonly 和 34 个评测案例，相关节点全部通过；`uv run python scripts/eval_planning.py --report ../m7-699-baseline-check.md`：36 个测试通过（其中 34 个 YAML 案例）；生成报告为 34/34、均值 2.24、新人 2 案，和仓库基线同口径，临时报告已删除 | [test_m7_planning_simulator.py](../backend/tests/api/routes/test_m7_planning_simulator.py) 检查同一快照的直接、新人、延期、缩小范围、分阶段和借调方案；[test_m7_planning_validator.py](../backend/tests/api/routes/test_m7_planning_validator.py) 检查四种结论、过期和权限；[test_m7_planning_readonly.py](../backend/tests/api/routes/test_m7_planning_readonly.py) 在创建、读取和生成方案前后比较 Capacity 业务行及审计行，确认不写真实分配 |
+
+### 后端组合回归的实测命令
+
+下列命令在 `backend/` 执行，首轮 `141 passed, 2 errors`。两项错误均出在 Pi 本地依赖准备，见文末；其余节点通过。
+
+```bash
+uv run pytest \
+  tests/api/routes/test_m7_weekly_capacity.py::test_missing_weeks_are_unconfirmed \
+  tests/api/routes/test_m7_planning_validator.py \
+  tests/api/routes/test_m7_planning_simulator.py \
+  tests/api/routes/test_m7_planning_readonly.py \
+  tests/eval/planning/test_planning_eval.py \
+  tests/api/routes/test_m7_reply_load_words.py \
+  tests/api/routes/test_m7_departed_cancel.py \
+  tests/api/routes/test_m7_assignment_past_weeks.py \
+  tests/api/routes/test_m7_capacity_corrections.py \
+  tests/api/routes/test_m7_unavailability.py \
+  tests/test_m7_weekly_capacity_migration.py \
+  tests/test_m7_planning_migration.py \
+  tests/api/routes/test_m6_capacity_assistant.py \
+  tests/api/routes/test_m6_capacity_mcp.py \
+  tests/api/routes/test_m6_capacity_responder_privacy.py \
+  -q --no-cov -n 2 --dist loadgroup
+```
 
 ### 助手与 MCP 的实际返回
 
@@ -41,7 +65,7 @@
 | 入口 | M7 新增断言 | 保留的 M6/M6.2 断言 |
 | --- | --- | --- |
 | 网页 / REST | S2 少于 3 人时答复正文禁写个人负荷词；S3b A 方不可读 B 方不可用日期；S4b 离职分配固定隐名且 A 方 404；S5a Planning A 方 404 | 需求、答复、分配列表与对外时间线不含 B 方姓名、工号、画像和个人负荷；[test_m6_capacity_responder_privacy.py](../backend/tests/api/routes/test_m6_capacity_responder_privacy.py) 对 A 方答复人姓名断言为空 |
-| 网页助手 | S2 `assistant.check_demand_reply()` 出卡前执行相同答复正文拦截；S3b 不提供对方不可用日期工具 | [test_m6_capacity_assistant.py](../backend/tests/api/routes/test_m6_capacity_assistant.py) 与答复测试仍检查身份伪造、卡片确认和 B 方个人字段不进入 A 方结果 |
+| 网页助手 | S2 `assistant.check_demand_reply()` 出卡前执行相同答复正文拦截 | [test_m6_capacity_assistant.py](../backend/tests/api/routes/test_m6_capacity_assistant.py) 与答复测试仍检查身份伪造、卡片确认和 B 方个人字段不进入 A 方结果 |
 | 飞书助手 | S2 复用网页助手校验与提示，禁止少于 3 人时的负荷词答复；本地复跑飞书确认用例 | 已有绑定本人点击卡片和对外卡片不含 B 方个人信息的断言继续保留 |
 | MCP | S2 `reply_demand` 与提示语同样拦截；S3b A 方不可读不可用日期且工具列表不暴露登记/删除 | [test_m6_capacity_mcp.py](../backend/tests/api/routes/test_m6_capacity_mcp.py) 的当前令牌身份、跨企业/部门越权及 B 方个人信息排除；[test_m6_capacity_responder_privacy.py](../backend/tests/api/routes/test_m6_capacity_responder_privacy.py) 的答复人隐名 |
 
@@ -50,6 +74,6 @@ M7 的 Planning 测试还对 A 方读取方案返回 404、借调小部门隐藏
 ## 迁移与本地验证边界
 
 - `uv run alembic heads`：仅 `c696001bc001 (head)`。在 `nere699` 数据库执行 `uv run alembic upgrade head && uv run alembic downgrade -1 && uv run alembic upgrade head`：通过，实际降级 `c696001bc001 → c693001bc001` 再升级。
-- [test_m7_weekly_capacity_migration.py::test_weekly_migration_roundtrip](../backend/tests/test_m7_weekly_capacity_migration.py) 检查 `c641001bc001 ↔ c693001bc001 ↔ head` 的旧负荷迁移、约束及降级重建；[test_m7_planning_migration.py::test_planning_migration_roundtrip](../backend/tests/test_m7_planning_migration.py) 检查 `c693001bc001 ↔ c696001bc001 ↔ head` 的 Planning 表往返。本地运行 `uv run pytest tests/test_m7_weekly_capacity_migration.py tests/test_m7_planning_migration.py -q --no-cov -n 2 --dist loadgroup`：`2 passed`。
+- [test_m7_weekly_capacity_migration.py::test_weekly_migration_roundtrip](../backend/tests/test_m7_weekly_capacity_migration.py) 检查 `c641001bc001 ↔ c693001bc001 ↔ head` 的旧负荷迁移、约束及降级重建；[test_m7_planning_migration.py::test_planning_migration_roundtrip](../backend/tests/test_m7_planning_migration.py) 检查 `c693001bc001 ↔ c696001bc001 ↔ head` 的 Planning 表往返。本地运行 `uv run pytest tests/test_m7_weekly_capacity_migration.py tests/test_m7_planning_migration.py -q --no-cov -n 2 --dist loadgroup -o addopts='' --disable-warnings --tb=short`：`2 passed`。
 - 相关测试首轮合计 `141 passed, 2 errors`；两项错误发生在助手用例的 Pi 服务准备阶段，本机尚未安装 `pi/package-lock.json` 锁定的 npm 依赖（缺 `@earendil-works/pi-agent-core`）。执行 `cd pi && npm ci --ignore-scripts --no-audit --no-fund` 后，仅重跑两项报错用例，`2 passed`。这是本地依赖准备错误，未修改产品或测试代码。
 - 本任务文档检查、前端检查及 Docker 清理后的剩余空间在 NERE-699 的结果评论中列明；完整后端/网页/Compose/安装 CI 由 PR 门禁执行。本次未升级长期环境 `nere497`。
