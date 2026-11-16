@@ -14,7 +14,9 @@ class Validation(BaseModel):
     summary: dict[str, Any]
 
 
-def validate(data: dict[str, Any], params: dict[str, Any]) -> Validation:
+def validate(
+    data: dict[str, Any], params: dict[str, Any], *, kind: str = "custom"
+) -> Validation:
     """Validate saved inputs only; no database reads or writes."""
     demand = data["demand"]
     candidates = {p["employee_id"]: p for p in data["candidates"]}
@@ -200,6 +202,30 @@ def validate(data: dict[str, Any], params: dict[str, Any]) -> Validation:
             (f["level"] for f in findings), key=severity.__getitem__, default="feasible"
         ),
     )
+    affected = [
+        assignment["assignment_id"]
+        for assignment in data.get("assignments", [])
+        if any(
+            assignee["employee_id"] == assignment["employee_id"]
+            and week_start(date.fromisoformat(assignee["start_date"]))
+            <= week_start(date.fromisoformat(assignment["due_date"]))
+            and week_start(date.fromisoformat(assignee["end_date"]))
+            >= week_start(date.fromisoformat(assignment["counted_from"]))
+            for assignee in assignees
+        )
+    ]
+    codes = {finding["code"] for finding in findings}
+    approvers = ["本部门经理确认答复"]
+    if "outside_window" in codes or kind == "delay":
+        approvers.append("需求方接受新日期")
+    if kind == "reduce_scope":
+        approvers.append("需求方接受缩小范围")
+    if kind == "phased":
+        approvers.append("需求方同意分阶段交付")
+    if "borrow" in codes or kind == "borrow":
+        approvers.append("原部门经理和被借调员工本人同意")
+    if "outside_basis" in codes:
+        approvers.append("经理确认安排依据外人员")
     return Validation(
         verdict=verdict,
         findings=findings,
@@ -209,6 +235,7 @@ def validate(data: dict[str, Any], params: dict[str, Any]) -> Validation:
             "gap_person_weeks": gap_person_weeks,
             "conditions": conditions,
             "newcomer_count": len(newcomer_ids),
-            "affected_assignment_ids": [],
+            "affected_assignment_ids": affected,
+            "approvers": approvers,
         },
     )

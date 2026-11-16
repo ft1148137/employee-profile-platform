@@ -1206,6 +1206,20 @@ export type CapacitySettingsInput = {
 }
 
 /**
+ * CasePerson
+ */
+export type CasePerson = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Display Name
+   */
+  display_name: string
+}
+
+/**
  * CasePublic
  */
 export type CasePublic = {
@@ -1239,6 +1253,10 @@ export type CasePublic = {
    * Notes
    */
   notes: Array<string>
+  /**
+   * People
+   */
+  people: Array<CasePerson>
   /**
    * Options
    */
@@ -4651,6 +4669,14 @@ export type OptionPublic = {
    * Created At
    */
   created_at: string
+  /**
+   * Kind Label
+   */
+  readonly kind_label: string
+  /**
+   * Verdict Label
+   */
+  readonly verdict_label: string
 }
 
 /**
@@ -7479,6 +7505,50 @@ export type app__domains__review__schemas__ReviewItem = {
 }
 
 /**
+ * CasePublic
+ */
+export type CasePublicWritable = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Demand Id
+   */
+  demand_id: string
+  /**
+   * Snapshot Id
+   */
+  snapshot_id: string
+  /**
+   * Snapshot Created At
+   */
+  snapshot_created_at: string
+  /**
+   * Data
+   */
+  data: {
+    [key: string]: JsonValue
+  }
+  /**
+   * Stale
+   */
+  stale: boolean
+  /**
+   * Notes
+   */
+  notes: Array<string>
+  /**
+   * People
+   */
+  people: Array<CasePerson>
+  /**
+   * Options
+   */
+  options: Array<OptionPublicWritable>
+}
+
+/**
  * ImSettingUpdate
  */
 export type ImSettingUpdateWritable = {
@@ -7599,6 +7669,44 @@ export type ModelSettingUpdateWritable = {
     | "high"
     | "xhigh"
     | null
+}
+
+/**
+ * OptionPublic
+ */
+export type OptionPublicWritable = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Snapshot Id
+   */
+  snapshot_id: string
+  kind: OptionKind
+  /**
+   * Params
+   */
+  params: {
+    [key: string]: JsonValue
+  }
+  verdict: PlanVerdict
+  /**
+   * Findings
+   */
+  findings: Array<{
+    [key: string]: JsonValue
+  }>
+  /**
+   * Summary
+   */
+  summary: {
+    [key: string]: JsonValue
+  }
+  /**
+   * Created At
+   */
+  created_at: string
 }
 
 export type capacityListUnavailabilityData = {

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import {
   CapacityService,
@@ -12,8 +13,10 @@ import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useOrg } from "@/hooks/useOrg"
 import { DemandAssignments } from "./DemandAssignments"
 import { DemandsReference } from "./DemandsReference"
+import { Plans } from "./Plans"
 import { WorkloadBand } from "./shared"
 
 export const demandStatuses = {
@@ -39,12 +42,16 @@ export function DemandsDetail({
   demandId,
   side,
   back,
+  plansOpen = false,
 }: {
   orgId: string
   demandId: string
   side: "outgoing" | "incoming"
   back: () => void
+  plansOpen?: boolean
 }) {
+  const navigate = useNavigate()
+  const { roles, managedDepartmentIds } = useOrg()
   const query = useQuery({
     queryKey: ["capacity", orgId, "demand", demandId],
     queryFn: async () =>
@@ -118,6 +125,30 @@ export function DemandsDetail({
           {side === "incoming" && (
             <DemandsBasis orgId={orgId} demandId={demandId} />
           )}
+          {side === "incoming" &&
+            (roles.includes("org_admin") ||
+              managedDepartmentIds.includes(
+                query.data.target_department_id,
+              )) && (
+              <section aria-label="协调方案" className="space-y-3">
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    navigate({
+                      to: "/capacity",
+                      search: {
+                        tab: "incoming",
+                        demand: demandId,
+                        plans: plansOpen ? undefined : "1",
+                      },
+                    })
+                  }
+                >
+                  {plansOpen ? "关闭方案" : "生成方案 / 查看方案"}
+                </Button>
+                {plansOpen && <Plans orgId={orgId} demandId={demandId} />}
+              </section>
+            )}
           {side === "incoming" && query.data.status === "accepted" && (
             <DemandAssignments orgId={orgId} demand={query.data} />
           )}
