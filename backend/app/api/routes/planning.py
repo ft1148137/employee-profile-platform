@@ -6,7 +6,12 @@ from fastapi import APIRouter, Depends
 from app.api.deps import SessionDep
 from app.authz.deps import OrgPrincipalDep
 from app.domains.planning import service
-from app.domains.planning.schemas import CasePublic, OptionInput, OptionPublic
+from app.domains.planning.schemas import (
+    CasePublic,
+    OptionInput,
+    OptionPublic,
+    ReviseInput,
+)
 
 router = APIRouter(prefix="/orgs/{org_id}/planning", tags=["planning"])
 
@@ -41,5 +46,18 @@ def create_option(
     access: Annotated[service.CaseAccess, Depends(require_case_access)],
 ) -> OptionPublic:
     result = service.create_option(principal, session, access, body)
+    session.commit()
+    return result
+
+
+@router.post("/cases/{case_id}/options/{option_id}/revise")
+def revise_option(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    option_id: UUID,
+    body: ReviseInput,
+    access: Annotated[service.CaseAccess, Depends(require_case_access)],
+) -> OptionPublic:
+    result = service.revise_option(principal, session, access, option_id, body)
     session.commit()
     return result

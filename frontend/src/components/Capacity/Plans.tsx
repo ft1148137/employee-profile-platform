@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { AxiosError } from "axios"
-import { type CasePublic, PlanningService } from "@/client"
+import { useState } from "react"
+import { type CasePublic, PlanningService, type ReviseInput } from "@/client"
 import { ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
 
@@ -41,12 +42,259 @@ function weekLabel(value: unknown): string | null {
   return month && day ? `${Number(month)} 月 ${Number(day)} 日那一周` : null
 }
 
-function OptionCard({
+function RevisionControls({
   option,
   plan,
+  orgId,
+  onRevised,
 }: {
   option: CasePublic["options"][number]
   plan: CasePublic
+  orgId: string
+  onRevised: () => Promise<unknown>
+}) {
+  const [change, setChange] = useState<ReviseInput["change"] | null>(null)
+  const [employeeId, setEmployeeId] = useState("")
+  const [replacementId, setReplacementId] = useState("")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+  const [percent, setPercent] = useState(20)
+  const [splitDate, setSplitDate] = useState("")
+  const assignees = records(option.params.assignees)
+  const locks = new Set(strings(option.params.locked_employee_ids))
+  const selected = new Set(assignees.map((item) => label(item.employee_id)))
+  const people = new Map(
+    plan.people.map((person) => [person.employee_id, person.display_name]),
+  )
+  const candidates = records(plan.data.candidates)
+    .map((item) => label(item.employee_id, ""))
+    .filter((id) => people.has(id) && !selected.has(id))
+  const selectedIds = [...selected].filter((id) => people.has(id))
+  const editable = selectedIds.filter((id) => !locks.has(id))
+  const mutation = useMutation({
+    mutationFn: async (body: ReviseInput) =>
+      PlanningService.reviseOption({
+        path: { org_id: orgId, case_id: plan.id, option_id: option.id },
+        body,
+      }),
+    onSuccess: async () => {
+      setChange(null)
+      await onRevised()
+    },
+  })
+  if (!assignees.length || plan.stale) return null
+  const submit = () => {
+    let body: ReviseInput
+    if (change === "replace") {
+      body = {
+        change,
+        from_employee_id: employeeId,
+        to_employee_id: replacementId,
+      }
+    } else if (change === "dates") {
+      body = {
+        change,
+        start_date: startDate,
+        end_date: endDate,
+        ...(employeeId ? { employee_id: employeeId } : {}),
+      }
+    } else if (change === "allocation") {
+      body = {
+        change,
+        allocation_percent: percent,
+        ...(employeeId ? { employee_id: employeeId } : {}),
+      }
+    } else if (change === "phased") {
+      body = { change, split_date: splitDate }
+    } else if (change === "lock" || change === "unlock") {
+      body = { change, employee_ids: [employeeId] }
+    } else return
+    mutation.mutate(body)
+  }
+  const choose = (next: ReviseInput["change"]) => {
+    setChange(next)
+    setEmployeeId("")
+    setReplacementId("")
+    setStartDate(label(assignees[0]?.start_date, ""))
+    setEndDate(label(assignees[0]?.end_date, ""))
+    setSplitDate("")
+    mutation.reset()
+  }
+  const choices =
+    change === "unlock"
+      ? selectedIds.filter((id) => locks.has(id))
+      : change === "lock"
+        ? editable
+        : editable
+  return (
+    <div className="space-y-2 border-t pt-3">
+      <p className="font-medium">快捷修改</p>
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            "replace",
+            "lock",
+            "unlock",
+            "dates",
+            "allocation",
+            "phased",
+          ] as const
+        ).map((action) => (
+          <Button
+            key={action}
+            size="sm"
+            variant="outline"
+            onClick={() => choose(action)}
+            disabled={
+              (action === "replace" &&
+                (!editable.length || !candidates.length)) ||
+              (action === "lock" && !editable.length) ||
+              (action === "unlock" && !locks.size) ||
+              (action === "phased" && !!locks.size)
+            }
+          >
+            {
+              {
+                replace: "换人",
+                lock: "锁定",
+                unlock: "解锁",
+                dates: "改时间",
+                allocation: "降低投入",
+                phased: "分阶段交付",
+              }[action]
+            }
+          </Button>
+        ))}
+      </div>
+      {change && (
+        <div className="flex flex-wrap items-end gap-2">
+          {change !== "phased" && (
+            <label>
+              人员
+              <select
+                aria-label="修改人员"
+                className="block rounded border p-2"
+                value={employeeId}
+                onChange={(event) => setEmployeeId(event.target.value)}
+              >
+                {(change === "dates" || change === "allocation") && (
+                  <option value="">所有未锁定人员</option>
+                )}
+                {(change === "replace" ||
+                  change === "lock" ||
+                  change === "unlock") && <option value="">选择人员</option>}
+                {choices.map((id) => (
+                  <option key={id} value={id}>
+                    {people.get(id)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {change === "replace" && (
+            <label>
+              换成
+              <select
+                aria-label="换成谁"
+                className="block rounded border p-2"
+                value={replacementId}
+                onChange={(event) => setReplacementId(event.target.value)}
+              >
+                <option value="">选择候选人</option>
+                {candidates.map((id) => (
+                  <option key={id} value={id}>
+                    {people.get(id)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {change === "dates" && (
+            <>
+              <label>
+                开始日期
+                <input
+                  aria-label="新的开始日期"
+                  className="block rounded border p-2"
+                  type="date"
+                  value={startDate}
+                  onChange={(event) => setStartDate(event.target.value)}
+                />
+              </label>
+              <label>
+                结束日期
+                <input
+                  aria-label="新的结束日期"
+                  className="block rounded border p-2"
+                  type="date"
+                  value={endDate}
+                  onChange={(event) => setEndDate(event.target.value)}
+                />
+              </label>
+            </>
+          )}
+          {change === "allocation" && (
+            <label>
+              投入比例
+              <input
+                aria-label="新的投入比例"
+                className="block w-24 rounded border p-2"
+                type="number"
+                min={10}
+                max={100}
+                value={percent}
+                onChange={(event) => setPercent(Number(event.target.value))}
+              />
+            </label>
+          )}
+          {change === "phased" && (
+            <label>
+              第二阶段开始日期（周一）
+              <input
+                aria-label="第二阶段开始日期"
+                className="block rounded border p-2"
+                type="date"
+                value={splitDate}
+                onChange={(event) => setSplitDate(event.target.value)}
+              />
+            </label>
+          )}
+          <Button
+            size="sm"
+            onClick={submit}
+            disabled={
+              mutation.isPending ||
+              ((change === "replace" ||
+                change === "lock" ||
+                change === "unlock") &&
+                !employeeId) ||
+              (change === "replace" && !replacementId) ||
+              (change === "phased" && !splitDate) ||
+              (change === "dates" && (!startDate || !endDate))
+            }
+          >
+            确认修改
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setChange(null)}>
+            取消
+          </Button>
+        </div>
+      )}
+      {mutation.error && <p role="alert">{errorText(mutation.error)}</p>}
+    </div>
+  )
+}
+
+function OptionCard({
+  option,
+  plan,
+  orgId,
+  onRevised,
+}: {
+  option: CasePublic["options"][number]
+  plan: CasePublic
+  orgId: string
+  onRevised: () => Promise<unknown>
 }) {
   const people = new Map(
     plan.people.map((person) => [person.employee_id, person.display_name]),
@@ -56,6 +304,11 @@ function OptionCard({
   )
   const assignees = records(option.params.assignees)
   const affected = strings(option.summary.affected_assignment_ids)
+  const locks = new Set(strings(option.params.locked_employee_ids))
+  const base = plan.options.find(
+    (item) => item.id === option.summary.base_option_id,
+  )
+  const diff = records([option.summary.diff])[0]
   return (
     <article
       className="space-y-4 rounded-xl border p-5"
@@ -64,6 +317,45 @@ function OptionCard({
       <h4 className="text-lg font-semibold">
         {option.kind_label} · {option.verdict_label}
       </h4>
+      {base && (
+        <div className="rounded bg-muted p-3">
+          <p>
+            在「{base.kind_label}方案」上修改：{label(option.summary.changes)}
+          </p>
+          {diff && (
+            <div>
+              <p>这次改了什么</p>
+              <p>
+                结论：{base.verdict_label} → {option.verdict_label}
+              </p>
+              <p>
+                交付日期：{label(records([diff.finish_date])[0]?.before)} →{" "}
+                {label(records([diff.finish_date])[0]?.after)}
+              </p>
+              <p>
+                覆盖人数：{number(records([diff.covered_headcount])[0]?.before)}{" "}
+                → {number(records([diff.covered_headcount])[0]?.after)}
+              </p>
+              <p>
+                缺口：{number(records([diff.gap_person_weeks])[0]?.before)} →{" "}
+                {number(records([diff.gap_person_weeks])[0]?.after)} 人周
+              </p>
+              <p>
+                新增风险：
+                {records(diff.added_findings)
+                  .map((item) => label(item.message))
+                  .join("；") || "无"}
+              </p>
+              <p>
+                解决风险：
+                {records(diff.resolved_findings)
+                  .map((item) => label(item.message))
+                  .join("；") || "无"}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
       <p>
         交付日期：{label(option.summary.finish_date)} · 覆盖{" "}
         {number(option.summary.covered_headcount)} 人 · 还差{" "}
@@ -78,6 +370,7 @@ function OptionCard({
                 {people.get(label(person.employee_id)) ?? "待确认人员"} · 投入{" "}
                 {number(person.allocation_percent)}% ·{label(person.start_date)}{" "}
                 至 {label(person.end_date)}
+                {locks.has(label(person.employee_id)) && " · 已锁定"}
               </li>
             ))}
           </ul>
@@ -150,6 +443,12 @@ function OptionCard({
           ))}
         </ul>
       </div>
+      <RevisionControls
+        option={option}
+        plan={plan}
+        orgId={orgId}
+        onRevised={onRevised}
+      />
     </article>
   )
 }
@@ -215,7 +514,13 @@ export function Plans({
           ))}
           <div className="grid gap-4 lg:grid-cols-2">
             {plan.options.map((option) => (
-              <OptionCard key={option.id} option={option} plan={plan} />
+              <OptionCard
+                key={option.id}
+                option={option}
+                plan={plan}
+                orgId={orgId}
+                onRevised={() => current.refetch()}
+              />
             ))}
           </div>
         </>

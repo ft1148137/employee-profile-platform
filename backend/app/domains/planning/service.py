@@ -1,4 +1,5 @@
-from typing import cast
+from datetime import date, timedelta
+from typing import Any, cast
 from uuid import UUID, uuid7
 
 from fastapi import HTTPException
@@ -28,6 +29,7 @@ from app.domains.planning.schemas import (
     CasePublic,
     OptionInput,
     OptionPublic,
+    ReviseInput,
 )
 
 CaseAccess = tuple[PlanningCase, PlanningSnapshot, CapacityDemand]
@@ -46,6 +48,16 @@ class PlanningNotFound(HTTPException):
 class PlanningCandidateOutOfScope(HTTPException):
     def __init__(self) -> None:
         super().__init__(409, "部分候选人已不在当前管辖范围内，请重新模拟")
+
+
+class PlanningInvalidRevision(HTTPException):
+    def __init__(self, message: str) -> None:
+        super().__init__(400, message)
+
+
+class PlanningLocked(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(409, "该人员已锁定，请先解锁")
 
 
 def _authorized_demand(
@@ -232,6 +244,190 @@ def create_option(
         verdict=PlanVerdict(result.verdict),
         findings=result.findings,
         summary=result.summary,
+    )
+    session.add(option)
+    session.flush()
+    return OptionPublic.model_validate(option, from_attributes=True)
+
+
+def _date_label(value: str) -> str:
+    day = date.fromisoformat(value)
+    return f"{day.month} 月 {day.day} 日"
+
+
+def _finding_key(finding: dict[str, Any]) -> tuple[Any, Any, Any]:
+    return finding.get("code"), finding.get("employee_id"), finding.get("week_start")
+
+
+def revise_option(
+    principal: Principal,
+    session: Session,
+    access: CaseAccess,
+    option_id: UUID,
+    body: ReviseInput,
+) -> OptionPublic:
+    row, latest, demand = access
+    base = session.exec(
+        select(PlanningOption)
+        .join(
+            PlanningSnapshot,
+            col(PlanningOption.snapshot_id) == col(PlanningSnapshot.id),
+        )
+        .where(
+            PlanningOption.org_id == principal.org_id,
+            PlanningOption.id == option_id,
+            PlanningSnapshot.org_id == principal.org_id,
+            PlanningSnapshot.case_id == row.id,
+        )
+    ).one_or_none()
+    if base is None:
+        raise PlanningNotFound()
+    if (
+        base.snapshot_id != latest.id
+        or snapshot.current_fingerprint(session, principal, demand)
+        != latest.fingerprint
+    ):
+        raise PlanningStale()
+    if base.kind == OptionKind.BORROW or not base.params.get("assignees"):
+        raise PlanningInvalidRevision("借调方案不能快捷修改，请在其他方案上修改")
+
+    assignees = [
+        dict(item) for item in cast("list[dict[str, Any]]", base.params["assignees"])
+    ]
+    selected = {item["employee_id"] for item in assignees}
+    locks = set(cast("list[str]", base.params.get("locked_employee_ids", [])))
+    people = cast("list[dict[str, Any]]", latest.data["candidates"])
+    candidate_ids = {person["employee_id"] for person in people}
+    names = dict(
+        session.exec(
+            select(Employee.id, Employee.display_name).where(
+                employee_scope_clause(principal), col(Employee.id).in_(candidate_ids)
+            )
+        ).all()
+    )
+
+    def name(employee_id: str) -> str:
+        return names.get(UUID(employee_id), "待确认人员")
+
+    change = body.change
+    if change == "replace":
+        old, new = str(body.from_employee_id), str(body.to_employee_id)
+        if old not in selected or new not in candidate_ids or new in selected:
+            raise PlanningInvalidRevision("请选择方案中的人员和快照候选人")
+        if old in locks:
+            raise PlanningLocked()
+        for item in assignees:
+            if item["employee_id"] == old:
+                item["employee_id"] = new
+        description = f"把{name(old)}换成{name(new)}"
+    elif change in {"dates", "allocation"}:
+        target = str(body.employee_id) if body.employee_id is not None else None
+        if target is not None and target not in selected:
+            raise PlanningInvalidRevision("该人员不在方案中")
+        changed = [
+            item
+            for item in assignees
+            if target is None or item["employee_id"] == target
+        ]
+        if any(item["employee_id"] in locks for item in changed):
+            if target is not None:
+                raise PlanningLocked()
+            changed = [item for item in changed if item["employee_id"] not in locks]
+        if not changed:
+            raise PlanningLocked()
+        if change == "dates":
+            assert body.start_date is not None and body.end_date is not None
+            start, end = body.start_date.isoformat(), body.end_date.isoformat()
+            if start > end:
+                raise PlanningInvalidRevision("开始日期不能晚于结束日期")
+            before = (changed[0]["start_date"], changed[0]["end_date"])
+            for item in changed:
+                item["start_date"], item["end_date"] = start, end
+            description = (
+                f"把{name(target)}的日期改为{_date_label(start)}至{_date_label(end)}"
+                if target
+                else f"开始日期从{_date_label(before[0])}改到{_date_label(start)}，结束日期从{_date_label(before[1])}改到{_date_label(end)}"
+            )
+        else:
+            before_percent = changed[0]["allocation_percent"]
+            for item in changed:
+                item["allocation_percent"] = body.allocation_percent
+            prefix = f"把{name(target)}的" if target else "把未锁定人员的"
+            description = (
+                f"{prefix}投入从{before_percent}%改到{body.allocation_percent}%"
+            )
+    elif change == "phased":
+        if locks:
+            raise PlanningLocked()
+        split = body.split_date  # validated by ReviseInput
+        assert split is not None
+        if split.weekday() != 0 or any(
+            not (
+                date.fromisoformat(item["start_date"])
+                < split
+                <= date.fromisoformat(item["end_date"])
+            )
+            for item in assignees
+        ):
+            raise PlanningInvalidRevision("分阶段日期须为安排期间的周一")
+        assignees = [
+            part
+            for item in assignees
+            for part in (
+                {**item, "end_date": (split - timedelta(days=1)).isoformat()},
+                {**item, "start_date": split.isoformat()},
+            )
+        ]
+        description = f"从{_date_label(split.isoformat())}起分阶段交付"
+    else:
+        ids = {str(employee_id) for employee_id in body.employee_ids or []}
+        if not ids <= selected:
+            raise PlanningInvalidRevision("锁定人员必须已在方案中")
+        if change == "lock":
+            locks |= ids
+            description = "锁定" + "、".join(name(i) for i in sorted(ids))
+        else:
+            locks -= ids
+            description = "解锁" + "、".join(name(i) for i in sorted(ids))
+
+    params: dict[str, Any] = {
+        "assignees": assignees,
+        "locked_employee_ids": sorted(locks),
+    }
+    result = validator.validate(latest.data, params)
+    old_findings = cast("list[dict[str, Any]]", base.findings)
+    old_keys = {_finding_key(item) for item in old_findings}
+    new_keys = {_finding_key(item) for item in result.findings}
+    diff: dict[str, Any] = {
+        field: {
+            "before": base.verdict.value
+            if field == "verdict"
+            else base.summary.get(field),
+            "after": result.verdict
+            if field == "verdict"
+            else result.summary.get(field),
+        }
+        for field in ("verdict", "finish_date", "covered_headcount", "gap_person_weeks")
+    }
+    diff["added_findings"] = [
+        item for item in result.findings if _finding_key(item) not in old_keys
+    ]
+    diff["resolved_findings"] = [
+        item for item in old_findings if _finding_key(item) not in new_keys
+    ]
+    option = PlanningOption(
+        org_id=principal.org_id,
+        snapshot_id=latest.id,
+        kind=OptionKind.CUSTOM,
+        params=params,
+        verdict=PlanVerdict(result.verdict),
+        findings=result.findings,
+        summary={
+            **result.summary,
+            "base_option_id": str(base.id),
+            "changes": description,
+            "diff": diff,
+        },
     )
     session.add(option)
     session.flush()

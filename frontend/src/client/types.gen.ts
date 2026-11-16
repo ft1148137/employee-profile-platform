@@ -4619,6 +4619,10 @@ export type OptionInput = {
    * Assignees
    */
   assignees: Array<AssigneeInput>
+  /**
+   * Locked Employee Ids
+   */
+  locked_employee_ids?: Array<string>
 }
 
 /**
@@ -5778,6 +5782,48 @@ export type ReviewSummary = {
    * Unavailable Reason
    */
   unavailable_reason?: string | null
+}
+
+/**
+ * ReviseInput
+ */
+export type ReviseInput = {
+  /**
+   * Change
+   */
+  change: "replace" | "dates" | "allocation" | "phased" | "lock" | "unlock"
+  /**
+   * From Employee Id
+   */
+  from_employee_id?: string | null
+  /**
+   * To Employee Id
+   */
+  to_employee_id?: string | null
+  /**
+   * Employee Id
+   */
+  employee_id?: string | null
+  /**
+   * Employee Ids
+   */
+  employee_ids?: Array<string> | null
+  /**
+   * Start Date
+   */
+  start_date?: string | null
+  /**
+   * End Date
+   */
+  end_date?: string | null
+  /**
+   * Allocation Percent
+   */
+  allocation_percent?: number | null
+  /**
+   * Split Date
+   */
+  split_date?: string | null
 }
 
 /**
@@ -8755,6 +8801,46 @@ export type planningCreateOptionResponses = {
 
 export type planningCreateOptionResponse =
   planningCreateOptionResponses[keyof planningCreateOptionResponses]
+
+export type planningReviseOptionData = {
+  body: ReviseInput
+  path: {
+    /**
+     * Option Id
+     */
+    option_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+    /**
+     * Case Id
+     */
+    case_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/planning/cases/{case_id}/options/{option_id}/revise"
+}
+
+export type planningReviseOptionErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type planningReviseOptionError =
+  planningReviseOptionErrors[keyof planningReviseOptionErrors]
+
+export type planningReviseOptionResponses = {
+  /**
+   * Successful Response
+   */
+  200: OptionPublic
+}
+
+export type planningReviseOptionResponse =
+  planningReviseOptionResponses[keyof planningReviseOptionResponses]
 
 export type peopleSearchSearchPeopleData = {
   body?: never
