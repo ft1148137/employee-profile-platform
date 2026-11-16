@@ -139,7 +139,7 @@ export function DemandsDetail({
                       search: {
                         tab: "incoming",
                         demand: demandId,
-                        plans: plansOpen ? undefined : "1",
+                        plans: plansOpen ? undefined : 1,
                       },
                     })
                   }
