@@ -480,6 +480,9 @@ import type {
   planningGetCaseData,
   planningGetCaseErrors,
   planningGetCaseResponses,
+  planningReviseOptionData,
+  planningReviseOptionErrors,
+  planningReviseOptionResponses,
   privateCreateSetupTokenData,
   privateCreateSetupTokenErrors,
   privateCreateSetupTokenResponses,
@@ -1183,6 +1186,28 @@ export class PlanningService {
       responseType: "json",
       security: [{ scheme: "bearer", type: "http" }],
       url: "/api/v1/orgs/{org_id}/planning/cases/{case_id}/options",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * Revise Option
+   */
+  public static reviseOption<ThrowOnError extends boolean = true>(
+    options: Options<planningReviseOptionData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      planningReviseOptionResponses,
+      planningReviseOptionErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/planning/cases/{case_id}/options/{option_id}/revise",
       ...options,
       headers: {
         "Content-Type": "application/json",
