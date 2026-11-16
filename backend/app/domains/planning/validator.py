@@ -19,6 +19,7 @@ def validate(data: dict[str, Any], params: dict[str, Any]) -> Validation:
     demand = data["demand"]
     candidates = {p["employee_id"]: p for p in data["candidates"]}
     levels = data["rules"]["levels"]
+    current_week = date.fromisoformat(data["rules"]["current_week"])
     findings: list[dict[str, Any]] = []
     assignees = params["assignees"]
     conditions: list[str] = []
@@ -129,7 +130,8 @@ def validate(data: dict[str, Any], params: dict[str, Any]) -> Validation:
         selected_weeks = [
             WeekLoad.model_validate(w)
             for w in person["weeks"]
-            if (employee_id, date.fromisoformat(w["week_start"])) in allocations
+            if date.fromisoformat(w["week_start"]) >= current_week
+            and (employee_id, date.fromisoformat(w["week_start"])) in allocations
         ]
         for load in selected_weeks:
             percent = allocations[(employee_id, load.week_start)]
@@ -152,7 +154,7 @@ def validate(data: dict[str, Any], params: dict[str, Any]) -> Validation:
                 )
         known = {w.week_start for w in selected_weeks}
         for eid, week in allocations:
-            if eid == employee_id and week not in known:
+            if eid == employee_id and week >= current_week and week not in known:
                 add(
                     "unconfirmed",
                     "insufficient_data",

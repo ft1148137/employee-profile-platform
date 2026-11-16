@@ -1,6 +1,6 @@
 import hashlib
 import json
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -11,7 +11,7 @@ from app.authz.principal import Principal
 from app.domains.base import utc_now
 from app.domains.capability.models import CapabilityDefinition
 from app.domains.capability.service import get_schema
-from app.domains.capacity.calendar import FRESH_DAYS, loads, week_start
+from app.domains.capacity.calendar import FRESH_DAYS, loads, this_week, week_start
 from app.domains.capacity.demand import get_demand_basis
 from app.domains.capacity.models import (
     AssignmentStatus,
@@ -43,7 +43,8 @@ def _inputs(
         ).all()
     )
     ids = {e.id for e in candidates}
-    start = week_start(demand.window_start)
+    current_week = this_week(session, principal.org_id)
+    start = max(week_start(demand.window_start), current_week)
     end = week_start(demand.window_end) + timedelta(weeks=9)
     versions = list(
         session.exec(
@@ -116,6 +117,7 @@ def _inputs(
         ).all()
     )
     raw_inputs: dict[str, Any] = {
+        "current_week": current_week.isoformat(),
         "revision": demand.revision,
         "candidates": [
             (
@@ -173,8 +175,10 @@ def build(
     candidates, claims, raw = _inputs(session, principal, demand)
     basis = get_demand_basis(principal, session, demand.id)
     basis_ids = {p.employee_id for p in basis.data}
-    start = week_start(demand.window_start)
-    weeks = (week_start(demand.window_end) - start).days // 7 + 9
+    start = max(
+        week_start(demand.window_start), date.fromisoformat(raw["current_week"])
+    )
+    weeks = max(0, (week_start(demand.window_end) - start).days // 7 + 9)
     week_loads = loads(
         session, principal.org_id, [e.id for e in candidates], start, weeks
     )
@@ -233,7 +237,12 @@ def build(
             }
             for e in candidates
         ],
-        "rules": {"fresh_days": FRESH_DAYS, "minimum_percent": 10, "levels": levels},
+        "rules": {
+            "fresh_days": FRESH_DAYS,
+            "minimum_percent": 10,
+            "levels": levels,
+            "current_week": raw["current_week"],
+        },
     }
     return data, _fingerprint(raw)
 

@@ -1,6 +1,7 @@
+import importlib
 from collections.abc import Generator
 from datetime import date, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -46,7 +47,11 @@ def snapshot(
             "window_end": END.isoformat(),
             "committed_end_date": END.isoformat(),
         },
-        "rules": {"levels": ["beginner", "routine", "expert"], "minimum_percent": 10},
+        "rules": {
+            "levels": ["beginner", "routine", "expert"],
+            "minimum_percent": 10,
+            "current_week": START.isoformat(),
+        },
         "candidates": [
             {
                 "employee_id": PERSON,
@@ -149,6 +154,30 @@ def test_weekly_headcount_and_gap() -> None:
     assert reduced.summary["gap_person_weeks"] == 0.8
 
 
+def test_capacity_checks_ignore_past_weeks() -> None:
+    data = snapshot()
+    data["rules"]["current_week"] = date(2026, 11, 23).isoformat()
+    data["candidates"][0]["weeks"] = data["candidates"][0]["weeks"][-1:]
+    result = validate(data, params())
+    assert result.verdict == "feasible"
+    assert not any(f["code"] == "unconfirmed" for f in result.findings)
+
+    data["candidates"][0]["weeks"] = []
+    result = validate(data, params(end=START))
+    assert result.verdict == "infeasible"  # Headcount still covers the demand window.
+    assert not any(f["code"] == "unconfirmed" for f in result.findings)
+
+
+def test_future_capacity_still_requires_confirmation() -> None:
+    data = snapshot(status="unconfirmed", other=None)
+    data["rules"]["current_week"] = date(2026, 11, 23).isoformat()
+    result = validate(data, params())
+    assert result.verdict == "insufficient_data"
+    assert {f["week_start"] for f in result.findings if f["code"] == "unconfirmed"} == {
+        "2026-11-23"
+    }
+
+
 @pytest.fixture
 def planning_setup(demo: tuple, db: Session, client: TestClient) -> Generator[tuple]:
     url, employees, auth = demo
@@ -229,6 +258,51 @@ def planning_case(planning_setup: tuple, client: TestClient) -> tuple:
     result = client.post(f"{url}/planning/demands/{demand.id}/cases", headers=auth["b"])
     assert result.status_code == 200, result.text
     return url, employees, auth, demand, result.json()
+
+
+def test_snapshot_starts_at_current_week_and_week_rollover_stales_case(
+    planning_setup: tuple,
+    client: TestClient,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    url, employees, auth, demand = planning_setup
+    current = demand.window_start
+    demand.window_start = current - timedelta(weeks=2)
+    db.commit()
+    created = client.post(
+        f"{url}/planning/demands/{demand.id}/cases", headers=auth["b"]
+    )
+    assert created.status_code == 200, created.text
+    case = created.json()
+    assert case["data"]["rules"]["current_week"] == current.isoformat()
+    assert all(
+        person["weeks"][0]["week_start"] == current.isoformat()
+        for person in case["data"]["candidates"]
+    )
+    case_url = f"{url}/planning/cases/{case['id']}"
+    body = {
+        "assignees": [
+            {
+                "employee_id": str(employees["E04"].id),
+                "allocation_percent": 50,
+                "start_date": demand.window_start.isoformat(),
+                "end_date": demand.window_end.isoformat(),
+            }
+        ]
+    }
+    option = client.post(f"{case_url}/options", headers=auth["b"], json=body)
+    assert option.status_code == 200, option.text
+    assert not any(f["code"] == "unconfirmed" for f in option.json()["findings"])
+
+    def next_week(_session: Session, _org_id: UUID) -> date:
+        return current + timedelta(weeks=1)
+
+    monkeypatch.setattr(
+        importlib.import_module("app.domains.planning.snapshot"), "this_week", next_week
+    )
+    assert client.get(case_url, headers=auth["b"]).json()["stale"] is True
+    assert client.post(f"{case_url}/options", headers=auth["b"], json=body).status_code == 409
 
 
 def test_case_options_and_privacy(
