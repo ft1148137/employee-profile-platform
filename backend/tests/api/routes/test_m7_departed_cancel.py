@@ -200,7 +200,10 @@ def test_departed_assignment_read_and_cancel(db: Session, client: TestClient) ->
         update_path, headers=headers["bm"], json={"status": "cancelled"}
     )
     assert cancelled.status_code == 200, cancelled.text
-    assert cancelled.json()["status"] == "cancelled"
+    assert cancelled.json() == {"id": str(row.id), "status": "cancelled"}
+    assert people["worker"].display_name not in cancelled.text
+    assert people["worker"].employee_code not in cancelled.text
+    assert str(people["worker"].id) not in cancelled.text
     db.refresh(row)
     assert row.status == "cancelled"
     assert client.get(list_path, headers=headers["bm"]).json() == {

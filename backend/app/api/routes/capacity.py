@@ -11,6 +11,7 @@ from app.domains.capacity.assignment_schemas import (
     AssignmentPublic,
     AssignmentUpdateInput,
     DemandAssignmentList,
+    DepartedAssignmentCancelled,
     MyAssignmentList,
 )
 from app.domains.capacity.demand_schemas import (
@@ -107,7 +108,7 @@ def update_assignment(
     session: SessionDep,
     assignment_id: UUID,
     body: AssignmentUpdateInput,
-) -> AssignmentPublic:
+) -> AssignmentPublic | DepartedAssignmentCancelled:
     result = assignment.update_assignment(principal, session, assignment_id, body)
     session.commit()
     return result

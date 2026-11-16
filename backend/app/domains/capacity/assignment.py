@@ -15,6 +15,7 @@ from app.domains.capacity.assignment_schemas import (
     AssignmentUpdateInput,
     DemandAssignment,
     DemandAssignmentList,
+    DepartedAssignmentCancelled,
     DepartedDemandAssignment,
     MyAssignment,
     MyAssignmentList,
@@ -52,6 +53,11 @@ from app.domains.org.service import managed_scope
 class CommitmentConfirmationRequired(HTTPException):
     def __init__(self, detail: str) -> None:
         super().__init__(409, detail)
+
+
+class DepartedAssignmentConflict(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(409, "该员工已不在职，请刷新后重新选择")
 
 
 def check_dates(demand: CapacityDemand, start_date: date, due_date: date) -> None:
@@ -286,10 +292,21 @@ def create_assignment(
         raise CapacityNotFound()
     if demand.status != DemandStatus.ACCEPTED:
         raise CapacityConflict()
-    subject = employee(principal, session, body.employee_id, lock=True)
+    subject = session.exec(
+        select(Employee)
+        .where(Employee.org_id == principal.org_id, Employee.id == body.employee_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one_or_none()
+    if subject is None:
+        raise CapacityNotFound()
     target_ids = managed_scope(
         session, principal.org_id, frozenset({demand.target_department_id})
     )
+    if subject.employment_status == EmploymentStatus.INACTIVE:
+        if not principal.is_org_admin and subject.department_id in target_ids:
+            raise DepartedAssignmentConflict()
+        raise CapacityNotFound()
     if (
         not can_view_employee(principal, subject)
         or subject.department_id not in target_ids
@@ -355,7 +372,7 @@ def update_assignment(
     *,
     via: Via = "web",
     client_name: str | None = None,
-) -> AssignmentPublic:
+) -> AssignmentPublic | DepartedAssignmentCancelled:
     cancelling = body.status == "cancelled"
     row, demand = assignment_rows(
         principal, session, assignment_id, allow_departed=cancelling
@@ -437,6 +454,8 @@ def update_assignment(
         },
     )
     session.flush()
+    if cancelling and subject.employment_status == EmploymentStatus.INACTIVE:
+        return DepartedAssignmentCancelled(id=row.id, status="cancelled")
     return AssignmentPublic.model_validate(row)
 
 

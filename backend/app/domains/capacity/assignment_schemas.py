@@ -50,6 +50,11 @@ class AssignmentPublic(CapacityInput):
     closed_at: datetime | None
 
 
+class DepartedAssignmentCancelled(CapacityInput):
+    id: UUID
+    status: Literal["cancelled"]
+
+
 class DemandAssignment(AssignmentPublic):
     employee_name: str
     employee_departed: bool

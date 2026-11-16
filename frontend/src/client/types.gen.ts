@@ -2275,6 +2275,20 @@ export type DemandPublic = {
 export type DemandStatus = "submitted" | "replied" | "accepted" | "withdrawn"
 
 /**
+ * DepartedAssignmentCancelled
+ */
+export type DepartedAssignmentCancelled = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Status
+   */
+  status: "cancelled"
+}
+
+/**
  * DepartedDemandAssignment
  */
 export type DepartedDemandAssignment = {
@@ -7800,9 +7814,11 @@ export type capacityUpdateAssignmentError =
 
 export type capacityUpdateAssignmentResponses = {
   /**
+   * Response Capacity-Update Assignment
+   *
    * Successful Response
    */
-  200: AssignmentPublic
+  200: AssignmentPublic | DepartedAssignmentCancelled
 }
 
 export type capacityUpdateAssignmentResponse =
