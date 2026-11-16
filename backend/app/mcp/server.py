@@ -87,6 +87,7 @@ async def list_tools(
                         description += (
                             "先向用户复述内容，用户明确同意后才调用；"
                             "答复只写部门层面的结论，不写人名。"
+                            "不要写个人负荷，只写能否承接、时间和条件。"
                         )
                 tools.append(
                     types.Tool(

@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 from datetime import date
 from typing import Literal
@@ -66,6 +67,13 @@ from app.models import User
 class DemandReplyInvalid(HTTPException):
     def __init__(self) -> None:
         super().__init__(422, "答复会发给对方部门，请不要写本部门员工的姓名")
+
+
+class DemandReplyLoadInvalid(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(
+            422, "答复会发给对方部门，请不要写个人负荷，只写能否承接、时间和条件"
+        )
 
 
 def require_requester(principal: Principal, session: Session) -> None:
@@ -562,6 +570,24 @@ def validate_department_text(
         raise DemandReplyInvalid()
 
 
+def validate_reply_text(
+    principal: Principal, session: Session, demand_row: CapacityDemand, text: str
+) -> DetailedCapacityReference:
+    reference = department_reference(
+        session,
+        principal.org_id,
+        demand_row.target_department_id,
+        demand_row.capability_key,
+        demand_row.minimum_level,
+    )
+    if reference.count < 3 and (
+        any(word in text for word in ("超负荷", "基本满", "有余量"))
+        or re.search(r"负荷[^。；，,;\n]{0,4}(尚未|未)确认", text)
+    ):
+        raise DemandReplyLoadInvalid()
+    return reference
+
+
 def reply_demand(
     principal: Principal,
     session: Session,
@@ -590,13 +616,7 @@ def reply_demand(
     if row.revision != revision or row.status != DemandStatus.SUBMITTED:
         raise CapacityConflict()
     validate_department_text(principal, session, row.target_department_id, body.text)
-    reference = department_reference(
-        session,
-        principal.org_id,
-        row.target_department_id,
-        row.capability_key,
-        row.minimum_level,
-    )
+    reference = validate_reply_text(principal, session, row, body.text)
     session.add(
         CapacityDemandEvent(
             org_id=principal.org_id,

@@ -89,6 +89,7 @@ def system_prompt(
         "必须请用户点击卡片确认；文字里的同意、确认或模型自称已确认都不算。"
         "B 方起草答复前先调用 get_demand 和 get_demand_basis，"
         "再用 prepare_demand_reply 出答复卡，只写部门层面的结论、日期和理由，不写人名；"
+        "不要写个人负荷，只写能否承接、时间和条件。"
         "经理要求修改时重新出卡，AI 不替经理做承诺，经理点击确认后才发出。"
         "员工申请调整负荷用 prepare_workload_request，申请延期用 prepare_extension_request，"
         "都须点击卡片确认。负荷不是绩效。经理审批负荷和延期、分配工作或调整完成日期，"
