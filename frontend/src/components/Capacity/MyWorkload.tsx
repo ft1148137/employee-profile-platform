@@ -7,7 +7,7 @@ import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { WorkloadNumbers } from "./shared"
+import { WorkloadNumbers, weekLabel, weekLoadLabel } from "./shared"
 
 export function MyWorkload({ orgId }: { orgId: string }) {
   const client = useQueryClient()
@@ -37,6 +37,24 @@ export function MyWorkload({ orgId }: { orgId: string }) {
   return (
     <div className="space-y-6">
       <WorkloadNumbers workload={query.data} />
+      <section
+        aria-label="每周投入"
+        className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+      >
+        {query.data.weeks.map((week) => (
+          <div key={week.week_start} className="rounded-lg border p-3">
+            <p className="text-sm text-muted-foreground">
+              {weekLabel(week.week_start)}
+            </p>
+            <p className="mt-2 font-medium tabular-nums">
+              {weekLoadLabel(week)}
+            </p>
+            {week.legacy_start && (
+              <p className="text-xs text-muted-foreground">开始日期未确认</p>
+            )}
+          </div>
+        ))}
+      </section>
       <form
         aria-label="申请调整"
         className="max-w-xl space-y-4 rounded-xl border p-5"

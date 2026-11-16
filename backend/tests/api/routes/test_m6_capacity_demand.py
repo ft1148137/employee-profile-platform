@@ -15,11 +15,12 @@ from app.core.security import create_access_token
 from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
 from app.domains.capability.search import PeopleSearchInput, find_people
+from app.domains.capacity.calendar import this_week
 from app.domains.capacity.models import (
     CapacityDemand,
     CapacityDemandEvent,
     CapacitySetting,
-    CapacityWorkload,
+    CapacityWeek,
 )
 from app.domains.capacity.tools import CAPACITY_TOOLS
 from app.domains.inbox.models import InboxItem
@@ -80,11 +81,12 @@ def demand(demo: tuple, db: Session, client: TestClient) -> Generator[tuple]:
         )
         if i < 3:
             db.add(
-                CapacityWorkload(
+                CapacityWeek(
                     org_id=org_id,
                     employee_id=e.id,
-                    base_percent=[79, 80, 101][i],
-                    updated_by_user_id=admin,
+                    week_start=this_week(db, org_id),
+                    other_percent=[79, 80, 101][i],
+                    confirmed_by_user_id=admin,
                 )
             )
     db.add(
@@ -110,7 +112,7 @@ def demand(demo: tuple, db: Session, client: TestClient) -> Generator[tuple]:
     for model in (
         CapacityDemandEvent,
         CapacityDemand,
-        CapacityWorkload,
+        CapacityWeek,
         CapacitySetting,
     ):
         db.execute(delete(model).where(model.org_id == org_id))

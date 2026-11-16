@@ -154,9 +154,25 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
     const person = accounts.find((row) => row.employee_code === code)!
     expect(
       (
-        await request.put(`${base}/capacity/workloads/${person.id}`, {
+        await request.put(`${base}/capacity/weeks`, {
           headers: { Authorization: `Bearer ${tokens.get("M")}` },
-          data: { base_percent },
+          data: {
+            items: [{ employee_id: person.id, other_percent: base_percent }],
+            start_week: (
+              await (
+                await request.get(`${base}/capacity/workloads/me`, {
+                  headers: { Authorization: `Bearer ${tokens.get("M")}` },
+                })
+              ).json()
+            ).weeks[0].week_start,
+            end_week: (
+              await (
+                await request.get(`${base}/capacity/workloads/me`, {
+                  headers: { Authorization: `Bearer ${tokens.get("M")}` },
+                })
+              ).json()
+            ).weeks[0].week_start,
+          },
         })
       ).ok(),
     ).toBeTruthy()

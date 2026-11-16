@@ -100,7 +100,7 @@ test("经理在团队负荷页看到当前参考和正式答复的口径说明",
   await page.getByRole("tab", { name: "团队负荷", exact: true }).click()
   await expect(
     page.getByText(
-      "这里的数字是当前的参考，不代表下周等未来时段的可用产能，也不是排班承诺；能否承接以部门经理的正式答复为准。",
+      "这里按周显示本周和后面 7 周经理确认的投入比例，只是参考，不是排班承诺；能否承接以部门经理的正式答复为准。",
       { exact: true },
     ),
   ).toBeVisible()

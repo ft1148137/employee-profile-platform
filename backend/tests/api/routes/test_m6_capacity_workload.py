@@ -2,6 +2,7 @@ from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,13 +12,14 @@ from sqlmodel import Session, select
 from app.core.security import create_access_token
 from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
+from app.domains.capacity.calendar import week_start
 from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityDemand,
     CapacityDemandEvent,
     CapacityExtensionRequest,
     CapacitySetting,
-    CapacityWorkload,
+    CapacityWeek,
     CapacityWorkloadRequest,
 )
 from app.domains.capacity.tools import CAPACITY_TOOLS
@@ -41,7 +43,7 @@ def capacity(demo: tuple, db: Session) -> Generator[tuple]:
         CapacityDemandEvent,
         CapacityDemand,
         CapacityWorkloadRequest,
-        CapacityWorkload,
+        CapacityWeek,
         CapacitySetting,
     ):
         db.execute(delete(model).where(model.org_id == demo[1]["E01"].org_id))
@@ -59,6 +61,17 @@ def user_id(db: Session, e: Employee) -> UUID:
 def headers(db: Session, e: Employee) -> dict[str, str]:
     return {
         "Authorization": f"Bearer {create_access_token(user_id(db, e), expires_delta=timedelta(minutes=10))}"
+    }
+
+
+def week_body(employee_id: UUID, percent: object) -> dict:
+    start = week_start(
+        utc_now().astimezone(ZoneInfo("Asia/Shanghai")).date()
+    ).isoformat()
+    return {
+        "items": [{"employee_id": str(employee_id), "other_percent": percent}],
+        "start_week": start,
+        "end_week": start,
     }
 
 
@@ -91,7 +104,7 @@ def test_default_disabled_and_settings_permissions(
     calls = [
         ("get", "/workloads/me", None),
         ("get", "/workloads", None),
-        ("put", f"/workloads/{employees['E02'].id}", {"base_percent": 50}),
+        ("put", "/weeks", week_body(employees["E02"].id, 50)),
         (
             "post",
             "/workloads/me/requests",
@@ -151,9 +164,9 @@ def test_scope_and_direct_adjustment(
         ("foreign", "E02", 404),
     ]:
         response = client.put(
-            f"{url}/capacity/workloads/{employees[code].id}",
+            f"{url}/capacity/weeks",
             headers=auth[role],
-            json={"base_percent": 50},
+            json=week_body(employees[code].id, 50),
         )
         assert response.status_code == expected
     for value, band in [
@@ -165,19 +178,19 @@ def test_scope_and_direct_adjustment(
         (200, "overloaded"),
     ]:
         response = client.put(
-            f"{url}/capacity/workloads/{employees['E02'].id}",
+            f"{url}/capacity/weeks",
             headers=auth["manager"],
-            json={"base_percent": value},
+            json=week_body(employees["E02"].id, value),
         )
         assert response.status_code == 200, response.text
-        assert response.json()["confirmed_percent"] == value
-        assert response.json()["band"] == band
+        assert response.json()["data"][0]["confirmed_percent"] == value
+        assert response.json()["data"][0]["band"] == band
     for value in [-1, 201, True, 1.5]:
         assert (
             client.put(
-                f"{url}/capacity/workloads/{employees['E02'].id}",
+                f"{url}/capacity/weeks",
                 headers=auth["manager"],
-                json={"base_percent": value},
+                json=week_body(employees["E02"].id, value),
             ).status_code
             == 422
         )
@@ -192,9 +205,9 @@ def test_scope_and_direct_adjustment(
     db.commit()
     assert (
         client.put(
-            f"{url}/capacity/workloads/{employees['E03'].id}",
+            f"{url}/capacity/weeks",
             headers=auth["employee"],
-            json={"base_percent": 20},
+            json=week_body(employees["E03"].id, 20),
         ).status_code
         == 403
     )
@@ -209,9 +222,9 @@ def test_scope_and_direct_adjustment(
     db.commit()
     assert (
         client.put(
-            f"{url}/capacity/workloads/{employees['E03'].id}",
+            f"{url}/capacity/weeks",
             headers=auth["employee"],
-            json={"base_percent": 20},
+            json=week_body(employees["E03"].id, 20),
         ).status_code
         == 200
     )
@@ -285,7 +298,10 @@ def test_jira_reference_and_platform_percent(
                 demand_id=other.id,
                 employee_id=e.id,
                 allocation_percent=percent,
-                due_date=date.today(),
+                due_date=week_start(
+                    utc_now().astimezone(ZoneInfo("Asia/Shanghai")).date()
+                )
+                + timedelta(days=4),
                 assigned_by_user_id=user_id(db, employees["E01"]),
                 status=status,
             )
@@ -315,9 +331,9 @@ def test_jira_reference_and_platform_percent(
         row["band"],
     ) == (2, 60, None, "unconfirmed")
     client.put(
-        f"{url}/capacity/workloads/{e.id}",
+        f"{url}/capacity/weeks",
         headers=auth["manager"],
-        json={"base_percent": 50},
+        json=week_body(e.id, 50),
     )
     row = client.get(mine, headers=auth["employee"]).json()
     assert (row["jira_task_count"], row["confirmed_percent"], row["band"]) == (
@@ -555,9 +571,9 @@ def test_delegation_expiry_and_inactive_employee(
     db.commit()
     assert (
         client.put(
-            f"{url}/capacity/workloads/{employees['E02'].id}",
+            f"{url}/capacity/weeks",
             headers=auth["manager"],
-            json={"base_percent": 10},
+            json=week_body(employees["E02"].id, 10),
         ).status_code
         == 404
     )
@@ -628,9 +644,9 @@ def test_direct_adjustment_notifies_employee(
     )
     db.commit()
     result = client.put(
-        f"{url}/capacity/workloads/{subject.id}",
+        f"{url}/capacity/weeks",
         headers=auth["manager"],
-        json={"base_percent": 20},
+        json=week_body(subject.id, 20),
     )
     assert result.status_code == 200
     item = db.exec(
@@ -657,6 +673,7 @@ def test_direct_adjustment_notifies_employee(
     assert audit.details == {
         "before_percent": None,
         "after_percent": 20,
+        "week_start": week_body(subject.id, 20)["start_week"],
         "via": "web",
         "client_name": None,
     }

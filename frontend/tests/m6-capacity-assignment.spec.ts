@@ -140,8 +140,16 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
       admin.access_token,
     )
   await api(
-    `${base}/capacity/workloads/${person("B1").id}`,
-    { base_percent: 20 },
+    `${base}/capacity/weeks`,
+    {
+      items: [{ employee_id: person("B1").id, other_percent: 20 }],
+      start_week: (
+        await api(`${base}/capacity/workloads/me`, undefined, m, "GET")
+      ).weeks[0].week_start,
+      end_week: (
+        await api(`${base}/capacity/workloads/me`, undefined, m, "GET")
+      ).weeks[0].week_start,
+    },
     m,
     "PUT",
   )

@@ -80,21 +80,37 @@ class CapacitySetting(TenantRecord, table=True):
     )
 
 
-class CapacityWorkload(TenantRecord, table=True):
-    __tablename__ = "capacity_workload"
+class CapacityWeek(TenantRecord, table=True):
+    __tablename__ = "capacity_week"
     __table_args__ = (
         UniqueConstraint("org_id", "id"),
-        UniqueConstraint("org_id", "employee_id"),
+        UniqueConstraint("org_id", "employee_id", "week_start"),
         tenant_fk("employee_id", "employee"),
-        member_fk("updated_by_user_id"),
-        CheckConstraint("base_percent BETWEEN 0 AND 200", name="workload_percent"),
+        member_fk("confirmed_by_user_id"),
+        CheckConstraint("other_percent BETWEEN 0 AND 200", name="week_percent"),
+        CheckConstraint("extract(isodow from week_start) = 1", name="week_monday"),
     )
     employee_id: UUID
-    base_percent: int
-    updated_by_user_id: UUID
-    updated_at: datetime = Field(
+    week_start: date
+    other_percent: int
+    confirmed_by_user_id: UUID
+    confirmed_at: datetime = Field(
         default_factory=utc_now, sa_type=DateTime(timezone=True)
     )
+
+
+class CapacityUnavailability(TenantRecord, table=True):
+    __tablename__ = "capacity_unavailability"
+    __table_args__ = (
+        UniqueConstraint("org_id", "id"),
+        tenant_fk("employee_id", "employee"),
+        member_fk("created_by_user_id"),
+        CheckConstraint("end_date >= start_date", name="unavailability_dates"),
+    )
+    employee_id: UUID
+    start_date: date
+    end_date: date
+    created_by_user_id: UUID
 
 
 class CapacityDecision(SQLModel):
@@ -119,6 +135,12 @@ class CapacityWorkloadRequest(CapacityDecision, TenantRecord, table=True):
             "requested_percent BETWEEN 0 AND 200", name="requested_percent"
         ),
         CheckConstraint("length(reason) BETWEEN 1 AND 500", name="workload_reason"),
+        CheckConstraint(
+            "(start_week IS NULL AND end_week IS NULL) OR "
+            "(start_week IS NOT NULL AND end_week IS NOT NULL AND start_week <= end_week "
+            "AND extract(isodow from start_week) = 1 AND extract(isodow from end_week) = 1)",
+            name="request_weeks",
+        ),
         Index(
             "uq_capacity_workload_pending",
             "org_id",
@@ -129,6 +151,8 @@ class CapacityWorkloadRequest(CapacityDecision, TenantRecord, table=True):
     )
     employee_id: UUID
     requested_percent: int
+    start_week: date | None = None
+    end_week: date | None = None
 
 
 class CapacityDemand(TenantRecord, table=True):
@@ -205,6 +229,9 @@ class CapacityAssignment(TenantRecord, table=True):
         CheckConstraint(
             "allocation_percent BETWEEN 10 AND 100", name="assignment_allocation"
         ),
+        CheckConstraint(
+            "start_date IS NULL OR start_date <= due_date", name="assignment_dates"
+        ),
         Index(
             "uq_capacity_assignment_active",
             "org_id",
@@ -217,6 +244,7 @@ class CapacityAssignment(TenantRecord, table=True):
     demand_id: UUID
     employee_id: UUID
     allocation_percent: int
+    start_date: date | None = None
     due_date: date
     status: AssignmentStatus = Field(
         default=AssignmentStatus.ACTIVE, sa_type=enum_type(AssignmentStatus)

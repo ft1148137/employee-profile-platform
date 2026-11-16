@@ -179,9 +179,6 @@ import type {
   capabilityTemplatesPreviewTemplateResponses,
   capabilityTemplatesReadTemplatesData,
   capabilityTemplatesReadTemplatesResponses,
-  capacityAdjustWorkloadData,
-  capacityAdjustWorkloadErrors,
-  capacityAdjustWorkloadResponses,
   capacityCapacityReferenceData,
   capacityCapacityReferenceErrors,
   capacityCapacityReferenceResponses,
@@ -242,6 +239,9 @@ import type {
   capacityRespondDemandData,
   capacityRespondDemandErrors,
   capacityRespondDemandResponses,
+  capacitySetCapacityWeeksData,
+  capacitySetCapacityWeeksErrors,
+  capacitySetCapacityWeeksResponses,
   capacitySubmitDemandData,
   capacitySubmitDemandErrors,
   capacitySubmitDemandResponses,
@@ -910,19 +910,19 @@ export class CapacityService {
   }
 
   /**
-   * Adjust Workload
+   * Set Capacity Weeks
    */
-  public static adjustWorkload<ThrowOnError extends boolean = true>(
-    options: Options<capacityAdjustWorkloadData, ThrowOnError>,
+  public static setCapacityWeeks<ThrowOnError extends boolean = true>(
+    options: Options<capacitySetCapacityWeeksData, ThrowOnError>,
   ) {
     return (options.client ?? client).put<
-      capacityAdjustWorkloadResponses,
-      capacityAdjustWorkloadErrors,
+      capacitySetCapacityWeeksResponses,
+      capacitySetCapacityWeeksErrors,
       ThrowOnError
     >({
       responseType: "json",
       security: [{ scheme: "bearer", type: "http" }],
-      url: "/api/v1/orgs/{org_id}/capacity/workloads/{employee_id}",
+      url: "/api/v1/orgs/{org_id}/capacity/weeks",
       ...options,
       headers: {
         "Content-Type": "application/json",

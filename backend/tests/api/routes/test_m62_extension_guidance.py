@@ -19,7 +19,7 @@ from app.domains.capacity.models import (
     CapacityDemandEvent,
     CapacityExtensionRequest,
     CapacitySetting,
-    CapacityWorkload,
+    CapacityWeek,
     CapacityWorkloadRequest,
 )
 from app.domains.inbox.models import InboxItem
@@ -159,7 +159,7 @@ def case(db: Session, client: TestClient) -> Generator[tuple]:
     db.rollback()
     for model in (
         CapacityWorkloadRequest,
-        CapacityWorkload,
+        CapacityWeek,
         CapacityExtensionRequest,
         CapacityAssignment,
         CapacityDemandEvent,

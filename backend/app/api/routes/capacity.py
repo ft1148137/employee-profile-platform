@@ -33,13 +33,14 @@ from app.domains.capacity.extension_schemas import (
 from app.domains.capacity.schemas import (
     CapacitySettingsInput,
     MyWorkload,
-    WorkloadAdjustInput,
     WorkloadDecisionInput,
     WorkloadList,
-    WorkloadPublic,
+    WorkloadListQuery,
+    WorkloadQuery,
     WorkloadRequestInput,
     WorkloadRequestList,
     WorkloadRequestPublic,
+    WorkloadWeeksInput,
 )
 from app.domains.org.schemas import DepartmentsPublic
 
@@ -167,25 +168,30 @@ def put_capacity_settings(
 
 
 @router.get("/capacity/workloads/me")
-def get_my_workload(principal: OrgPrincipalDep, session: SessionDep) -> MyWorkload:
-    return workload.get_my_workload(principal, session)
+def get_my_workload(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    query: Annotated[WorkloadQuery, Query()],
+) -> MyWorkload:
+    return workload.get_my_workload(principal, session, **query.model_dump())
 
 
 @router.get("/capacity/workloads")
 def list_workloads(
-    principal: OrgPrincipalDep, session: SessionDep, department_id: UUID | None = None
-) -> WorkloadList:
-    return workload.list_workloads(principal, session, department_id)
-
-
-@router.put("/capacity/workloads/{employee_id}")
-def adjust_workload(
     principal: OrgPrincipalDep,
     session: SessionDep,
-    employee_id: UUID,
-    body: WorkloadAdjustInput,
-) -> WorkloadPublic:
-    result = workload.adjust_workload(principal, session, employee_id, body)
+    query: Annotated[WorkloadListQuery, Query()],
+) -> WorkloadList:
+    return workload.list_workloads(principal, session, **query.model_dump())
+
+
+@router.put("/capacity/weeks")
+def set_capacity_weeks(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    body: WorkloadWeeksInput,
+) -> WorkloadList:
+    result = workload.set_weeks(principal, session, body)
     session.commit()
     return result
 

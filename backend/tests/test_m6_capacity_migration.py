@@ -17,9 +17,9 @@ TABLES = {
 def test_capacity_roundtrip(migration_engine: Engine) -> None:
     for action, revision in [
         ("downgrade", PREVIOUS),
-        ("upgrade", "head"),
+        ("upgrade", "c641001bc001"),
         ("downgrade", PREVIOUS),
-        ("upgrade", "head"),
+        ("upgrade", "c641001bc001"),
     ]:
         migrate(migration_engine, action, revision)
         inspector = inspect(migration_engine)
