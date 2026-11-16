@@ -178,6 +178,10 @@ export function Plans({
     enabled: !!created.data,
   })
   const plan = current.data ?? created.data
+  const resimulate = async () => {
+    const result = await created.refetch()
+    if (result.isSuccess && created.data) await current.refetch()
+  }
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">协调方案</h3>
@@ -187,15 +191,21 @@ export function Plans({
           {errorText((created.error ?? current.error) as Error)}
         </p>
       )}
+      {(created.error || current.error) && (!plan || current.error) && (
+        <Button
+          variant="outline"
+          onClick={resimulate}
+          disabled={created.isFetching}
+        >
+          重新模拟
+        </Button>
+      )}
       {plan && !current.error && (
         <>
           {plan.stale && <p role="alert">数据已变化，请重新模拟</p>}
           <Button
             variant="outline"
-            onClick={async () => {
-              const result = await created.refetch()
-              if (result.isSuccess) await current.refetch()
-            }}
+            onClick={resimulate}
             disabled={created.isFetching || current.isFetching}
           >
             重新模拟

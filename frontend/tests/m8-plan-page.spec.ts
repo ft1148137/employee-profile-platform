@@ -276,6 +276,22 @@ test("B 方经理无需模型查看方案，A 方经理看不到入口", async (
   await expect(page.getByText("数据已变化，请重新模拟")).toBeVisible()
   await page.getByRole("button", { name: "重新模拟" }).click()
   await expect(page.getByText("数据已变化，请重新模拟")).toHaveCount(0)
+  const caseUrl = `**/planning/cases/${created.id}`
+  const conflict = "部分候选人已不在当前管辖范围内，请重新模拟"
+  await page.route(caseUrl, async (route) => {
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ detail: conflict }),
+    })
+  })
+  await page.reload()
+  await expect(page.getByRole("alert")).toContainText(conflict, {
+    timeout: 15000,
+  })
+  await page.unroute(caseUrl)
+  await page.getByRole("button", { name: "重新模拟" }).click()
+  await expect(card).toBeVisible()
   await open(a)
   await expect(
     page.getByRole("button", { name: /生成方案|查看方案/ }),
