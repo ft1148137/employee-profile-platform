@@ -14,7 +14,7 @@
 | `demand` | 可覆盖默认的 `headcount: 1`、`allocation_percent: 50`、`weeks: 2` 和 `minimum_level: routine` |
 | `expect.options` | 必须出现的方案种类、结论和可选的 finding code |
 | `expect.absent_kinds`, `newcomer_required` | 不应出现的方案及新人方案是否必须出现 |
-| `expect.denied`, `stale_after` | A 方角色的 404；建 case 后令指定员工离职并检查过期与 409 |
+| `expect.denied`, `stale_after` | A 方角色的 404；建 case 后令指定员工离职，旧详情及新增方案均返回 409 |
 | `expect.small_borrow`, `legacy_start` | 借调人数隐藏和旧分配起点断言 |
 | `custom` | 自定义方案指定员工及期望的结论、finding code |
 

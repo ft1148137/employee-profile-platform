@@ -1,9 +1,11 @@
+from typing import cast
 from uuid import UUID, uuid7
 
 from fastapi import HTTPException
 from sqlalchemy.dialects.postgresql import insert
 from sqlmodel import Session, col, select
 
+from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
 from app.domains.base import utc_now
 from app.domains.capacity.demand import (
@@ -13,7 +15,7 @@ from app.domains.capacity.demand import (
 )
 from app.domains.capacity.models import CapacityDemand
 from app.domains.capacity.settings import require_enabled
-from app.domains.org.models import Department
+from app.domains.org.models import Department, Employee
 from app.domains.planning import simulator, snapshot, validator
 from app.domains.planning.models import (
     OptionKind,
@@ -35,6 +37,11 @@ class PlanningStale(HTTPException):
 class PlanningNotFound(HTTPException):
     def __init__(self) -> None:
         super().__init__(404, "未找到该方案")
+
+
+class PlanningCandidateOutOfScope(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(409, "部分候选人已不在当前管辖范围内，请重新模拟")
 
 
 def _authorized_demand(
@@ -219,6 +226,19 @@ def create_case(principal: Principal, session: Session, demand_id: UUID) -> Case
 
 def get_case(principal: Principal, session: Session, case_id: UUID) -> CasePublic:
     row, latest, demand = authorized_case(principal, session, case_id)
+    candidates = cast("list[dict[str, str]]", latest.data.get("candidates", []))
+    candidate_ids = {UUID(person["employee_id"]) for person in candidates}
+    if candidate_ids:
+        visible_ids = set(
+            session.exec(
+                select(Employee.id).where(
+                    employee_scope_clause(principal),
+                    col(Employee.id).in_(candidate_ids),
+                )
+            ).all()
+        )
+        if visible_ids != candidate_ids:
+            raise PlanningCandidateOutOfScope()
     return _view(principal, session, row, latest, demand)
 
 
