@@ -61,29 +61,39 @@ def test_case_coverage() -> None:
     assert min(counts.values()) >= 2
 
 
+def test_setup_failure_cleans_organization(db: Session, client: TestClient) -> None:
+    before = set(db.exec(select(Organization.id)).all())
+    with pytest.raises(FileNotFoundError):
+        _exercise(db, client, {"enterprise": "missing"})
+    assert set(db.exec(select(Organization.id)).all()) == before
+
+
 def _cleanup(db: Session, org_id: UUID, existing_users: set[UUID]) -> None:
     db.rollback()
-    for model in (
-        PlanningOption,
-        PlanningSnapshot,
-        PlanningCase,
-        CapacityExtensionRequest,
-        CapacityAssignment,
-        CapacityDemandEvent,
-        CapacityDemand,
-        CapacityWorkloadRequest,
-        CapacityUnavailability,
-        CapacityWeek,
-        CapacitySetting,
-    ):
-        db.execute(delete(model).where(model.org_id == org_id))
-    db.commit()
-    delete_test_organization(db, org_id)
+    if db.get(Organization, org_id) is not None:
+        for model in (
+            PlanningOption,
+            PlanningSnapshot,
+            PlanningCase,
+            CapacityExtensionRequest,
+            CapacityAssignment,
+            CapacityDemandEvent,
+            CapacityDemand,
+            CapacityWorkloadRequest,
+            CapacityUnavailability,
+            CapacityWeek,
+            CapacitySetting,
+        ):
+            db.execute(delete(model).where(model.org_id == org_id))
+        db.commit()
+        delete_test_organization(db, org_id)
     cleanup_new_users(db, existing_users)
     db.commit()
 
 
-def _setup(db: Session, case: dict) -> tuple[UUID, dict, dict, CapacityDemand, date]:
+def _setup(
+    db: Session, case: dict, org: Organization
+) -> tuple[UUID, dict, dict, CapacityDemand, date]:
     enterprise = yaml.safe_load(
         (
             ROOT / "examples/test-enterprises" / case["enterprise"] / "org.yaml"
@@ -93,9 +103,8 @@ def _setup(db: Session, case: dict) -> tuple[UUID, dict, dict, CapacityDemand, d
     a_code, b_code, a_employee_code = case["roles"]
     a_dept = roster[a_code]["department"]
     b_dept = roster[b_code]["department"]
-    org = Organization(slug=f"planning-eval-{uuid4().hex}", name=enterprise["name"])
+    org.name = enterprise["name"]
     db.add(org)
-    db.flush()
     dept_names = {
         a_dept,
         b_dept,
@@ -286,9 +295,12 @@ def _setup(db: Session, case: dict) -> tuple[UUID, dict, dict, CapacityDemand, d
 
 def _exercise(db: Session, client: TestClient, case: dict) -> dict:
     existing_users = set(db.exec(select(User.id)).all())
-    org_id = None
+    org = Organization(slug=f"planning-eval-{uuid4().hex}", name="Planning eval")
+    db.add(org)
+    db.flush()
+    org_id = org.id
     try:
-        org_id, employees, auth, demand, start = _setup(db, case)
+        org_id, employees, auth, demand, start = _setup(db, case, org)
         before = business_rows(db, org_id)
         base = f"/api/v1/orgs/{org_id}/planning"
         created = client.post(
@@ -393,8 +405,7 @@ def _exercise(db: Session, client: TestClient, case: dict) -> dict:
             "newcomer": "newcomer" in options,
         }
     finally:
-        if org_id is not None:
-            _cleanup(db, org_id, existing_users)
+        _cleanup(db, org_id, existing_users)
 
 
 @pytest.mark.parametrize("path", CASES, ids=[path.stem for path in CASES])
