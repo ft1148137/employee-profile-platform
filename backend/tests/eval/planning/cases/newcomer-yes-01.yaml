@@ -1,0 +1,19 @@
+id: newcomer-yes-01
+category: 新人可做
+enterprise: qiguang-aiot
+roles:
+- QG001
+- QG006
+- QG002
+people:
+- code: QG007
+  level: routine
+  other: 10
+  hire_days_ago: 5
+expect:
+  options:
+  - kind: direct
+    verdict: feasible
+  - kind: newcomer
+    verdict: feasible
+  newcomer_required: true

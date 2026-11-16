@@ -1,0 +1,21 @@
+id: low-level-02
+category: 能力不达标
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: needs_support
+  other: 10
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+    findings:
+    - headcount_gap
+custom:
+  code: HL007
+  verdict: infeasible
+  finding: level_too_low

@@ -1,0 +1,17 @@
+id: over-02
+category: 超额冲突
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: routine
+  other: 70
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+    findings:
+    - over_capacity

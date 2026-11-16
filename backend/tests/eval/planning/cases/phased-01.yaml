@@ -1,0 +1,41 @@
+id: phased-01
+category: 分阶段可行
+enterprise: qiguang-aiot
+roles:
+- QG001
+- QG006
+- QG002
+people:
+- code: QG007
+  level: routine
+  other: 10
+  weekly_other:
+  - 10
+  - 80
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+- code: QG008
+  level: routine
+  weekly_other:
+  - 80
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+  - kind: phased
+    verdict: conditional

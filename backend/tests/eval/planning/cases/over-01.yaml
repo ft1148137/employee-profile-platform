@@ -1,0 +1,17 @@
+id: over-01
+category: 超额冲突
+enterprise: qiguang-aiot
+roles:
+- QG001
+- QG006
+- QG002
+people:
+- code: QG007
+  level: routine
+  other: 70
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+    findings:
+    - over_capacity

@@ -1,0 +1,16 @@
+id: stale-case-01
+category: 方案过期
+enterprise: qiguang-aiot
+roles:
+- QG001
+- QG006
+- QG002
+people:
+- code: QG007
+  level: routine
+  other: 10
+expect:
+  options:
+  - kind: direct
+    verdict: feasible
+  stale_after: QG007

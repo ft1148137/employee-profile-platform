@@ -1,0 +1,23 @@
+id: legacy-01
+category: 旧分配没有开始日期
+enterprise: qiguang-aiot
+roles:
+- QG001
+- QG006
+- QG002
+people:
+- code: QG007
+  level: routine
+  other: 10
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+    findings:
+    - over_capacity
+  legacy_start: QG007
+assignments:
+- code: QG007
+  percent: 50
+  start_week: null
+  end_week: 1

@@ -1,0 +1,26 @@
+id: borrow-02
+category: 借调
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: routine
+  other: 70
+- code: HL014
+  level: routine
+  other: 10
+- code: HL015
+  level: routine
+  other: 10
+- code: HL016
+  level: routine
+  other: 10
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+  - kind: borrow
+    verdict: conditional

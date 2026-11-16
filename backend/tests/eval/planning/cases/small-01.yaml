@@ -1,0 +1,21 @@
+id: small-01
+category: 小部门
+enterprise: qiguang-aiot
+roles:
+- QG001
+- QG006
+- QG002
+people:
+- code: QG007
+  level: routine
+  other: 10
+- code: QG012
+  level: routine
+  other: 10
+expect:
+  options:
+  - kind: direct
+    verdict: feasible
+  - kind: borrow
+    verdict: conditional
+  small_borrow: true

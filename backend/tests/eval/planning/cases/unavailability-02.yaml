@@ -1,0 +1,21 @@
+id: unavailability-02
+category: 不可用日期导致超额
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: routine
+  other: 10
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+    findings:
+    - over_capacity
+unavailability:
+- code: HL007
+  start_day: 0
+  end_day: 4

@@ -1,0 +1,18 @@
+id: denied-02
+category: A 方读取被拒
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: routine
+  other: 10
+expect:
+  options:
+  - kind: direct
+    verdict: feasible
+  denied:
+  - a_manager
+  - a_employee

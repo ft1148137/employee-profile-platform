@@ -1,0 +1,18 @@
+id: direct-02
+category: 直接可行
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: routine
+  other: 10
+expect:
+  options:
+  - kind: direct
+    verdict: feasible
+  absent_kinds:
+  - delay
+  - reduce_scope

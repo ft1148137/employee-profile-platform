@@ -1,0 +1,28 @@
+id: delay-02
+category: 延期可行
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: routine
+  other: 10
+  weekly_other:
+  - 70
+  - 70
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+  - kind: delay
+    verdict: conditional

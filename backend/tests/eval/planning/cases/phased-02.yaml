@@ -1,0 +1,41 @@
+id: phased-02
+category: 分阶段可行
+enterprise: helin-retail
+roles:
+- HL001
+- HL006
+- HL002
+people:
+- code: HL007
+  level: routine
+  other: 10
+  weekly_other:
+  - 10
+  - 80
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+- code: HL008
+  level: routine
+  weekly_other:
+  - 80
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+  - 10
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+  - kind: phased
+    verdict: conditional

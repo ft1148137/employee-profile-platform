@@ -1,0 +1,17 @@
+id: reduce-01
+category: 缩小范围可行
+enterprise: qiguang-aiot
+roles:
+- QG001
+- QG006
+- QG002
+people:
+- code: QG007
+  level: routine
+  other: 60
+expect:
+  options:
+  - kind: direct
+    verdict: infeasible
+  - kind: reduce_scope
+    verdict: conditional
