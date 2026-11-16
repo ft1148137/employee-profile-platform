@@ -68,6 +68,7 @@ def turn(
     started = monotonic()
     steps: list[s.ToolStep] = []
     cards: list[s.Message] = []
+    manual_fallback = False
 
     def call(name: str, args: dict[str, JsonValue]) -> JsonValue:
         title = tools.TITLES.get(
@@ -176,6 +177,7 @@ def turn(
         logger.warning("session_id=%s code=bad_request", session.id)
         message = "之前的对话上下文已失效，已经重新开始，请再说一次"
     except ModelUnavailable as error:
+        manual_fallback = True
         logger.warning(
             "session_id=%s code=%s elapsed_ms=%d",
             session.id,
@@ -189,7 +191,10 @@ def turn(
             if isinstance(error, ModelServiceError)
             else "模型服务暂时不可用，请稍后再试"
         )
-    messages = [capacity_failure(db, p, "\n".join(filter(None, [notice, message])))]
+    text = "\n".join(filter(None, [notice, message]))
+    messages = [
+        capacity_failure(db, p, text) if manual_fallback else s.TextMessage(text=text)
+    ]
     if stream and stream.cancelled.is_set():
         db.rollback()
         return s.TurnResponse(messages=[])

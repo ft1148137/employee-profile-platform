@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from datetime import timedelta
 
 from fastapi.testclient import TestClient
@@ -6,6 +7,7 @@ from sqlmodel import Session, select
 from app.core.security import create_access_token
 from app.domains.bot import core, store, tools
 from app.domains.bot import schemas as s
+from app.domains.bot.admission import BotBusy
 from app.domains.capacity.models import CapacityDemand
 from app.domains.im.rendering import render
 from app.domains.model.client import ModelUnavailable
@@ -219,6 +221,23 @@ def test_model_failure_shows_role_specific_manual_links(
         text = response.messages[0].text
         assert expected in text
         assert "/capacity?tab=" in text
+
+
+def test_busy_turn_does_not_offer_manual_capacity_fallback(
+    case: tuple, db: Session, monkeypatch
+) -> None:
+    a, _, _, _ = case
+    session = store.create_session(db, a)
+
+    @contextmanager
+    def busy(*_args: object, **_kwargs: object):
+        raise BotBusy()
+        yield
+
+    monkeypatch.setattr(core, "begin_turn", busy)
+    response = core.turn(db, a, session.id, "帮我提需求")
+    assert response.messages[0].text == "忙，请稍后再试"
+    assert response.messages[0].capacity_links == []
 
 
 def test_coordination_tool_failure_discards_partial_plan(
