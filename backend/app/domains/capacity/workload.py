@@ -592,8 +592,11 @@ def unavailability_public(
     )[subject.id]
     return UnavailabilityPublic(
         **row.model_dump(exclude={"org_id"}),
-        can_delete=row.created_by_user_id == principal.user_id
-        or subject.department_id in principal.managed_department_ids,
+        can_delete=not principal.is_org_admin
+        and (
+            row.created_by_user_id == principal.user_id
+            or subject.department_id in principal.managed_department_ids
+        ),
         over_weeks=[week for week, _ in calendar.shortfalls(weekly, 0)[1]],
     )
 
@@ -639,6 +642,8 @@ def register_unavailability(
     subject = employee(principal, session, body.employee_id, lock=True)
     if not can_view_employee(principal, subject):
         raise CapacityNotFound()
+    if principal.is_org_admin:
+        raise CapacityForbidden()
     if principal.user_id is None or (
         subject.id != principal.employee_id
         and subject.department_id not in principal.managed_department_ids
@@ -683,6 +688,8 @@ def delete_unavailability(
     row = session.exec(query.execution_options(populate_existing=True)).one_or_none()
     if row is None or not can_view_employee(principal, subject):
         raise CapacityNotFound()
+    if principal.is_org_admin:
+        raise CapacityForbidden()
     if (
         row.created_by_user_id != principal.user_id
         and subject.department_id not in principal.managed_department_ids

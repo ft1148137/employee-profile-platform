@@ -129,6 +129,41 @@ def test_unavailability_scope(
         )
 
 
+def test_admin_with_employee_account_is_read_only(
+    capacity: tuple, db: Session, client: TestClient
+) -> None:
+    from sqlmodel import select
+
+    from app.domains.org.models import OrgMembership, Role, RoleGrant
+
+    url, people, auth = capacity
+    enable(client, capacity)
+    subject = people["E02"]
+    start = this_week(db, subject.org_id).isoformat()
+    endpoint = f"{url}/capacity/unavailability"
+    body = {"employee_id": str(subject.id), "start_date": start, "end_date": start}
+    row = client.post(endpoint, headers=auth["employee"], json=body).json()
+    member = db.exec(
+        select(OrgMembership).where(
+            OrgMembership.org_id == subject.org_id,
+            OrgMembership.employee_id == subject.id,
+        )
+    ).one()
+    db.add(
+        RoleGrant(org_id=subject.org_id, membership_id=member.id, role=Role.ORG_ADMIN)
+    )
+    db.commit()
+    params = {"employee_id": str(subject.id), "from": start, "to": start}
+    listing = client.get(endpoint, headers=auth["employee"], params=params)
+    assert listing.status_code == 200
+    assert listing.json()["data"][0]["can_delete"] is False
+    assert client.post(endpoint, headers=auth["employee"], json=body).status_code == 403
+    assert (
+        client.delete(f"{endpoint}/{row['id']}", headers=auth["employee"]).status_code
+        == 403
+    )
+
+
 def test_unavailability_overload_audit_and_inactive(
     capacity: tuple, db: Session, client: TestClient
 ) -> None:
