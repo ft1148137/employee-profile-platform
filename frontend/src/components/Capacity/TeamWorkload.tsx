@@ -120,13 +120,18 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
       <p className="text-sm text-muted-foreground">
         周格显示占用 / 可用；占用包含其他工作和平台分配。
       </p>
+      <p className="text-sm text-muted-foreground md:hidden">
+        左右滑动查看各周和设置
+      </p>
       <div className="overflow-x-auto rounded-xl border">
         <table className="w-full text-left text-sm">
           <caption className="sr-only">团队负荷，按部门、姓名排序</caption>
-          <thead className="bg-muted/40">
+          <thead className="bg-muted">
             <tr>
+              <th className="sticky left-0 z-10 whitespace-nowrap border-r bg-muted p-3">
+                姓名
+              </th>
               {[
-                "姓名",
                 "部门",
                 "Jira 参考值",
                 "上次确认",
@@ -149,7 +154,10 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
               )
               .map((row) => (
                 <tr key={row.employee_id} className="border-t">
-                  <th scope="row" className="whitespace-nowrap p-3 font-medium">
+                  <th
+                    scope="row"
+                    className="sticky left-0 z-10 whitespace-nowrap border-r bg-background p-3 font-medium"
+                  >
                     {row.employee_name}
                   </th>
                   <td className="p-3">{row.department_name ?? "未分配部门"}</td>
