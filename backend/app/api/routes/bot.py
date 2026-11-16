@@ -32,7 +32,7 @@ def list_messages(
     principal: OrgPrincipalDep, session: SessionDep, session_id: UUID
 ) -> list[SessionMessage]:
     row = store.get_session(session, principal, session_id)
-    messages = store.messages_for(session, row)
+    messages = store.list_messages(session, principal, session_id)
     if not messages and row.turn_count:
         raise store.BotSessionNotFound()
     return [SessionMessage.model_validate(message.model_dump()) for message in messages]
