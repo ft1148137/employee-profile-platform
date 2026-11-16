@@ -1236,6 +1236,10 @@ export type CasePublic = {
    */
   stale: boolean
   /**
+   * Notes
+   */
+  notes: Array<string>
+  /**
    * Options
    */
   options: Array<OptionPublic>
