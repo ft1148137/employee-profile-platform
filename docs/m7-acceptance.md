@@ -14,8 +14,10 @@
 | NERE-701 S4b | [#319](https://github.com/ft1148137/employee-profile-platform/pull/319)：E29(4) 离职员工分配取消 |
 | NERE-696 S5a、NERE-697 S5b | [#317](https://github.com/ft1148137/employee-profile-platform/pull/317)、[#318](https://github.com/ft1148137/employee-profile-platform/pull/318)：Planning 对象、快照、校验、方案模拟 |
 | NERE-698 S6 | [#320](https://github.com/ft1148137/employee-profile-platform/pull/320)：评测集与[基线](m7-planning-baseline.md) |
+| NERE-699 文档更正 | [#321](https://github.com/ft1148137/employee-profile-platform/pull/321)：验收命令和负荷措辞更正 |
+| NERE-714 范围修复 | [#322](https://github.com/ft1148137/employee-profile-platform/pull/322)：Planning 历史快照按当前员工范围保护 |
 
-上述依赖均已合并至基线 master；本任务只更新验收和使用文档，不修改代码或测试。以下命令在 `backend/` 执行，事先设置 `COMPOSE_PROJECT_NAME=nere699`、`POSTGRES_PORT=15699`、`API_PORT=18699`，且 `DATABASE_URL` 指向 `localhost:15699/app`。测试均使用 `--no-cov`，全量覆盖率交给 CI。
+上述 M7 交付已合并至核对基线；#321、#322 是后续合并的更正与范围修复。本任务只更新验收和使用文档，不修改代码或测试。以下命令在 `backend/` 执行，事先设置 `COMPOSE_PROJECT_NAME=nere699`、`POSTGRES_PORT=15699`、`API_PORT=18699`，且 `DATABASE_URL` 指向 `localhost:15699/app`。测试均使用 `--no-cov`，全量覆盖率交给 CI。
 
 ## 父 issue 三条验收
 
