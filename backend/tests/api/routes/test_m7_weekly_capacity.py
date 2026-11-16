@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import UTC, datetime, time, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -171,7 +171,9 @@ def test_calendar_capacity_freshness_and_overlaps(
             == 0
         )
         assignment.start_date = None
-        assignment.created_at = utc_now() - timedelta(weeks=1)
+        assignment.created_at = datetime.combine(
+            start - timedelta(weeks=1), time(12), tzinfo=UTC
+        )
         db.add(assignment)
         db.commit()
         legacy = loads(db, person.org_id, [person.id], start - timedelta(weeks=2), 3)[

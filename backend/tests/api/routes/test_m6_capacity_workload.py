@@ -2,6 +2,7 @@ from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
@@ -64,7 +65,9 @@ def headers(db: Session, e: Employee) -> dict[str, str]:
 
 
 def week_body(employee_id: UUID, percent: object) -> dict:
-    start = week_start(date.today()).isoformat()
+    start = week_start(
+        utc_now().astimezone(ZoneInfo("Asia/Shanghai")).date()
+    ).isoformat()
     return {
         "items": [{"employee_id": str(employee_id), "other_percent": percent}],
         "start_week": start,
@@ -295,7 +298,10 @@ def test_jira_reference_and_platform_percent(
                 demand_id=other.id,
                 employee_id=e.id,
                 allocation_percent=percent,
-                due_date=date.today(),
+                due_date=week_start(
+                    utc_now().astimezone(ZoneInfo("Asia/Shanghai")).date()
+                )
+                + timedelta(days=4),
                 assigned_by_user_id=user_id(db, employees["E01"]),
                 status=status,
             )
@@ -667,7 +673,7 @@ def test_direct_adjustment_notifies_employee(
     assert audit.details == {
         "before_percent": None,
         "after_percent": 20,
-        "week_start": week_start(date.today()).isoformat(),
+        "week_start": week_body(subject.id, 20)["start_week"],
         "via": "web",
         "client_name": None,
     }
