@@ -14,8 +14,13 @@ git remote add origin .
 git config remote.origin.fetch '+refs/heads/main:refs/remotes/origin/master'
 mkdir -p scripts backend/app/domains/sample backend/app/alembic/versions backend/tests/{sample,domains,admin_assistant,api/routes} frontend/{src/routes,tests} .github
 cp "$source_script" scripts/preflight.sh
+touch frontend/tests/.gitkeep
 touch backend/tests/sample/test_feature.py backend/tests/domains/test_audit_labels.py backend/tests/test_ci_workflows.py backend/tests/test_sample_migration.py backend/tests/admin_assistant/test_change_set.py
 echo 'from app.domains.sample import feature' > backend/tests/domains/test_importer.py
+echo 'from app.domains import sample' > backend/tests/domains/test_package_importer.py
+echo 'domains/__init__.py' > backend/tests/test_m6_capacity_architecture.py
+echo 'before' > backend/app/domains/__init__.py
+echo 'oldrev000001' > backend/tests/test_old_migration.py
 echo 'before' > backend/app/domains/sample/feature.py
 echo 'before' > backend/app/domains/sample/deleted.py
 echo 'import app.domains.sample.deleted' > backend/tests/domains/test_deleted.py
@@ -66,7 +71,8 @@ rg -q '^pi$' "$scratch/list"
 bash scripts/preflight.sh > "$scratch/run"
 rg -q 'pytest: 通过' "$scratch/run"
 rg -q 'run prek run --files' "$PREFLIGHT_CALLS"
-rg -q 'run pytest --no-cov -x -q -n 2 --dist loadgroup' "$PREFLIGHT_CALLS"
+[[ $(rg -c '^run prek run' "$PREFLIGHT_CALLS") == 1 ]]
+rg -q 'run pytest --no-cov -x -q -n 4 --dist loadgroup' "$PREFLIGHT_CALLS"
 : > "$PREFLIGHT_CALLS"
 PREFLIGHT_PYTEST_WORKERS=1 bash scripts/preflight.sh > "$scratch/run"
 rg -q 'run pytest --no-cov -x -q -n 1 --dist loadgroup' "$PREFLIGHT_CALLS"
@@ -99,6 +105,30 @@ expect_failure '数据库环境: 失败' env POSTGRES_PORT=5432 DATABASE_URL='po
 # Added migrations on both sides must stop before Alembic or pytest runs.
 git add .
 git commit -qm feature
+: > "$PREFLIGHT_CALLS"
+bash scripts/preflight.sh > "$scratch/run"
+[[ $(rg -c '^run prek run' "$PREFLIGHT_CALLS") == 1 ]]
+rg -q '^run prek run --from-ref origin/master --to-ref HEAD$' "$PREFLIGHT_CALLS"
+
+git checkout -qb selection main
+echo 'newrev000001' > backend/app/alembic/versions/newrev000001_added.py
+echo 'newrev000001' > backend/tests/test_new_migration.py
+git add .
+git commit -qm migration
+echo 'after' > backend/app/domains/__init__.py
+bash scripts/preflight.sh --list > "$scratch/list"
+rg -q -F -x 'tests/domains/test_package_importer.py' "$scratch/list"
+rg -q -F -x 'tests/test_m6_capacity_architecture.py' "$scratch/list"
+rg -q -F -x 'tests/test_new_migration.py' "$scratch/list"
+assert_absent '^tests/domains/test_importer.py$|^tests/test_old_migration.py$' "$scratch/list"
+: > "$PREFLIGHT_CALLS"
+bash scripts/preflight.sh > "$scratch/run"
+[[ $(rg -c '^run prek run' "$PREFLIGHT_CALLS") == 1 ]]
+rg -q '^run prek run --files ' "$PREFLIGHT_CALLS"
+rg -q 'backend/app/alembic/versions/newrev000001_added.py' "$PREFLIGHT_CALLS"
+rg -q 'backend/app/domains/__init__.py' "$PREFLIGHT_CALLS"
+git restore backend/app/domains/__init__.py
+git checkout -q feature
 git checkout -q main
 echo 'upstream' > backend/app/alembic/versions/upstream.py
 git add .

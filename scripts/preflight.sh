@@ -54,7 +54,7 @@ git diff --name-only --diff-filter=A HEAD...origin/master -- backend/app/alembic
 
 # All test selection rules live here. Paths are relative to backend for pytest.
 select_checks() {
-  local path module package stem relative domain candidate route token
+  local path module package stem relative domain candidate route token boundary revision
   local import_space='([[:space:]]|#[^\n]*\n)*'
   : > "$scratch/targets"
   : > "$scratch/playwright"
@@ -71,9 +71,11 @@ select_checks() {
         stem=${path##*/}; stem=${stem%.py}
         module=${module%.__init__}
         package=${module%.*}
+        boundary='([^[:alnum:]_]|$)'
+        if [[ $stem == __init__ ]]; then boundary='([^[:alnum:]_.]|$)'; fi
         # Match qualified references and package imports, including multiline lists.
         rg -l -U \
-          -e "(^|[^[:alnum:]_])${module//./\\.}([^[:alnum:]_]|$)" \
+          -e "(^|[^[:alnum:]_])${module//./\\.}${boundary}" \
           -e "from[[:blank:]]+${package//./\\.}[[:blank:]]+import[[:blank:]]+(\\($import_space)?([[:alnum:]_]+([[:blank:]]+as[[:blank:]]+[[:alnum:]_]+)?[[:blank:]]*,$import_space)*${module##*.}([^[:alnum:]_]|$)" \
           backend/tests --glob 'test_*.py' > "$scratch/importers" || [[ $? == 1 ]]
         sed 's|^backend/||' "$scratch/importers" >> "$scratch/targets"
@@ -85,6 +87,9 @@ select_checks() {
           domain=${path#backend/app/domains/}; domain=${domain%%/*}
           [[ ! -d backend/tests/$domain ]] || echo "tests/$domain/" >> "$scratch/targets"
           rg --files backend/tests/domains -g "test_${domain}*.py" >> "$scratch/domain-tests" || [[ $? == 1 ]]
+        fi
+        if [[ $path == backend/app/domains/__init__.py ]]; then
+          echo tests/test_m6_capacity_architecture.py >> "$scratch/targets"
         fi
         if [[ -f $path ]] && rg -q 'audit|target_type' "$path"; then
           echo tests/domains/test_audit_labels.py >> "$scratch/targets"
@@ -102,7 +107,10 @@ select_checks() {
         # Evaluation patches the shared registry and can break change-set guards.
         echo tests/admin_assistant/ >> "$scratch/targets" ;;
       backend/app/alembic/versions/*)
-        rg --files backend/tests -g 'test_*_migration.py' | sed 's|^backend/||' >> "$scratch/targets" ;;
+        if [[ $path == *.py ]]; then
+          revision=${path##*/}; revision=${revision%%_*}
+          rg -l -F --glob 'test_*_migration.py' -- "$revision" backend/tests | sed 's|^backend/||' >> "$scratch/migration-tests" || [[ ${PIPESTATUS[0]} == 1 ]]
+        fi ;;
     esac
     case "$path" in
       frontend/tests/*.spec.ts) [[ ! -f $path ]] || echo "$path" >> "$scratch/playwright" ;;
@@ -126,6 +134,10 @@ select_checks() {
     esac
   done < "$scratch/changed"
   if [[ -f $scratch/domain-tests ]]; then sed 's|^backend/||' "$scratch/domain-tests" >> "$scratch/targets"; fi
+  if [[ -f $scratch/migration-tests ]]; then cat "$scratch/migration-tests" >> "$scratch/targets"; fi
+  if rg -q '^backend/app/alembic/versions/[^/]+\.py$' "$scratch/changed" && ! rg -q '^tests/.*test_.*_migration\.py$' "$scratch/targets"; then
+    rg --files backend/tests -g 'test_*_migration.py' | sed 's|^backend/||' >> "$scratch/targets"
+  fi
   if rg -q 'audit|target_type' "$scratch/app-diff"; then
     echo tests/domains/test_audit_labels.py >> "$scratch/targets"
   fi
@@ -138,11 +150,11 @@ select_checks() {
 }
 select_checks
 
-echo '检查计划: 同步检查 → (cd backend && uv run alembic heads) → uv run prek run --from-ref origin/master --to-ref HEAD → 数据库环境 → pytest'
-echo "pytest 目标（backend 下，uv run pytest --no-cov -x -q -n ${PREFLIGHT_PYTEST_WORKERS:-2} --dist loadgroup）:"
+echo '检查计划: 同步检查 → (cd backend && uv run alembic heads) → uv run prek run → 数据库环境 → pytest'
+echo "pytest 目标（backend 下，uv run pytest --no-cov -x -q -n ${PREFLIGHT_PYTEST_WORKERS:-4} --dist loadgroup）:"
 cat "$scratch/targets"
 if [[ -s $scratch/dirty ]]; then
-  echo '工作区有未提交改动：请先提交；本次也会用 uv run prek run --files 检查现存改动文件。'
+  echo '工作区有未提交改动：请先提交；本次用 uv run prek run --files 检查所有现存变动文件。'
 fi
 if [[ -s $scratch/local-migrations && -s $scratch/upstream-migrations ]]; then
   echo '迁移同步冲突：请先 git merge origin/master，再把新迁移的 down_revision 接到最新 head。'
@@ -157,11 +169,16 @@ if ! $list; then
   [[ $count == 1 ]] || { echo "Alembic 必须只有一个 head，当前为 $count" >&2; exit 1; }
   states[1]=通过
   current=2
-  uv run prek run --from-ref origin/master --to-ref HEAD
   if [[ -s $scratch/dirty ]]; then
     files=()
-    while IFS= read -r path; do [[ ! -f $path ]] || files+=("$path"); done < "$scratch/dirty"
-    if [[ ${#files[@]} -gt 0 ]]; then uv run prek run --files "${files[@]}"; fi
+    while IFS= read -r path; do [[ ! -f $path ]] || files+=("$path"); done < "$scratch/changed"
+    if [[ ${#files[@]} -gt 0 ]]; then
+      uv run prek run --files "${files[@]}"
+    else
+      uv run prek run --from-ref origin/master --to-ref HEAD
+    fi
+  else
+    uv run prek run --from-ref origin/master --to-ref HEAD
   fi
   states[2]=通过
   current=3
@@ -191,7 +208,7 @@ PY
   targets=()
   while IFS= read -r path; do targets+=("$path"); done < "$scratch/targets"
   if [[ ${#targets[@]} -gt 0 ]]; then
-    (cd backend && uv run pytest --no-cov -x -q -n "${PREFLIGHT_PYTEST_WORKERS:-2}" --dist loadgroup "${targets[@]}")
+    (cd backend && uv run pytest --no-cov -x -q -n "${PREFLIGHT_PYTEST_WORKERS:-4}" --dist loadgroup "${targets[@]}")
     states[4]=通过
   else
     echo 'pytest: 跳过（无受影响目标）'
