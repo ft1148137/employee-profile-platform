@@ -195,14 +195,18 @@ def check_demand_reply(db: Session, p: Principal, value: BaseModel) -> str:
 
 
 def check_workload_request(db: Session, p: Principal, value: BaseModel) -> str:
+    from app.domains.capacity.workload import validate_request_week
+
     body = WorkloadRequestInput.model_validate(value)
     if p.user_id is None:
         raise CapacityForbidden()
     current = get_my_workload(p, db)
+    validate_request_week(body.end_week, current.weeks[0].week_start)
     if any(r.status == CapacityRequestStatus.PENDING for r in current.requests):
         raise CapacityConflict()
     return (
         f"申请调整本人负荷\n其他工作占比：{body.requested_percent}%\n"
+        f"周范围：{body.start_week} 至 {body.end_week}\n"
         f"原因：{body.reason}\n提交后等待经理审批"
     )
 
@@ -320,7 +324,11 @@ def act(
     try:
         require_enabled(p, db)
         name = next(write for kind, write, _ in PREPARES.values() if kind == card.kind)
-        body = WRITES[name].input_model.model_validate(card.arguments)
+        try:
+            body = WRITES[name].input_model.model_validate(card.arguments)
+        except ValidationError:
+            card.status, card.result = "failed", "申请内容已变化，请重新生成确认卡"
+            return card
         result = WRITES[name].handler(
             p,
             db,

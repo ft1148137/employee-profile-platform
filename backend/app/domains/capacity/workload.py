@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlmodel import Session, col, func, or_, select
 
 from app.authz.policies import can_view_employee, employee_scope_clause
@@ -9,12 +10,16 @@ from app.domains.base import utc_now
 from app.domains.capacity import calendar
 from app.domains.capacity.models import (
     CapacityRequestStatus,
+    CapacityUnavailability,
     CapacityWeek,
     CapacityWorkloadRequest,
 )
 from app.domains.capacity.schemas import (
     LastConfirmed,
     MyWorkload,
+    UnavailabilityInput,
+    UnavailabilityList,
+    UnavailabilityPublic,
     Via,
     WorkloadDecisionInput,
     WorkloadList,
@@ -49,6 +54,16 @@ WORKLOAD_REVIEW_NOTICE = "有负荷调整申请等你审批"
 EXTENSION_REVIEW_NOTICE = "有延期申请等你审批"
 
 
+class WorkloadWeekExpired(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(422, "结束周不能早于本周")
+
+
+def validate_request_week(end_week: date, current: date) -> None:
+    if end_week < current:
+        raise WorkloadWeekExpired()
+
+
 def employee(
     principal: Principal,
     session: Session,
@@ -79,6 +94,16 @@ def views(
     current = calendar.this_week(session, org_id)
     start = from_week or current
     weekly = calendar.loads(session, org_id, ids, start, weeks)
+    pending = {
+        r.employee_id: r
+        for r in session.exec(
+            select(CapacityWorkloadRequest).where(
+                CapacityWorkloadRequest.org_id == org_id,
+                col(CapacityWorkloadRequest.employee_id).in_(ids),
+                CapacityWorkloadRequest.status == CapacityRequestStatus.PENDING,
+            )
+        ).all()
+    }
     current_loads = (
         weekly if start == current else calendar.loads(session, org_id, ids, current, 1)
     )
@@ -139,6 +164,7 @@ def views(
     }
     result = []
     for e in employees:
+        request = pending.get(e.id)
         load = current_loads[e.id][0]
         base, platform = load.other_percent, load.platform_percent
         last = latest.get(e.id)
@@ -163,6 +189,13 @@ def views(
                 if total > load.capacity_percent
                 else "full",
                 weeks=weekly[e.id],
+                correction_pending={
+                    w.week_start: request is not None
+                    and (request.start_week or current)
+                    <= w.week_start
+                    <= (request.end_week or current)
+                    for w in weekly[e.id]
+                },
                 last_confirmed=LastConfirmed(
                     percent=last.other_percent,
                     week_start=last.week_start,
@@ -335,13 +368,21 @@ def request_workload_change(
     session: Session,
     requested_percent: int,
     reason: str,
+    start_week: date,
+    end_week: date,
     *,
     via: Via = "web",
     client_name: str | None = None,
 ) -> WorkloadRequestPublic:
-    body = WorkloadRequestInput(requested_percent=requested_percent, reason=reason)
+    body = WorkloadRequestInput(
+        requested_percent=requested_percent,
+        reason=reason,
+        start_week=start_week,
+        end_week=end_week,
+    )
     require_enabled(principal, session)
     subject = employee(principal, session, principal.employee_id, lock=True)
+    validate_request_week(body.end_week, calendar.this_week(session, principal.org_id))
     pending = session.exec(
         select(CapacityWorkloadRequest.id).where(
             CapacityWorkloadRequest.org_id == principal.org_id,
@@ -533,3 +574,134 @@ def decide_workload_request(
     )
     notify_employee(principal, session, row.employee_id)
     return WorkloadRequestPublic.model_validate(row)
+
+
+def unavailability_public(
+    principal: Principal,
+    session: Session,
+    row: CapacityUnavailability,
+    subject: Employee,
+) -> UnavailabilityPublic:
+    start = calendar.week_start(row.start_date)
+    weekly = calendar.loads(
+        session,
+        principal.org_id,
+        [subject.id],
+        start,
+        (calendar.week_start(row.end_date) - start).days // 7 + 1,
+    )[subject.id]
+    return UnavailabilityPublic(
+        **row.model_dump(exclude={"org_id"}),
+        can_delete=row.created_by_user_id == principal.user_id
+        or subject.department_id in principal.managed_department_ids,
+        over_weeks=[week for week, _ in calendar.shortfalls(weekly, 0)[1]],
+    )
+
+
+def list_unavailability(
+    principal: Principal,
+    session: Session,
+    employee_id: UUID,
+    from_date: date,
+    to_date: date,
+) -> UnavailabilityList:
+    require_enabled(principal, session)
+    subject = session.exec(
+        select(Employee).where(
+            employee_scope_clause(principal),
+            Employee.id == employee_id,
+        )
+    ).one_or_none()
+    if subject is None:
+        raise CapacityNotFound()
+    rows = session.exec(
+        select(CapacityUnavailability)
+        .where(
+            CapacityUnavailability.org_id == principal.org_id,
+            CapacityUnavailability.employee_id == employee_id,
+            CapacityUnavailability.start_date <= to_date,
+            CapacityUnavailability.end_date >= from_date,
+        )
+        .order_by(
+            col(CapacityUnavailability.start_date), col(CapacityUnavailability.id)
+        )
+    ).all()
+    data = [unavailability_public(principal, session, row, subject) for row in rows]
+    return UnavailabilityList(data=data, count=len(data))
+
+
+def register_unavailability(
+    principal: Principal,
+    session: Session,
+    body: UnavailabilityInput,
+) -> UnavailabilityPublic:
+    require_enabled(principal, session)
+    subject = employee(principal, session, body.employee_id, lock=True)
+    if not can_view_employee(principal, subject):
+        raise CapacityNotFound()
+    if principal.user_id is None or (
+        subject.id != principal.employee_id
+        and subject.department_id not in principal.managed_department_ids
+    ):
+        raise CapacityForbidden()
+    row = CapacityUnavailability(
+        org_id=principal.org_id,
+        created_by_user_id=principal.user_id,
+        **body.model_dump(),
+    )
+    session.add(row)
+    session.flush()
+    audit(
+        principal,
+        session,
+        "capacity.unavailability_registered",
+        "capacity_unavailability",
+        row.id,
+        "web",
+        None,
+        body.model_dump(mode="json"),
+    )
+    if subject.id != principal.employee_id:
+        notify_employee(principal, session, subject.id)
+    return unavailability_public(principal, session, row, subject)
+
+
+def delete_unavailability(
+    principal: Principal,
+    session: Session,
+    unavailability_id: UUID,
+) -> UnavailabilityPublic:
+    require_enabled(principal, session)
+    query = select(CapacityUnavailability).where(
+        CapacityUnavailability.org_id == principal.org_id,
+        CapacityUnavailability.id == unavailability_id,
+    )
+    row = session.exec(query).one_or_none()
+    if row is None:
+        raise CapacityNotFound()
+    subject = employee(principal, session, row.employee_id, lock=True)
+    row = session.exec(query.execution_options(populate_existing=True)).one_or_none()
+    if row is None or not can_view_employee(principal, subject):
+        raise CapacityNotFound()
+    if (
+        row.created_by_user_id != principal.user_id
+        and subject.department_id not in principal.managed_department_ids
+    ):
+        raise CapacityForbidden()
+    session.delete(row)
+    session.flush()
+    audit(
+        principal,
+        session,
+        "capacity.unavailability_deleted",
+        "capacity_unavailability",
+        row.id,
+        "web",
+        None,
+        {
+            "employee_id": str(subject.id),
+            "start_date": row.start_date.isoformat(),
+            "end_date": row.end_date.isoformat(),
+        },
+    )
+    return unavailability_public(principal, session, row, subject)

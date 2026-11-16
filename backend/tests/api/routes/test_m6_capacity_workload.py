@@ -108,7 +108,12 @@ def test_default_disabled_and_settings_permissions(
         (
             "post",
             "/workloads/me/requests",
-            {"requested_percent": 50, "reason": "合成原因"},
+            {
+                "start_week": week_body(capacity[1]["E02"].id, 0)["start_week"],
+                "end_week": week_body(capacity[1]["E02"].id, 0)["start_week"],
+                "requested_percent": 50,
+                "reason": "合成原因",
+            },
         ),
         ("get", "/workload-requests", None),
         ("post", f"/workload-requests/{uuid4()}/decision", {"approve": True}),
@@ -397,6 +402,8 @@ def test_requests_decisions_notifications_and_no_profile_change(
             pending_url,
             headers=auth["employee"],
             json={
+                "start_week": week_body(capacity[1]["E02"].id, 0)["start_week"],
+                "end_week": week_body(capacity[1]["E02"].id, 0)["start_week"],
                 "requested_percent": 50,
                 "reason": "PRIVATE_REASON",
                 "employee_id": str(employees["E03"].id),
@@ -409,6 +416,8 @@ def test_requests_decisions_notifications_and_no_profile_change(
             pending_url,
             headers=auth["employee"],
             json={
+                "start_week": week_body(capacity[1]["E02"].id, 0)["start_week"],
+                "end_week": week_body(capacity[1]["E02"].id, 0)["start_week"],
                 "requested_percent": 80 if approve else 20,
                 "reason": "PRIVATE_REASON",
             },
@@ -419,7 +428,12 @@ def test_requests_decisions_notifications_and_no_profile_change(
             client.post(
                 pending_url,
                 headers=auth["employee"],
-                json={"requested_percent": 50, "reason": "合成原因"},
+                json={
+                    "start_week": week_body(capacity[1]["E02"].id, 0)["start_week"],
+                    "end_week": week_body(capacity[1]["E02"].id, 0)["start_week"],
+                    "requested_percent": 50,
+                    "reason": "合成原因",
+                },
             ).status_code
             == 409
         )
@@ -541,7 +555,12 @@ def test_delegation_expiry_and_inactive_employee(
     pending = client.post(
         f"{url}/capacity/workloads/me/requests",
         headers=auth["employee"],
-        json={"requested_percent": 70, "reason": "合成原因"},
+        json={
+            "start_week": week_body(capacity[1]["E02"].id, 0)["start_week"],
+            "end_week": week_body(capacity[1]["E02"].id, 0)["start_week"],
+            "requested_percent": 70,
+            "reason": "合成原因",
+        },
     ).json()
     delegate_headers = headers(db, employees["E05"])
     decision = f"{url}/capacity/workload-requests/{pending['id']}/decision"
@@ -605,7 +624,12 @@ def test_concurrent_requests_and_decisions(capacity: tuple, client: TestClient) 
                 lambda _: client.post(
                     f"{url}/capacity/workloads/me/requests",
                     headers=auth["employee"],
-                    json={"requested_percent": 30, "reason": "合成并发申请"},
+                    json={
+                        "start_week": week_body(capacity[1]["E02"].id, 0)["start_week"],
+                        "end_week": week_body(capacity[1]["E02"].id, 0)["start_week"],
+                        "requested_percent": 30,
+                        "reason": "合成并发申请",
+                    },
                 ),
                 range(2),
             )
@@ -702,7 +726,12 @@ def test_processed_requests_require_current_authority(
     response = client.post(
         f"{url}/capacity/workloads/me/requests",
         headers=auth["employee"],
-        json={"requested_percent": 40, "reason": "PRIVATE_HISTORY_REASON"},
+        json={
+            "start_week": week_body(capacity[1]["E02"].id, 0)["start_week"],
+            "end_week": week_body(capacity[1]["E02"].id, 0)["start_week"],
+            "requested_percent": 40,
+            "reason": "PRIVATE_HISTORY_REASON",
+        },
     )
     assert response.status_code == 200
     request_id = response.json()["id"]

@@ -7,12 +7,14 @@ import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { WorkloadNumbers, weekLabel, weekLoadLabel } from "./shared"
+import { addWeeks, WorkloadNumbers, weekLabel, weekLoadLabel } from "./shared"
 
 export function MyWorkload({ orgId }: { orgId: string }) {
   const client = useQueryClient()
   const [percent, setPercent] = useState("")
   const [reason, setReason] = useState("")
+  const [start, setStart] = useState("")
+  const [end, setEnd] = useState("")
   const query = useQuery({
     queryKey: ["capacity", orgId, "me"],
     queryFn: async () =>
@@ -22,7 +24,12 @@ export function MyWorkload({ orgId }: { orgId: string }) {
     mutationFn: () =>
       CapacityService.requestWorkloadChange({
         path: { org_id: orgId },
-        body: { requested_percent: Number(percent), reason: reason.trim() },
+        body: {
+          requested_percent: Number(percent),
+          reason: reason.trim(),
+          start_week: start || query.data!.weeks[0].week_start,
+          end_week: end || query.data!.weeks[0].week_start,
+        },
       }),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ["capacity", orgId] })
@@ -49,6 +56,12 @@ export function MyWorkload({ orgId }: { orgId: string }) {
             <p className="mt-2 font-medium tabular-nums">
               {weekLoadLabel(week)}
             </p>
+            {query.data.correction_pending[week.week_start] && (
+              <p className="text-xs">修正待审</p>
+            )}
+            {week.capacity_percent < 100 && (
+              <p className="text-xs">可用 {week.capacity_percent}%</p>
+            )}
             {week.legacy_start && (
               <p className="text-xs text-muted-foreground">开始日期未确认</p>
             )}
@@ -68,6 +81,33 @@ export function MyWorkload({ orgId }: { orgId: string }) {
           填写平台外其他工作的占比（0–200%），平台内分配将另行计入经理确认值。
         </p>
         <fieldset disabled={pending || submit.isPending} className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="request-start-week">开始周</Label>
+              <Input
+                id="request-start-week"
+                type="date"
+                min="1970-01-05"
+                step={7}
+                required
+                value={start || query.data.weeks[0].week_start}
+                onChange={(event) => setStart(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="request-end-week">结束周</Label>
+              <Input
+                id="request-end-week"
+                type="date"
+                min={start || query.data.weeks[0].week_start}
+                max={addWeeks(start || query.data.weeks[0].week_start, 25)}
+                step={7}
+                required
+                value={end || query.data.weeks[0].week_start}
+                onChange={(event) => setEnd(event.target.value)}
+              />
+            </div>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="requested-percent">申请负荷（%）</Label>
             <Input
@@ -114,6 +154,11 @@ export function MyWorkload({ orgId }: { orgId: string }) {
                 ]
               }
             </p>
+            <p className="text-sm">
+              {request.start_week
+                ? `${request.start_week} 至 ${request.end_week}`
+                : "批准当周"}
+            </p>
             <p className="whitespace-pre-wrap break-words">{request.reason}</p>
             {request.decision_note && (
               <p className="whitespace-pre-wrap break-words">
@@ -126,6 +171,143 @@ export function MyWorkload({ orgId }: { orgId: string }) {
           </article>
         ))}
       </section>
+      <section
+        aria-label="我的不可用日期"
+        className="max-w-xl space-y-3 rounded-xl border p-5"
+      >
+        <h2 className="text-lg font-semibold">我的不可用日期</h2>
+        <Unavailability
+          orgId={orgId}
+          employeeId={query.data.employee_id}
+          startWeek={query.data.weeks[0].week_start}
+          canWrite
+        />
+      </section>
+    </div>
+  )
+}
+
+export function Unavailability({
+  orgId,
+  employeeId,
+  startWeek,
+  canWrite,
+}: {
+  orgId: string
+  employeeId: string
+  startWeek: string
+  canWrite: boolean
+}) {
+  const client = useQueryClient()
+  const [start, setStart] = useState(startWeek)
+  const [end, setEnd] = useState(startWeek)
+  const [over, setOver] = useState<string[]>([])
+  const query = useQuery({
+    queryKey: ["capacity", orgId, "unavailability", employeeId],
+    queryFn: async () =>
+      (
+        await CapacityService.listUnavailability({
+          path: { org_id: orgId },
+          query: {
+            employee_id: employeeId,
+            from: "1970-01-01",
+            to: "9999-12-31",
+          },
+        })
+      ).data,
+  })
+  const save = useMutation({
+    mutationFn: (id?: string) =>
+      id
+        ? CapacityService.deleteUnavailability({
+            path: { org_id: orgId, unavailability_id: id },
+          })
+        : CapacityService.registerUnavailability({
+            path: { org_id: orgId },
+            body: { employee_id: employeeId, start_date: start, end_date: end },
+          }),
+    onSuccess: (response) => {
+      setOver(response.data.over_weeks)
+      client.invalidateQueries({ queryKey: ["capacity", orgId] })
+    },
+  })
+  if (query.isPending) return <ProfileLoading />
+  if (query.isError) return <ProfileError retry={() => query.refetch()} />
+  return (
+    <div className="space-y-4">
+      {!query.data.count && (
+        <p className="text-sm text-muted-foreground">暂无不可用日期。</p>
+      )}
+      {query.data.data.map((row) => (
+        <div
+          key={row.id}
+          className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-sm"
+        >
+          <span>
+            {row.start_date} 至 {row.end_date}
+          </span>
+          {row.can_delete && (
+            <Button
+              variant="outline"
+              disabled={save.isPending}
+              onClick={() => save.mutate(row.id)}
+            >
+              删除
+            </Button>
+          )}
+        </div>
+      ))}
+      {canWrite && (
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault()
+            save.mutate(undefined)
+          }}
+        >
+          <fieldset disabled={save.isPending} className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor={`unavailable-start-${employeeId}`}>
+                  开始日期
+                </Label>
+                <Input
+                  id={`unavailable-start-${employeeId}`}
+                  type="date"
+                  required
+                  value={start}
+                  onChange={(event) => setStart(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`unavailable-end-${employeeId}`}>
+                  结束日期
+                </Label>
+                <Input
+                  id={`unavailable-end-${employeeId}`}
+                  type="date"
+                  required
+                  min={start}
+                  value={end}
+                  onChange={(event) => setEnd(event.target.value)}
+                />
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              最多登记 92 天，不填写原因；已有分配不会自动调整。
+            </p>
+            <Button type="submit">
+              {save.isPending ? "正在保存…" : "登记"}
+            </Button>
+          </fieldset>
+        </form>
+      )}
+      {!!over.length && (
+        <p role="status">
+          这几周已有分配超出可用，请和部门经理沟通：{over.join("、")}
+        </p>
+      )}
+      <SetupError error={save.error} />
     </div>
   )
 }

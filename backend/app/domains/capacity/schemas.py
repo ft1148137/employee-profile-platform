@@ -75,6 +75,16 @@ class LastConfirmed(BaseModel):
 class WorkloadRequestInput(CapacityInput):
     requested_percent: Percent
     reason: Note
+    start_week: date
+    end_week: date
+
+    @model_validator(mode="after")
+    def valid_weeks(self) -> WorkloadRequestInput:
+        if self.start_week.weekday() or self.end_week.weekday():
+            raise ValueError("请选择周一")
+        if not 0 <= (self.end_week - self.start_week).days <= 25 * 7:
+            raise ValueError("请选择 1–26 周")
+        return self
 
 
 class WorkloadDecisionInput(CapacityInput):
@@ -95,6 +105,8 @@ class WorkloadRequestPublic(BaseModel):
     employee_name: str | None = None
     on_behalf_of_name: str | None = None
     requested_percent: int
+    start_week: date | None
+    end_week: date | None
     reason: str
     status: CapacityRequestStatus
     created_at: datetime
@@ -116,6 +128,7 @@ class WorkloadPublic(BaseModel):
     band: Literal["unconfirmed", "available", "full", "overloaded"]
 
     weeks: list[WeekLoad]
+    correction_pending: dict[date, bool]
     last_confirmed: LastConfirmed | None
 
 
@@ -130,4 +143,41 @@ class WorkloadList(BaseModel):
 
 class WorkloadRequestList(BaseModel):
     data: list[WorkloadRequestPublic]
+    count: int
+
+
+class UnavailabilityInput(CapacityInput):
+    employee_id: UUID
+    start_date: date
+    end_date: date
+
+    @model_validator(mode="after")
+    def valid_dates(self) -> UnavailabilityInput:
+        if not 0 <= (self.end_date - self.start_date).days < 92:
+            raise ValueError("请选择先后有序的 1–92 天")
+        return self
+
+
+class UnavailabilityQuery(CapacityInput):
+    employee_id: UUID
+    from_date: date = Field(alias="from")
+    to_date: date = Field(alias="to")
+
+    @model_validator(mode="after")
+    def valid_dates(self) -> UnavailabilityQuery:
+        if self.to_date < self.from_date:
+            raise ValueError("结束日期不能早于开始日期")
+        return self
+
+
+class UnavailabilityPublic(UnavailabilityInput):
+    id: UUID
+    created_by_user_id: UUID
+    created_at: datetime
+    can_delete: bool
+    over_weeks: list[date]
+
+
+class UnavailabilityList(BaseModel):
+    data: list[UnavailabilityPublic]
     count: int

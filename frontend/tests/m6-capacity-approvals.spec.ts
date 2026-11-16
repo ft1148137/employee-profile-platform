@@ -183,6 +183,11 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
       `${base}/capacity/workloads/me/requests`,
       {
         requested_percent: percent,
+        start_week: (
+          await api(`${base}/capacity/workloads/me`, undefined, token)
+        ).weeks[0].week_start,
+        end_week: (await api(`${base}/capacity/workloads/me`, undefined, token))
+          .weeks[0].week_start,
         reason: "合成调整原因",
       },
       token,

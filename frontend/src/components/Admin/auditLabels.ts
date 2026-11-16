@@ -1,6 +1,8 @@
 import type { AuditEventPublic } from "@/client"
 
 export const auditLabels: Record<string, string> = {
+  "capacity.unavailability_registered": "登记不可用日期",
+  "capacity.unavailability_deleted": "删除不可用日期",
   "capacity.demand_submitted": "提交部门需求",
   "capacity.extension_requested": "申请延期",
   "capacity.extension_approved": "同意延期申请",
@@ -97,6 +99,7 @@ export const actorLabels: Record<string, string> = {
   cli: "命令行",
 }
 export const targetLabels: Record<string, string> = {
+  capacity_unavailability: "不可用日期",
   capacity_setting: "需求与容量设置",
   capacity_demand: "部门需求",
   capacity_assignment: "部门工作分配",

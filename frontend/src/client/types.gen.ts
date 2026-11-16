@@ -4382,6 +4382,12 @@ export type MyWorkload = {
    * Weeks
    */
   weeks: Array<WeekLoad>
+  /**
+   * Correction Pending
+   */
+  correction_pending: {
+    [key: string]: boolean
+  }
   last_confirmed: LastConfirmed | null
   /**
    * Requests
@@ -6525,6 +6531,76 @@ export type TurnResponse = {
 }
 
 /**
+ * UnavailabilityInput
+ */
+export type UnavailabilityInput = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Start Date
+   */
+  start_date: string
+  /**
+   * End Date
+   */
+  end_date: string
+}
+
+/**
+ * UnavailabilityList
+ */
+export type UnavailabilityList = {
+  /**
+   * Data
+   */
+  data: Array<UnavailabilityPublic>
+  /**
+   * Count
+   */
+  count: number
+}
+
+/**
+ * UnavailabilityPublic
+ */
+export type UnavailabilityPublic = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Start Date
+   */
+  start_date: string
+  /**
+   * End Date
+   */
+  end_date: string
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Created By User Id
+   */
+  created_by_user_id: string
+  /**
+   * Created At
+   */
+  created_at: string
+  /**
+   * Can Delete
+   */
+  can_delete: boolean
+  /**
+   * Over Weeks
+   */
+  over_weeks: Array<string>
+}
+
+/**
  * UnlinkedAccount
  */
 export type UnlinkedAccount = {
@@ -6838,6 +6914,12 @@ export type WorkloadPublic = {
    * Weeks
    */
   weeks: Array<WeekLoad>
+  /**
+   * Correction Pending
+   */
+  correction_pending: {
+    [key: string]: boolean
+  }
   last_confirmed: LastConfirmed | null
 }
 
@@ -6853,6 +6935,14 @@ export type WorkloadRequestInput = {
    * Reason
    */
   reason: string
+  /**
+   * Start Week
+   */
+  start_week: string
+  /**
+   * End Week
+   */
+  end_week: string
 }
 
 /**
@@ -6893,6 +6983,14 @@ export type WorkloadRequestPublic = {
    * Requested Percent
    */
   requested_percent: number
+  /**
+   * Start Week
+   */
+  start_week: string | null
+  /**
+   * End Week
+   */
+  end_week: string | null
   /**
    * Reason
    */
@@ -7291,6 +7389,119 @@ export type ModelSettingUpdateWritable = {
     | "xhigh"
     | null
 }
+
+export type capacityListUnavailabilityData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query: {
+    /**
+     * Employee Id
+     */
+    employee_id: string
+    /**
+     * From
+     */
+    from: string
+    /**
+     * To
+     */
+    to: string
+  }
+  url: "/api/v1/orgs/{org_id}/capacity/unavailability"
+}
+
+export type capacityListUnavailabilityErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityListUnavailabilityError =
+  capacityListUnavailabilityErrors[keyof capacityListUnavailabilityErrors]
+
+export type capacityListUnavailabilityResponses = {
+  /**
+   * Successful Response
+   */
+  200: UnavailabilityList
+}
+
+export type capacityListUnavailabilityResponse =
+  capacityListUnavailabilityResponses[keyof capacityListUnavailabilityResponses]
+
+export type capacityRegisterUnavailabilityData = {
+  body: UnavailabilityInput
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/unavailability"
+}
+
+export type capacityRegisterUnavailabilityErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityRegisterUnavailabilityError =
+  capacityRegisterUnavailabilityErrors[keyof capacityRegisterUnavailabilityErrors]
+
+export type capacityRegisterUnavailabilityResponses = {
+  /**
+   * Successful Response
+   */
+  200: UnavailabilityPublic
+}
+
+export type capacityRegisterUnavailabilityResponse =
+  capacityRegisterUnavailabilityResponses[keyof capacityRegisterUnavailabilityResponses]
+
+export type capacityDeleteUnavailabilityData = {
+  body?: never
+  path: {
+    /**
+     * Unavailability Id
+     */
+    unavailability_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/unavailability/{unavailability_id}"
+}
+
+export type capacityDeleteUnavailabilityErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityDeleteUnavailabilityError =
+  capacityDeleteUnavailabilityErrors[keyof capacityDeleteUnavailabilityErrors]
+
+export type capacityDeleteUnavailabilityResponses = {
+  /**
+   * Successful Response
+   */
+  200: UnavailabilityPublic
+}
+
+export type capacityDeleteUnavailabilityResponse =
+  capacityDeleteUnavailabilityResponses[keyof capacityDeleteUnavailabilityResponses]
 
 export type capacityListDemandAssignmentsData = {
   body?: never

@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useOrg } from "@/hooks/useOrg"
+import { Unavailability } from "./MyWorkload"
 import { addWeeks, weekLabel, weekLoadLabel } from "./shared"
 
 export function TeamWorkload({ orgId }: { orgId: string }) {
@@ -27,6 +28,7 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
   const { employeeId, managedDepartmentIds } = useOrg()
   const [department, setDepartment] = useState("all")
   const [editing, setEditing] = useState<WorkloadPublic | null>(null)
+  const [unavailable, setUnavailable] = useState<WorkloadPublic | null>(null)
   const query = useQuery({
     queryKey: ["capacity", orgId, "team"],
     queryFn: async () =>
@@ -175,6 +177,12 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
                       >
                         {weekLoadLabel(week)}
                       </span>
+                      {row.correction_pending[week.week_start] && (
+                        <p className="text-xs">修正待审</p>
+                      )}
+                      {week.capacity_percent < 100 && (
+                        <p className="text-xs">可用 {week.capacity_percent}%</p>
+                      )}
                       {week.legacy_start && (
                         <p className="text-xs text-muted-foreground">
                           开始日期未确认
@@ -183,6 +191,12 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
                     </td>
                   ))}
                   <td className="p-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setUnavailable(row)}
+                    >
+                      不可用日期
+                    </Button>
                     {row.employee_id !== employeeId &&
                       row.department_id &&
                       managedDepartmentIds.includes(row.department_id) && (
@@ -202,6 +216,32 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
           <p className="p-4 text-muted-foreground">范围内暂无员工。</p>
         )}
       </div>
+      <Dialog
+        open={!!unavailable}
+        onOpenChange={(open) => {
+          if (!open) setUnavailable(null)
+        }}
+      >
+        <DialogContent>
+          <DialogTitle>不可用日期 · {unavailable?.employee_name}</DialogTitle>
+          <DialogDescription>
+            登记后会通知本人，不会自动调整已有分配。
+          </DialogDescription>
+          {unavailable && (
+            <Unavailability
+              key={unavailable.employee_id}
+              orgId={orgId}
+              employeeId={unavailable.employee_id}
+              startWeek={unavailable.weeks[0].week_start}
+              canWrite={
+                unavailable.employee_id === employeeId ||
+                (!!unavailable.department_id &&
+                  managedDepartmentIds.includes(unavailable.department_id))
+              }
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={!!editing}
         onOpenChange={(open) => {

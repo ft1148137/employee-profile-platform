@@ -133,10 +133,21 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     ["85", "合成项目占用"],
     ["60", "合成申请待核对"],
   ]) {
+    const start = await page.getByLabel("开始周", { exact: true }).inputValue()
+    const end = new Date(`${start}T00:00:00Z`)
+    end.setUTCDate(end.getUTCDate() + 7)
+    await page
+      .getByLabel("结束周", { exact: true })
+      .fill(end.toISOString().slice(0, 10))
     await page.getByLabel("申请负荷（%）").fill(percent)
     await page.getByLabel("申请原因").fill(reason)
     await page.getByRole("button", { name: "提交申请", exact: true }).click()
     await expect(page.getByRole("status")).toContainText("已有申请待处理")
+    await expect(
+      page
+        .getByRole("region", { name: "每周投入" })
+        .getByText("修正待审", { exact: true }),
+    ).toHaveCount(2)
     await open(tokens.get("M")!, "/capacity?tab=approvals")
     await expect(
       page.getByRole("link", { name: "需求与容量", exact: true }),
@@ -149,6 +160,9 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     const application = page.getByRole("article", {
       name: "员工的调整申请",
     })
+    await expect(application).toContainText(
+      `${start} 至 ${end.toISOString().slice(0, 10)}`,
+    )
     if (percent === "85")
       await application
         .getByRole("button", { name: "同意", exact: true })
@@ -276,6 +290,44 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     ),
   ).toBeTruthy()
   await page.setViewportSize({ width: 1280, height: 900 })
+  const unavailable = page.getByRole("region", { name: "我的不可用日期" })
+  await unavailable.getByLabel("开始日期", { exact: true }).fill(week)
+  const secondDay = new Date(`${week}T00:00:00Z`)
+  secondDay.setUTCDate(secondDay.getUTCDate() + 1)
+  await unavailable
+    .getByLabel("结束日期", { exact: true })
+    .fill(secondDay.toISOString().slice(0, 10))
+  await unavailable.getByRole("button", { name: "登记", exact: true }).click()
+  await expect(
+    unavailable.getByRole("button", { name: "删除", exact: true }),
+  ).toHaveCount(1)
+  await expect(page.getByRole("region", { name: "每周投入" })).toContainText(
+    "可用 60%",
+  )
+  await unavailable.getByRole("button", { name: "删除", exact: true }).click()
+  await expect(
+    unavailable.getByRole("button", { name: "删除", exact: true }),
+  ).toHaveCount(0)
+  await open(tokens.get("M")!, "/capacity?tab=team")
+  await page
+    .getByRole("row")
+    .filter({ hasText: "合成员工" })
+    .getByRole("button", { name: "不可用日期", exact: true })
+    .click()
+  const dates = page.getByRole("dialog")
+  const friday = new Date(`${week}T00:00:00Z`)
+  friday.setUTCDate(friday.getUTCDate() + 4)
+  await dates
+    .getByLabel("结束日期", { exact: true })
+    .fill(friday.toISOString().slice(0, 10))
+  await dates.getByRole("button", { name: "登记", exact: true }).click()
+  await expect(dates.getByRole("status")).toContainText(
+    "这几周已有分配超出可用，请和部门经理沟通",
+  )
+  await dates.getByRole("button", { name: "删除", exact: true }).click()
+  await expect(
+    dates.getByRole("button", { name: "删除", exact: true }),
+  ).toHaveCount(0)
   await open(admin.access_token, "/admin/rules?tab=capacity")
   await page.getByRole("checkbox", { name: "开启需求与容量" }).uncheck()
   await page.getByRole("button", { name: "保存设置", exact: true }).click()

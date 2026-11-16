@@ -33,6 +33,10 @@ from app.domains.capacity.extension_schemas import (
 from app.domains.capacity.schemas import (
     CapacitySettingsInput,
     MyWorkload,
+    UnavailabilityInput,
+    UnavailabilityList,
+    UnavailabilityPublic,
+    UnavailabilityQuery,
     WorkloadDecisionInput,
     WorkloadList,
     WorkloadListQuery,
@@ -45,6 +49,37 @@ from app.domains.capacity.schemas import (
 from app.domains.org.schemas import DepartmentsPublic
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["capacity"])
+
+
+@router.get("/capacity/unavailability")
+def list_unavailability(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    query: Annotated[UnavailabilityQuery, Query()],
+) -> UnavailabilityList:
+    return workload.list_unavailability(principal, session, **query.model_dump())
+
+
+@router.post("/capacity/unavailability")
+def register_unavailability(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    body: UnavailabilityInput,
+) -> UnavailabilityPublic:
+    result = workload.register_unavailability(principal, session, body)
+    session.commit()
+    return result
+
+
+@router.delete("/capacity/unavailability/{unavailability_id}")
+def delete_unavailability(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    unavailability_id: UUID,
+) -> UnavailabilityPublic:
+    result = workload.delete_unavailability(principal, session, unavailability_id)
+    session.commit()
+    return result
 
 
 @router.get("/capacity/demands/{demand_id}/assignments")

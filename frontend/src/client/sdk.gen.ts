@@ -191,6 +191,9 @@ import type {
   capacityDecideWorkloadRequestData,
   capacityDecideWorkloadRequestErrors,
   capacityDecideWorkloadRequestResponses,
+  capacityDeleteUnavailabilityData,
+  capacityDeleteUnavailabilityErrors,
+  capacityDeleteUnavailabilityResponses,
   capacityGetCapacitySettingsData,
   capacityGetCapacitySettingsErrors,
   capacityGetCapacitySettingsResponses,
@@ -218,6 +221,9 @@ import type {
   capacityListMyAssignmentsData,
   capacityListMyAssignmentsErrors,
   capacityListMyAssignmentsResponses,
+  capacityListUnavailabilityData,
+  capacityListUnavailabilityErrors,
+  capacityListUnavailabilityResponses,
   capacityListWorkloadRequestsData,
   capacityListWorkloadRequestsErrors,
   capacityListWorkloadRequestsResponses,
@@ -227,6 +233,9 @@ import type {
   capacityPutCapacitySettingsData,
   capacityPutCapacitySettingsErrors,
   capacityPutCapacitySettingsResponses,
+  capacityRegisterUnavailabilityData,
+  capacityRegisterUnavailabilityErrors,
+  capacityRegisterUnavailabilityResponses,
   capacityReplyDemandData,
   capacityReplyDemandErrors,
   capacityReplyDemandResponses,
@@ -597,6 +606,64 @@ export type Options<
 }
 
 export class CapacityService {
+  /**
+   * List Unavailability
+   */
+  public static listUnavailability<ThrowOnError extends boolean = true>(
+    options: Options<capacityListUnavailabilityData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityListUnavailabilityResponses,
+      capacityListUnavailabilityErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/unavailability",
+      ...options,
+    })
+  }
+
+  /**
+   * Register Unavailability
+   */
+  public static registerUnavailability<ThrowOnError extends boolean = true>(
+    options: Options<capacityRegisterUnavailabilityData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capacityRegisterUnavailabilityResponses,
+      capacityRegisterUnavailabilityErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/unavailability",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * Delete Unavailability
+   */
+  public static deleteUnavailability<ThrowOnError extends boolean = true>(
+    options: Options<capacityDeleteUnavailabilityData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).delete<
+      capacityDeleteUnavailabilityResponses,
+      capacityDeleteUnavailabilityErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/unavailability/{unavailability_id}",
+      ...options,
+    })
+  }
+
   /**
    * List Demand Assignments
    */
