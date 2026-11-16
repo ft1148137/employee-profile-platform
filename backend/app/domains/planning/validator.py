@@ -218,7 +218,7 @@ def validate(
     approvers = ["本部门经理确认答复"]
     if "outside_window" in codes or kind == "delay":
         approvers.append("需求方接受新日期")
-    if kind == "reduce_scope":
+    if kind == "reduce_scope" or "reduced_allocation" in codes:
         approvers.append("需求方接受缩小范围")
     if kind == "phased":
         approvers.append("需求方同意分阶段交付")

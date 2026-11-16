@@ -341,8 +341,27 @@ def revise_option(
             if start > end:
                 raise PlanningInvalidRevision("开始日期不能晚于结束日期")
             before = {(item["start_date"], item["end_date"]) for item in changed}
+            percents: dict[str, int] = {}
+            for item in changed:
+                employee_id = item["employee_id"]
+                percent = item["allocation_percent"]
+                if employee_id in percents and percents[employee_id] != percent:
+                    raise PlanningInvalidRevision(
+                        "分阶段方案中同一人多段投入不同，请按原方案重新修改日期"
+                    )
+                percents[employee_id] = percent
             for item in changed:
                 item["start_date"], item["end_date"] = start, end
+            if len(changed) != len(percents):
+                seen: set[str] = set()
+                unique = []
+                for item in assignees:
+                    employee_id = item["employee_id"]
+                    if employee_id in percents and employee_id in seen:
+                        continue
+                    unique.append(item)
+                    seen.add(employee_id)
+                assignees = unique
             if len(before) == 1:
                 old_start, old_end = next(iter(before))
                 parts = []
