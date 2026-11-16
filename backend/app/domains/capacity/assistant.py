@@ -13,6 +13,7 @@ from app.domains.capacity import demand
 from app.domains.capacity.assignment import assignment_rows
 from app.domains.capacity.demand_schemas import (
     LIMITED_REFERENCE_TEXT,
+    CountCapacityReference,
     DemandInput,
     LimitedCapacityReference,
     ReplyDemandInput,
@@ -129,6 +130,8 @@ def check_demand(db: Session, p: Principal, value: BaseModel) -> str:
     reference_text = (
         LIMITED_REFERENCE_TEXT
         if isinstance(reference, LimitedCapacityReference)
+        else f"即时参考：符合要求 {reference.count} 人（各人负荷只有对方部门经理能看到）"
+        if isinstance(reference, CountCapacityReference)
         else (
             f"即时参考：符合要求 {reference.count} 人，有余量 {reference.available} 人，"
             f"基本满 {reference.full} 人，超负荷 {reference.overloaded} 人，"

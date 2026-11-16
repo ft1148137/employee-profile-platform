@@ -160,7 +160,7 @@ OAuth 客户端只配 URL、通过网页登录，不添加上面的请求头。
 | 工具 | 用途与主要输入 |
 | --- | --- |
 | `list_capacity_departments` | 选择目标部门，只列部门名称和层级，无参数 |
-| `capacity_reference` | 按 `target_department_id`、`capability_key`、可选 `minimum_level` 读部门人数和负荷档位汇总；A 方看到的匹配人数为 1–2 人时隐藏人数与余量，只提示提交需求由对方经理答复，0 人仍提示暂无匹配，3 人及以上正常显示 |
+| `capacity_reference` | 按 `target_department_id`、`capability_key`、可选 `minimum_level` 读部门参考；A 方看到的匹配人数为 1–2 人时隐藏人数与余量，只提示提交需求由对方经理答复，0 人或 3 人及以上只给人数，不给负荷分档；B 方经理和管理员仍可读完整分档 |
 | `submit_demand` | 写：提交需求；部门、能力、工作量、日期和说明见下文 |
 | `list_demands` | 读本人有权查看的需求，`side` 为 `outgoing`（默认）或 `incoming` |
 | `get_demand` | 按 `demand_id` 读详情、时间线和当前 `revision` |
@@ -176,7 +176,7 @@ OAuth 客户端只配 URL、通过网页登录，不添加上面的请求头。
 
 ### 需求与答复的输入和确认顺序
 
-1. 先读企业能力词典和部门列表。即时参考只给达到要求的部门人数、负荷档位人数；**参考不是承诺**，也不预测未来时间窗口的可用人手。
+1. 先读企业能力词典和部门列表。A 方即时参考只给达到要求的部门人数，不给负荷分档，各人负荷只有对方部门经理能看到；匹配为 1–2 人时连人数也隐藏。**参考不是承诺**，也不预测未来时间窗口的可用人手。
 2. `submit_demand` 填 `requesting_department_id`、`target_department_id`、`capability_key`、可选 `minimum_level`、`headcount`（1–50）、`allocation_percent`（10–100 整数）、`window_start`、`window_end` 和 `description`（1–2000 字）。日期为 `YYYY-MM-DD`，结束不早于开始，目标与需求方部门不同；员工只能以本人部门提交，经理在管辖范围内选。
 3. B 方先用 `get_demand` 和 `get_demand_basis` 核对需求与本部门依据，再起草答复。`reply_demand` 填 `demand_id`、最新 `revision`、`outcome`（`can_do` 能做、`partial` 能做一部分、`not_now` 暂时不能）、`text`（1–2000 字）。能做或部分能做时必须填 `start_date`、`end_date`；暂时不能可不填，填时须成对。日期前后须合理。
 4. A 方读答复后，用 `respond_demand` 的 `action=accept` 接受，或 `follow_up` 加 `text` 追问，或 `withdraw` 撤回。暂时不能的答复不可接受；追问回到待答复，已接受／已撤回不能继续回应。

@@ -17,6 +17,7 @@ from app.domains.capability.service import get_schema, list_capabilities
 from app.domains.capacity.demand_schemas import (
     CapacityReference,
     CommitmentChange,
+    CountCapacityReference,
     DemandBasis,
     DemandBasisPerson,
     DemandEventPublic,
@@ -177,16 +178,19 @@ def reference_for_viewer(
     target_department_id: UUID,
     reference: DetailedCapacityReference,
 ) -> CapacityReference:
-    if (
-        not represents_department(principal, target_department_id)
-        and 0 < reference.count < 3
-    ):
+    if represents_department(principal, target_department_id):
+        return reference
+    if 0 < reference.count < 3:
         return LimitedCapacityReference(
             department_name=reference.department_name,
             capability_name=reference.capability_name,
             limited=True,
         )
-    return reference
+    return CountCapacityReference(
+        department_name=reference.department_name,
+        capability_name=reference.capability_name,
+        count=reference.count,
+    )
 
 
 def represents_department(principal: Principal, target_department_id: UUID) -> bool:

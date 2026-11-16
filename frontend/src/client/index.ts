@@ -537,6 +537,7 @@ export type {
   ConsentBody,
   ConsentInfo,
   ConsentResult,
+  CountCapacityReference,
   CoveragePublic,
   CoverageStatus,
   CoverageSummary,
