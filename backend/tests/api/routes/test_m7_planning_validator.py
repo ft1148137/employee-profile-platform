@@ -302,7 +302,10 @@ def test_snapshot_starts_at_current_week_and_week_rollover_stales_case(
         importlib.import_module("app.domains.planning.snapshot"), "this_week", next_week
     )
     assert client.get(case_url, headers=auth["b"]).json()["stale"] is True
-    assert client.post(f"{case_url}/options", headers=auth["b"], json=body).status_code == 409
+    assert (
+        client.post(f"{case_url}/options", headers=auth["b"], json=body).status_code
+        == 409
+    )
 
 
 def test_case_options_and_privacy(
