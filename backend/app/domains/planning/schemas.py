@@ -37,4 +37,5 @@ class CasePublic(BaseModel):
     snapshot_created_at: datetime
     data: dict[str, JsonValue]
     stale: bool
+    notes: list[str]
     options: list[OptionPublic]

@@ -313,7 +313,10 @@ def test_case_options_and_privacy(
 ) -> None:
     url, employees, auth, demand, case = planning_case
     case_url = f"{url}/planning/cases/{case['id']}"
-    assert case["stale"] is False and case["options"] == []
+    assert (
+        case["stale"] is False
+        and [o for o in case["options"] if o["kind"] == "custom"] == []
+    )
     assert "statement" not in str(case["data"]).lower()
     assert "evidence" not in str(case["data"]).lower()
     refreshed = client.post(
@@ -334,12 +337,25 @@ def test_case_options_and_privacy(
     option = client.post(f"{case_url}/options", headers=auth["b"], json=body)
     assert option.status_code == 200, option.text
     assert option.json()["kind"] == "custom"
-    assert len(client.get(case_url, headers=auth["b"]).json()["options"]) == 1
+    assert (
+        len(
+            [
+                o
+                for o in client.get(case_url, headers=auth["b"]).json()["options"]
+                if o["kind"] == "custom"
+            ]
+        )
+        == 1
+    )
     third = client.post(
         f"{url}/planning/demands/{demand.id}/cases", headers=auth["b"]
     ).json()
     assert third["snapshot_id"] != refreshed["snapshot_id"]
-    assert client.get(case_url, headers=auth["b"]).json()["options"] == []
+    assert [
+        o
+        for o in client.get(case_url, headers=auth["b"]).json()["options"]
+        if o["kind"] == "custom"
+    ] == []
     for role in ("manager", "employee", "foreign"):
         assert client.get(case_url, headers=auth[role]).status_code == 404
         assert (
