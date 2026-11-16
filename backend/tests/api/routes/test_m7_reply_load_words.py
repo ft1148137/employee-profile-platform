@@ -24,7 +24,7 @@ from app.domains.profile.models import ProfileVersion
 from app.models import User
 from tests.api.routes.test_mcp import call, initialize, token_for
 
-MESSAGE = "答复会发给对方部门，请不要写个人负荷，只写能否承接、时间和条件"
+MESSAGE = "答复会发给对方部门，不写负荷说法，只写能否承接、时间和条件"
 LOAD_TEXTS = (
     "目前超负荷",
     "目前基本满",
@@ -34,6 +34,21 @@ LOAD_TEXTS = (
     "负荷都未确认",
     "负荷情况目前尚未确认",
 )
+NEW_LOAD_TEXTS = (
+    "目前工作安排基本饱和",
+    "人手已满",
+    "已经满负荷",
+    "团队满员",
+    "日程排满",
+    "人手紧",
+    "人手不足",
+    "忙不过来",
+    "近期空闲",
+    "有空",
+    "资源闲置",
+    "仍有余量",
+)
+ASSISTANT_LOAD_TEXTS = NEW_LOAD_TEXTS[:5] + ("忙不过来",)
 REPLY = {
     "outcome": "can_do",
     "start_date": "2026-12-01",
@@ -244,11 +259,38 @@ def test_three_matches_allow_load_words(
 
 
 @pytest.mark.parametrize("match_count", [0])
+@pytest.mark.parametrize("channel", ["rest", "assistant"])
+def test_new_load_words_are_rejected(
+    case: tuple,
+    db: Session,
+    client: TestClient,
+    match_count: int,
+    channel: str,
+) -> None:
+    demand_id = create_demand(case, client, match_count)
+    before = snapshot(db, case[2].org_id)
+    texts = NEW_LOAD_TEXTS if channel == "rest" else ASSISTANT_LOAD_TEXTS
+    for text in texts:
+        send_reply(case, db, client, channel, demand_id, text, rejected=True)
+        assert snapshot(db, case[2].org_id) == before
+
+
+@pytest.mark.parametrize("match_count", [3])
+def test_three_matches_allow_new_load_words(
+    case: tuple, db: Session, client: TestClient, match_count: int
+) -> None:
+    for text in ASSISTANT_LOAD_TEXTS:
+        demand_id = create_demand(case, client, match_count)
+        send_reply(case, db, client, "rest", demand_id, text, rejected=False)
+
+
+@pytest.mark.parametrize("match_count", [0])
 def test_bot_and_mcp_reply_guidance(
     case: tuple, db: Session, client: TestClient
 ) -> None:
     guidance = "不要写个人负荷，只写能否承接、时间和条件"
     assert guidance in system_prompt(db, case[2], "web")
+    assert "不写任何负荷说法" in system_prompt(db, case[2], "feishu")
     response = client.post(
         "/mcp",
         headers=case[4],
@@ -259,6 +301,7 @@ def test_bot_and_mcp_reply_guidance(
         t for t in response.json()["result"]["tools"] if t["name"] == "reply_demand"
     )
     assert guidance in reply["description"]
+    assert "不写任何负荷说法" in reply["description"]
 
 
 @pytest.mark.parametrize("match_count", [0, 1, 2])
