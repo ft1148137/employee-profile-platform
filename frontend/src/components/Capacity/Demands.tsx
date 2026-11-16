@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
+import { useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
 import { CapacityService } from "@/client"
 import { dateLabel } from "@/components/Profile/fields"
@@ -11,18 +12,49 @@ export function OutgoingDemands({ orgId }: { orgId: string }) {
   return <Demands orgId={orgId} side="outgoing" />
 }
 
-export function IncomingDemands({ orgId }: { orgId: string }) {
-  return <Demands orgId={orgId} side="incoming" />
+export function IncomingDemands({
+  orgId,
+  demand,
+  plansOpen,
+}: {
+  orgId: string
+  demand?: string
+  plansOpen?: boolean
+}) {
+  return (
+    <Demands
+      orgId={orgId}
+      side="incoming"
+      demand={demand}
+      plansOpen={plansOpen}
+    />
+  )
 }
 
 function Demands({
   orgId,
   side,
+  demand,
+  plansOpen,
 }: {
   orgId: string
   side: "outgoing" | "incoming"
+  demand?: string
+  plansOpen?: boolean
 }) {
-  const [selected, setSelected] = useState<string | null>(null)
+  const navigate = useNavigate()
+  const [localSelected, setLocalSelected] = useState<string | null>(null)
+  const selected = side === "incoming" ? (demand ?? null) : localSelected
+  const setSelected = (id: string | null) => {
+    if (side === "incoming") {
+      navigate({
+        to: "/capacity",
+        search: { tab: "incoming", ...(id ? { demand: id } : {}) },
+      })
+    } else {
+      setLocalSelected(id)
+    }
+  }
   const [creating, setCreating] = useState(false)
   const query = useQuery({
     queryKey: ["capacity", orgId, "demands", side],
@@ -41,6 +73,7 @@ function Demands({
         orgId={orgId}
         demandId={selected}
         side={side}
+        plansOpen={plansOpen}
         back={() => setSelected(null)}
       />
     )

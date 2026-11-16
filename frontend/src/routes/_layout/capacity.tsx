@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router"
 import { tabSearch } from "@/components/Admin/AdminTabs"
 import { Approvals } from "@/components/Capacity/Approvals"
 import { IncomingDemands, OutgoingDemands } from "@/components/Capacity/Demands"
-import { DemandsDetail } from "@/components/Capacity/DemandsDetail"
 import { MyAssignments } from "@/components/Capacity/MyAssignments"
 import { MyWorkload } from "@/components/Capacity/MyWorkload"
 import {
@@ -22,7 +21,7 @@ export const Route = createFileRoute("/_layout/capacity")({
     ...tabSearch(search),
     ...(typeof search.demand === "string" ? { demand: search.demand } : {}),
     ...(search.plans === "1" || search.plans === 1
-      ? { plans: "1" as const }
+      ? { plans: 1 as const }
       : {}),
   }),
   head: () => ({ meta: [{ title: "需求与容量 - 员工画像平台" }] }),
@@ -80,12 +79,10 @@ function CapacityPage() {
         {tabs.map((item) => (
           <TabsContent key={item.value} value={item.value}>
             {item.value === "incoming" && demand ? (
-              <DemandsDetail
+              <IncomingDemands
                 orgId={org.id}
-                demandId={demand}
-                side="incoming"
-                plansOpen={plans === "1"}
-                back={() => navigate({ search: { tab: "incoming" } })}
+                demand={demand}
+                plansOpen={plans === 1}
               />
             ) : (
               <item.component orgId={org.id} />
