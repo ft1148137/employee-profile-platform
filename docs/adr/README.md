@@ -43,3 +43,4 @@
 - [ADR-0041：Pi 生成部门默认对应能力](0041-department-default-capabilities.md)
 
 - [ADR-0042：初始画像状态与直属上级摘要](0042-initial-profile-status-and-manager-reference.md)
+- [ADR-0046：Agent / Planning / Capacity 三层职责与周级容量](0046-agent-planning-capacity.md)
