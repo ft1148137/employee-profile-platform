@@ -111,7 +111,7 @@ test("reset password requires two clicks and disappears after reload", async ({
     card.getByRole("button", { name: "撤销", exact: true }),
   ).toHaveCount(0)
   await expect(card).not.toContainText(people[0].account.user_id)
-  await expectChineseCopy(page, [people[0].account.user_id])
+  await expectChineseCopy(page, [people[0].account.user_id, secret])
   await page.reload()
   await expect(card.getByRole("status")).toHaveText("已应用")
   await expect(card.getByLabel("初始密码", { exact: true })).toHaveCount(0)

@@ -56,7 +56,7 @@ export function DemandAssignments({
       if (
         error instanceof AxiosError &&
         error.response?.status === 409 &&
-        error.response.data?.detail === "该员工已不在职，请刷新后重新选择"
+        error.response.data?.detail?.code === "employee_departed"
       ) {
         setEmployeeId("")
         void basis.refetch()

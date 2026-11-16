@@ -303,10 +303,10 @@ def test_scope_status_and_input_validation(case: tuple, db: Session) -> None:
     for role in ("a", "am", "cm", "w", "foreign"):
         create(role=role, status=404)
     create(code="a", status=404)
-    assert (
-        create(code="inactive", status=409)["detail"]
-        == "该员工已不在职，请刷新后重新选择"
-    )
+    assert create(code="inactive", status=409)["detail"] == {
+        "code": "employee_departed",
+        "message": "该员工已不在职，请刷新后重新选择",
+    }
     for percent in (9, 101, True):
         create(percent=percent, status=422)
     create(due=day(31).isoformat(), status=409)

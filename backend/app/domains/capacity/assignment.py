@@ -57,7 +57,13 @@ class CommitmentConfirmationRequired(HTTPException):
 
 class DepartedAssignmentConflict(HTTPException):
     def __init__(self) -> None:
-        super().__init__(409, "该员工已不在职，请刷新后重新选择")
+        super().__init__(
+            409,
+            {
+                "code": "employee_departed",
+                "message": "该员工已不在职，请刷新后重新选择",
+            },
+        )
 
 
 def check_dates(demand: CapacityDemand, start_date: date, due_date: date) -> None:
