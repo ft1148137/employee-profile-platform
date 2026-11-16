@@ -14,3 +14,4 @@ expect:
   - kind: direct
     verdict: feasible
   stale_after: HL007
+  stale_status: 409

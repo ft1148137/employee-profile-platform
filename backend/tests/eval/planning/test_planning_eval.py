@@ -377,7 +377,10 @@ def _exercise(db: Session, client: TestClient, case: dict) -> dict:
             db.add(person)
             db.commit()
             stale = client.get(case_url, headers=auth["b_manager"])
-            assert stale.status_code == 200 and stale.json()["stale"] is True
+            assert stale.status_code == case["expect"]["stale_status"]
+            assert (
+                stale.json()["detail"] == "部分候选人已不在当前管辖范围内，请重新模拟"
+            )
             response = client.post(
                 f"{case_url}/options",
                 headers=auth["b_manager"],

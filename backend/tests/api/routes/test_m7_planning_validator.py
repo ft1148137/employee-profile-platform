@@ -443,7 +443,12 @@ def test_stale_inputs_reject_option(
         demand.revision += 1
     db.commit()
     case_url = f"{url}/planning/cases/{case['id']}"
-    assert client.get(case_url, headers=auth["b"]).json()["stale"] is True
+    current = client.get(case_url, headers=auth["b"])
+    if change == "inactive":
+        assert current.status_code == 409
+    else:
+        assert current.status_code == 200
+        assert current.json()["stale"] is True
     body = {
         "assignees": [
             {
