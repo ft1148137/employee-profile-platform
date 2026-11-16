@@ -108,7 +108,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   await expect(page.getByRole("status")).toContainText("需求与容量设置已保存")
   await page.goto("/capacity?tab=team")
   await expect(
-    page.getByRole("button", { name: "调整", exact: true }),
+    page.getByRole("button", { name: "设置", exact: true }),
   ).toHaveCount(0)
   await open(tokens.get("E")!)
   await expect(
@@ -123,7 +123,12 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   await expect(
     page.getByText("无，未接 Jira 或未关联 Jira 账号", { exact: true }),
   ).toBeVisible()
-  await expect(page.getByText("未确认", { exact: true })).toHaveCount(2)
+  await expect(
+    page
+      .getByRole("region", { name: "每周投入" })
+      .getByText("未确认", { exact: true }),
+  ).toHaveCount(8)
+  await expect(page.getByText("有余量", { exact: true })).toHaveCount(0)
   for (const [percent, reason] of [
     ["85", "合成项目占用"],
     ["60", "合成申请待核对"],
@@ -178,7 +183,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     page
       .getByRole("row")
       .filter({ hasText: "合成经理" })
-      .getByRole("button", { name: "调整", exact: true }),
+      .getByRole("button", { name: "设置", exact: true }),
   ).toHaveCount(0)
   await expect(
     page.getByRole("row").filter({ hasText: "范围外员工" }),
@@ -186,15 +191,23 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   await page
     .getByRole("row")
     .filter({ hasText: "合成员工" })
-    .getByRole("button", { name: "调整", exact: true })
+    .getByRole("button", { name: "设置", exact: true })
     .click()
   await expect(page.getByRole("dialog")).toContainText("改后会通知本人")
   await expect(page.getByLabel("调整说明（选填）")).toHaveCount(0)
+  const firstWeek = await page
+    .getByLabel("开始周", { exact: true })
+    .inputValue()
+  const nextWeek = new Date(`${firstWeek}T00:00:00Z`)
+  nextWeek.setUTCDate(nextWeek.getUTCDate() + 7)
+  await page
+    .getByLabel("结束周", { exact: true })
+    .fill(nextWeek.toISOString().slice(0, 10))
   await page.getByLabel("其他工作占比（%）").fill("110")
-  await page.getByRole("button", { name: "确认调整", exact: true }).click()
+  await page.getByRole("button", { name: "确认设置", exact: true }).click()
   const row = page.getByRole("row").filter({ hasText: "合成员工" })
   await expect(row).toContainText("110%")
-  await expect(row).toContainText("超负荷")
+  await expect(row.getByText("110% / 100%", { exact: true })).toHaveCount(2)
   await page.getByRole("combobox", { name: "部门筛选" }).click()
   await expect(
     page.getByRole("option", { name: "客户", exact: true }),
@@ -204,20 +217,37 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     path: test.info().outputPath("team.png"),
     fullPage: true,
   })
+  await page
+    .getByRole("button", { name: "沿用上次确认值确认未来 4 周" })
+    .click()
+  await expect(row.getByText("110% / 100%", { exact: true })).toHaveCount(4)
+  await expect(row.getByText("未确认", { exact: true })).toHaveCount(4)
   const managerHeaders = { Authorization: `Bearer ${tokens.get("M")}` }
+  const week = (
+    await (
+      await request.get(`${base}/capacity/workloads/me`, {
+        headers: managerHeaders,
+      })
+    ).json()
+  ).weeks[0].week_start
+  const weekly = (employeeId: string, percent: number) => ({
+    items: [{ employee_id: employeeId, other_percent: percent }],
+    start_week: week,
+    end_week: week,
+  })
   expect(
     (
-      await request.put(`${base}/capacity/workloads/${outside.id}`, {
+      await request.put(`${base}/capacity/weeks`, {
         headers: managerHeaders,
-        data: { base_percent: 50 },
+        data: weekly(outside.id, 50),
       })
     ).status(),
   ).toBe(404)
   expect(
     (
-      await request.put(`${base}/capacity/workloads/${employee.id}`, {
+      await request.put(`${base}/capacity/weeks`, {
         headers,
-        data: { base_percent: 50 },
+        data: weekly(employee.id, 50),
       })
     ).status(),
   ).toBe(403)
@@ -228,10 +258,10 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
       })
     ).status(),
   ).toBe(403)
-  const adjusted = await request.put(
-    `${base}/capacity/workloads/${employee.id}`,
-    { headers: managerHeaders, data: { base_percent: 50 } },
-  )
+  const adjusted = await request.put(`${base}/capacity/weeks`, {
+    headers: managerHeaders,
+    data: weekly(employee.id, 50),
+  })
   expect(adjusted.ok()).toBeTruthy()
   await open(tokens.get("E")!)
   await expect(page.getByText("有余量", { exact: true })).toBeVisible()

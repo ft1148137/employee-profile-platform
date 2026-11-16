@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from uuid import UUID
 
 from sqlmodel import Session, col, func, or_, select
@@ -5,23 +6,23 @@ from sqlmodel import Session, col, func, or_, select
 from app.authz.policies import can_view_employee, employee_scope_clause
 from app.authz.principal import Principal
 from app.domains.base import utc_now
+from app.domains.capacity import calendar
 from app.domains.capacity.models import (
-    AssignmentStatus,
-    CapacityAssignment,
     CapacityRequestStatus,
-    CapacityWorkload,
+    CapacityWeek,
     CapacityWorkloadRequest,
 )
 from app.domains.capacity.schemas import (
+    LastConfirmed,
     MyWorkload,
     Via,
-    WorkloadAdjustInput,
     WorkloadDecisionInput,
     WorkloadList,
     WorkloadPublic,
     WorkloadRequestInput,
     WorkloadRequestList,
     WorkloadRequestPublic,
+    WorkloadWeeksInput,
 )
 from app.domains.capacity.settings import (
     CapacityConflict,
@@ -43,7 +44,6 @@ from app.domains.source.models import SourceConnection
 from app.domains.work.models import Task
 
 AVAILABLE_BELOW = 80
-OVERLOADED_ABOVE = 100
 NOTICE = "你有需求或负荷事项需要处理"
 WORKLOAD_REVIEW_NOTICE = "有负荷调整申请等你审批"
 EXTENSION_REVIEW_NOTICE = "有延期申请等你审批"
@@ -68,33 +68,33 @@ def employee(
 
 
 def views(
-    principal: Principal, session: Session, employees: list[Employee]
+    principal: Principal,
+    session: Session,
+    employees: list[Employee],
+    from_week: date | None = None,
+    weeks: int = 8,
 ) -> list[WorkloadPublic]:
     ids = [e.id for e in employees]
     org_id = principal.org_id
-    workloads = {
-        w.employee_id: w.base_percent
-        for w in session.exec(
-            select(CapacityWorkload).where(
-                CapacityWorkload.org_id == org_id,
-                col(CapacityWorkload.employee_id).in_(ids),
+    current = calendar.this_week(session, org_id)
+    start = from_week or current
+    weekly = calendar.loads(session, org_id, ids, start, weeks)
+    current_loads = (
+        weekly if start == current else calendar.loads(session, org_id, ids, current, 1)
+    )
+    latest = {
+        record.employee_id: record
+        for record in session.exec(
+            select(CapacityWeek)
+            .where(
+                CapacityWeek.org_id == org_id, col(CapacityWeek.employee_id).in_(ids)
+            )
+            .distinct(col(CapacityWeek.employee_id))
+            .order_by(
+                col(CapacityWeek.employee_id), col(CapacityWeek.week_start).desc()
             )
         ).all()
     }
-    assignments = dict(
-        session.exec(
-            select(
-                CapacityAssignment.employee_id,
-                func.sum(CapacityAssignment.allocation_percent),
-            )
-            .where(
-                CapacityAssignment.org_id == org_id,
-                col(CapacityAssignment.employee_id).in_(ids),
-                CapacityAssignment.status == AssignmentStatus.ACTIVE,
-            )
-            .group_by(col(CapacityAssignment.employee_id))
-        ).all()
-    )
     # shortcut: Unsynced or stale unresolved tasks still count; revisit when Jira sync freshness is exposed.
     jira_connected = session.exec(
         select(
@@ -139,7 +139,9 @@ def views(
     }
     result = []
     for e in employees:
-        base, platform = workloads.get(e.id), assignments.get(e.id, 0)
+        load = current_loads[e.id][0]
+        base, platform = load.other_percent, load.platform_percent
+        last = latest.get(e.id)
         total = None if base is None else base + platform
         result.append(
             WorkloadPublic(
@@ -154,18 +156,31 @@ def views(
                 platform_percent=platform,
                 confirmed_percent=total,
                 band="unconfirmed"
-                if total is None
+                if load.status != "confirmed" or total is None
                 else "available"
-                if total < AVAILABLE_BELOW
+                if total < load.capacity_percent * AVAILABLE_BELOW // 100
                 else "overloaded"
-                if total > OVERLOADED_ABOVE
+                if total > load.capacity_percent
                 else "full",
+                weeks=weekly[e.id],
+                last_confirmed=LastConfirmed(
+                    percent=last.other_percent,
+                    week_start=last.week_start,
+                    confirmed_at=last.confirmed_at,
+                )
+                if last
+                else None,
             )
         )
     return result
 
 
-def get_my_workload(principal: Principal, session: Session) -> MyWorkload:
+def get_my_workload(
+    principal: Principal,
+    session: Session,
+    from_week: date | None = None,
+    weeks: int = 8,
+) -> MyWorkload:
     require_enabled(principal, session)
     subject = employee(principal, session, principal.employee_id)
     requests = session.exec(
@@ -180,13 +195,17 @@ def get_my_workload(principal: Principal, session: Session) -> MyWorkload:
         )
     ).all()
     return MyWorkload(
-        **views(principal, session, [subject])[0].model_dump(),
+        **views(principal, session, [subject], from_week, weeks)[0].model_dump(),
         requests=[WorkloadRequestPublic.model_validate(r) for r in requests],
     )
 
 
 def list_workloads(
-    principal: Principal, session: Session, department_id: UUID | None = None
+    principal: Principal,
+    session: Session,
+    department_id: UUID | None = None,
+    from_week: date | None = None,
+    weeks: int = 8,
 ) -> WorkloadList:
     require_enabled(principal, session)
     if not principal.is_org_admin and not principal.managed_department_ids:
@@ -217,7 +236,7 @@ def list_workloads(
             )
         ).all()
     )
-    data = views(principal, session, rows)
+    data = views(principal, session, rows, from_week, weeks)
     return WorkloadList(data=data, count=len(data))
 
 
@@ -233,26 +252,28 @@ def notify_employee(principal: Principal, session: Session, employee_id: UUID) -
     )
 
 
-def set_base(
-    principal: Principal, session: Session, employee_id: UUID, percent: int
+def set_week(
+    principal: Principal, session: Session, employee_id: UUID, percent: int, start: date
 ) -> int | None:
     if principal.user_id is None:
         raise CapacityForbidden()
     row = session.exec(
-        select(CapacityWorkload).where(
-            CapacityWorkload.org_id == principal.org_id,
-            CapacityWorkload.employee_id == employee_id,
+        select(CapacityWeek).where(
+            CapacityWeek.org_id == principal.org_id,
+            CapacityWeek.employee_id == employee_id,
+            CapacityWeek.week_start == start,
         )
     ).one_or_none()
-    before = row.base_percent if row else None
+    before = row.other_percent if row else None
     if row is None:
-        row = CapacityWorkload(
+        row = CapacityWeek(
             org_id=principal.org_id,
             employee_id=employee_id,
-            base_percent=percent,
-            updated_by_user_id=principal.user_id,
+            week_start=start,
+            other_percent=percent,
+            confirmed_by_user_id=principal.user_id,
         )
-    row.base_percent, row.updated_at, row.updated_by_user_id = (
+    row.other_percent, row.confirmed_at, row.confirmed_by_user_id = (
         percent,
         utc_now(),
         principal.user_id,
@@ -262,37 +283,51 @@ def set_base(
     return before
 
 
-def adjust_workload(
+def set_weeks(
     principal: Principal,
     session: Session,
-    employee_id: UUID,
-    body: WorkloadAdjustInput,
-    *,
-    via: Via = "web",
-    client_name: str | None = None,
-) -> WorkloadPublic:
+    body: WorkloadWeeksInput,
+) -> WorkloadList:
     require_enabled(principal, session)
-    subject = employee(principal, session, employee_id, lock=True)
-    if not can_view_employee(principal, subject):
-        raise CapacityNotFound()
-    if (
-        subject.id == principal.employee_id
-        or subject.department_id not in principal.managed_department_ids
-    ):
-        raise CapacityForbidden()
-    before = set_base(principal, session, subject.id, body.base_percent)
-    audit(
-        principal,
-        session,
-        "capacity.workload_adjusted",
-        "employee",
-        subject.id,
-        via,
-        client_name,
-        {"before_percent": before, "after_percent": body.base_percent},
-    )
-    notify_employee(principal, session, subject.id)
-    return views(principal, session, [subject])[0]
+    subjects = []
+    for item in sorted(body.items, key=lambda item: item.employee_id):
+        subject = employee(principal, session, item.employee_id, lock=True)
+        if not can_view_employee(principal, subject):
+            raise CapacityNotFound()
+        if (
+            subject.id == principal.employee_id
+            or subject.department_id not in principal.managed_department_ids
+        ):
+            raise CapacityForbidden()
+        subjects.append(subject)
+    for item in body.items:
+        for offset in range((body.end_week - body.start_week).days // 7 + 1):
+            before = set_week(
+                principal,
+                session,
+                item.employee_id,
+                item.other_percent,
+                body.start_week + timedelta(weeks=offset),
+            )
+            audit(
+                principal,
+                session,
+                "capacity.workload_adjusted",
+                "employee",
+                item.employee_id,
+                "web",
+                None,
+                {
+                    "before_percent": before,
+                    "after_percent": item.other_percent,
+                    "week_start": (
+                        body.start_week + timedelta(weeks=offset)
+                    ).isoformat(),
+                },
+            )
+        notify_employee(principal, session, item.employee_id)
+    data = views(principal, session, subjects)
+    return WorkloadList(data=data, count=len(data))
 
 
 def request_workload_change(
@@ -334,9 +369,10 @@ def request_workload_change(
                 ),
             )
     base = session.exec(
-        select(CapacityWorkload.base_percent).where(
-            CapacityWorkload.org_id == principal.org_id,
-            CapacityWorkload.employee_id == subject.id,
+        select(CapacityWeek.other_percent).where(
+            CapacityWeek.org_id == principal.org_id,
+            CapacityWeek.employee_id == subject.id,
+            CapacityWeek.week_start == calendar.this_week(session, principal.org_id),
         )
     ).one_or_none()
     audit(
@@ -451,13 +487,24 @@ def decide_workload_request(
     if row.status != CapacityRequestStatus.PENDING:
         raise CapacityConflict()
     before = session.exec(
-        select(CapacityWorkload.base_percent).where(
-            CapacityWorkload.org_id == principal.org_id,
-            CapacityWorkload.employee_id == row.employee_id,
+        select(CapacityWeek.other_percent).where(
+            CapacityWeek.org_id == principal.org_id,
+            CapacityWeek.employee_id == row.employee_id,
+            CapacityWeek.week_start
+            == (row.start_week or calendar.this_week(session, principal.org_id)),
         )
     ).one_or_none()
     if body.approve:
-        set_base(principal, session, row.employee_id, row.requested_percent)
+        start = row.start_week or calendar.this_week(session, principal.org_id)
+        end = row.end_week or start
+        for offset in range((end - start).days // 7 + 1):
+            set_week(
+                principal,
+                session,
+                row.employee_id,
+                row.requested_percent,
+                start + timedelta(weeks=offset),
+            )
     row.status = (
         CapacityRequestStatus.APPROVED
         if body.approve

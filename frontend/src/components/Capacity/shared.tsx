@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { AxiosError } from "axios"
 import { useEffect, useState } from "react"
-import { CapacityService, type WorkloadPublic } from "@/client"
+import { CapacityService, type WeekLoad, type WorkloadPublic } from "@/client"
 import { Badge } from "@/components/ui/badge"
 
 export function useCapacitySettings(orgId?: string) {
@@ -107,3 +107,19 @@ export function WorkloadNumbers({ workload }: { workload: WorkloadPublic }) {
 
 export const workloadNotice =
   "Jira 参考值只是参考，不代表实际工作量；负荷不是绩效，不打分、不排名。"
+
+export function weekLabel(start: string) {
+  return `${start.slice(5).replace("-", "/")} 周`
+}
+
+export function addWeeks(start: string, weeks: number) {
+  const date = new Date(`${start}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + weeks * 7)
+  return date.toISOString().slice(0, 10)
+}
+
+export function weekLoadLabel(week: WeekLoad) {
+  if (week.status === "unconfirmed") return "未确认"
+  if (week.status === "stale") return "需重新确认"
+  return `${(week.other_percent ?? 0) + week.platform_percent}% / ${week.capacity_percent}%`
+}

@@ -17,10 +17,11 @@ from app.core.security import create_access_token
 from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
 from app.domains.capacity import demand as service
+from app.domains.capacity.calendar import this_week
 from app.domains.capacity.models import (
     CapacityDemandEvent,
     CapacitySetting,
-    CapacityWorkload,
+    CapacityWeek,
 )
 from app.domains.capacity.tools import CAPACITY_TOOLS
 from app.domains.inbox.models import InboxItem
@@ -82,11 +83,12 @@ def case(demo: tuple, db: Session, client: TestClient) -> Generator[tuple]:
         )
         if i < 3:
             db.add(
-                CapacityWorkload(
+                CapacityWeek(
                     org_id=org_id,
                     employee_id=person.id,
-                    base_percent=[79, 80, 101][i],
-                    updated_by_user_id=members[None].user_id,
+                    week_start=this_week(db, org_id),
+                    other_percent=[79, 80, 101][i],
+                    confirmed_by_user_id=members[None].user_id,
                 )
             )
     db.add(
@@ -149,7 +151,7 @@ def case(demo: tuple, db: Session, client: TestClient) -> Generator[tuple]:
     for model in (
         CapacityDemandEvent,
         service.CapacityDemand,
-        CapacityWorkload,
+        CapacityWeek,
         CapacitySetting,
     ):
         db.execute(delete(model).where(model.org_id == org_id))
@@ -211,12 +213,13 @@ def test_flow_privacy_snapshot_notifications_and_profile_invariance(
         assert p["workload"]["jira_task_count"] is None
     # Change the load after the basis was read: reply must snapshot the new server values.
     workload = db.exec(
-        select(CapacityWorkload).where(
-            CapacityWorkload.org_id == employees["E01"].org_id,
-            CapacityWorkload.employee_id == employees["E04"].id,
+        select(CapacityWeek).where(
+            CapacityWeek.org_id == employees["E01"].org_id,
+            CapacityWeek.employee_id == employees["E04"].id,
+            CapacityWeek.week_start == this_week(db, employees["E01"].org_id),
         )
     ).one()
-    workload.base_percent = 120
+    workload.other_percent = 120
     db.add(workload)
     db.commit()
     replied = api(

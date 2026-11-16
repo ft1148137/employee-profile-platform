@@ -15,12 +15,13 @@ from app.core.security import create_access_token
 from app.domains.audit.models import AuditEvent
 from app.domains.capacity import assignment
 from app.domains.capacity.assignment_schemas import AssignmentUpdateInput
+from app.domains.capacity.calendar import this_week
 from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityDemand,
     CapacityDemandEvent,
     CapacitySetting,
-    CapacityWorkload,
+    CapacityWeek,
 )
 from app.domains.inbox.models import InboxItem
 from app.domains.org.models import (
@@ -109,11 +110,12 @@ def case(db: Session, client: TestClient) -> Generator[tuple]:
         )
     )
     db.add(
-        CapacityWorkload(
+        CapacityWeek(
             org_id=org.id,
             employee_id=people["w"].id,
-            base_percent=70,
-            updated_by_user_id=users["bm"].id,
+            week_start=this_week(db, org.id),
+            other_percent=70,
+            confirmed_by_user_id=users["bm"].id,
         )
     )
     demand = CapacityDemand(
@@ -180,7 +182,7 @@ def case(db: Session, client: TestClient) -> Generator[tuple]:
         CapacityAssignment,
         CapacityDemandEvent,
         CapacityDemand,
-        CapacityWorkload,
+        CapacityWeek,
         CapacitySetting,
     ):
         db.execute(delete(model).where(model.org_id == org.id))

@@ -4037,6 +4037,24 @@ export type JiraSyncFailure = {
 export type JsonValue = unknown
 
 /**
+ * LastConfirmed
+ */
+export type LastConfirmed = {
+  /**
+   * Percent
+   */
+  percent: number
+  /**
+   * Week Start
+   */
+  week_start: string
+  /**
+   * Confirmed At
+   */
+  confirmed_at: string
+}
+
+/**
  * LimitedCapacityReference
  */
 export type LimitedCapacityReference = {
@@ -4360,6 +4378,11 @@ export type MyWorkload = {
    * Band
    */
   band: "unconfirmed" | "available" | "full" | "overloaded"
+  /**
+   * Weeks
+   */
+  weeks: Array<WeekLoad>
+  last_confirmed: LastConfirmed | null
   /**
    * Requests
    */
@@ -6674,6 +6697,40 @@ export type ValidationError = {
 export type Visibility = "standard" | "restricted"
 
 /**
+ * WeekLoad
+ */
+export type WeekLoad = {
+  /**
+   * Week Start
+   */
+  week_start: string
+  /**
+   * Capacity Percent
+   */
+  capacity_percent: number
+  /**
+   * Other Percent
+   */
+  other_percent: number | null
+  /**
+   * Platform Percent
+   */
+  platform_percent: number
+  /**
+   * Status
+   */
+  status: "unconfirmed" | "confirmed" | "stale"
+  /**
+   * Confirmed At
+   */
+  confirmed_at: string | null
+  /**
+   * Legacy Start
+   */
+  legacy_start: boolean
+}
+
+/**
  * WorkEventPublic
  */
 export type WorkEventPublic = {
@@ -6707,16 +6764,6 @@ export type WorkRecordIssue = {
    * Message
    */
   message: string
-}
-
-/**
- * WorkloadAdjustInput
- */
-export type WorkloadAdjustInput = {
-  /**
-   * Base Percent
-   */
-  base_percent: number
 }
 
 /**
@@ -6787,6 +6834,11 @@ export type WorkloadPublic = {
    * Band
    */
   band: "unconfirmed" | "available" | "full" | "overloaded"
+  /**
+   * Weeks
+   */
+  weeks: Array<WeekLoad>
+  last_confirmed: LastConfirmed | null
 }
 
 /**
@@ -6866,6 +6918,38 @@ export type WorkloadRequestPublic = {
    * Decided At
    */
   decided_at: string | null
+}
+
+/**
+ * WorkloadWeekItem
+ */
+export type WorkloadWeekItem = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Other Percent
+   */
+  other_percent: number
+}
+
+/**
+ * WorkloadWeeksInput
+ */
+export type WorkloadWeeksInput = {
+  /**
+   * Items
+   */
+  items: Array<WorkloadWeekItem>
+  /**
+   * Start Week
+   */
+  start_week: string
+  /**
+   * End Week
+   */
+  end_week: string
 }
 
 /**
@@ -7718,7 +7802,16 @@ export type capacityGetMyWorkloadData = {
      */
     org_id: string
   }
-  query?: never
+  query?: {
+    /**
+     * From Week
+     */
+    from_week?: string | null
+    /**
+     * Weeks
+     */
+    weeks?: number
+  }
   url: "/api/v1/orgs/{org_id}/capacity/workloads/me"
 }
 
@@ -7752,6 +7845,14 @@ export type capacityListWorkloadsData = {
   }
   query?: {
     /**
+     * From Week
+     */
+    from_week?: string | null
+    /**
+     * Weeks
+     */
+    weeks?: number
+    /**
      * Department Id
      */
     department_id?: string | null
@@ -7779,41 +7880,37 @@ export type capacityListWorkloadsResponses = {
 export type capacityListWorkloadsResponse =
   capacityListWorkloadsResponses[keyof capacityListWorkloadsResponses]
 
-export type capacityAdjustWorkloadData = {
-  body: WorkloadAdjustInput
+export type capacitySetCapacityWeeksData = {
+  body: WorkloadWeeksInput
   path: {
-    /**
-     * Employee Id
-     */
-    employee_id: string
     /**
      * Org Id
      */
     org_id: string
   }
   query?: never
-  url: "/api/v1/orgs/{org_id}/capacity/workloads/{employee_id}"
+  url: "/api/v1/orgs/{org_id}/capacity/weeks"
 }
 
-export type capacityAdjustWorkloadErrors = {
+export type capacitySetCapacityWeeksErrors = {
   /**
    * Validation Error
    */
   422: HTTPValidationError
 }
 
-export type capacityAdjustWorkloadError =
-  capacityAdjustWorkloadErrors[keyof capacityAdjustWorkloadErrors]
+export type capacitySetCapacityWeeksError =
+  capacitySetCapacityWeeksErrors[keyof capacitySetCapacityWeeksErrors]
 
-export type capacityAdjustWorkloadResponses = {
+export type capacitySetCapacityWeeksResponses = {
   /**
    * Successful Response
    */
-  200: WorkloadPublic
+  200: WorkloadList
 }
 
-export type capacityAdjustWorkloadResponse =
-  capacityAdjustWorkloadResponses[keyof capacityAdjustWorkloadResponses]
+export type capacitySetCapacityWeeksResponse =
+  capacitySetCapacityWeeksResponses[keyof capacitySetCapacityWeeksResponses]
 
 export type capacityRequestWorkloadChangeData = {
   body: WorkloadRequestInput

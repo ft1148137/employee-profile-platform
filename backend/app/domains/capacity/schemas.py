@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -11,6 +11,7 @@ from pydantic import (
     model_validator,
 )
 
+from app.domains.capacity.calendar import WeekLoad
 from app.domains.capacity.models import CapacityRequestStatus, RequesterPolicy
 
 Percent = Annotated[int, Field(strict=True, ge=0, le=200)]
@@ -29,8 +30,46 @@ class CapacitySettingsInput(CapacityInput):
     requester_policy: RequesterPolicy = RequesterPolicy.EVERYONE
 
 
-class WorkloadAdjustInput(CapacityInput):
-    base_percent: Percent
+class WorkloadWeekItem(CapacityInput):
+    employee_id: UUID
+    other_percent: Percent
+
+
+class WorkloadWeeksInput(CapacityInput):
+    items: Annotated[list[WorkloadWeekItem], Field(min_length=1, max_length=200)]
+    start_week: date
+    end_week: date
+
+    @model_validator(mode="after")
+    def valid_weeks(self) -> WorkloadWeeksInput:
+        if self.start_week.weekday() or self.end_week.weekday():
+            raise ValueError("请选择周一")
+        if not 0 <= (self.end_week - self.start_week).days <= 25 * 7:
+            raise ValueError("请选择 1–26 周")
+        if len({item.employee_id for item in self.items}) != len(self.items):
+            raise ValueError("员工不能重复")
+        return self
+
+
+class WorkloadQuery(CapacityInput):
+    from_week: date | None = None
+    weeks: int = Field(default=8, ge=1, le=26)
+
+    @model_validator(mode="after")
+    def monday(self) -> WorkloadQuery:
+        if self.from_week is not None and self.from_week.weekday():
+            raise ValueError("请选择周一")
+        return self
+
+
+class WorkloadListQuery(WorkloadQuery):
+    department_id: UUID | None = None
+
+
+class LastConfirmed(BaseModel):
+    percent: int
+    week_start: date
+    confirmed_at: datetime
 
 
 class WorkloadRequestInput(CapacityInput):
@@ -75,6 +114,9 @@ class WorkloadPublic(BaseModel):
     platform_percent: int
     confirmed_percent: int | None
     band: Literal["unconfirmed", "available", "full", "overloaded"]
+
+    weeks: list[WeekLoad]
+    last_confirmed: LastConfirmed | None
 
 
 class MyWorkload(WorkloadPublic):
