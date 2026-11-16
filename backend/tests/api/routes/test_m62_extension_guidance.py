@@ -265,7 +265,16 @@ def test_reviewer_names_match_notified_users_and_delegated_cards(
     card = api("/extension-requests", "w2")["data"][0]
     assert card["on_behalf_of_name"] == people["cm"].display_name
     assert card["commitment_confirmer_names"] == [people["bm"].display_name]
-    api("/workloads/me/requests", "w", {"requested_percent": 40, "reason": "合成调整"})
+    api(
+        "/workloads/me/requests",
+        "w",
+        {
+            "requested_percent": 40,
+            "reason": "合成调整",
+            "start_week": api("/workloads/me", "w")["weeks"][0]["week_start"],
+            "end_week": api("/workloads/me", "w")["weeks"][0]["week_start"],
+        },
+    )
     assert (
         api("/workload-requests", "w2")["data"][0]["on_behalf_of_name"]
         == people["cm"].display_name

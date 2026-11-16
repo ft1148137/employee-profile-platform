@@ -71,7 +71,7 @@ CAPACITY_TOOLS = (
     ),
     EmployeeTool(
         "request_workload_change",
-        "申请调整本人的负荷，等待经理审批",
+        "申请调整本人指定周范围的平台外工作占比，周一开始，最多26周，等待经理审批",
         WorkloadRequestInput,
         request_workload_change,
         True,

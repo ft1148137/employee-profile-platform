@@ -10,6 +10,7 @@ from sqlalchemy import delete
 from sqlmodel import Session, select
 
 from app.domains.audit.models import AuditEvent
+from app.domains.capacity.calendar import this_week
 from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityDemand,
@@ -296,7 +297,12 @@ def test_flow_privacy_and_audit(
                 client,
                 a,
                 "request_workload_change",
-                {"requested_percent": 80, "reason": "合成负荷正文"},
+                {
+                    "start_week": this_week(db, people["E01"].org_id).isoformat(),
+                    "end_week": this_week(db, people["E01"].org_id).isoformat(),
+                    "requested_percent": 80,
+                    "reason": "合成负荷正文",
+                },
             ),
         ]
     )
@@ -388,7 +394,15 @@ def test_scope_and_strict_identity(
     )
     denied(call(client, headers["foreign"], "submit_demand", body), 404)
     for tool, valid in (
-        ("request_workload_change", {"requested_percent": 90, "reason": "合成原因"}),
+        (
+            "request_workload_change",
+            {
+                "start_week": this_week(db, people["E01"].org_id).isoformat(),
+                "end_week": this_week(db, people["E01"].org_id).isoformat(),
+                "requested_percent": 90,
+                "reason": "合成原因",
+            },
+        ),
         (
             "request_extension",
             {

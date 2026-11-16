@@ -164,6 +164,10 @@ test("延期显示审批人、受阻指引和代理标示，代理给目标经�
   )
   await api(`${base}/capacity/workloads/me/requests`, tokens.get("E"), {
     requested_percent: 40,
+    start_week: (await api(`${base}/capacity/workloads/me`, tokens.get("E")))
+      .weeks[0].week_start,
+    end_week: (await api(`${base}/capacity/workloads/me`, tokens.get("E")))
+      .weeks[0].week_start,
     reason: "合成负荷调整",
   })
   await open(tokens.get("C")!, "/capacity?tab=approvals")

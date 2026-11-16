@@ -89,6 +89,11 @@ function WorkloadDecision({
       <h3 className="font-medium">
         {request.employee_name || "员工"} · 申请 {request.requested_percent}%
       </h3>
+      <p className="text-sm">
+        {request.start_week
+          ? `${request.start_week} 至 ${request.end_week}`
+          : "批准当周"}
+      </p>
       {request.on_behalf_of_name && (
         <p className="text-sm text-muted-foreground">
           代 {request.on_behalf_of_name} 审批（原审批人：

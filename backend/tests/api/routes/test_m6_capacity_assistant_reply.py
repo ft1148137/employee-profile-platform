@@ -18,6 +18,7 @@ from app.domains.bot import core, store, tools
 from app.domains.bot import schemas as s
 from app.domains.bot.models import BotSession
 from app.domains.capacity import assistant, demand
+from app.domains.capacity.calendar import this_week
 from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityDemand,
@@ -212,7 +213,12 @@ def test_employee_prepare_attacks(
     a, b, args = case
     row = assigned(db, a, b, args)
     body = (
-        {"requested_percent": 80, "reason": "合成原因"}
+        {
+            "start_week": this_week(db, a.org_id).isoformat(),
+            "end_week": this_week(db, a.org_id).isoformat(),
+            "requested_percent": 80,
+            "reason": "合成原因",
+        }
         if kind == "workload_request"
         else {
             "assignment_id": str(row.id),
@@ -337,7 +343,13 @@ def test_web_reply_revision_and_workload(
     session_id = client.post(base, params=query, headers=headers).json()["session_id"]
     pi_service.replies = [
         model_call(
-            "prepare_workload_request", {"requested_percent": 80, "reason": "项目占用"}
+            "prepare_workload_request",
+            {
+                "start_week": this_week(db, a.org_id).isoformat(),
+                "end_week": this_week(db, a.org_id).isoformat(),
+                "requested_percent": 80,
+                "reason": "项目占用",
+            },
         ),
         "请核对负荷申请",
     ]
