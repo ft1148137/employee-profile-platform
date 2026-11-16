@@ -25,6 +25,7 @@ from app.domains.capacity.demand import (
     represents_department,
     responder_user_ids,
     validate_department_text,
+    validate_load_words,
 )
 from app.domains.capacity.models import (
     AssignmentStatus,
@@ -215,6 +216,7 @@ def change_due_date(
         validate_department_text(
             principal, session, demand.target_department_id, commitment_note
         )
+        validate_load_words(principal, session, demand, commitment_note)
         demand.committed_end_date = new_committed_end_date
         demand.revision += 1
         session.add(demand)

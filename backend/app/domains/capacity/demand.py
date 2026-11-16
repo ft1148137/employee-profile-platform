@@ -63,6 +63,24 @@ from app.domains.org.schemas import DepartmentPublic, DepartmentsPublic
 from app.domains.org.service import managed_scope
 from app.models import User
 
+LOAD_WORDS = (
+    "超负荷",
+    "基本满",
+    "有余量",
+    "饱和",
+    "已满",
+    "满负荷",
+    "满员",
+    "排满",
+    "人手紧",
+    "人手不足",
+    "忙不过来",
+    "空闲",
+    "有空",
+    "闲置",
+    "余量",
+)
+
 
 class DemandReplyInvalid(HTTPException):
     def __init__(self) -> None:
@@ -72,7 +90,7 @@ class DemandReplyInvalid(HTTPException):
 class DemandReplyLoadInvalid(HTTPException):
     def __init__(self) -> None:
         super().__init__(
-            422, "答复会发给对方部门，请不要写个人负荷，只写能否承接、时间和条件"
+            422, "答复会发给对方部门，不写负荷说法，只写能否承接、时间和条件"
         )
 
 
@@ -570,6 +588,30 @@ def validate_department_text(
         raise DemandReplyInvalid()
 
 
+def validate_load_words(
+    principal: Principal,
+    session: Session,
+    demand_row: CapacityDemand,
+    text: str,
+    reference: DetailedCapacityReference | None = None,
+) -> None:
+    if not (
+        any(word in text for word in LOAD_WORDS)
+        or re.search(r"负荷[^。；，,;\n]{0,4}(尚未|未)确认", text)
+    ):
+        return
+    if reference is None:
+        reference = department_reference(
+            session,
+            principal.org_id,
+            demand_row.target_department_id,
+            demand_row.capability_key,
+            demand_row.minimum_level,
+        )
+    if reference.count < 3:
+        raise DemandReplyLoadInvalid()
+
+
 def validate_reply_text(
     principal: Principal, session: Session, demand_row: CapacityDemand, text: str
 ) -> DetailedCapacityReference:
@@ -580,11 +622,7 @@ def validate_reply_text(
         demand_row.capability_key,
         demand_row.minimum_level,
     )
-    if reference.count < 3 and (
-        any(word in text for word in ("超负荷", "基本满", "有余量"))
-        or re.search(r"负荷[^。；，,;\n]{0,4}(尚未|未)确认", text)
-    ):
-        raise DemandReplyLoadInvalid()
+    validate_load_words(principal, session, demand_row, text, reference)
     return reference
 
 
