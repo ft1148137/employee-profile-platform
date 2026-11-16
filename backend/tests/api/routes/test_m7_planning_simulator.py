@@ -220,7 +220,7 @@ def test_external_department_reference_only_uses_top_level(
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.domains.planning import service
+    from app.domains.planning import snapshot
 
     url, _employees, auth, demand = planning_setup
     departments = db.exec(
@@ -256,7 +256,7 @@ def test_external_department_reference_only_uses_top_level(
         called.append(dept_id)
         return SimpleNamespace(department_name=by_id[dept_id].name, count=2)
 
-    monkeypatch.setattr(service, "department_reference", reference)
+    monkeypatch.setattr(snapshot, "department_reference", reference)
     result = client.post(f"{url}/planning/demands/{demand.id}/cases", headers=auth["b"])
     assert result.status_code == 200, result.text
     assert set(called) == expected
