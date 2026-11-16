@@ -190,6 +190,7 @@ def check_demand_reply(db: Session, p: Principal, value: BaseModel) -> str:
         f"说明：{body.text}\n修订：{body.revision}"
     )
     demand.validate_department_text(p, db, row.target_department_id, content)
+    demand.validate_reply_text(p, db, row, body.text)
     return content
 
 
