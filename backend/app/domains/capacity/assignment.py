@@ -92,7 +92,9 @@ def check_capacity(
     allocation_percent: int,
     exclude_assignment_id: UUID | None = None,
 ) -> None:
-    start = calendar.week_start(start_date)
+    start = max(calendar.week_start(start_date), calendar.this_week(session, org_id))
+    if due_date < start:
+        return
     weeks = calendar.loads(
         session,
         org_id,
