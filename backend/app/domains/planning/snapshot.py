@@ -12,7 +12,7 @@ from app.domains.base import utc_now
 from app.domains.capability.models import CapabilityDefinition
 from app.domains.capability.service import get_schema
 from app.domains.capacity.calendar import FRESH_DAYS, loads, this_week, week_start
-from app.domains.capacity.demand import get_demand_basis
+from app.domains.capacity.demand import department_reference, get_demand_basis
 from app.domains.capacity.models import (
     AssignmentStatus,
     CapacityAssignment,
@@ -20,16 +20,69 @@ from app.domains.capacity.models import (
     CapacityUnavailability,
     CapacityWeek,
 )
-from app.domains.org.models import Employee, EmploymentStatus
+from app.domains.org.models import Department, Employee, EmploymentStatus
 from app.domains.org.service import managed_scope
 from app.domains.profile.models import ProfileVersion
+
+
+def external_departments(
+    session: Session, org_id: UUID, demand: CapacityDemand
+) -> list[dict[str, object]]:
+    rows = session.exec(select(Department).where(Department.org_id == org_id)).all()
+    by_id = {d.id: d for d in rows}
+    target = demand.target_department_id
+    ancestors = set()
+    current = target
+    while current in by_id:
+        ancestors.add(current)
+        parent = by_id[current].parent_department_id
+        if parent is None:
+            break
+        current = parent
+    descendants = {target}
+    changed = True
+    while changed:
+        changed = False
+        for row in rows:
+            if row.parent_department_id in descendants and row.id not in descendants:
+                descendants.add(row.id)
+                changed = True
+    excluded = ancestors | descendants
+    top_level = sorted(
+        (
+            d
+            for d in rows
+            if d.id not in excluded
+            and (d.parent_department_id in excluded or d.parent_department_id is None)
+        ),
+        key=lambda d: (d.name, d.id),
+    )
+    departments: list[dict[str, object]] = []
+    for row in top_level:
+        reference = department_reference(
+            session, org_id, row.id, demand.capability_key, demand.minimum_level
+        )
+        if reference.count:
+            departments.append(
+                {
+                    "department_id": str(row.id),
+                    "department_name": reference.department_name,
+                    "count": reference.count,
+                }
+            )
+    return departments
 
 
 def _inputs(
     session: Session,
     principal: Principal,
     demand: CapacityDemand,
-) -> tuple[list[Employee], dict[UUID, tuple[str | None, UUID | None]], dict[str, Any]]:
+) -> tuple[
+    list[Employee],
+    dict[UUID, tuple[str | None, UUID | None]],
+    dict[str, Any],
+    list[dict[str, object]],
+]:
     scope = managed_scope(
         session, principal.org_id, frozenset({demand.target_department_id})
     )
@@ -116,6 +169,8 @@ def _inputs(
             )
         ).all()
     )
+    departments = external_departments(session, principal.org_id, demand)
+    cutoff = utc_now() - timedelta(days=FRESH_DAYS)
     raw_inputs: dict[str, Any] = {
         "current_week": current_week.isoformat(),
         "revision": demand.revision,
@@ -124,7 +179,7 @@ def _inputs(
                 str(e.id),
                 str(e.department_id),
                 str(e.employment_status),
-                str(claims.get(e.id, (None, None))[1]),
+                str(latest[e.id].id) if e.id in latest else None,
             )
             for e in candidates
         ],
@@ -134,6 +189,7 @@ def _inputs(
                 w.week_start.isoformat(),
                 w.other_percent,
                 w.confirmed_at.isoformat(),
+                "stale" if w.confirmed_at < cutoff else "confirmed",
             )
             for w in weeks
         ],
@@ -157,8 +213,9 @@ def _inputs(
             )
             for a in assignments
         ],
+        "external_departments": [(d["department_id"], d["count"]) for d in departments],
     }
-    return candidates, claims, raw_inputs
+    return candidates, claims, raw_inputs, departments
 
 
 def _fingerprint(raw_inputs: dict[str, Any]) -> str:
@@ -171,8 +228,8 @@ def _fingerprint(raw_inputs: dict[str, Any]) -> str:
 
 def build(
     session: Session, principal: Principal, demand: CapacityDemand
-) -> tuple[dict[str, Any], str]:
-    candidates, claims, raw = _inputs(session, principal, demand)
+) -> tuple[dict[str, Any], str, list[dict[str, object]]]:
+    candidates, claims, raw, departments = _inputs(session, principal, demand)
     basis = get_demand_basis(principal, session, demand.id)
     basis_ids = {p.employee_id for p in basis.data}
     start = max(
@@ -244,7 +301,7 @@ def build(
             "current_week": raw["current_week"],
         },
     }
-    return data, _fingerprint(raw)
+    return data, _fingerprint(raw), departments
 
 
 def current_fingerprint(
@@ -252,5 +309,5 @@ def current_fingerprint(
     principal: Principal,
     demand: CapacityDemand,
 ) -> str:
-    _, _, raw = _inputs(session, principal, demand)
+    _, _, raw, _ = _inputs(session, principal, demand)
     return _fingerprint(raw)

@@ -8,9 +8,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import delete
 from sqlmodel import Session, select
 
+from app.authz.principal import Principal
 from app.core.security import create_access_token
 from app.domains.base import utc_now
-from app.domains.capacity.calendar import this_week
+from app.domains.capacity.calendar import loads, this_week
 from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityDemand,
@@ -20,7 +21,9 @@ from app.domains.capacity.models import (
 )
 from app.domains.org.models import OrgMembership, RoleGrant
 from app.domains.planning.models import PlanningCase, PlanningOption, PlanningSnapshot
+from app.domains.planning.snapshot import current_fingerprint
 from app.domains.planning.validator import validate
+from app.domains.profile.models import ProfileVersion
 
 PERSON = str(uuid4())
 OUTSIDER = str(uuid4())
@@ -394,7 +397,15 @@ def test_case_options_and_privacy(
 
 @pytest.mark.parametrize(
     "change",
-    ["week", "confirmation", "unavailability", "assignment", "inactive", "revision"],
+    [
+        "week",
+        "confirmation",
+        "unavailability",
+        "assignment",
+        "inactive",
+        "revision",
+        "profile_version",
+    ],
 )
 def test_stale_inputs_reject_option(
     planning_case: tuple, db: Session, client: TestClient, change: str
@@ -439,6 +450,25 @@ def test_stale_inputs_reject_option(
         )
     elif change == "inactive":
         person.employment_status = "inactive"
+    elif change == "profile_version":
+        previous = db.exec(
+            select(ProfileVersion).where(
+                ProfileVersion.org_id == demand.org_id,
+                ProfileVersion.subject_employee_id == person.id,
+            )
+        ).one()
+        db.add(
+            ProfileVersion(
+                org_id=demand.org_id,
+                subject_employee_id=person.id,
+                revision=previous.revision + 1,
+                schema_version_id=previous.schema_version_id,
+                snapshot=previous.snapshot,
+                published_at=utc_now(),
+                published_by={"actor_type": "system_worker"},
+                supersedes_version_id=previous.id,
+            )
+        )
     else:
         demand.revision += 1
     db.commit()
@@ -462,3 +492,116 @@ def test_stale_inputs_reject_option(
     response = client.post(f"{case_url}/options", headers=auth["b"], json=body)
     assert response.status_code == 409
     assert response.json()["detail"] == "数据已变化，请重新模拟"
+
+
+def test_expired_week_confirmation_stales_case(
+    planning_setup: tuple,
+    db: Session,
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    url, employees, auth, demand = planning_setup
+    confirmed_at = utc_now() - timedelta(days=27)
+    for week in db.exec(
+        select(CapacityWeek).where(CapacityWeek.org_id == demand.org_id)
+    ).all():
+        week.confirmed_at = confirmed_at
+    db.commit()
+    created = client.post(
+        f"{url}/planning/demands/{demand.id}/cases", headers=auth["b"]
+    )
+    assert created.status_code == 200, created.text
+    case = created.json()
+    assert case["stale"] is False
+    assert all(
+        week["status"] == "confirmed"
+        for person in case["data"]["candidates"]
+        for week in person["weeks"][:2]
+        if week["confirmed_at"] is not None
+    )
+    principal = Principal.system_worker(demand.org_id)
+    before = current_fingerprint(db, principal, demand)
+    assert before == current_fingerprint(db, principal, demand)
+    case_url = f"{url}/planning/cases/{case['id']}"
+    monkeypatch.setattr(
+        importlib.import_module("app.domains.planning.snapshot"),
+        "this_week",
+        lambda _session, _org_id: demand.window_start,
+    )
+    monkeypatch.setattr(
+        importlib.import_module("app.domains.capacity.calendar"),
+        "utc_now",
+        lambda: confirmed_at + timedelta(days=29),
+    )
+    monkeypatch.setattr(
+        importlib.import_module("app.domains.planning.snapshot"),
+        "utc_now",
+        lambda: confirmed_at + timedelta(days=29),
+    )
+    assert (
+        loads(db, demand.org_id, [employees["E04"].id], demand.window_start, 1)[
+            employees["E04"].id
+        ][0].status
+        == "stale"
+    )
+    assert client.get(case_url, headers=auth["b"]).json()["stale"] is True
+    assert (
+        client.post(
+            f"{case_url}/options",
+            headers=auth["b"],
+            json=params(
+                employee_id=str(employees["E04"].id),
+                start=demand.window_start,
+                end=demand.window_end,
+            ),
+        ).status_code
+        == 409
+    )
+
+
+def test_external_department_count_stales_borrow_case(
+    planning_setup: tuple, db: Session, client: TestClient
+) -> None:
+    url, employees, auth, demand = planning_setup
+    demand.capability_key = "backend_api"
+    db.commit()
+    created = client.post(
+        f"{url}/planning/demands/{demand.id}/cases", headers=auth["b"]
+    )
+    assert created.status_code == 200, created.text
+    case = created.json()
+    assert any(option["kind"] == "borrow" for option in case["options"])
+    assert case["stale"] is False
+    source = db.exec(
+        select(ProfileVersion).where(
+            ProfileVersion.org_id == demand.org_id,
+            ProfileVersion.subject_employee_id == employees["E01"].id,
+            ProfileVersion.revision == 1,
+        )
+    ).one()
+    db.add(
+        ProfileVersion(
+            org_id=demand.org_id,
+            subject_employee_id=employees["E08"].id,
+            revision=1,
+            schema_version_id=source.schema_version_id,
+            snapshot=source.snapshot,
+            published_at=utc_now(),
+            published_by={"actor_type": "system_worker"},
+        )
+    )
+    db.commit()
+    case_url = f"{url}/planning/cases/{case['id']}"
+    assert client.get(case_url, headers=auth["b"]).json()["stale"] is True
+    assert (
+        client.post(
+            f"{case_url}/options",
+            headers=auth["b"],
+            json=params(
+                employee_id=str(employees["E04"].id),
+                start=demand.window_start,
+                end=demand.window_end,
+            ),
+        ).status_code
+        == 409
+    )

@@ -10,12 +10,11 @@ from app.authz.principal import Principal
 from app.domains.base import utc_now
 from app.domains.capacity.demand import (
     demand_row,
-    department_reference,
     represents_department,
 )
 from app.domains.capacity.models import CapacityDemand
 from app.domains.capacity.settings import require_enabled
-from app.domains.org.models import Department, Employee
+from app.domains.org.models import Employee
 from app.domains.planning import simulator, snapshot, validator
 from app.domains.planning.models import (
     OptionKind,
@@ -126,54 +125,6 @@ def _view(
     )
 
 
-def _external_departments(
-    session: Session, org_id: UUID, demand: CapacityDemand
-) -> list[dict[str, object]]:
-    rows = session.exec(select(Department).where(Department.org_id == org_id)).all()
-    by_id = {d.id: d for d in rows}
-    target = demand.target_department_id
-    ancestors = set()
-    current = target
-    while current in by_id:
-        ancestors.add(current)
-        parent = by_id[current].parent_department_id
-        if parent is None:
-            break
-        current = parent
-    descendants = {target}
-    changed = True
-    while changed:
-        changed = False
-        for row in rows:
-            if row.parent_department_id in descendants and row.id not in descendants:
-                descendants.add(row.id)
-                changed = True
-    excluded = ancestors | descendants
-    top_level = sorted(
-        (
-            d
-            for d in rows
-            if d.id not in excluded
-            and (d.parent_department_id in excluded or d.parent_department_id is None)
-        ),
-        key=lambda d: (d.name, d.id),
-    )
-    departments: list[dict[str, object]] = []
-    for row in top_level:
-        reference = department_reference(
-            session, org_id, row.id, demand.capability_key, demand.minimum_level
-        )
-        if reference.count:
-            departments.append(
-                {
-                    "department_id": str(row.id),
-                    "department_name": reference.department_name,
-                    "count": reference.count,
-                }
-            )
-    return departments
-
-
 def create_case(principal: Principal, session: Session, demand_id: UUID) -> CasePublic:
     demand = _authorized_demand(principal, session, demand_id)
     assert principal.user_id is not None
@@ -194,7 +145,7 @@ def create_case(principal: Principal, session: Session, demand_id: UUID) -> Case
             PlanningCase.demand_id == demand_id,
         )
     ).one()
-    data, fingerprint = snapshot.build(session, principal, demand)
+    data, fingerprint, departments = snapshot.build(session, principal, demand)
     latest = PlanningSnapshot(
         org_id=principal.org_id,
         case_id=row.id,
@@ -205,7 +156,6 @@ def create_case(principal: Principal, session: Session, demand_id: UUID) -> Case
     session.add(latest)
     session.flush()
     options, _ = simulator.simulate(data)
-    departments = _external_departments(session, principal.org_id, demand)
     if departments:
         options.append(simulator.borrow(data, departments))
     for generated in options:
