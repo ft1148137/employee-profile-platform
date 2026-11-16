@@ -595,9 +595,10 @@ def validate_load_words(
     text: str,
     reference: DetailedCapacityReference | None = None,
 ) -> None:
+    checked_text = text.replace("已满足", "").replace("空调", "")
     if not (
-        any(word in text for word in LOAD_WORDS)
-        or re.search(r"负荷[^。；，,;\n]{0,4}(尚未|未)确认", text)
+        any(word in checked_text for word in LOAD_WORDS)
+        or re.search(r"负荷[^。；，,;\n]{0,4}(尚未|未)确认", checked_text)
     ):
         return
     if reference is None:

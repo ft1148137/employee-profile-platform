@@ -285,6 +285,18 @@ def test_three_matches_allow_new_load_words(
 
 
 @pytest.mark.parametrize("match_count", [0])
+def test_load_word_false_positives_are_allowed(
+    case: tuple, db: Session, client: TestClient, match_count: int
+) -> None:
+    for text in (
+        "我们已满足冷链资质要求，可在 12 月承接",
+        "我们有空调维修人员，可以承接",
+    ):
+        demand_id = create_demand(case, client, match_count)
+        send_reply(case, db, client, "rest", demand_id, text, rejected=False)
+
+
+@pytest.mark.parametrize("match_count", [0])
 def test_bot_and_mcp_reply_guidance(
     case: tuple, db: Session, client: TestClient
 ) -> None:

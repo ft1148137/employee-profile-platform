@@ -268,7 +268,7 @@ function DemandsAction({
           <>
             <h3 className="font-semibold">答复需求</h3>
             <p className="text-sm text-muted-foreground">
-              答复会发给对方部门，不要写本部门员工的姓名；不要写个人负荷，只写能否承接、时间和条件。在助手里可以让
+              答复会发给对方部门，不要写本部门员工的姓名；不写负荷说法（例如基本满、饱和、有余量），只写能否承接、时间和条件。在助手里可以让
               AI 先起草
             </p>
             <label className="block space-y-2 text-sm font-medium">
