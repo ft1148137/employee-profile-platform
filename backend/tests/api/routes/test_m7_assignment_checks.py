@@ -38,6 +38,12 @@ def test_start_date_boundary(case: tuple, db: Session, offset: int | None) -> No
         body["start_date"] = (start + timedelta(days=offset)).isoformat()
     response = api(f"/demands/{demand.id}/assignments", body=body, status=None)
     assert response.status_code in (422, 409), response.text
+    if offset is not None:
+        api(
+            f"/demands/{demand.id}/assignments",
+            body={**body, "employee_id": str(people["a"].id)},
+            status=404,
+        )
 
 
 def test_outside_basis_requires_confirmation_and_audit(

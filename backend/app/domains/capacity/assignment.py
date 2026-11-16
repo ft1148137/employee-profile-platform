@@ -267,7 +267,6 @@ def create_assignment(
     if demand.status != DemandStatus.ACCEPTED:
         raise CapacityConflict()
     subject = employee(principal, session, body.employee_id, lock=True)
-    check_dates(demand, body.start_date, body.due_date)
     target_ids = managed_scope(
         session, principal.org_id, frozenset({demand.target_department_id})
     )
@@ -276,6 +275,7 @@ def create_assignment(
         or subject.department_id not in target_ids
     ):
         raise CapacityNotFound()
+    check_dates(demand, body.start_date, body.due_date)
     if demand.committed_end_date is None or body.due_date > demand.committed_end_date:
         raise CommitmentConfirmationRequired(
             f"完成日期不能晚于对需求方的承诺日期 {demand.committed_end_date}；需要推迟承诺时，先在已有分配上调整"
