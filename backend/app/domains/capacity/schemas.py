@@ -104,6 +104,7 @@ class WorkloadRequestPublic(BaseModel):
     employee_id: UUID
     employee_name: str | None = None
     on_behalf_of_name: str | None = None
+    reviewer_names: list[str] = Field(default_factory=list)
     requested_percent: int
     start_week: date | None
     end_week: date | None
@@ -134,6 +135,7 @@ class WorkloadPublic(BaseModel):
 
 class MyWorkload(WorkloadPublic):
     requests: list[WorkloadRequestPublic]
+    reviewer_names: list[str]
 
 
 class WorkloadList(BaseModel):

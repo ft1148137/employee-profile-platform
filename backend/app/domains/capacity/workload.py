@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlmodel import Session, col, func, or_, select
 
+from app.authz.deps import get_org_principal
 from app.authz.policies import can_view_employee, employee_scope_clause
 from app.authz.principal import Principal
 from app.domains.base import utc_now
@@ -43,10 +44,12 @@ from app.domains.org.models import (
     Employee,
     EmploymentStatus,
     ExternalIdentity,
+    OrgMembership,
 )
 from app.domains.review.routing import active_delegations, can_review, review_assignment
 from app.domains.source.models import SourceConnection
 from app.domains.work.models import Task
+from app.models import User
 
 AVAILABLE_BELOW = 80
 NOTICE = "你有需求或负荷事项需要处理"
@@ -230,6 +233,9 @@ def get_my_workload(
     return MyWorkload(
         **views(principal, session, [subject], from_week, weeks)[0].model_dump(),
         requests=[WorkloadRequestPublic.model_validate(r) for r in requests],
+        reviewer_names=workload_reviewer_names(
+            principal, session, workload_reviewers(principal, session, subject.id)
+        ),
     )
 
 
@@ -282,6 +288,45 @@ def notify_employee(principal: Principal, session: Session, employee_id: UUID) -
             kind=InboxKind.CAPACITY,
             message=NOTICE,
         ),
+    )
+
+
+def workload_reviewers(
+    principal: Principal, session: Session, employee_id: UUID
+) -> list[User]:
+    managers, _ = review_assignment(session, principal.org_id, employee_id)
+    delegates = active_delegations(session, principal.org_id, managers)
+    recipients = set(managers) | {row.delegate_user_id for row in delegates}
+    users = session.exec(
+        select(User)
+        .join(OrgMembership, col(OrgMembership.user_id) == User.id)
+        .where(
+            OrgMembership.org_id == principal.org_id,
+            col(User.id).in_(recipients),
+            User.is_active,
+        )
+        .order_by(col(User.id))
+    ).all()
+    return [
+        user
+        for user in users
+        if user.id != principal.user_id
+        and can_review(
+            session,
+            get_org_principal(principal.org_id, user, session),
+            employee_id,
+        )
+        is not None
+    ]
+
+
+def workload_reviewer_names(
+    principal: Principal, session: Session, users: list[User]
+) -> list[str]:
+    from app.domains.capacity.extension import user_names
+
+    return list(
+        user_names(session, principal.org_id, {user.id for user in users}).values()
     )
 
 
@@ -396,19 +441,17 @@ def request_workload_change(
         org_id=principal.org_id, employee_id=subject.id, **body.model_dump()
     )
     session.add(row)
-    managers, _ = review_assignment(session, principal.org_id, subject.id)
-    delegates = active_delegations(session, principal.org_id, managers)
-    for user_id in sorted(set(managers) | {d.delegate_user_id for d in delegates}):
-        if user_id != principal.user_id:
-            add_item(
-                session,
-                InboxItem(
-                    org_id=principal.org_id,
-                    recipient_user_id=user_id,
-                    kind=InboxKind.CAPACITY,
-                    message=WORKLOAD_REVIEW_NOTICE,
-                ),
-            )
+    reviewers = workload_reviewers(principal, session, subject.id)
+    for user in reviewers:
+        add_item(
+            session,
+            InboxItem(
+                org_id=principal.org_id,
+                recipient_user_id=user.id,
+                kind=InboxKind.CAPACITY,
+                message=WORKLOAD_REVIEW_NOTICE,
+            ),
+        )
     base = session.exec(
         select(CapacityWeek.other_percent).where(
             CapacityWeek.org_id == principal.org_id,
@@ -426,7 +469,9 @@ def request_workload_change(
         client_name,
         {"before_percent": base, "after_percent": body.requested_percent},
     )
-    return WorkloadRequestPublic.model_validate(row)
+    result = WorkloadRequestPublic.model_validate(row)
+    result.reviewer_names = workload_reviewer_names(principal, session, reviewers)
+    return result
 
 
 def list_workload_requests(
@@ -711,4 +756,6 @@ def delete_unavailability(
             "end_date": row.end_date.isoformat(),
         },
     )
+    if subject.id != principal.employee_id:
+        notify_employee(principal, session, subject.id)
     return unavailability_public(principal, session, row, subject)
