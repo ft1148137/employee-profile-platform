@@ -26,10 +26,29 @@ from app.domains.bot.models import (
     ConversationMessage,
 )
 from app.domains.bot.settings import read_settings
+from app.domains.capacity.settings import read_settings as read_capacity_settings
 from app.domains.org.models import Organization
 from app.domains.org.service import visible_employee
 
 logger = logging.getLogger(__name__)
+
+HIDDEN_REPLY = "你的权限已变化，这条之前的回复已隐藏"
+SENSITIVE_TOOLS = {
+    "coordination",
+    "prepare_plan_proposal",
+    "get_demand_basis",
+    "list_team_members",
+    "find_people",
+    "get_member_profile",
+    "prepare_profile_edit",
+    "查看团队成员",
+    "按能力找人",
+    "查看下属画像",
+    "预览直接修改画像",
+    "调查并模拟部门协调方案",
+    "预览部门方案答复",
+    "查看本部门需求依据和个人负荷，仅限答复方",
+}
 
 
 class BotSessionNotFound(HTTPException):
@@ -276,7 +295,121 @@ def _messages(
 def list_messages(
     db: Session, principal: Principal, session_id: UUID
 ) -> list[MessagePublic]:
-    return messages_for(db, get_session(db, principal, session_id))
+    session = get_session(db, principal, session_id)
+    messages = messages_for(db, session)
+    current = session_scope(db, principal)
+    legacy_sensitive = (
+        _legacy_sensitive(messages, load_state(db, session))
+        if any(
+            message.role == "assistant"
+            and isinstance(message.payload, dict)
+            and "scope" not in message.payload
+            for message in messages
+        )
+        else False
+    )
+    for message in messages:
+        if message.role != "assistant" or not isinstance(message.payload, dict):
+            continue
+        previous = message.payload.get("scope")
+        if scope_shrank(previous, current, legacy_sensitive=legacy_sensitive):
+            message.payload = {"messages": [{"type": "text", "text": HIDDEN_REPLY}]}
+        else:
+            message.payload.pop("scope", None)
+    return messages
+
+
+def session_scope(db: Session, principal: Principal) -> dict[str, JsonValue]:
+    departments: list[JsonValue] = []
+    departments.extend(sorted(str(id) for id in principal.managed_department_ids))
+    return {
+        "is_org_admin": principal.is_org_admin,
+        "managed_department_ids": departments,
+        "capacity_enabled": read_capacity_settings(principal, db).enabled,
+    }
+
+
+def scope_shrank(
+    previous: JsonValue | None,
+    current: dict[str, JsonValue],
+    *,
+    legacy_sensitive: bool = False,
+) -> bool:
+    if not isinstance(previous, dict):
+        return legacy_sensitive
+    old_departments = previous.get("managed_department_ids")
+    new_departments = current["managed_department_ids"]
+    return bool(
+        (previous.get("is_org_admin") and not current["is_org_admin"])
+        or (previous.get("capacity_enabled") and not current["capacity_enabled"])
+        or (
+            isinstance(old_departments, list)
+            and isinstance(new_departments, list)
+            and not {str(id) for id in old_departments}.issubset(new_departments)
+        )
+    )
+
+
+def _legacy_sensitive(
+    messages: list[MessagePublic], state: dict[str, JsonValue] | None
+) -> bool:
+    for message in messages:
+        if message.role == "assistant" and isinstance(message.payload, dict):
+            cards = message.payload.get("messages")
+            if isinstance(cards, list) and any(
+                isinstance(item, dict) and item.get("type") == "plan_card"
+                for item in cards
+            ):
+                return True
+            steps = message.payload.get("steps")
+            if isinstance(steps, list) and any(
+                isinstance(step, dict) and step.get("name") in SENSITIVE_TOOLS
+                for step in steps
+            ):
+                return True
+    return bool(
+        state
+        and any(
+            f'"{name}"' in json.dumps(state, ensure_ascii=False)
+            for name in SENSITIVE_TOOLS
+        )
+    )
+
+
+def state_for_turn(
+    db: Session, principal: Principal, session: BotSession
+) -> dict[str, JsonValue] | None:
+    saved = load_state(db, session, scoped=True)
+    if saved is None:
+        return None
+    if "scope" in saved:
+        previous = saved["scope"]
+        state = {key: value for key, value in saved.items() if key != "scope"}
+        legacy_sensitive = False
+    else:
+        previous = None
+        state = saved
+        legacy_sensitive = _legacy_sensitive(messages_for(db, session), saved)
+    if scope_shrank(
+        previous, session_scope(db, principal), legacy_sensitive=legacy_sensitive
+    ):
+        save_state(db, session, None)
+        db.commit()
+        return None
+    return state if isinstance(state, dict) else None
+
+
+def save_scoped_state(
+    db: Session,
+    principal: Principal,
+    session: BotSession,
+    state: dict[str, JsonValue] | None,
+) -> None:
+    save_state(
+        db,
+        session,
+        {**state, "scope": session_scope(db, principal)} if state is not None else None,
+    )
 
 
 def messages_for(
@@ -297,7 +430,7 @@ def messages_for(
 
 
 def load_state(
-    db: Session, session: BotSession | AdminAssistantSession
+    db: Session, session: BotSession | AdminAssistantSession, *, scoped: bool = False
 ) -> dict[str, JsonValue] | None:
     days = read_settings(db, session.org_id).retention_days
     if not days and session.last_activity_at <= utc_now() - timedelta(hours=2):
@@ -339,11 +472,14 @@ def load_state(
         ).first()
     ):
         return None
-    return (
+    state = (
         json.loads(decrypt_secret(session.state_ciphertext))
         if session.state_ciphertext
         else None
     )
+    if isinstance(session, BotSession) and state and "scope" in state and not scoped:
+        return {key: value for key, value in state.items() if key != "scope"}
+    return state
 
 
 def save_state(

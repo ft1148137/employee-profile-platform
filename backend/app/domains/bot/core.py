@@ -40,9 +40,18 @@ def _save(
     session: BotSession,
     messages: list[s.Message],
     steps: list[s.ToolStep] | None = None,
+    principal: Principal | None = None,
 ) -> s.TurnResponse:
     response = s.TurnResponse(messages=messages, steps=steps or [])
-    store.append_message(db, session, "assistant", response.model_dump(mode="json"))
+    payload = response.model_dump(mode="json")
+    if principal is not None:
+        payload["scope"] = store.session_scope(db, principal)
+    store.append_message(
+        db,
+        session,
+        "assistant",
+        payload,
+    )
     return response
 
 
@@ -100,6 +109,7 @@ def turn(
         return result
 
     try:
+        session_state = store.state_for_turn(db, p, session)
         with begin_turn(
             db, p, session, user_payload, stream.cancelled if stream else None
         ):
@@ -128,6 +138,7 @@ def turn(
                             ),
                         )
                     ],
+                    principal=p,
                 )
             config = model_config(setting)
             images = []
@@ -140,7 +151,7 @@ def turn(
                 config,
                 mode="chat",
                 images=images,
-                session_state=store.load_state(db, session),
+                session_state=session_state,
                 system_prompt=system_prompt(db, p, session.channel, session),
                 input=tools.redact_text(model_input),
                 tools=tools.definitions(p, db=db, channel=session.channel),
@@ -152,7 +163,7 @@ def turn(
             # Only completed model turns may leave drafts or replies behind.
             if result.stop_reason != "stop":
                 raise ModelUnavailable()
-            store.save_state(db, session, result.session_state)
+            store.save_scoped_state(db, p, session, result.session_state)
             messages: list[s.Message] = (
                 [s.TextMessage(text="\n".join(filter(None, [notice, result.text])))]
                 if result.text or notice
@@ -161,7 +172,7 @@ def turn(
             messages.extend(cards)
             if stream:
                 stream.check()
-            return _save(db, session, messages, steps)
+            return _save(db, session, messages, steps, principal=p)
     except pi_client.TurnCancelled:
         return s.TurnResponse(messages=[])
     except BotBusy:
@@ -202,7 +213,7 @@ def turn(
         if stream:
             session.turn_count += 1
             store.append_message(db, session, "user", user_payload)
-        response = _save(db, session, messages, steps)
+        response = _save(db, session, messages, steps, principal=p)
         if stream and stream.cancelled.is_set():
             db.rollback()
             return s.TurnResponse(messages=[])
@@ -225,7 +236,7 @@ def act(
         return s.TurnResponse(messages=[s.TextMessage(text="忙，请稍后再试")])
     cards = [
         card
-        for message in store.list_messages(db, p, session_id)
+        for message in store.messages_for(db, session)
         if message.role == "assistant" and isinstance(message.payload, dict)
         for card in s.TurnResponse.model_validate(message.payload).messages
     ]
@@ -335,7 +346,7 @@ def act(
                     s.TextMessage(text=exc.message),
                     tools.preview_card(db, p, action.request_id),
                 ]
-    response = _save(db, session, messages)
+    response = _save(db, session, messages, None, p)
     if commit:
         db.commit()
     return response
