@@ -304,7 +304,10 @@ def create_assignment(
         session, principal.org_id, frozenset({demand.target_department_id})
     )
     if subject.employment_status == EmploymentStatus.INACTIVE:
-        if not principal.is_org_admin and subject.department_id in target_ids:
+        if (
+            demand.target_department_id in principal.managed_department_ids
+            and subject.department_id in target_ids
+        ):
             raise DepartedAssignmentConflict()
         raise CapacityNotFound()
     if (

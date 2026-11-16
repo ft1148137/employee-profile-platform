@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 from app.domains.audit.models import AuditEvent
 from app.domains.capacity.models import CapacityAssignment, CapacitySetting
 from app.domains.inbox.models import InboxItem
-from app.domains.org.models import Department, Employee, OrgMembership
+from app.domains.org.models import Department, Employee, OrgMembership, RoleGrant
 from tests.api.routes.test_m6_capacity_assignment import case as case
 from tests.api.routes.test_m6_capacity_assignment import day
 
@@ -100,3 +100,43 @@ def test_departed_outside_target_subtree_stays_hidden(case: tuple, db: Session) 
     response = create(status=None)
     assert response.status_code == 404
     assert response.json() == {"detail": "未找到该员工或申请"}
+
+
+def test_departed_create_for_admin_managing_target(case: tuple, db: Session) -> None:
+    _, create, demand, people, users, org = case
+    member = db.exec(
+        select(OrgMembership).where(
+            OrgMembership.org_id == org.id,
+            OrgMembership.user_id == users["admin"].id,
+        )
+    ).one()
+    db.add(
+        RoleGrant(
+            org_id=org.id,
+            membership_id=member.id,
+            role="dept_manager",
+            department_id=demand.target_department_id,
+        )
+    )
+    people["w"].employment_status = "inactive"
+    db.add(people["w"])
+    db.commit()
+
+    response = create(role="admin", status=None)
+    assert response.status_code == 409, response.text
+    assert response.json() == {"detail": "该员工已不在职，请刷新后重新选择"}
+    assert (
+        db.exec(
+            select(CapacityAssignment).where(CapacityAssignment.org_id == org.id)
+        ).all()
+        == []
+    )
+    assert (
+        db.exec(
+            select(AuditEvent).where(
+                AuditEvent.org_id == org.id,
+                AuditEvent.action == "capacity.assignment_created",
+            )
+        ).all()
+        == []
+    )

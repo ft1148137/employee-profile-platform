@@ -90,7 +90,7 @@ export function CommitmentFields({
       />
       <NoteField label="给对方部门的说明" name="commitment_note" />
       <p className="text-xs text-muted-foreground">
-        请勿填写本部门员工的姓名、工号或个人信息。
+        请勿填写本部门员工的姓名、工号或个人信息。不写负荷说法（例如基本满、饱和、有余量），只写能否承接、时间和条件。
       </p>
     </div>
   )
