@@ -471,6 +471,15 @@ import type {
   peopleSearchSearchPeopleData,
   peopleSearchSearchPeopleErrors,
   peopleSearchSearchPeopleResponses,
+  planningCreateCaseData,
+  planningCreateCaseErrors,
+  planningCreateCaseResponses,
+  planningCreateOptionData,
+  planningCreateOptionErrors,
+  planningCreateOptionResponses,
+  planningGetCaseData,
+  planningGetCaseErrors,
+  planningGetCaseResponses,
   privateCreateSetupTokenData,
   privateCreateSetupTokenErrors,
   privateCreateSetupTokenResponses,
@@ -1114,6 +1123,66 @@ export class CapacityService {
       responseType: "json",
       security: [{ scheme: "bearer", type: "http" }],
       url: "/api/v1/orgs/{org_id}/capacity/extension-requests/{request_id}/decision",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+}
+
+export class PlanningService {
+  /**
+   * Create Case
+   */
+  public static createCase<ThrowOnError extends boolean = true>(
+    options: Options<planningCreateCaseData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      planningCreateCaseResponses,
+      planningCreateCaseErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/planning/demands/{demand_id}/cases",
+      ...options,
+    })
+  }
+
+  /**
+   * Get Case
+   */
+  public static getCase<ThrowOnError extends boolean = true>(
+    options: Options<planningGetCaseData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      planningGetCaseResponses,
+      planningGetCaseErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/planning/cases/{case_id}",
+      ...options,
+    })
+  }
+
+  /**
+   * Create Option
+   */
+  public static createOption<ThrowOnError extends boolean = true>(
+    options: Options<planningCreateOptionData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      planningCreateOptionResponses,
+      planningCreateOptionErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/planning/cases/{case_id}/options",
       ...options,
       headers: {
         "Content-Type": "application/json",

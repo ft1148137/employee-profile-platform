@@ -14,6 +14,7 @@ from app.domains.im import models as im
 from app.domains.inbox import models as inbox
 from app.domains.model import models as model
 from app.domains.org import models as org
+from app.domains.planning import models as planning
 from app.domains.profile import models as profile
 from app.domains.review import models as review
 from app.domains.setup import models as setup
@@ -36,6 +37,7 @@ __all__ = [
     "im",
     "model",
     "org",
+    "planning",
     "profile",
     "review",
     "setup",
