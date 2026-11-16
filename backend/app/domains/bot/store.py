@@ -367,13 +367,8 @@ def _legacy_sensitive(
                 for step in steps
             ):
                 return True
-    return bool(
-        state
-        and any(
-            f'"{name}"' in json.dumps(state, ensure_ascii=False)
-            for name in SENSITIVE_TOOLS
-        )
-    )
+    serialized = json.dumps(state, ensure_ascii=False) if state else ""
+    return any(f'"{name}"' in serialized for name in SENSITIVE_TOOLS)
 
 
 def state_for_turn(

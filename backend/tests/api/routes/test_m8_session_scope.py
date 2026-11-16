@@ -54,6 +54,7 @@ def test_scope_shrink_hides_history_and_resets_state(
     row = store.create_session(db, p, channel=channel)
     states: list[object] = []
     turn_number = 0
+    private_text = f"{people['E04'].display_name} 的个人负荷为合成 80%"
 
     def fake_turn(_config: object, **kwargs: object) -> TurnResult:
         nonlocal turn_number
@@ -70,14 +71,16 @@ def test_scope_shrink_hides_history_and_resets_state(
                     {"function": function, "arguments": {"demand_id": str(demand.id)}},
                 )
                 assert "error" not in result
-            call("get_demand_basis", {"demand_id": str(demand.id)})
-            call("list_team_members", {})
+            assert "error" not in call(
+                "get_demand_basis", {"demand_id": str(demand.id)}
+            )
+            assert "error" not in call("list_team_members", {})
         return TurnResult(
-            text=PRIVATE if turn_number == 1 else "新回复",
+            text=private_text if turn_number == 1 else "新回复",
             stop_reason="stop",
             model_calls=1,
             tool_calls=4 if turn_number == 1 else 0,
-            session_state={"version": 1, "messages": [{"private": PRIVATE}]},
+            session_state={"version": 1, "messages": [{"private": private_text}]},
         )
 
     monkeypatch.setattr(core.pi_client, "run_turn", fake_turn)
@@ -132,7 +135,8 @@ def test_scope_shrink_hides_history_and_resets_state(
     assert history[0]["role"] == "user"
     assert history[0]["payload"]["text"] == "请查看部门方案"
     assert history[1]["payload"]["messages"] == [{"type": "text", "text": HIDDEN}]
-    assert PRIVATE not in str(history)
+    assert private_text not in str(history)
+    assert people["E04"].display_name not in str(history)
     core.turn(db, current, row.id, "继续")
     assert states == [None, None]
     db.refresh(row)
