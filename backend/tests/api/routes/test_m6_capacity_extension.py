@@ -15,8 +15,8 @@ from app.core.security import create_access_token
 from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
 from app.domains.capacity import extension
-from app.domains.capacity.extension_schemas import ExtensionDecisionInput
 from app.domains.capacity.calendar import week_start
+from app.domains.capacity.extension_schemas import ExtensionDecisionInput
 from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityDemand,
