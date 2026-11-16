@@ -450,6 +450,28 @@ export type AssessmentStatus =
   | "disputed"
 
 /**
+ * AssigneeInput
+ */
+export type AssigneeInput = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Start Date
+   */
+  start_date: string
+  /**
+   * End Date
+   */
+  end_date: string
+}
+
+/**
  * AssignmentInput
  */
 export type AssignmentInput = {
@@ -1181,6 +1203,42 @@ export type CapacitySettingsInput = {
    */
   enabled?: boolean
   requester_policy?: RequesterPolicy
+}
+
+/**
+ * CasePublic
+ */
+export type CasePublic = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Demand Id
+   */
+  demand_id: string
+  /**
+   * Snapshot Id
+   */
+  snapshot_id: string
+  /**
+   * Snapshot Created At
+   */
+  snapshot_created_at: string
+  /**
+   * Data
+   */
+  data: {
+    [key: string]: JsonValue
+  }
+  /**
+   * Stale
+   */
+  stale: boolean
+  /**
+   * Options
+   */
+  options: Array<OptionPublic>
 }
 
 /**
@@ -4480,6 +4538,66 @@ export type Onboard = {
 }
 
 /**
+ * OptionInput
+ */
+export type OptionInput = {
+  /**
+   * Assignees
+   */
+  assignees: Array<AssigneeInput>
+}
+
+/**
+ * OptionKind
+ */
+export type OptionKind =
+  | "direct"
+  | "newcomer"
+  | "borrow"
+  | "delay"
+  | "reduce_scope"
+  | "phased"
+  | "custom"
+
+/**
+ * OptionPublic
+ */
+export type OptionPublic = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Snapshot Id
+   */
+  snapshot_id: string
+  kind: OptionKind
+  /**
+   * Params
+   */
+  params: {
+    [key: string]: JsonValue
+  }
+  verdict: PlanVerdict
+  /**
+   * Findings
+   */
+  findings: Array<{
+    [key: string]: JsonValue
+  }>
+  /**
+   * Summary
+   */
+  summary: {
+    [key: string]: JsonValue
+  }
+  /**
+   * Created At
+   */
+  created_at: string
+}
+
+/**
  * OrgChartDepartment
  */
 export type OrgChartDepartment = {
@@ -4699,6 +4817,15 @@ export type PeopleSearchRow = {
    */
   published_at: string
 }
+
+/**
+ * PlanVerdict
+ */
+export type PlanVerdict =
+  | "feasible"
+  | "conditional"
+  | "infeasible"
+  | "insufficient_data"
 
 /**
  * PolicyInput
@@ -8350,6 +8477,114 @@ export type capacityDecideExtensionRequestResponses = {
 
 export type capacityDecideExtensionRequestResponse =
   capacityDecideExtensionRequestResponses[keyof capacityDecideExtensionRequestResponses]
+
+export type planningCreateCaseData = {
+  body?: never
+  path: {
+    /**
+     * Demand Id
+     */
+    demand_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/planning/demands/{demand_id}/cases"
+}
+
+export type planningCreateCaseErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type planningCreateCaseError =
+  planningCreateCaseErrors[keyof planningCreateCaseErrors]
+
+export type planningCreateCaseResponses = {
+  /**
+   * Successful Response
+   */
+  200: CasePublic
+}
+
+export type planningCreateCaseResponse =
+  planningCreateCaseResponses[keyof planningCreateCaseResponses]
+
+export type planningGetCaseData = {
+  body?: never
+  path: {
+    /**
+     * Case Id
+     */
+    case_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/planning/cases/{case_id}"
+}
+
+export type planningGetCaseErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type planningGetCaseError =
+  planningGetCaseErrors[keyof planningGetCaseErrors]
+
+export type planningGetCaseResponses = {
+  /**
+   * Successful Response
+   */
+  200: CasePublic
+}
+
+export type planningGetCaseResponse =
+  planningGetCaseResponses[keyof planningGetCaseResponses]
+
+export type planningCreateOptionData = {
+  body: OptionInput
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+    /**
+     * Case Id
+     */
+    case_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/planning/cases/{case_id}/options"
+}
+
+export type planningCreateOptionErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type planningCreateOptionError =
+  planningCreateOptionErrors[keyof planningCreateOptionErrors]
+
+export type planningCreateOptionResponses = {
+  /**
+   * Successful Response
+   */
+  200: OptionPublic
+}
+
+export type planningCreateOptionResponse =
+  planningCreateOptionResponses[keyof planningCreateOptionResponses]
 
 export type peopleSearchSearchPeopleData = {
   body?: never

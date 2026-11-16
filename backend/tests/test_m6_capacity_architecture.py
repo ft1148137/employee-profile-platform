@@ -42,6 +42,7 @@ def violations(root: Path) -> list[str]:
     for path in root.rglob("*.py"):
         relative = path.relative_to(root).as_posix()
         inside = relative.startswith("domains/capacity/")
+        planning = relative.startswith("domains/planning/")
         entrypoint = relative in ENTRYPOINTS or relative.startswith(
             ("domains/bot/", "domains/im/")
         )
@@ -49,11 +50,41 @@ def violations(root: Path) -> list[str]:
             if (
                 not inside
                 and not entrypoint
+                and not (
+                    planning
+                    and (
+                        module.startswith("app.domains.capacity.models.")
+                        or module.startswith("app.domains.capacity.calendar.")
+                        or module
+                        in {
+                            "app.domains.capacity.models",
+                            "app.domains.capacity.calendar",
+                            "app.domains.capacity.settings.require_enabled",
+                            "app.domains.capacity.demand.demand_row",
+                            "app.domains.capacity.demand.represents_department",
+                            "app.domains.capacity.demand.department_reference",
+                            "app.domains.capacity.demand.get_demand_basis",
+                        }
+                    )
+                )
                 and (
                     module == "app.domains.capacity"
                     or module.startswith("app.domains.capacity.")
                 )
             ):
+                errors.append(f"{relative}: {module}")
+            if planning and (
+                (
+                    module.startswith("app.domains.profile")
+                    and not module.startswith(
+                        ("app.domains.profile.models", "app.domains.profile.schemas")
+                    )
+                )
+                or module.startswith("app.domains.review")
+                or module.startswith("app.domains.change_request")
+            ):
+                errors.append(f"{relative}: {module}")
+            if inside and module.startswith("app.domains.planning"):
                 errors.append(f"{relative}: {module}")
             if (
                 inside
@@ -86,6 +117,14 @@ def test_capacity_import_boundaries() -> None:
             "domains/capacity/bad.py",
             "import app.domains.source.service",
         ),
+        ("domains/planning/bad.py", "from app.domains.capacity import assignment"),
+        (
+            "domains/planning/bad.py",
+            "from app.domains.capacity.demand import submit_demand",
+        ),
+        ("domains/planning/bad.py", "from app.domains.profile import service"),
+        ("domains/planning/bad.py", "from app.domains.review import publish"),
+        ("domains/capacity/bad.py", "from app.domains import planning"),
     ],
 )
 def test_import_counterexamples(tmp_path: Path, relative: str, source: str) -> None:
@@ -98,7 +137,7 @@ def test_import_counterexamples(tmp_path: Path, relative: str, source: str) -> N
 def foreign_key_violations(metadata: MetaData) -> list[str]:
     errors = []
     for table in metadata.tables.values():
-        if not table.name.startswith("capacity_"):
+        if not table.name.startswith(("capacity_", "planning_")):
             errors.extend(
                 table.name
                 for fk in table.foreign_keys

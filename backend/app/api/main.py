@@ -28,6 +28,7 @@ from app.api.routes import (
     oauth,
     orgs,
     people_search,
+    planning,
     private,
     profile_import,
     profiles,
@@ -45,6 +46,7 @@ from app.core.config import settings
 
 api_router = APIRouter()
 api_router.include_router(capacity.router)
+api_router.include_router(planning.router)
 api_router.include_router(people_search.router)
 api_router.include_router(admin_assistant.router)
 api_router.include_router(admin_overview.router)
