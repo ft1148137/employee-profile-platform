@@ -197,7 +197,9 @@ def test_metadata_shrink_still_hides_even_without_employee_reads(
     pending = core.turn(db, p, row.id, "你好")
     assert pending._scope["read_employee_ids"] == []
     if change == "disable":
-        setting = db.get_one(CapacitySetting, p.org_id)
+        setting = db.exec(
+            select(CapacitySetting).where(CapacitySetting.org_id == p.org_id)
+        ).one()
         setting.enabled = False
         db.add(setting)
     else:
