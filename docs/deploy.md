@@ -60,11 +60,13 @@ EPP_ADDRESS=192.168.1.10 EPP_HTTP_PORT=8080 ./install.sh --non-interactive
 
 同一台机器多套部署要使用不同目录、项目名和端口，例如 `COMPOSE_PROJECT_NAME=epp-test EPP_HTTP_PORT=18080`。HTTPS 各套仍会争用 443，不能仅靠项目名隔离。
 
+域名证书模式的 HTTP 端口必须为 80；填写其他端口或 80 被其他服务占用时，安装器停止，不会建议改用 8080。已有 `.env` 重跑也检查当前配置；本部署自己的代理已占用 80 时可以正常重跑，其他模式仍可自定义 HTTP 端口。安装器不会自动修改已有 `HTTP_PORT`。安装后的健康检查允许自签证书，只说明服务可用；真实域名部署需另用 `curl -I https://profiles.example.com`（不加 `-k`，替换成自己的域名）核对可信证书，不能将健康检查通过当作签发成功。
+
 HTTPS 代理只读取本 Compose 项目的容器，路由和服务名也带项目名前缀，避免同一 Docker 上其他带 Traefik 标签的项目被误接入。后端没有直接发布端口，流式响应设置为立即转发。域名证书保存在本项目的 `traefik-certificates` 卷内；停止或升级时保留该卷，不要加 `down -v`。
 
 自签证书适用于本机或受控内网试用。云端 MCP 客户端通常需要能访问的公网 HTTPS 地址和可信证书，不能靠浏览器忽略警告来解决。飞书目前使用出站长连接，不需要填写公网回调 URL；其他 IM 连接方式见本页开头。
 
-本机 HTTPS 实测结果和限制见 [M9 HTTPS 实测](m9-https-test.md)。登录当前返回 Bearer token，由网页保存在 localStorage，没有登录 Cookie；不能将 HTTPS 部署等同于已设置 Secure/HttpOnly Cookie。当前没有邮件发送功能，不能用邮件送达作为部署健康检查。
+本机 HTTPS 实测结果和限制见 [M9 HTTPS 实测](m9-https-test.md)。登录返回 Bearer token，由网页保存在 localStorage，退出时清除；没有登录 Cookie，Secure/HttpOnly Cookie 验收对当前认证机制不适用，无需引入 Cookie 认证。未实现邮件通道，邮件投递验收不适用。
 
 ### 初始化链接与局域网访问
 
