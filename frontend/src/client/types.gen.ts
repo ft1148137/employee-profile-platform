@@ -1190,6 +1190,7 @@ export type CapacityCard = {
    * Actions
    */
   actions?: Array<CapacityAction>
+  plan?: PlanCard | null
 }
 
 export type CapacityReference =
@@ -4968,6 +4969,7 @@ export type PlanCard = {
    * Link
    */
   link: string
+  rule_fallback?: RulePlanFallback | null
 }
 
 /**
@@ -6107,6 +6109,24 @@ export type RubricLevel = {
    * Description
    */
   description: string
+}
+
+/**
+ * RulePlanFallback
+ */
+export type RulePlanFallback = {
+  /**
+   * Fields
+   */
+  fields: Array<CardField>
+  /**
+   * Differences
+   */
+  differences: Array<CardField>
+  /**
+   * Link
+   */
+  link: string
 }
 
 /**

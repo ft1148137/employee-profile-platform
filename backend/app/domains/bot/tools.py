@@ -326,6 +326,28 @@ def redact(value: JsonValue) -> JsonValue:
     return value
 
 
+VERDICT_ORDER = {
+    "feasible": 0,
+    "conditional": 1,
+    "insufficient_data": 2,
+    "infeasible": 3,
+}
+
+
+def plan_metrics(option: OptionPublic) -> list[s.CardField]:
+    summary = option.summary
+    return [
+        s.CardField(label="类型", value=option.kind_label),
+        s.CardField(label="结论", value=option.verdict_label),
+        s.CardField(label="交付日期", value=str(summary.get("finish_date") or "未定")),
+        s.CardField(
+            label="覆盖人数", value=f"{summary.get('covered_headcount', 0)} 人"
+        ),
+        s.CardField(label="缺口", value=f"{summary.get('gap_person_weeks', 0)} 人周"),
+        s.CardField(label="新人数", value=f"{summary.get('newcomer_count', 0)} 人"),
+    ]
+
+
 def plan_card(option: OptionPublic, case: CasePublic) -> s.PlanCard:
     names = {str(person.employee_id): person.display_name for person in case.people}
     assignees = cast("list[dict[str, JsonValue]]", option.params.get("assignees", []))
@@ -343,14 +365,9 @@ def plan_card(option: OptionPublic, case: CasePublic) -> s.PlanCard:
         "；".join(str(item.get("message", "")) for item in findings) or "暂无已发现风险"
     )
     approvers = cast("list[str]", summary.get("approvers", []))
+    metrics = plan_metrics(option)
     fields = [
-        s.CardField(label="类型", value=option.kind_label),
-        s.CardField(label="结论", value=option.verdict_label),
-        s.CardField(label="交付日期", value=str(summary.get("finish_date") or "未定")),
-        s.CardField(
-            label="覆盖人数", value=f"{summary.get('covered_headcount', 0)} 人"
-        ),
-        s.CardField(label="缺口", value=f"{summary.get('gap_person_weeks', 0)} 人周"),
+        *metrics[:5],
         s.CardField(label="人员", value=people),
         s.CardField(label="受影响的工作数", value=f"{len(affected)} 项"),
         s.CardField(label="风险", value=risks),
@@ -393,11 +410,34 @@ def plan_card(option: OptionPublic, case: CasePublic) -> s.PlanCard:
                 after = "未定" if after is None else f"{after}{unit}"
                 parts.append(f"{label}：{before} → {after}")
         changes = "；".join(parts)
+    link = f"/capacity?tab=incoming&demand={case.demand_id}&plans=1"
+    best = min(
+        (
+            o
+            for o in case.options
+            if o.kind != "custom" and o.snapshot_id == option.snapshot_id
+        ),
+        key=lambda o: VERDICT_ORDER[o.verdict],
+        default=None,
+    )
+    fallback = None
+    if best is not None and VERDICT_ORDER[option.verdict] > VERDICT_ORDER[best.verdict]:
+        rule_metrics = plan_metrics(best)
+        fields.insert(5, metrics[-1])
+        fallback = s.RulePlanFallback(
+            fields=rule_metrics,
+            differences=[
+                s.CardField(label=a.label, value=f"{a.value} → {b.value}")
+                for a, b in zip(metrics, rule_metrics, strict=True)
+            ],
+            link=f"{link}#case={case.id}",
+        )
     return s.PlanCard(
         title=f"{option.kind_label}方案",
         fields=fields,
         changes=changes,
-        link=f"/capacity?tab=incoming&demand={case.demand_id}&plans=1",
+        link=link,
+        rule_fallback=fallback,
     )
 
 
@@ -657,22 +697,34 @@ def call(
                         "请缩短说明后重新预览，保留全部方案条件。"
                     )
                 }
-            return redact(
-                capacity.call(
-                    db,
-                    p,
-                    cards,
-                    "prepare_demand_reply",
-                    {
-                        "demand_id": str(row.id),
-                        "revision": row.revision,
-                        "outcome": outcome,
-                        "start_date": start_date,
-                        "end_date": end_date,
-                        "text": text,
-                    },
-                )
+            reply_result = capacity.call(
+                db,
+                p,
+                cards,
+                "prepare_demand_reply",
+                {
+                    "demand_id": str(row.id),
+                    "revision": row.revision,
+                    "outcome": outcome,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "text": text,
+                },
             )
+            card = plan_card(option, case)
+            if (
+                card.rule_fallback is not None
+                and isinstance(reply_result, dict)
+                and "error" not in reply_result
+            ):
+                for message in cards:
+                    if isinstance(message, s.CapacityCard) and str(
+                        message.card_id
+                    ) == reply_result.get("card_id"):
+                        message.plan = card.model_copy(
+                            update={"fields": plan_metrics(option), "changes": None}
+                        )
+            return redact(reply_result)
         except ValidationError as exc:
             return {"error": validation_message(exc, "工具参数不正确")}
         except HTTPException as exc:

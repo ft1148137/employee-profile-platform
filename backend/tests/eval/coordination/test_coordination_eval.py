@@ -32,7 +32,12 @@ from app.domains.planning import (
     snapshot as planning_snapshot,
 )
 from app.domains.planning.models import PlanningCase, PlanningOption, PlanningSnapshot
-from app.domains.planning.schemas import OptionInput, OptionPublic, ReviseInput
+from app.domains.planning.schemas import (
+    VERDICT_LABELS,
+    OptionInput,
+    OptionPublic,
+    ReviseInput,
+)
 from app.models import User
 from scripts.eval_coordination import report
 from tests.api.routes.test_m7_planning_readonly import business_rows
@@ -240,6 +245,8 @@ def evaluate(
         "status": "passed",
         "model_calls": None,
     }
+    if mode == "agent_validator":
+        row["fallback_not_worse"] = False
     try:
         _, employees, _, demand, _ = _setup(db, raw, org)
         capability = db.exec(
@@ -491,18 +498,36 @@ def evaluate(
                         ),
                         None,
                     )
+                current_case = (
+                    service.get_case(principal, db, current_case_id)
+                    if current_case_id is not None
+                    else None
+                )
                 recommended = next(
                     (
                         o
                         for o in (
-                            service.get_case(principal, db, current_case_id).options
-                            if current_case_id is not None
-                            else []
+                            current_case.options if current_case is not None else []
                         )
                         if o.id == chosen
                     ),
                     None,
                 )
+                if recommended is not None and current_case is not None:
+                    card = tools.plan_card(recommended, current_case)
+                    verdicts = [recommended.verdict]
+                    if card.rule_fallback is not None:
+                        label = next(
+                            f.value
+                            for f in card.rule_fallback.fields
+                            if f.label == "结论"
+                        )
+                        verdicts.extend(
+                            v for v, text in VERDICT_LABELS.items() if text == label
+                        )
+                    row["fallback_not_worse"] = (
+                        min(ORDER[v] for v in verdicts) <= ORDER[target]
+                    )
                 if recommended and recommended.params.get("assignees"):
                     selected = OptionInput.model_validate(recommended.params)
             row["parse_failure"] = selected is None and recommended is None
@@ -630,6 +655,50 @@ def test_parse_option_rejects_invalid_json() -> None:
 
 def test_invalid_proposal_id_is_not_selected() -> None:
     assert parse_uuid("invalid") is None
+
+
+def test_worse_fake_recommendation_scores_fallback_separately(
+    db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original = tools.call
+
+    def worse(*args: Any, **kwargs: Any) -> Any:
+        value = original(*args, **kwargs)
+        if args[4] == "coordination" and args[5]["function"] == "simulate_plan":
+            case = service.get_case(args[1], db, UUID(value["case_id"]))
+            params = case.options[0].params
+            bad = original(
+                *args[:4],
+                "coordination",
+                {
+                    "function": "simulate_plan",
+                    "arguments": {
+                        "demand_id": str(case.demand_id),
+                        "assignees": [
+                            {**a, "allocation_percent": 100}
+                            for a in params["assignees"]
+                        ],
+                    },
+                },
+            )
+            return {"case_id": value["case_id"], "options": [bad["option"]]}
+        return value
+
+    monkeypatch.setattr(tools, "call", worse)
+    raw = yaml.safe_load(
+        next(p for p in ALL_CASES if p.stem == "direct-01").read_text()
+    )
+    row = evaluate(db, raw, "agent_validator", True, "synthetic", "high")
+    assert row["baseline"] == "feasible"
+    assert row["verdict"] == "infeasible" and row["violation"] is True
+    assert row["fallback_not_worse"] is True
+    with patch("scripts.eval_coordination.subprocess.run") as git_metadata:
+        git_metadata.return_value.stdout = "synthetic-baseline"
+        output = report([row], "synthetic", "high", True)
+    assert "兜底后卡上最好的结论不比规则引擎差" in output
+    assert "是" in next(
+        line for line in output.splitlines() if line.startswith("| direct-01 |")
+    )
 
 
 def test_free_capacity_uses_confirmed_week_load() -> None:

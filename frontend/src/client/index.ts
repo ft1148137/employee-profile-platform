@@ -1244,6 +1244,7 @@ export type {
   rosterUploadImportResponse,
   rosterUploadImportResponses,
   RubricLevel,
+  RulePlanFallback,
   SaveDictionary,
   SchemaVersionPublic,
   SecretInput,
