@@ -49,6 +49,8 @@ class DemandEventKind(StrEnum):
     ACCEPTED = "accepted"
     WITHDRAWN = "withdrawn"
     COMMITMENT_CHANGED = "commitment_changed"
+    COMMITTED = "committed"
+    PROPOSAL_FAILED = "proposal_failed"
 
 
 class DemandOutcome(StrEnum):
@@ -225,6 +227,7 @@ class CapacityAssignment(TenantRecord, table=True):
         UniqueConstraint("org_id", "id"),
         tenant_fk("demand_id", "capacity_demand"),
         tenant_fk("employee_id", "employee"),
+        tenant_fk("proposal_line_id", "capacity_proposal_line"),
         member_fk("assigned_by_user_id"),
         CheckConstraint(
             "allocation_percent BETWEEN 10 AND 100", name="assignment_allocation"
@@ -238,7 +241,14 @@ class CapacityAssignment(TenantRecord, table=True):
             "demand_id",
             "employee_id",
             unique=True,
-            postgresql_where=text("status = 'active'"),
+            postgresql_where=text("status = 'active' AND proposal_line_id IS NULL"),
+        ),
+        Index(
+            "uq_capacity_assignment_proposal_line",
+            "org_id",
+            "proposal_line_id",
+            unique=True,
+            postgresql_where=text("proposal_line_id IS NOT NULL"),
         ),
     )
     demand_id: UUID
@@ -250,6 +260,7 @@ class CapacityAssignment(TenantRecord, table=True):
         default=AssignmentStatus.ACTIVE, sa_type=enum_type(AssignmentStatus)
     )
     assigned_by_user_id: UUID
+    proposal_line_id: UUID | None = None
     closed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
 
@@ -271,3 +282,116 @@ class CapacityExtensionRequest(CapacityDecision, TenantRecord, table=True):
     )
     assignment_id: UUID
     requested_due_date: date
+
+
+class ProposalStatus(StrEnum):
+    PENDING = "pending"
+    COMMITTED = "committed"
+    FAILED = "failed"
+    WITHDRAWN = "withdrawn"
+
+
+class CapacityProposal(TenantRecord, table=True):
+    __tablename__ = "capacity_proposal"
+    __table_args__ = (
+        UniqueConstraint("org_id", "id"),
+        tenant_fk("demand_id", "capacity_demand"),
+        tenant_fk("replaces_proposal_id", "capacity_proposal"),
+        member_fk("proposed_by_user_id"),
+        CheckConstraint("kind IN ('initial', 'change')", name="proposal_kind"),
+        CheckConstraint(
+            "(status = 'failed' AND fail_reason IS NOT NULL AND fail_reason IN "
+            "('rejected', 'expired', 'recheck_failed', 'borrow_declined')) OR "
+            "(status <> 'failed' AND fail_reason IS NULL)",
+            name="proposal_failure",
+        ),
+        Index(
+            "uq_capacity_proposal_pending",
+            "org_id",
+            "demand_id",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
+    demand_id: UUID
+    kind: str = "initial"
+    status: ProposalStatus = Field(
+        default=ProposalStatus.PENDING, sa_type=enum_type(ProposalStatus)
+    )
+    fail_reason: str | None = None
+    source_option_id: UUID
+    replaces_proposal_id: UUID | None = None
+    demand_revision: int
+    proposed_by_user_id: UUID
+    hold_expires_at: datetime = Field(sa_type=DateTime(timezone=True))
+    committed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    revision: int = 1
+
+
+class CapacityProposalLine(TenantRecord, table=True):
+    __tablename__ = "capacity_proposal_line"
+    __table_args__ = (
+        UniqueConstraint("org_id", "id"),
+        UniqueConstraint("org_id", "proposal_id", "id"),
+        tenant_fk("proposal_id", "capacity_proposal"),
+        tenant_fk("employee_id", "employee"),
+        tenant_fk("lender_department_id", "department"),
+        CheckConstraint(
+            "employee_id IS NOT NULL OR lender_department_id IS NOT NULL",
+            name="proposal_line_subject",
+        ),
+        CheckConstraint(
+            "allocation_percent BETWEEN 10 AND 100", name="proposal_line_allocation"
+        ),
+        CheckConstraint("start_date <= end_date", name="proposal_line_dates"),
+    )
+    proposal_id: UUID
+    employee_id: UUID | None = None
+    lender_department_id: UUID | None = None
+    allocation_percent: int
+    start_date: date
+    end_date: date
+    outside_basis: bool = False
+
+
+class CapacityApproval(TenantRecord, table=True):
+    __tablename__ = "capacity_approval"
+    __table_args__ = (
+        UniqueConstraint("org_id", "id"),
+        tenant_fk("proposal_id", "capacity_proposal"),
+        ForeignKeyConstraint(
+            ["org_id", "proposal_id", "line_id"],
+            [
+                "capacity_proposal_line.org_id",
+                "capacity_proposal_line.proposal_id",
+                "capacity_proposal_line.id",
+            ],
+        ),
+        member_fk("user_id"),
+        UniqueConstraint(
+            "proposal_id",
+            "party",
+            "line_id",
+            name="uq_capacity_approval_party",
+            postgresql_nulls_not_distinct=True,
+        ),
+        CheckConstraint(
+            "party IN ('resource_manager', 'requester', 'lender_manager', 'employee')",
+            name="approval_party",
+        ),
+        CheckConstraint(
+            "decision IN ('approved', 'rejected')", name="approval_decision"
+        ),
+        CheckConstraint(
+            "length(reason) <= 500 AND (decision <> 'rejected' OR (reason IS NOT NULL AND length(trim(reason)) > 0))",
+            name="approval_reason",
+        ),
+        CheckConstraint("via IN ('web', 'bot', 'feishu', 'mcp')", name="approval_via"),
+    )
+    proposal_id: UUID
+    line_id: UUID | None = None
+    party: str
+    decision: str
+    reason: str | None = Field(default=None, max_length=500)
+    user_id: UUID
+    via: str
