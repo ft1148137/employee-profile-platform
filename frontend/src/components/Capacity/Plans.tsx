@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AxiosError } from "axios"
 import { useState } from "react"
 import { type CasePublic, PlanningService, type ReviseInput } from "@/client"
@@ -32,6 +32,15 @@ function errorText(error: Error): string {
   if (error instanceof AxiosError) {
     const detail: unknown = error.response?.data?.detail
     if (typeof detail === "string") return detail
+    const messages = records(detail).map((item) => {
+      const message = label(item.msg, "")
+      if (/[\u3400-\u9fff]/.test(message))
+        return message.replace(/^Value error, /, "")
+      if (strings(item.loc).includes("allocation_percent"))
+        return "投入比例须为 10 至 100 的整数"
+      return "修改内容格式不正确，请检查后重试"
+    })
+    if (messages.length) return messages.join("；")
   }
   return "方案暂时无法读取，请重试"
 }
@@ -40,6 +49,18 @@ function weekLabel(value: unknown): string | null {
   if (typeof value !== "string") return null
   const [, month, day] = value.split("-")
   return month && day ? `${Number(month)} 月 ${Number(day)} 日那一周` : null
+}
+
+function findingText(
+  finding: Record<string, unknown>,
+  people: Map<string, string>,
+): string {
+  const person =
+    typeof finding.employee_id === "string"
+      ? `${people.get(finding.employee_id) ?? "待确认人员"}：`
+      : ""
+  const week = weekLabel(finding.week_start)
+  return `${person}${label(finding.message)}${week ? ` · ${week}` : ""}`
 }
 
 function RevisionControls({
@@ -148,7 +169,8 @@ function RevisionControls({
             disabled={
               (action === "replace" &&
                 (!editable.length || !candidates.length)) ||
-              (action === "lock" && !editable.length) ||
+              (["lock", "dates", "allocation"].includes(action) &&
+                !editable.length) ||
               (action === "unlock" && !locks.size) ||
               (action === "phased" && !!locks.size)
             }
@@ -166,6 +188,7 @@ function RevisionControls({
           </Button>
         ))}
       </div>
+      {!editable.length && <p>请先解锁，再改时间或降低投入</p>}
       {change && (
         <div className="flex flex-wrap items-end gap-2">
           {change !== "phased" && (
@@ -343,13 +366,13 @@ function OptionCard({
               <p>
                 新增风险：
                 {records(diff.added_findings)
-                  .map((item) => label(item.message))
+                  .map((item) => findingText(item, people))
                   .join("；") || "无"}
               </p>
               <p>
                 解决风险：
                 {records(diff.resolved_findings)
-                  .map((item) => label(item.message))
+                  .map((item) => findingText(item, people))
                   .join("；") || "无"}
               </p>
             </div>
@@ -410,13 +433,7 @@ function OptionCard({
         {option.findings.length ? (
           <ul className="list-inside list-disc">
             {option.findings.map((finding, index) => (
-              <li key={index}>
-                {typeof finding.employee_id === "string" &&
-                  `${people.get(finding.employee_id) ?? "待确认人员"}：`}
-                {label(finding.message)}
-                {weekLabel(finding.week_start) &&
-                  ` · ${weekLabel(finding.week_start)}`}
-              </li>
+              <li key={index}>{findingText(finding, people)}</li>
             ))}
           </ul>
         ) : (
@@ -460,41 +477,54 @@ export function Plans({
   orgId: string
   demandId: string
 }) {
-  const path = { org_id: orgId, demand_id: demandId }
-  const created = useQuery({
-    queryKey: ["capacity", orgId, "planning", demandId],
-    queryFn: async () => (await PlanningService.createCase({ path })).data,
-    staleTime: Infinity,
-  })
-  const current = useQuery({
-    queryKey: ["capacity", orgId, "planning-case", created.data?.id],
-    queryFn: async () =>
-      (
-        await PlanningService.getCase({
-          path: { org_id: orgId, case_id: created.data!.id },
-        })
-      ).data,
-    enabled: !!created.data,
-  })
-  const plan = current.data ?? created.data
-  const resimulate = async () => {
-    const result = await created.refetch()
-    if (result.isSuccess && created.data) await current.refetch()
+  const client = useQueryClient()
+  const key = ["capacity", orgId, "planning", demandId]
+  const storageKey = `planning-case:${orgId}:${demandId}`
+  const create = async () => {
+    const { data } = await PlanningService.createCase({
+      path: { org_id: orgId, demand_id: demandId },
+    })
+    localStorage.setItem(storageKey, data.id)
+    return data
   }
+  const current = useQuery({
+    queryKey: key,
+    queryFn: async () => {
+      const caseId = localStorage.getItem(storageKey)
+      if (caseId) {
+        try {
+          return (
+            await PlanningService.getCase({
+              path: { org_id: orgId, case_id: caseId },
+            })
+          ).data
+        } catch (error) {
+          if (!(error instanceof AxiosError) || error.response?.status !== 404)
+            throw error
+        }
+      }
+      return create()
+    },
+  })
+  const simulation = useMutation({
+    mutationFn: create,
+    onSuccess: async (data) => {
+      client.setQueryData(key, data)
+      await current.refetch()
+    },
+  })
+  const plan = current.data
+  const error = simulation.error ?? current.error
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">协调方案</h3>
-      {(created.isPending || current.isPending) && <ProfileLoading />}
-      {(created.error || current.error) && (
-        <p role="alert">
-          {errorText((created.error ?? current.error) as Error)}
-        </p>
-      )}
-      {(created.error || current.error) && (!plan || current.error) && (
+      {current.isPending && <ProfileLoading />}
+      {error && <p role="alert">{errorText(error)}</p>}
+      {error && (!plan || current.error) && (
         <Button
           variant="outline"
-          onClick={resimulate}
-          disabled={created.isFetching}
+          onClick={() => simulation.mutate()}
+          disabled={simulation.isPending || current.isFetching}
         >
           重新模拟
         </Button>
@@ -504,8 +534,8 @@ export function Plans({
           {plan.stale && <p role="alert">数据已变化，请重新模拟</p>}
           <Button
             variant="outline"
-            onClick={resimulate}
-            disabled={created.isFetching || current.isFetching}
+            onClick={() => simulation.mutate()}
+            disabled={simulation.isPending || current.isFetching}
           >
             重新模拟
           </Button>
