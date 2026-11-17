@@ -10,6 +10,7 @@ from pydantic import BaseModel, JsonValue
 from sqlalchemy import case, false, true
 from sqlmodel import Session, col, delete, select, update
 
+from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
 from app.core.secrets import decrypt_secret, encrypt_secret
 from app.domains.admin_assistant.models import (
@@ -27,7 +28,7 @@ from app.domains.bot.models import (
 )
 from app.domains.bot.settings import read_settings
 from app.domains.capacity.settings import read_settings as read_capacity_settings
-from app.domains.org.models import Organization
+from app.domains.org.models import Employee, Organization
 from app.domains.org.service import visible_employee
 
 logger = logging.getLogger(__name__)
@@ -298,16 +299,7 @@ def list_messages(
     session = get_session(db, principal, session_id)
     messages = messages_for(db, session)
     current = session_scope(db, principal)
-    legacy_sensitive = (
-        _legacy_sensitive(messages, load_state(db, session))
-        if any(
-            message.role == "assistant"
-            and isinstance(message.payload, dict)
-            and "scope" not in message.payload
-            for message in messages
-        )
-        else False
-    )
+    legacy_sensitive = _legacy_sensitive(messages, load_state(db, session))
     for message in messages:
         if message.role != "assistant" or not isinstance(message.payload, dict):
             continue
@@ -326,6 +318,15 @@ def session_scope(db: Session, principal: Principal) -> dict[str, JsonValue]:
         "is_org_admin": principal.is_org_admin,
         "managed_department_ids": departments,
         "capacity_enabled": read_capacity_settings(principal, db).enabled,
+        # Role grants alone cannot detect a team member's transfer or departure.
+        "visible_employee_ids": [
+            str(id)
+            for id in db.exec(
+                select(Employee.id)
+                .where(employee_scope_clause(principal))
+                .order_by(col(Employee.id))
+            ).all()
+        ],
     }
 
 
@@ -339,6 +340,8 @@ def scope_shrank(
         return legacy_sensitive
     old_departments = previous.get("managed_department_ids")
     new_departments = current["managed_department_ids"]
+    old_employees = previous.get("visible_employee_ids")
+    new_employees = current["visible_employee_ids"]
     return bool(
         (previous.get("is_org_admin") and not current["is_org_admin"])
         or (previous.get("capacity_enabled") and not current["capacity_enabled"])
@@ -347,6 +350,12 @@ def scope_shrank(
             and isinstance(new_departments, list)
             and not {str(id) for id in old_departments}.issubset(new_departments)
         )
+        or (
+            isinstance(old_employees, list)
+            and isinstance(new_employees, list)
+            and not {str(id) for id in old_employees}.issubset(new_employees)
+        )
+        or (not isinstance(old_employees, list) and legacy_sensitive)
     )
 
 
@@ -380,7 +389,11 @@ def state_for_turn(
     if "scope" in saved:
         previous = saved["scope"]
         state = {key: value for key, value in saved.items() if key != "scope"}
-        legacy_sensitive = False
+        legacy_sensitive = (
+            _legacy_sensitive(messages_for(db, session), state)
+            if not isinstance(previous, dict) or "visible_employee_ids" not in previous
+            else False
+        )
     else:
         previous = None
         state = saved
