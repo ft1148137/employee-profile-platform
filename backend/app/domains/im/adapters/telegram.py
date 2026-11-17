@@ -217,7 +217,12 @@ class Telegram:
         )
 
     async def render(
-        self, external_chat_id: str, text: str, buttons: list[tuple[str, str]]
+        self,
+        external_chat_id: str,
+        text: str,
+        buttons: list[tuple[str, str]],
+        *,
+        link: tuple[str, str] | None = None,
     ) -> str:
         message_id = ""
         for start in range(0, len(text), 3000):

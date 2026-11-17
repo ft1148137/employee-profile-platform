@@ -338,26 +338,40 @@ class Feishu:
             )
 
     async def render(
-        self, external_chat_id: str, text: str, buttons: list[tuple[str, str]]
+        self,
+        external_chat_id: str,
+        text: str,
+        buttons: list[tuple[str, str]],
+        *,
+        link: tuple[str, str] | None = None,
     ) -> str:
         # shortcut: Conservative card budgets; verify hard limits with a real test app.
         if len(text) > 3000:
-            text, buttons = "内容较长，请在网页查看完整内容并操作。", []
+            text, buttons, link = "内容较长，请在网页查看完整内容并操作。", [], None
         elements: list[dict[str, JsonValue]] = [
             {"tag": "div", "text": {"tag": "plain_text", "content": text}}
         ]
-        if buttons:
+        card_buttons: list[JsonValue] = [
+            {
+                "tag": "button",
+                "text": {"tag": "plain_text", "content": label},
+                "value": {"token": token},
+            }
+            for label, token in buttons[:3]
+        ]
+        if link and len(card_buttons) < 3:
+            card_buttons.append(
+                {
+                    "tag": "button",
+                    "text": {"tag": "plain_text", "content": link[0]},
+                    "url": link[1],
+                }
+            )
+        if card_buttons:
             elements.append(
                 {
                     "tag": "action",
-                    "actions": [
-                        {
-                            "tag": "button",
-                            "text": {"tag": "plain_text", "content": label},
-                            "value": {"token": token},
-                        }
-                        for label, token in buttons[:3]
-                    ],
+                    "actions": card_buttons,
                 }
             )
         content = json.dumps({"elements": elements}, ensure_ascii=False)
