@@ -240,7 +240,7 @@ def test_busy_turn_does_not_offer_manual_capacity_fallback(
     assert response.messages[0].capacity_links == []
 
 
-def test_coordination_tool_failure_discards_partial_plan(
+def test_coordination_parameter_error_returns_to_model(
     coordination: tuple, db: Session, monkeypatch
 ) -> None:
     people, _, row = coordination
@@ -251,17 +251,18 @@ def test_coordination_tool_failure_discards_partial_plan(
     session = store.create_session(db, b)
 
     def tool_error(*_args: object, **kwargs: object):
-        kwargs["on_tool_call"](
+        error = kwargs["on_tool_call"](
             "coordination",
             {"function": "simulate_plan", "arguments": {"demand_id": "invalid"}},
         )
+        assert error == {"error": "工具参数不正确"}
         from app.domains.model.pi_client import TurnResult
 
         return TurnResult(
-            text="半截方案", stop_reason="stop", model_calls=1, tool_calls=1
+            text="请核对需求参数", stop_reason="stop", model_calls=1, tool_calls=1
         )
 
     monkeypatch.setattr(core.pi_client, "run_turn", tool_error)
     response = core.turn(db, b, session.id, "模拟方案")
-    assert "收到的需求" in response.messages[0].text
-    assert "半截方案" not in response.messages[0].text
+    assert response.messages[0].text == "请核对需求参数"
+    assert response.messages[0].capacity_links == []

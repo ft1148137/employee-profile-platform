@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import shlex
 import subprocess
 import sys
 from collections import Counter
@@ -10,6 +11,7 @@ from datetime import date
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
+from urllib.parse import urlsplit
 
 BACKEND = Path(__file__).resolve().parents[1]
 CASES = sorted((BACKEND / "tests/eval/planning/cases").glob("*.yaml"))
@@ -32,25 +34,36 @@ def report(rows: list[dict[str, Any]], model: str, thinking: str, fake: bool) ->
         text=True,
         check=True,
     ).stdout.strip()
+    project = os.getenv("COMPOSE_PROJECT_NAME", "nere741")
+    db_port = os.getenv("POSTGRES_PORT", "15741")
+    api_port = os.getenv("API_PORT", "18741")
+    pi = urlsplit(os.getenv("PI_URL", "http://127.0.0.1:20741"))
+    pi_address = f"{pi.hostname}:{pi.port}" if pi.port else str(pi.hostname)
+    pi_url = f"{pi.scheme}://{pi_address}"
+    command = (
+        "uv run python " + shlex.join(sys.argv)
+        if Path(sys.argv[0]).name == "eval_coordination.py"
+        else f"uv run python scripts/eval_coordination.py --mode both{' --fake' if fake else ''} --model {model} --thinking {thinking} --report ../docs/m8-coordination-eval.md"
+    )
     lines = [
         "# M8 协调 Agent 评测",
         "",
         f"- 日期：{date.today().isoformat()}",
         f"- master 基线提交：`{baseline}`",
         f"- 模型：{'脚本假模型' if fake else model}；思考档位：{thinking}",
-        "- 环境：独立 Docker Compose 项目 `nere741`；数据库 `localhost:15741`；后端端口预留 `18741`。"
+        f"- 环境：独立 Docker Compose 项目 `{project}`；数据库 `localhost:{db_port}`；后端端口预留 `{api_port}`。"
         + (
             ""
             if fake
-            else " Pi 开发服务通过 `compose.chatgpt-local.yml` 只读挂载本机授权，监听 `127.0.0.1:20741`。"
+            else f" Pi 开发服务通过 `compose.chatgpt-local.yml` 只读挂载本机授权，监听 `{pi_address}`。"
         ),
-        "- 环境变量：`COMPOSE_PROJECT_NAME=nere741`、`POSTGRES_PORT=15741`、`API_PORT=18741`、本任务独立数据库的 `DATABASE_URL`。"
+        f"- 环境变量：`COMPOSE_PROJECT_NAME={project}`、`POSTGRES_PORT={db_port}`、`API_PORT={api_port}`、本任务独立数据库的 `DATABASE_URL`。"
         + (
             ""
             if fake
-            else " 真实模型另设 `FASTAPI_ENV=development`、`CHATGPT_LOCAL_AUTH=true`、`PI_URL=http://127.0.0.1:20741`。"
+            else f" 真实模型另设 `FASTAPI_ENV=development`、`CHATGPT_LOCAL_AUTH=true`、`PI_URL={pi_url}`。"
         ),
-        f"- 命令：`uv run python scripts/eval_coordination.py --mode both{' --fake' if fake else ''} --model {model} --thinking {thinking} --report ../docs/m8-coordination-eval.md`",
+        f"- 命令：`{command}`",
         "- Pi 当前不向后端返回 token 用量；本次只计模型调用次数、工具调用次数和用时。",
         "- 模型调用次数未取得成功 TurnResult 时记为不可取得（旧结果中失败状态的 0 同样按缺失处理）；仅对已知计数取均值，括号显示已知/已评估数量。全组未知显示 —，不能据此比较成本高低。工具次数和用时仍按实际记录统计。",
         "- 旧失败记录的 0 不是实际零调用；工具次数只覆盖回调已观察到的调用。模型调用均值不能直接作成本优劣比较，failed:model_unavailable 也可能由参数校验、权限或服务异常触发，不能直接归因为供应商故障。",

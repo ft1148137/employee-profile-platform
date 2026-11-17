@@ -186,9 +186,23 @@ def test_classified_failure_path(
         assert result["status"] == "failed:model_unavailable"
         assert result["model_calls"] is None  # No successful TurnResult was obtained.
     if failure in {"parameters", "permission", "service"}:
-        assert observed["callback"] == ("ModelUnavailable", "coordination_tool")
+        if failure == "service":
+            assert observed["callback"] == ("ModelUnavailable", "coordination_tool")
+            assert observed["posted"] == {
+                "result": "平台工具调用失败",
+                "is_error": True,
+            }
+        else:
+            assert "callback" not in observed
+            assert observed["posted"] == {
+                "result": {
+                    "error": "工具参数不正确"
+                    if failure == "parameters"
+                    else "未找到该需求"
+                },
+                "is_error": False,
+            }
         assert observed["pi"] == ("ModelUnavailable", "unavailable")
-        assert observed["posted"] == {"result": "平台工具调用失败", "is_error": True}
         assert observed["shape"] == (
             {} if failure == "parameters" else {"demand_id": "uuid"}
         )

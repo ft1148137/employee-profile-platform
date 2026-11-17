@@ -686,3 +686,45 @@ def test_report_excludes_unknown_model_calls() -> None:
     assert "— (0/1)" in validator
     assert "不可取得/0" in output
     assert "仅对已知计数取均值" in output
+
+
+def test_report_uses_environment_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COMPOSE_PROJECT_NAME", "nere754")
+    monkeypatch.setenv("POSTGRES_PORT", "15754")
+    monkeypatch.setenv("API_PORT", "18754")
+    monkeypatch.setenv(
+        "PI_URL", "http://synthetic-user:synthetic-secret@127.0.0.1:20754"
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "scripts/eval_coordination.py",
+            "--mode",
+            "both",
+            "--model",
+            "chatgpt/gpt-6.1-sol",
+            "--thinking",
+            "high",
+            "--report",
+            "../../nere754-eval.md",
+        ],
+    )
+    with patch("scripts.eval_coordination.subprocess.run") as git_metadata:
+        git_metadata.return_value.stdout = "synthetic-baseline\n"
+        output = report([], "chatgpt/gpt-6.1-sol", "high", False)
+        for key in ("COMPOSE_PROJECT_NAME", "POSTGRES_PORT", "API_PORT", "PI_URL"):
+            monkeypatch.delenv(key)
+        monkeypatch.setattr("sys.argv", ["pytest"])
+        defaults = report([], "synthetic", "high", False)
+    assert "`nere754`" in output
+    assert "`localhost:15754`" in output
+    assert "`18754`" in output
+    assert "`127.0.0.1:20754`" in output
+    assert "--report ../../nere754-eval.md`" in output
+    assert "nere741" not in output
+    assert "synthetic-user" not in output
+    assert "synthetic-secret" not in output
+    assert "`nere741`" in defaults
+    assert "`localhost:15741`" in defaults
+    assert "`18741`" in defaults
+    assert "`127.0.0.1:20741`" in defaults

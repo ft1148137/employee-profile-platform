@@ -121,21 +121,20 @@ def invoke(
         try:
             tools = available_tools(principal, session)
             tool = tools.get(params.name)
-            if tool not in COORDINATION_TOOLS:
-                record_audit(
-                    session,
-                    org_id=principal.org_id,
-                    actor_type=principal.actor_type,
-                    actor_id=str(principal.user_id),
-                    action="mcp.tool_called",
-                    target_type="mcp_tool",
-                    target_id=params.name if tool is not None else None,
-                    details={
-                        "request_id": str(ctx.request_id),
-                        "client_name": client_name,
-                    },
-                )
-                session.commit()
+            record_audit(
+                session,
+                org_id=principal.org_id,
+                actor_type=principal.actor_type,
+                actor_id=str(principal.user_id),
+                action="mcp.tool_called",
+                target_type="mcp_tool",
+                target_id=params.name if tool is not None else None,
+                details={
+                    "request_id": str(ctx.request_id),
+                    "client_name": client_name,
+                },
+            )
+            session.commit()
             if tool is None:
                 raise McpRequestError(404, "工具不存在")
             body = tool.input_model.model_validate(params.arguments or {})
