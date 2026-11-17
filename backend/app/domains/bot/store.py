@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta
 from typing import Literal
 from uuid import UUID
@@ -340,7 +340,9 @@ def scope_shrank(
         return legacy_sensitive
     old_departments = previous.get("managed_department_ids")
     new_departments = current["managed_department_ids"]
-    old_employees = previous.get("visible_employee_ids")
+    old_employees = previous.get(
+        "read_employee_ids", previous.get("visible_employee_ids")
+    )
     new_employees = current["visible_employee_ids"]
     return bool(
         (previous.get("is_org_admin") and not current["is_org_admin"])
@@ -386,6 +388,7 @@ def state_for_turn(
     session: BotSession,
     *,
     scope: dict[str, JsonValue] | None = None,
+    on_read: Callable[[set[str]], None] | None = None,
 ) -> dict[str, JsonValue] | None:
     saved = load_state(db, session, scoped=True)
     if saved is None:
@@ -395,21 +398,33 @@ def state_for_turn(
         state = {key: value for key, value in saved.items() if key != "scope"}
         legacy_sensitive = (
             _legacy_sensitive(messages_for(db, session), state)
-            if not isinstance(previous, dict) or "visible_employee_ids" not in previous
+            if not isinstance(previous, dict)
+            or not ({"visible_employee_ids", "read_employee_ids"} & previous.keys())
             else False
         )
     else:
         previous = None
         state = saved
         legacy_sensitive = _legacy_sensitive(messages_for(db, session), saved)
+    current = scope if scope is not None else session_scope(db, principal)
     if scope_shrank(
         previous,
-        scope if scope is not None else session_scope(db, principal),
+        current,
         legacy_sensitive=legacy_sensitive,
     ):
         save_state(db, session, None)
         db.commit()
         return None
+    if on_read:
+        ids = (
+            previous.get("read_employee_ids", previous.get("visible_employee_ids"))
+            if isinstance(previous, dict)
+            else None
+        )
+        if not isinstance(ids, list):
+            ids = current["visible_employee_ids"]
+        if isinstance(ids, list):
+            on_read({str(id) for id in ids})
     return state if isinstance(state, dict) else None
 
 
@@ -428,17 +443,6 @@ def save_scoped_state(
         if state is not None
         else None,
     )
-
-
-def employee_references(value: JsonValue) -> set[str]:
-    if isinstance(value, list):
-        return {id for item in value for id in employee_references(item)}
-    if isinstance(value, dict):
-        ids = {id for item in value.values() for id in employee_references(item)}
-        if isinstance(value.get("employee_id"), str):
-            ids.add(str(value["employee_id"]))
-        return ids
-    return set()
 
 
 def messages_for(

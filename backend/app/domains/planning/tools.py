@@ -1,10 +1,11 @@
 """Caller-scoped coordination views over Capacity and Planning services."""
 
+from collections.abc import Callable
 from typing import Any, cast
 from uuid import UUID
 
 from pydantic import BaseModel, Field, JsonValue, RootModel
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.domains.capability.schemas import DictionaryRubric
@@ -19,11 +20,13 @@ from app.domains.capacity.demand import (
 )
 from app.domains.capacity.models import (
     CapacityDemand,
+    CapacityDemandEvent,
     DemandEventKind,
     DemandOutcome,
     DemandStatus,
 )
 from app.domains.employee_tools import EmployeeTool
+from app.domains.org.models import OrgMembership
 from app.domains.planning import service, snapshot
 from app.domains.planning.models import PlanningCase
 from app.domains.planning.schemas import (
@@ -96,9 +99,40 @@ def _department_view(p: Principal, db: Session, row: CapacityDemand) -> dict[str
     return reference.model_dump(mode="json")
 
 
-def _demand_view(p: Principal, db: Session, demand_id: UUID) -> dict[str, Any]:
+def _demand_view(
+    p: Principal,
+    db: Session,
+    demand_id: UUID,
+    *,
+    on_read: Callable[[set[str]], None] | None = None,
+) -> dict[str, Any]:
     row = demand_row(p, db, demand_id)
     detail = get_demand(p, db, row.id).model_dump(mode="json")
+    if on_read:
+        on_read(
+            {
+                str(id)
+                for id in db.exec(
+                    select(OrgMembership.employee_id)
+                    .join(
+                        CapacityDemandEvent,
+                        (col(CapacityDemandEvent.org_id) == OrgMembership.org_id)
+                        & (
+                            col(CapacityDemandEvent.actor_user_id)
+                            == OrgMembership.user_id
+                        ),
+                    )
+                    .where(
+                        OrgMembership.org_id == p.org_id,
+                        CapacityDemandEvent.demand_id == row.id,
+                        CapacityDemandEvent.kind == DemandEventKind.REPLIED,
+                    )
+                ).all()
+                if id is not None
+            }
+            if represents_department(p, row.target_department_id)
+            else set()
+        )
     detail.pop("capability_key", None)
     detail["status"] = STATUS_LABELS[row.status]
     levels = next(
@@ -127,6 +161,11 @@ def _demand_view(p: Principal, db: Session, demand_id: UUID) -> dict[str, Any]:
                 DemandEventKind.REPLIED,
                 DemandEventKind.COMMITMENT_CHANGED,
             }:
+                if event.get("text"):
+                    detail["reply_notice"] = (
+                        "没有读取对方答复正文里的条件，请到需求详情查看"
+                    )
+                    detail["demand_url"] = f"/capacity?tab=outgoing&demand={row.id}"
                 event.pop("text", None)
     for event in detail["events"]:
         event["kind"] = EVENT_LABELS[event["kind"]]
@@ -170,13 +209,21 @@ def _option(option: OptionPublic, case: CasePublic) -> dict[str, Any]:
     }
 
 
-def read_coordination_context(p: Principal, db: Session, body: DemandIdInput) -> Result:
+def read_coordination_context(
+    p: Principal,
+    db: Session,
+    body: DemandIdInput,
+    *,
+    on_read: Callable[[set[str]], None] | None = None,
+) -> Result:
     row = demand_row(p, db, body.demand_id)
-    result: dict[str, Any] = {"demand": _demand_view(p, db, row.id)}
+    result: dict[str, Any] = {"demand": _demand_view(p, db, row.id, on_read=on_read)}
+    ids: set[str] = set()
     if represents_department(p, row.target_department_id):
         case_id = _case_id(p, db, row.id)
         if case_id:
             case = service.get_case(p, db, case_id)
+            ids.update(str(person.employee_id) for person in case.people)
             result["latest_case"] = {
                 "case_id": str(case.id),
                 "stale": case.stale,
@@ -190,14 +237,26 @@ def read_coordination_context(p: Principal, db: Session, body: DemandIdInput) ->
                     for o in case.options
                 ],
             }
+    if on_read:
+        on_read(ids)
     return Result(result)
 
 
-def inspect_capacity(p: Principal, db: Session, body: DemandIdInput) -> Result:
+def inspect_capacity(
+    p: Principal,
+    db: Session,
+    body: DemandIdInput,
+    *,
+    on_read: Callable[[set[str]], None] | None = None,
+) -> Result:
     row = demand_row(p, db, body.demand_id)
     if not represents_department(p, row.target_department_id):
+        if on_read:
+            on_read(set())
         return Result({"capacity_reference": _department_view(p, db, row)})
     data, _, _ = snapshot.build(db, p, row)
+    if on_read:
+        on_read({person["employee_id"] for person in data["candidates"]})
     basis = get_demand_basis(p, db, row.id)
     names = {str(person.employee_id): person.display_name for person in basis.data}
     names.update(
@@ -218,12 +277,20 @@ def inspect_capacity(p: Principal, db: Session, body: DemandIdInput) -> Result:
 
 
 def search_qualified_candidates(
-    p: Principal, db: Session, body: DemandIdInput
+    p: Principal,
+    db: Session,
+    body: DemandIdInput,
+    *,
+    on_read: Callable[[set[str]], None] | None = None,
 ) -> Result:
     row = demand_row(p, db, body.demand_id)
     if not represents_department(p, row.target_department_id):
+        if on_read:
+            on_read(set())
         return Result({"capacity_reference": _department_view(p, db, row)})
     data, _, _ = snapshot.build(db, p, row)
+    if on_read:
+        on_read({person["employee_id"] for person in data["candidates"]})
     basis = get_demand_basis(p, db, row.id)
     names = {str(person.employee_id): person.display_name for person in basis.data}
     names.update(
@@ -249,12 +316,20 @@ def search_qualified_candidates(
     )
 
 
-def simulate_plan(p: Principal, db: Session, body: SimulateInput) -> Result:
+def simulate_plan(
+    p: Principal,
+    db: Session,
+    body: SimulateInput,
+    *,
+    on_read: Callable[[set[str]], None] | None = None,
+) -> Result:
     row = demand_row(p, db, body.demand_id)
     if not represents_department(p, row.target_department_id):
         return Result({"error": "无权查看方案"})
     if body.assignees is None:
         case = service.create_case(p, db, row.id)
+        if on_read:
+            on_read({str(person.employee_id) for person in case.people})
         return Result(
             {
                 "case_id": str(case.id),
@@ -270,11 +345,21 @@ def simulate_plan(p: Principal, db: Session, body: SimulateInput) -> Result:
     access = service.authorized_case(p, db, case_id)
     option = service.create_option(p, db, access, OptionInput(assignees=body.assignees))
     case = service.get_case(p, db, case_id)
+    if on_read:
+        on_read({str(person.employee_id) for person in case.people})
     return Result({"case_id": str(case_id), "option": _option(option, case)})
 
 
-def compare_plan_options(p: Principal, db: Session, body: CompareInput) -> Result:
+def compare_plan_options(
+    p: Principal,
+    db: Session,
+    body: CompareInput,
+    *,
+    on_read: Callable[[set[str]], None] | None = None,
+) -> Result:
     case = service.get_case(p, db, body.case_id)
+    if on_read:
+        on_read({str(person.employee_id) for person in case.people})
     selected = {o.id: o for o in case.options if o.id in body.option_ids}
     if len(selected) != len(set(body.option_ids)):
         raise service.PlanningNotFound()
@@ -289,14 +374,25 @@ def compare_plan_options(p: Principal, db: Session, body: CompareInput) -> Resul
     )
 
 
-def get_approval_status(p: Principal, db: Session, body: DemandIdInput) -> Result:
+def get_approval_status(
+    p: Principal,
+    db: Session,
+    body: DemandIdInput,
+    *,
+    on_read: Callable[[set[str]], None] | None = None,
+) -> Result:
     row = demand_row(p, db, body.demand_id)
-    detail = _demand_view(p, db, row.id)
+    detail = _demand_view(p, db, row.id, on_read=on_read)
     return Result(
         {
             "status": detail["status"],
             "revision": detail["revision"],
             "events": detail["events"],
+            **{
+                key: detail[key]
+                for key in ("reply_notice", "demand_url")
+                if key in detail
+            },
         }
     )
 

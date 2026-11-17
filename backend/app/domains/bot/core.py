@@ -87,9 +87,12 @@ def turn(
     # Keep the scope that admitted inherited state, not a later persistence snapshot.
     scope = store.session_scope(db, p)
     employee_ids: set[str] = set()
-    visible_ids = scope["visible_employee_ids"]
-    if isinstance(visible_ids, list):
-        employee_ids.update(str(id) for id in visible_ids)
+
+    def report_reads(ids: set[str]) -> None:
+        employee_ids.update(ids)
+        read_ids: list[JsonValue] = []
+        read_ids.extend(sorted(employee_ids))
+        scope["read_employee_ids"] = read_ids
 
     def call(name: str, args: dict[str, JsonValue]) -> JsonValue:
         title = tools.TITLES.get(
@@ -101,21 +104,27 @@ def turn(
         if stream:
             stream.check()
             stream.on_tool(title, "start", True)
+        reported = False
+
+        def on_read(ids: set[str]) -> None:
+            nonlocal reported
+            reported = True
+            report_reads(ids)
+
         try:
-            result = tools.call(db, p, session, cards, name, args)
-            employee_ids.update(store.employee_references(result))
-            for card in cards:
-                employee_ids.update(
-                    store.employee_references(card.model_dump(mode="json"))
-                )
-            read_ids: list[JsonValue] = []
-            read_ids.extend(sorted(employee_ids))
-            scope["visible_employee_ids"] = read_ids
+            result = tools.call(db, p, session, cards, name, args, on_read=on_read)
         except Exception:
             steps.append(s.ToolStep(name=title, ok=False))
             if stream:
                 stream.on_tool(title, "end", False)
             raise
+        finally:
+            if not reported:
+                # Unknown tools retain both admission and post-call visibility.
+                for snapshot in (visible_scope, store.session_scope(db, p)):
+                    ids = snapshot["visible_employee_ids"]
+                    if isinstance(ids, list):
+                        report_reads({str(id) for id in ids})
         ok = not (isinstance(result, dict) and "error" in result)
         steps.append(s.ToolStep(name=title, ok=ok))
         if stream:
@@ -123,7 +132,12 @@ def turn(
         return result
 
     try:
-        session_state = store.state_for_turn(db, p, session, scope=scope)
+        visible_scope = dict(scope)
+        scope.pop("visible_employee_ids")
+        report_reads(set())
+        session_state = store.state_for_turn(
+            db, p, session, scope=visible_scope, on_read=report_reads
+        )
         with begin_turn(
             db, p, session, user_payload, stream.cancelled if stream else None
         ):
