@@ -48,7 +48,7 @@ cd employee-profile-platform
 | --- | --- |
 | HTTP | 可信局域网，允许所选端口入站；如 `http://192.168.1.10:8080`。传输未加密 |
 | HTTPS 自签 | 允许所选 HTTP 端口和 443 入站；HTTP 重定向到 HTTPS。Traefik 提供自签证书，浏览器会提示证书不受信任，核对地址后再继续 |
-| HTTPS + Let's Encrypt | 真实域名、公网 DNS 指向服务器、外网可达 80/443，HTTP 端口选 80，填写通知邮箱。签发依赖公网条件；内网 IP 不能申请 |
+| HTTPS + Let's Encrypt | 真实域名、公网 DNS 指向服务器、外网可达 80/443，HTTP 端口选 80，填写通知邮箱。使用 HTTP-01 challenge，经 HTTP 入口的 80 端口校验域名，HTTPS 重定向不影响校验。签发依赖公网条件；内网 IP 不能申请 |
 
 无人值守安装可用：
 
@@ -59,6 +59,12 @@ EPP_ADDRESS=192.168.1.10 EPP_HTTP_PORT=8080 ./install.sh --non-interactive
 ```
 
 同一台机器多套部署要使用不同目录、项目名和端口，例如 `COMPOSE_PROJECT_NAME=epp-test EPP_HTTP_PORT=18080`。HTTPS 各套仍会争用 443，不能仅靠项目名隔离。
+
+HTTPS 代理只读取本 Compose 项目的容器，路由和服务名也带项目名前缀，避免同一 Docker 上其他带 Traefik 标签的项目被误接入。后端没有直接发布端口，流式响应设置为立即转发。域名证书保存在本项目的 `traefik-certificates` 卷内；停止或升级时保留该卷，不要加 `down -v`。
+
+自签证书适用于本机或受控内网试用。云端 MCP 客户端通常需要能访问的公网 HTTPS 地址和可信证书，不能靠浏览器忽略警告来解决。飞书目前使用出站长连接，不需要填写公网回调 URL；其他 IM 连接方式见本页开头。
+
+本机 HTTPS 实测结果和限制见 [M9 HTTPS 实测](m9-https-test.md)。登录当前返回 Bearer token，由网页保存在 localStorage，没有登录 Cookie；不能将 HTTPS 部署等同于已设置 Secure/HttpOnly Cookie。当前没有邮件发送功能，不能用邮件送达作为部署健康检查。
 
 ### 初始化链接与局域网访问
 
@@ -107,7 +113,7 @@ docker compose up -d --wait
 
 ### 演示账号
 
-前四个账号密码均为 **`demo-password-2026`**，来自 `.env.example` 的 `DEMO_USER_PASSWORD`。账号和样例以 [示例数据说明](../examples/demo-org/README.md) 为准，所有公司、员工和证据均为虚构。
+使用 `./install.sh --demo` 全新安装时，安装器为前四个账号生成同一个随机密码，显示在安装完成输出中，也保存在本机 `.env` 的 `DEMO_USER_PASSWORD`；请勿公开该文件或密码。手动使用 `.env.example` 的开发演示默认密码才是 **`demo-password-2026`**。账号和样例以 [示例数据说明](../examples/demo-org/README.md) 为准，所有公司、员工和证据均为虚构。
 
 | 登录名 | 身份 | 登录后可见内容 |
 | --- | --- | --- |
@@ -117,7 +123,7 @@ docker compose up -d --wait
 | `employee.algorithm@demo.example.com` | 员工 E05 张伟 | 仅本人画像；与 E02 同名，但身份独立 |
 | `admin@example.com` | 平台超管，同时获授演示组织企业管理员 | 平台账号管理和演示组织全部画像；受限证据仍不能读正文 |
 
-登录名就是邮箱，比较时忽略首尾空格和大小写。最后一个账号的邮箱和密码使用 `FIRST_SUPERUSER` / `FIRST_SUPERUSER_PASSWORD`，默认密码 **`changethis`**。平台超管本身不绕过组织权限，演示初始化显式授予了企业管理员角色。更改 `.env` 不会修改已导入账号的密码。
+登录名就是邮箱，比较时忽略首尾空格和大小写。最后一个账号仅在配置了 `FIRST_SUPERUSER` / `FIRST_SUPERUSER_PASSWORD` 时创建；安装器默认不创建平台超管。手动使用 `.env.example` 的开发演示默认密码是 **`changethis`**。平台超管本身不绕过组织权限，演示初始化显式授予了企业管理员角色。更改 `.env` 不会修改已导入账号的密码。
 
 已有演示库升级时，关联员工的三个账号按员工原有工作邮箱迁移为 `employee01@demo.example.com`、`employee02@demo.example.com`、`employee05@demo.example.com`；没有员工关联的旧管理员保留原登录名。重新导入演示数据会复用这些账号，不改密码。上表适用于全新演示库。
 
