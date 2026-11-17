@@ -32,6 +32,8 @@
 | 4. 模型或工具失败仍可手工完成 | #334、#336；`test_m8_coordination_entries.py` 的 `test_tool_failure_rolls_back_partial_plan`、`test_model_failure_discards_plan`；`test_m8_coordination_cards.py` 的失败、角色链接用例；`m8-coordination-chat.spec.ts` | CI 通过。失败丢弃本轮部分方案，按角色给「我提的需求」或「收到的需求」链接；网页 spec 从失败提示进入无需模型的方案页，再手工确认答复。忙碌提示不误报成手工降级 |
 | 5. M7 集比较纯 Agent 与 Agent + 校验器，记录约束、经理修改和调用成本 | #338、#339；[test_coordination_eval.py](../backend/tests/eval/coordination/test_coordination_eval.py)、[test_nere750_coordination_failures.py](../backend/tests/eval/test_nere750_coordination_failures.py)；[评测报告](m8-coordination-eval.md) | 评测入口与合成分类 CI 通过；原真实模型两种模式各 34 案、共 68 条，无 deferred。**业务指标未达到 M7 基线**，详见下文。#339 的 6 个脚本样本不是新的真实模型全量基线 |
 
+第 5 项补充：[F2 修复后重跑](m8-coordination-eval.md#f2-修复后重跑) 追加 NERE-754 的双模式真实模型结果及新旧成绩对比，原成绩和结论保留。
+
 ## 四入口隐私与会话保护
 
 | 入口 | 测试位置与断言 | 结果 |

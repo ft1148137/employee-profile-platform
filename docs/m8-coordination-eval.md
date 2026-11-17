@@ -137,3 +137,126 @@ shortcut: Pi 不回传 token 用量；需要货币成本时升级 Pi 协议。
 已证实：修复前向模型公开的 CoordinationInput 允许空 `arguments`，缺少六个子操作的字段和 required 说明；专用测试先失败后通过。修复直接从现有 `COORDINATION_TOOLS.input_model.model_json_schema()` 生成模型可见说明，包含嵌套 assignees 类型、UUID、日期和投入上下限；首次只传 demand_id，自定方案须先做首次模拟；工具总数仍不超过 29。不改 Pi 协议、失败策略、权限、系统提示词和案例。
 
 仍未知：原始 34 次 agent_validator 失败各自的实际参数、异常类别和触发点，以及纯 Agent 的 26 次解析失败各自的原因。原记录没有这些证据，本次可控复现不能补写其历史根因。没有重跑完整真实评测，没有把 pytest 通过写成业务基线通过；本次也没有确认出需要扩大生产修改范围的新缺陷。后续真实样本或全量评测由父 issue 决定。
+
+## F2 修复后重跑
+
+- 日期：2026-11-18（本轮于 2026-11-17 开始，跨午夜完成）
+- 修复代码提交：`dc211de5f7e37f2961a27b89b8944ec14f00cc3c`
+- master 基线提交：`065706dd926cc27f8a5a8200e5dc51580e5918af`
+- 模型：chatgpt/gpt-6.1-sol；思考档位：high
+- 环境：独立 Docker Compose 项目 `nere754`；数据库 `localhost:15754`；后端端口预留 `18754`。 Pi 开发服务通过 `compose.chatgpt-local.yml` 只读挂载本机授权，监听 `127.0.0.1:20754`。
+- 环境变量：`COMPOSE_PROJECT_NAME=nere754`、`POSTGRES_PORT=15754`、`API_PORT=18754`、本任务独立数据库的 `DATABASE_URL`。 真实模型另设 `FASTAPI_ENV=development`、`CHATGPT_LOCAL_AUTH=true`、`PI_URL=http://127.0.0.1:20754`。
+- 命令：`uv run python scripts/eval_coordination.py --mode both --model chatgpt/gpt-6.1-sol --thinking high --report ../../nere754-eval.md`
+- Pi 当前不向后端返回 token 用量；本次只计模型调用次数、工具调用次数和用时。
+- 模型调用次数未取得成功 TurnResult 时记为不可取得（旧结果中失败状态的 0 同样按缺失处理）；仅对已知计数取均值，括号显示已知/已评估数量。全组未知显示 —，不能据此比较成本高低。工具次数和用时仍按实际记录统计。
+- 旧失败记录的 0 不是实际零调用；工具次数只覆盖回调已观察到的调用。模型调用均值不能直接作成本优劣比较，failed:model_unavailable 也可能由参数校验、权限或服务异常触发，不能直接归因为供应商故障。
+
+### 汇总
+
+| 做法 | 已评估/总数 | 违反约束 | 解析失败 | 模型失败 | 快照外人员 | 经理修改均值 | 修改次数分布 | 模型调用均值 | 工具调用均值 | 用时均值(秒) | 新人方案案例数 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: |
+| 纯 Agent | 34/34 | 19/34 (55.9%) | 15 | 2 | 0 | ≥0.79 | 0: 16, 5+: 3, 不可计算: 15 | 2.69 (32/34) | 3.00 | 29.22 | 2 |
+| Agent + 校验器 | 34/34 | 8/34 (23.5%) | 2 | 2 | 0 | ≥0.62 | 0: 27, 2: 1, 3: 1, 5+: 3, 不可计算: 2 | 4.44 (32/34) | 5.44 | 33.42 | 2 |
+
+经理修改规则：从最终方案出发，在回滚的保存点内调用 S3 `revise_option`。先把等级不足、离职或超额人员换成快照中已确认周余量总和最大的合格候选人（余量 = 容量 - 其他工作 - 平台分配）；再按 `outside_window` 改回需求时间；最后每轮降低 10 个百分点投入。最多五次，仍达不到规则引擎最好结论记 `5+`；均值以 5 次代入 `5+`，因此是下界。没有可解析最终方案时，修改次数无法计算。
+
+### 逐案例
+
+表中 `passed` 表示案例运行完成，不能代表模型达到业务指标；解析失败或模型失败计为违反约束。deferred 不计入违反比例。
+
+| 案例 | 做法 | 状态 | 基线 | 最终结论 | 违反 | 修改 | 模型/工具调用 | 秒 |
+| --- | --- | --- | --- | --- | --- | --- | --- | ---: |
+| borrow-01 | agent | passed | conditional | — | 是 | — | 3/3 | 20.08 |
+| borrow-01 | agent_validator | passed | conditional | conditional | 否 | 0 | 4/5 | 31.51 |
+| borrow-02 | agent | passed | conditional | — | 是 | — | 2/3 | 20.57 |
+| borrow-02 | agent_validator | passed | conditional | conditional | 否 | 0 | 4/5 | 28.31 |
+| delay-01 | agent | passed | conditional | — | 是 | — | 3/3 | 26.29 |
+| delay-01 | agent_validator | passed | conditional | conditional | 否 | 0 | 6/7 | 39.65 |
+| delay-02 | agent | passed | conditional | — | 是 | — | 3/3 | 22.93 |
+| delay-02 | agent_validator | passed | conditional | infeasible | 是 | 3 | 4/5 | 31.84 |
+| denied-01 | agent | passed | feasible | feasible | 否 | 0 | 3/3 | 16.98 |
+| denied-01 | agent_validator | passed | feasible | feasible | 否 | 0 | 4/5 | 25.70 |
+| denied-02 | agent | passed | feasible | feasible | 否 | 0 | 2/3 | 14.96 |
+| denied-02 | agent_validator | passed | feasible | feasible | 否 | 0 | 4/5 | 22.51 |
+| departed-01 | agent | passed | infeasible | — | 是 | — | 2/3 | 25.40 |
+| departed-01 | agent_validator | passed | infeasible | insufficient_data | 否 | 0 | 5/6 | 31.59 |
+| departed-02 | agent | passed | infeasible | — | 是 | — | 3/3 | 18.32 |
+| departed-02 | agent_validator | passed | infeasible | insufficient_data | 否 | 0 | 5/6 | 37.15 |
+| direct-01 | agent | failed:model_unavailable | feasible | — | 是 | — | 不可取得/3 | 140.85 |
+| direct-01 | agent_validator | passed | feasible | feasible | 否 | 0 | 4/5 | 23.87 |
+| direct-02 | agent | passed | feasible | feasible | 否 | 0 | 3/3 | 26.51 |
+| direct-02 | agent_validator | passed | feasible | feasible | 否 | 0 | 4/5 | 23.02 |
+| legacy-01 | agent | passed | conditional | — | 是 | — | 3/3 | 25.47 |
+| legacy-01 | agent_validator | passed | conditional | conditional | 否 | 0 | 6/7 | 44.40 |
+| legacy-02 | agent | passed | conditional | — | 是 | — | 3/3 | 30.09 |
+| legacy-02 | agent_validator | passed | conditional | infeasible | 是 | 2 | 4/5 | 27.24 |
+| low-level-01 | agent | passed | infeasible | — | 是 | — | 3/3 | 23.10 |
+| low-level-01 | agent_validator | failed:model_unavailable | infeasible | — | 是 | — | 不可取得/5 | 152.36 |
+| low-level-02 | agent | passed | infeasible | infeasible | 是 | 0 | 3/3 | 20.81 |
+| low-level-02 | agent_validator | passed | infeasible | infeasible | 是 | 0 | 5/6 | 33.77 |
+| newcomer-low-01 | agent | passed | feasible | feasible | 否 | 0 | 2/3 | 15.99 |
+| newcomer-low-01 | agent_validator | passed | feasible | feasible | 否 | 0 | 4/5 | 22.58 |
+| newcomer-low-02 | agent | passed | feasible | feasible | 否 | 0 | 2/3 | 17.76 |
+| newcomer-low-02 | agent_validator | passed | feasible | feasible | 否 | 0 | 4/5 | 23.21 |
+| newcomer-yes-01 | agent | passed | feasible | feasible | 否 | 0 | 2/3 | 23.64 |
+| newcomer-yes-01 | agent_validator | passed | feasible | feasible | 否 | 0 | 5/6 | 31.06 |
+| newcomer-yes-02 | agent | passed | feasible | feasible | 否 | 0 | 3/3 | 18.33 |
+| newcomer-yes-02 | agent_validator | passed | feasible | feasible | 否 | 0 | 4/5 | 22.82 |
+| over-01 | agent | passed | conditional | — | 是 | — | 2/3 | 23.43 |
+| over-01 | agent_validator | passed | conditional | conditional | 否 | 0 | 5/6 | 29.15 |
+| over-02 | agent | passed | conditional | — | 是 | — | 3/3 | 22.29 |
+| over-02 | agent_validator | passed | conditional | conditional | 否 | 0 | 4/5 | 25.68 |
+| phased-01 | agent | passed | conditional | feasible | 否 | 0 | 2/3 | 23.89 |
+| phased-01 | agent_validator | passed | conditional | feasible | 否 | 0 | 5/6 | 30.05 |
+| phased-02 | agent | passed | conditional | feasible | 否 | 0 | 3/3 | 22.77 |
+| phased-02 | agent_validator | passed | conditional | feasible | 否 | 0 | 5/6 | 28.68 |
+| reduce-01 | agent | passed | conditional | — | 是 | — | 3/3 | 18.66 |
+| reduce-01 | agent_validator | passed | conditional | conditional | 否 | 0 | 5/6 | 32.47 |
+| reduce-02 | agent | passed | conditional | — | 是 | — | 3/3 | 26.25 |
+| reduce-02 | agent_validator | passed | conditional | conditional | 否 | 0 | 4/5 | 26.31 |
+| small-01 | agent | passed | feasible | feasible | 否 | 0 | 2/3 | 17.62 |
+| small-01 | agent_validator | passed | feasible | feasible | 否 | 0 | 4/5 | 24.91 |
+| small-02 | agent | passed | feasible | feasible | 否 | 0 | 3/3 | 21.65 |
+| small-02 | agent_validator | passed | feasible | feasible | 否 | 0 | 4/5 | 27.24 |
+| stale-case-01 | agent | passed | feasible | feasible | 否 | 0 | 3/3 | 22.39 |
+| stale-case-01 | agent_validator | passed | feasible | feasible | 否 | 0 | 4/5 | 23.20 |
+| stale-case-02 | agent | passed | feasible | feasible | 否 | 0 | 3/3 | 20.93 |
+| stale-case-02 | agent_validator | passed | feasible | feasible | 否 | 0 | 4/5 | 25.96 |
+| stale-week-01 | agent | passed | insufficient_data | insufficient_data | 否 | 0 | 3/3 | 26.44 |
+| stale-week-01 | agent_validator | passed | insufficient_data | insufficient_data | 否 | 0 | 4/5 | 25.89 |
+| stale-week-02 | agent | passed | insufficient_data | insufficient_data | 否 | 0 | 2/3 | 22.04 |
+| stale-week-02 | agent_validator | passed | insufficient_data | insufficient_data | 否 | 0 | 4/5 | 26.66 |
+| unavailability-01 | agent | failed:model_unavailable | conditional | — | 是 | — | 不可取得/3 | 142.40 |
+| unavailability-01 | agent_validator | passed | conditional | infeasible | 是 | 5+ | 5/6 | 38.85 |
+| unavailability-02 | agent | passed | conditional | infeasible | 是 | 5+ | 3/3 | 26.71 |
+| unavailability-02 | agent_validator | passed | conditional | infeasible | 是 | 5+ | 5/6 | 42.74 |
+| unconfirmed-01 | agent | passed | conditional | insufficient_data | 是 | 5+ | 3/3 | 24.51 |
+| unconfirmed-01 | agent_validator | passed | conditional | infeasible | 是 | 5+ | 4/5 | 34.72 |
+| unconfirmed-02 | agent | passed | conditional | insufficient_data | 是 | 5+ | 3/3 | 23.36 |
+| unconfirmed-02 | agent_validator | failed:model_unavailable | conditional | — | 是 | — | 不可取得/6 | 41.34 |
+
+### 与 M7 基线对比
+
+M7 的 34 个案例全部通过，出现新人方案的案例数为 2。此表中的违反约束按逐案例规则引擎最好结论比较；出现新人方案数不得少于 2。
+纯 Agent：结论不更差要求未满足；新人方案 2 个，数量要求满足。
+Agent + 校验器：结论不更差要求未满足；新人方案 2 个，数量要求满足。
+待重跑：无。
+
+硬指标：每个案例的 `capacity_*`、审计、收件箱及 IM 通知行在评测前后相同；工具结果没有其他部门个人字段。
+
+shortcut: Pi 不回传 token 用量；需要货币成本时升级 Pi 协议。
+
+### 与 NERE-741 原成绩对比
+
+| 做法 | 轮次 | 违反约束 | 解析失败 | 模型失败 | 经理修改均值 | 模型调用均值 | 工具调用均值 | 用时均值（秒） | 新人方案案例数 |
+| --- | --- | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: |
+| 纯 Agent | NERE-741 原成绩 | 28/34 (82.4%) | 26 | 2 | ≥1.25 | 3.03 (32/34) | 2.91 | 33.30 | 1 |
+| 纯 Agent | F2 修复后 | 19/34 (55.9%) | 15 | 2 | ≥0.79 | 2.69 (32/34) | 3.00 | 29.22 | 2 |
+| Agent + 校验器 | NERE-741 原成绩 | 34/34 (100.0%) | 34 | 34 | — | — (0/34) | 0.94 | 11.88 | 0 |
+| Agent + 校验器 | F2 修复后 | 8/34 (23.5%) | 2 | 2 | ≥0.62 | 4.44 (32/34) | 5.44 | 33.42 | 2 |
+
+本轮两种模式各 34 案，共 68 条结果，无 deferred；39 项评测入口与硬断言通过（34 个双模式案例及 5 项辅助检查），用时 2393.20 秒。所有案例的容量、审计、收件箱、IM 通知行不变，工具结果没有其他部门个人字段。
+
+相较原成绩，校验器模式的统一模型失败从 34 次降为 2 次，约束违反从 34/34 降为 8/34；纯 Agent 的约束违反从 28/34 降为 19/34。两种模式均出现 2 个新人方案，达到 M7 的数量基线；仍存在约束违反，不能视为 M7 业务验收已通过。模型失败时调用计数仍不可取得，均值只涵盖已知结果，不能据此推算货币成本或反推供应商故障。
+
+上文 NERE-750 的错误链保留为历史记录。F2 后，参数校验与权限拒绝作为具体业务 error 回传 Pi，is_error=false；对应旧 mock 没有 done 事件，最终仍按流提前结束断言为模型失败。网页和飞书的完整同轮纠错由新增假模型测试覆盖；系统异常仍中止并回滚。A 方的历史答复裁剪和原隐私测试按范围调整原样保留。未修改提示词、案例、评分标准、权限、工具上限和 Pi 协议。
