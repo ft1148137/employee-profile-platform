@@ -429,7 +429,14 @@ def revise_option(
         "assignees": assignees,
         "locked_employee_ids": sorted(locks),
     }
-    result = validator.validate(latest.data, params)
+    phased_origin = (
+        base.kind == OptionKind.PHASED or base.summary.get("phased_origin") is True
+    )
+    result = validator.validate(
+        latest.data,
+        params,
+        phased=phased_origin,
+    )
     old_findings = cast("list[dict[str, Any]]", base.findings)
     old_keys = {_finding_key(item) for item in old_findings}
     new_keys = {_finding_key(item) for item in result.findings}
@@ -459,6 +466,7 @@ def revise_option(
         findings=result.findings,
         summary={
             **result.summary,
+            "phased_origin": phased_origin,
             "base_option_id": str(base.id),
             "changes": description,
             "diff": diff,

@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from itertools import pairwise
 from typing import Any, Literal, cast
 
 from pydantic import BaseModel
@@ -6,6 +7,7 @@ from pydantic import BaseModel
 from app.domains.capacity.calendar import WeekLoad, shortfalls, week_start
 
 Verdict = Literal["feasible", "conditional", "infeasible", "insufficient_data"]
+PHASED_APPROVAL = "需求方同意分阶段交付"
 
 
 class Validation(BaseModel):
@@ -15,7 +17,11 @@ class Validation(BaseModel):
 
 
 def validate(
-    data: dict[str, Any], params: dict[str, Any], *, kind: str = "custom"
+    data: dict[str, Any],
+    params: dict[str, Any],
+    *,
+    kind: str = "custom",
+    phased: bool = False,
 ) -> Validation:
     """Validate saved inputs only; no database reads or writes."""
     demand = data["demand"]
@@ -190,6 +196,27 @@ def validate(
             / 100
         )
         week += timedelta(days=7)
+    segments: dict[str, set[tuple[str, str]]] = {}
+    for assignee in assignees:
+        segments.setdefault(assignee["employee_id"], set()).add(
+            (assignee["start_date"], assignee["end_date"])
+        )
+    periods = sorted({period for parts in segments.values() for period in parts})
+    relay = (
+        len(segments) > 1
+        and len(periods) > 1
+        and periods[0][0] <= demand["window_start"]
+        and periods[-1][1] >= demand["window_end"]
+        and all(
+            date.fromisoformat(left[1]) + timedelta(days=1)
+            == date.fromisoformat(right[0])
+            for left, right in pairwise(periods)
+        )
+    )
+    phased = phased or relay or any(len(parts) > 1 for parts in segments.values())
+    # The simulator adds its condition after checking the individual phases.
+    if phased and kind != "phased":
+        add("phased", "conditional", PHASED_APPROVAL)
     severity = {
         "feasible": 0,
         "conditional": 1,
@@ -220,13 +247,8 @@ def validate(
         approvers.append("需求方接受新日期")
     if kind == "reduce_scope" or "reduced_allocation" in codes:
         approvers.append("需求方接受缩小范围")
-    segments: dict[str, set[tuple[str, str]]] = {}
-    for assignee in assignees:
-        segments.setdefault(assignee["employee_id"], set()).add(
-            (assignee["start_date"], assignee["end_date"])
-        )
-    if kind == "phased" or any(len(periods) > 1 for periods in segments.values()):
-        approvers.append("需求方同意分阶段交付")
+    if kind == "phased" or phased:
+        approvers.append(PHASED_APPROVAL)
     if "borrow" in codes or kind == "borrow":
         approvers.append("原部门经理和被借调员工本人同意")
     if "outside_basis" in codes:
