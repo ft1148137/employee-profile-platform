@@ -11,7 +11,6 @@ import pytest
 import yaml
 from pydantic import ValidationError
 from sqlmodel import Session
-from tests.eval.coordination.test_coordination_eval import evaluate
 
 from app.domains.bot import core, tools
 from app.domains.model import pi_client
@@ -23,6 +22,8 @@ CASES = Path(__file__).parent / "planning/cases"
 @pytest.mark.parametrize("case", ["direct-01", "newcomer-yes-01", "delay-01"])
 @pytest.mark.parametrize("mode", ["agent", "agent_validator"])
 def test_scripted_samples(db: Session, case: str, mode: str) -> None:
+    from tests.eval.coordination.test_coordination_eval import evaluate
+
     result = evaluate(
         db,
         yaml.safe_load((CASES / f"{case}.yaml").read_text()),
@@ -57,6 +58,8 @@ def test_classified_failure_path(
     case: str,
     origin: str | None,
 ) -> None:
+    from tests.eval.coordination.test_coordination_eval import evaluate
+
     observed: dict[str, Any] = {}
     original_client = httpx.Client
     original_turn = pi_client.run_turn
