@@ -46,4 +46,4 @@ bash scripts/preflight.sh
 
 提交贡献即表示你有权提供这些内容，并同意贡献按 **Apache-2.0** 授权（inbound = outbound），无需额外的贡献者许可协议。第三方内容须保留原有版权和许可证声明，不能把其许可直接改成项目许可。
 
-当前根目录 `LICENSE` 仍为上游模板的 MIT 文本，Apache-2.0 发布手续尚未完成，详见[许可证核验与发布前阻断项](docs/licenses.md)。贡献授权约定不表示现有第三方代码已重新授权；正式发布时需补全项目许可并保留模板 MIT 声明。
+项目许可证全文见 [LICENSE](LICENSE)，来源与第三方许可入口见 [NOTICE](NOTICE)。上游模板的 MIT 版权、许可与免责全文保留在 [模板 MIT 许可证](licenses/full-stack-fastapi-template-MIT.txt)。第三方依赖的使用和再分发义务见[许可证核验](docs/licenses.md)，贡献授权约定不改变这些第三方内容的许可。

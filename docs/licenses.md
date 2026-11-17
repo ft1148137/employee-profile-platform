@@ -2,9 +2,22 @@
 
 核验日期：2026-11-18。代码基线：`20fe9adb9f57e1fbdac9afe0a0a4bb47d201ae0c`。覆盖根目录 `uv.lock`、根目录 `bun.lock`（前端 workspace）、`pi/package-lock.json`，以及所有 Dockerfile / Compose 引用的基础镜像。审计工具仅一次性运行，不写入依赖文件。本次没有替换或删除依赖，没有修改仓库设置。
 
-## 结论与发布前阻断项
+## 结论与发布边界
 
-**不能确认根目录 LICENSE 是 Apache-2.0：实际是完整 MIT 文本，版权为 Copyright (c) 2019 Sebastián Ramírez。** 本 issue 只允许修改三份文档，因此保留原文件并已在 NERE-639 提及 Reviewer。正式按 Apache-2.0 发布前，维护者须补齐[完整 Apache-2.0 文本](https://www.apache.org/licenses/LICENSE-2.0.txt)，并保留模板的 MIT 版权、许可与免责全文；不能直接丢弃原声明。
+核验基线的根目录 `LICENSE` 是模板 MIT 文本，版权为 Copyright (c) 2019 Sebastián Ramírez。按本 issue 更新后的范围，**本 PR 已将根 [LICENSE](../LICENSE) 改为 Apache-2.0 官方完整原文，包含 APPENDIX，保留其中占位符不填写**；原 MIT 全文原样保存在 [licenses/full-stack-fastapi-template-MIT.txt](../licenses/full-stack-fastapi-template-MIT.txt)，根 [NOTICE](../NOTICE) 写明项目许可、模板来源及版权和依赖许可入口。未改源码文件头、依赖文件或仓库设置。这是已定项目许可的整理，不是对外公开发布。
+
+逐字验证命令（仓库根目录，两个 diff 都无输出且 exit=0）：
+
+```bash
+set -e
+curl --fail --silent --show-error --location \
+  https://www.apache.org/licenses/LICENSE-2.0.txt --output ../nere780-apache-original.txt
+diff -u ../nere780-apache-original.txt LICENSE
+git show 20fe9adb:LICENSE | diff - licenses/full-stack-fastapi-template-MIT.txt
+shasum -a 256 LICENSE licenses/full-stack-fastapi-template-MIT.txt
+```
+
+实测 SHA-256：Apache 原文与根 LICENSE 均为 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`；MIT 备份与 `20fe9adb:LICENSE` 均为 `0bd4e76cdd06ab24cce2de5e74f490920897f90a22ad35e8403ed006d4560f48`。这些逐字比对不替代下述依赖及二进制交付义务。
 
 锁文件共核对 **614 条第三方包记录**：Python 108、前端 417、Pi 89。排除本项目 `app` 和前端 workspace 自身；包括间接、开发、平台条件和可选依赖，同名不同版本分别计数。Python 和 npm 顶层包未发现 GPL、AGPL、EPL、SSPL 或最终无法确定许可的包；这不是对二进制内嵌组件的零风险保证。
 
@@ -187,15 +200,15 @@ rg -n '^FROM|COPY --from=|image:' backend/Dockerfile pi/Dockerfile \
 
 以上为直接镜像引用，其操作系统包和内嵌库均为镜像内的间接组件。[Docker 官方 Python 镜像说明](https://github.com/docker-library/docs/blob/master/python/README.md)明确要求使用者核对镜像中全部软件许可；[distroless 项目](https://github.com/GoogleContainerTools/distroless)的 Apache 声明不替代 Debian 包许可。主要软件依据：[Bun 许可及内嵌库](https://github.com/oven-sh/bun/blob/main/LICENSE.md)、[Node 及第三方声明](https://github.com/nodejs/node/blob/main/LICENSE)、[uv 许可证](https://github.com/astral-sh/uv)、[PostgreSQL](https://www.postgresql.org/about/licence/)、[Traefik](https://github.com/traefik/traefik)、[Adminer](https://www.adminer.org/)、[Playwright Docker 说明](https://playwright.dev/docs/docker)。
 
-**只在镜像里的非宽松/未知项**：Debian/Ubuntu 的 glibc（LGPL）、GNU 工具（GPL）、Bun 的 JavaScriptCore/WebKit（LGPL），以及浏览器内嵌第三方组件；实际包名、版本、子许可必须以将来分发的 digest 为准，本次未拉取镜像生成 SBOM，不能给出已验证的完整组件清单。未固定的 tag 会漂移，即使 Node/distroless 固定 digest，也尚未完成其内部组件逐项核验。独立程序聚合通常不改变应用许可，但分发 GPL/LGPL 二进制须保留许可、相应源码或满足条款的提供方式。该待核验项已随根 LICENSE 问题上报 Reviewer；不在本 PR 改镜像或依赖。
+**只在镜像里的非宽松/未知项**：Debian/Ubuntu 的 glibc（LGPL）、GNU 工具（GPL）、Bun 的 JavaScriptCore/WebKit（LGPL），以及浏览器内嵌第三方组件；实际包名、版本、子许可必须以将来分发的 digest 为准，本次未拉取镜像生成 SBOM，不能给出已验证的完整组件清单。未固定的 tag 会漂移，即使 Node/distroless 固定 digest，也尚未完成其内部组件逐项核验。独立程序聚合通常不改变应用许可，但分发 GPL/LGPL 二进制须保留许可、相应源码或满足条款的提供方式。该待核验项已上报 Reviewer；不在本 PR 改镜像或依赖。
 
 ## NOTICE 与第三方声明判断
 
-Apache-2.0 本身并不强制每个项目新建 NOTICE；若上游带有与分发内容相关的 NOTICE，必须保留其适用声明，依据 [Apache-2.0 §4](https://www.apache.org/licenses/LICENSE-2.0)。当前只分发源码和锁文件，不复制依赖源码或分发镜像，因此不因「有依赖」就生成一份声称覆盖所有二进制的 NOTICE。
+Apache-2.0 本身并不强制每个项目新建 NOTICE；若上游带有与分发内容相关的 NOTICE，必须保留其适用声明，依据 [Apache-2.0 §4](https://www.apache.org/licenses/LICENSE-2.0)。本 PR 按调整后的验收要求新增根 NOTICE，用于标明模板来源和许可入口；它不是声称已覆盖所有依赖或二进制声明的完整清单。
 
-仓库已经携带模板衍生代码和 Procrastinate SQL 快照，**即使只分发源码也须保留其 MIT 声明**：根目录现有模板许可，以及 `backend/app/alembic/versions/procrastinate_LICENSE.md`。发布切换根 LICENSE 时，建议将模板 MIT 全文保存在第三方声明文件（如 `THIRD_PARTY_NOTICES.md`）或独立许可文件，注明模板来源和版权；已有 SQL 声明继续随 SQL 分发。
+仓库已经携带模板衍生代码和 Procrastinate SQL 快照，**即使只分发源码也须保留其 MIT 声明**：本 PR 已原样保存模板 MIT 全文至 `licenses/full-stack-fastapi-template-MIT.txt` 并在根 NOTICE 标明来源和版权；`backend/app/alembic/versions/procrastinate_LICENSE.md` 继续随 SQL 分发，未修改。
 
-若发布包含前端 bundle、Python wheel、Node 依赖、容器或离线包，则发布时按实际制品补第三方声明：包名/版本/来源、版权、许可全文、适用 NOTICE、LGPL/GPL 的对应源码及替换/重链接指引、MPL 覆盖源码取得方法、CC-BY 数据署名与变更说明。浏览器接收前端 bundle 也属于代码交付，不能因不提供 Docker 镜像就省略其中依赖的声明。声明文件和源码交付材料在发布时补，本 PR 不创建它们。
+若发布包含前端 bundle、Python wheel、Node 依赖、容器或离线包，则发布时按实际制品补第三方声明：包名/版本/来源、版权、许可全文、适用 NOTICE、LGPL/GPL 的对应源码及替换/重链接指引、MPL 覆盖源码取得方法、CC-BY 数据署名与变更说明。浏览器接收前端 bundle 也属于代码交付，不能因不提供 Docker 镜像就省略其中依赖的声明。本次已添加的根 NOTICE 和模板 MIT 全文不替代这些将来制品的声明与源码交付材料。
 
 ## 锁文件指纹与限制
 

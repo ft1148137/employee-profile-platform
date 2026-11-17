@@ -2,7 +2,7 @@
 
 **草稿，等大古决定公开发布时再放到根目录和仓库设置。** 本文件不代表已公开发布。根目录不恢复 `README.md`，不设置 GitHub 仓库简介、topics 或其他仓库设置。
 
-内容基于 `20fe9adb` 的现有指南，仅描述已实现的行为；发布前需对照最终版本更新。根目录 `LICENSE` 仍是模板 MIT，Apache-2.0 文本缺失，见[许可证核验](licenses.md)，这一项修复前不能宣称 Apache-2.0 发布手续已完成。下面 README 内的相对链接按本草稿所在的 `docs/` 编写；搬到根目录时须把文档链接加上 `docs/`、将 `../CONTRIBUTING.md` 改为 `CONTRIBUTING.md`。
+内容基于 `20fe9adb` 的现有指南，仅描述已实现的行为；发布前需对照最终版本更新。本 PR 已补齐 Apache-2.0 官方全文、保留模板 MIT 全文并新增根 NOTICE，见[许可证核验](licenses.md)；公开发布和制品分发仍须满足各第三方许可。下面 README 内的相对链接按本草稿所在的 `docs/` 编写；搬到根目录时须把文档链接加上 `docs/`，指向仓库根的 `../CONTRIBUTING.md`、`../LICENSE`、`../NOTICE`、`../licenses/` 则去掉 `../`。
 
 ## README 全文草稿
 
@@ -54,7 +54,7 @@ A self-hosted platform for evidence-based employee profiles and cross-department
 
 ### 许可证
 
-项目计划按 Apache-2.0 发布，第三方组件保留各自许可证和版权。**当前根目录仍是模板 MIT 许可，完整 Apache-2.0 文本待补，尚未完成发布许可检查。** 发布时保留模板 MIT 声明，并按[核验报告](licenses.md)处理第三方声明及再分发义务。
+本项目按 [Apache-2.0](../LICENSE) 授权。部分代码源自 full-stack-fastapi-template，保留[原始 MIT 版权及许可全文](../licenses/full-stack-fastapi-template-MIT.txt)，来源说明见 [NOTICE](../NOTICE)。第三方组件保留各自许可证和版权；分发制品时按[核验报告](licenses.md)处理声明、源码及其他再分发义务。
 
 ## GitHub 仓库简介草稿
 
