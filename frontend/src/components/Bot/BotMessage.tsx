@@ -387,7 +387,7 @@ function PlanDetails({ plan }: { plan: PlanCard }) {
         ))}
       </dl>
       {plan.changes && <p>这次改了什么：{plan.changes}</p>}
-      <a href={plan.link} className="underline">
+      <a href={plan.rule_fallback?.link ?? plan.link} className="underline">
         在方案页修改
       </a>
       {plan.rule_fallback && (

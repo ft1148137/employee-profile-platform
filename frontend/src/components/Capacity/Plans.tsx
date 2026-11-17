@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useLocation } from "@tanstack/react-router"
 import { AxiosError } from "axios"
 import { useState } from "react"
 import { type CasePublic, PlanningService, type ReviseInput } from "@/client"
@@ -480,7 +481,8 @@ export function Plans({
   demandId: string
 }) {
   const client = useQueryClient()
-  const key = ["capacity", orgId, "planning", demandId]
+  const hash = useLocation({ select: (location) => location.hash })
+  const key = ["capacity", orgId, "planning", demandId, hash]
   const storageKey = `planning-case:${orgId}:${demandId}`
   const create = async () => {
     const { data } = await PlanningService.createCase({
@@ -492,6 +494,16 @@ export function Plans({
   const current = useQuery({
     queryKey: key,
     queryFn: async () => {
+      if (hash) {
+        const caseId = new URLSearchParams(hash).get("case")
+        if (!caseId) throw new Error("方案链接无效")
+        const { data } = await PlanningService.getCase({
+          path: { org_id: orgId, case_id: caseId },
+        })
+        if (data.demand_id !== demandId) throw new Error("方案不属于当前需求")
+        localStorage.setItem(storageKey, data.id)
+        return data
+      }
       const caseId = localStorage.getItem(storageKey)
       if (caseId) {
         try {

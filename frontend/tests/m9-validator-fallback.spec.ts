@@ -160,18 +160,19 @@ test("较差推荐同时展示规则方案、差别和两个可打开的链接",
     tokens.get("M"),
     "PUT",
   )
+  const demandBody = {
+    requesting_department_id: person("A").department!.id,
+    target_department_id: person("M").department!.id,
+    capability_key: "delivery",
+    headcount: 1,
+    allocation_percent: 50,
+    window_start: start,
+    window_end: end,
+    description: "合成兜底需求",
+  }
   const demand = await api(
     `${base}/capacity/demands`,
-    {
-      requesting_department_id: person("A").department!.id,
-      target_department_id: person("M").department!.id,
-      capability_key: "delivery",
-      headcount: 1,
-      allocation_percent: 50,
-      window_start: start,
-      window_end: end,
-      description: "合成兜底需求",
-    },
+    demandBody,
     tokens.get("A"),
   )
   const plan = await api(
@@ -194,6 +195,30 @@ test("较差推荐同时展示规则方案、差别和两个可打开的链接",
     tokens.get("M"),
   )
   expect(bad.verdict).toBe("infeasible")
+  const otherDemand = await api(
+    `${base}/capacity/demands`,
+    { ...demandBody, description: "合成另一条需求" },
+    tokens.get("A"),
+  )
+  const otherPlan = await api(
+    `${base}/planning/demands/${otherDemand.id}/cases`,
+    {},
+    tokens.get("M"),
+  )
+  const deniedDemand = await api(
+    `${base}/capacity/demands`,
+    {
+      ...demandBody,
+      requesting_department_id: person("M").department!.id,
+      target_department_id: person("A").department!.id,
+    },
+    tokens.get("M"),
+  )
+  const deniedPlan = await api(
+    `${base}/planning/demands/${deniedDemand.id}/cases`,
+    {},
+    admin.access_token,
+  )
   const server = createServer(async (req, res) => {
     let raw = ""
     for await (const chunk of req) raw += chunk
@@ -298,7 +323,21 @@ test("较差推荐同时展示规则方案、差别和两个可打开的链接",
       reply.getByRole("button", { name: "确认", exact: true }),
     ).toBeEnabled()
     await expectChineseCopy(page)
+    const createdSnapshots: string[] = []
+    page.on("request", (req) => {
+      if (
+        req.method() === "POST" &&
+        /\/planning\/demands\/[^/]+\/cases$/.test(req.url())
+      )
+        createdSnapshots.push(req.url())
+    })
     for (const name of ["在方案页修改", "查看规则引擎方案"]) {
+      await page.evaluate(
+        ({ org, demand }) => {
+          localStorage.removeItem(`planning-case:${org}:${demand}`)
+        },
+        { org: admin.org_id, demand: demand.id },
+      )
       await card.getByRole("link", { name, exact: true }).click()
       await expect(page).toHaveURL(new RegExp(`demand=${demand.id}.*plans=1`))
       await expect(page.getByRole("button", { name: "关闭方案" })).toBeVisible()
@@ -308,7 +347,40 @@ test("较差推荐同时展示规则方案、差别和两个可打开的链接",
       await expect(
         page.getByRole("article", { name: "自定方案方案", exact: true }),
       ).toBeVisible()
+      const current = await api(
+        `${base}/planning/cases/${plan.id}`,
+        undefined,
+        tokens.get("M"),
+      )
+      expect(current.snapshot_id).toBe(plan.snapshot_id)
+      expect(createdSnapshots).toEqual([])
       await page.goto("/assistant")
+    }
+    await page.goto(
+      `/capacity?tab=incoming&demand=${demand.id}&plans=1#case=${otherPlan.id}`,
+    )
+    await expect(page.getByRole("alert")).toContainText("方案暂时无法读取")
+    await expect(page.getByRole("article", { name: /方案$/ })).toHaveCount(0)
+    expect(createdSnapshots).toEqual([])
+    await page.evaluate((id) => {
+      window.location.hash = `case=${id}`
+    }, plan.id)
+    await expect(
+      page.getByRole("article", { name: "自定方案方案", exact: true }),
+    ).toBeVisible()
+    await page.evaluate((id) => {
+      window.location.hash = `case=${id}`
+    }, deniedPlan.id)
+    await expect(page.getByRole("alert")).toContainText("未找到该方案")
+    await expect(page.getByRole("article", { name: /方案$/ })).toHaveCount(0)
+    expect(createdSnapshots).toEqual([])
+    for (const hash of ["case=invalid", "case=", "invalid"]) {
+      await page.evaluate((value) => {
+        window.location.hash = value
+      }, hash)
+      await expect(page.getByRole("alert")).toBeVisible()
+      await expect(page.getByRole("article", { name: /方案$/ })).toHaveCount(0)
+      expect(createdSnapshots).toEqual([])
     }
     const unchanged = await api(
       `${base}/capacity/demands/${demand.id}`,

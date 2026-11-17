@@ -115,7 +115,8 @@ def test_worse_recommendation_keeps_both_choices(
         == "不可行 → 可行"
     )
     link = f"/capacity?tab=incoming&demand={demand.id}&plans=1"
-    assert reply.plan.link == fallback.link == link
+    assert reply.plan.link == link
+    assert fallback.link == f"{link}#case={case.id}"
     text, actions = render(reply)
     assert "规则引擎方案" in text and "不可行 → 可行" in text
     assert text.count(link) == 2

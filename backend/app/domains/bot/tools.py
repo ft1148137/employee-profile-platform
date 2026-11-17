@@ -430,7 +430,7 @@ def plan_card(option: OptionPublic, case: CasePublic) -> s.PlanCard:
                 s.CardField(label=a.label, value=f"{a.value} → {b.value}")
                 for a, b in zip(metrics, rule_metrics, strict=True)
             ],
-            link=link,
+            link=f"{link}#case={case.id}",
         )
     return s.PlanCard(
         title=f"{option.kind_label}方案",

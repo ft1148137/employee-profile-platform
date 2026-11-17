@@ -51,7 +51,12 @@ def item_text(item: s.ChangeItem) -> str:
 
 
 def plan_url(message: s.PlanCard | s.RulePlanFallback) -> str:
-    return f"{settings.FRONTEND_HOST.rstrip('/')}{message.link}"
+    link = (
+        message.rule_fallback.link
+        if isinstance(message, s.PlanCard) and message.rule_fallback is not None
+        else message.link
+    )
+    return f"{settings.FRONTEND_HOST.rstrip('/')}{link}"
 
 
 def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
