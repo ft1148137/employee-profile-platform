@@ -721,7 +721,9 @@ def call(
                     if isinstance(message, s.CapacityCard) and str(
                         message.card_id
                     ) == reply_result.get("card_id"):
-                        message.plan = card
+                        message.plan = card.model_copy(
+                            update={"fields": plan_metrics(option), "changes": None}
+                        )
             return redact(reply_result)
         except ValidationError as exc:
             return {"error": validation_message(exc, "工具参数不正确")}

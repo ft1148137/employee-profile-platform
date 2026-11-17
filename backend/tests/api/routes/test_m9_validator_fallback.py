@@ -95,6 +95,7 @@ def test_worse_recommendation_keeps_both_choices(
     assert result["status"] == "pending"
     reply = cards[0]
     assert isinstance(reply, s.CapacityCard)
+    assert_no_b_people(reply.model_dump(mode="json"), people)
     assert reply.arguments["outcome"] == "not_now"
     assert reply.plan is not None
     assert reply.plan.fields[1].value == "不可行"
