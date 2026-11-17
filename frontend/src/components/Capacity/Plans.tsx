@@ -530,7 +530,7 @@ export function Plans({
         data,
       )
       if (hash !== nextHash) {
-        await navigate({ hash: nextHash, replace: true })
+        await navigate({ search: true, hash: nextHash, replace: true })
       } else {
         await current.refetch()
       }
