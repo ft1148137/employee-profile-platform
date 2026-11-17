@@ -18,6 +18,7 @@ from sqlmodel import Session, col, select
 from app.authz.deps import get_org_principal
 from app.domains.bot import core, store, tools
 from app.domains.bot.prompts import system_prompt
+from app.domains.capability.models import CapabilityDefinition
 from app.domains.im.models import ImNotification
 from app.domains.model import pi_client
 from app.domains.model.models import ModelSetting
@@ -61,6 +62,14 @@ def parse_option(text: str) -> OptionInput | None:
     for block in re.findall(r"```(?:json)?\s*(.*?)\s*```", text, re.S | re.I):
         try:
             return OptionInput.model_validate(json.loads(block))
+        except ValueError, ValidationError:
+            continue
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"\{", text):
+        try:
+            candidate, _ = decoder.raw_decode(text, match.start())
+            if isinstance(candidate, dict):
+                return OptionInput.model_validate(candidate)
         except ValueError, ValidationError:
             continue
     return None
@@ -231,6 +240,18 @@ def evaluate(
     }
     try:
         _, employees, _, demand, _ = _setup(db, raw, org)
+        capability = db.exec(
+            select(CapabilityDefinition).where(CapabilityDefinition.org_id == org_id)
+        ).one()
+        rubric = cast("dict[str, Any]", capability.level_rubric)
+        capability.level_rubric = {
+            **rubric,
+            "levels": [
+                {**level, "description": f"合成等级 {level['label']}"}
+                for level in rubric["levels"]
+            ],
+        }
+        db.add(capability)
         b_code = raw["roles"][1]
         manager = db.exec(
             select(User)
@@ -396,6 +417,12 @@ def evaluate(
                 session.id,
                 f"请为这个需求协调人手，需求编号 {demand.id}。需要{demand.headcount}人，每人投入{demand.allocation_percent}%，期限到{demand.window_end}。",
             )
+        if fake:
+            assert all("error" not in value for _, _, value in seen), [
+                (args.get("function", name), value.get("error"))
+                for name, args, value in seen
+                if isinstance(value, dict) and "error" in value
+            ]
         row.update(
             stats,
             seconds=round(monotonic() - started, 3),
@@ -518,6 +545,14 @@ def evaluate(
                     newcomer=False,
                     manager_changes="—",
                 )
+        elif row["status"].startswith("failed:"):
+            row.update(
+                parse_failure=True,
+                outside_candidates=False,
+                violation=True,
+                newcomer=False,
+                manager_changes="—",
+            )
         assert observed_rows(db, org_id) == before, (
             "Manager evaluation changed business rows"
         )
@@ -575,23 +610,20 @@ def test_coordination_eval(path: Path, db: Session) -> None:
         ):
             assert result["parse_failure"] is False, result
             assert result["option_kind"] == "borrow", result
-        assert result["status"] in {
-            "passed",
-            "deferred:drafting_paused",
-            "deferred:subscription_rate_limit",
-        }, result
+        if os.getenv("COORDINATION_EVAL_FAKE", "1") == "1":
+            assert result["status"] == "passed", result
 
 
 def test_parse_option_rejects_invalid_json() -> None:
     assert parse_option("```json\n{}\n```") is None
+    assert parse_option("{}") is None
     assert parse_option("没有方案") is None
-    assert (
-        parse_option(
-            '```json\n{"assignees":[{"employee_id":"00000000-0000-0000-0000-000000000001",'
-            '"allocation_percent":50,"start_date":"2026-11-16","end_date":"2026-11-30"}]}\n```'
-        )
-        is not None
+    sample = (
+        '{"assignees":[{"employee_id":"00000000-0000-0000-0000-000000000001",'
+        '"allocation_percent":50,"start_date":"2026-11-16","end_date":"2026-11-30"}]}'
     )
+    assert parse_option(f"```json\n{sample}\n```") is not None
+    assert parse_option(f"建议方案如下：{sample}") is not None
 
 
 def test_invalid_proposal_id_is_not_selected() -> None:

@@ -47,12 +47,12 @@ def report(rows: list[dict[str, Any]], model: str, thinking: str, fake: bool) ->
         "",
         "## 汇总",
         "",
-        "| 做法 | 完成/总数 | 违反约束 | 解析失败 | 快照外人员 | 经理修改均值 | 修改次数分布 | 模型调用均值 | 工具调用均值 | 用时均值(秒) | 新人方案案例数 |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: |",
+        "| 做法 | 已评估/总数 | 违反约束 | 解析失败 | 模型失败 | 快照外人员 | 经理修改均值 | 修改次数分布 | 模型调用均值 | 工具调用均值 | 用时均值(秒) | 新人方案案例数 |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: |",
     ]
     for mode, label in (("agent", "纯 Agent"), ("agent_validator", "Agent + 校验器")):
         group = [r for r in rows if r["mode"] == mode]
-        done = [r for r in group if r["status"] == "passed"]
+        done = [r for r in group if not r["status"].startswith("deferred:")]
 
         def average(key: str, items: list[dict[str, Any]] = done) -> str:
             return (
@@ -80,7 +80,8 @@ def report(rows: list[dict[str, Any]], model: str, thinking: str, fake: bool) ->
         )
         prefix = (
             f"| {label} | {len(done)}/{len(group)} | {ratio} | "
-            f"{sum(bool(r.get('parse_failure')) for r in done)} | {sum(bool(r.get('outside_candidates')) for r in done)} | "
+            f"{sum(bool(r.get('parse_failure')) for r in done)} | {sum(r['status'].startswith('failed:') for r in done)} | "
+            f"{sum(bool(r.get('outside_candidates')) for r in done)} | "
         )
         lines.append(
             prefix
@@ -101,7 +102,7 @@ def report(rows: list[dict[str, Any]], model: str, thinking: str, fake: bool) ->
             "",
             "## 逐案例",
             "",
-            "表中 `passed` 表示案例运行完成，不能代表模型达到业务指标；解析失败计为违反约束。",
+            "表中 `passed` 表示案例运行完成，不能代表模型达到业务指标；解析失败或模型失败计为违反约束。deferred 不计入违反比例。",
             "",
             "| 案例 | 做法 | 状态 | 基线 | 最终结论 | 违反 | 修改 | 模型/工具调用 | 秒 |",
             "| --- | --- | --- | --- | --- | --- | --- | --- | ---: |",
@@ -134,7 +135,9 @@ def report(rows: list[dict[str, Any]], model: str, thinking: str, fake: bool) ->
                 )
                 if (
                     group := [
-                        r for r in rows if r["mode"] == mode and r["status"] == "passed"
+                        r
+                        for r in rows
+                        if r["mode"] == mode and not r["status"].startswith("deferred:")
                     ]
                 )
             ),
