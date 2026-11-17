@@ -128,6 +128,7 @@ def test_simulated_relay_revisions_keep_approval(
         assert response.status_code == 200, response.text
         current = response.json()
         assert current["kind"] == "custom"
+        assert current["summary"]["phased_origin"] is True
         assert APPROVAL in current["summary"]["approvers"], body
         assert current["verdict"] != "feasible", body
 
