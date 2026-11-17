@@ -1,6 +1,7 @@
 """Session privacy follows server-reported reads, including inherited context."""
 
 import json
+from dataclasses import replace
 from typing import Literal
 
 import pytest
@@ -22,6 +23,7 @@ from app.domains.org.models import (
     Role,
     RoleGrant,
 )
+from app.domains.planning.tools import Result
 from tests.api.routes.test_m8_coordination_tools import assert_no_b_people, invoke
 from tests.api.routes.test_m8_employee_session_visibility import (
     demo as demo,  # noqa: F401
@@ -29,6 +31,55 @@ from tests.api.routes.test_m8_employee_session_visibility import (
 from tests.domains.test_im_gateway import principal
 
 pytest_plugins = ("tests.api.routes.test_m8_coordination_tools",)
+
+
+@pytest.mark.parametrize("channel", ["web", "feishu"])
+def test_three_argument_handler_without_read_metadata_keeps_fallback(
+    coordination: tuple,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    channel: Literal["web", "feishu"],
+) -> None:
+    people, _, demand = coordination
+    p = principal(db, demand.org_id, people["E01"].id)
+    row = store.create_session(db, p, channel=channel)
+    tool = core.tools.COORDINATION["get_approval_status"]
+
+    def unreported(viewer: object, session: Session, body: object) -> Result:
+        return Result(tool.handler(viewer, session, body).model_dump(mode="json"))
+
+    monkeypatch.setitem(
+        core.tools.COORDINATION, tool.name, replace(tool, handler=unreported)
+    )
+
+    def model(_config: object, **kwargs: object) -> TurnResult:
+        result = kwargs["on_tool_call"](
+            "coordination",
+            {
+                "function": tool.name,
+                "arguments": {"demand_id": str(demand.id)},
+            },
+        )
+        assert "error" not in result
+        assert "read_employee_ids" not in json.dumps(result)
+        return TurnResult(
+            text="兼容旧工具",
+            stop_reason="stop",
+            model_calls=1,
+            tool_calls=1,
+            session_state={"messages": ["合成上下文"]},
+        )
+
+    monkeypatch.setattr(core.pi_client, "run_turn", model)
+    pending = core.turn(db, p, row.id, "查看进度")
+    target = people["E02"]
+    assert target.department_id in p.managed_department_ids
+    target.employment_status = EmploymentStatus.INACTIVE
+    db.add(target)
+    db.commit()
+    assert store.HIDDEN_REPLY in str(store.list_messages(db, p, row.id))
+    assert delivery.protect(db, pending).messages[0].text == delivery.SCOPE_CHANGED
+    assert store.state_for_turn(db, p, row) is None
 
 
 @pytest.mark.parametrize("channel", ["web", "feishu"])

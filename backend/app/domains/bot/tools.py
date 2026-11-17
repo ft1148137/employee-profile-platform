@@ -33,6 +33,7 @@ from app.domains.org.models import Department, Employee, EmploymentStatus
 from app.domains.planning import service as planning_service
 from app.domains.planning.schemas import VERDICT_LABELS, CasePublic, OptionPublic
 from app.domains.planning.tools import COORDINATION_TOOLS
+from app.domains.planning.tools import Result as CoordinationResult
 from app.domains.profile.service import read_profile
 from app.domains.review import direct
 
@@ -651,14 +652,21 @@ def call(
                     coord_request.arguments
                 )
                 with db.begin_nested():
-                    result = coord_tool.handler(p, db, input_body, on_read=on_read)
+                    result = coord_tool.handler(p, db, input_body)
+                read_ids = (
+                    result._read_employee_ids
+                    if isinstance(result, CoordinationResult)
+                    else None
+                )
+                if on_read and read_ids is not None:
+                    on_read(read_ids)
                 data = result.model_dump(mode="json")
                 if (
                     coord_request.function in {"simulate_plan", "compare_plan_options"}
                     and "error" not in data
                 ):
                     case = planning_service.get_case(p, db, UUID(data["case_id"]))
-                    if on_read:
+                    if on_read and read_ids is not None:
                         on_read({str(person.employee_id) for person in case.people})
                     row = capacity_demand.demand_row(p, db, case.demand_id)
                     if not capacity_demand.represents_department(
