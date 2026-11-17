@@ -34,7 +34,9 @@ def test_scripted_samples(db: Session, case: str, mode: str) -> None:
     assert result["status"] == "passed"
     assert result["parse_failure"] is False
     if case == "newcomer-yes-01":
-        assert result["newcomer"] is True
+        assert result["newcomer_baseline"] is True
+        if mode == "agent_validator":
+            assert result["newcomer"] is True
 
 
 @pytest.mark.parametrize(
