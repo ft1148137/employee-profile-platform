@@ -9,7 +9,7 @@ from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.domains.base import utc_now
-from app.domains.bot import attachments, core, store
+from app.domains.bot import attachments, core, delivery, store
 from app.domains.bot import schemas as s
 from app.domains.bot.models import BotMessage, BotSession
 from app.domains.bot.settings import read_settings
@@ -203,29 +203,35 @@ async def deliver(
     expires = (created_at or session.last_activity_at) + (
         timedelta(days=days) if days else timedelta(hours=2)
     )
-    for message in reply.response.messages:
-        body, offered = rendering.render(message)
-        rows = [
-            ImAction(
-                token=secrets.token_urlsafe(16),
-                org_id=p.org_id,
-                platform=event.platform,
-                bot_identity=identity,
-                employee_id=session.employee_id,
-                session_id=session.id,
-                external_chat_id=event.external_chat_id,
-                message_id="",
-                action=action,
-                expires_at=expires,
+    pending = list(reply.response.messages)
+    while pending:
+        with delivery.guard(db, reply.response) as response:
+            if response is not reply.response:
+                reply.response = response
+                pending = list(response.messages)
+            message = pending.pop(0)
+            body, offered = rendering.render(message)
+            rows = [
+                ImAction(
+                    token=secrets.token_urlsafe(16),
+                    org_id=p.org_id,
+                    platform=event.platform,
+                    bot_identity=identity,
+                    employee_id=session.employee_id,
+                    session_id=session.id,
+                    external_chat_id=event.external_chat_id,
+                    message_id="",
+                    action=action,
+                    expires_at=expires,
+                )
+                for action in offered
+            ]
+            message_id = await adapter.render(
+                event.external_chat_id,
+                body,
+                [(rendering.LABELS[str(r.action["action"])], r.token) for r in rows],
             )
-            for action in offered
-        ]
-        message_id = await adapter.render(
-            event.external_chat_id,
-            body,
-            [(rendering.LABELS[str(r.action["action"])], r.token) for r in rows],
-        )
-        for row in rows:
-            row.message_id = message_id
-            db.add(row)
-        db.commit()
+            for row in rows:
+                row.message_id = message_id
+                db.add(row)
+            db.commit()

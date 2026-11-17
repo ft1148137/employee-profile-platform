@@ -15,6 +15,7 @@ from sqlmodel import Session
 from starlette.types import Send
 
 from app.core.db import engine
+from app.domains.bot import delivery
 from app.domains.bot.admission import (
     BotBusy,
     BotDraftingPriority,
@@ -22,6 +23,7 @@ from app.domains.bot.admission import (
     BotRateLimited,
 )
 from app.domains.bot.presentation import DEADLINE_MESSAGE, retry_time
+from app.domains.bot.schemas import TurnResponse
 from app.domains.bot.store import BotSessionNotFound
 from app.domains.model.client import (
     ModelRateLimited,
@@ -98,9 +100,9 @@ def response(
 ) -> StreamingResponse:
     async def events() -> AsyncGenerator[str]:
         loop = asyncio.get_running_loop()
-        queue: asyncio.Queue[dict[str, JsonValue] | None] = asyncio.Queue()
+        queue: asyncio.Queue[dict[str, JsonValue] | BaseModel | None] = asyncio.Queue()
 
-        def emit(event: dict[str, JsonValue] | None) -> None:
+        def emit(event: dict[str, JsonValue] | BaseModel | None) -> None:
             loop.call_soon_threadsafe(queue.put_nowait, event)
 
         stream = TurnStream(
@@ -117,7 +119,7 @@ def response(
                 with Session(engine) as db:
                     result = run(db, stream)
                 if not stream.cancelled.is_set():
-                    emit({"type": "final", "response": result.model_dump(mode="json")})
+                    emit(result)
             except Exception as error:
                 logger.warning(
                     "Streaming turn failed error_type=%s", type(error).__name__
@@ -141,7 +143,20 @@ def response(
                     await asyncio.shield(worker)
                     finished = True
                     break
-                yield json.dumps(event, ensure_ascii=False) + "\n"
+                if isinstance(event, TurnResponse):
+                    # Hold the scope lock until StreamingResponse has awaited send.
+                    with Session(engine) as db, delivery.guard(db, event) as result:
+                        yield (
+                            FinalEvent(type="final", response=result).model_dump_json()
+                            + "\n"
+                        )
+                elif isinstance(event, BaseModel):
+                    yield (
+                        FinalEvent(type="final", response=event).model_dump_json()
+                        + "\n"
+                    )
+                else:
+                    yield json.dumps(event, ensure_ascii=False) + "\n"
         finally:
             # Starlette cancels this generator on disconnect; join before releasing it.
             with anyio.CancelScope(shield=True):

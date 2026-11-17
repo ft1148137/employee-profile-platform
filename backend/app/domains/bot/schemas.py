@@ -2,8 +2,16 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    PrivateAttr,
+    field_validator,
+)
 
+from app.authz.principal import Principal
 from app.domains.bot.attachments import AttachmentPublic
 from app.domains.change_request.schemas import RequestReviewer, SubmitInput, ToolInput
 from app.domains.profile.models import AssessmentStatus
@@ -288,6 +296,8 @@ class ToolStep(BaseModel):
 class TurnResponse(BaseModel):
     messages: list[Message]
     steps: list[ToolStep] = Field(default_factory=list)
+    _principal: Principal | None = PrivateAttr(default=None)
+    _scope: dict[str, JsonValue] | None = PrivateAttr(default=None)
 
 
 class TurnInput(ToolInput):
