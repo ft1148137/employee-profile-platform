@@ -4,6 +4,13 @@ import { useEffect, useState } from "react"
 import { CapacityService, type WeekLoad, type WorkloadPublic } from "@/client"
 import { Badge } from "@/components/ui/badge"
 
+export function isCapacityAccessDenied(error: unknown) {
+  return (
+    error instanceof AxiosError &&
+    [403, 404].includes(error.response?.status ?? 0)
+  )
+}
+
 export function useCapacitySettings(orgId?: string) {
   return useQuery({
     queryKey: ["capacity-settings", orgId],

@@ -13,11 +13,10 @@ import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useOrg } from "@/hooks/useOrg"
 import { DemandAssignments } from "./DemandAssignments"
 import { DemandsReference } from "./DemandsReference"
 import { Plans } from "./Plans"
-import { WorkloadBand } from "./shared"
+import { isCapacityAccessDenied, WorkloadBand } from "./shared"
 
 export const demandStatuses = {
   submitted: "待答复",
@@ -51,9 +50,9 @@ export function DemandsDetail({
   plansOpen?: boolean
 }) {
   const navigate = useNavigate()
-  const { roles, managedDepartmentIds } = useOrg()
   const query = useQuery({
     queryKey: ["capacity", orgId, "demand", demandId],
+    retry: (count, error) => !isCapacityAccessDenied(error) && count < 3,
     queryFn: async () =>
       (
         await CapacityService.getDemand({
@@ -64,12 +63,18 @@ export function DemandsDetail({
   return (
     <div className="space-y-5">
       <Button variant="outline" onClick={back}>
-        返回列表
+        {isCapacityAccessDenied(query.error) ? "返回需求列表" : "返回列表"}
       </Button>
       {query.isPending ? (
         <ProfileLoading />
       ) : query.isError ? (
-        <ProfileError retry={() => query.refetch()} />
+        isCapacityAccessDenied(query.error) ? (
+          <p role="status" className="rounded-xl border bg-muted/30 p-5">
+            未找到这条需求，或你没有权限查看。需求只有提出人、需求方部门经理和目标部门经理能查看，可以联系他们了解进度。
+          </p>
+        ) : (
+          <ProfileError retry={() => query.refetch()} />
+        )
       ) : (
         <>
           <section
@@ -122,45 +127,89 @@ export function DemandsDetail({
               </article>
             ))}
           </section>
-          {side === "incoming" && (
+          {side === "incoming" && !query.data.basis_url && (
+            <DemandPlanAccess orgId={orgId} demand={query.data} />
+          )}
+          {side === "incoming" && query.data.basis_url && (
             <DemandsBasis orgId={orgId} demandId={demandId} />
           )}
-          {side === "incoming" &&
-            (roles.includes("org_admin") ||
-              managedDepartmentIds.includes(
-                query.data.target_department_id,
-              )) && (
-              <section aria-label="协调方案" className="space-y-3">
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    navigate({
-                      to: "/capacity",
-                      search: {
-                        tab: "incoming",
-                        demand: demandId,
-                        plans: plansOpen ? undefined : 1,
-                      },
-                    })
-                  }
-                >
-                  {plansOpen ? "关闭方案" : "生成方案 / 查看方案"}
-                </Button>
-                {plansOpen && <Plans orgId={orgId} demandId={demandId} />}
-              </section>
-            )}
-          {side === "incoming" && query.data.status === "accepted" && (
-            <DemandAssignments orgId={orgId} demand={query.data} />
+          {side === "incoming" && query.data.basis_url && (
+            <section aria-label="协调方案" className="space-y-3">
+              <Button
+                variant="outline"
+                onClick={() =>
+                  navigate({
+                    to: "/capacity",
+                    search: {
+                      tab: "incoming",
+                      demand: demandId,
+                      plans: plansOpen ? undefined : 1,
+                    },
+                  })
+                }
+              >
+                {plansOpen ? "关闭方案" : "生成方案 / 查看方案"}
+              </Button>
+              {plansOpen && <Plans orgId={orgId} demandId={demandId} />}
+            </section>
           )}
-          <DemandsAction
-            key={query.data.revision}
-            orgId={orgId}
-            demand={query.data}
-            side={side}
-          />
+          {side === "incoming" &&
+            query.data.basis_url &&
+            query.data.status === "accepted" && (
+              <DemandAssignments orgId={orgId} demand={query.data} />
+            )}
+          {(side === "outgoing" || query.data.basis_url) && (
+            <DemandsAction
+              key={query.data.revision}
+              orgId={orgId}
+              demand={query.data}
+              side={side}
+            />
+          )}
         </>
       )}
     </div>
+  )
+}
+
+function DemandPlanAccess({
+  orgId,
+  demand,
+}: {
+  orgId: string
+  demand: DemandPublic
+}) {
+  const navigate = useNavigate()
+  const departments = useQuery({
+    queryKey: ["capacity", orgId, "departments"],
+    queryFn: async () =>
+      (
+        await CapacityService.listCapacityDepartments({
+          path: { org_id: orgId },
+        })
+      ).data,
+  })
+  const name =
+    departments.data?.data.find((row) => row.id === demand.target_department_id)
+      ?.name ?? "目标部门"
+  return (
+    <section
+      aria-label="方案查看范围"
+      className="space-y-3 rounded-xl border bg-muted/30 p-5"
+    >
+      <p>这条需求由 {name} 答复和安排人员，方案和分配只有该部门经理能看。</p>
+      <Button
+        variant="outline"
+        onClick={() =>
+          navigate({
+            to: "/capacity",
+            search: { tab: "outgoing", demand: demand.id },
+          })
+        }
+      >
+        到我提的需求查看进度
+      </Button>
+    </section>
   )
 }
 
@@ -186,7 +235,11 @@ function DemandsBasis({
       {query.isPending ? (
         <ProfileLoading />
       ) : query.isError ? (
-        <ProfileError retry={() => query.refetch()} />
+        isCapacityAccessDenied(query.error) ? (
+          <p role="status">你现在没有权限查看这部分</p>
+        ) : (
+          <ProfileError retry={() => query.refetch()} />
+        )
       ) : (
         <>
           <p className="text-sm text-muted-foreground">

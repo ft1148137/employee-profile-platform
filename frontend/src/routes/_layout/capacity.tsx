@@ -84,6 +84,8 @@ function CapacityPage() {
                 demand={demand}
                 plansOpen={plans === 1}
               />
+            ) : item.value === "outgoing" && demand ? (
+              <OutgoingDemands orgId={org.id} demand={demand} />
             ) : (
               <item.component orgId={org.id} />
             )}

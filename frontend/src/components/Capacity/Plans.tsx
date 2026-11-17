@@ -4,6 +4,7 @@ import { useState } from "react"
 import { type CasePublic, PlanningService, type ReviseInput } from "@/client"
 import { ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
+import { isCapacityAccessDenied } from "./shared"
 
 function records(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value)
@@ -29,6 +30,7 @@ function number(value: unknown): string {
 }
 
 function errorText(error: Error): string {
+  if (isCapacityAccessDenied(error)) return "你现在没有权限查看这部分"
   if (error instanceof AxiosError) {
     const detail: unknown = error.response?.data?.detail
     if (typeof detail === "string") return detail
@@ -515,6 +517,8 @@ export function Plans({
   })
   const plan = current.data
   const error = simulation.error ?? current.error
+  if (isCapacityAccessDenied(error))
+    return <p role="alert">你现在没有权限查看这部分</p>
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">协调方案</h3>
