@@ -1,8 +1,14 @@
 """Protect unsent employee-bot replies using their original read scope."""
 
-from collections.abc import Generator
-from contextlib import contextmanager
+import asyncio
+import sys
+from collections.abc import AsyncGenerator, Callable, Generator
+from contextlib import AbstractContextManager, asynccontextmanager, contextmanager
+from functools import partial
 
+import anyio
+from anyio.lowlevel import checkpoint_if_cancelled
+from anyio.to_thread import run_sync
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
@@ -13,6 +19,49 @@ from app.domains.org.models import Organization
 from app.models import User
 
 SCOPE_CHANGED = "人员范围有变化，请重新提问"
+
+
+async def _run[T](
+    call: Callable[[], T], limiter: anyio.CapacityLimiter | None = None
+) -> T:
+    # Join even on raw Task.cancel(), before another operation can use the Session.
+    with anyio.CancelScope(shield=True):
+        task = asyncio.create_task(run_sync(call, limiter=limiter))
+        cancelled = None
+        while not task.done():
+            try:
+                await asyncio.shield(task)
+            except asyncio.CancelledError as error:
+                cancelled = error
+    result = task.result()
+    if cancelled is not None:
+        raise cancelled
+    return result
+
+
+@asynccontextmanager
+async def in_thread[T](context: AbstractContextManager[T]) -> AsyncGenerator[T]:
+    entered = False
+
+    def enter() -> T:
+        nonlocal entered
+        result = context.__enter__()
+        entered = True
+        return result
+
+    # As in FastAPI's contextmanager_in_threadpool, exit must bypass waiting entrants.
+    exit_limiter = anyio.CapacityLimiter(1)
+    try:
+        result = await _run(enter)
+        await checkpoint_if_cancelled()
+        yield result
+        await checkpoint_if_cancelled()
+    except BaseException:
+        if entered:
+            await _run(partial(context.__exit__, *sys.exc_info()), exit_limiter)
+        raise
+    else:
+        await _run(partial(context.__exit__, None, None, None), exit_limiter)
 
 
 def protect(db: Session, response: s.TurnResponse) -> s.TurnResponse:
