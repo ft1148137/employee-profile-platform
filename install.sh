@@ -40,6 +40,14 @@ port_busy() {
         { command -v lsof >/dev/null && lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; } ||
         { command -v ss >/dev/null && ss -H -ltn "sport = :$1" | read -r _; }
 }
+check_acme_port() {
+    [[ "$1" == 80 ]] || fail '域名证书的 HTTP-01 验证必须使用 HTTP 80 端口，请将 HTTP_PORT 改为 80'
+    if port_busy 80; then
+        # A running proxy from this installation may keep its port on a re-run.
+        [[ "${2:-}" == existing && "$(docker compose port proxy 80 2>/dev/null)" == *:80 ]] ||
+            fail '域名证书需要 HTTP 80 端口，但它已被其他服务占用；请先解决端口冲突，不能改用 8080'
+    fi
+}
 if [[ ! -e .env ]]; then
     address=${EPP_ADDRESS:-$(default_address)}
     address=${address:-localhost}
@@ -72,8 +80,10 @@ if [[ ! -e .env ]]; then
     if [[ "$access" == https-letsencrypt ]]; then
         [[ "$email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] || fail '请输入有效的证书通知邮箱'
         [[ ! "$address" =~ ^[0-9.]+$ ]] || fail "Let's Encrypt 需要域名"
+        check_acme_port "$port"
     fi
     while port_busy "$port"; do
+        [[ "$access" != https-letsencrypt ]] || fail '域名证书的 HTTP 80 端口已被占用，不能改用 8080'
         "$interactive" || fail "端口 $port 已占用，请设置 EPP_HTTP_PORT（例如 8080）"
         read -r -p "端口 $port 已占用，请换一个（例如 8080）：" port
         if [[ ! "$port" =~ ^[1-9][0-9]{0,4}$ ]] || (( port > 65535 )); then fail '端口无效'; fi
@@ -129,6 +139,10 @@ else
     echo '保留已有 .env 和密钥，使用现有配置启动。'
 fi
 ensure_pi_token
+if [[ ":$(config_value COMPOSE_FILE):" == *":deploy/compose.https-letsencrypt.yml:"* ]]; then
+    saved_port=$(config_value HTTP_PORT)
+    check_acme_port "${saved_port:-80}" existing
+fi
 mkdir -p backups
 chmod 700 backups
 docker compose build

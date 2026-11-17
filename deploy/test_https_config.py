@@ -2,7 +2,9 @@
 
 import json
 import os
+import shutil
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
@@ -105,6 +107,106 @@ class HTTPSConfigTest(unittest.TestCase):
         self.assertEqual(
             config["volumes"][volume["source"]]["name"], "nere781_traefik-certificates"
         )
+
+
+class InstallPortTest(unittest.TestCase):
+    def test_acme_port_validation(self) -> None:
+        cases = [
+            ("https-letsencrypt", False, "8080", False, False, False),
+            ("https-letsencrypt", False, "80", True, False, False),
+            ("https-letsencrypt", False, "80", False, False, True),
+            ("https-letsencrypt", True, "8080", False, False, False),
+            ("https-letsencrypt", True, "80", True, False, False),
+            ("https-letsencrypt", True, "80", False, False, True),
+            ("https-letsencrypt", True, "80", True, True, True),
+            ("http", False, "18781", False, False, True),
+            ("https-selfsigned", False, "18781", False, False, True),
+            ("http", True, "18781", False, False, True),
+            ("https-selfsigned", True, "18781", False, False, True),
+        ]
+        for mode, existing, port, busy, own_proxy, succeeds in cases:
+            with (
+                self.subTest(
+                    mode=mode,
+                    existing=existing,
+                    port=port,
+                    busy=busy,
+                    own_proxy=own_proxy,
+                ),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                root = Path(directory)
+                source = Path(__file__).resolve().parents[1]
+                # Keep real host listeners out of the test; lsof supplies port state.
+                (root / "install.sh").write_text(
+                    (source / "install.sh")
+                    .read_text()
+                    .replace("/dev/tcp/127.0.0.1/$1", "/dev/null/disabled-probe")
+                )
+                (root / "deploy").mkdir()
+                shutil.copy(source / "deploy/common.sh", root / "deploy")
+                binaries = root / "bin"
+                binaries.mkdir()
+                docker = binaries / "docker"
+                docker.write_text("""#!/bin/sh
+echo "$*" >> docker-calls
+case "$*" in
+  'compose version --short') echo 2.40.0 ;;
+  'compose config --environment') cat .env ;;
+  'compose port proxy 80')
+    [ "$OWN_PROXY" = true ] || exit 1
+    echo 0.0.0.0:80 ;;
+esac
+""")
+                # Stub port probes on both macOS and Linux; no Docker daemon is used.
+                lsof = binaries / "lsof"
+                lsof.write_text("""#!/bin/sh
+[ "$BUSY_PORT" = true ] && [ "$2" = -iTCP:80 ]
+""")
+                curl = binaries / "curl"
+                curl.write_text("#!/bin/sh\nexit 0\n")
+                ss = binaries / "ss"
+                ss.write_text("#!/bin/sh\nexit 0\n")
+                for binary in (docker, lsof, curl, ss):
+                    binary.chmod(0o755)
+                env = {
+                    **os.environ,
+                    "PATH": f"{binaries}:{os.environ['PATH']}",
+                    "EPP_ACCESS": mode,
+                    "EPP_ADDRESS": "profiles.example.com",
+                    "EPP_ACME_EMAIL": "admin@example.com",
+                    "EPP_HTTP_PORT": port,
+                    "COMPOSE_PROJECT_NAME": "nere781",
+                    "BUSY_PORT": str(busy).lower(),
+                    "OWN_PROXY": str(own_proxy).lower(),
+                }
+                if existing:
+                    (root / ".env").write_text(
+                        "COMPOSE_FILE=compose.yml:deploy/compose.prod.yml"
+                        + (f":deploy/compose.{mode}.yml" if mode != "http" else "")
+                        + "\n"
+                        f"HTTP_PORT={port}\nFRONTEND_HOST=https://profiles.example.com\n"
+                        "DOMAIN=profiles.example.com\nPI_SERVICE_TOKEN=synthetic-token\n"
+                    )
+                    # Re-running uses the saved configuration, not new input defaults.
+                    env["EPP_ACCESS"], env["EPP_HTTP_PORT"] = "http", "80"
+                result = subprocess.run(
+                    ["bash", "install.sh", "--non-interactive"],
+                    cwd=root,
+                    env=env,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                calls = (root / "docker-calls").read_text()
+                self.assertEqual(result.returncode == 0, succeeds, result.stderr)
+                self.assertEqual("compose build\n" in calls, succeeds)
+                if not succeeds:
+                    self.assertIn("域名证书", result.stderr)
+                    self.assertNotIn("例如 8080", result.stderr)
+                    self.assertNotIn("compose up", calls)
+                    if not existing:
+                        self.assertFalse((root / ".env").exists())
 
 
 if __name__ == "__main__":
