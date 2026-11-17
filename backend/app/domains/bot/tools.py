@@ -1,3 +1,4 @@
+import json
 import re
 from dataclasses import replace
 from typing import Literal, cast
@@ -248,7 +249,22 @@ def definitions(
             [
                 ToolDefinition(
                     name="coordination",
-                    description="按当前用户权限调查、模拟和比较部门方案；方案不是承诺。",
+                    description=(
+                        "按当前用户权限调查、模拟和比较部门方案；方案不是承诺。"
+                        "simulate_plan 首次模拟只传 demand_id，生成快照和候选方案；"
+                        "已有首次模拟后，传 demand_id 和 assignees 校验自定方案。"
+                        "各 function 的说明及 arguments JSON Schema 如下（required 为必填字段）：\n"
+                        + json.dumps(
+                            {
+                                tool.name: {
+                                    "description": tool.description,
+                                    "parameters": tool.input_model.model_json_schema(),
+                                }
+                                for tool in COORDINATION_TOOLS
+                            },
+                            ensure_ascii=False,
+                        )
+                    ),
                     parameters=CoordinationInput.model_json_schema(),
                 )
             ]
