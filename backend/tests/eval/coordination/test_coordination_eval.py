@@ -673,7 +673,9 @@ def test_report_excludes_unknown_model_calls() -> None:
             "model_calls": None,
         },
     ]
-    output = report(rows, "synthetic", "high", False)
+    with patch("scripts.eval_coordination.subprocess.run") as git_metadata:
+        git_metadata.return_value.stdout = "synthetic-baseline\n"
+        output = report(rows, "synthetic", "high", False)
     agent = next(
         line for line in output.splitlines() if line.startswith("| 纯 Agent |")
     )
