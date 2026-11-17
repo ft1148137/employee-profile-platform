@@ -51,6 +51,10 @@ def violations(root: Path) -> list[str]:
                 not inside
                 and not entrypoint
                 and not (
+                    relative == "worker/tasks.py"
+                    and module == "app.domains.capacity.proposal.expire"
+                )
+                and not (
                     planning
                     and (
                         module.startswith("app.domains.capacity.models.")
@@ -127,6 +131,13 @@ def test_capacity_import_boundaries() -> None:
         ("domains/planning/bad.py", "from app.domains.profile import service"),
         ("domains/planning/bad.py", "from app.domains.review import publish"),
         ("domains/capacity/bad.py", "from app.domains import planning"),
+        ("worker/tasks.py", "from app.domains.capacity.proposal import accept"),
+        (
+            "worker/tasks.py",
+            "from app.domains.capacity.assignment import create_assignment",
+        ),
+        ("worker/tasks.py", "from app.domains.capacity import proposal"),
+        ("worker/other.py", "from app.domains.capacity.proposal import expire"),
     ],
 )
 def test_import_counterexamples(tmp_path: Path, relative: str, source: str) -> None:
@@ -134,6 +145,17 @@ def test_import_counterexamples(tmp_path: Path, relative: str, source: str) -> N
     path.parent.mkdir(parents=True)
     path.write_text(source)
     assert violations(tmp_path)
+
+
+def test_worker_expiration_entrypoint(tmp_path: Path) -> None:
+    path = tmp_path / "worker/tasks.py"
+    path.parent.mkdir()
+    path.write_text("from app.domains.capacity.proposal import expire")
+    assert violations(tmp_path) == []
+    path.write_text("from app.domains.capacity.proposal import expire, accept")
+    assert violations(tmp_path) == [
+        "worker/tasks.py: app.domains.capacity.proposal.accept"
+    ]
 
 
 def foreign_key_violations(metadata: MetaData) -> list[str]:

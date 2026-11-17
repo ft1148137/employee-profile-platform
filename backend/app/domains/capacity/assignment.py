@@ -298,6 +298,17 @@ def create_assignment(
         raise CapacityNotFound()
     if demand.status != DemandStatus.ACCEPTED:
         raise CapacityConflict()
+    if (
+        session.exec(
+            select(CapacityAssignment.id).where(
+                CapacityAssignment.org_id == principal.org_id,
+                CapacityAssignment.demand_id == demand.id,
+                col(CapacityAssignment.proposal_line_id).is_not(None),
+            )
+        ).first()
+        is not None
+    ):
+        raise CommitmentConfirmationRequired("已生效的安排请发起变更")
     subject = session.exec(
         select(Employee)
         .where(Employee.org_id == principal.org_id, Employee.id == body.employee_id)
@@ -334,6 +345,7 @@ def create_assignment(
             CapacityAssignment.demand_id == demand.id,
             CapacityAssignment.employee_id == subject.id,
             CapacityAssignment.status == AssignmentStatus.ACTIVE,
+            col(CapacityAssignment.proposal_line_id).is_(None),
         )
     ).first()
     if existing:

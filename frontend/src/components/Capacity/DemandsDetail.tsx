@@ -34,6 +34,8 @@ const events = {
   ...demandStatuses,
   follow_up: "追问",
   commitment_changed: "承诺日期变更",
+  committed: "安排已生效",
+  proposal_failed: "方案未达成",
 }
 
 export function DemandsDetail({

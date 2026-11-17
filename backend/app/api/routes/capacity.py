@@ -2,10 +2,18 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Query
+from sqlmodel import col, select
 
 from app.api.deps import SessionDep
 from app.authz.deps import OrgPrincipalDep
-from app.domains.capacity import assignment, demand, extension, settings, workload
+from app.domains.capacity import (
+    assignment,
+    demand,
+    extension,
+    proposal,
+    settings,
+    workload,
+)
 from app.domains.capacity.assignment_schemas import (
     AssignmentInput,
     AssignmentPublic,
@@ -21,6 +29,8 @@ from app.domains.capacity.demand_schemas import (
     DemandList,
     DemandListInput,
     DemandPublic,
+    ProposalLineInput,
+    ProposalWithdrawInput,
     ReferenceInput,
     ReplyInput,
     RespondInput,
@@ -31,6 +41,7 @@ from app.domains.capacity.extension_schemas import (
     ExtensionList,
     ExtensionPublic,
 )
+from app.domains.capacity.models import DemandOutcome
 from app.domains.capacity.schemas import (
     CapacitySettingsInput,
     MyWorkload,
@@ -48,6 +59,8 @@ from app.domains.capacity.schemas import (
     WorkloadWeeksInput,
 )
 from app.domains.org.schemas import DepartmentsPublic
+from app.domains.planning import service as planning
+from app.domains.planning.models import PlanningOption, PlanningSnapshot, PlanVerdict
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["capacity"])
 
@@ -173,7 +186,62 @@ def get_demand_basis(
 def reply_demand(
     principal: OrgPrincipalDep, session: SessionDep, demand_id: UUID, body: ReplyInput
 ) -> DemandPublic:
-    result = demand.reply_demand(principal, session, demand_id, **body.model_dump())
+    if body.option_id is None:
+        result = demand.reply_demand(principal, session, demand_id, **body.model_dump())
+    else:
+        row = demand.demand_row(principal, session, demand_id, lock=True)
+        if not demand.represents_department(principal, row.target_department_id):
+            raise planning.PlanningStale()
+        if body.outcome == DemandOutcome.NOT_NOW:
+            raise proposal.ProposalConflict("暂不能承接的答复不能带方案")
+        found = session.exec(
+            select(PlanningOption, PlanningSnapshot.case_id)
+            .join(
+                PlanningSnapshot,
+                (col(PlanningSnapshot.org_id) == PlanningOption.org_id)
+                & (col(PlanningSnapshot.id) == PlanningOption.snapshot_id),
+            )
+            .where(
+                PlanningOption.org_id == principal.org_id,
+                PlanningOption.id == body.option_id,
+            )
+        ).one_or_none()
+        if found is None:
+            raise planning.PlanningStale()
+        saved, case_id = found
+        _, snapshot, case_demand = planning.authorized_case(principal, session, case_id)
+        if case_demand.id != demand_id or saved.snapshot_id != snapshot.id:
+            raise planning.PlanningStale()
+        if saved.verdict not in (PlanVerdict.FEASIBLE, PlanVerdict.CONDITIONAL):
+            raise proposal.ProposalConflict("只有可行或有条件可行的方案可以提议")
+        raw = saved.params.get("assignees")
+        if not isinstance(raw, list) or not raw:
+            raise proposal.ProposalConflict("方案尚无可安排的人员，请重新规划")
+        lines = [
+            ProposalLineInput.model_validate(
+                {**item, "outside_basis": body.outside_basis}
+            )
+            for item in raw
+            if isinstance(item, dict)
+        ]
+        if len(lines) != len(raw):
+            raise planning.PlanningStale()
+        proposal.check_lines(principal, session, row, lines)
+        current = planning.get_case(principal, session, case_id)
+        if current.stale or current.snapshot_id != saved.snapshot_id:
+            raise planning.PlanningStale()
+        demand.reply_demand(
+            principal,
+            session,
+            demand_id,
+            **body.model_dump(
+                exclude={"option_id", "outside_basis", "start_date", "end_date"}
+            ),
+            start_date=min(line.start_date for line in lines),
+            end_date=max(line.end_date for line in lines),
+        )
+        proposal.create(principal, session, row, body.option_id, lines)
+        result = demand.get_demand(principal, session, demand_id)
     session.commit()
     return result
 
@@ -182,7 +250,25 @@ def reply_demand(
 def respond_demand(
     principal: OrgPrincipalDep, session: SessionDep, demand_id: UUID, body: RespondInput
 ) -> DemandPublic:
-    result = demand.respond_demand(principal, session, demand_id, **body.model_dump())
+    try:
+        result = demand.respond_demand(
+            principal, session, demand_id, **body.model_dump()
+        )
+    except proposal.ProposalFailed:
+        session.commit()
+        raise
+    session.commit()
+    return result
+
+
+@router.post("/capacity/proposals/{proposal_id}/withdraw")
+def withdraw_proposal(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    proposal_id: UUID,
+    body: ProposalWithdrawInput,
+) -> DemandPublic:
+    result = proposal.withdraw(principal, session, proposal_id, body.revision)
     session.commit()
     return result
 

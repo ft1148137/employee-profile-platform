@@ -370,8 +370,11 @@ def demand_row(
 
 
 def get_demand(principal: Principal, session: Session, demand_id: UUID) -> DemandPublic:
+    from app.domains.capacity.proposal import public
+
     row = demand_row(principal, session, demand_id)
     result = demand_public(principal, session, row)
+    result.proposal = public(principal, session, row)
     if represents_department(principal, row.target_department_id):
         result.basis_url = f"/orgs/{principal.org_id}/capacity/demands/{row.id}/basis"
     return result
@@ -640,10 +643,15 @@ def reply_demand(
     revision: int,
     start_date: date | None = None,
     end_date: date | None = None,
+    option_id: UUID | None = None,
+    outside_basis: bool = False,
     *,
     via: Via = "web",
     client_name: str | None = None,
 ) -> DemandPublic:
+    if option_id is not None or outside_basis:
+        # Option composition is a REST operation; assistants require confirmation.
+        raise CapacityForbidden()
     body = ReplyInput(
         outcome=outcome,
         text=text,
@@ -719,6 +727,13 @@ def respond_demand(
         or row.requesting_department_id in principal.managed_department_ids
     ):
         raise CapacityNotFound(DEMAND_NOT_FOUND)
+    from app.domains.capacity import proposal
+
+    pending = proposal.latest(session, principal.org_id, demand_id, lock=True)
+    if pending is not None:
+        return proposal.respond(
+            principal, session, row, pending, action, revision, text, via=via
+        )
     if row.revision != revision or row.status in (
         DemandStatus.ACCEPTED,
         DemandStatus.WITHDRAWN,

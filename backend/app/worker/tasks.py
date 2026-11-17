@@ -6,10 +6,12 @@ from procrastinate.jobs import Job
 from procrastinate.retry import BaseRetryStrategy
 from sqlmodel import Session, select
 
+from app.authz.principal import Principal
 from app.core.db import engine
 from app.domains.base import utc_now
 from app.domains.bot.store import cleanup_messages
 from app.domains.capability.department_defaults import fill_department_defaults
+from app.domains.capacity.proposal import expire
 from app.domains.drafting.incremental import run_incremental
 from app.domains.drafting.service import run_drafting
 from app.domains.im.binding import cleanup_events
@@ -47,6 +49,17 @@ def cleanup_bot_messages(timestamp: int) -> None:  # noqa: ARG001
     with Session(engine) as session:
         cleanup_messages(session, utc_now())
         cleanup_events(session)
+
+
+@app.periodic(cron="*/5 * * * *")
+@app.task(name="capacity.expire_proposals", queueing_lock="capacity_expire_proposals")
+def expire_proposals(timestamp: int) -> None:  # noqa: ARG001
+    with Session(engine) as session:
+        org_ids = session.exec(select(Organization.id)).all()
+    for org_id in org_ids:
+        with Session(engine) as session:
+            expire(Principal.system_worker(org_id), session)
+            session.commit()
 
 
 @app.periodic(cron="*/5 * * * *")
