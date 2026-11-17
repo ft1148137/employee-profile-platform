@@ -1,12 +1,16 @@
+import json
 from dataclasses import replace
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
+from app.domains.audit.models import AuditEvent
 from app.domains.bot import core, store, tools
 from app.domains.bot import schemas as s
 from app.domains.capacity.models import CapacitySetting
+from app.domains.im.models import ImNotification
+from app.domains.model.client import ModelUnavailable
 from app.domains.model.pi_client import TurnResult
 from app.domains.planning import service as planning_service
 from app.domains.planning.models import PlanningCase
@@ -315,15 +319,15 @@ def test_tool_failure_rolls_back_partial_plan(
         raise RuntimeError("private database detail")
 
     monkeypatch.setattr(planning_service, "create_case", fail_after_insert)
-    result = tools.call(
-        db,
-        b,
-        session,
-        [],
-        "coordination",
-        {"function": "simulate_plan", "arguments": {"demand_id": str(row.id)}},
-    )
-    assert result == {"error": "操作失败，请稍后重试"}
+    with pytest.raises(ModelUnavailable):
+        tools.call(
+            db,
+            b,
+            session,
+            [],
+            "coordination",
+            {"function": "simulate_plan", "arguments": {"demand_id": str(row.id)}},
+        )
     assert (
         db.exec(select(PlanningCase).where(PlanningCase.org_id == row.org_id)).all()
         == []
@@ -376,8 +380,22 @@ def test_mcp_scope_and_disabled(
     before = business_rows(db, row.org_id)
 
     def use(role: str, name: str, arguments: dict) -> dict:
-        return mcp_call(client, headers[role], name, arguments)
+        org_id = people["foreign"].org_id if role == "foreign" else row.org_id
+        query = select(AuditEvent).where(
+            AuditEvent.org_id == org_id, AuditEvent.action == "mcp.tool_called"
+        )
+        previous = {event.id for event in db.exec(query).all()}
+        result = mcp_call(client, headers[role], name, arguments)
+        added = [event for event in db.exec(query).all() if event.id not in previous]
+        assert len(added) == 1
+        assert added[0].details["client_name"] == "Coordination client"
+        assert added[0].target_type == "mcp_tool"
+        assert added[0].target_id == name
+        return result
 
+    notifications = select(ImNotification).where(ImNotification.org_id == row.org_id)
+    before_notifications = [n.model_dump_json() for n in db.exec(notifications).all()]
+    assert use("b", "inspect_capacity", {"demand_id": "invalid"}).get("isError")
     for name in (
         "read_coordination_context",
         "inspect_capacity",
@@ -408,7 +426,20 @@ def test_mcp_scope_and_disabled(
     assert "simulate_plan" not in available_tools(foreign, db)
     worker = principal(db, row.org_id, people["E04"].id)
     assert "simulate_plan" not in available_tools(worker, db)
-    assert business_rows(db, row.org_id) == before
+    after = business_rows(db, row.org_id)
+    for snapshot in (before, after):
+        snapshot["audit_event"] = json.dumps(
+            [
+                event
+                for event in json.loads(snapshot["audit_event"])
+                if event["action"] != "mcp.tool_called"
+            ],
+            sort_keys=True,
+        )
+    assert after == before
+    assert [
+        n.model_dump_json() for n in db.exec(notifications).all()
+    ] == before_notifications
     setting = db.exec(
         select(CapacitySetting).where(CapacitySetting.org_id == row.org_id)
     ).one()

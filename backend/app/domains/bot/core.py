@@ -109,12 +109,6 @@ def turn(
             read_ids: list[JsonValue] = []
             read_ids.extend(sorted(employee_ids))
             scope["visible_employee_ids"] = read_ids
-            if (
-                name in {"coordination", "prepare_plan_proposal"}
-                and isinstance(result, dict)
-                and "error" in result
-            ):
-                raise ModelUnavailable(code="coordination_tool")
         except Exception:
             steps.append(s.ToolStep(name=title, ok=False))
             if stream:

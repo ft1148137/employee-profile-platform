@@ -26,6 +26,7 @@ from app.domains.change_request.schemas import ItemInput, ToolInput, validation_
 from app.domains.drafting.settings import read_auto_draft
 from app.domains.employee_tools import EMPLOYEE_TOOLS, DraftRequestInput
 from app.domains.evidence.models import Evidence
+from app.domains.model.client import ModelUnavailable
 from app.domains.model.pi_client import ToolDefinition
 from app.domains.org.models import Department, Employee, EmploymentStatus
 from app.domains.planning import service as planning_service
@@ -381,7 +382,12 @@ def plan_card(option: OptionPublic, case: CasePublic) -> s.PlanCard:
                         ),
                         str(after),
                     )
-                parts.append(f"{label}：{before or '未定'} → {after or '未定'}")
+                unit = {"covered_headcount": " 人", "gap_person_weeks": " 人周"}.get(
+                    key, ""
+                )
+                before = "未定" if before is None else f"{before}{unit}"
+                after = "未定" if after is None else f"{after}{unit}"
+                parts.append(f"{label}：{before} → {after}")
         changes = "；".join(parts)
     return s.PlanCard(
         title=f"{option.kind_label}方案",
@@ -651,10 +657,14 @@ def call(
                     },
                 )
             )
-        except HTTPException, ValidationError:
-            return {"error": "操作未完成，请检查权限或参数"}
+        except ValidationError as exc:
+            return {"error": validation_message(exc, "工具参数不正确")}
+        except HTTPException as exc:
+            if 400 <= exc.status_code < 500:
+                return {"error": exc.detail}
+            raise ModelUnavailable(code="coordination_tool") from None
         except Exception:
-            return {"error": "操作失败，请稍后重试"}
+            raise ModelUnavailable(code="coordination_tool") from None
     if name in capacity.TITLES or name in capacity.WRITES:
         if session.channel not in ("web", "feishu"):
             return {"error": "不允许调用此工具"}
