@@ -324,7 +324,7 @@ def session_scope(db: Session, principal: Principal) -> dict[str, JsonValue]:
             for id in db.exec(
                 select(Employee.id)
                 .where(employee_scope_clause(principal))
-                .order_by(Employee.id)
+                .order_by(col(Employee.id))
             ).all()
         ],
     }
