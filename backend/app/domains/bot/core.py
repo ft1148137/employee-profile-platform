@@ -41,10 +41,14 @@ def _save(
     messages: list[s.Message],
     steps: list[s.ToolStep] | None = None,
     principal: Principal | None = None,
+    *,
+    scope: dict[str, JsonValue] | None = None,
 ) -> s.TurnResponse:
     response = s.TurnResponse(messages=messages, steps=steps or [])
     payload = response.model_dump(mode="json")
-    if principal is not None:
+    if scope is not None:
+        payload["scope"] = scope
+    elif principal is not None:
         payload["scope"] = store.session_scope(db, principal)
     store.append_message(
         db,
@@ -78,6 +82,12 @@ def turn(
     steps: list[s.ToolStep] = []
     cards: list[s.Message] = []
     manual_fallback = False
+    # Keep the scope that admitted inherited state, not a later persistence snapshot.
+    scope = store.session_scope(db, p)
+    employee_ids: set[str] = set()
+    visible_ids = scope["visible_employee_ids"]
+    if isinstance(visible_ids, list):
+        employee_ids.update(str(id) for id in visible_ids)
 
     def call(name: str, args: dict[str, JsonValue]) -> JsonValue:
         title = tools.TITLES.get(
@@ -91,6 +101,14 @@ def turn(
             stream.on_tool(title, "start", True)
         try:
             result = tools.call(db, p, session, cards, name, args)
+            employee_ids.update(store.employee_references(result))
+            for card in cards:
+                employee_ids.update(
+                    store.employee_references(card.model_dump(mode="json"))
+                )
+            read_ids: list[JsonValue] = []
+            read_ids.extend(sorted(employee_ids))
+            scope["visible_employee_ids"] = read_ids
             if (
                 name in {"coordination", "prepare_plan_proposal"}
                 and isinstance(result, dict)
@@ -109,7 +127,7 @@ def turn(
         return result
 
     try:
-        session_state = store.state_for_turn(db, p, session)
+        session_state = store.state_for_turn(db, p, session, scope=scope)
         with begin_turn(
             db, p, session, user_payload, stream.cancelled if stream else None
         ):
@@ -139,6 +157,7 @@ def turn(
                         )
                     ],
                     principal=p,
+                    scope=scope,
                 )
             config = model_config(setting)
             images = []
@@ -163,7 +182,7 @@ def turn(
             # Only completed model turns may leave drafts or replies behind.
             if result.stop_reason != "stop":
                 raise ModelUnavailable()
-            store.save_scoped_state(db, p, session, result.session_state)
+            store.save_scoped_state(db, p, session, result.session_state, scope=scope)
             messages: list[s.Message] = (
                 [s.TextMessage(text="\n".join(filter(None, [notice, result.text])))]
                 if result.text or notice
@@ -172,7 +191,7 @@ def turn(
             messages.extend(cards)
             if stream:
                 stream.check()
-            return _save(db, session, messages, steps, principal=p)
+            return _save(db, session, messages, steps, principal=p, scope=scope)
     except pi_client.TurnCancelled:
         return s.TurnResponse(messages=[])
     except BotBusy:
@@ -213,7 +232,7 @@ def turn(
         if stream:
             session.turn_count += 1
             store.append_message(db, session, "user", user_payload)
-        response = _save(db, session, messages, steps, principal=p)
+        response = _save(db, session, messages, steps, principal=p, scope=scope)
         if stream and stream.cancelled.is_set():
             db.rollback()
             return s.TurnResponse(messages=[])

@@ -381,7 +381,11 @@ def _legacy_sensitive(
 
 
 def state_for_turn(
-    db: Session, principal: Principal, session: BotSession
+    db: Session,
+    principal: Principal,
+    session: BotSession,
+    *,
+    scope: dict[str, JsonValue] | None = None,
 ) -> dict[str, JsonValue] | None:
     saved = load_state(db, session, scoped=True)
     if saved is None:
@@ -399,7 +403,9 @@ def state_for_turn(
         state = saved
         legacy_sensitive = _legacy_sensitive(messages_for(db, session), saved)
     if scope_shrank(
-        previous, session_scope(db, principal), legacy_sensitive=legacy_sensitive
+        previous,
+        scope if scope is not None else session_scope(db, principal),
+        legacy_sensitive=legacy_sensitive,
     ):
         save_state(db, session, None)
         db.commit()
@@ -412,12 +418,27 @@ def save_scoped_state(
     principal: Principal,
     session: BotSession,
     state: dict[str, JsonValue] | None,
+    *,
+    scope: dict[str, JsonValue] | None = None,
 ) -> None:
     save_state(
         db,
         session,
-        {**state, "scope": session_scope(db, principal)} if state is not None else None,
+        {**state, "scope": scope if scope is not None else session_scope(db, principal)}
+        if state is not None
+        else None,
     )
+
+
+def employee_references(value: JsonValue) -> set[str]:
+    if isinstance(value, list):
+        return {id for item in value for id in employee_references(item)}
+    if isinstance(value, dict):
+        ids = {id for item in value.values() for id in employee_references(item)}
+        if isinstance(value.get("employee_id"), str):
+            ids.add(str(value["employee_id"]))
+        return ids
+    return set()
 
 
 def messages_for(
