@@ -276,7 +276,11 @@ def definitions(
             [
                 ToolDefinition(
                     name="prepare_plan_proposal",
-                    description="只为答复方生成需求答复确认卡；经理点击确认才发送承诺。",
+                    description=(
+                        "只为答复方生成需求答复确认卡；经理点击确认才发送承诺。"
+                        "说明与系统追加的完整方案条件合计最多 2000 字；"
+                        "超限时按工具提示缩短说明后重新预览，不删减方案条件。"
+                    ),
                     parameters=PreparePlanProposalInput.model_json_schema(),
                 )
             ]
@@ -642,7 +646,17 @@ def call(
                 "insufficient_data": "not_now",
             }[option.verdict]
             conditions = cast("list[str]", option.summary.get("conditions", []))
-            text = proposal.text + "\n条件：" + ("；".join(conditions) or "无")
+            condition_text = "\n条件：" + ("；".join(conditions) or "无")
+            text = proposal.text + condition_text
+            if len(text) > 2000:
+                return {
+                    "error": (
+                        "说明与完整方案条件合计不能超过 2000 字，"
+                        f"本次说明最多可写 {2000 - len(condition_text)} 字，"
+                        f"当前超出 {len(text) - 2000} 字。"
+                        "请缩短说明后重新预览，保留全部方案条件。"
+                    )
+                }
             return redact(
                 capacity.call(
                     db,
