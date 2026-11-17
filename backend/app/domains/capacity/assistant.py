@@ -3,7 +3,7 @@ from typing import Literal
 
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, JsonValue, ValidationError
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.domains.bot import schemas as s
@@ -39,6 +39,7 @@ from app.domains.capacity.tools import CAPACITY_TOOLS
 from app.domains.capacity.workload import employee, get_my_workload
 from app.domains.change_request.schemas import validation_message
 from app.domains.model.pi_client import ToolDefinition
+from app.domains.org.models import Department
 
 READS = {t.name: t for t in CAPACITY_TOOLS if not t.writes}
 WRITES = {t.name: t for t in CAPACITY_TOOLS if t.writes}
@@ -77,6 +78,27 @@ DemandField = Literal[
 class PrepareDemandInput(DemandInput):
     unclear_fields: list[DemandField] = Field(default_factory=list)
     questions: list[str] = Field(default_factory=list, max_length=2)
+
+
+def requester_departments(db: Session, p: Principal) -> list[Department]:
+    try:
+        demand.require_requester(p, db)
+    except HTTPException:
+        return []
+    query = select(Department).where(Department.org_id == p.org_id)
+    if not p.is_org_admin:
+        ids = p.managed_department_ids
+        if not ids:
+            department_id = employee(p, db, p.employee_id).department_id
+            ids = frozenset({department_id}) if department_id else frozenset()
+        query = query.where(col(Department.id).in_(ids))
+    return list(db.exec(query.order_by(Department.name, col(Department.id))).all())
+
+
+class DemandDepartmentForbidden(CapacityForbidden):
+    def __init__(self, departments: list[Department]) -> None:
+        super().__init__()
+        self.detail = "需求方部门只能选择：" + "、".join(d.name for d in departments)
 
 
 def definitions(db: Session, p: Principal) -> list[ToolDefinition]:
@@ -124,14 +146,9 @@ def check_demand(
     body = DemandInput.model_validate(value)
     demand.require_requester(p, db)
     source = demand.department(db, p.org_id, body.requesting_department_id)
-    if not p.is_org_admin:
-        allowed = (
-            source.id in p.managed_department_ids
-            if p.managed_department_ids
-            else employee(p, db, p.employee_id).department_id == source.id
-        )
-        if not allowed:
-            raise CapacityForbidden()
+    departments = requester_departments(db, p)
+    if source.id not in {d.id for d in departments}:
+        raise DemandDepartmentForbidden(departments)
     reference = demand.capacity_reference(
         p, db, body.target_department_id, body.capability_key, body.minimum_level
     )
@@ -190,7 +207,7 @@ def check_demand_response(db: Session, p: Principal, value: BaseModel) -> str:
         row.requester_user_id == p.user_id
         or row.requesting_department_id in p.managed_department_ids
     ):
-        raise CapacityNotFound("未找到该需求")
+        raise CapacityNotFound(demand.DEMAND_NOT_FOUND)
     if row.revision != body.revision or row.status in (
         DemandStatus.ACCEPTED,
         DemandStatus.WITHDRAWN,
@@ -214,16 +231,18 @@ def check_demand_reply(db: Session, p: Principal, value: BaseModel) -> str:
     body = ReplyDemandInput.model_validate(value)
     row = demand.demand_row(p, db, body.demand_id)
     if not demand.represents_department(p, row.target_department_id):
-        raise CapacityNotFound("未找到该需求")
+        raise CapacityNotFound(demand.DEMAND_NOT_FOUND)
     if p.user_id is None or p.user_id == row.requester_user_id:
         raise CapacityForbidden()
     if row.revision != body.revision or row.status != DemandStatus.SUBMITTED:
         raise CapacityConflict()
+    description, _, conditions = body.text.partition("\n条件：")
     content = (
         f"需求：{row.capability_name}\n结论："
-        f"{ {'can_do': '能做', 'partial': '能做一部分', 'not_now': '暂时不能'}[body.outcome] }\n"
+        f"{ {'can_do': '能做', 'partial': '能做一部分：需要需求方同意下面的条件，或只能承接部分人数、时间、投入', 'not_now': '暂时不能'}[body.outcome] }\n"
         f"承诺日期：{body.start_date or '未定'} 至 {body.end_date or '未定'}\n"
-        f"说明：{body.text}\n修订：{body.revision}"
+        f"条件：{conditions.strip() or '无'}\n说明：{description}\n修订：{body.revision}\n"
+        "确认后把答复发给需求方，不分配人员，不改其他承诺。"
     )
     demand.validate_department_text(p, db, row.target_department_id, content)
     demand.validate_reply_text(p, db, row, body.text)

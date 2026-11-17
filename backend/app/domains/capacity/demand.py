@@ -80,6 +80,10 @@ LOAD_WORDS = (
     "闲置",
     "余量",
 )
+DEMAND_NOT_FOUND = (
+    "未找到这条需求，或你没有权限查看。"
+    "需求只有提出人、需求方部门经理和目标部门经理能查看，可以联系他们了解进度。"
+)
 
 
 class DemandReplyInvalid(HTTPException):
@@ -361,7 +365,7 @@ def demand_row(
         or row.requesting_department_id in principal.managed_department_ids
         or represents_department(principal, row.target_department_id)
     ):
-        raise CapacityNotFound("未找到该需求")
+        raise CapacityNotFound(DEMAND_NOT_FOUND)
     return row
 
 
@@ -502,7 +506,7 @@ def get_demand_basis(
 ) -> DemandBasis:
     row = demand_row(principal, session, demand_id)
     if not represents_department(principal, row.target_department_id):
-        raise CapacityNotFound("未找到该需求")
+        raise CapacityNotFound(DEMAND_NOT_FOUND)
     people: dict[UUID, PeopleSearchRow] = {}
     skip = 0
     while True:
@@ -649,7 +653,7 @@ def reply_demand(
     )
     row = demand_row(principal, session, demand_id, lock=True)
     if not represents_department(principal, row.target_department_id):
-        raise CapacityNotFound("未找到该需求")
+        raise CapacityNotFound(DEMAND_NOT_FOUND)
     if principal.user_id is None or principal.user_id == row.requester_user_id:
         raise CapacityForbidden()
     if row.revision != revision or row.status != DemandStatus.SUBMITTED:
@@ -714,7 +718,7 @@ def respond_demand(
         row.requester_user_id == principal.user_id
         or row.requesting_department_id in principal.managed_department_ids
     ):
-        raise CapacityNotFound("未找到该需求")
+        raise CapacityNotFound(DEMAND_NOT_FOUND)
     if row.revision != revision or row.status in (
         DemandStatus.ACCEPTED,
         DemandStatus.WITHDRAWN,
