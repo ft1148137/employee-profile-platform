@@ -220,7 +220,12 @@ def validate(
         approvers.append("需求方接受新日期")
     if kind == "reduce_scope" or "reduced_allocation" in codes:
         approvers.append("需求方接受缩小范围")
-    if kind == "phased":
+    segments: dict[str, set[tuple[str, str]]] = {}
+    for assignee in assignees:
+        segments.setdefault(assignee["employee_id"], set()).add(
+            (assignee["start_date"], assignee["end_date"])
+        )
+    if kind == "phased" or any(len(periods) > 1 for periods in segments.values()):
         approvers.append("需求方同意分阶段交付")
     if "borrow" in codes or kind == "borrow":
         approvers.append("原部门经理和被借调员工本人同意")

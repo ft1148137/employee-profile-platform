@@ -377,8 +377,9 @@ def revise_option(
                     "，".join(parts) or "日期保持不变"
                 )
             else:
+                prefix = f"把{name(target)}的" if target else "把未锁定人员的"
                 description = (
-                    f"把未锁定人员的日期改为{_date_label(start)}至{_date_label(end)}"
+                    f"{prefix}日期改为{_date_label(start)}至{_date_label(end)}"
                 )
         else:
             before_percents = {item["allocation_percent"] for item in changed}
