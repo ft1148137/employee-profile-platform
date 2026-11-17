@@ -401,7 +401,7 @@ function PlanDetails({ plan }: { plan: PlanCard }) {
               </div>
             ))}
           </dl>
-          <p className="font-medium">与 Agent 方案的差别（Agent → 规则引擎）</p>
+          <p className="font-medium">与推荐方案的差别（推荐 → 规则引擎）</p>
           {plan.rule_fallback.differences.map((field) => (
             <p key={field.label}>
               {field.label}：{field.value}

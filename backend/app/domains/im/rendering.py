@@ -96,7 +96,7 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
             text += "\n规则引擎方案\n" + "\n".join(
                 f"{field.label}：{field.value}" for field in fallback.fields
             )
-            text += "\n与 Agent 方案的差别（Agent → 规则引擎）\n" + "\n".join(
+            text += "\n与推荐方案的差别（推荐 → 规则引擎）\n" + "\n".join(
                 f"{field.label}：{field.value}" for field in fallback.differences
             )
             text += f"\n查看规则引擎方案：{plan_url(fallback)}"
