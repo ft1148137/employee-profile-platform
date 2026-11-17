@@ -15,6 +15,14 @@ BACKEND = Path(__file__).resolve().parents[1]
 CASES = sorted((BACKEND / "tests/eval/planning/cases").glob("*.yaml"))
 
 
+def model_calls(row: dict[str, Any]) -> int | None:
+    count = row.get("model_calls")
+    # Older runs initialized failed calls to zero without receiving TurnResult.
+    if count is None or (count == 0 and row["status"] != "passed"):
+        return None
+    return int(count)
+
+
 def report(rows: list[dict[str, Any]], model: str, thinking: str, fake: bool) -> str:
     # shortcut: Pi omits token usage; add token cost when its protocol exposes it.
     baseline = subprocess.run(
@@ -44,6 +52,7 @@ def report(rows: list[dict[str, Any]], model: str, thinking: str, fake: bool) ->
         ),
         f"- 命令：`uv run python scripts/eval_coordination.py --mode both{' --fake' if fake else ''} --model {model} --thinking {thinking} --report ../docs/m8-coordination-eval.md`",
         "- Pi 当前不向后端返回 token 用量；本次只计模型调用次数、工具调用次数和用时。",
+        "- 模型调用次数未取得成功 TurnResult 时记为不可取得（旧结果中失败状态的 0 同样按缺失处理）；仅对已知计数取均值，括号显示已知/已评估数量。全组未知显示 —，不能据此比较成本高低。工具次数和用时仍按实际记录统计。",
         "",
         "## 汇总",
         "",
@@ -53,6 +62,7 @@ def report(rows: list[dict[str, Any]], model: str, thinking: str, fake: bool) ->
     for mode, label in (("agent", "纯 Agent"), ("agent_validator", "Agent + 校验器")):
         group = [r for r in rows if r["mode"] == mode]
         done = [r for r in group if not r["status"].startswith("deferred:")]
+        known_calls = [r for r in done if model_calls(r) is not None]
 
         def average(key: str, items: list[dict[str, Any]] = done) -> str:
             return (
@@ -92,7 +102,7 @@ def report(rows: list[dict[str, Any]], model: str, thinking: str, fake: bool) ->
                 if lower_bound
                 else "—"
             )
-            + f" | {distribution or '—'} | {average('model_calls')} | {average('tool_calls')} | {average('seconds')} | "
+            + f" | {distribution or '—'} | {average('model_calls', known_calls)} ({len(known_calls)}/{len(done)}) | {average('tool_calls')} | {average('seconds')} | "
             f"{sum(bool(r.get('newcomer')) for r in done)} |"
         )
     lines.extend(
@@ -109,10 +119,11 @@ def report(rows: list[dict[str, Any]], model: str, thinking: str, fake: bool) ->
         ]
     )
     for r in rows:
+        count = model_calls(r)
         lines.append(
             f"| {r['id']} | {r['mode']} | {r['status']} | {r.get('baseline', '—')} | {r.get('verdict', '—')} | "
             f"{'是' if r.get('violation') else '否'} | {r.get('manager_changes', '—')} | "
-            f"{r.get('model_calls', 0)}/{r.get('tool_calls', 0)} | {r.get('seconds', 0):.2f} |"
+            f"{count if count is not None else '不可取得'}/{r.get('tool_calls', 0)} | {r.get('seconds', 0):.2f} |"
         )
     deferred = [
         f"{r['id']} ({r['mode']}: {r['status']})"

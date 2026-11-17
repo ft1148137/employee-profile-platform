@@ -34,6 +34,7 @@ from app.domains.planning import (
 from app.domains.planning.models import PlanningCase, PlanningOption, PlanningSnapshot
 from app.domains.planning.schemas import OptionInput, OptionPublic, ReviseInput
 from app.models import User
+from scripts.eval_coordination import report
 from tests.api.routes.test_m7_planning_readonly import business_rows
 from tests.eval.planning.test_planning_eval import _cleanup, _setup
 
@@ -237,6 +238,7 @@ def evaluate(
         "category": raw["category"],
         "mode": mode,
         "status": "passed",
+        "model_calls": None,
     }
     try:
         _, employees, _, demand, _ = _setup(db, raw, org)
@@ -294,7 +296,7 @@ def evaluate(
         )
         original_prompt = system_prompt
         seen: list[tuple[str, dict[str, Any], Any]] = []
-        stats = {"model_calls": 0, "tool_calls": 0}
+        stats = {"tool_calls": 0}
         rejected: list[str] = []
 
         def definitions(*args: Any, **kwargs: Any) -> list[pi_client.ToolDefinition]:
@@ -390,7 +392,7 @@ def evaluate(
                 )
             else:
                 result = original_turn(config, **kwargs)
-            stats["model_calls"] += result.model_calls
+            stats["model_calls"] = result.model_calls
             return result
 
         started = monotonic()
@@ -652,3 +654,33 @@ def test_free_capacity_uses_confirmed_week_load() -> None:
         )
         == 50
     )
+
+
+def test_report_excludes_unknown_model_calls() -> None:
+    rows = [
+        {"id": "known", "mode": "agent", "status": "passed", "model_calls": 4},
+        {"id": "known-zero", "mode": "agent", "status": "passed", "model_calls": 0},
+        {
+            "id": "legacy-failure",
+            "mode": "agent",
+            "status": "failed:model_unavailable",
+            "model_calls": 0,
+        },
+        {
+            "id": "failure",
+            "mode": "agent_validator",
+            "status": "failed:model_unavailable",
+            "model_calls": None,
+        },
+    ]
+    output = report(rows, "synthetic", "high", False)
+    agent = next(
+        line for line in output.splitlines() if line.startswith("| 纯 Agent |")
+    )
+    validator = next(
+        line for line in output.splitlines() if line.startswith("| Agent + 校验器 |")
+    )
+    assert "2.00 (2/3)" in agent
+    assert "— (0/1)" in validator
+    assert "不可取得/0" in output
+    assert "仅对已知计数取均值" in output
