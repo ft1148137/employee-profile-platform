@@ -641,6 +641,8 @@ def call(
                 "infeasible": "not_now",
                 "insufficient_data": "not_now",
             }[option.verdict]
+            conditions = cast("list[str]", option.summary.get("conditions", []))
+            text = proposal.text + "\n条件：" + ("；".join(conditions) or "无")
             return redact(
                 capacity.call(
                     db,
@@ -653,7 +655,7 @@ def call(
                         "outcome": outcome,
                         "start_date": start_date,
                         "end_date": end_date,
-                        "text": proposal.text,
+                        "text": text,
                     },
                 )
             )
