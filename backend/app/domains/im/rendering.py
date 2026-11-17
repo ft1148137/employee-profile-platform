@@ -50,7 +50,7 @@ def item_text(item: s.ChangeItem) -> str:
     return "\n".join(lines)
 
 
-def plan_url(message: s.PlanCard) -> str:
+def plan_url(message: s.PlanCard | s.RulePlanFallback) -> str:
     return f"{settings.FRONTEND_HOST.rstrip('/')}{message.link}"
 
 
@@ -75,6 +75,8 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
                 ],
             )
         )
+        if message.plan is not None:
+            text += "\n" + render(message.plan)[0]
         return text, [a.model_dump(mode="json") for a in message.actions]
     if isinstance(message, s.PlanCard):
         fields = "\n".join(f"{field.label}：{field.value}" for field in message.fields)
@@ -89,6 +91,15 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
                 ],
             )
         )
+        if message.rule_fallback is not None:
+            fallback = message.rule_fallback
+            text += "\n规则引擎方案\n" + "\n".join(
+                f"{field.label}：{field.value}" for field in fallback.fields
+            )
+            text += "\n与 Agent 方案的差别（Agent → 规则引擎）\n" + "\n".join(
+                f"{field.label}：{field.value}" for field in fallback.differences
+            )
+            text += f"\n查看规则引擎方案：{plan_url(fallback)}"
         return text, []
     if isinstance(message, s.ProfileEditCard):
         text = (

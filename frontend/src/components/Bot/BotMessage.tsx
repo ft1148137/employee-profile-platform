@@ -4,6 +4,7 @@ import type {
   CapabilitiesPublic,
   CapacityAction,
   Claim,
+  PlanCard,
   ProfileEditAction,
   QuestionAction,
   RequestAction,
@@ -100,6 +101,7 @@ export function BotMessage({
           </p>
         )}
         {message.result && <p role="status">{message.result}</p>}
+        {message.plan && <PlanDetails plan={message.plan} />}
         {message.status === "pending" && (
           <div className="flex flex-wrap gap-2">
             {(message.actions ?? []).map((action) => (
@@ -124,19 +126,7 @@ export function BotMessage({
         className="space-y-4 rounded-xl border bg-background p-4"
         aria-label={message.title}
       >
-        <h3 className="font-semibold">{message.title}</h3>
-        <dl className="space-y-2">
-          {message.fields.map((field) => (
-            <div key={field.label}>
-              <dt className="inline font-medium">{field.label}：</dt>
-              <dd className="inline break-words">{field.value}</dd>
-            </div>
-          ))}
-        </dl>
-        {message.changes && <p>这次改了什么：{message.changes}</p>}
-        <a href={message.link} className="underline">
-          在方案页修改
-        </a>
+        <PlanDetails plan={message} />
       </section>
     )
   if (message.type === "text")
@@ -381,5 +371,47 @@ export function BotMessage({
         </>
       )}
     </section>
+  )
+}
+
+function PlanDetails({ plan }: { plan: PlanCard }) {
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold">{plan.title}</h3>
+      <dl className="space-y-2">
+        {plan.fields.map((field) => (
+          <div key={field.label}>
+            <dt className="inline font-medium">{field.label}：</dt>
+            <dd className="inline break-words">{field.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {plan.changes && <p>这次改了什么：{plan.changes}</p>}
+      <a href={plan.link} className="underline">
+        在方案页修改
+      </a>
+      {plan.rule_fallback && (
+        <div className="space-y-3 border-t pt-3">
+          <h4 className="font-semibold">规则引擎方案</h4>
+          <dl className="space-y-2">
+            {plan.rule_fallback.fields.map((field) => (
+              <div key={field.label}>
+                <dt className="inline font-medium">{field.label}：</dt>
+                <dd className="inline break-words">{field.value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="font-medium">与 Agent 方案的差别（Agent → 规则引擎）</p>
+          {plan.rule_fallback.differences.map((field) => (
+            <p key={field.label}>
+              {field.label}：{field.value}
+            </p>
+          ))}
+          <a href={plan.rule_fallback.link} className="underline">
+            查看规则引擎方案
+          </a>
+        </div>
+      )}
+    </div>
   )
 }

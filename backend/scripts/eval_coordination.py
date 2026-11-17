@@ -128,16 +128,19 @@ def report(rows: list[dict[str, Any]], model: str, thinking: str, fake: bool) ->
             "",
             "表中 `passed` 表示案例运行完成，不能代表模型达到业务指标；解析失败或模型失败计为违反约束。deferred 不计入违反比例。",
             "",
-            "| 案例 | 做法 | 状态 | 基线 | 最终结论 | 违反 | 修改 | 模型/工具调用 | 秒 |",
-            "| --- | --- | --- | --- | --- | --- | --- | --- | ---: |",
+            "| 案例 | 做法 | 状态 | 基线 | 最终结论 | 违反 | 修改 | 模型/工具调用 | 秒 | 兜底后卡上最好的结论不比规则引擎差 |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- |",
         ]
     )
     for r in rows:
         count = model_calls(r)
+        fallback = r.get("fallback_not_worse")
+        fallback_label = "—" if fallback is None else "是" if fallback else "否"
         lines.append(
             f"| {r['id']} | {r['mode']} | {r['status']} | {r.get('baseline', '—')} | {r.get('verdict', '—')} | "
             f"{'是' if r.get('violation') else '否'} | {r.get('manager_changes', '—')} | "
-            f"{count if count is not None else '不可取得'}/{r.get('tool_calls', 0)} | {r.get('seconds', 0):.2f} |"
+            f"{count if count is not None else '不可取得'}/{r.get('tool_calls', 0)} | {r.get('seconds', 0):.2f} | "
+            f"{fallback_label} |"
         )
     deferred = [
         f"{r['id']} ({r['mode']}: {r['status']})"
