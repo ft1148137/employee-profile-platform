@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useLocation } from "@tanstack/react-router"
+import { useLocation, useNavigate } from "@tanstack/react-router"
 import { AxiosError } from "axios"
 import { useState } from "react"
 import { type CasePublic, PlanningService, type ReviseInput } from "@/client"
@@ -481,6 +481,7 @@ export function Plans({
   demandId: string
 }) {
   const client = useQueryClient()
+  const navigate = useNavigate()
   const hash = useLocation({ select: (location) => location.hash })
   const key = ["capacity", orgId, "planning", demandId, hash]
   const storageKey = `planning-case:${orgId}:${demandId}`
@@ -523,8 +524,16 @@ export function Plans({
   const simulation = useMutation({
     mutationFn: create,
     onSuccess: async (data) => {
-      client.setQueryData(key, data)
-      await current.refetch()
+      const nextHash = hash ? `case=${data.id}` : ""
+      client.setQueryData(
+        ["capacity", orgId, "planning", demandId, nextHash],
+        data,
+      )
+      if (hash !== nextHash) {
+        await navigate({ hash: nextHash, replace: true })
+      } else {
+        await current.refetch()
+      }
     },
   })
   const plan = current.data

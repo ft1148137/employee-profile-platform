@@ -401,6 +401,43 @@ test("较差推荐同时展示规则方案、差别和两个可打开的链接",
       tokens.get("M"),
     )
     expect(unchanged.revision).toBe(demand.revision)
+    for (const hash of [`case=${otherPlan.id}`, "case="]) {
+      await page.goto(
+        `/capacity?tab=incoming&demand=${demand.id}&plans=1#${hash}`,
+      )
+      await expect(page.getByRole("alert")).toContainText("方案暂时无法读取", {
+        timeout: 15000,
+      })
+      const before = await api(
+        `${base}/planning/cases/${plan.id}`,
+        undefined,
+        tokens.get("M"),
+      )
+      const count = createdSnapshots.length
+      const simulated = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().endsWith(`/planning/demands/${demand.id}/cases`),
+      )
+      await page.getByRole("button", { name: "重新模拟", exact: true }).click()
+      const refreshed = await (await simulated).json()
+      expect(refreshed.demand_id).toBe(demand.id)
+      expect(refreshed.snapshot_id).not.toBe(before.snapshot_id)
+      await expect(page).toHaveURL(
+        new RegExp(`demand=${demand.id}.*#case=${refreshed.id}$`),
+      )
+      await expect(
+        page.getByRole("article", { name: "直接安排方案", exact: true }),
+      ).toBeVisible()
+      await expect(page.getByRole("alert")).toHaveCount(0)
+      const displayed = await api(
+        `${base}/planning/cases/${refreshed.id}`,
+        undefined,
+        tokens.get("M"),
+      )
+      expect(displayed.snapshot_id).toBe(refreshed.snapshot_id)
+      expect(createdSnapshots).toHaveLength(count + 1)
+    }
   } finally {
     server.closeAllConnections()
     await new Promise<void>((resolve, reject) =>
