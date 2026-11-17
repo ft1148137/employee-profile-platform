@@ -429,7 +429,13 @@ def revise_option(
         "assignees": assignees,
         "locked_employee_ids": sorted(locks),
     }
-    result = validator.validate(latest.data, params)
+    result = validator.validate(
+        latest.data,
+        params,
+        phased=base.kind == OptionKind.PHASED
+        or validator.PHASED_APPROVAL
+        in cast("list[str]", base.summary.get("approvers", [])),
+    )
     old_findings = cast("list[dict[str, Any]]", base.findings)
     old_keys = {_finding_key(item) for item in old_findings}
     new_keys = {_finding_key(item) for item in result.findings}
