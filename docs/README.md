@@ -13,6 +13,8 @@
 - [M5 验收记录](m5-acceptance.md)
 - [M6 验收记录](m6-acceptance.md)
 - [M7 验收记录](m7-acceptance.md)
+- [M8 验收记录](m8-acceptance.md)
+- [M8 协调 Agent 评测与已知限制](m8-coordination-eval.md)
 - [Docker Compose 部署说明](deployment-docker-compose.md)
 - [合成企业与演示数据](../examples/demo-org/README.md)
 - [能力词典模板](../templates/README.md)
