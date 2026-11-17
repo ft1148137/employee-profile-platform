@@ -1,4 +1,8 @@
 import asyncio
+from collections.abc import Generator
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from functools import partial
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -71,10 +75,44 @@ def cancel_pending(
     db.exec(statement.values(status="failed", last_error_code="cancelled"))
 
 
-async def send_pending(
-    engine: Engine,
-    adapters: dict[tuple[UUID, Platform], tuple[str, Adapter]],
-) -> None:
+@dataclass
+class Pending:
+    platform: Platform
+    credentials: str | None = field(repr=False)
+    chat_id: str
+    text: str
+    attempted: bool = False
+    error: str | None = None
+
+
+def organizations(engine: Engine) -> list[UUID]:
+    with Session(engine) as db:
+        return list(db.exec(select(Organization.id)).all())
+
+
+def pending_ids(engine: Engine, org_id: UUID) -> list[UUID]:
+    with Session(engine) as db:
+        ids: list[UUID] = []
+        for platform in ("telegram", "feishu", "wecom"):
+            ids.extend(
+                db.exec(
+                    select(ImNotification.id)
+                    .where(
+                        ImNotification.org_id == org_id,
+                        ImNotification.platform == platform,
+                        ImNotification.status == "pending",
+                    )
+                    .order_by(col(ImNotification.created_at), col(ImNotification.id))
+                    .limit(100)
+                ).all()
+            )
+        return ids
+
+
+@contextmanager
+def claim(
+    engine: Engine, org_id: UUID, notification_id: UUID
+) -> Generator[Pending | None]:
     from app.domains.capacity.workload import (
         EXTENSION_REVIEW_NOTICE,
         WORKLOAD_REVIEW_NOTICE,
@@ -82,119 +120,116 @@ async def send_pending(
     from app.domains.im.binding import principal_for
 
     with Session(engine) as db:
-        org_ids = db.exec(select(Organization.id)).all()
-    for org_id in org_ids:
-        with Session(engine) as db:
-            ids: list[UUID] = []
-            for platform in ("telegram", "feishu", "wecom"):
-                ids.extend(
-                    db.exec(
-                        select(ImNotification.id)
-                        .where(
-                            ImNotification.org_id == org_id,
-                            ImNotification.platform == platform,
-                            ImNotification.status == "pending",
-                        )
-                        .order_by(
-                            col(ImNotification.created_at), col(ImNotification.id)
-                        )
-                        .limit(100)
-                    ).all()
-                )
-        for notification_id in ids:
-            with Session(engine) as db:
-                row = db.exec(
-                    select(ImNotification)
-                    .where(
-                        ImNotification.org_id == org_id,
-                        ImNotification.id == notification_id,
-                        ImNotification.status == "pending",
+        row = db.exec(
+            select(ImNotification)
+            .where(
+                ImNotification.org_id == org_id,
+                ImNotification.id == notification_id,
+                ImNotification.status == "pending",
+            )
+            .with_for_update(skip_locked=True)
+        ).one_or_none()
+        if row is None:
+            yield None
+            return
+        item = db.exec(
+            select(InboxItem).where(
+                InboxItem.org_id == org_id, InboxItem.id == row.inbox_item_id
+            )
+        ).one()
+        if item.done_at is not None:
+            row.status, row.last_error_code = "failed", "inbox_done"
+            db.add(row)
+            db.commit()
+            yield None
+            return
+        setting = db.get(ImSetting, (org_id, row.platform))
+        bound = db.exec(
+            select(ImBinding).where(
+                ImBinding.org_id == org_id,
+                ImBinding.employee_id == row.employee_id,
+                ImBinding.platform == row.platform,
+            )
+        ).one_or_none()
+        valid = bool(
+            setting
+            and setting.enabled
+            and bound
+            and bound.notify
+            and bound.bot_identity == setting.bot_identity
+            and bound.created_at <= row.created_at
+        )
+        if valid and bound:
+            try:
+                principal = principal_for(db, bound)
+                if item.kind == InboxKind.ADMIN_TODOS:
+                    valid = (
+                        principal.is_org_admin
+                        and row.platform == "feishu"
+                        and bool(item.admin_todo_count)
                     )
-                    .with_for_update(skip_locked=True)
-                ).one_or_none()
-                if row is None:
+            except HTTPException:
+                valid = False
+        if not valid:
+            row.status, row.last_error_code = "failed", "binding_inactive"
+            db.add(row)
+            db.commit()
+            yield None
+            return
+        assert setting is not None and bound is not None
+        notice = Pending(
+            row.platform,
+            setting.credentials,
+            bound.external_chat_id,
+            WORKER_ALERT_NOTIFICATION
+            if item.kind == InboxKind.ADMIN_TODOS
+            and item.message.startswith(WORKER_ALERT_PREFIX)
+            else f"你有 {item.admin_todo_count} 条管理员待办，请在网页首页处理。"
+            if item.kind == InboxKind.ADMIN_TODOS
+            else item.message
+            if item.kind == InboxKind.PROFILE_EDITED and row.platform == "feishu"
+            else f"{REMINDERS[item.kind]}，在网页处理：{settings.FRONTEND_HOST.rstrip('/')}/capacity?tab=approvals"
+            if item.kind == InboxKind.CAPACITY
+            and item.message in (WORKLOAD_REVIEW_NOTICE, EXTENSION_REVIEW_NOTICE)
+            else REMINDERS[item.kind] + "，在网页或私聊我查看。",
+        )
+        yield notice
+        if not notice.attempted:
+            return
+        row.attempts += 1
+        row.last_error_code = notice.error
+        if notice.error is None:
+            row.status, row.sent_at = "sent", utc_now()
+        elif row.attempts >= 3:
+            row.status = "failed"
+        # shortcut: A crash after sending can repeat a reminder; add platform idempotency when supported.
+        db.add(row)
+        db.commit()
+
+
+async def send_pending(
+    engine: Engine,
+    adapters: dict[tuple[UUID, Platform], tuple[str, Adapter]],
+) -> None:
+    from app.domains.bot import delivery
+
+    for org_id in await delivery._run(partial(organizations, engine)):
+        for notification_id in await delivery._run(
+            partial(pending_ids, engine, org_id)
+        ):
+            async with delivery.in_thread(
+                claim(engine, org_id, notification_id)
+            ) as notice:
+                if notice is None:
                     continue
-                item = db.exec(
-                    select(InboxItem).where(
-                        InboxItem.org_id == org_id, InboxItem.id == row.inbox_item_id
-                    )
-                ).one()
-                if item.done_at is not None:
-                    row.status, row.last_error_code = "failed", "inbox_done"
-                    db.add(row)
-                    db.commit()
+                connection = adapters.get((org_id, notice.platform))
+                if not connection or connection[0] != notice.credentials:
                     continue
-                setting = db.get(ImSetting, (org_id, row.platform))
-                bound = db.exec(
-                    select(ImBinding).where(
-                        ImBinding.org_id == org_id,
-                        ImBinding.employee_id == row.employee_id,
-                        ImBinding.platform == row.platform,
-                    )
-                ).one_or_none()
-                valid = bool(
-                    setting
-                    and setting.enabled
-                    and bound
-                    and bound.notify
-                    and bound.bot_identity == setting.bot_identity
-                    and bound.created_at <= row.created_at
-                )
-                if valid and bound:
-                    try:
-                        principal = principal_for(db, bound)
-                        if item.kind == InboxKind.ADMIN_TODOS:
-                            valid = (
-                                principal.is_org_admin
-                                and row.platform == "feishu"
-                                and bool(item.admin_todo_count)
-                            )
-                    except HTTPException:
-                        valid = False
-                if not valid:
-                    row.status, row.last_error_code = "failed", "binding_inactive"
-                    db.add(row)
-                    db.commit()
-                    continue
-                connection = adapters.get((org_id, row.platform))
-                if (
-                    not connection
-                    or not setting
-                    or connection[0] != setting.credentials
-                ):
-                    continue
-                assert bound is not None
-                row.attempts += 1
+                notice.attempted = True
                 try:
-                    # Direct-edit copy contains only actor name, time and capability names.
                     async with asyncio.timeout(10):
-                        await connection[1].send_text(
-                            bound.external_chat_id,
-                            WORKER_ALERT_NOTIFICATION
-                            if item.kind == InboxKind.ADMIN_TODOS
-                            and item.message.startswith(WORKER_ALERT_PREFIX)
-                            else f"你有 {item.admin_todo_count} 条管理员待办，请在网页首页处理。"
-                            if item.kind == InboxKind.ADMIN_TODOS
-                            else item.message
-                            if item.kind == InboxKind.PROFILE_EDITED
-                            and row.platform == "feishu"
-                            else f"{REMINDERS[item.kind]}，在网页处理：{settings.FRONTEND_HOST.rstrip('/')}/capacity?tab=approvals"
-                            if item.kind == InboxKind.CAPACITY
-                            and item.message
-                            in (WORKLOAD_REVIEW_NOTICE, EXTENSION_REVIEW_NOTICE)
-                            else REMINDERS[item.kind] + "，在网页或私聊我查看。",
-                        )
-                    row.status, row.sent_at, row.last_error_code = (
-                        "sent",
-                        utc_now(),
-                        None,
-                    )
+                        await connection[1].send_text(notice.chat_id, notice.text)
                 except ImError as error:
-                    row.last_error_code = error.code
+                    notice.error = error.code
                 except TimeoutError:
-                    row.last_error_code = "timeout"
-                if row.status == "pending" and row.attempts >= 3:
-                    row.status = "failed"
-                # shortcut: A crash after sending can repeat a reminder; add platform idempotency when supported.
-                db.add(row)
-                db.commit()
+                    notice.error = "timeout"

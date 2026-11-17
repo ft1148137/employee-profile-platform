@@ -2,21 +2,24 @@ import asyncio
 import json
 import logging
 import re
-from collections.abc import Callable
-from contextlib import suppress
-from datetime import timedelta
+from collections.abc import Callable, Generator
+from contextlib import contextmanager, suppress
+from datetime import datetime, timedelta
 from functools import partial
 from uuid import UUID
 
+import anyio
 from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import SQLAlchemyError
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, select, update
 
+from app.authz.principal import Principal
 from app.core.secrets import SecretUnavailable, decrypt_secret
 from app.domains.base import utc_now
+from app.domains.bot import delivery
 from app.domains.bot.attachments import AttachmentError
 from app.domains.im import actions, binding
 from app.domains.im.adapters.base import Adapter, Event, ImError
@@ -133,6 +136,74 @@ class Gateway:
                 db.rollback()
                 return "请输入不超过一万字的文本。"
 
+    def email_binding(
+        self,
+        event: Event,
+        identity: str,
+        credentials: str = "",
+        email: str | None = None,
+    ) -> bool:
+        with Session(self.engine) as db:
+            return (
+                binding.bind_email(db, event, identity, credentials, email)
+                if email is not None
+                else binding.wants_email(db, event, identity)
+            )
+
+    @contextmanager
+    def bound_session(
+        self, event: Event, identity: str
+    ) -> Generator[tuple[Session, Principal | None]]:
+        with Session(self.engine) as db:
+            principal = binding.current_binding(
+                db,
+                event.org_id,
+                event.platform,
+                event.external_user_id,
+                event.external_chat_id,
+                identity,
+            )
+            # Release this read before queueing the separately guarded message transaction.
+            db.rollback()
+            yield db, principal
+
+    def connection_state(
+        self,
+        org_id: UUID,
+        platform: Platform,
+        credentials: str,
+        checked_at: datetime | None,
+        identity: str | None = None,
+    ) -> bool:
+        with Session(self.engine) as db:
+            statement = update(ImSetting).where(
+                col(ImSetting.org_id) == org_id,
+                col(ImSetting.platform) == platform,
+                col(ImSetting.credentials) == credentials,
+            )
+            if identity is not None:
+                statement = statement.where(col(ImSetting.enabled).is_(True)).values(
+                    bot_identity=identity
+                )
+            if platform == "wecom":
+                statement = statement.values(connection_checked_at=checked_at)
+            changed = db.exec(statement.returning(col(ImSetting.org_id))).first()
+            db.commit()
+            return changed is not None
+
+    def wanted(self) -> dict[tuple[UUID, Platform], str]:
+        with Session(self.engine) as db:
+            rows = db.exec(select(ImSetting).where(ImSetting.enabled == True)).all()  # noqa: E712
+            return {
+                (r.org_id, r.platform): r.credentials
+                for r in rows
+                if r.platform in ADAPTERS and r.credentials
+            }
+
+    def worker_alerts(self) -> None:
+        with Session(self.engine) as db:
+            dispatch_worker_alerts(db, utc_now())
+
     async def handle(
         self, event: Event, identity: str, credentials: str, adapter: Adapter
     ) -> None:
@@ -143,21 +214,22 @@ class Gateway:
             and event.private
             and (event.text is not None or event.attachment is not None)
             and not (event.text or "").strip().startswith("绑定")
-            and self.enabled(event.org_id, event.platform, credentials)
+            and await delivery._run(
+                partial(self.enabled, event.org_id, event.platform, credentials)
+            )
         ):
-            with Session(self.engine) as db:
-                wanted = binding.wants_email(db, event, identity)
+            wanted = await delivery._run(partial(self.email_binding, event, identity))
             if wanted:
                 email = await adapter.enterprise_email(event.external_user_id)
-                with Session(self.engine) as db:
-                    if email and binding.bind_email(
-                        db, event, identity, credentials, email
-                    ):
-                        await adapter.send_text(
-                            event.external_chat_id,
-                            "已按企业邮箱绑定，可以在网页的个人设置中解绑。请继续发送消息。",
-                        )
-                        return
+                bound = bool(email) and await delivery._run(
+                    partial(self.email_binding, event, identity, credentials, email)
+                )
+                if bound:
+                    await adapter.send_text(
+                        event.external_chat_id,
+                        "已按企业邮箱绑定，可以在网页的个人设置中解绑。请继续发送消息。",
+                    )
+                    return
         loop = asyncio.get_running_loop()
         reminder: asyncio.Task[None] | None = None
         finished = False
@@ -165,7 +237,9 @@ class Gateway:
         async def remind() -> None:
             await asyncio.sleep(30)
             try:
-                if self.enabled(event.org_id, event.platform, credentials):
+                if await delivery._run(
+                    partial(self.enabled, event.org_id, event.platform, credentials)
+                ):
                     await adapter.send_text(
                         event.external_chat_id, "还在处理，请再等一会儿"
                     )
@@ -174,7 +248,12 @@ class Gateway:
 
         async def acknowledge() -> None:
             nonlocal reminder
-            if finished or not self.enabled(event.org_id, event.platform, credentials):
+            if finished:
+                return
+            enabled = await delivery._run(
+                partial(self.enabled, event.org_id, event.platform, credentials)
+            )
+            if finished or not enabled:
                 return
             reminder = asyncio.create_task(remind())
             await adapter.send_text(event.external_chat_id, "收到，正在处理，请稍等")
@@ -184,23 +263,34 @@ class Gateway:
 
         try:
             # Model turns are synchronous; keep polling tasks and setting refresh responsive.
-            reply = await asyncio.to_thread(
-                self.dispatch, event, identity, credentials, on_started
+            work = asyncio.create_task(
+                asyncio.to_thread(
+                    self.dispatch, event, identity, credentials, on_started
+                )
             )
-            if not reply or not self.enabled(event.org_id, event.platform, credentials):
+            try:
+                reply = await asyncio.shield(work)
+            except asyncio.CancelledError:
+                finished = True
+                # Dispatch can be waiting for acknowledge on this loop; join without cancelling it.
+                while not work.done():
+                    try:
+                        await asyncio.shield(work)
+                    except asyncio.CancelledError:
+                        continue
+                work.result()
+                raise
+            if not reply or not await delivery._run(
+                partial(self.enabled, event.org_id, event.platform, credentials)
+            ):
                 return
             if isinstance(reply, str):
                 await adapter.send_text(event.external_chat_id, reply)
                 return
-            with Session(self.engine) as db:
-                p = binding.current_binding(
-                    db,
-                    event.org_id,
-                    event.platform,
-                    event.external_user_id,
-                    event.external_chat_id,
-                    identity,
-                )
+            async with delivery.in_thread(self.bound_session(event, identity)) as (
+                db,
+                p,
+            ):
                 if p is None:
                     return
                 if reply.clear_buttons and event.message_id:
@@ -249,13 +339,16 @@ class Gateway:
                     if isinstance(
                         adapter, Wecom
                     ) and utc_now() - heartbeat_written_at >= timedelta(minutes=1):
-                        with Session(self.engine) as db:
-                            setting = db.get(ImSetting, (adapter.org_id, "wecom"))
-                            if setting and setting.credentials == credentials:
-                                setting.connection_checked_at = adapter.checked_at
-                                db.add(setting)
-                                db.commit()
-                                heartbeat_written_at = utc_now()
+                        if await delivery._run(
+                            partial(
+                                self.connection_state,
+                                adapter.org_id,
+                                "wecom",
+                                credentials,
+                                adapter.checked_at,
+                            )
+                        ):
+                            heartbeat_written_at = utc_now()
         except ExceptionGroup as errors:
             # TaskGroup joins all children before preserving the existing reconnect path.
             raise errors.exceptions[0] from None
@@ -281,19 +374,17 @@ class Gateway:
                     if owner is not None and owner != org_id:
                         raise ImError("bot_already_used")
                     self.identities[key] = org_id
-                    with Session(self.engine) as db:
-                        setting = db.get(ImSetting, (org_id, platform))
-                        if (
-                            not setting
-                            or not setting.enabled
-                            or setting.credentials != credentials
-                        ):
-                            return
-                        setting.bot_identity = identity
-                        if isinstance(adapter, Wecom):
-                            setting.connection_checked_at = adapter.checked_at
-                        db.add(setting)
-                        db.commit()
+                    if not await delivery._run(
+                        partial(
+                            self.connection_state,
+                            org_id,
+                            platform,
+                            credentials,
+                            adapter.checked_at if isinstance(adapter, Wecom) else None,
+                            identity,
+                        )
+                    ):
+                        return
                     self.adapters[org_id, platform] = credentials, adapter
                     delay = 1
                     await self.poll(adapter, identity, credentials)
@@ -329,12 +420,16 @@ class Gateway:
                         await adapter.close()
                         adapter = None
                     if platform == "wecom":
-                        with Session(self.engine) as db:
-                            setting = db.get(ImSetting, (org_id, platform))
-                            if setting and setting.credentials == credentials:
-                                setting.connection_checked_at = None
-                                db.add(setting)
-                                db.commit()
+                        await delivery._run(
+                            partial(
+                                self.connection_state,
+                                org_id,
+                                platform,
+                                credentials,
+                                None,
+                            ),
+                            anyio.CapacityLimiter(1),
+                        )
                 await asyncio.sleep(delay)
                 delay = min(delay * 2, 60)
         finally:
@@ -342,13 +437,7 @@ class Gateway:
                 del self.identities[platform, identity]
 
     async def refresh(self) -> None:
-        with Session(self.engine) as db:
-            rows = db.exec(select(ImSetting).where(ImSetting.enabled == True)).all()  # noqa: E712
-            wanted = {
-                (r.org_id, r.platform): r.credentials
-                for r in rows
-                if r.platform in ADAPTERS and r.credentials
-            }
+        wanted = await delivery._run(self.wanted)
         for key, (credentials, task) in list(self.tasks.items()):
             if wanted.get(key) != credentials:
                 task.cancel()
@@ -365,8 +454,7 @@ class Gateway:
             while True:
                 await self.refresh()
                 try:
-                    with Session(self.engine) as db:
-                        dispatch_worker_alerts(db, utc_now())
+                    await delivery._run(self.worker_alerts)
                     await send_pending(self.engine, self.adapters)
                 except SQLAlchemyError:
                     logger.warning("IM notification delivery stopped: code=storage")
