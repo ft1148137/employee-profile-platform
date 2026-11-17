@@ -10,7 +10,7 @@ from sqlmodel import Session
 from app.authz.principal import Principal
 from app.domains import manager_tools
 from app.domains.base import utc_now
-from app.domains.bot import attachments, store, tools
+from app.domains.bot import attachments, delivery, store, tools
 from app.domains.bot import schemas as s
 from app.domains.bot.admission import (
     BotBusy,
@@ -46,17 +46,19 @@ def _save(
 ) -> s.TurnResponse:
     response = s.TurnResponse(messages=messages, steps=steps or [])
     payload = response.model_dump(mode="json")
+    if scope is None and principal is not None:
+        scope = store.session_scope(db, principal)
     if scope is not None:
         payload["scope"] = scope
-    elif principal is not None:
-        payload["scope"] = store.session_scope(db, principal)
     store.append_message(
         db,
         session,
         "assistant",
         payload,
     )
-    return response
+    response._principal = principal
+    response._scope = scope
+    return delivery.protect(db, response)
 
 
 def turn(
