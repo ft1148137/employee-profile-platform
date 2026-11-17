@@ -502,6 +502,10 @@ export type AssignmentInput = {
  */
 export type AssignmentPublic = {
   /**
+   * Proposal Line Id
+   */
+  proposal_line_id?: string | null
+  /**
    * Employee Id
    */
   employee_id: string
@@ -1994,6 +1998,10 @@ export type DelegationView = {
  */
 export type DemandAssignment = {
   /**
+   * Proposal Line Id
+   */
+  proposal_line_id?: string | null
+  /**
    * Employee Id
    */
   employee_id: string
@@ -2135,6 +2143,8 @@ export type DemandEventKind =
   | "accepted"
   | "withdrawn"
   | "commitment_changed"
+  | "committed"
+  | "proposal_failed"
 
 /**
  * DemandEventPublic
@@ -2325,6 +2335,10 @@ export type DemandPublic = {
    * Basis Url
    */
   basis_url?: string | null
+  /**
+   * Proposal
+   */
+  proposal?: ProposalDetail | ProposalSummary | null
 }
 
 /**
@@ -4470,6 +4484,10 @@ export type ModelSettingUpdate = {
  */
 export type MyAssignment = {
   /**
+   * Proposal Line Id
+   */
+  proposal_line_id?: string | null
+  /**
    * Employee Id
    */
   employee_id: string
@@ -5413,6 +5431,183 @@ export type ProgressReviewStatus =
   | "disputed"
 
 /**
+ * ProposalApprovalPublic
+ */
+export type ProposalApprovalPublic = {
+  /**
+   * Party
+   */
+  party: string
+  /**
+   * Decision
+   */
+  decision: string
+  /**
+   * Reason
+   */
+  reason: string | null
+  /**
+   * Created At
+   */
+  created_at: string
+}
+
+/**
+ * ProposalDetail
+ */
+export type ProposalDetail = {
+  /**
+   * Id
+   */
+  id: string
+  status: ProposalStatus
+  /**
+   * Fail Reason
+   */
+  fail_reason: string | null
+  /**
+   * Revision
+   */
+  revision: number
+  /**
+   * Hold Expires At
+   */
+  hold_expires_at: string
+  /**
+   * Committed At
+   */
+  committed_at: string | null
+  /**
+   * Headcount
+   */
+  headcount: number
+  /**
+   * Allocation Percents
+   */
+  allocation_percents: Array<number>
+  /**
+   * Start Date
+   */
+  start_date: string
+  /**
+   * End Date
+   */
+  end_date: string
+  /**
+   * Conditions
+   */
+  conditions: string
+  /**
+   * Approvals
+   */
+  approvals: Array<ProposalApprovalPublic>
+  /**
+   * Lines
+   */
+  lines: Array<ProposalLinePublic>
+}
+
+/**
+ * ProposalLinePublic
+ */
+export type ProposalLinePublic = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Start Date
+   */
+  start_date: string
+  /**
+   * End Date
+   */
+  end_date: string
+  /**
+   * Outside Basis
+   */
+  outside_basis?: boolean
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Employee Name
+   */
+  employee_name: string
+}
+
+/**
+ * ProposalStatus
+ */
+export type ProposalStatus = "pending" | "committed" | "failed" | "withdrawn"
+
+/**
+ * ProposalSummary
+ */
+export type ProposalSummary = {
+  /**
+   * Id
+   */
+  id: string
+  status: ProposalStatus
+  /**
+   * Fail Reason
+   */
+  fail_reason: string | null
+  /**
+   * Revision
+   */
+  revision: number
+  /**
+   * Hold Expires At
+   */
+  hold_expires_at: string
+  /**
+   * Committed At
+   */
+  committed_at: string | null
+  /**
+   * Headcount
+   */
+  headcount: number
+  /**
+   * Allocation Percents
+   */
+  allocation_percents: Array<number>
+  /**
+   * Start Date
+   */
+  start_date: string
+  /**
+   * End Date
+   */
+  end_date: string
+  /**
+   * Conditions
+   */
+  conditions: string
+  /**
+   * Approvals
+   */
+  approvals: Array<ProposalApprovalPublic>
+}
+
+/**
+ * ProposalWithdrawInput
+ */
+export type ProposalWithdrawInput = {
+  /**
+   * Revision
+   */
+  revision: number
+}
+
+/**
  * PublishedSummary
  */
 export type PublishedSummary = {
@@ -5546,6 +5741,14 @@ export type QuestionsList = {
  * ReplyInput
  */
 export type ReplyInput = {
+  /**
+   * Option Id
+   */
+  option_id?: string | null
+  /**
+   * Outside Basis
+   */
+  outside_basis?: boolean
   outcome: DemandOutcome
   /**
    * Start Date
@@ -7145,6 +7348,10 @@ export type WeekLoad = {
    */
   platform_percent: number
   /**
+   * Hold Percent
+   */
+  hold_percent?: number
+  /**
    * Status
    */
   status: "unconfirmed" | "confirmed" | "stale"
@@ -8380,6 +8587,42 @@ export type capacityRespondDemandResponses = {
 
 export type capacityRespondDemandResponse =
   capacityRespondDemandResponses[keyof capacityRespondDemandResponses]
+
+export type capacityWithdrawProposalData = {
+  body: ProposalWithdrawInput
+  path: {
+    /**
+     * Proposal Id
+     */
+    proposal_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/proposals/{proposal_id}/withdraw"
+}
+
+export type capacityWithdrawProposalErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityWithdrawProposalError =
+  capacityWithdrawProposalErrors[keyof capacityWithdrawProposalErrors]
+
+export type capacityWithdrawProposalResponses = {
+  /**
+   * Successful Response
+   */
+  200: DemandPublic
+}
+
+export type capacityWithdrawProposalResponse =
+  capacityWithdrawProposalResponses[keyof capacityWithdrawProposalResponses]
 
 export type capacityGetCapacitySettingsData = {
   body?: never

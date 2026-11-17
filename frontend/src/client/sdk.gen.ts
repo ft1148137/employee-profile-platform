@@ -257,6 +257,9 @@ import type {
   capacityUpdateAssignmentData,
   capacityUpdateAssignmentErrors,
   capacityUpdateAssignmentResponses,
+  capacityWithdrawProposalData,
+  capacityWithdrawProposalErrors,
+  capacityWithdrawProposalResponses,
   changeRequestsReadChangeRequestsData,
   changeRequestsReadChangeRequestsErrors,
   changeRequestsReadChangeRequestsResponses,
@@ -904,6 +907,28 @@ export class CapacityService {
       responseType: "json",
       security: [{ scheme: "bearer", type: "http" }],
       url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/respond",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * Withdraw Proposal
+   */
+  public static withdrawProposal<ThrowOnError extends boolean = true>(
+    options: Options<capacityWithdrawProposalData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capacityWithdrawProposalResponses,
+      capacityWithdrawProposalErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/proposals/{proposal_id}/withdraw",
       ...options,
       headers: {
         "Content-Type": "application/json",
