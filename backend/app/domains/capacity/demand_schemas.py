@@ -181,6 +181,17 @@ class ProposalApprovalPublic(CapacityInput):
     created_at: datetime
 
 
+class ProposalSegment(CapacityInput):
+    start_date: date
+    end_date: date
+    allocation_percent: int
+
+
+class ProposalParticipant(CapacityInput):
+    number: int
+    segments: list[ProposalSegment]
+
+
 class ProposalSummary(CapacityInput):
     id: UUID
     status: ProposalStatus
@@ -189,6 +200,7 @@ class ProposalSummary(CapacityInput):
     hold_expires_at: datetime
     committed_at: datetime | None
     headcount: int
+    participants: list[ProposalParticipant]
     allocation_percents: list[int]
     start_date: date
     end_date: date

@@ -3660,6 +3660,20 @@ export type HandoverPublic = {
 }
 
 /**
+ * HoldLoad
+ */
+export type HoldLoad = {
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Expires At
+   */
+  expires_at: string
+}
+
+/**
  * IdentityCandidate
  */
 export type IdentityCandidate = {
@@ -5484,6 +5498,10 @@ export type ProposalDetail = {
    */
   headcount: number
   /**
+   * Participants
+   */
+  participants: Array<ProposalParticipant>
+  /**
    * Allocation Percents
    */
   allocation_percents: Array<number>
@@ -5544,6 +5562,38 @@ export type ProposalLinePublic = {
 }
 
 /**
+ * ProposalParticipant
+ */
+export type ProposalParticipant = {
+  /**
+   * Number
+   */
+  number: number
+  /**
+   * Segments
+   */
+  segments: Array<ProposalSegment>
+}
+
+/**
+ * ProposalSegment
+ */
+export type ProposalSegment = {
+  /**
+   * Start Date
+   */
+  start_date: string
+  /**
+   * End Date
+   */
+  end_date: string
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+}
+
+/**
  * ProposalStatus
  */
 export type ProposalStatus = "pending" | "committed" | "failed" | "withdrawn"
@@ -5577,6 +5627,10 @@ export type ProposalSummary = {
    * Headcount
    */
   headcount: number
+  /**
+   * Participants
+   */
+  participants: Array<ProposalParticipant>
   /**
    * Allocation Percents
    */
@@ -7371,6 +7425,10 @@ export type WeekLoad = {
    * Hold Percent
    */
   hold_percent?: number
+  /**
+   * Holds
+   */
+  holds?: Array<HoldLoad>
   /**
    * Status
    */

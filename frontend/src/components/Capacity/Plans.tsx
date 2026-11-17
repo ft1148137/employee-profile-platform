@@ -2,7 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useLocation, useNavigate } from "@tanstack/react-router"
 import { AxiosError } from "axios"
 import { useState } from "react"
-import { type CasePublic, PlanningService, type ReviseInput } from "@/client"
+import {
+  type CasePublic,
+  PlanningService,
+  type ReplyInput,
+  type ReviseInput,
+} from "@/client"
 import { ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
 import { isCapacityAccessDenied } from "./shared"
@@ -316,11 +321,18 @@ function OptionCard({
   plan,
   orgId,
   onRevised,
+  onReply,
 }: {
   option: CasePublic["options"][number]
   plan: CasePublic
   orgId: string
   onRevised: () => Promise<unknown>
+  onReply?: (
+    reply: Pick<
+      ReplyInput,
+      "option_id" | "outcome" | "start_date" | "end_date" | "outside_basis"
+    >,
+  ) => void
 }) {
   const people = new Map(
     plan.people.map((person) => [person.employee_id, person.display_name]),
@@ -329,6 +341,13 @@ function OptionCard({
     records(plan.data.assignments).map((item) => [item.assignment_id, item]),
   )
   const assignees = records(option.params.assignees)
+  const grouped = new Map<string, Record<string, unknown>[]>()
+  for (const person of assignees) {
+    const employeeId = label(person.employee_id)
+    const parts = grouped.get(employeeId) ?? []
+    parts.push(person)
+    grouped.set(employeeId, parts)
+  }
   const affected = strings(option.summary.affected_assignment_ids)
   const locks = new Set(strings(option.params.locked_employee_ids))
   const base = plan.options.find(
@@ -391,12 +410,22 @@ function OptionCard({
         <h5 className="font-medium">人员安排</h5>
         {assignees.length ? (
           <ul className="list-inside list-disc">
-            {assignees.map((person, index) => (
-              <li key={`${option.id}-${index}`}>
-                {people.get(label(person.employee_id)) ?? "待确认人员"} · 投入{" "}
-                {number(person.allocation_percent)}% ·{label(person.start_date)}{" "}
-                至 {label(person.end_date)}
-                {locks.has(label(person.employee_id)) && " · 已锁定"}
+            {Array.from(grouped, ([employeeId, parts]) => (
+              <li key={employeeId}>
+                {people.get(employeeId) ?? "待确认人员"} · 投入{" "}
+                {number(parts[0].allocation_percent)}% ·{" "}
+                {label(parts[0].start_date)} 至 {label(parts[0].end_date)}
+                {locks.has(employeeId) && " · 已锁定"}
+                {parts.length > 1 && (
+                  <ul className="pl-4">
+                    {parts.slice(1).map((person, index) => (
+                      <li key={index}>
+                        投入 {number(person.allocation_percent)}% ·{" "}
+                        {label(person.start_date)} 至 {label(person.end_date)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>
@@ -463,6 +492,32 @@ function OptionCard({
           ))}
         </ul>
       </div>
+      {onReply && ["feasible", "conditional"].includes(option.verdict) && (
+        <Button
+          disabled={plan.stale || !assignees.length}
+          title={
+            !assignees.length
+              ? "方案尚无可安排的人员，请选择其他方案"
+              : undefined
+          }
+          onClick={() =>
+            onReply({
+              outside_basis: option.findings.some(
+                (finding) => finding.code === "outside_basis",
+              ),
+              option_id: option.id,
+              outcome: option.verdict === "feasible" ? "can_do" : "partial",
+              start_date:
+                assignees
+                  .map((person) => label(person.start_date, ""))
+                  .sort()[0] || null,
+              end_date: label(option.summary.finish_date, "") || null,
+            })
+          }
+        >
+          按此方案答复
+        </Button>
+      )}
       <RevisionControls
         option={option}
         plan={plan}
@@ -476,9 +531,16 @@ function OptionCard({
 export function Plans({
   orgId,
   demandId,
+  onReply,
 }: {
   orgId: string
   demandId: string
+  onReply?: (
+    reply: Pick<
+      ReplyInput,
+      "option_id" | "outcome" | "start_date" | "end_date" | "outside_basis"
+    >,
+  ) => void
 }) {
   const client = useQueryClient()
   const navigate = useNavigate()
@@ -575,6 +637,7 @@ export function Plans({
                 plan={plan}
                 orgId={orgId}
                 onRevised={() => current.refetch()}
+                onReply={onReply}
               />
             ))}
           </div>

@@ -118,7 +118,7 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
         </div>
       )}
       <p className="text-sm text-muted-foreground">
-        周格显示占用 / 可用；占用包含其他工作和平台分配。
+        周格显示占用 / 可用；占用包含其他工作、平台分配和预占。
       </p>
       <p className="text-sm text-muted-foreground md:hidden">
         左右滑动查看各周和设置
@@ -185,6 +185,22 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
                       >
                         {weekLoadLabel(week)}
                       </span>
+                      <p className="text-xs">
+                        分配 {week.platform_percent - (week.hold_percent ?? 0)}%
+                      </p>
+                      {week.holds?.map((hold, index) => (
+                        <p
+                          key={index}
+                          className="text-xs text-amber-700 dark:text-amber-400"
+                        >
+                          预占 {hold.allocation_percent}%，
+                          {new Date(hold.expires_at).toLocaleDateString(
+                            "zh-CN",
+                            { month: "long", day: "numeric" },
+                          )}
+                          前待对方确认
+                        </p>
+                      ))}
                       {row.correction_pending[week.week_start] && (
                         <p className="text-xs">修正待审</p>
                       )}
