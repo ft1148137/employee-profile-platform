@@ -145,11 +145,16 @@ def response(
                     break
                 if isinstance(event, TurnResponse):
                     # Hold the scope lock until StreamingResponse has awaited send.
-                    with Session(engine) as db, delivery.guard(db, event) as result:
-                        yield (
-                            FinalEvent(type="final", response=result).model_dump_json()
-                            + "\n"
-                        )
+                    with Session(engine) as db:
+                        async with delivery.in_thread(
+                            delivery.guard(db, event)
+                        ) as result:
+                            yield (
+                                FinalEvent(
+                                    type="final", response=result
+                                ).model_dump_json()
+                                + "\n"
+                            )
                 elif isinstance(event, BaseModel):
                     yield (
                         FinalEvent(type="final", response=event).model_dump_json()
