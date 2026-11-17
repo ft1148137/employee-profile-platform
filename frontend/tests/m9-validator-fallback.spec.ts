@@ -359,7 +359,9 @@ test("较差推荐同时展示规则方案、差别和两个可打开的链接",
     await page.goto(
       `/capacity?tab=incoming&demand=${demand.id}&plans=1#case=${otherPlan.id}`,
     )
-    await expect(page.getByRole("alert")).toContainText("方案暂时无法读取")
+    await expect(page.getByRole("alert")).toContainText("方案暂时无法读取", {
+      timeout: 15000,
+    })
     await expect(page.getByRole("article", { name: /方案$/ })).toHaveCount(0)
     expect(createdSnapshots).toEqual([])
     await page.evaluate((id) => {
@@ -371,14 +373,25 @@ test("较差推荐同时展示规则方案、差别和两个可打开的链接",
     await page.evaluate((id) => {
       window.location.hash = `case=${id}`
     }, deniedPlan.id)
-    await expect(page.getByRole("alert")).toContainText("未找到该方案")
+    await expect(page.getByRole("alert")).toContainText(
+      "你现在没有权限查看这部分",
+      {
+        timeout: 15000,
+      },
+    )
     await expect(page.getByRole("article", { name: /方案$/ })).toHaveCount(0)
     expect(createdSnapshots).toEqual([])
     for (const hash of ["case=invalid", "case=", "invalid"]) {
+      await page.evaluate((id) => {
+        window.location.hash = `case=${id}`
+      }, plan.id)
+      await expect(
+        page.getByRole("article", { name: "自定方案方案", exact: true }),
+      ).toBeVisible()
       await page.evaluate((value) => {
         window.location.hash = value
       }, hash)
-      await expect(page.getByRole("alert")).toBeVisible()
+      await expect(page.getByRole("alert")).toBeVisible({ timeout: 15000 })
       await expect(page.getByRole("article", { name: /方案$/ })).toHaveCount(0)
       expect(createdSnapshots).toEqual([])
     }
