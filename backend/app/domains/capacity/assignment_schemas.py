@@ -40,6 +40,7 @@ class AssignmentUpdateInput(CapacityInput):
 
 
 class AssignmentPublic(CapacityInput):
+    proposal_line_id: UUID | None = None
     employee_id: UUID
     allocation_percent: int
     start_date: date | None

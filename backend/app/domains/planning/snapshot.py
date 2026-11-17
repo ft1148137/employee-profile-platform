@@ -17,8 +17,11 @@ from app.domains.capacity.models import (
     AssignmentStatus,
     CapacityAssignment,
     CapacityDemand,
+    CapacityProposal,
+    CapacityProposalLine,
     CapacityUnavailability,
     CapacityWeek,
+    ProposalStatus,
 )
 from app.domains.org.models import Department, Employee, EmploymentStatus
 from app.domains.org.service import managed_scope
@@ -171,6 +174,23 @@ def _inputs(
         ).all()
     )
     departments = external_departments(session, principal.org_id, demand)
+    holds = session.exec(
+        select(CapacityProposalLine, CapacityProposal)
+        .join(
+            CapacityProposal,
+            (col(CapacityProposal.org_id) == CapacityProposalLine.org_id)
+            & (col(CapacityProposal.id) == CapacityProposalLine.proposal_id),
+        )
+        .where(
+            CapacityProposalLine.org_id == principal.org_id,
+            col(CapacityProposalLine.employee_id).in_(ids),
+            CapacityProposal.demand_id != demand.id,
+            CapacityProposal.status == ProposalStatus.PENDING,
+            CapacityProposal.hold_expires_at > utc_now(),
+            CapacityProposalLine.end_date >= start,
+            CapacityProposalLine.start_date < end,
+        )
+    ).all()
     cutoff = utc_now() - timedelta(days=FRESH_DAYS)
     raw_inputs: dict[str, Any] = {
         "current_week": current_week.isoformat(),
@@ -215,6 +235,19 @@ def _inputs(
             for a in assignments
         ],
         "external_departments": [(d["department_id"], d["count"]) for d in departments],
+        "holds": [
+            (
+                str(line.id),
+                str(line.employee_id),
+                line.start_date.isoformat(),
+                line.end_date.isoformat(),
+                line.allocation_percent,
+                str(proposal.id),
+                proposal.hold_expires_at.isoformat(),
+                proposal.revision,
+            )
+            for line, proposal in holds
+        ],
     }
     return candidates, claims, raw_inputs, departments, assignments
 
@@ -240,7 +273,12 @@ def build(
     )
     weeks = max(0, (week_start(demand.window_end) - start).days // 7 + 9)
     week_loads = loads(
-        session, principal.org_id, [e.id for e in candidates], start, weeks
+        session,
+        principal.org_id,
+        [e.id for e in candidates],
+        start,
+        weeks,
+        exclude_demand_id=demand.id,
     )
     assigned_ids = set(
         session.exec(

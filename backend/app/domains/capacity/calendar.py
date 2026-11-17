@@ -10,8 +10,11 @@ from app.domains.base import utc_now
 from app.domains.capacity.models import (
     AssignmentStatus,
     CapacityAssignment,
+    CapacityProposal,
+    CapacityProposalLine,
     CapacityUnavailability,
     CapacityWeek,
+    ProposalStatus,
 )
 from app.domains.org.timezone import read_timezone
 
@@ -33,6 +36,7 @@ class WeekLoad(BaseModel):
     capacity_percent: int
     other_percent: int | None
     platform_percent: int
+    hold_percent: int = 0
     status: Literal["unconfirmed", "confirmed", "stale"]
     confirmed_at: datetime | None
     legacy_start: bool
@@ -46,6 +50,8 @@ def loads(
     weeks: int,
     *,
     exclude_assignment_id: UUID | None = None,
+    exclude_proposal_id: UUID | None = None,
+    exclude_demand_id: UUID | None = None,
 ) -> dict[UUID, list[WeekLoad]]:
     end = from_week + timedelta(weeks=weeks)
     records = {
@@ -65,6 +71,32 @@ def loads(
             col(CapacityAssignment.employee_id).in_(employee_ids),
             CapacityAssignment.status == AssignmentStatus.ACTIVE,
             CapacityAssignment.due_date >= from_week,
+        )
+    ).all()
+    holds = session.exec(
+        select(CapacityProposalLine)
+        .join(
+            CapacityProposal,
+            (col(CapacityProposal.org_id) == CapacityProposalLine.org_id)
+            & (col(CapacityProposal.id) == CapacityProposalLine.proposal_id),
+        )
+        .where(
+            CapacityProposalLine.org_id == org_id,
+            col(CapacityProposalLine.employee_id).in_(employee_ids),
+            CapacityProposal.status == ProposalStatus.PENDING,
+            CapacityProposal.hold_expires_at > utc_now(),
+            CapacityProposalLine.end_date >= from_week,
+            CapacityProposalLine.start_date < end,
+            *(
+                [CapacityProposal.id != exclude_proposal_id]
+                if exclude_proposal_id
+                else []
+            ),
+            *(
+                [CapacityProposal.demand_id != exclude_demand_id]
+                if exclude_demand_id
+                else []
+            ),
         )
     ).all()
     unavailable = session.exec(
@@ -99,12 +131,21 @@ def loads(
                 )
                 for d in range(5)
             )
+            held = sum(
+                line.allocation_percent
+                for line in holds
+                if line.employee_id == employee_id
+                and line.start_date <= start + timedelta(days=6)
+                and line.end_date >= start
+            )
             result[employee_id].append(
                 WeekLoad(
                     week_start=start,
                     capacity_percent=100 * days // 5,
                     other_percent=record.other_percent if record else None,
-                    platform_percent=sum(a.allocation_percent for a in overlapping),
+                    platform_percent=sum(a.allocation_percent for a in overlapping)
+                    + held,
+                    hold_percent=held,
                     status="unconfirmed"
                     if record is None
                     else "stale"
