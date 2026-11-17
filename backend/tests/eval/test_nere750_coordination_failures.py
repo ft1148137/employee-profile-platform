@@ -5,7 +5,6 @@ import re
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 import httpx
 import pytest
@@ -77,6 +76,8 @@ def test_classified_failure_path(
         try:
             if failure == "service":
                 raise RuntimeError("synthetic service failure")
+            if failure == "permission":
+                args = (replace(args[0], managed_department_ids=frozenset()), *args[1:])
             return tool.handler(*args)
         except Exception as error:
             observed["origin"] = type(error).__name__
@@ -128,15 +129,7 @@ def test_classified_failure_path(
         else:
             demand_id = re.search(r"需求编号 ([0-9a-f-]{36})", body["input"])
             assert demand_id is not None
-            arguments = (
-                {}
-                if failure == "parameters"
-                else {
-                    "demand_id": str(uuid4())
-                    if failure == "permission"
-                    else demand_id[1]
-                }
-            )
+            arguments = {} if failure == "parameters" else {"demand_id": demand_id[1]}
             observed["shape"] = dict.fromkeys(arguments, "uuid")
             events.append(
                 {
@@ -186,7 +179,7 @@ def test_classified_failure_path(
         assert "pi" not in observed
     else:
         assert result["status"] == "failed:model_unavailable"
-        assert result["model_calls"] == 0  # No successful TurnResult was obtained.
+        assert result["model_calls"] is None  # No successful TurnResult was obtained.
     if failure in {"parameters", "permission", "service"}:
         assert observed["callback"] == ("ModelUnavailable", "coordination_tool")
         assert observed["pi"] == ("ModelUnavailable", "unavailable")
