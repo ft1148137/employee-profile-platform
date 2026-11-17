@@ -17,6 +17,8 @@ services:
       - --providers.docker
       # Do not expose all Docker services, only the ones explicitly exposed
       - --providers.docker.exposedbydefault=false
+      # Ignore containers belonging to other Compose projects on this daemon.
+      - --providers.docker.constraints=Label(`com.docker.compose.project`, `${COMPOSE_PROJECT_NAME:?Variable not set}`)
       # Create an entrypoint "http" listening on port 80
       - --entrypoints.http.address=:80
       # Redirect all HTTP traffic to HTTPS
@@ -27,8 +29,8 @@ services:
       # Store the Let's Encrypt certificates in the mounted volume
       - --certificatesresolvers.le.acme.email=${ACME_EMAIL:?Variable not set}
       - --certificatesresolvers.le.acme.storage=/certificates/acme.json
-      # Use the TLS Challenge for Let's Encrypt
-      - --certificatesresolvers.le.acme.tlschallenge=true
+      # HTTP-01 requires this entrypoint to be reachable on public port 80.
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=http
       # Enable the access log, with HTTP requests
       - --accesslog
       # Enable the Traefik log, for configurations and errors
@@ -43,14 +45,15 @@ services:
       FORWARDED_ALLOW_IPS: "*"
     labels:
       - traefik.enable=true
-      - traefik.http.services.backend.loadbalancer.server.port=8000
-      - traefik.http.services.backend.loadbalancer.responseforwarding.flushinterval=-1ms
+      - traefik.http.services.${COMPOSE_PROJECT_NAME:?Variable not set}-backend.loadbalancer.server.port=8000
+      - traefik.http.services.${COMPOSE_PROJECT_NAME:?Variable not set}-backend.loadbalancer.responseforwarding.flushinterval=-1ms
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:?Variable not set}-backend-https.service=${COMPOSE_PROJECT_NAME:?Variable not set}-backend
       # Route HTTPS traffic for this domain
-      - traefik.http.routers.backend-https.rule=Host(`${DOMAIN:?Variable not set}`)
-      - traefik.http.routers.backend-https.entrypoints=https
-      - traefik.http.routers.backend-https.tls=true
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:?Variable not set}-backend-https.rule=Host(`${DOMAIN:?Variable not set}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:?Variable not set}-backend-https.entrypoints=https
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:?Variable not set}-backend-https.tls=true
       # Use the Let's Encrypt resolver
-      - traefik.http.routers.backend-https.tls.certresolver=le
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:?Variable not set}-backend-https.tls.certresolver=le
 
 volumes:
   # Create a volume to store the certificates, even if the container is recreated
