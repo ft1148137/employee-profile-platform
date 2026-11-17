@@ -1,5 +1,6 @@
 import secrets
-from collections.abc import Callable
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
 from uuid import UUID
@@ -188,44 +189,11 @@ async def deliver(
     reply: Reply,
     adapter: Adapter,
 ) -> None:
-    session = store.get_session(db, p, reply.session_id)
-    days = read_settings(db, p.org_id).retention_days
-    created_at = db.exec(
-        select(BotMessage.created_at)
-        .where(
-            BotMessage.org_id == p.org_id,
-            BotMessage.session_id == session.id,
-            BotMessage.role == "assistant",
-        )
-        .order_by(col(BotMessage.created_at).desc())
-        .limit(1)
-    ).first()
-    expires = (created_at or session.last_activity_at) + (
-        timedelta(days=days) if days else timedelta(hours=2)
-    )
     pending = list(reply.response.messages)
     while pending:
-        with delivery.guard(db, reply.response) as response:
-            if response is not reply.response:
-                reply.response = response
-                pending = list(response.messages)
-            message = pending.pop(0)
-            body, offered = rendering.render(message)
-            rows = [
-                ImAction(
-                    token=secrets.token_urlsafe(16),
-                    org_id=p.org_id,
-                    platform=event.platform,
-                    bot_identity=identity,
-                    employee_id=session.employee_id,
-                    session_id=session.id,
-                    external_chat_id=event.external_chat_id,
-                    message_id="",
-                    action=action,
-                    expires_at=expires,
-                )
-                for action in offered
-            ]
+        async with delivery.in_thread(
+            _message(db, p, event, identity, reply, pending)
+        ) as (body, rows):
             message_id = await adapter.render(
                 event.external_chat_id,
                 body,
@@ -233,5 +201,54 @@ async def deliver(
             )
             for row in rows:
                 row.message_id = message_id
-                db.add(row)
-            db.commit()
+
+
+@contextmanager
+def _message(
+    db: Session,
+    p: Principal,
+    event: Event,
+    identity: str,
+    reply: Reply,
+    pending: list[s.Message],
+) -> Generator[tuple[str, list[ImAction]]]:
+    with delivery.guard(db, reply.response) as response:
+        session = store.get_session(db, p, reply.session_id)
+        days = read_settings(db, p.org_id).retention_days
+        created_at = db.exec(
+            select(BotMessage.created_at)
+            .where(
+                BotMessage.org_id == p.org_id,
+                BotMessage.session_id == session.id,
+                BotMessage.role == "assistant",
+            )
+            .order_by(col(BotMessage.created_at).desc())
+            .limit(1)
+        ).first()
+        expires = (created_at or session.last_activity_at) + (
+            timedelta(days=days) if days else timedelta(hours=2)
+        )
+        if response is not reply.response:
+            reply.response = response
+            pending[:] = response.messages
+        message = pending.pop(0)
+        body, offered = rendering.render(message)
+        rows = [
+            ImAction(
+                token=secrets.token_urlsafe(16),
+                org_id=p.org_id,
+                platform=event.platform,
+                bot_identity=identity,
+                employee_id=session.employee_id,
+                session_id=session.id,
+                external_chat_id=event.external_chat_id,
+                message_id="",
+                action=action,
+                expires_at=expires,
+            )
+            for action in offered
+        ]
+        yield body, rows
+        for row in rows:
+            db.add(row)
+        db.commit()
