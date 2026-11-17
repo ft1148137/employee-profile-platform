@@ -193,12 +193,16 @@ async def deliver(
     while pending:
         async with delivery.in_thread(
             _message(db, p, event, identity, reply, pending)
-        ) as (body, rows):
-            message_id = await adapter.render(
-                event.external_chat_id,
-                body,
-                [(rendering.LABELS[str(r.action["action"])], r.token) for r in rows],
-            )
+        ) as (body, rows, link):
+            buttons = [
+                (rendering.LABELS[str(r.action["action"])], r.token) for r in rows
+            ]
+            if link:
+                message_id = await adapter.render(
+                    event.external_chat_id, body, buttons, link=link
+                )
+            else:
+                message_id = await adapter.render(event.external_chat_id, body, buttons)
             for row in rows:
                 row.message_id = message_id
 
@@ -211,7 +215,7 @@ def _message(
     identity: str,
     reply: Reply,
     pending: list[s.Message],
-) -> Generator[tuple[str, list[ImAction]]]:
+) -> Generator[tuple[str, list[ImAction], tuple[str, str] | None]]:
     with delivery.guard(db, reply.response) as response:
         session = store.get_session(db, p, reply.session_id)
         days = read_settings(db, p.org_id).retention_days
@@ -248,7 +252,12 @@ def _message(
             )
             for action in offered
         ]
-        yield body, rows
+        link = (
+            ("在方案页修改", rendering.plan_url(message))
+            if event.platform == "feishu" and isinstance(message, s.PlanCard)
+            else None
+        )
+        yield body, rows, link
         for row in rows:
             db.add(row)
         db.commit()

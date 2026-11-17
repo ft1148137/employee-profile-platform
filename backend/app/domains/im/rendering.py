@@ -50,6 +50,10 @@ def item_text(item: s.ChangeItem) -> str:
     return "\n".join(lines)
 
 
+def plan_url(message: s.PlanCard) -> str:
+    return f"{settings.FRONTEND_HOST.rstrip('/')}{message.link}"
+
+
 def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
     if isinstance(message, s.TextMessage):
         return message.text, []
@@ -81,7 +85,7 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
                     message.title,
                     fields,
                     f"这次改了什么：{message.changes}" if message.changes else "",
-                    f"在方案页修改：{settings.FRONTEND_HOST.rstrip('/')}{message.link}",
+                    f"在方案页修改：{plan_url(message)}",
                 ],
             )
         )
