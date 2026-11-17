@@ -26,6 +26,8 @@ from app.domains.capacity.demand_schemas import (
     ProposalDetail,
     ProposalLineInput,
     ProposalLinePublic,
+    ProposalParticipant,
+    ProposalSegment,
     ProposalSummary,
 )
 from app.domains.capacity.models import (
@@ -338,6 +340,12 @@ def public(
             col(CapacityDemandEvent.id).desc(),
         )
     ).first()
+    grouped: dict[UUID, list[CapacityProposalLine]] = {}
+    for line in sorted(
+        lines, key=lambda line: (line.start_date, line.created_at, line.id)
+    ):
+        if line.employee_id is not None:
+            grouped.setdefault(line.employee_id, []).append(line)
     summary = ProposalSummary(
         id=row.id,
         status=row.status,
@@ -346,6 +354,13 @@ def public(
         hold_expires_at=row.hold_expires_at,
         committed_at=row.committed_at,
         headcount=len({line.employee_id for line in lines if line.employee_id}),
+        participants=[
+            ProposalParticipant(
+                number=index,
+                segments=[ProposalSegment.model_validate(line) for line in parts],
+            )
+            for index, parts in enumerate(grouped.values(), start=1)
+        ],
         allocation_percents=sorted({line.allocation_percent for line in lines}),
         start_date=min(line.start_date for line in lines),
         end_date=max(line.end_date for line in lines),

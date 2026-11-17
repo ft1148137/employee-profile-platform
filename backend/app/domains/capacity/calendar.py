@@ -3,7 +3,7 @@ from typing import Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlmodel import Session, col, select
 
 from app.domains.base import utc_now
@@ -31,12 +31,18 @@ def this_week(session: Session, org_id: UUID) -> date:
     )
 
 
+class HoldLoad(BaseModel):
+    allocation_percent: int
+    expires_at: datetime
+
+
 class WeekLoad(BaseModel):
     week_start: date
     capacity_percent: int
     other_percent: int | None
     platform_percent: int
     hold_percent: int = 0
+    holds: list[HoldLoad] = Field(default_factory=list)
     status: Literal["unconfirmed", "confirmed", "stale"]
     confirmed_at: datetime | None
     legacy_start: bool
@@ -74,7 +80,7 @@ def loads(
         )
     ).all()
     holds = session.exec(
-        select(CapacityProposalLine)
+        select(CapacityProposalLine, CapacityProposal.hold_expires_at)
         .join(
             CapacityProposal,
             (col(CapacityProposal.org_id) == CapacityProposalLine.org_id)
@@ -131,13 +137,16 @@ def loads(
                 )
                 for d in range(5)
             )
-            held = sum(
-                line.allocation_percent
-                for line in holds
+            details = [
+                HoldLoad(
+                    allocation_percent=line.allocation_percent, expires_at=expires_at
+                )
+                for line, expires_at in holds
                 if line.employee_id == employee_id
                 and line.start_date <= start + timedelta(days=6)
                 and line.end_date >= start
-            )
+            ]
+            held = sum(hold.allocation_percent for hold in details)
             result[employee_id].append(
                 WeekLoad(
                     week_start=start,
@@ -146,6 +155,7 @@ def loads(
                     platform_percent=sum(a.allocation_percent for a in overlapping)
                     + held,
                     hold_percent=held,
+                    holds=details,
                     status="unconfirmed"
                     if record is None
                     else "stale"
