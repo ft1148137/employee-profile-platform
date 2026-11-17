@@ -8,8 +8,14 @@ import { Button } from "@/components/ui/button"
 import { DemandsCreate } from "./DemandsCreate"
 import { DemandsDetail, demandStatuses } from "./DemandsDetail"
 
-export function OutgoingDemands({ orgId }: { orgId: string }) {
-  return <Demands orgId={orgId} side="outgoing" />
+export function OutgoingDemands({
+  orgId,
+  demand,
+}: {
+  orgId: string
+  demand?: string
+}) {
+  return <Demands orgId={orgId} side="outgoing" demand={demand} />
 }
 
 export function IncomingDemands({
@@ -43,17 +49,12 @@ function Demands({
   plansOpen?: boolean
 }) {
   const navigate = useNavigate()
-  const [localSelected, setLocalSelected] = useState<string | null>(null)
-  const selected = side === "incoming" ? (demand ?? null) : localSelected
+  const selected = demand ?? null
   const setSelected = (id: string | null) => {
-    if (side === "incoming") {
-      navigate({
-        to: "/capacity",
-        search: { tab: "incoming", ...(id ? { demand: id } : {}) },
-      })
-    } else {
-      setLocalSelected(id)
-    }
+    navigate({
+      to: "/capacity",
+      search: { tab: side, ...(id ? { demand: id } : {}) },
+    })
   }
   const [creating, setCreating] = useState(false)
   const query = useQuery({

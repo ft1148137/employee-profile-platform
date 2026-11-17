@@ -20,6 +20,7 @@ import {
   DateField,
   useCapacityRefresh,
 } from "./AssignmentFields"
+import { isCapacityAccessDenied } from "./shared"
 
 export const assignmentStatuses = {
   active: "进行中",
@@ -63,6 +64,19 @@ export function DemandAssignments({
       }
     },
   })
+  if (
+    isCapacityAccessDenied(basis.error) ||
+    isCapacityAccessDenied(query.error)
+  )
+    return (
+      <section
+        aria-label="部门内分配"
+        className="space-y-4 rounded-xl border p-5"
+      >
+        <h3 className="text-lg font-semibold">部门内分配</h3>
+        <p role="status">你现在没有权限查看这部分</p>
+      </section>
+    )
   return (
     <section
       aria-label="部门内分配"
