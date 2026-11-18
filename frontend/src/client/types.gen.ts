@@ -354,6 +354,7 @@ export type AnonymousBorrowAssignment = {
    */
   due_date: string
   status: AssignmentStatus
+  tracking_state?: TrackingState | null
 }
 
 /**
@@ -563,6 +564,21 @@ export type AssignmentPublic = {
  * AssignmentStatus
  */
 export type AssignmentStatus = "active" | "done" | "cancelled"
+
+/**
+ * AssignmentTracking
+ */
+export type AssignmentTracking = {
+  tracking_state: TrackingState
+  /**
+   * Tracking Changed At
+   */
+  tracking_changed_at: string | null
+  /**
+   * Tasks
+   */
+  tasks: Array<TrackingTask>
+}
 
 /**
  * AssignmentUpdateInput
@@ -2538,6 +2554,16 @@ export type DemandPublic = {
  * DemandStatus
  */
 export type DemandStatus = "submitted" | "replied" | "accepted" | "withdrawn"
+
+/**
+ * DemandTrackingRisk
+ */
+export type DemandTrackingRisk = {
+  /**
+   * Message
+   */
+  message: string | null
+}
 
 /**
  * DepartedAssignmentCancelled
@@ -7304,6 +7330,16 @@ export type TableCard = {
 }
 
 /**
+ * TaskLinkInput
+ */
+export type TaskLinkInput = {
+  /**
+   * Task Id
+   */
+  task_id: string
+}
+
+/**
  * TaskPublic
  */
 export type TaskPublic = {
@@ -7573,6 +7609,38 @@ export type ToolStep = {
    * Ok
    */
   ok: boolean
+}
+
+/**
+ * TrackingState
+ */
+export type TrackingState =
+  | "no_tasks"
+  | "on_track"
+  | "tasks_done"
+  | "overdue"
+  | "handed_over"
+
+/**
+ * TrackingTask
+ */
+export type TrackingTask = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Source
+   */
+  source: string
+  /**
+   * External Key
+   */
+  external_key: string
+  /**
+   * Title
+   */
+  title: string
 }
 
 /**
@@ -9807,6 +9875,197 @@ export type capacityDecideExtensionRequestResponses = {
 
 export type capacityDecideExtensionRequestResponse =
   capacityDecideExtensionRequestResponses[keyof capacityDecideExtensionRequestResponses]
+
+export type capacityTrackingGetAssignmentTrackingData = {
+  body?: never
+  path: {
+    /**
+     * Assignment Id
+     */
+    assignment_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/assignments/{assignment_id}/tracking"
+}
+
+export type capacityTrackingGetAssignmentTrackingErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityTrackingGetAssignmentTrackingError =
+  capacityTrackingGetAssignmentTrackingErrors[keyof capacityTrackingGetAssignmentTrackingErrors]
+
+export type capacityTrackingGetAssignmentTrackingResponses = {
+  /**
+   * Successful Response
+   */
+  200: AssignmentTracking
+}
+
+export type capacityTrackingGetAssignmentTrackingResponse =
+  capacityTrackingGetAssignmentTrackingResponses[keyof capacityTrackingGetAssignmentTrackingResponses]
+
+export type capacityTrackingSearchAssignmentTasksData = {
+  body?: never
+  path: {
+    /**
+     * Assignment Id
+     */
+    assignment_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query: {
+    /**
+     * Q
+     */
+    q: string
+  }
+  url: "/api/v1/orgs/{org_id}/capacity/assignments/{assignment_id}/tasks/search"
+}
+
+export type capacityTrackingSearchAssignmentTasksErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityTrackingSearchAssignmentTasksError =
+  capacityTrackingSearchAssignmentTasksErrors[keyof capacityTrackingSearchAssignmentTasksErrors]
+
+export type capacityTrackingSearchAssignmentTasksResponses = {
+  /**
+   * Response Capacity-Tracking-Search Assignment Tasks
+   *
+   * Successful Response
+   */
+  200: Array<TrackingTask>
+}
+
+export type capacityTrackingSearchAssignmentTasksResponse =
+  capacityTrackingSearchAssignmentTasksResponses[keyof capacityTrackingSearchAssignmentTasksResponses]
+
+export type capacityTrackingLinkAssignmentTaskData = {
+  body: TaskLinkInput
+  path: {
+    /**
+     * Assignment Id
+     */
+    assignment_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/assignments/{assignment_id}/tasks"
+}
+
+export type capacityTrackingLinkAssignmentTaskErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityTrackingLinkAssignmentTaskError =
+  capacityTrackingLinkAssignmentTaskErrors[keyof capacityTrackingLinkAssignmentTaskErrors]
+
+export type capacityTrackingLinkAssignmentTaskResponses = {
+  /**
+   * Successful Response
+   */
+  200: AssignmentTracking
+}
+
+export type capacityTrackingLinkAssignmentTaskResponse =
+  capacityTrackingLinkAssignmentTaskResponses[keyof capacityTrackingLinkAssignmentTaskResponses]
+
+export type capacityTrackingUnlinkAssignmentTaskData = {
+  body?: never
+  path: {
+    /**
+     * Assignment Id
+     */
+    assignment_id: string
+    /**
+     * Task Id
+     */
+    task_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/assignments/{assignment_id}/tasks/{task_id}"
+}
+
+export type capacityTrackingUnlinkAssignmentTaskErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityTrackingUnlinkAssignmentTaskError =
+  capacityTrackingUnlinkAssignmentTaskErrors[keyof capacityTrackingUnlinkAssignmentTaskErrors]
+
+export type capacityTrackingUnlinkAssignmentTaskResponses = {
+  /**
+   * Successful Response
+   */
+  200: AssignmentTracking
+}
+
+export type capacityTrackingUnlinkAssignmentTaskResponse =
+  capacityTrackingUnlinkAssignmentTaskResponses[keyof capacityTrackingUnlinkAssignmentTaskResponses]
+
+export type capacityTrackingGetDemandTrackingRiskData = {
+  body?: never
+  path: {
+    /**
+     * Demand Id
+     */
+    demand_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/tracking"
+}
+
+export type capacityTrackingGetDemandTrackingRiskErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityTrackingGetDemandTrackingRiskError =
+  capacityTrackingGetDemandTrackingRiskErrors[keyof capacityTrackingGetDemandTrackingRiskErrors]
+
+export type capacityTrackingGetDemandTrackingRiskResponses = {
+  /**
+   * Successful Response
+   */
+  200: DemandTrackingRisk
+}
+
+export type capacityTrackingGetDemandTrackingRiskResponse =
+  capacityTrackingGetDemandTrackingRiskResponses[keyof capacityTrackingGetDemandTrackingRiskResponses]
 
 export type planningCreateCaseData = {
   body?: never

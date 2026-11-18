@@ -21,6 +21,7 @@ import {
   DateField,
   useCapacityRefresh,
 } from "./AssignmentFields"
+import { AssignmentTracking, trackingLabels } from "./AssignmentTracking"
 import { isCapacityAccessDenied } from "./shared"
 
 export const assignmentStatuses = {
@@ -227,6 +228,11 @@ export function DemandAssignments({
                   投入 {row.allocation_percent}% · {row.start_date} 至{" "}
                   {row.due_date} · {assignmentStatuses[row.status]}
                 </p>
+                {row.status === "active" && (
+                  <p className="text-sm">
+                    {trackingLabels[row.tracking_state ?? "no_tasks"]}
+                  </p>
+                )}
               </article>
             ) : (
               <AssignmentRow
@@ -288,6 +294,12 @@ function AssignmentRow({
         {row.start_date ? `开始：${row.start_date}` : "开始日期未确认"} ·
         预计完成：{row.due_date}
       </p>
+      {canEdit &&
+        "status" in row &&
+        row.status === "active" &&
+        !row.employee_departed && (
+          <AssignmentTracking orgId={orgId} assignmentId={row.id} />
+        )}
       {canEdit && (!("status" in row) || row.status === "active") && (
         <>
           <div className="flex flex-wrap gap-2">

@@ -151,7 +151,7 @@ def test_callback_and_size_limits(monkeypatch: pytest.MonkeyPatch, text: str) ->
                 "chat",
                 text,
                 buttons,
-                link=("在方案页修改", "https://profiles.example/capacity"),
+                links=[("在方案页修改", "https://profiles.example/capacity")],
             )
         finally:
             await adapter.close()

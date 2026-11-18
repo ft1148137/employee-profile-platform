@@ -14,6 +14,7 @@ import {
   useExtensions,
   useMyAssignments,
 } from "./AssignmentFields"
+import { AssignmentTracking } from "./AssignmentTracking"
 import { BorrowRequests } from "./BorrowRequests"
 import { assignmentStatuses } from "./DemandAssignments"
 
@@ -98,6 +99,9 @@ function MyAssignmentRow({
         预计完成：{row.due_date}
       </p>
       <p className="whitespace-pre-wrap break-words">{row.description}</p>
+      {row.status === "active" && (
+        <AssignmentTracking orgId={orgId} assignmentId={row.id} />
+      )}
       {pending && (
         <p role="status">
           {waitingNames
