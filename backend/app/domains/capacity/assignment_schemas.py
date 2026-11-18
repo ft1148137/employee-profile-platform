@@ -90,7 +90,9 @@ class AnonymousBorrowAssignment(CapacityInput):
     start_date: date | None
     due_date: date
     status: AssignmentStatus
-    tracking_state: TrackingState | None = None
+    tracking_state: TrackingState | None = Field(
+        default=None, exclude_if=lambda state: state is None
+    )
 
 
 class DemandAssignmentList(CapacityInput):
