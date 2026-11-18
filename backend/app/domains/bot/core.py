@@ -134,6 +134,7 @@ def turn(
     try:
         visible_scope = dict(scope)
         scope.pop("visible_employee_ids")
+        scope["read_scope_format"] = store.READ_SCOPE_FORMAT
         report_reads(set())
         session_state = store.state_for_turn(
             db, p, session, scope=visible_scope, on_read=report_reads
