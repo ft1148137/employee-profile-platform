@@ -443,7 +443,14 @@ def act(
                         client_name=session.channel,
                     )
             except proposal.ProposalFailed as exc:
-                card.status, card.result = "failed", str(exc.detail["message"])
+                card.status, card.result = (
+                    "failed",
+                    str(
+                        exc.detail.get("message", exc.detail)
+                        if isinstance(exc.detail, dict)
+                        else exc.detail
+                    ),
+                )
                 return card
         card.status = "confirmed"
         card.result = (
