@@ -106,4 +106,42 @@ test("B 方经理无需模型查看方案，A 方经理看不到入口", async (
     page.getByRole("button", { name: /生成方案|查看方案/ }),
   ).toHaveCount(0)
   await expect(page.locator("body")).not.toContainText("合成研发甲")
+
+  const unconfirmed = await api(
+    `${base}/capacity/demands`,
+    {
+      requesting_department_id: person("A").department!.id,
+      target_department_id: person("M").department!.id,
+      capability_key: "delivery",
+      headcount: 1,
+      allocation_percent: 20,
+      window_start: later(21),
+      window_end: later(27),
+      description: "合成未确认周方案需求",
+    },
+    a,
+  )
+  await page.goto("/login")
+  await page.evaluate(
+    ({ token, org }) => {
+      localStorage.setItem("access_token", token)
+      localStorage.setItem("current_org_id", org)
+    },
+    { token: m, org: base.split("/").pop()! },
+  )
+  await page.goto(`/capacity?tab=incoming&demand=${unconfirmed.id}&plans=1`)
+  const insufficientCard = page.getByRole("article", {
+    name: "直接安排方案",
+    exact: true,
+  })
+  await expect(insufficientCard).toContainText("数据不足")
+  await expect(insufficientCard).toContainText("需求与容量 → 团队负荷")
+  await expect(insufficientCard).toContainText("有管辖权的经理")
+  await insufficientCard
+    .getByRole("link", { name: "去确认团队负荷", exact: true })
+    .click()
+  await expect(page).toHaveURL(/\/capacity\?tab=team/)
+  await expect(
+    page.getByRole("table", { name: "团队负荷，按部门、姓名排序" }),
+  ).toBeVisible()
 })

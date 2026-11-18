@@ -51,12 +51,17 @@ def item_text(item: s.ChangeItem) -> str:
 
 
 def plan_url(message: s.PlanCard | s.RulePlanFallback) -> str:
-    link = (
-        message.rule_fallback.link
-        if isinstance(message, s.PlanCard) and message.rule_fallback is not None
-        else message.link
-    )
-    return f"{settings.FRONTEND_HOST.rstrip('/')}{link}"
+    return f"{settings.FRONTEND_HOST.rstrip('/')}{message.link}"
+
+
+def plan_links(message: s.Message) -> list[tuple[str, str]]:
+    plan = message.plan if isinstance(message, s.CapacityCard) else message
+    if not isinstance(plan, s.PlanCard):
+        return []
+    links = [("在方案页修改", plan_url(plan))]
+    if plan.rule_fallback is not None:
+        links.append(("查看规则引擎方案", plan_url(plan.rule_fallback)))
+    return links
 
 
 def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:

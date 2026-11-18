@@ -344,10 +344,16 @@ class Feishu:
         buttons: list[tuple[str, str]],
         *,
         link: tuple[str, str] | None = None,
+        links: list[tuple[str, str]] | None = None,
     ) -> str:
         # shortcut: Conservative card budgets; verify hard limits with a real test app.
+        all_links = list(links) if links is not None else ([link] if link else [])
         if len(text) > 3000:
-            text, buttons, link = "内容较长，请在网页查看完整内容并操作。", [], None
+            text, buttons, all_links = (
+                "内容较长，请在网页查看完整内容并操作。",
+                [],
+                [],
+            )
         elements: list[dict[str, JsonValue]] = [
             {"tag": "div", "text": {"tag": "plain_text", "content": text}}
         ]
@@ -359,19 +365,25 @@ class Feishu:
             }
             for label, token in buttons[:3]
         ]
-        if link and len(card_buttons) < 3:
-            card_buttons.append(
-                {
-                    "tag": "button",
-                    "text": {"tag": "plain_text", "content": link[0]},
-                    "url": link[1],
-                }
-            )
         if card_buttons:
             elements.append(
                 {
                     "tag": "action",
                     "actions": card_buttons,
+                }
+            )
+        if all_links:
+            elements.append(
+                {
+                    "tag": "action",
+                    "actions": [
+                        {
+                            "tag": "button",
+                            "text": {"tag": "plain_text", "content": label},
+                            "url": url,
+                        }
+                        for label, url in all_links
+                    ],
                 }
             )
         content = json.dumps({"elements": elements}, ensure_ascii=False)

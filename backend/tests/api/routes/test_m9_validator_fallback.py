@@ -115,11 +115,15 @@ def test_worse_recommendation_keeps_both_choices(
         == "不可行 → 可行"
     )
     link = f"/capacity?tab=incoming&demand={demand.id}&plans=1"
-    assert reply.plan.link == link
-    assert fallback.link == f"{link}#case={case.id}"
+    best = next(o for o in case.options if o.verdict == "feasible")
+    assert reply.plan.link == f"{link}#case={case.id}&option={option.id}"
+    assert fallback.link == f"{link}#case={case.id}&option={best.id}"
+    assert reply.plan.link != fallback.link
     text, actions = render(reply)
     assert "规则引擎方案" in text and "不可行 → 可行" in text
     assert text.count(link) == 2
+    assert f"#case={case.id}&option={option.id}" in text
+    assert f"#case={case.id}&option={best.id}" in text
     assert len(text) < 12000 and len(actions) == 2
     cards.clear()
     tools.call(

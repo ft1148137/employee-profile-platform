@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useLocation, useNavigate } from "@tanstack/react-router"
+import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import { AxiosError } from "axios"
-import { useId, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import {
   type AssigneeInput,
   type CasePublic,
@@ -12,6 +12,7 @@ import {
 import { ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useOrg } from "@/hooks/useOrg"
 import { isCapacityAccessDenied } from "./shared"
 
 function records(value: unknown): Record<string, unknown>[] {
@@ -477,15 +478,18 @@ function OptionCard({
   option,
   plan,
   orgId,
+  selected = false,
   onRevised,
   onReply,
 }: {
   option: CasePublic["options"][number]
   plan: CasePublic
   orgId: string
+  selected?: boolean
   onRevised: () => Promise<unknown>
   onReply?: (reply: SelectedPlanReply) => void
 }) {
+  const { employeeId } = useOrg()
   const borrowCountId = useId()
   const [lender, setLender] = useState("")
   const [editSegments, setEditSegments] = useState(false)
@@ -515,14 +519,35 @@ function OptionCard({
     (item) => item.id === option.summary.base_option_id,
   )
   const diff = records([option.summary.diff])[0]
+  const unconfirmedFindings = option.findings.filter(
+    (finding) =>
+      finding.code === "unconfirmed" || finding.level === "insufficient_data",
+  )
+  const hasInsufficientData =
+    option.verdict === "insufficient_data" || unconfirmedFindings.length > 0
+  const unconfirmedIncludesSelf =
+    !!employeeId &&
+    unconfirmedFindings.some((finding) => finding.employee_id === employeeId)
   return (
     <article
-      className="space-y-4 rounded-xl border p-5"
+      id={`plan-option-${option.id}`}
+      aria-current={selected ? "true" : undefined}
+      data-selected={selected ? "true" : undefined}
+      className={`scroll-mt-20 space-y-4 rounded-xl border p-5 ${
+        selected ? "border-primary bg-primary/5 ring-2 ring-primary/30" : ""
+      }`}
       aria-label={`${option.kind_label}方案`}
     >
-      <h4 className="text-lg font-semibold">
-        {option.kind_label} · {option.verdict_label}
-      </h4>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="text-lg font-semibold">
+          {option.kind_label} · {option.verdict_label}
+        </h4>
+        {selected && (
+          <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+            当前定位方案
+          </span>
+        )}
+      </div>
       {base && (
         <div className="rounded bg-muted p-3">
           <p>
@@ -631,6 +656,19 @@ function OptionCard({
           </ul>
         ) : (
           <p>暂无已发现风险</p>
+        )}
+        {hasInsufficientData && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            请前往「需求与容量 →
+            团队负荷」，由有管辖权的经理确认相关人员对应周的其他工作占比
+            {unconfirmedIncludesSelf
+              ? "（当前涉及你本人，需由有管辖权的另一位经理设置）"
+              : "（若涉及经理本人，需由有管辖权的另一位经理设置）"}
+            ，确认后回到此页点击「重新模拟」。{" "}
+            <Link to="/capacity" search={{ tab: "team" }} className="underline">
+              去确认团队负荷
+            </Link>
+          </p>
         )}
       </div>
       <div>
@@ -842,6 +880,17 @@ export function Plans({
     },
   })
   const plan = current.data
+  const selectedOptionId = hash ? new URLSearchParams(hash).get("option") : null
+  const hasMatchedOption =
+    !!plan &&
+    !!selectedOptionId &&
+    plan.options.some((item) => item.id === selectedOptionId)
+  useEffect(() => {
+    if (!hasMatchedOption || !selectedOptionId) return
+    document
+      .getElementById(`plan-option-${selectedOptionId}`)
+      ?.scrollIntoView({ block: "center" })
+  }, [hasMatchedOption, selectedOptionId])
   const error = simulation.error ?? current.error
   if (isCapacityAccessDenied(error))
     return <p role="alert">你现在没有权限查看这部分</p>
@@ -862,6 +911,9 @@ export function Plans({
       {plan && !current.error && (
         <>
           {plan.stale && <p role="alert">数据已变化，请重新模拟</p>}
+          {selectedOptionId && !hasMatchedOption && (
+            <p role="status">未找到原链接指定的方案，以下显示当前全部方案。</p>
+          )}
           <Button
             variant="outline"
             onClick={() => simulation.mutate()}
@@ -879,6 +931,7 @@ export function Plans({
                 option={option}
                 plan={plan}
                 orgId={orgId}
+                selected={option.id === selectedOptionId}
                 onRevised={() => current.refetch()}
                 onReply={onReply}
               />

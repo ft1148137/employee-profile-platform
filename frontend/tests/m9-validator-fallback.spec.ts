@@ -331,7 +331,14 @@ test("较差推荐同时展示规则方案、差别和两个可打开的链接",
       )
         createdSnapshots.push(req.url())
     })
-    for (const name of ["在方案页修改", "查看规则引擎方案"]) {
+    const best = plan.options.find(
+      (item: { verdict: string }) => item.verdict === "feasible",
+    )
+    expect(best).toBeTruthy()
+    for (const [name, expectedOption, expectedTitle] of [
+      ["在方案页修改", bad.id, "自定方案方案"],
+      ["查看规则引擎方案", best.id, "直接安排方案"],
+    ] as const) {
       await page.evaluate(
         ({ org, demand }) => {
           localStorage.removeItem(`planning-case:${org}:${demand}`)
@@ -339,8 +346,19 @@ test("较差推荐同时展示规则方案、差别和两个可打开的链接",
         { org: admin.org_id, demand: demand.id },
       )
       await card.getByRole("link", { name, exact: true }).click()
-      await expect(page).toHaveURL(new RegExp(`demand=${demand.id}.*plans=1`))
+      await expect(page).toHaveURL(
+        new RegExp(
+          `demand=${demand.id}.*plans=1#case=${plan.id}&option=${expectedOption}$`,
+        ),
+      )
       await expect(page.getByRole("button", { name: "关闭方案" })).toBeVisible()
+      const targetArticle = page.getByRole("article", {
+        name: expectedTitle,
+        exact: true,
+      })
+      await expect(targetArticle).toBeVisible()
+      await expect(targetArticle).toHaveAttribute("data-selected", "true")
+      await expect(targetArticle).toContainText("当前定位方案")
       await expect(
         page.getByRole("article", { name: "直接安排方案", exact: true }),
       ).toBeVisible()

@@ -269,9 +269,23 @@ test("需求理解卡、经理方案卡和模型失败后的手工答复", async
     const planCard = panel.getByRole("region", { name: "直接安排方案" })
     await expect(planCard).toContainText("交付日期")
     await expect(planCard).toContainText("审批人")
+    const createdCases: string[] = []
+    page.on("request", (req) => {
+      if (
+        req.method() === "POST" &&
+        /\/planning\/demands\/[^/]+\/cases$/.test(req.url())
+      )
+        createdCases.push(req.url())
+    })
     await planCard.getByRole("link", { name: "在方案页修改" }).click()
-    await expect(page).toHaveURL(new RegExp(`demand=${demandId}.*plans=1`))
+    await expect(page).toHaveURL(
+      new RegExp(`demand=${demandId}.*plans=1#case=.*&option=`),
+    )
     await expect(page.getByRole("button", { name: "关闭方案" })).toBeVisible()
+    const directArticle = page.getByRole("article", { name: "直接安排方案" })
+    await expect(directArticle).toHaveAttribute("data-selected", "true")
+    await expect(directArticle).toContainText("当前定位方案")
+    expect(createdCases).toEqual([])
     await expectChineseCopy(page)
 
     panel = await openAssistant("W")
