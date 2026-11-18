@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
+import { Link } from "@tanstack/react-router"
 import { AxiosError } from "axios"
 import { useId, useState } from "react"
 import {
@@ -31,9 +32,11 @@ export const assignmentStatuses = {
 export function DemandAssignments({
   orgId,
   demand,
+  canProposeChange,
 }: {
   orgId: string
   demand: DemandPublic
+  canProposeChange: boolean
 }) {
   const id = useId()
   const [employeeId, setEmployeeId] = useState("")
@@ -232,6 +235,7 @@ export function DemandAssignments({
                 row={row}
                 committedEndDate={demand.committed_end_date ?? null}
                 committedStartDate={demand.committed_start_date ?? null}
+                canProposeChange={canProposeChange}
                 canEdit={managedDepartmentIds.includes(
                   demand.target_department_id,
                 )}
@@ -250,13 +254,16 @@ function AssignmentRow({
   committedEndDate,
   committedStartDate,
   canEdit,
+  canProposeChange,
 }: {
   orgId: string
   row: DemandAssignment | DepartedDemandAssignment
   committedEndDate: string | null
   committedStartDate: string | null
   canEdit: boolean
+  canProposeChange: boolean
 }) {
+  const committed = "proposal_line_id" in row && !!row.proposal_line_id
   const refresh = useCapacityRefresh(orgId)
   const [dueDate, setDueDate] = useState(row.due_date)
   const update = useMutation({
@@ -293,9 +300,7 @@ function AssignmentRow({
                 标记完成
               </Button>
             )}
-            {(!("proposal_line_id" in row) ||
-              !row.proposal_line_id ||
-              row.employee_departed) && (
+            {(!committed || row.employee_departed) && (
               <Button
                 variant="outline"
                 disabled={update.isPending}
@@ -304,8 +309,22 @@ function AssignmentRow({
                 取消分配
               </Button>
             )}
+            {committed && canProposeChange && (
+              <Button asChild variant="outline">
+                <Link
+                  to="/capacity"
+                  search={{ tab: "incoming", demand: row.demand_id, plans: 1 }}
+                  resetScroll={false}
+                  onClick={() =>
+                    document.getElementById("capacity-plans")?.scrollIntoView()
+                  }
+                >
+                  发起开始日期变更
+                </Link>
+              </Button>
+            )}
           </div>
-          {"status" in row && (
+          {"status" in row && !committed && (
             <form
               aria-label="修改开始日期"
               className="space-y-3"
@@ -345,11 +364,7 @@ function AssignmentRow({
               <fieldset disabled={update.isPending} className="space-y-3">
                 <DateField
                   label="调整后的完成日期"
-                  min={
-                    "proposal_line_id" in row && row.proposal_line_id
-                      ? row.due_date
-                      : (row.start_date ?? undefined)
-                  }
+                  min={committed ? row.due_date : (row.start_date ?? undefined)}
                   value={dueDate}
                   onChange={(event) => setDueDate(event.target.value)}
                 />
