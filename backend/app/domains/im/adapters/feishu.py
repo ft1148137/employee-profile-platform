@@ -343,11 +343,10 @@ class Feishu:
         text: str,
         buttons: list[tuple[str, str]],
         *,
-        link: tuple[str, str] | None = None,
         links: list[tuple[str, str]] | None = None,
     ) -> str:
         # shortcut: Conservative card budgets; verify hard limits with a real test app.
-        all_links = list(links) if links is not None else ([link] if link else [])
+        all_links = links or []
         if len(text) > 3000:
             text, buttons, all_links = (
                 "内容较长，请在网页查看完整内容并操作。",

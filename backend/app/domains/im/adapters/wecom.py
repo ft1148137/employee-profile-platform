@@ -272,7 +272,6 @@ class Wecom:
         text: str,
         buttons: list[tuple[str, str]],
         *,
-        link: tuple[str, str] | None = None,
         links: list[tuple[str, str]] | None = None,
     ) -> str:
         task_id = uuid4().hex

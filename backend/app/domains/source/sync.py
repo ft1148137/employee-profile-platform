@@ -212,6 +212,7 @@ def jira_record(issue: JiraIssue) -> SourceRecord:
         title=issue.summary,
         task_type=issue.issue_type,
         status=issue.status,
+        status_category=issue.status_category,
         created_at=issue.created,
         updated_at=issue.updated,
         resolved=issue.resolved,
@@ -367,6 +368,10 @@ def _finish(
             target_id=str(run.id),
             details=details,
         )
+    if status == "succeeded":
+        from app.domains.capacity.tracking import recompute
+
+        recompute(session, run.org_id)
     if status == "succeeded" and run.trigger == "schedule":
         from app.domains.drafting.incremental import queue_incremental
 

@@ -13,6 +13,7 @@ from app.domains.base import utc_now
 from app.domains.bot.store import cleanup_messages
 from app.domains.capability.department_defaults import fill_department_defaults
 from app.domains.capacity.proposal import expire
+from app.domains.capacity.tracking import recompute
 from app.domains.drafting.incremental import run_incremental
 from app.domains.drafting.service import run_drafting
 from app.domains.im.binding import cleanup_events
@@ -73,6 +74,17 @@ def expire_proposals(timestamp: int) -> None:  # noqa: ARG001
                     org_id,
                     type(exc).__name__,
                 )
+
+
+@app.periodic(cron="0 0 * * *")
+@app.task(name="capacity.refresh_tracking", queueing_lock="capacity_refresh_tracking")
+def refresh_tracking(timestamp: int) -> None:  # noqa: ARG001
+    with Session(engine) as session:
+        org_ids = session.exec(select(Organization.id)).all()
+    for org_id in org_ids:
+        with Session(engine) as session:
+            recompute(session, org_id)
+            session.commit()
 
 
 @app.periodic(cron="*/5 * * * *")

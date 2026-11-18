@@ -640,8 +640,16 @@ def list_demand_assignments(
             start_date=row.start_date,
             due_date=row.due_date,
             status=row.status,
+            tracking_state=row.tracking_state,
         )
         if lender is not None
+        and not (
+            subject.id == principal.employee_id
+            or (
+                subject.department_id in principal.managed_department_ids
+                and can_view_employee(principal, subject)
+            )
+        )
         else DepartedDemandAssignment(
             id=row.id,
             allocation_percent=row.allocation_percent,

@@ -200,11 +200,7 @@ async def deliver(
             ]
             try:
                 async with asyncio.timeout(10 if event.platform == "feishu" else None):
-                    if len(links) == 1:
-                        message_id = await adapter.render(
-                            event.external_chat_id, body, buttons, link=links[0]
-                        )
-                    elif links:
+                    if links:
                         message_id = await adapter.render(
                             event.external_chat_id, body, buttons, links=links
                         )
