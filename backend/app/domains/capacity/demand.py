@@ -742,10 +742,12 @@ def respond_demand(
         raise CapacityNotFound(DEMAND_NOT_FOUND)
     from app.domains.capacity import proposal
 
-    pending = proposal.latest(session, principal.org_id, demand_id, lock=True)
-    if pending is not None:
+    latest = proposal.latest(session, principal.org_id, demand_id, lock=True)
+    if latest is not None and (
+        revision <= latest.demand_revision or not proposal.reply_superseded(row, latest)
+    ):
         return proposal.respond(
-            principal, session, row, pending, action, revision, text, via=via
+            principal, session, row, latest, action, revision, text, via=via
         )
     if row.revision != revision or row.status in (
         DemandStatus.ACCEPTED,

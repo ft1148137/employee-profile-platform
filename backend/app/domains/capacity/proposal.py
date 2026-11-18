@@ -164,6 +164,15 @@ def check_pending(row: CapacityProposal, revision: int, expected: int) -> None:
         raise decided(row)
 
 
+def reply_superseded(demand: CapacityDemand, row: CapacityProposal) -> bool:
+    # Ending a proposal advances the demand once; a new reply advances it again.
+    return (
+        row.kind == "initial"
+        and row.status in (ProposalStatus.FAILED, ProposalStatus.WITHDRAWN)
+        and demand.revision > row.demand_revision + 1
+    )
+
+
 def conflict_sources(
     principal: Principal,
     session: Session,
@@ -391,6 +400,7 @@ def create(
     lines: list[ProposalLineInput | BorrowLineInput],
     *,
     change: ChangeProposalInput | None = None,
+    via: Via = "web",
 ) -> CapacityProposal:
     assert principal.user_id is not None
     previous = None
@@ -458,7 +468,7 @@ def create(
             reason=change.reason if change is not None else None,
             decision="approved",
             user_id=principal.user_id,
-            via="web",
+            via=via,
         )
     )
     session.flush()
@@ -554,7 +564,7 @@ def public(
     include_previous: bool = False,
 ) -> ProposalDetail | ProposalSummary | None:
     row = latest(session, principal.org_id, demand.id)
-    if row is None:
+    if row is None or reply_superseded(demand, row):
         return None
     lines = lines_for(session, row)
     approvals = approvals_for(session, row)
@@ -774,6 +784,26 @@ def assert_assignment_line(session: Session, assignment: CapacityAssignment) -> 
         )
 
 
+def check_requester_decision(
+    principal: Principal,
+    row: CapacityProposal,
+    approvals: list[CapacityApproval],
+    lines: list[CapacityProposalLine],
+) -> None:
+    if any(a.party == "requester" for a in approvals):
+        raise decided(row)
+    if any(
+        a.user_id == principal.user_id and a.party in ("lender_manager", "employee")
+        for a in approvals
+    ) or any(
+        line.lender_department_id is not None
+        and line.employee_id is not None
+        and line.employee_id == principal.employee_id
+        for line in lines
+    ):
+        raise ProposalSelfApprovalForbidden()
+
+
 def accept(
     principal: Principal,
     session: Session,
@@ -793,18 +823,7 @@ def accept(
     approvals = approvals_for(session, row)
     requester = next((a for a in approvals if a.party == "requester"), None)
     if requester_accepts:
-        if requester is not None:
-            raise decided(row)
-        if any(
-            a.user_id == principal.user_id and a.party in ("lender_manager", "employee")
-            for a in approvals
-        ) or any(
-            lender_department_id is not None
-            and line.employee_id == principal.employee_id
-            and line.employee_id is not None
-            for line in lines
-        ):
-            raise ProposalSelfApprovalForbidden()
+        check_requester_decision(principal, row, approvals, lines)
         assert principal.user_id is not None
         requester = CapacityApproval(
             org_id=principal.org_id,
@@ -1337,8 +1356,9 @@ def respond(
     if action == "accept":
         accept(principal, session, demand, row, via=via)
     elif action == "follow_up":
-        if any(a.party == "requester" for a in approvals_for(session, row)):
-            raise decided(row)
+        check_requester_decision(
+            principal, row, approvals_for(session, row), lines_for(session, row)
+        )
         if not text or not text.strip() or len(text) > 500:
             raise ProposalConflict("拒绝方案时必须填写不超过 500 字的理由")
         assert principal.user_id is not None

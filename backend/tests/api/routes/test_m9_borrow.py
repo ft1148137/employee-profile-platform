@@ -17,8 +17,10 @@ from app.domains.bot import schemas, store, tools
 from app.domains.capacity.calendar import loads
 from app.domains.capacity.demand import validate_load_words
 from app.domains.capacity.models import (
+    CapacityApproval,
     CapacityAssignment,
     CapacityDemand,
+    CapacityDemandEvent,
     CapacityProposalLine,
     CapacityWeek,
 )
@@ -341,6 +343,86 @@ def test_borrow_consent_order_and_projections(
     )
     mine_for_b = client.get(f"{url}/capacity/assignments/me", headers=auth["b"])
     assert mine_for_b.json()["data"] == []
+
+
+@pytest.mark.parametrize("role", ["lender", "worker"])
+def test_borrow_party_cannot_also_reject_as_requesting_manager(
+    case: tuple, offered: tuple, client: TestClient, db: Session, role: str
+) -> None:
+    url, _, auth, demand = case
+    reply, line, worker = offered
+    lender = db.exec(
+        select(OrgMembership)
+        .join(RoleGrant, RoleGrant.membership_id == OrgMembership.id)
+        .where(
+            OrgMembership.org_id == demand.org_id,
+            RoleGrant.org_id == demand.org_id,
+            RoleGrant.department_id == worker.department_id,
+        )
+    ).one()
+    member = (
+        lender
+        if role == "lender"
+        else db.exec(
+            select(OrgMembership).where(
+                OrgMembership.org_id == demand.org_id,
+                OrgMembership.employee_id == worker.id,
+            )
+        ).one()
+    )
+    db.add(
+        RoleGrant(
+            org_id=demand.org_id,
+            membership_id=member.id,
+            department_id=demand.requesting_department_id,
+            role="dept_manager",
+        )
+    )
+    db.commit()
+    selected = decide(
+        client, case, line, "lender", action="select", employee_id=str(worker.id)
+    )
+    assert selected.status_code == 204, selected.text
+    if role == "worker":
+        consent = decide(client, case, line, "worker", action="accept")
+        assert consent.status_code == 204, consent.text
+
+    def state() -> tuple:
+        db.expire_all()
+        return (
+            demand.revision,
+            proposal_row(db, demand).model_dump(),
+            {a.id: a.model_dump() for a in rows(db, CapacityApproval, demand)},
+            {e.id: e.model_dump() for e in rows(db, CapacityDemandEvent, demand)},
+            loads(db, demand.org_id, [worker.id], demand.window_start, 1)[worker.id][
+                0
+            ].hold_percent,
+        )
+
+    before = state()
+    assert before[-1] == 50
+    path = f"{url}/capacity/demands/{demand.id}"
+    assert client.get(path, headers=auth[role]).status_code == 200
+    rejected = respond(
+        client, case, reply["revision"], "follow_up", role=role, text="合成拒绝理由"
+    )
+    assert rejected.status_code == 403 and "不能审批自己" in rejected.text
+    assert state() == before
+    assert not rows(db, CapacityAssignment, demand)
+
+    independent = respond(
+        client, case, reply["revision"], "follow_up", text="合成独立拒绝"
+    )
+    assert independent.status_code == 200, independent.text
+    assert independent.json()["status"] == "submitted"
+    assert proposal_row(db, demand).fail_reason == "rejected"
+    assert state()[-1] == 0
+    (decision,) = [
+        a for a in rows(db, CapacityApproval, demand) if a.party == "requester"
+    ]
+    assert (
+        decision.decision == "rejected" and decision.user_id == demand.requester_user_id
+    )
 
 
 def test_mcp_keeps_existing_reply_contract(
