@@ -1,8 +1,10 @@
 """Exercise the gateway with real PostgreSQL waits and synthetic adapters."""
 
 import asyncio
+import time
 from collections.abc import AsyncIterator, Callable, Generator
 from concurrent.futures import ThreadPoolExecutor
+from threading import Event as ThreadEvent
 
 import anyio
 import pytest
@@ -97,6 +99,7 @@ def test_maintenance_pool_wait_does_not_block_loop(
     db: Session,
     small_pool: Engine,
     monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
     path: str,
 ) -> None:
     from datetime import timedelta
@@ -123,6 +126,14 @@ def test_maintenance_pool_wait_does_not_block_loop(
     db.commit()
     closed = False
     polls = 0
+    worker_finished = ThreadEvent()
+    worker_alerts = g.worker_alerts
+
+    def alerts() -> None:
+        worker_alerts()
+        worker_finished.set()
+
+    monkeypatch.setattr(g, "worker_alerts", alerts)
 
     class Adapter(Wecom):
         def __init__(self, *_: object) -> None:
@@ -211,13 +222,26 @@ def test_maintenance_pool_wait_does_not_block_loop(
             monkeypatch.setattr(g, "refresh", no_refresh)
             operation = g.run()
         held = small_pool.connect()
+        ticks: list[float] = []
+        deadline = time.monotonic() + 0.55
+
+        async def heartbeat() -> None:
+            while time.monotonic() < deadline:
+                await asyncio.sleep(0.05)
+                if time.monotonic() < deadline:
+                    ticks.append(time.monotonic())
+
+        pulse = asyncio.create_task(heartbeat())
         task = asyncio.create_task(operation)
         try:
             await asyncio.sleep(0.05)
             # A synchronous checkout would return only after pool_timeout here.
             assert not task.done()
+            await pulse
+            assert len(ticks) >= 8, "database wait blocked the event-loop heartbeat"
             held.close()
             if path == "worker":
+                assert await asyncio.to_thread(worker_finished.wait, 2)
                 await asyncio.sleep(0.1)
                 task.cancel()
                 with pytest.raises(asyncio.CancelledError):
@@ -227,10 +251,13 @@ def test_maintenance_pool_wait_does_not_block_loop(
                     await asyncio.wait_for(task, 2)
             else:
                 await asyncio.wait_for(task, 2)
+            assert "pool_timeout" not in caplog.text
+            assert "code=storage" not in caplog.text
         finally:
             held.close()
+            pulse.cancel()
             task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
+            await asyncio.gather(task, pulse, return_exceptions=True)
             for _, connection in g.tasks.values():
                 connection.cancel()
             await asyncio.gather(

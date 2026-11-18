@@ -1,3 +1,4 @@
+import asyncio
 import secrets
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
@@ -15,7 +16,7 @@ from app.domains.bot import schemas as s
 from app.domains.bot.models import BotMessage, BotSession
 from app.domains.bot.settings import read_settings
 from app.domains.im import rendering
-from app.domains.im.adapters.base import Adapter, Event
+from app.domains.im.adapters.base import Adapter, Event, ImError
 from app.domains.im.models import ImAction
 from app.domains.inbox.service import read_question
 
@@ -197,12 +198,18 @@ async def deliver(
             buttons = [
                 (rendering.LABELS[str(r.action["action"])], r.token) for r in rows
             ]
-            if link:
-                message_id = await adapter.render(
-                    event.external_chat_id, body, buttons, link=link
-                )
-            else:
-                message_id = await adapter.render(event.external_chat_id, body, buttons)
+            try:
+                async with asyncio.timeout(10 if event.platform == "feishu" else None):
+                    if link:
+                        message_id = await adapter.render(
+                            event.external_chat_id, body, buttons, link=link
+                        )
+                    else:
+                        message_id = await adapter.render(
+                            event.external_chat_id, body, buttons
+                        )
+            except TimeoutError:
+                raise ImError("timeout", retryable=True) from None
             for row in rows:
                 row.message_id = message_id
 
@@ -216,8 +223,9 @@ def _message(
     reply: Reply,
     pending: list[s.Message],
 ) -> Generator[tuple[str, list[ImAction], tuple[str, str] | None]]:
-    with delivery.guard(db, reply.response) as response:
+    try:
         session = store.get_session(db, p, reply.session_id)
+        employee_id, session_id = session.employee_id, session.id
         days = read_settings(db, p.org_id).retention_days
         created_at = db.exec(
             select(BotMessage.created_at)
@@ -232,32 +240,36 @@ def _message(
         expires = (created_at or session.last_activity_at) + (
             timedelta(days=days) if days else timedelta(hours=2)
         )
-        if response is not reply.response:
-            reply.response = response
-            pending[:] = response.messages
-        message = pending.pop(0)
-        body, offered = rendering.render(message)
-        rows = [
-            ImAction(
-                token=secrets.token_urlsafe(16),
-                org_id=p.org_id,
-                platform=event.platform,
-                bot_identity=identity,
-                employee_id=session.employee_id,
-                session_id=session.id,
-                external_chat_id=event.external_chat_id,
-                message_id="",
-                action=action,
-                expires_at=expires,
+        db.rollback()
+        with delivery.guard(db, reply.response) as response:
+            if response is not reply.response:
+                reply.response = response
+                pending[:] = response.messages
+            message = pending.pop(0)
+            body, offered = rendering.render(message)
+            rows = [
+                ImAction(
+                    token=secrets.token_urlsafe(16),
+                    org_id=p.org_id,
+                    platform=event.platform,
+                    bot_identity=identity,
+                    employee_id=employee_id,
+                    session_id=session_id,
+                    external_chat_id=event.external_chat_id,
+                    message_id="",
+                    action=action,
+                    expires_at=expires,
+                )
+                for action in offered
+            ]
+            link = (
+                ("在方案页修改", rendering.plan_url(message))
+                if event.platform == "feishu" and isinstance(message, s.PlanCard)
+                else None
             )
-            for action in offered
-        ]
-        link = (
-            ("在方案页修改", rendering.plan_url(message))
-            if event.platform == "feishu" and isinstance(message, s.PlanCard)
-            else None
-        )
-        yield body, rows, link
+            yield body, rows, link
         for row in rows:
             db.add(row)
         db.commit()
+    finally:
+        db.rollback()
