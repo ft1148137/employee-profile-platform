@@ -10,6 +10,7 @@ from app.domains.capacity import (
     assignment,
     demand,
     extension,
+    project,
     proposal,
     settings,
     workload,
@@ -33,6 +34,9 @@ from app.domains.capacity.demand_schemas import (
     DemandListInput,
     DemandPublic,
     PlanReplyInput,
+    ProjectDetail,
+    ProjectInput,
+    ProjectSummary,
     ProposalWithdrawInput,
     ReferenceInput,
     RespondInput,
@@ -155,6 +159,29 @@ def capacity_reference(
     query: Annotated[ReferenceInput, Query()],
 ) -> CapacityReference:
     return demand.capacity_reference(principal, session, **query.model_dump())
+
+
+@router.post("/capacity/projects")
+def submit_project(
+    principal: OrgPrincipalDep, session: SessionDep, body: ProjectInput
+) -> ProjectSummary:
+    result = project.submit_project(principal, session, body)
+    session.commit()
+    return result
+
+
+@router.get("/capacity/projects")
+def list_projects(
+    principal: OrgPrincipalDep, session: SessionDep
+) -> list[ProjectSummary]:
+    return project.list_projects(principal, session)
+
+
+@router.get("/capacity/projects/{project_id}")
+def get_project(
+    principal: OrgPrincipalDep, session: SessionDep, project_id: UUID
+) -> ProjectDetail:
+    return project.get_project(principal, session, project_id)
 
 
 @router.post("/capacity/demands")

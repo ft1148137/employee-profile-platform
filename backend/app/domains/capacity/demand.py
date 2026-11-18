@@ -25,15 +25,20 @@ from app.domains.capacity.demand_schemas import (
     DemandInput,
     DemandList,
     DemandOtherPerson,
+    DemandProject,
     DemandPublic,
     DetailedCapacityReference,
     LimitedCapacityReference,
+    ProjectRoleInput,
+    ProjectRoleSummary,
     ReplyInput,
     RespondInput,
 )
 from app.domains.capacity.models import (
     CapacityDemand,
+    CapacityDemandDependency,
     CapacityDemandEvent,
+    CapacityProject,
     DemandEventKind,
     DemandOutcome,
     DemandStatus,
@@ -207,8 +212,10 @@ def reference_for_viewer(
     principal: Principal,
     target_department_id: UUID,
     reference: DetailedCapacityReference,
+    *,
+    requester_view: bool = False,
 ) -> CapacityReference:
-    if represents_department(principal, target_department_id):
+    if not requester_view and represents_department(principal, target_department_id):
         return reference
     if 0 < reference.count < 3:
         return LimitedCapacityReference(
@@ -277,7 +284,11 @@ def demand_public(
 
 
 def demands_public(
-    principal: Principal, session: Session, rows: list[CapacityDemand]
+    principal: Principal,
+    session: Session,
+    rows: list[CapacityDemand],
+    *,
+    requester_view: bool = False,
 ) -> list[DemandPublic]:
     if not rows:
         return []
@@ -289,34 +300,61 @@ def demands_public(
         )
         .order_by(col(CapacityDemandEvent.created_at), col(CapacityDemandEvent.id))
     ).all()
-    names = {
-        user_id: employee_name or full_name or "企业管理员"
-        for user_id, employee_name, full_name in session.exec(
-            select(OrgMembership.user_id, Employee.display_name, User.full_name)
-            .join(User, col(User.id) == OrgMembership.user_id)
-            .outerjoin(
-                Employee,
-                (col(Employee.org_id) == OrgMembership.org_id)
-                & (col(Employee.id) == OrgMembership.employee_id),
-            )
-            .where(
-                OrgMembership.org_id == principal.org_id,
-                col(OrgMembership.user_id).in_(
-                    {
-                        e.actor_user_id
-                        for e in events
-                        if e.kind == DemandEventKind.REPLIED
-                    }
-                ),
-            )
-        ).all()
+    responder_ids = {
+        event.actor_user_id for event in events if event.kind == DemandEventKind.REPLIED
     }
+    names = (
+        {
+            user_id: employee_name or full_name or "企业管理员"
+            for user_id, employee_name, full_name in session.exec(
+                select(OrgMembership.user_id, Employee.display_name, User.full_name)
+                .join(User, col(User.id) == OrgMembership.user_id)
+                .outerjoin(
+                    Employee,
+                    (col(Employee.org_id) == OrgMembership.org_id)
+                    & (col(Employee.id) == OrgMembership.employee_id),
+                )
+                .where(
+                    OrgMembership.org_id == principal.org_id,
+                    col(OrgMembership.user_id).in_(responder_ids),
+                )
+            ).all()
+        }
+        if responder_ids and not requester_view
+        else {}
+    )
+    project_ids = {row.project_id for row in rows if row.project_id is not None}
+    projects = (
+        dict(
+            session.exec(
+                select(CapacityProject.id, CapacityProject.title).where(
+                    CapacityProject.org_id == principal.org_id,
+                    col(CapacityProject.id).in_(project_ids),
+                )
+            ).all()
+        )
+        if project_ids and not requester_view
+        else {}
+    )
     grouped: dict[UUID, list[CapacityDemandEvent]] = defaultdict(list)
     for event in events:
         grouped[event.demand_id].append(event)
     results = []
     for row in rows:
         result = DemandPublic.model_validate(row)
+        if (
+            row.project_id is not None
+            and row.project_id in projects
+            and row.role_name is not None
+        ):
+            result.project = DemandProject(
+                id=row.project_id,
+                title=projects[row.project_id],
+                role_name=row.role_name,
+            )
+        target_view = not requester_view and represents_department(
+            principal, row.target_department_id
+        )
         result.events = [
             DemandEventPublic(
                 kind=e.kind,
@@ -330,6 +368,7 @@ def demands_public(
                     principal,
                     row.target_department_id,
                     DetailedCapacityReference.model_validate(e.basis),
+                    requester_view=requester_view,
                 )
                 if e.kind == DemandEventKind.REPLIED and e.basis
                 else None,
@@ -339,14 +378,29 @@ def demands_public(
                     else {}
                 ),
                 responder_name=names.get(e.actor_user_id)
-                if e.kind == DemandEventKind.REPLIED
-                and represents_department(principal, row.target_department_id)
+                if e.kind == DemandEventKind.REPLIED and target_view
                 else None,
             )
             for e in grouped[row.id]
         ]
         results.append(result)
     return results
+
+
+def project_role_summary(
+    row: CapacityDemand, department_name: str
+) -> ProjectRoleSummary:
+    assert row.role_name is not None
+    return ProjectRoleSummary(
+        id=row.id,
+        role_name=row.role_name,
+        target_department_name=department_name,
+        status=row.status,
+        window_start=row.window_start,
+        window_end=row.window_end,
+        committed_start_date=row.committed_start_date,
+        committed_end_date=row.committed_end_date,
+    )
 
 
 def demand_row(
@@ -380,6 +434,33 @@ def get_demand(
 
     row = demand_row(principal, session, demand_id)
     result = demand_public(principal, session, row)
+    if result.project is not None:
+        result.project.prerequisites = [
+            project_role_summary(role, name)
+            for role, name in session.exec(
+                select(CapacityDemand, Department.name)
+                .join(
+                    CapacityDemandDependency,
+                    (col(CapacityDemandDependency.org_id) == CapacityDemand.org_id)
+                    & (
+                        col(CapacityDemandDependency.depends_on_demand_id)
+                        == CapacityDemand.id
+                    ),
+                )
+                .join(
+                    Department,
+                    (col(Department.org_id) == CapacityDemand.org_id)
+                    & (col(Department.id) == CapacityDemand.target_department_id),
+                )
+                .where(
+                    CapacityDemand.org_id == principal.org_id,
+                    CapacityDemand.project_id == result.project.id,
+                    CapacityDemandDependency.project_id == result.project.id,
+                    CapacityDemandDependency.demand_id == row.id,
+                )
+                .order_by(col(CapacityDemand.created_at), col(CapacityDemand.id))
+            ).all()
+        ]
     result.proposal = public(principal, session, row, include_previous=include_previous)
     if represents_department(principal, row.target_department_id):
         result.basis_url = f"/orgs/{principal.org_id}/capacity/demands/{row.id}/basis"
@@ -448,6 +529,13 @@ def submit_demand(
         description=description,
         minimum_level=minimum_level,
     )
+    row = create_demand(principal, session, body, via=via, client_name=client_name)
+    return demand_public(principal, session, row)
+
+
+def require_requesting_department(
+    principal: Principal, session: Session, requesting_department_id: UUID
+) -> UUID:
     require_requester(principal, session)
     if principal.user_id is None:
         raise CapacityForbidden()
@@ -462,13 +550,41 @@ def submit_demand(
             )
         if not allowed:
             raise CapacityForbidden()
+    return principal.user_id
+
+
+def create_demand(
+    principal: Principal,
+    session: Session,
+    body: DemandInput,
+    *,
+    project_id: UUID | None = None,
+    role: ProjectRoleInput | None = None,
+    via: Via = "web",
+    client_name: str | None = None,
+) -> CapacityDemand:
+    requester = require_requesting_department(
+        principal, session, body.requesting_department_id
+    )
+    target_department_id = body.target_department_id
     reference = department_reference(
-        session, principal.org_id, target_department_id, capability_key, minimum_level
+        session,
+        principal.org_id,
+        target_department_id,
+        body.capability_key,
+        body.minimum_level,
     )
     row = CapacityDemand(
         org_id=principal.org_id,
-        requester_user_id=principal.user_id,
+        requester_user_id=requester,
         capability_name=reference.capability_name,
+        project_id=project_id,
+        role_name=role.role_name if role else None,
+        extra_capabilities=[
+            item.model_dump(mode="json") for item in role.extra_capabilities
+        ]
+        if role
+        else [],
         **body.model_dump(),
     )
     session.add(row)
@@ -478,14 +594,14 @@ def submit_demand(
             org_id=principal.org_id,
             demand_id=row.id,
             kind=DemandEventKind.SUBMITTED,
-            actor_user_id=principal.user_id,
+            actor_user_id=requester,
             text=body.description,
             via=via,
         )
     )
     for user_id in sorted(
         responder_user_ids(session, principal.org_id, target_department_id)
-        - {principal.user_id}
+        - {requester}
     ):
         add_item(
             session,
@@ -507,7 +623,7 @@ def submit_demand(
         {},
     )
     session.flush()
-    return demand_public(principal, session, row)
+    return row
 
 
 def qualified_people(

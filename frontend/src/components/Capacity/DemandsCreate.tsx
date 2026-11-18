@@ -1,17 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
-import {
-  CapabilitiesService,
-  CapacityService,
-  type DemandInput,
-  EmployeesService,
-} from "@/client"
-import { record } from "@/components/Profile/fields"
+import { CapacityService, type DemandInput } from "@/client"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { useOrg } from "@/hooks/useOrg"
+import {
+  capabilityLevels,
+  DemandWorkFields,
+  demandWork,
+  useDemandOptions,
+} from "./DemandFields"
 import { DemandsReference } from "./DemandsReference"
 
 export function DemandsCreate({
@@ -23,31 +21,12 @@ export function DemandsCreate({
   back: () => void
   created: (id: string) => void
 }) {
-  const { roles, employeeId, managedDepartmentIds } = useOrg()
   const cache = useQueryClient()
   const [target, setTarget] = useState("")
   const [capability, setCapability] = useState("")
   const [minimum, setMinimum] = useState("")
   const [preview, setPreview] = useState<DemandInput | null>(null)
-  const options = useQuery({
-    queryKey: ["capacity", orgId, "demand-options"],
-    queryFn: async () => {
-      const [departments, capabilities, self] = await Promise.all([
-        CapacityService.listCapacityDepartments({ path: { org_id: orgId } }),
-        CapabilitiesService.readCapabilities({ path: { org_id: orgId } }),
-        employeeId
-          ? EmployeesService.readEmployee({
-              path: { org_id: orgId, employee_id: employeeId },
-            })
-          : null,
-      ])
-      return {
-        departments: departments.data.data,
-        capabilities: capabilities.data.data,
-        ownDepartment: self?.data.department?.id,
-      }
-    },
-  })
+  const options = useDemandOptions(orgId)
   const reference = useQuery({
     queryKey: ["capacity", orgId, "reference", target, capability, minimum],
     queryFn: async () =>
@@ -73,20 +52,9 @@ export function DemandsCreate({
   })
   if (options.isPending) return <ProfileLoading />
   if (options.isError) return <ProfileError retry={() => options.refetch()} />
-  const { departments, capabilities, ownDepartment } = options.data
-  const requesting = departments.filter(
-    (d) =>
-      roles.includes("org_admin") ||
-      (managedDepartmentIds.length
-        ? managedDepartmentIds.includes(d.id)
-        : d.id === ownDepartment),
-  )
+  const { departments, capabilities, requesting } = options.data
   const selectedCapability = capabilities.find((c) => c.key === capability)
-  const rubric = selectedCapability?.level_rubric
-  const levels =
-    record(rubric) && Array.isArray(rubric.levels)
-      ? rubric.levels.filter(record)
-      : []
+  const levels = capabilityLevels(selectedCapability?.level_rubric)
   return (
     <div className="max-w-3xl space-y-5">
       <Button variant="outline" onClick={back} disabled={submit.isPending}>
@@ -103,11 +71,7 @@ export function DemandsCreate({
             target_department_id: target,
             capability_key: capability,
             minimum_level: minimum || null,
-            headcount: Number(data.get("headcount")),
-            allocation_percent: Number(data.get("allocation")),
-            window_start: String(data.get("start")),
-            window_end: String(data.get("end")),
-            description: String(data.get("description")).trim(),
+            ...demandWork(data),
           })
         }}
       >
@@ -169,42 +133,7 @@ export function DemandsCreate({
               </select>
             </div>
           ))}
-          {[
-            {
-              name: "headcount",
-              label: "人数",
-              type: "number",
-              min: 1,
-              max: 50,
-            },
-            {
-              name: "allocation",
-              label: "每人投入比例（%）",
-              type: "number",
-              min: 10,
-              max: 100,
-            },
-            { name: "start", label: "时间窗口开始", type: "date" },
-            { name: "end", label: "时间窗口结束", type: "date" },
-          ].map(({ name, label, ...input }) => (
-            <label
-              key={name}
-              htmlFor={`demand-${name}`}
-              className="space-y-2 text-sm font-medium"
-            >
-              <span>{label}</span>
-              <Input id={`demand-${name}`} name={name} {...input} required />
-            </label>
-          ))}
-          <label className="space-y-2 text-sm font-medium sm:col-span-2">
-            <span>需求说明</span>
-            <textarea
-              name="description"
-              required
-              maxLength={2000}
-              className="min-h-28 w-full rounded-md border bg-background p-3"
-            />
-          </label>
+          <DemandWorkFields />
           <Button
             type="submit"
             disabled={!requesting.length || !target || !capability}

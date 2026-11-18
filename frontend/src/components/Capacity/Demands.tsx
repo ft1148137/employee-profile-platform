@@ -115,6 +115,11 @@ function Demands({
               <p className="font-medium">
                 {row.capability_name} · {demandStatuses[row.status]}
               </p>
+              {row.project && (
+                <p className="break-words text-sm">
+                  项目：{row.project.title} · 角色：{row.project.role_name}
+                </p>
+              )}
               <p className="whitespace-pre-wrap break-words">
                 {row.description}
               </p>

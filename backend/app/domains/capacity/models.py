@@ -157,12 +157,42 @@ class CapacityWorkloadRequest(CapacityDecision, TenantRecord, table=True):
     end_week: date | None = None
 
 
+REASON_CODE_CHECK = (
+    "reason_code IN ('capacity', 'skill', 'timing', 'priority', 'scope', 'other')"
+)
+
+
+class CapacityProject(TenantRecord, table=True):
+    __tablename__ = "capacity_project"
+    __table_args__ = (
+        UniqueConstraint("org_id", "id"),
+        tenant_fk("requesting_department_id", "department"),
+        member_fk("requester_user_id"),
+        CheckConstraint("length(title) BETWEEN 1 AND 100", name="project_title"),
+        CheckConstraint("length(description) <= 2000", name="project_description"),
+    )
+    requesting_department_id: UUID
+    requester_user_id: UUID
+    title: str = Field(max_length=100)
+    description: str = Field(max_length=2000)
+
+
 class CapacityDemand(TenantRecord, table=True):
     __tablename__ = "capacity_demand"
     __table_args__ = (
         UniqueConstraint("org_id", "id"),
         tenant_fk("requesting_department_id", "department"),
         tenant_fk("target_department_id", "department"),
+        ForeignKeyConstraint(
+            ["org_id", "project_id"],
+            ["capacity_project.org_id", "capacity_project.id"],
+            name="fk_demand_project",
+        ),
+        Index("ix_capacity_demand_project", "org_id", "project_id"),
+        CheckConstraint(
+            "project_id IS NULL OR (role_name IS NOT NULL AND length(role_name) BETWEEN 1 AND 50)",
+            name="demand_project_role",
+        ),
         member_fk("requester_user_id"),
         CheckConstraint("headcount BETWEEN 1 AND 50", name="demand_headcount"),
         CheckConstraint(
@@ -194,6 +224,30 @@ class CapacityDemand(TenantRecord, table=True):
     committed_end_date: date | None = None
     revision: int = 1
 
+    project_id: UUID | None = None
+    role_name: str | None = Field(default=None, max_length=50)
+    extra_capabilities: list[dict[str, JsonValue]] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, server_default=text("'[]'::jsonb")),
+    )
+
+
+class CapacityDemandDependency(SQLModel, table=True):
+    __tablename__ = "capacity_demand_dependency"
+    __table_args__ = (
+        tenant_fk("project_id", "capacity_project"),
+        tenant_fk("demand_id", "capacity_demand"),
+        tenant_fk("depends_on_demand_id", "capacity_demand"),
+        Index("ix_capacity_demand_dependency_project", "org_id", "project_id"),
+        CheckConstraint(
+            "demand_id <> depends_on_demand_id", name="dependency_not_self"
+        ),
+    )
+    org_id: UUID = Field(primary_key=True)
+    project_id: UUID
+    demand_id: UUID = Field(primary_key=True)
+    depends_on_demand_id: UUID = Field(primary_key=True)
+
 
 class CapacityDemandEvent(TenantRecord, table=True):
     __tablename__ = "capacity_demand_event"
@@ -201,6 +255,7 @@ class CapacityDemandEvent(TenantRecord, table=True):
         UniqueConstraint("org_id", "id"),
         tenant_fk("demand_id", "capacity_demand"),
         member_fk("actor_user_id"),
+        CheckConstraint(REASON_CODE_CHECK, name="demand_event_reason_code"),
         CheckConstraint("length(text) <= 2000", name="demand_event_text"),
         CheckConstraint(
             "via IN ('web', 'bot', 'feishu', 'mcp')", name="demand_event_via"
@@ -209,6 +264,7 @@ class CapacityDemandEvent(TenantRecord, table=True):
     demand_id: UUID
     kind: DemandEventKind = Field(sa_type=enum_type(DemandEventKind))
     actor_user_id: UUID
+    reason_code: str | None = None
     text: str = Field(max_length=2000)
     outcome: DemandOutcome | None = Field(
         default=None, sa_type=enum_type(DemandOutcome)
@@ -387,11 +443,13 @@ class CapacityApproval(TenantRecord, table=True):
             name="approval_reason",
         ),
         CheckConstraint("via IN ('web', 'bot', 'feishu', 'mcp')", name="approval_via"),
+        CheckConstraint(REASON_CODE_CHECK, name="approval_reason_code"),
     )
     proposal_id: UUID
     line_id: UUID | None = None
     party: str
     decision: str
     reason: str | None = Field(default=None, max_length=500)
+    reason_code: str | None = None
     user_id: UUID
     via: str
