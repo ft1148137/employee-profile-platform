@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useId, useState } from "react"
 import { CapacityTrackingService, type TrackingState } from "@/client"
-import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
+import { ProfileError } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CapacityError, useCapacityRefresh } from "./AssignmentFields"
@@ -57,7 +57,8 @@ export function AssignmentTracking({
       refresh()
     },
   })
-  if (tracking.isPending) return <ProfileLoading />
+  if (tracking.isPending)
+    return <p className="text-sm text-muted-foreground">正在加载任务跟踪…</p>
   if (tracking.isError) return <ProfileError retry={() => tracking.refetch()} />
   const tasks = tracking.data.tasks
   const results = search.data?.filter((candidate) =>
