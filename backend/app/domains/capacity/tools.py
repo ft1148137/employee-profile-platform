@@ -26,7 +26,12 @@ from app.domains.capacity.demand_schemas import (
 )
 from app.domains.capacity.extension import request_extension
 from app.domains.capacity.extension_schemas import RequestExtensionInput
-from app.domains.capacity.schemas import CapacityInput, Via, WorkloadRequestInput
+from app.domains.capacity.schemas import (
+    CapacityInput,
+    ReasonCode,
+    Via,
+    WorkloadRequestInput,
+)
 from app.domains.capacity.settings import CapacityForbidden
 from app.domains.capacity.workload import get_my_workload, request_workload_change
 from app.domains.employee_tools import EmployeeTool
@@ -46,6 +51,7 @@ def respond_demand(
     revision: int,
     text: str | None = None,
     *,
+    reason_code: ReasonCode | None = None,
     via: Via = "web",
     client_name: str | None = None,
 ) -> DemandPublic:
@@ -69,6 +75,7 @@ def respond_demand(
         action,
         revision,
         text,
+        reason_code=reason_code,
         via=via,
         client_name=client_name,
     )
@@ -102,14 +109,14 @@ CAPACITY_TOOLS = (
     ),
     EmployeeTool(
         "reply_demand",
-        "代表本部门答复需求并确认承诺日期；MCP 不提议方案或预占人员",
+        "代表本部门答复需求并确认承诺日期；暂不能承接时须选择原因代码，其他须写说明；MCP 不提议方案或预占人员",
         ReplyDemandInput,
         reply_demand,
         True,
     ),
     EmployeeTool(
         "respond_demand",
-        "接受、追问或撤回我方需求；有提议时追问为拒绝（需理由），接受须点击网页或助手确认卡",
+        "接受、追问或撤回我方需求；有待处理提议时追问为拒绝（须填写原因代码和说明），接受须点击网页或助手确认卡",
         RespondDemandInput,
         respond_demand,
         True,

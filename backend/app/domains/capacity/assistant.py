@@ -28,7 +28,7 @@ from app.domains.capacity.models import (
     DemandStatus,
     ProposalStatus,
 )
-from app.domains.capacity.schemas import WorkloadRequestInput
+from app.domains.capacity.schemas import REASON_LABELS, WorkloadRequestInput
 from app.domains.capacity.settings import (
     CapacityConflict,
     CapacityForbidden,
@@ -237,6 +237,8 @@ def check_demand_response(db: Session, p: Principal, value: BaseModel) -> str:
     pending = detail.proposal
     proposal_text = ""
     if pending is not None and pending.status == "pending":
+        if body.action == "follow_up":
+            demand.require_rejection_reason(body.reason_code, body.text)
         if body.action == "follow_up" and (not body.text or len(body.text) > 500):
             raise proposal.ProposalConflict("拒绝方案时必须填写不超过 500 字的理由")
         proposal_text = (
@@ -256,9 +258,20 @@ def check_demand_response(db: Session, p: Principal, value: BaseModel) -> str:
                 else "\n确认后撤回需求并释放预占"
             )
         )
+    rejecting = (
+        pending is not None
+        and pending.status == "pending"
+        and body.action == "follow_up"
+    )
+    reason = (
+        f"拒绝原因：{REASON_LABELS[body.reason_code]}\n"
+        if rejecting and body.reason_code is not None
+        else ""
+    )
     return (
         f"需求：{detail.capability_name}\n原说明：{detail.description}\n"
-        f"操作：{RESPONSES[body.action]}\n说明：{body.text or '无'}\n"
+        f"操作：{'拒绝方案' if rejecting else RESPONSES[body.action]}\n{reason}"
+        f"说明：{body.text or '无'}\n"
         f"修订：{body.revision}{proposal_text}"
     )
 
@@ -278,12 +291,17 @@ def check_demand_reply(db: Session, p: Principal, value: BaseModel) -> str:
         raise ChangeOnWeb()
     if row.revision != body.revision or row.status != DemandStatus.SUBMITTED:
         raise CapacityConflict()
+    reason = ""
+    if body.outcome == DemandOutcome.NOT_NOW:
+        demand.require_rejection_reason(body.reason_code, body.text)
+        if body.reason_code is not None:
+            reason = f"暂不能承接的原因：{REASON_LABELS[body.reason_code]}\n"
     description, _, conditions = body.text.partition("\n条件：")
     content = (
         f"需求：{row.capability_name}\n结论："
         f"{ {'can_do': '能做', 'partial': '能做一部分：需要需求方同意下面的条件，或只能承接部分人数、时间、投入', 'not_now': '暂时不能'}[body.outcome] }\n"
         f"承诺日期：{body.start_date or '未定'} 至 {body.end_date or '未定'}\n"
-        f"条件：{conditions.strip() or '无'}\n说明：{description}\n修订：{body.revision}\n"
+        f"{reason}条件：{conditions.strip() or '无'}\n说明：{description}\n修订：{body.revision}\n"
         "确认后把答复发给需求方，不分配人员，不改其他承诺。"
     )
     if body.lender_department_id is not None:
@@ -403,6 +421,12 @@ def call(
         return {"card_id": str(card.card_id), "preview": content, "status": "pending"}
     except ValidationError as exc:
         return {"error": validation_message(exc, "工具参数不正确")}
+    except demand.RejectionReasonInvalid as exc:
+        return {
+            "error": f"{exc.detail}，请用答复卡重新提交"
+            if name == "prepare_demand_reply"
+            else exc.detail
+        }
     except HTTPException as exc:
         return {"error": exc.detail}
 
@@ -490,6 +514,8 @@ def act(
         card.result = (
             f"{RESULTS[card.kind]}，编号：{result.model_dump(mode='json')['id']}"
         )
+    except demand.RejectionReasonInvalid:
+        card.status, card.result = "failed", "缺少有效的拒绝原因，请重新出卡"
     except HTTPException as exc:
         card.status, card.result = (
             "failed",

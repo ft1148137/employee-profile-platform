@@ -343,7 +343,12 @@ def test_authorization_validation_and_terminal_states(case: tuple, db: Session) 
     api(
         path + "/reply",
         "b",
-        {"outcome": "not_now", "text": "暂时不能承接", "revision": 1},
+        {
+            "outcome": "not_now",
+            "reason_code": "capacity",
+            "text": "暂时不能承接",
+            "revision": 1,
+        },
     )
     api(path + "/respond", body={"action": "accept", "revision": 2}, status=409)
     api(path + "/respond", body={"action": "withdraw", "revision": 1}, status=409)

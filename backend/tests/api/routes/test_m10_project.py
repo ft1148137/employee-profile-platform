@@ -206,7 +206,12 @@ def test_project_views_keep_department_boundaries(
     response = client.post(
         f"{base}/demands/{first['id']}/reply",
         headers=auth["b0"],
-        json={"outcome": "not_now", "text": "需要另行确认交付条件", "revision": 1},
+        json={
+            "outcome": "not_now",
+            "reason_code": "scope",
+            "text": "需要另行确认交付条件",
+            "revision": 1,
+        },
     )
     assert response.status_code == 200, response.text
     responder_name = response.json()["events"][-1]["responder_name"]

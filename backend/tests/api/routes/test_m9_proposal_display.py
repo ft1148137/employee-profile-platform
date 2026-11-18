@@ -415,7 +415,12 @@ def test_anonymous_change_aligns_numbers_and_marks_replacement(
 
     # Reject and verify add / remove status tagging as well.
     rejected = respond(
-        client, case, offer.json()["revision"], "follow_up", text="改人再看"
+        client,
+        case,
+        offer.json()["revision"],
+        "follow_up",
+        text="改人再看",
+        reason_code="skill",
     )
     assert rejected.status_code == 200, rejected.text
     db.refresh(demand)
@@ -443,7 +448,14 @@ def test_anonymous_change_aligns_numbers_and_marks_replacement(
     ]
     assert [p["number"] for p in exp_prop["participants"]] == [1, 2, 3, 4]
 
-    respond(client, case, expanded.json()["revision"], "follow_up", text="改为缩减一人")
+    respond(
+        client,
+        case,
+        expanded.json()["revision"],
+        "follow_up",
+        text="改为缩减一人",
+        reason_code="scope",
+    )
     db.refresh(demand)
     reduced = client.post(
         f"{url}/capacity/demands/{demand.id}/change",

@@ -21,6 +21,7 @@ from app.domains.capacity.demand import (
     get_demand_basis,
     qualified_people,
     represents_department,
+    require_rejection_reason,
     responder_user_ids,
     validate_department_text,
     validate_load_words,
@@ -38,6 +39,7 @@ from app.domains.capacity.demand_schemas import (
     ParticipantPublic,
     PlanReplyInput,
     ProposalApprovalPublic,
+    ProposalDecision,
     ProposalDetail,
     ProposalLineInput,
     ProposalLinePublic,
@@ -57,7 +59,7 @@ from app.domains.capacity.models import (
     DemandStatus,
     ProposalStatus,
 )
-from app.domains.capacity.schemas import Via
+from app.domains.capacity.schemas import ReasonCode, Via
 from app.domains.capacity.settings import (
     CapacityForbidden,
     CapacityNotFound,
@@ -504,6 +506,59 @@ def approvals_for(session: Session, row: CapacityProposal) -> list[CapacityAppro
     )
 
 
+def _public_approvals(
+    principal: Principal, approvals: list[CapacityApproval], *, detailed: bool
+) -> list[ProposalApprovalPublic]:
+    return [
+        ProposalApprovalPublic(
+            party=a.party,
+            decision=a.decision,
+            created_at=a.created_at,
+            reason=a.reason if detailed or a.user_id == principal.user_id else None,
+            reason_code=a.reason_code
+            if detailed or a.user_id == principal.user_id
+            else None,
+        )
+        for a in approvals
+        if a.party not in ("employee", "lender_manager")
+    ]
+
+
+def decision_history(
+    principal: Principal, session: Session, demand: CapacityDemand
+) -> list[ProposalDecision]:
+    detailed = represents_department(principal, demand.target_department_id)
+    rows = session.exec(
+        select(CapacityProposal)
+        .where(
+            CapacityProposal.org_id == principal.org_id,
+            CapacityProposal.demand_id == demand.id,
+        )
+        .order_by(col(CapacityProposal.created_at), col(CapacityProposal.id))
+    ).all()
+    return [
+        ProposalDecision(
+            id=row.id,
+            kind=row.kind,
+            status=row.status,
+            fail_reason=(
+                "borrow_unsuccessful"
+                if row.fail_reason
+                and any(
+                    line.lender_department_id is not None
+                    for line in lines_for(session, row)
+                )
+                else row.fail_reason
+            ),
+            created_at=row.created_at,
+            approvals=_public_approvals(
+                principal, approvals_for(session, row), detailed=detailed
+            ),
+        )
+        for row in rows
+    ]
+
+
 def _grouped_lines(
     principal: Principal,
     session: Session,
@@ -576,11 +631,8 @@ def _aligned_participants(
     prev_numbers = {key: index for index, key in enumerate(prev_groups, start=1)}
     removed = [key for key in prev_groups if key not in curr_groups]
     added = [key for key in curr_groups if key not in prev_groups]
-    replacements = list(zip(removed, added, strict=False))
-    replaced_prev = {old_key for old_key, _ in replacements}
-    replaced_curr = {
-        new_key: prev_numbers[old_key] for old_key, new_key in replacements
-    }
+    replaced = removed[0] if len(removed) == len(added) == 1 else None
+    replaced_curr = {added[0]: prev_numbers[replaced]} if replaced is not None else {}
     next_number = len(prev_groups) + 1
     prev_participants: list[ParticipantPublic] = [
         ChangeProposalParticipant(
@@ -588,7 +640,7 @@ def _aligned_participants(
             segments=segments,
             status=(
                 "replaced"
-                if key in replaced_prev
+                if key == replaced
                 else "removed"
                 if key not in curr_groups
                 else "unchanged"
@@ -715,16 +767,7 @@ def public(
             if row.kind == "change"
             else (reply.text if reply else "")
         ),
-        approvals=[
-            ProposalApprovalPublic(
-                party=a.party,
-                decision=a.decision,
-                created_at=a.created_at,
-                reason=a.reason if detailed or a.user_id == principal.user_id else None,
-            )
-            for a in approvals
-            if a.party not in ("employee", "lender_manager")
-        ],
+        approvals=_public_approvals(principal, approvals, detailed=detailed),
     )
     if not detailed:
         return summary
@@ -870,6 +913,199 @@ def check_requester_decision(
         raise ProposalSelfApprovalForbidden()
 
 
+def _ready_requester_approval(
+    principal: Principal,
+    session: Session,
+    row: CapacityProposal,
+    lines: list[CapacityProposalLine],
+    approvals: list[CapacityApproval],
+    employee_approvals: dict[UUID | None, UUID],
+    *,
+    via: Via,
+    requester_accepts: bool,
+) -> CapacityApproval | None:
+    requester = next((a for a in approvals if a.party == "requester"), None)
+    if requester_accepts:
+        check_requester_decision(principal, row, approvals, lines)
+        assert principal.user_id is not None
+        requester = CapacityApproval(
+            org_id=principal.org_id,
+            proposal_id=row.id,
+            party="requester",
+            decision="approved",
+            user_id=principal.user_id,
+            via=via,
+        )
+    if lines[0].lender_department_id is not None and (
+        requester is None or set(employee_approvals) != {line.id for line in lines}
+    ):
+        if requester_accepts:
+            session.add(requester)
+            row.revision += 1
+            session.add(row)
+            session.flush()
+        return None
+    assert requester is not None
+    return requester
+
+
+def _recheck_acceptance(
+    session: Session,
+    demand: CapacityDemand,
+    row: CapacityProposal,
+    requester: CapacityApproval,
+    lines: list[CapacityProposalLine],
+    approvals: list[CapacityApproval],
+    employee_approvals: dict[UUID | None, UUID],
+) -> Principal:
+    proposer = current_principal(session, row.org_id, row.proposed_by_user_id)
+    accepter = current_principal(session, row.org_id, requester.user_id)
+    if not represents_department(proposer, demand.target_department_id):
+        raise ProposalConflict("提议人已没有目标部门的审批权限")
+    if not (
+        accepter.user_id == demand.requester_user_id
+        or demand.requesting_department_id in accepter.managed_department_ids
+    ):
+        raise ProposalConflict("接受人已没有需求方审批权限")
+    if demand.revision != row.demand_revision or demand.status != (
+        DemandStatus.ACCEPTED if row.kind == "change" else DemandStatus.REPLIED
+    ):
+        raise ProposalConflict("需求版本已变化，请重新规划")
+    if any(line.employee_id is None for line in lines):
+        raise ProposalConflict("借调尚未完成审批")
+    inputs = [ProposalLineInput.model_validate(line) for line in lines]
+    lender_department_id = lines[0].lender_department_id
+    if lender_department_id is None:
+        check_lines(
+            proposer,
+            session,
+            demand,
+            inputs,
+            exclude=row.id,
+            replace=row.kind == "change",
+            conflict_viewer=accepter,
+        )
+    else:
+        representatives = responder_user_ids(session, row.org_id, lender_department_id)
+        selected = {
+            a.line_id: a.user_id
+            for a in approvals
+            if a.party == "lender_manager" and a.decision == "approved"
+        }
+        if (
+            set(selected) != {line.id for line in lines}
+            or not set(selected.values()) <= representatives
+        ):
+            raise ProposalConflict("原部门审批权限已变化")
+        if any(
+            current_principal(
+                session, row.org_id, employee_approvals[line.id]
+            ).employee_id
+            != line.employee_id
+            for line in lines
+        ):
+            raise ProposalConflict("借调员工的账号已变化")
+        lenders = {
+            line_input.employee_id: current_principal(
+                session, row.org_id, selected[line.id]
+            )
+            for line, line_input in zip(lines, inputs, strict=True)
+        }
+        check_lines(
+            next(iter(lenders.values())),
+            session,
+            demand,
+            inputs,
+            exclude=row.id,
+            replace=row.kind == "change",
+            lender_department_id=lender_department_id,
+            lenders=lenders,
+        )
+    return accepter
+
+
+def _replace_segments(
+    session: Session,
+    demand: CapacityDemand,
+    row: CapacityProposal,
+    lines: list[CapacityProposalLine],
+    accepter: Principal,
+    acceptance_via: Via,
+) -> set[UUID]:
+    old_segments = (
+        active_segments(session, row.org_id, demand.id, row.replaces_proposal_id)
+        if row.replaces_proposal_id is not None
+        else []
+    )
+    unchanged: dict[tuple[UUID, date | None, date, int], list[CapacityAssignment]] = (
+        defaultdict(list)
+    )
+    for assignment, _ in old_segments:
+        unchanged[
+            (
+                assignment.employee_id,
+                assignment.start_date,
+                assignment.due_date,
+                assignment.allocation_percent,
+            )
+        ].append(assignment)
+    added = []
+    for line in lines:
+        assert line.employee_id is not None
+        retained = unchanged.get(
+            (line.employee_id, line.start_date, line.end_date, line.allocation_percent)
+        )
+        if retained:
+            kept = retained.pop()
+            kept.proposal_line_id = line.id
+            assert_assignment_line(session, kept)
+            session.add(kept)
+        else:
+            added.append(line)
+    for replaced in unchanged.values():
+        for assignment in replaced:
+            assignment.status, assignment.closed_at = (
+                AssignmentStatus.CANCELLED,
+                utc_now(),
+            )
+            session.add(assignment)
+    if old_segments:
+        session.flush()
+    for line in added:
+        assert line.employee_id is not None
+        assignment = CapacityAssignment(
+            org_id=row.org_id,
+            demand_id=demand.id,
+            employee_id=line.employee_id,
+            proposal_line_id=line.id,
+            allocation_percent=line.allocation_percent,
+            start_date=line.start_date,
+            due_date=line.end_date,
+            assigned_by_user_id=row.proposed_by_user_id,
+        )
+        assert_assignment_line(session, assignment)
+        session.add(assignment)
+        audit(
+            accepter,
+            session,
+            "capacity.assignment_created",
+            "capacity_assignment",
+            assignment.id,
+            acceptance_via,
+            None,
+            {
+                "proposal_id": str(row.id),
+                "proposal_line_id": str(line.id),
+                "outside_basis": line.outside_basis,
+            },
+        )
+    return {line.employee_id for line in added if line.employee_id is not None} | {
+        assignment.employee_id
+        for replaced in unchanged.values()
+        for assignment in replaced
+    }
+
+
 def accept(
     principal: Principal,
     session: Session,
@@ -887,98 +1123,33 @@ def accept(
     lines = lines_for(session, row)
     lender_department_id = lines[0].lender_department_id
     approvals = approvals_for(session, row)
-    requester = next((a for a in approvals if a.party == "requester"), None)
-    if requester_accepts:
-        check_requester_decision(principal, row, approvals, lines)
-        assert principal.user_id is not None
-        requester = CapacityApproval(
-            org_id=principal.org_id,
-            proposal_id=row.id,
-            party="requester",
-            decision="approved",
-            user_id=principal.user_id,
-            via=via,
-        )
     employee_approvals = {
         a.line_id: a.user_id
         for a in approvals
         if a.party == "employee" and a.decision == "approved"
     }
-    if lender_department_id is not None and (
-        requester is None or set(employee_approvals) != {line.id for line in lines}
-    ):
-        if requester_accepts:
-            session.add(requester)
-            row.revision += 1
-            session.add(row)
-            session.flush()
+    requester = _ready_requester_approval(
+        principal,
+        session,
+        row,
+        lines,
+        approvals,
+        employee_approvals,
+        via=via,
+        requester_accepts=requester_accepts,
+    )
+    if requester is None:
         return
-    assert requester is not None
     try:
-        proposer = current_principal(session, principal.org_id, row.proposed_by_user_id)
-        accepter = current_principal(session, principal.org_id, requester.user_id)
-        if not represents_department(proposer, demand.target_department_id):
-            raise ProposalConflict("提议人已没有目标部门的审批权限")
-        if not (
-            accepter.user_id == demand.requester_user_id
-            or demand.requesting_department_id in accepter.managed_department_ids
-        ):
-            raise ProposalConflict("接受人已没有需求方审批权限")
-        if demand.revision != row.demand_revision or demand.status != (
-            DemandStatus.ACCEPTED if row.kind == "change" else DemandStatus.REPLIED
-        ):
-            raise ProposalConflict("需求版本已变化，请重新规划")
-        if any(line.employee_id is None for line in lines):
-            raise ProposalConflict("借调尚未完成审批")
-        inputs = [ProposalLineInput.model_validate(line) for line in lines]
-        if lender_department_id is None:
-            check_lines(
-                proposer,
-                session,
-                demand,
-                inputs,
-                exclude=row.id,
-                replace=row.kind == "change",
-                conflict_viewer=accepter,
-            )
-        else:
-            representatives = responder_user_ids(
-                session, row.org_id, lender_department_id
-            )
-            selected = {
-                a.line_id: a.user_id
-                for a in approvals
-                if a.party == "lender_manager" and a.decision == "approved"
-            }
-            if (
-                set(selected) != {line.id for line in lines}
-                or not set(selected.values()) <= representatives
-            ):
-                raise ProposalConflict("原部门审批权限已变化")
-            if any(
-                current_principal(
-                    session, row.org_id, employee_approvals[line.id]
-                ).employee_id
-                != line.employee_id
-                for line in lines
-            ):
-                raise ProposalConflict("借调员工的账号已变化")
-            lenders = {
-                line_input.employee_id: current_principal(
-                    session, row.org_id, selected[line.id]
-                )
-                for line, line_input in zip(lines, inputs, strict=True)
-            }
-            check_lines(
-                next(iter(lenders.values())),
-                session,
-                demand,
-                inputs,
-                exclude=row.id,
-                replace=row.kind == "change",
-                lender_department_id=lender_department_id,
-                lenders=lenders,
-            )
+        accepter = _recheck_acceptance(
+            session,
+            demand,
+            row,
+            requester,
+            lines,
+            approvals,
+            employee_approvals,
+        )
     except ProposalConflict as error:
         if expire_locked(failure_actor, session, demand, row, via=via):
             raise ProposalFailed(
@@ -1010,74 +1181,10 @@ def accept(
     if requester_accepts:
         session.add(requester)
     acceptance_via = cast(Via, requester.via)
-    old_segments = (
-        active_segments(session, row.org_id, demand.id, row.replaces_proposal_id)
-        if row.replaces_proposal_id is not None
-        else []
-    )
-    unchanged: dict[tuple[UUID, date | None, date, int], list[CapacityAssignment]] = (
-        defaultdict(list)
-    )
-    for assignment, _ in old_segments:
-        unchanged[
-            (
-                assignment.employee_id,
-                assignment.start_date,
-                assignment.due_date,
-                assignment.allocation_percent,
-            )
-        ].append(assignment)
     previous_end = demand.committed_end_date
-    added = []
-    for line in lines:
-        assert line.employee_id is not None
-        retained = unchanged.get(
-            (line.employee_id, line.start_date, line.end_date, line.allocation_percent)
-        )
-        if retained:
-            kept = retained.pop()
-            kept.proposal_line_id = line.id
-            assert_assignment_line(session, kept)
-            session.add(kept)
-        else:
-            added.append(line)
-    for replaced in unchanged.values():
-        for assignment in replaced:
-            assignment.status, assignment.closed_at = (
-                AssignmentStatus.CANCELLED,
-                utc_now(),
-            )
-            session.add(assignment)
-    if old_segments:
-        session.flush()
-    for line in added:
-        assert line.employee_id is not None
-        assignment = CapacityAssignment(
-            org_id=principal.org_id,
-            demand_id=demand.id,
-            employee_id=line.employee_id,
-            proposal_line_id=line.id,
-            allocation_percent=line.allocation_percent,
-            start_date=line.start_date,
-            due_date=line.end_date,
-            assigned_by_user_id=row.proposed_by_user_id,
-        )
-        assert_assignment_line(session, assignment)
-        session.add(assignment)
-        audit(
-            accepter,
-            session,
-            "capacity.assignment_created",
-            "capacity_assignment",
-            assignment.id,
-            acceptance_via,
-            None,
-            {
-                "proposal_id": str(row.id),
-                "proposal_line_id": str(line.id),
-                "outside_basis": line.outside_basis,
-            },
-        )
+    changed_people = _replace_segments(
+        session, demand, row, lines, accepter, acceptance_via
+    )
     change = row.kind == "change"
     if change:
         demand.committed_start_date = min(line.start_date for line in lines)
@@ -1114,13 +1221,6 @@ def accept(
                 via=acceptance_via,
             )
         )
-    changed_people = {
-        line.employee_id for line in added if line.employee_id is not None
-    } | {
-        assignment.employee_id
-        for replaced in unchanged.values()
-        for assignment in replaced
-    }
     for employee_id in sorted(changed_people):
         notify_employee(principal, session, employee_id)
     notify_parties(
@@ -1235,6 +1335,7 @@ def borrow_requests(
                 end_date=line.end_date,
                 status=status,
                 reason=own.reason if mine and own else None,
+                reason_code=own.reason_code if own else None,
                 candidates=candidates[demand.id]
                 if status == "pending_selection"
                 else [],
@@ -1284,6 +1385,9 @@ def decide_borrow(
         raise CapacityNotFound()
     if row.status != ProposalStatus.PENDING:
         raise decided(row)
+    declined = body.action in ("reject", "decline")
+    if declined:
+        require_rejection_reason(body.reason_code, body.reason)
     failure_actor = principal if manager else Principal.system_worker(row.org_id)
     if expire_locked(failure_actor, session, demand, row):
         raise ProposalFailed("借调未达成", code="proposal_expired")
@@ -1364,7 +1468,6 @@ def decide_borrow(
         )
     if body.action == "reject" and body.reason is None:
         raise ProposalConflict("请填写拒绝理由")
-    declined = body.action in ("reject", "decline")
     session.add(
         CapacityApproval(
             org_id=row.org_id,
@@ -1375,6 +1478,7 @@ def decide_borrow(
             via="web",
             decision="rejected" if declined else "approved",
             reason=(body.reason or "未填写理由") if declined else None,
+            reason_code=body.reason_code if declined else None,
         )
     )
     if declined:
@@ -1403,6 +1507,7 @@ def respond(
     revision: int,
     text: str | None,
     *,
+    reason_code: ReasonCode | None = None,
     via: Via,
 ) -> DemandPublic:
     if row.kind == "change" and via != "web":
@@ -1424,6 +1529,8 @@ def respond(
         else demand.revision
     )
     check_pending(row, revision, expected)
+    if action == "follow_up":
+        require_rejection_reason(reason_code, text)
     if expire_locked(principal, session, demand, row, via=via):
         raise ProposalFailed("方案已过期，请对方重新安排", code="proposal_expired")
     if action == "accept":
@@ -1444,6 +1551,7 @@ def respond(
                 user_id=principal.user_id,
                 via=via,
                 reason=text,
+                reason_code=reason_code,
             )
         )
         fail(

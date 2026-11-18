@@ -133,7 +133,12 @@ def test_reply_basis_keeps_bands_only_for_representatives(
     replied = client.post(
         f"{path}/reply",
         headers=auth["b"],
-        json={"outcome": "not_now", "text": "合成答复", "revision": 1},
+        json={
+            "outcome": "not_now",
+            "reason_code": "capacity",
+            "text": "合成答复",
+            "revision": 1,
+        },
     )
     assert replied.status_code == 200, replied.text
     assert BANDS.issubset(replied.json()["events"][-1]["basis"])

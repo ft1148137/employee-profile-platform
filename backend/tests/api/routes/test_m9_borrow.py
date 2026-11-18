@@ -404,14 +404,25 @@ def test_borrow_party_cannot_also_reject_as_requesting_manager(
     path = f"{url}/capacity/demands/{demand.id}"
     assert client.get(path, headers=auth[role]).status_code == 200
     rejected = respond(
-        client, case, reply["revision"], "follow_up", role=role, text="合成拒绝理由"
+        client,
+        case,
+        reply["revision"],
+        "follow_up",
+        role=role,
+        text="合成拒绝理由",
+        reason_code="priority",
     )
     assert rejected.status_code == 403 and "不能审批自己" in rejected.text
     assert state() == before
     assert not rows(db, CapacityAssignment, demand)
 
     independent = respond(
-        client, case, reply["revision"], "follow_up", text="合成独立拒绝"
+        client,
+        case,
+        reply["revision"],
+        "follow_up",
+        text="合成独立拒绝",
+        reason_code="priority",
     )
     assert independent.status_code == 200, independent.text
     assert independent.json()["status"] == "submitted"
@@ -478,7 +489,13 @@ def test_decline_is_private_and_leaves_profiles_unchanged(
     private_reason = "只有本人应该看到的合成理由"
     assert (
         decide(
-            client, case, line, "worker", action="decline", reason=private_reason
+            client,
+            case,
+            line,
+            "worker",
+            action="decline",
+            reason=private_reason,
+            reason_code="priority",
         ).status_code
         == 204
     )
@@ -531,10 +548,21 @@ def test_borrow_failure_releases_holds(
     _, _, _, demand = case
     reply, line, worker = offered
     if failure == "manager_rejects":
-        assert decide(client, case, line, "lender", action="reject").status_code == 409
         assert (
             decide(
-                client, case, line, "lender", action="reject", reason="业务原因"
+                client, case, line, "lender", action="reject", reason_code="priority"
+            ).status_code
+            == 409
+        )
+        assert (
+            decide(
+                client,
+                case,
+                line,
+                "lender",
+                action="reject",
+                reason="业务原因",
+                reason_code="priority",
             ).status_code
             == 204
         )
@@ -552,7 +580,14 @@ def test_borrow_failure_releases_holds(
         )
         if failure == "no_reason":
             assert (
-                decide(client, case, line, "worker", action="decline").status_code
+                decide(
+                    client,
+                    case,
+                    line,
+                    "worker",
+                    action="decline",
+                    reason_code="priority",
+                ).status_code
                 == 204
             )
         else:
@@ -701,7 +736,13 @@ def test_each_borrow_line_requires_a_different_person(
     assert not rows(db, CapacityAssignment, demand)
     assert (
         decide(
-            client, case, second, "lender", action="reject", reason="当前无法安排第二人"
+            client,
+            case,
+            second,
+            "lender",
+            action="reject",
+            reason="当前无法安排第二人",
+            reason_code="capacity",
         ).status_code
         == 204
     )

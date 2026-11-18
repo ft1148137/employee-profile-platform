@@ -316,7 +316,12 @@ def test_rejection_and_withdraw_are_idempotent(
                 json={"revision": reply.json()["proposal"]["revision"]},
             )
         return respond(
-            client, case, reply.json()["revision"], action, text="请调整交付时间"
+            client,
+            case,
+            reply.json()["revision"],
+            action,
+            text="请调整交付时间",
+            **({"reason_code": "timing"} if action == "follow_up" else {}),
         )
 
     result = send()
@@ -353,7 +358,14 @@ def test_response_uses_new_plain_reply_after_proposal_ends(
     assert reply.status_code == 200, reply.text
     old_revision = reply.json()["revision"]
     if ending == "rejected":
-        result = respond(client, case, old_revision, "follow_up", text="请调整方案")
+        result = respond(
+            client,
+            case,
+            old_revision,
+            "follow_up",
+            text="请调整方案",
+            reason_code="scope",
+        )
         assert result.status_code == 200, result.text
     elif ending == "expired":
         row = proposal_row(db, demand)
@@ -478,7 +490,14 @@ def test_expired_reject_and_withdraw_follow_expiry_semantics(
                 headers=auth["b"],
                 json={"revision": prop["revision"]},
             )
-        return respond(client, case, demand_rev, action, text="迟到的拒绝")
+        return respond(
+            client,
+            case,
+            demand_rev,
+            action,
+            text="迟到的拒绝",
+            **({"reason_code": "timing"} if action == "follow_up" else {}),
+        )
 
     result = send()
     assert result.status_code == 409, result.text
@@ -1341,7 +1360,12 @@ def test_rejection_reason_limit_and_revision(
     assert reply.status_code == 200, reply.text
     before = counts(db, case[3])
     result = respond(
-        client, case, reply.json()["revision"], "follow_up", text="合" * 501
+        client,
+        case,
+        reply.json()["revision"],
+        "follow_up",
+        text="合" * 501,
+        reason_code="scope",
     )
     assert result.status_code == 409
     result = respond(client, case, reply.json()["revision"] + 1)
