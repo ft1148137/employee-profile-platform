@@ -662,7 +662,7 @@ def respond(
     *,
     via: Via,
 ) -> DemandPublic:
-    if via == "mcp":
+    if via == "mcp" and action == "accept":
         raise CapacityForbidden()
     if principal.user_id == row.proposed_by_user_id and action in (
         "accept",

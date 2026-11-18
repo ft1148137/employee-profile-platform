@@ -71,6 +71,8 @@ EVENT_LABELS = {
     DemandEventKind.FOLLOW_UP: "已追问",
     DemandEventKind.WITHDRAWN: "已撤回",
     DemandEventKind.COMMITMENT_CHANGED: "承诺日期已调整",
+    DemandEventKind.COMMITTED: "承诺已生效",
+    DemandEventKind.PROPOSAL_FAILED: "提议未达成",
 }
 OUTCOME_LABELS = {
     DemandOutcome.CAN_DO: "能做",
@@ -112,6 +114,7 @@ def _demand_view(
 ) -> dict[str, Any]:
     row = demand_row(p, db, demand_id)
     detail = get_demand(p, db, row.id).model_dump(mode="json")
+    proposal = detail.get("proposal")
     if on_read:
         on_read(
             {
@@ -137,6 +140,8 @@ def _demand_view(
             if represents_department(p, row.target_department_id)
             else set()
         )
+        if proposal:
+            on_read({line["employee_id"] for line in proposal.get("lines", [])})
     detail.pop("capability_key", None)
     detail["status"] = STATUS_LABELS[row.status]
     levels = next(
@@ -171,6 +176,12 @@ def _demand_view(
                     )
                     detail["demand_url"] = f"/capacity?tab=outgoing&demand={row.id}"
                 event.pop("text", None)
+        if proposal:
+            if proposal.pop("conditions", None):
+                detail["reply_notice"] = (
+                    "没有读取对方答复正文里的条件，请到需求详情查看"
+                )
+                detail["demand_url"] = f"/capacity?tab=outgoing&demand={row.id}"
     for event in detail["events"]:
         event["kind"] = EVENT_LABELS[event["kind"]]
         if event.get("outcome"):
@@ -351,7 +362,7 @@ def get_approval_status(p: Principal, db: Session, body: DemandIdInput) -> Resul
             "events": detail["events"],
             **{
                 key: detail[key]
-                for key in ("reply_notice", "demand_url")
+                for key in ("proposal", "reply_notice", "demand_url")
                 if key in detail
             },
         }

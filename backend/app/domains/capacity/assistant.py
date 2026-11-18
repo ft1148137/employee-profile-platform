@@ -9,7 +9,7 @@ from app.authz.principal import Principal
 from app.domains.bot import schemas as s
 from app.domains.bot.models import BotSession
 from app.domains.capability.service import get_schema, list_capabilities
-from app.domains.capacity import demand
+from app.domains.capacity import demand, proposal
 from app.domains.capacity.assignment import assignment_rows
 from app.domains.capacity.demand_schemas import (
     LIMITED_REFERENCE_TEXT,
@@ -220,10 +220,30 @@ def check_demand_response(db: Session, p: Principal, value: BaseModel) -> str:
         reply = next((e for e in reversed(detail.events) if e.kind == "replied"), None)
         if reply is None or reply.outcome == DemandOutcome.NOT_NOW:
             raise CapacityConflict()
+    pending = detail.proposal
+    proposal_text = ""
+    if pending is not None and pending.status == "pending":
+        if body.action == "follow_up" and (not body.text or len(body.text) > 500):
+            raise proposal.ProposalConflict("拒绝方案时必须填写不超过 500 字的理由")
+        proposal_text = (
+            f"\n方案人数：{pending.headcount}\n投入："
+            + "、".join(f"{percent}%" for percent in pending.allocation_percents)
+            + f"\n开始日期：{pending.start_date}\n结束日期：{pending.end_date}"
+            + "\n条件：没有读取对方答复正文里的条件，请到需求详情查看"
+            + f"\n/capacity?tab=outgoing&demand={row.id}"
+            + f"\n预占到期时间：{pending.hold_expires_at.isoformat()}"
+            + (
+                "\n确认后对方部门的人员投入会被锁定并生成分配"
+                if body.action == "accept"
+                else "\n确认后拒绝方案并释放预占"
+                if body.action == "follow_up"
+                else "\n确认后撤回需求并释放预占"
+            )
+        )
     return (
         f"需求：{detail.capability_name}\n原说明：{detail.description}\n"
         f"操作：{RESPONSES[body.action]}\n说明：{body.text or '无'}\n"
-        f"修订：{body.revision}"
+        f"修订：{body.revision}{proposal_text}"
     )
 
 
@@ -244,6 +264,11 @@ def check_demand_reply(db: Session, p: Principal, value: BaseModel) -> str:
         f"条件：{conditions.strip() or '无'}\n说明：{description}\n修订：{body.revision}\n"
         "确认后把答复发给需求方，不分配人员，不改其他承诺。"
     )
+    if body.option_id is not None:
+        content += (
+            "\n确认后把方案发给需求方，并为这些人预占投入 72 小时；需求方接受后才生成分配"
+            + ("\n本次明确同意安排需求依据以外的人员" if body.outside_basis else "")
+        )
     demand.validate_department_text(p, db, row.target_department_id, content)
     demand.validate_reply_text(p, db, row, body.text)
     return content
@@ -395,17 +420,42 @@ def act(
         except ValidationError:
             card.status, card.result = "failed", "申请内容已变化，请重新生成确认卡"
             return card
-        result = WRITES[name].handler(
-            p,
-            db,
-            **body.model_dump(),
-            via="feishu" if session.channel == "feishu" else "bot",
-            client_name=session.channel,
-        )
+        with db.begin_nested():
+            try:
+                result: BaseModel
+                if card.kind == "demand_reply" and card.arguments.get("option_id"):
+                    # Planning/Capacity composition belongs to the Agent entrypoint.
+                    from app.domains.bot.tools import confirm_plan_reply
+
+                    result = confirm_plan_reply(
+                        p,
+                        db,
+                        ReplyDemandInput.model_validate(body),
+                        via="feishu" if session.channel == "feishu" else "bot",
+                        client_name=session.channel,
+                    )
+                else:
+                    result = WRITES[name].handler(
+                        p,
+                        db,
+                        **body.model_dump(),
+                        via="feishu" if session.channel == "feishu" else "bot",
+                        client_name=session.channel,
+                    )
+            except proposal.ProposalFailed as exc:
+                card.status, card.result = "failed", str(exc.detail["message"])
+                return card
         card.status = "confirmed"
         card.result = (
             f"{RESULTS[card.kind]}，编号：{result.model_dump(mode='json')['id']}"
         )
     except HTTPException as exc:
-        card.status, card.result = "failed", str(exc.detail)
+        card.status, card.result = (
+            "failed",
+            str(
+                exc.detail.get("message", exc.detail)
+                if isinstance(exc.detail, dict)
+                else exc.detail
+            ),
+        )
     return card
