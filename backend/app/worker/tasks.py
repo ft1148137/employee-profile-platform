@@ -107,7 +107,9 @@ def draft_initial(org_id: str, employee_ids: list[str] | None = None) -> None:
 def sync_run(org_id: str, run_id: str, initial_attempts: int = 0) -> None:
     tenant_task(
         UUID(org_id),
-        lambda principal: execute_sync(principal, UUID(run_id), initial_attempts),
+        lambda principal: execute_sync(
+            principal, UUID(run_id), initial_attempts, after_ingest=recompute
+        ),
     )
 
 

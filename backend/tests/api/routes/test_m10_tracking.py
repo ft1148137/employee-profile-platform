@@ -7,7 +7,6 @@ import httpx
 import pytest
 from sqlmodel import Session, delete, select
 
-from app.authz.principal import Principal
 from app.connectors.jira.client import CloudJiraClient, DataCenterJiraClient
 from app.domains.base import utc_now
 from app.domains.capacity import tracking
@@ -24,6 +23,7 @@ from app.domains.source import sync
 from app.domains.source.models import SourceConnection, SyncRun
 from app.domains.source.schemas import JiraConfig
 from app.domains.work.models import Task
+from app.worker.tasks import sync_run
 from tests.api.routes.test_m6_capacity_assignment import case as case
 from tests.api.routes.test_sources import BODY
 
@@ -292,7 +292,7 @@ def test_jira_sync_upgrades_legacy_state_and_notifies_once(
         db.flush()
         run_id = queued.id
         db.commit()
-        sync.execute_sync(Principal.system_worker(tracked.org), run_id)
+        sync_run(str(tracked.org), str(run_id))
         db.expire_all()
         assert (
             db.exec(

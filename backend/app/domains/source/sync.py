@@ -1,5 +1,6 @@
 """Transactional queueing and resumable, serialized source ingestion."""
 
+from collections.abc import Callable
 from datetime import UTC, datetime, time, timedelta
 from uuid import UUID
 
@@ -368,10 +369,6 @@ def _finish(
             target_id=str(run.id),
             details=details,
         )
-    if status == "succeeded":
-        from app.domains.capacity.tracking import recompute
-
-        recompute(session, run.org_id)
     if status == "succeeded" and run.trigger == "schedule":
         from app.domains.drafting.incremental import queue_incremental
 
@@ -380,7 +377,12 @@ def _finish(
 
 
 def execute_sync(
-    principal: Principal, run_id: UUID, initial_attempts: int = 0, page_size: int = 100
+    principal: Principal,
+    run_id: UUID,
+    initial_attempts: int = 0,
+    page_size: int = 100,
+    *,
+    after_ingest: Callable[[Session, UUID], None] | None = None,
 ) -> None:
     # A dedicated connection retains the session lock across page commits and releases it on exit.
     with engine.connect() as db_connection, Session(db_connection) as session:
@@ -419,6 +421,8 @@ def execute_sync(
             session.commit()
             try:
                 _ingest(session, run, connection, page_size)
+                if after_ingest is not None:
+                    after_ingest(session, run.org_id)
                 _finish(session, run, "succeeded")
             except Exception as error:
                 session.rollback()
