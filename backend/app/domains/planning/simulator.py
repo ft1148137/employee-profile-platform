@@ -92,7 +92,7 @@ def _params(
     }
 
 
-def _option(
+def validated_option(
     kind: str,
     data: dict[str, Any],
     params: dict[str, Any],
@@ -122,7 +122,9 @@ def simulate(data: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
     end = date.fromisoformat(demand["window_end"])
     count = demand["headcount"]
     ranked = ranked_candidates(data, start, end)
-    direct = _option("direct", data, _params([p for p, _ in ranked[:count]], demand))
+    direct = validated_option(
+        "direct", data, _params([p for p, _ in ranked[:count]], demand)
+    )
     options = [direct]
     notes = []
 
@@ -141,7 +143,9 @@ def simulate(data: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
             newcomer,
             *(p for p, _ in ranked if p["employee_id"] != newcomer["employee_id"]),
         ]
-        options.append(_option("newcomer", data, _params(chosen[:count], demand)))
+        options.append(
+            validated_option("newcomer", data, _params(chosen[:count], demand))
+        )
 
     if direct["verdict"] != "feasible":
         for offset in range(1, 9):
@@ -159,10 +163,12 @@ def simulate(data: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
             shifted_data = {**data, "demand": adjusted}
             shifted = ranked_candidates(shifted_data, start + shift, end + shift)
             params = _params([p for p, _ in shifted[:count]], adjusted)
-            trial = _option("delay", shifted_data, params)
+            trial = validated_option("delay", shifted_data, params)
             if trial["verdict"] == "feasible":
                 options.append(
-                    _option("delay", shifted_data, params, "需求方要接受新日期")
+                    validated_option(
+                        "delay", shifted_data, params, "需求方要接受新日期"
+                    )
                 )
                 break
         else:
@@ -178,10 +184,12 @@ def simulate(data: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
         )
         for percent in lower_percents:
             params = _params([p for p, _ in ranked[:count]], demand, percent=percent)
-            trial = _option("reduce_scope", data, params)
+            trial = validated_option("reduce_scope", data, params)
             if trial["verdict"] in {"feasible", "conditional"}:
                 options.append(
-                    _option("reduce_scope", data, params, "需求方要同意缩小范围")
+                    validated_option(
+                        "reduce_scope", data, params, "需求方要同意缩小范围"
+                    )
                 )
                 break
         else:
@@ -190,11 +198,11 @@ def simulate(data: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
                 adjusted_data = {**data, "demand": adjusted}
                 params = _params([p for p, _ in ranked[:reduced_count]], adjusted)
                 if (
-                    _option("reduce_scope", adjusted_data, params)["verdict"]
+                    validated_option("reduce_scope", adjusted_data, params)["verdict"]
                     == "feasible"
                 ):
                     options.append(
-                        _option(
+                        validated_option(
                             "reduce_scope",
                             adjusted_data,
                             params,
@@ -219,12 +227,12 @@ def simulate(data: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
                 p for p, _ in ranked_candidates(part_data, part_start, part_end)[:count]
             ]
             params = _params(selected, adjusted)
-            if _option("phased", part_data, params)["verdict"] != "feasible":
+            if validated_option("phased", part_data, params)["verdict"] != "feasible":
                 break
             combined.extend(params["assignees"])
         else:
             options.append(
-                _option(
+                validated_option(
                     "phased", data, {"assignees": combined}, "分两段交付，需求方要同意"
                 )
             )

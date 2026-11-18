@@ -17,6 +17,7 @@ class OptionKind(StrEnum):
     DELAY = "delay"
     REDUCE_SCOPE = "reduce_scope"
     PHASED = "phased"
+    OPTIMIZED = "optimized"
     CUSTOM = "custom"
 
 

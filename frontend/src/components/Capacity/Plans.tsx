@@ -534,7 +534,11 @@ function OptionCard({
       className={`scroll-mt-20 space-y-4 rounded-xl border p-5 ${
         selected ? "border-primary bg-primary/5 ring-2 ring-primary/30" : ""
       }`}
-      aria-label={`${option.kind_label}方案`}
+      aria-label={
+        option.kind_label.endsWith("方案")
+          ? option.kind_label
+          : `${option.kind_label}方案`
+      }
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-lg font-semibold">

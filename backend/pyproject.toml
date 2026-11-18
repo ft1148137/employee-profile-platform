@@ -24,6 +24,7 @@ dependencies = [
     "websockets>=15,<16",
     "lark-oapi==1.7.5",
     "pypdf==6.21.4",
+    "ortools==9.15.6755",
 ]
 
 [dependency-groups]
@@ -38,7 +39,6 @@ dev = [
     "types-pyyaml>=6.0.12.20261030",
     "types-openpyxl>=3.1.5.20261017",
     "pytest-split==0.11.0",
-    "ortools==9.15.6755",
 ]
 
 [build-system]

@@ -21,6 +21,9 @@ test("B 方经理无需模型查看方案，A 方经理看不到入口", async (
   const created = await (await createdResponse).json()
   const card = page.getByRole("article", { name: "直接安排方案" })
   await expect(card).toBeVisible()
+  await expect(
+    page.getByRole("article", { name: "优化方案", exact: true }),
+  ).toBeVisible()
   const current = await api(
     `${base}/planning/cases/${created.id}`,
     undefined,

@@ -1,5 +1,24 @@
 # 依赖许可证核验（NERE-780）
 
+## NERE-839 运行依赖增量
+
+OR-Tools `9.15.6755` 从开发组移入后端运行依赖，版本和锁定制品保持一致。其 Python 发行包采用 Apache-2.0，应用通过 Python 接口调用 CP-SAT。核验依据为发行包内的 LICENSE、PyPI 元数据及上游版本标签。[PyPI 发行记录](https://pypi.org/project/ortools/9.15.6755/) · [上游许可证](https://github.com/google/or-tools/blob/v9.15/LICENSE)
+
+| 运行依赖链中的包 | 锁定版本 | Python 发行包许可证 |
+| --- | --- | --- |
+| absl-py | 2.5.1 | Apache-2.0 |
+| immutabledict | 4.3.1 | MIT |
+| NumPy | 2.5.5 | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0（发行元数据） |
+| pandas | 3.1.1 | BSD-3-Clause |
+| protobuf | 6.33.6 | BSD-3-Clause |
+| python-dateutil | 2.9.0.post0 | Apache-2.0 AND BSD-3-Clause（按包内文本） |
+| six | 1.17.0 | MIT |
+| typing-extensions（此前已为运行依赖） | 4.15.0 | PSF-2.0 |
+
+Python 包许可与应用的 Apache-2.0 许可可共存。检查 Linux x86-64 CPython 3.14 wheel 时也发现 OR-Tools 随包附带 COIN-OR 原生库，NumPy 的 wheel 许可文件另列带 GCC Runtime Library Exception 的 libgfortran。项目目前提供源码和本机构建配方。分发预构建镜像前，应按实际制品核对这些原生组件的许可、声明和源码提供义务。[OR-Tools 构建依赖](https://github.com/google/or-tools/blob/v9.15/cmake/dependencies/CMakeLists.txt) · [GCC Runtime Library Exception](https://gcc.gnu.org/onlinedocs/libstdc++/manual/license.html)
+
+## NERE-780 核验基线
+
 核验日期：2026-11-18。代码基线：`20fe9adb9f57e1fbdac9afe0a0a4bb47d201ae0c`。覆盖根目录 `uv.lock`、根目录 `bun.lock`（前端 workspace）、`pi/package-lock.json`，以及所有 Dockerfile / Compose 引用的基础镜像。审计工具仅一次性运行，不写入依赖文件。本次没有替换或删除依赖，没有修改仓库设置。
 
 ## 结论与发布边界

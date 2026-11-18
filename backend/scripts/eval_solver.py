@@ -2,27 +2,22 @@
 
 import argparse
 import json
-from collections import Counter, defaultdict
+from collections import Counter
 from collections.abc import Sequence
-from datetime import date, timedelta
 from time import perf_counter
 from typing import Any, cast
 
-from ortools.sat.python import cp_model
 from pydantic import JsonValue, SecretStr
 
 from app.core.config import settings
-from app.domains.capacity.calendar import week_start
 from app.domains.model import pi_client
 from app.domains.model.client import ModelRateLimited, ModelUnavailable
-from app.domains.planning.simulator import ranked_candidates
+from app.domains.planning.cpsat import CpSatSolver
 from app.domains.planning.solver import (
-    MAX_DELAY,
     Assignments,
     Occupancy,
     Role,
     RuleSolver,
-    Schedule,
     Snapshot,
     Solution,
     SolverPort,
@@ -30,138 +25,10 @@ from app.domains.planning.solver import (
     full_plan,
     occupy,
     sequential,
-    shifted,
-    solution,
     with_occupancy,
 )
 
 MODEL = "gpt-6.1-sol"
-
-
-class CpSatSolver:
-    def solve(self, roles: Sequence[Role]) -> Solution:
-        model = cp_model.CpModel()
-        selected: dict[str, list[cp_model.IntVar]] = defaultdict(list)
-        rows: dict[str, list[tuple[cp_model.IntVar, dict[str, Any]]]] = defaultdict(
-            list
-        )
-        starts: dict[str, list[cp_model.LinearExpr]] = defaultdict(list)
-        ends: dict[str, list[cp_model.LinearExpr]] = defaultdict(list)
-        loads: dict[tuple[str, str], list[cp_model.LinearExpr]] = defaultdict(list)
-        limits: dict[tuple[str, str], int] = {}
-        delays: list[cp_model.LinearExpr] = []
-        newcomer_roles: list[cp_model.IntVar] = []
-
-        for role in roles:
-            newcomer_rows: list[cp_model.IntVar] = []
-            for offset in range(MAX_DELAY + 1):
-                data = shifted(role.snapshot, offset)
-                d = data["demand"]
-                start, end = map(
-                    date.fromisoformat, (d["window_start"], d["window_end"])
-                )
-                committed_end = date.fromisoformat(
-                    d.get("committed_end_date") or d["window_end"]
-                )
-                if (
-                    week_start(start).isoformat() < data["rules"]["current_week"]
-                    or start.isoformat()
-                    < (d.get("committed_start_date") or d["window_start"])
-                    or end > committed_end
-                    # An earlier finish on a change requires requester approval.
-                    or (d.get("change") and end < committed_end)
-                ):
-                    continue
-                picked = model.new_bool_var(f"{role.key}:{offset}")
-                selected[role.key].append(picked)
-                starts[role.key].append(start.toordinal() * picked)
-                ends[role.key].append(end.toordinal() * picked)
-                delays.append(offset * picked)
-                span = (week_start(end) - week_start(start)).days // 7 + 1
-                middle = week_start(start) + timedelta(weeks=span // 2)
-                periods = (
-                    [(start, middle - timedelta(days=1)), (middle, end)]
-                    if span >= 2
-                    else [(start, end)]
-                )
-                percent = d["allocation_percent"]
-                for first, last in periods:
-                    people: list[cp_model.IntVar] = []
-                    for person, free in ranked_candidates(data, first, last):
-                        if free < percent:
-                            continue
-                        eid = person["employee_id"]
-                        take = model.new_bool_var(f"{role.key}:{first}:{eid}")
-                        people.append(take)
-                        if person["newcomer"]:
-                            newcomer_rows.append(take)
-                        rows[role.key].append(
-                            (
-                                take,
-                                {
-                                    "employee_id": eid,
-                                    "allocation_percent": percent,
-                                    "start_date": first.isoformat(),
-                                    "end_date": last.isoformat(),
-                                },
-                            )
-                        )
-                        for week in person["weeks"]:
-                            when = week["week_start"]
-                            if (
-                                week_start(first).isoformat()
-                                <= when
-                                <= last.isoformat()
-                            ):
-                                key = (eid, when)
-                                available = (
-                                    week["capacity_percent"]
-                                    - week["other_percent"]
-                                    - week["platform_percent"]
-                                )
-                                limits[key] = min(limits.get(key, available), available)
-                                loads[key].append(percent * take)
-                    model.add(sum(people) == d["headcount"] * picked)
-            model.add(sum(selected[role.key]) <= 1)
-            for pred in role.predecessors:
-                model.add(sum(selected[pred]) >= sum(selected[role.key]))
-                for picked in selected[role.key]:
-                    model.add(sum(starts[role.key]) > sum(ends[pred])).only_enforce_if(
-                        picked
-                    )
-            if newcomer_rows:
-                flag = model.new_bool_var(f"newcomer:{role.key}")
-                model.add_max_equality(flag, newcomer_rows)
-                newcomer_roles.append(flag)
-
-        for key, terms in loads.items():
-            model.add(sum(terms) <= limits[key])
-        n = len(roles)
-        model.maximize(
-            (MAX_DELAY * n + 1)
-            * (n + 1)
-            * sum(v for group in selected.values() for v in group)
-            - (n + 1) * sum(delays)
-            + sum(newcomer_roles)
-        )
-        solver = cp_model.CpSolver()
-        solver.parameters.num_search_workers = 1
-        solver.parameters.random_seed = 0
-        solver.parameters.max_time_in_seconds = 10
-        status = solver.solve(model)
-        if status != cp_model.OPTIMAL:
-            raise RuntimeError(
-                f"CP-SAT did not prove optimality: {solver.status_name(status)}"
-            )
-        filled: Schedule = {}
-        for role in roles:
-            if assigned := [
-                row for take, row in rows[role.key] if solver.boolean_value(take)
-            ]:
-                filled[role.key] = sorted(
-                    assigned, key=lambda row: (row["start_date"], row["employee_id"])
-                )
-        return solution(roles, filled)
 
 
 class AgentSolver:

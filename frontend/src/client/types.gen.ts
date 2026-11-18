@@ -5041,6 +5041,7 @@ export type OptionKind =
   | "delay"
   | "reduce_scope"
   | "phased"
+  | "optimized"
   | "custom"
 
 /**

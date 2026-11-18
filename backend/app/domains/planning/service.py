@@ -1,3 +1,4 @@
+import logging
 from datetime import date, timedelta
 from typing import Any, cast
 from uuid import UUID, uuid7
@@ -17,6 +18,7 @@ from app.domains.capacity.models import CapacityDemand
 from app.domains.capacity.settings import require_enabled
 from app.domains.org.models import Employee
 from app.domains.planning import simulator, snapshot, validator
+from app.domains.planning.cpsat import CpSatSolver
 from app.domains.planning.models import (
     OptionKind,
     PlanningCase,
@@ -31,8 +33,10 @@ from app.domains.planning.schemas import (
     OptionPublic,
     ReviseInput,
 )
+from app.domains.planning.solver import Role, SolverPort, delay, full_plan, shifted
 
 CaseAccess = tuple[PlanningCase, PlanningSnapshot, CapacityDemand]
+logger = logging.getLogger(__name__)
 
 
 class PlanningStale(HTTPException):
@@ -121,6 +125,7 @@ def _view(
                 OptionKind.DELAY,
                 OptionKind.REDUCE_SCOPE,
                 OptionKind.PHASED,
+                OptionKind.OPTIMIZED,
                 OptionKind.BORROW,
                 OptionKind.CUSTOM,
             )
@@ -158,6 +163,26 @@ def _view(
     )
 
 
+def _optimized_option(data: dict[str, Any]) -> dict[str, Any] | None:
+    role = Role(data["demand"]["id"], data)
+    solver: SolverPort = CpSatSolver()
+    rows = solver.solve([role]).filled.get(role.key)
+    if not rows or not full_plan(data, rows):
+        return None
+    offset = delay(data, rows)
+    option = simulator.validated_option(
+        OptionKind.OPTIMIZED,
+        shifted(data, offset),
+        {"assignees": rows},
+        "需求方要接受新日期" if offset else None,
+    )
+    if offset:
+        option["summary"]["approvers"].append("需求方接受新日期")
+    if any(finding["code"] == "phased" for finding in option["findings"]):
+        option["summary"]["phased_origin"] = True
+    return option
+
+
 def create_case(principal: Principal, session: Session, demand_id: UUID) -> CasePublic:
     demand = _authorized_demand(principal, session, demand_id)
     assert principal.user_id is not None
@@ -189,6 +214,12 @@ def create_case(principal: Principal, session: Session, demand_id: UUID) -> Case
     session.add(latest)
     session.flush()
     options, _ = simulator.simulate(data)
+    try:
+        if optimized := _optimized_option(data):
+            options.append(optimized)
+    except Exception:
+        # Optimization is optional, and solver errors may include private inputs.
+        logger.warning("Could not generate an optimized planning option")
     if departments:
         options.append(simulator.borrow(data, departments))
     for generated in options:
