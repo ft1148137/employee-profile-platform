@@ -70,3 +70,13 @@ def test_required_workflows_have_no_top_level_path_filter() -> None:
         assert "pull_request" in workflow["on"], path
         trigger = workflow["on"]["pull_request"] or {}
         assert "paths" not in trigger and "paths-ignore" not in trigger, path
+
+
+def test_compose_ci_runs_https_config_tests() -> None:
+    workflow = yaml.safe_load((WORKFLOWS / "test-docker-compose.yml").read_text())
+    steps = workflow["jobs"]["test-docker-compose"]["steps"]
+    assert any(
+        "bash tests/smoke/compose_smoke.sh" in step.get("run", "") for step in steps
+    )
+    smoke = (WORKFLOWS.parents[1] / "tests" / "smoke" / "compose_smoke.sh").read_text()
+    assert "python3 -m unittest deploy/test_https_config.py" in smoke

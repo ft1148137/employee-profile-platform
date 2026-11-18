@@ -33,7 +33,7 @@ from app.domains.org.service import visible_employee
 
 logger = logging.getLogger(__name__)
 
-HIDDEN_REPLY = "你的权限已变化，这条之前的回复已隐藏"
+HIDDEN_REPLY = "你的权限已变化，这条之前的回复已隐藏，请重新提问"
 READ_SCOPE_FORMAT = "complete_v1"
 SENSITIVE_TOOLS = {
     "coordination",

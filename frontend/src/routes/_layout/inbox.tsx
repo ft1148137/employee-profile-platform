@@ -29,6 +29,13 @@ const kindLabels: Record<InboxKind, string> = {
   decided: "画像审批结果",
 }
 
+function capacitySearch(message: string): { tab?: string } {
+  if (message === "借调请求待你确认") return { tab: "assignments" }
+  if (["有负荷调整申请等你审批", "有延期申请等你审批"].includes(message))
+    return { tab: "approvals" }
+  return {}
+}
+
 function QuestionAnswer({
   orgId,
   questionId,
@@ -248,14 +255,7 @@ function InboxContent({
                     <Button variant="outline" asChild>
                       <Link
                         to="/capacity"
-                        search={
-                          [
-                            "有负荷调整申请等你审批",
-                            "有延期申请等你审批",
-                          ].includes(item.message)
-                            ? { tab: "approvals" }
-                            : {}
-                        }
+                        search={capacitySearch(item.message)}
                         onClick={() => {
                           if (!item.read_at) read.mutate(item.id)
                         }}

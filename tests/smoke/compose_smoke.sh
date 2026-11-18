@@ -104,4 +104,7 @@ assert all(row["kind"] == "self_report" and row["redacted"] is expected for row 
 ' "$role"
   printf 'PASS: %s\n' "$step"
 done
+step="HTTPS compose and port validation"
+python3 -m unittest deploy/test_https_config.py
+printf 'PASS: %s\n' "$step"
 printf 'PASS: Compose smoke test\n'

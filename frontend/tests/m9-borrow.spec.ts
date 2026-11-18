@@ -175,7 +175,7 @@ async function setup(page: Page, request: APIRequestContext) {
       a,
     )
   const demand = await create()
-  const open = async (token: string, search: string) => {
+  const open = async (token: string, search: string, path = "/capacity") => {
     await page.goto("/login")
     await page.evaluate(
       ({ token, org }) => {
@@ -184,7 +184,7 @@ async function setup(page: Page, request: APIRequestContext) {
       },
       { token, org: admin.org_id },
     )
-    await page.goto(`/capacity?${search}`)
+    await page.goto(search ? `${path}?${search}` : path)
   }
   return {
     a,
@@ -222,8 +222,28 @@ for (const approve of [true, false]) {
       await page.getByRole("button", { name: "确认人选" }).click()
       await expect(page.getByText("已安排人员，等待本人同意")).toBeVisible()
 
-      await open(employee, "tab=assignments")
+      if (approve) {
+        await open(employee, "", "/inbox")
+        const notice = page
+          .locator("li")
+          .filter({ hasText: "借调请求待你确认" })
+          .first()
+        await expect(notice).toBeVisible()
+        await notice.getByRole("link", { name: "查看需求与容量" }).click()
+        await expect(page).toHaveURL(/\/capacity\?tab=assignments/)
+        await expect(
+          page.getByRole("tab", { name: "我的分配", selected: true }),
+        ).toBeVisible()
+      } else {
+        await open(employee, "tab=assignments")
+      }
       const card = page.getByRole("region", { name: "借调请求" })
+      await expect(
+        card.getByRole("button", { name: "同意", exact: true }),
+      ).toBeVisible()
+      await expect(
+        card.getByRole("button", { name: "不同意", exact: true }),
+      ).toBeVisible()
       if (approve) {
         await card.getByRole("button", { name: "同意", exact: true }).click()
         await expect(card).toContainText("等待承诺生效")

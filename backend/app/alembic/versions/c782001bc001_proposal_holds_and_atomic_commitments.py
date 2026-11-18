@@ -304,9 +304,6 @@ def downgrade() -> None:
         unique=True,
         postgresql_where=sa.text("status = 'active'"),
     )
-    op.execute(
-        "DELETE FROM capacity_demand_event WHERE kind IN ('committed', 'proposal_failed')"
-    )
     op.drop_constraint("demandeventkind", "capacity_demand_event", type_="check")
     op.create_check_constraint(
         "demandeventkind",
