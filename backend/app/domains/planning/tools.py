@@ -1,6 +1,5 @@
 """Caller-scoped coordination views over Capacity and Planning services."""
 
-from collections.abc import Callable
 from typing import Any, Self, cast
 from uuid import UUID
 
@@ -39,9 +38,11 @@ from app.domains.planning.schemas import (
 
 class Result(RootModel[dict[str, Any]]):
     _read_employee_ids: set[str] | None = PrivateAttr(default=None)
+    _reads_complete: bool = PrivateAttr(default=True)
 
-    def with_reads(self, ids: set[str]) -> Self:
+    def with_reads(self, ids: set[str], *, complete: bool = True) -> Self:
         self._read_employee_ids = ids
+        self._reads_complete = complete
         return self
 
 
@@ -105,43 +106,9 @@ def _department_view(p: Principal, db: Session, row: CapacityDemand) -> dict[str
     return reference.model_dump(mode="json")
 
 
-def _demand_view(
-    p: Principal,
-    db: Session,
-    demand_id: UUID,
-    *,
-    on_read: Callable[[set[str]], None] | None = None,
-) -> dict[str, Any]:
-    row = demand_row(p, db, demand_id)
+def _demand_view(p: Principal, db: Session, row: CapacityDemand) -> dict[str, Any]:
     detail = get_demand(p, db, row.id).model_dump(mode="json")
     proposal = detail.get("proposal")
-    if on_read:
-        on_read(
-            {
-                str(id)
-                for id in db.exec(
-                    select(OrgMembership.employee_id)
-                    .join(
-                        CapacityDemandEvent,
-                        (col(CapacityDemandEvent.org_id) == OrgMembership.org_id)
-                        & (
-                            col(CapacityDemandEvent.actor_user_id)
-                            == OrgMembership.user_id
-                        ),
-                    )
-                    .where(
-                        OrgMembership.org_id == p.org_id,
-                        CapacityDemandEvent.demand_id == row.id,
-                        CapacityDemandEvent.kind == DemandEventKind.REPLIED,
-                    )
-                ).all()
-                if id is not None
-            }
-            if represents_department(p, row.target_department_id)
-            else set()
-        )
-        if proposal:
-            on_read({line["employee_id"] for line in proposal.get("lines", [])})
     detail.pop("capability_key", None)
     detail["status"] = STATUS_LABELS[row.status]
     levels = next(
@@ -190,6 +157,40 @@ def _demand_view(
     return detail
 
 
+def _demand_reads(
+    p: Principal, db: Session, demand_id: UUID, view: dict[str, Any]
+) -> tuple[set[str], bool]:
+    proposal = view.get("proposal") or {}
+    events = view["events"]
+    # Free text can describe employees beyond the structured responders and lines.
+    complete = not (
+        view.get("description")
+        or any(event.get("text") for event in events)
+        or proposal.get("conditions")
+        or any(approval["reason"] for approval in proposal.get("approvals", []))
+    )
+    ids = {line["employee_id"] for line in proposal.get("lines", [])}
+    if any(event.get("responder_name") for event in events):
+        ids.update(
+            str(id)
+            for id in db.exec(
+                select(OrgMembership.employee_id)
+                .join(
+                    CapacityDemandEvent,
+                    (col(CapacityDemandEvent.org_id) == OrgMembership.org_id)
+                    & (col(CapacityDemandEvent.actor_user_id) == OrgMembership.user_id),
+                )
+                .where(
+                    OrgMembership.org_id == p.org_id,
+                    CapacityDemandEvent.demand_id == demand_id,
+                    CapacityDemandEvent.kind == DemandEventKind.REPLIED,
+                )
+            ).all()
+            if id is not None
+        )
+    return ids, complete
+
+
 def _weeks(person: dict[str, Any]) -> list[dict[str, Any]]:
     return [
         {**week, "status": WEEK_LABELS.get(week["status"], "未确认")}
@@ -226,8 +227,9 @@ def _option(option: OptionPublic, case: CasePublic) -> dict[str, Any]:
 
 def read_coordination_context(p: Principal, db: Session, body: DemandIdInput) -> Result:
     row = demand_row(p, db, body.demand_id)
-    ids: set[str] = set()
-    result: dict[str, Any] = {"demand": _demand_view(p, db, row.id, on_read=ids.update)}
+    detail = _demand_view(p, db, row)
+    ids, complete = _demand_reads(p, db, row.id, detail)
+    result: dict[str, Any] = {"demand": detail}
     if represents_department(p, row.target_department_id):
         case_id = _case_id(p, db, row.id)
         if case_id:
@@ -246,7 +248,7 @@ def read_coordination_context(p: Principal, db: Session, body: DemandIdInput) ->
                     for o in case.options
                 ],
             }
-    return Result(result).with_reads(ids)
+    return Result(result).with_reads(ids, complete=complete)
 
 
 def inspect_capacity(p: Principal, db: Session, body: DemandIdInput) -> Result:
@@ -353,20 +355,19 @@ def compare_plan_options(p: Principal, db: Session, body: CompareInput) -> Resul
 
 def get_approval_status(p: Principal, db: Session, body: DemandIdInput) -> Result:
     row = demand_row(p, db, body.demand_id)
-    ids: set[str] = set()
-    detail = _demand_view(p, db, row.id, on_read=ids.update)
-    return Result(
-        {
-            "status": detail["status"],
-            "revision": detail["revision"],
-            "events": detail["events"],
-            **{
-                key: detail[key]
-                for key in ("proposal", "reply_notice", "demand_url")
-                if key in detail
-            },
-        }
-    ).with_reads(ids)
+    detail = _demand_view(p, db, row)
+    view: dict[str, Any] = {
+        "status": detail["status"],
+        "revision": detail["revision"],
+        "events": detail["events"],
+        **{
+            key: detail[key]
+            for key in ("proposal", "reply_notice", "demand_url")
+            if key in detail
+        },
+    }
+    ids, complete = _demand_reads(p, db, row.id, view)
+    return Result(view).with_reads(ids, complete=complete)
 
 
 COORDINATION_TOOLS = (

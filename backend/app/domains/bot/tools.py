@@ -721,7 +721,7 @@ def call(
                     result = coord_tool.handler(p, db, input_body)
                 read_ids = (
                     result._read_employee_ids
-                    if isinstance(result, CoordinationResult)
+                    if isinstance(result, CoordinationResult) and result._reads_complete
                     else None
                 )
                 if on_read and read_ids is not None:
