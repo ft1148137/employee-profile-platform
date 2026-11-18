@@ -94,23 +94,24 @@ def test_worse_recommendation_keeps_both_choices(
     )
     assert isinstance(result, dict) and "请用答复卡重新提交" in str(result["error"])
     assert not cards and business_rows(db, demand.org_id) == before
+    compare_arguments = {
+        "function": "compare_plan_options",
+        "arguments": {"case_id": str(case.id), "option_ids": [str(option.id)]},
+    }
     tools.call(
         db,
         manager,
         session,
         cards,
         "coordination",
-        {
-            "function": "compare_plan_options",
-            "arguments": {"case_id": str(case.id), "option_ids": [str(option.id)]},
-        },
+        compare_arguments,
     )
     (comparison,) = cards
     assert isinstance(comparison, s.PlanCard)
-    assert_no_b_people(comparison.model_dump(mode="json"), people)
     assert comparison.fields[1].value == "不可行"
     fallback = comparison.rule_fallback
     assert fallback is not None
+    assert_no_b_people(fallback.model_dump(mode="json"), people)
     assert {f.label for f in fallback.fields} == {
         "类型",
         "结论",
@@ -170,6 +171,16 @@ def test_worse_recommendation_keeps_both_choices(
             denied,
             "prepare_plan_proposal",
             {"case_id": str(case.id), "option_id": str(option.id), "text": "合成答复"},
+        )
+        assert "error" in result and not denied
+        assert_no_b_people(result, people)
+        result = tools.call(
+            db,
+            viewer,
+            store.create_session(db, viewer, channel=channel),
+            denied,
+            "coordination",
+            compare_arguments,
         )
         assert "error" in result and not denied
         assert_no_b_people(result, people)

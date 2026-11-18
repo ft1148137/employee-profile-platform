@@ -301,7 +301,13 @@ def test_project_schedule_and_downstream_impacts(
     response = client.post(
         f"{base}/demands/{roles[0]['id']}/reply",
         headers=auth["b0"],
-        json={"outcome": outcome, "text": "已核对交付条件", "revision": 1, **dates},
+        json={
+            "outcome": outcome,
+            "text": "已核对交付条件",
+            "revision": 1,
+            **dates,
+            **({"reason_code": "scope"} if outcome == "not_now" else {}),
+        },
     )
     assert response.status_code == 200, response.text
     schedule = client.get(url, headers=auth["manager"]).json()["schedule"]

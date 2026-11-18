@@ -22,6 +22,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import {
+  type RejectionReason,
+  RejectionReasonSelect,
+  rejectionReasonLabel,
+} from "./BorrowRequests"
 import { DemandAssignments } from "./DemandAssignments"
 import { DemandsReference } from "./DemandsReference"
 import { Plans, type SelectedPlanReply } from "./Plans"
@@ -264,9 +269,114 @@ export function DemandsDetail({
               clearSelection={() => setSelected(null)}
             />
           )}
+          <DecisionHistory orgId={orgId} demandId={demandId} />
         </>
       )}
     </div>
+  )
+}
+
+const approvalParties: Record<string, string> = {
+  resource_manager: "资源部门经理",
+  requester: "需求方",
+  lender_manager: "借出部门经理",
+  employee: "员工本人",
+}
+
+const failureLabels: Record<string, string> = {
+  rejected: "被拒",
+  expired: "已过期",
+  recheck_failed: "复核未通过",
+  borrow_unsuccessful: "借调未达成",
+}
+
+function DecisionHistory({
+  orgId,
+  demandId,
+}: {
+  orgId: string
+  demandId: string
+}) {
+  const query = useQuery({
+    queryKey: ["capacity", orgId, "history", demandId],
+    retry: (count, error) => !isCapacityAccessDenied(error) && count < 3,
+    queryFn: async () =>
+      (
+        await CapacityService.getDemandHistory({
+          path: { org_id: orgId, demand_id: demandId },
+        })
+      ).data,
+  })
+  return (
+    <section aria-label="决策记录" className="space-y-3 rounded-xl border p-5">
+      <h3 className="font-semibold">决策记录</h3>
+      {query.isPending ? (
+        <ProfileLoading />
+      ) : query.isError ? (
+        <ProfileError retry={() => query.refetch()} />
+      ) : (
+        <>
+          {query.data.proposals.map((proposal) => (
+            <article key={proposal.id} className="space-y-1 border-l-2 pl-4">
+              <h4 className="font-medium">
+                {proposal.kind === "change" ? "安排变更提议" : "方案提议"} ·{" "}
+                {failureLabels[proposal.fail_reason ?? ""] ??
+                  proposalStatuses[proposal.status]}{" "}
+                · {dateLabel(proposal.created_at)}
+              </h4>
+              {proposal.approvals.map((approval, index) => (
+                <p key={index} className="whitespace-pre-wrap break-words">
+                  {approvalParties[approval.party] ?? "审批方"}：
+                  {approval.decision === "approved"
+                    ? "同意"
+                    : `拒绝 · ${rejectionReasonLabel(approval.reason_code)}`}
+                  {approval.reason && ` · ${approval.reason}`}
+                </p>
+              ))}
+            </article>
+          ))}
+          {!!query.data.snapshots?.length && (
+            <details>
+              <summary className="cursor-pointer font-medium">
+                历史方案结论
+              </summary>
+              {query.data.snapshots.map((snapshot) => (
+                <div key={snapshot.id} className="mt-2 border-l-2 pl-4">
+                  <p>{dateLabel(snapshot.created_at)}</p>
+                  {snapshot.options?.map((option, index) => (
+                    <p key={index}>
+                      {option.kind_label} · {option.verdict_label}
+                    </p>
+                  ))}
+                </div>
+              ))}
+            </details>
+          )}
+          <details
+            open={query.data.events.some(
+              (event) => event.outcome === "not_now",
+            )}
+          >
+            <summary className="cursor-pointer font-medium">需求时间线</summary>
+            {query.data.events.map((event, index) => (
+              <div key={index} className="mt-2 border-l-2 pl-4">
+                <p>
+                  {events[event.kind]} · {dateLabel(event.created_at)}
+                  {event.outcome && ` · ${demandOutcomes[event.outcome]}`}
+                  {event.outcome === "not_now" &&
+                    ` · ${rejectionReasonLabel(event.reason_code)}`}
+                </p>
+                {event.text && (
+                  <p className="whitespace-pre-wrap break-words">
+                    {event.text}
+                  </p>
+                )}
+              </div>
+            ))}
+          </details>
+        </>
+      )}
+    </section>
   )
 }
 
@@ -408,6 +518,7 @@ function DemandsAction({
     selected?.outcome ?? "can_do",
   )
   const [text, setText] = useState("")
+  const [reasonCode, setReasonCode] = useState<RejectionReason | "">("")
   const path = { org_id: orgId, demand_id: demand.id }
   const refresh = () => {
     cache.invalidateQueries({ queryKey: ["capacity", orgId] })
@@ -433,6 +544,7 @@ function DemandsAction({
           lender_department_id: selected?.lender_department_id,
           borrow_headcount: selected?.borrow_headcount,
           outcome,
+          reason_code: outcome === "not_now" ? reasonCode || null : undefined,
           text: text.trim(),
           revision: demand.revision,
         },
@@ -562,6 +674,12 @@ function DemandsAction({
                 ))}
               </select>
             </label>
+            {outcome === "not_now" && (
+              <RejectionReasonSelect
+                value={reasonCode}
+                onChange={setReasonCode}
+              />
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               {[
                 ["start", "最早开始日期"],
@@ -604,7 +722,10 @@ function DemandsAction({
         )}
         <div className="flex flex-wrap gap-3">
           {side === "incoming" ? (
-            <Button type="submit" disabled={!text.trim()}>
+            <Button
+              type="submit"
+              disabled={!text.trim() || (outcome === "not_now" && !reasonCode)}
+            >
               确认发送答复
             </Button>
           ) : (
@@ -659,11 +780,7 @@ function proposalLabel(
   if (proposal.status !== "pending" && proposal.borrow_progress)
     return proposal.borrow_progress
   if (proposal.status === "failed")
-    return (
-      { rejected: "被拒", expired: "已过期", recheck_failed: "复核未通过" }[
-        proposal.fail_reason ?? ""
-      ] ?? "未达成"
-    )
+    return failureLabels[proposal.fail_reason ?? ""] ?? "未达成"
   if (
     proposal.status === "pending" &&
     Date.parse(proposal.hold_expires_at) <= now
@@ -749,32 +866,17 @@ function ProposalPanel({
   const expiresAt = Date.parse(proposal.hold_expires_at)
   useEffect(() => {
     if (proposal.status !== "pending" || !Number.isFinite(expiresAt)) return
-    let timer: number | undefined
-    const schedule = () => {
-      const current = Date.now()
-      const remaining = expiresAt - current
-      if (remaining <= 0) {
-        setNow(current)
-        return
-      }
-      timer = window.setTimeout(
-        () => {
-          const next = Date.now()
-          setNow(next)
-          if (next < expiresAt) schedule()
-        },
-        Math.min(remaining, 0x7fffffff),
-      )
-    }
-    schedule()
-    return () => {
-      if (timer !== undefined) window.clearTimeout(timer)
-    }
+    const timer = window.setTimeout(
+      () => setNow(Date.now()),
+      Math.max(0, expiresAt - Date.now()),
+    )
+    return () => window.clearTimeout(timer)
   }, [proposal.status, expiresAt])
   const [action, setAction] = useState<
     "accept" | "follow_up" | "withdraw" | null
   >(null)
   const [reason, setReason] = useState("")
+  const [reasonCode, setReasonCode] = useState<RejectionReason | "">("")
   const refresh = () => {
     void cache.invalidateQueries({ queryKey: ["capacity", orgId] })
     void cache.invalidateQueries({ queryKey: ["inbox", orgId] })
@@ -792,6 +894,7 @@ function ProposalPanel({
           action: action === "accept" ? "accept" : "follow_up",
           revision: demand.revision,
           text: action === "follow_up" ? reason.trim() : null,
+          reason_code: action === "follow_up" ? reasonCode || null : undefined,
         },
       })
     },
@@ -836,6 +939,11 @@ function ProposalPanel({
       {proposal.previous && (
         <section aria-label="变更前" className="space-y-2">
           <h4 className="font-semibold">变更前</h4>
+          {side === "outgoing" && (
+            <p className="text-sm text-muted-foreground">
+              未变人员沿用原编号。仅一人替换一人时，新人沿用被替换人员的编号。
+            </p>
+          )}
           <ProposalPeople
             arrangement={proposal.previous}
             side={side}
@@ -859,13 +967,8 @@ function ProposalPanel({
       </section>
       {proposal.approvals.map((approval, index) => (
         <p key={index} className="whitespace-pre-wrap break-words">
-          {{
-            resource_manager: "资源部门经理",
-            requester: "需求方",
-            lender_manager: "借出部门经理",
-            employee: "员工本人",
-          }[approval.party] ?? "审批方"}
-          ：{approval.decision === "approved" ? "同意" : "拒绝"}
+          {approvalParties[approval.party] ?? "审批方"}：
+          {approval.decision === "approved" ? "同意" : "拒绝"}
           {approval.reason && `，理由：${approval.reason}`}
         </p>
       ))}
@@ -897,6 +1000,7 @@ function ProposalPanel({
                     disabled={mutation.isPending}
                     onClick={() => {
                       setReason("")
+                      setReasonCode("")
                       setAction("follow_up")
                     }}
                   >
@@ -968,16 +1072,22 @@ function ProposalPanel({
             className="space-y-4"
           >
             {action === "follow_up" && (
-              <label className="block space-y-2 text-sm">
-                <span>拒绝理由</span>
-                <textarea
-                  required
-                  maxLength={500}
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  className="min-h-28 w-full rounded-md border bg-background p-3"
+              <>
+                <RejectionReasonSelect
+                  value={reasonCode}
+                  onChange={setReasonCode}
                 />
-              </label>
+                <label className="block space-y-2 text-sm">
+                  <span>拒绝理由</span>
+                  <textarea
+                    required
+                    maxLength={500}
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                    className="min-h-28 w-full rounded-md border bg-background p-3"
+                  />
+                </label>
+              </>
             )}
             <div className="flex gap-3">
               <Button
@@ -985,7 +1095,7 @@ function ProposalPanel({
                 disabled={
                   !pending ||
                   mutation.isPending ||
-                  (action === "follow_up" && !reason.trim())
+                  (action === "follow_up" && (!reasonCode || !reason.trim()))
                 }
               >
                 {action === "accept"

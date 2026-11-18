@@ -205,6 +205,9 @@ import type {
   capacityGetDemandBasisResponses,
   capacityGetDemandData,
   capacityGetDemandErrors,
+  capacityGetDemandHistoryData,
+  capacityGetDemandHistoryErrors,
+  capacityGetDemandHistoryResponses,
   capacityGetDemandResponses,
   capacityGetMyWorkloadData,
   capacityGetMyWorkloadErrors,
@@ -925,6 +928,24 @@ export class CapacityService {
       responseType: "json",
       security: [{ scheme: "bearer", type: "http" }],
       url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}",
+      ...options,
+    })
+  }
+
+  /**
+   * Get Demand History
+   */
+  public static getDemandHistory<ThrowOnError extends boolean = true>(
+    options: Options<capacityGetDemandHistoryData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityGetDemandHistoryResponses,
+      capacityGetDemandHistoryErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/history",
       ...options,
     })
   }

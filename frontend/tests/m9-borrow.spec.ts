@@ -261,6 +261,7 @@ for (const approve of [true, false]) {
         await expect(assignments).not.toContainText("合成借调员工")
       } else {
         await card.getByLabel("拒绝理由").fill("仅本人可见的合成理由")
+        await card.getByLabel("拒绝原因").selectOption("priority")
         await card.getByRole("button", { name: "不同意", exact: true }).click()
         await expect(card).toContainText("仅本人可见的合成理由")
         for (const [token, search] of [

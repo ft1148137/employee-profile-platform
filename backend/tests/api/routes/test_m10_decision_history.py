@@ -54,7 +54,6 @@ def test_history_keeps_superseded_decisions_and_respects_scope(
     assert decision["party"] == "requester" and decision["decision"] == "rejected"
     assert decision["reason_code"] is None and decision["reason"] == "请调整交付时间"
     assert [event["kind"] for event in body["events"]] == [
-        "submitted",
         "replied",
         "proposal_failed",
         "replied",

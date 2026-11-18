@@ -326,6 +326,7 @@ test("拒绝理由必填，拒绝后可重新规划且释放预占", async ({ pa
   await expect(dialog).toContainText("拒绝后对方需要重新安排")
   await expect(dialog.getByRole("button", { name: "确认拒绝" })).toBeDisabled()
   await dialog.getByLabel("拒绝理由").fill("交付条件需要调整")
+  await dialog.getByLabel("拒绝原因").selectOption("scope")
   await dialog.getByRole("button", { name: "确认拒绝" }).click()
   await expect(
     page.getByRole("region", { name: "方案提议", exact: true }),
@@ -560,6 +561,7 @@ test("确认框提交时预占期限刚过会拦截请求并显示已过期", as
   const dialog = page.getByRole("dialog")
   await expect(dialog).toBeVisible()
   await dialog.getByLabel("拒绝理由").fill("期限刚过时尝试提交")
+  await dialog.getByLabel("拒绝原因").selectOption("timing")
 
   await page.clock.setSystemTime(expiresAt + 1000)
   await dialog.getByRole("button", { name: "确认拒绝" }).click()
