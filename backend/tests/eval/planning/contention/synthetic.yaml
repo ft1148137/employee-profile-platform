@@ -1,0 +1,127 @@
+# Every role row is [skill(+required extra), start week, weeks, %, headcount, predecessor role number].
+# "skills" lists senior employees. Others are junior. "unavailable" lists individual day offsets.
+# All cases require full headcount, senior capability, full allocation and duration,
+# time after the predecessor finishes, and no weekly over-allocation including leave.
+- id: trap-primary
+  constraint: Person 1 alone meets key; general role can use person 2.
+  people: 8
+  newcomers: [2, 8]
+  other: {1: 0}
+  unavailable: {6: [0, 1, 2, 3, 4]}
+  skills: {general: [1, 2], key: [1], review: [3, 4, 6], launch: [5, 7, 8]}
+  projects:
+    - [[general, 0, 2, 60, 1, 0], [review, 1, 1, 50, 1, 1], [launch, 1, 1, 50, 1, 0]]
+    - [[key, 0, 2, 60, 1, 0], [review, 2, 1, 50, 1, 1], [launch, 0, 2, 50, 1, 0]]
+- id: trap-extra
+  constraint: Only person 1 has both senior backend and security. Person 3 can take general backend.
+  people: 9
+  newcomers: [3, 7]
+  other: {1: 0, 2: 20}
+  unavailable: {5: [0, 1, 2]}
+  skills: {backend: [1, 2, 3], security: [1, 4], test: [5, 6, 7], release: [8, 9]}
+  projects:
+    - [[backend, 0, 2, 60, 1, 0], [test, 1, 1, 40, 2, 1], [release, 3, 1, 50, 1, 2]]
+    - [[backend+security, 0, 2, 60, 1, 0], [test, 0, 1, 40, 1, 0], [release, 2, 1, 50, 1, 1]]
+- id: trap-headcount
+  constraint: Two specialists are needed together, but the first role can use people 3 and 4.
+  people: 10
+  newcomers: [4, 9]
+  other: {1: 0, 2: 10}
+  unavailable: {7: [7, 8, 9, 10, 11]}
+  skills: {general: [1, 2, 3, 4], pair: [1, 2], test: [5, 6, 7], deploy: [8, 9, 10]}
+  projects:
+    - [[general, 0, 2, 55, 2, 0], [test, 0, 1, 45, 1, 0], [deploy, 2, 1, 50, 1, 1]]
+    - [[pair, 0, 2, 55, 2, 0], [test, 1, 1, 45, 1, 1], [deploy, 3, 1, 50, 1, 2]]
+- id: trap-chain
+  constraint: Reserve person 1 for the dependency chain; general roles can use people 2 and 3.
+  people: 12
+  newcomers: [2, 10]
+  other: {1: 0}
+  unavailable: {8: [1, 2, 3], 9: [7, 8, 9, 10, 11]}
+  skills: {general: [1, 2, 3], unique: [1], test: [4, 5, 6], deploy: [7, 8, 9, 10, 11, 12]}
+  projects:
+    - [[general, 0, 2, 55, 1, 0], [test, 0, 1, 50, 1, 0], [deploy, 2, 1, 50, 1, 1]]
+    - [[unique, 0, 1, 55, 1, 0], [test, 1, 1, 50, 1, 1], [deploy, 2, 1, 50, 1, 2]]
+    - [[general, 0, 2, 55, 1, 0], [test, 0, 2, 50, 1, 0], [deploy, 2, 1, 50, 1, 1]]
+- id: leave-relay
+  constraint: Two people can cover complementary weeks; neither is available for both.
+  people: 8
+  newcomers: [2, 7]
+  other: {}
+  unavailable: {1: [7, 8, 9, 10, 11], 2: [0, 1, 2, 3, 4]}
+  skills: {relay: [1, 2], check: [3, 4, 5], ship: [6, 7, 8]}
+  projects:
+    - [[relay, 0, 2, 50, 1, 0], [check, 1, 1, 40, 1, 1], [ship, 2, 1, 50, 1, 0]]
+    - [[check, 0, 2, 40, 2, 0], [ship, 0, 1, 50, 1, 0], [ship, 2, 1, 50, 1, 1]]
+- id: shared-person
+  constraint: A person can serve two roles in one week only if their summed percentages fit.
+  people: 8
+  newcomers: [1, 5]
+  other: {1: 0, 2: 20}
+  unavailable: {4: [8, 9]}
+  skills: {build: [1, 2], assess: [3, 4, 5], ship: [6, 7, 8]}
+  projects:
+    - [[build, 0, 2, 50, 1, 0], [assess, 1, 1, 40, 1, 0], [ship, 1, 2, 50, 1, 1]]
+    - [[build, 0, 2, 50, 2, 0], [ship, 0, 2, 50, 1, 0], [assess, 2, 1, 40, 2, 1]]
+- id: impossible-predecessor
+  constraint: Missing senior capability blocks its role and all dependent roles.
+  people: 10
+  newcomers: [3, 10]
+  other: {}
+  unavailable: {2: [0, 1, 2, 3, 4]}
+  skills: {missing: [], build: [1, 2, 3, 4, 5], test: [6, 7, 8], deploy: [9, 10]}
+  projects:
+    - [[missing, 0, 1, 50, 1, 0], [test, 1, 2, 50, 1, 1], [deploy, 3, 1, 50, 1, 2]]
+    - [[build, 0, 2, 50, 2, 0], [test, 1, 1, 50, 1, 0], [deploy, 2, 1, 50, 1, 1]]
+- id: partial-week
+  constraint: One unavailable workday reduces capacity to 80 percent before subtracting other work.
+  people: 11
+  newcomers: [1, 6, 11]
+  other: {1: 20, 2: 30, 3: 10}
+  unavailable: {1: [3], 2: [1, 2], 3: [9], 4: [0, 7]}
+  skills: {data: [1, 2, 3, 4], test: [5, 6, 7, 8], release: [9, 10, 11]}
+  projects:
+    - [[data, 0, 1, 65, 1, 0], [test, 1, 1, 50, 2, 1], [release, 1, 1, 60, 1, 0]]
+    - [[data, 0, 2, 60, 1, 0], [test, 0, 1, 50, 2, 0], [release, 2, 1, 60, 1, 1]]
+- id: four-projects
+  constraint: Four concurrent projects share testing and release pools.
+  people: 20
+  newcomers: [4, 9, 15]
+  other: {1: 10, 6: 20, 14: 15}
+  unavailable: {12: [0, 2, 3], 17: [7, 8, 9, 10, 11]}
+  skills: {api: [1, 2, 3, 4, 5], data: [4, 5, 6, 7, 8, 9], qa: [10, 11, 12, 13, 14, 15], ops: [16, 17, 18, 19, 20]}
+  projects:
+    - [[api, 0, 2, 50, 2, 0], [qa, 1, 2, 50, 2, 1], [ops, 3, 1, 55, 1, 2]]
+    - [[data, 0, 2, 50, 2, 0], [qa, 0, 2, 45, 2, 0], [ops, 2, 1, 50, 1, 1]]
+    - [[api, 1, 2, 50, 2, 0], [qa, 1, 2, 45, 2, 0], [ops, 1, 2, 50, 1, 0]]
+    - [[data, 1, 2, 50, 2, 0], [qa, 2, 1, 50, 2, 0], [ops, 2, 2, 50, 1, 0]]
+- id: expertise-intersection
+  constraint: Senior primary skill and required extra skill must be held by the same person.
+  people: 12
+  newcomers: [4, 7, 10]
+  other: {1: 10, 2: 20, 3: 15}
+  unavailable: {3: [2, 3, 4], 7: [8]}
+  skills: {backend: [1, 2, 3, 4], incident: [2, 3, 5, 6], qa: [6, 7, 8, 9], ops: [10, 11, 12]}
+  projects:
+    - [[backend+incident, 0, 2, 60, 1, 0], [qa, 0, 1, 50, 1, 0], [ops, 2, 1, 50, 1, 1], [qa, 3, 1, 40, 2, 3]]
+    - [[backend, 0, 2, 50, 2, 0], [incident, 1, 1, 50, 1, 0], [ops, 1, 1, 50, 2, 1]]
+- id: full-allocation
+  constraint: Reduced-scope options cannot count as fully staffed.
+  people: 9
+  newcomers: [2, 6, 8]
+  other: {1: 40, 2: 30, 3: 30}
+  unavailable: {4: [0, 1, 2, 3, 4], 6: [9]}
+  skills: {build: [1, 2, 3], qa: [4, 5, 6], ops: [7, 8, 9]}
+  projects:
+    - [[build, 0, 2, 75, 1, 0], [qa, 1, 1, 50, 2, 1], [ops, 2, 1, 50, 1, 0]]
+    - [[build, 0, 1, 50, 2, 0], [qa, 0, 1, 50, 2, 0], [ops, 1, 1, 50, 2, 1]]
+- id: long-pipeline
+  constraint: Critical dependencies span two relay weeks and cannot start on the predecessor's end date.
+  people: 15
+  newcomers: [2, 7, 11, 14]
+  other: {1: 0, 6: 10, 8: 30}
+  unavailable: {2: [7, 8], 7: [1, 2], 13: [14, 15, 16, 17, 18]}
+  skills: {build: [1, 2, 3, 4, 5], test: [6, 7, 8, 9, 10], ops: [11, 12, 13, 14, 15]}
+  projects:
+    - [[build, 0, 2, 50, 2, 0], [test, 1, 2, 50, 2, 1], [ops, 2, 1, 50, 1, 2], [ops, 3, 1, 50, 1, 3], [test, 3, 1, 50, 1, 2], [ops, 4, 1, 50, 1, 5]]
+    - [[build, 0, 2, 50, 2, 0], [test, 0, 2, 50, 2, 0], [ops, 1, 2, 50, 1, 1]]

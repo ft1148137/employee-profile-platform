@@ -38,6 +38,7 @@ dev = [
     "types-pyyaml>=6.0.12.20261030",
     "types-openpyxl>=3.1.5.20261017",
     "pytest-split==0.11.0",
+    "ortools==9.15.6755",
 ]
 
 [build-system]

@@ -15,7 +15,7 @@ def _weeks(start: date, end: date, current: date) -> list[date]:
     ]
 
 
-def _ranked(
+def ranked_candidates(
     data: dict[str, Any], start: date, end: date
 ) -> list[tuple[dict[str, Any], int]]:
     demand = data["demand"]
@@ -121,7 +121,7 @@ def simulate(data: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
     start = date.fromisoformat(demand["window_start"])
     end = date.fromisoformat(demand["window_end"])
     count = demand["headcount"]
-    ranked = _ranked(data, start, end)
+    ranked = ranked_candidates(data, start, end)
     direct = _option("direct", data, _params([p for p, _ in ranked[:count]], demand))
     options = [direct]
     notes = []
@@ -157,7 +157,7 @@ def simulate(data: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
                         date.fromisoformat(demand[field]) + shift
                     ).isoformat()
             shifted_data = {**data, "demand": adjusted}
-            shifted = _ranked(shifted_data, start + shift, end + shift)
+            shifted = ranked_candidates(shifted_data, start + shift, end + shift)
             params = _params([p for p, _ in shifted[:count]], adjusted)
             trial = _option("delay", shifted_data, params)
             if trial["verdict"] == "feasible":
@@ -215,7 +215,9 @@ def simulate(data: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
                 "window_end": part_end.isoformat(),
             }
             part_data = {**data, "demand": adjusted}
-            selected = [p for p, _ in _ranked(part_data, part_start, part_end)[:count]]
+            selected = [
+                p for p, _ in ranked_candidates(part_data, part_start, part_end)[:count]
+            ]
             params = _params(selected, adjusted)
             if _option("phased", part_data, params)["verdict"] != "feasible":
                 break
