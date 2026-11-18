@@ -174,3 +174,90 @@ def test_callback_and_size_limits(monkeypatch: pytest.MonkeyPatch, text: str) ->
         assert (
             elements[0]["text"]["content"] == "内容较长，请在网页查看完整内容并操作。"
         )
+
+
+def test_feishu_fallback_plan_and_capacity_cards_keep_both_clickable_links(
+    db: Session,
+    demo: tuple,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "FRONTEND_HOST", "https://profiles.example")
+    person = demo[1]["E02"]
+    p = principal(db, person.org_id, person.id)
+    session = store.create_session(db, p, channel="feishu")
+    demand_id = uuid4()
+    case_id = uuid4()
+    custom_id = uuid4()
+    rule_id = uuid4()
+    plan_card = s.PlanCard(
+        title="自定方案方案",
+        fields=[s.CardField(label="结论", value="不可行")],
+        link=f"/capacity?tab=incoming&demand={demand_id}&plans=1#case={case_id}&option={custom_id}",
+        rule_fallback=s.RulePlanFallback(
+            fields=[s.CardField(label="结论", value="可行")],
+            differences=[s.CardField(label="结论", value="不可行 → 可行")],
+            link=f"/capacity?tab=incoming&demand={demand_id}&plans=1#case={case_id}&option={rule_id}",
+        ),
+    )
+    capacity_card = s.CapacityCard(
+        kind="demand_reply",
+        title="答复部门需求",
+        content="合成答复内容",
+        arguments={},
+        actions=[
+            s.CapacityAction(action="confirm_capacity", card_id=uuid4()),
+            s.CapacityAction(action="cancel_capacity", card_id=uuid4()),
+        ],
+        plan=plan_card,
+    )
+    request = AsyncMock(return_value={"data": {"message_id": "synthetic-message"}})
+    monkeypatch.setattr(Feishu, "_request", request)
+
+    async def send() -> None:
+        adapter = Feishu(p.org_id, {})
+        try:
+            await actions.deliver(
+                db,
+                p,
+                Event(p.org_id, "feishu", "event", external_chat_id="chat"),
+                "synthetic-app",
+                actions.Reply(
+                    session.id, s.TurnResponse(messages=[plan_card, capacity_card])
+                ),
+                adapter,
+            )
+        finally:
+            await adapter.close()
+
+    asyncio.run(send())
+    assert request.await_count == 2
+    first_elements = json.loads(request.call_args_list[0].args[2]["content"])[
+        "elements"
+    ]
+    assert first_elements[1] == {
+        "tag": "action",
+        "actions": [
+            {
+                "tag": "button",
+                "text": {"tag": "plain_text", "content": "在方案页修改"},
+                "url": f"https://profiles.example{plan_card.link}",
+            },
+            {
+                "tag": "button",
+                "text": {"tag": "plain_text", "content": "查看规则引擎方案"},
+                "url": f"https://profiles.example{plan_card.rule_fallback.link}",
+            },
+        ],
+    }
+    second_elements = json.loads(request.call_args_list[1].args[2]["content"])[
+        "elements"
+    ]
+    assert [btn["text"]["content"] for btn in second_elements[1]["actions"]] == [
+        "确认",
+        "取消",
+    ]
+    assert second_elements[2] == first_elements[1]
+    assert (
+        second_elements[2]["actions"][0]["url"]
+        != second_elements[2]["actions"][1]["url"]
+    )

@@ -95,9 +95,6 @@ def test_only_target_manager_gets_server_plan_card(
     assert result["options"]
     assert len(cards) == len(result["options"])
     assert all(isinstance(card, s.PlanCard) for card in cards)
-    assert all(
-        card.link == f"/capacity?tab=incoming&demand={row.id}&plans=1" for card in cards
-    )
     db.commit()
     response = client.get(
         f"/api/v1/orgs/{row.org_id}/planning/cases/{result['case_id']}",
@@ -109,6 +106,10 @@ def test_only_target_manager_gets_server_plan_card(
     options = {option["kind_label"]: option for option in response.json()["options"]}
     for card in cards:
         option = options[card.fields[0].value]
+        assert (
+            card.link
+            == f"/capacity?tab=incoming&demand={row.id}&plans=1#case={result['case_id']}&option={option['id']}"
+        )
         values = {field.label: field.value for field in card.fields}
         assert values["结论"] == option["verdict_label"]
         assert values["交付日期"] == str(option["summary"]["finish_date"] or "未定")

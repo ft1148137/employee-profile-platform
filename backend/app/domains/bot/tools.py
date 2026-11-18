@@ -493,7 +493,8 @@ def plan_card(option: OptionPublic, case: CasePublic) -> s.PlanCard:
                 after = "未定" if after is None else f"{after}{unit}"
                 parts.append(f"{label}：{before} → {after}")
         changes = "；".join(parts)
-    link = f"/capacity?tab=incoming&demand={case.demand_id}&plans=1"
+    base_link = f"/capacity?tab=incoming&demand={case.demand_id}&plans=1"
+    link = f"{base_link}#case={case.id}&option={option.id}"
     best = min(
         (
             o
@@ -513,7 +514,7 @@ def plan_card(option: OptionPublic, case: CasePublic) -> s.PlanCard:
                 s.CardField(label=a.label, value=f"{a.value} → {b.value}")
                 for a, b in zip(metrics, rule_metrics, strict=True)
             ],
-            link=f"{link}#case={case.id}",
+            link=f"{base_link}#case={case.id}&option={best.id}",
         )
     return s.PlanCard(
         title=f"{option.kind_label}方案",

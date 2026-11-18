@@ -194,15 +194,19 @@ async def deliver(
     while pending:
         async with delivery.in_thread(
             _message(db, p, event, identity, reply, pending)
-        ) as (body, rows, link):
+        ) as (body, rows, links):
             buttons = [
                 (rendering.LABELS[str(r.action["action"])], r.token) for r in rows
             ]
             try:
                 async with asyncio.timeout(10 if event.platform == "feishu" else None):
-                    if link:
+                    if len(links) == 1:
                         message_id = await adapter.render(
-                            event.external_chat_id, body, buttons, link=link
+                            event.external_chat_id, body, buttons, link=links[0]
+                        )
+                    elif links:
+                        message_id = await adapter.render(
+                            event.external_chat_id, body, buttons, links=links
                         )
                     else:
                         message_id = await adapter.render(
@@ -222,7 +226,7 @@ def _message(
     identity: str,
     reply: Reply,
     pending: list[s.Message],
-) -> Generator[tuple[str, list[ImAction], tuple[str, str] | None]]:
+) -> Generator[tuple[str, list[ImAction], list[tuple[str, str]]]]:
     try:
         session = store.get_session(db, p, reply.session_id)
         employee_id, session_id = session.employee_id, session.id
@@ -262,12 +266,8 @@ def _message(
                 )
                 for action in offered
             ]
-            link = (
-                ("在方案页修改", rendering.plan_url(message))
-                if event.platform == "feishu" and isinstance(message, s.PlanCard)
-                else None
-            )
-            yield body, rows, link
+            links = rendering.plan_links(message) if event.platform == "feishu" else []
+            yield body, rows, links
         for row in rows:
             db.add(row)
         db.commit()

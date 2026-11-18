@@ -273,6 +273,7 @@ class Wecom:
         buttons: list[tuple[str, str]],
         *,
         link: tuple[str, str] | None = None,
+        links: list[tuple[str, str]] | None = None,
     ) -> str:
         task_id = uuid4().hex
         # shortcut: Use the web preview beyond this conservative card budget; verify larger cards with a real application.

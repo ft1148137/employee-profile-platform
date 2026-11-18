@@ -223,6 +223,7 @@ class Telegram:
         buttons: list[tuple[str, str]],
         *,
         link: tuple[str, str] | None = None,
+        links: list[tuple[str, str]] | None = None,
     ) -> str:
         message_id = ""
         for start in range(0, len(text), 3000):
