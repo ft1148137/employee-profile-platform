@@ -234,3 +234,97 @@ def test_project_views_keep_department_boundaries(
     assert client.get(f"{base}/projects", headers=auth["b1"]).json() == []
     for viewer in ("b3", "employee", "foreign"):
         assert client.get(url, headers=auth[viewer]).status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("outcome", "dates", "reason", "earliest", "finish", "delay"),
+    [
+        ("not_now", {}, "not_now", "2026-12-04", "2026-12-09", 6),
+        (
+            "can_do",
+            {"start_date": "2026-12-01", "end_date": "2026-12-05"},
+            "late_commitment",
+            "2026-12-06",
+            "2026-12-11",
+            8,
+        ),
+        (
+            "partial",
+            {"start_date": "2026-12-01", "end_date": "2026-12-03"},
+            "partial",
+            "2026-12-04",
+            "2026-12-09",
+            6,
+        ),
+    ],
+)
+def test_project_schedule_and_downstream_impacts(
+    project_data: tuple,
+    client: TestClient,
+    outcome: str,
+    dates: dict[str, str],
+    reason: str,
+    earliest: str,
+    finish: str,
+    delay: int,
+) -> None:
+    base, auth, body, _ = project_data
+    body["roles"][1]["depends_on"] = []
+    body["roles"][2]["depends_on"] = [0, 1]
+    created = client.post(f"{base}/projects", headers=auth["manager"], json=body)
+    assert created.status_code == 200, created.text
+    url = f"{base}/projects/{created.json()['id']}"
+    roles = client.get(url, headers=auth["manager"]).json()["roles"]
+    response = client.post(
+        f"{base}/demands/{roles[0]['id']}/reply",
+        headers=auth["b0"],
+        json={"outcome": outcome, "text": "已核对交付条件", "revision": 1, **dates},
+    )
+    assert response.status_code == 200, response.text
+    schedule = client.get(url, headers=auth["manager"]).json()["schedule"]
+    assert schedule == client.get(url, headers=auth["b0"]).json()["schedule"]
+    stages = schedule["stages"]
+    assert [[r["role"]["role_name"] for r in stage] for stage in stages] == [
+        ["合成角色0", "合成角色1"],
+        ["合成角色2"],
+        ["合成角色3"],
+    ]
+    assert stages[1][0]["earliest_start"] == earliest
+    assert stages[2][0]["earliest_start"] == "2026-12-04"
+    assert stages[2][0]["forecast_end"] == finish
+    impact = schedule["impacts"][0]
+    assert impact["reasons"] == [reason]
+    assert [
+        (r["role_name"], r["target_department_name"]) for r in impact["downstream"]
+    ] == [
+        ("合成角色2", "合成目标部门2"),
+        ("合成角色3", "合成目标部门0"),
+    ]
+    assert schedule["delay_days"] == delay
+
+
+def test_project_analysis_rejects_external_and_cyclic_graphs() -> None:
+    from datetime import date
+
+    from app.domains.capacity.demand_schemas import ProjectRoleSummary
+    from app.domains.capacity.models import DemandStatus
+    from app.domains.capacity.project import InvalidProjectDependencies, analyze_project
+
+    a, b, foreign = uuid4(), uuid4(), uuid4()
+    roles = [
+        ProjectRoleSummary(
+            id=role_id,
+            role_name=name,
+            target_department_name="合成部门",
+            status=DemandStatus.SUBMITTED,
+            window_start=date(2026, 12, 1),
+            window_end=date(2026, 12, 3),
+            committed_start_date=None,
+            committed_end_date=None,
+        )
+        for role_id, name in ((a, "开发"), (b, "测试"))
+    ]
+    with pytest.raises(InvalidProjectDependencies, match="同一项目"):
+        analyze_project(roles, {a: [foreign]}, {})
+    with pytest.raises(InvalidProjectDependencies, match="循环"):
+        analyze_project(roles, {a: [b], b: [a]}, {})

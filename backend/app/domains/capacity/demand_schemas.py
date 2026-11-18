@@ -406,6 +406,35 @@ class ProjectRole(ProjectRoleSummary):
     demand: DemandPublic | None = None
 
 
+class ScheduledProjectRole(BaseModel):
+    role: ProjectRoleSummary
+    planned_start: date
+    planned_end: date
+    earliest_start: date | None
+    forecast_start: date | None
+    forecast_end: date | None
+
+
+type ProjectImpactReason = Literal[
+    "partial", "not_now", "late_commitment", "dependency"
+]
+
+
+class ProjectImpact(BaseModel):
+    role: ProjectRoleSummary
+    reasons: list[ProjectImpactReason]
+    downstream: list[ProjectRoleSummary]
+
+
+class ProjectSchedule(BaseModel):
+    stages: list[list[ScheduledProjectRole]]
+    impacts: list[ProjectImpact]
+    window_end: date
+    forecast_end: date | None
+    delay_days: int
+
+
 class ProjectDetail(ProjectSummary):
     description: str | None = None
     roles: list[ProjectRole]
+    schedule: ProjectSchedule
