@@ -284,6 +284,87 @@ def test_direct_edits_of_a_committed_segment_require_a_change(
     assert result.status_code == 409 and "请发起变更" in result.text, result.text
 
 
+def test_committed_start_moves_to_second_week_only_after_acceptance(
+    client: TestClient, case: tuple, db: Session
+) -> None:
+    url, people, auth, demand = case
+    lines = segments(case, people=2)
+    first_week = demand.window_start
+    second_week = first_week + timedelta(weeks=1)
+    lines[1]["end_date"] = (second_week - timedelta(days=1)).isoformat()
+    offer = propose(client, case, plan(client, case, lines))
+    assert offer.status_code == 200, offer.text
+    accepted = respond(client, case, offer.json()["revision"])
+    assert accepted.status_code == 200, accepted.text
+    db.expire_all()
+    moved, covering = sorted(
+        rows(db, CapacityAssignment, demand), key=lambda row: row.due_date, reverse=True
+    )
+    employee_id = people["E04"].id
+    assert moved.employee_id == employee_id
+    patch_path = f"{url}/capacity/assignments/{moved.id}"
+    demand_path = f"{url}/capacity/demands/{demand.id}"
+    before = client.get(demand_path, headers=auth["b"])
+    assert before.status_code == 200, before.text
+    original = moved.model_dump()
+    assignment_updates = select(AuditEvent.id).where(
+        AuditEvent.org_id == demand.org_id,
+        AuditEvent.target_id == str(moved.id),
+        AuditEvent.action == "capacity.assignment_updated",
+    )
+    assert not db.exec(assignment_updates).all()
+
+    def weekly_load() -> list[int]:
+        return [
+            week.platform_percent
+            for week in loads(db, demand.org_id, [employee_id], first_week, 2)[
+                employee_id
+            ]
+        ]
+
+    assert weekly_load() == [50, 50]
+    update = {"start_date": second_week.isoformat()}
+    for role in ("a", "foreign"):
+        denied = client.patch(patch_path, headers=auth[role], json=update)
+        assert denied.status_code == 404, denied.text
+    rejected = client.patch(patch_path, headers=auth["b"], json=update)
+    assert rejected.status_code == 409, rejected.text
+    assert rejected.json()["detail"] == "已生效的安排请发起变更"
+    db.refresh(moved)
+    assert moved.model_dump() == original
+    assert client.get(demand_path, headers=auth["b"]).json() == before.json()
+    assert not db.exec(assignment_updates).all()
+    assert weekly_load() == [50, 50]
+
+    lines[0].update(update)
+    change = submit_change(
+        client, case, plan(client, case, lines), reason="调整开始日期"
+    )
+    assert change.status_code == 200, change.text
+    db.refresh(moved)
+    assert moved.model_dump() == original
+    assert weekly_load() == [50, 50]
+
+    accepted = respond(client, case, change.json()["revision"])
+    assert accepted.status_code == 200, accepted.text
+    db.expire_all()
+    assert moved.status == "cancelled"
+    assert covering.status == "active"
+    (replacement,) = (
+        row
+        for row in rows(db, CapacityAssignment, demand)
+        if row.employee_id == employee_id and row.status == "active"
+    )
+    assert replacement.id != moved.id
+    assert replacement.start_date == second_week
+    assert replacement.due_date == moved.due_date
+    assert replacement.allocation_percent == moved.allocation_percent
+    assert weekly_load() == [0, 50]
+    assert [event["kind"] for event in accepted.json()["events"]].count(
+        "commitment_changed"
+    ) == 1
+
+
 @pytest.mark.usefixtures("committed")
 def test_assistant_directs_changes_to_the_web(db: Session, case: tuple) -> None:
     demand = case[3]

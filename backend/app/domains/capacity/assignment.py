@@ -473,9 +473,14 @@ def update_assignment(
         raise CapacityNotFound()
     if row.status != AssignmentStatus.ACTIVE:
         raise CapacityConflict()
+    if body.start_date is not None and subject.department_id not in managed_scope(
+        session, principal.org_id, frozenset({demand.target_department_id})
+    ):
+        raise CapacityNotFound()
     if row.proposal_line_id is not None and (
         (cancelling and subject.employment_status == EmploymentStatus.ACTIVE)
         or body.allocation_percent is not None
+        or body.start_date is not None
         or (body.due_date is not None and body.due_date < row.due_date)
     ):
         raise CommitmentConfirmationRequired("已生效的安排请发起变更")
@@ -495,10 +500,6 @@ def update_assignment(
         )
         notify_employee(principal, session, row.employee_id)
     elif body.start_date is not None:
-        if subject.department_id not in managed_scope(
-            session, principal.org_id, frozenset({demand.target_department_id})
-        ):
-            raise CapacityNotFound()
         check_dates(demand, body.start_date, row.due_date)
         check_capacity(
             session,
@@ -515,9 +516,7 @@ def update_assignment(
     elif body.status is not None:
         row.status, row.closed_at = AssignmentStatus(body.status), utc_now()
         session.add(row)
-    if row.proposal_line_id is not None and (
-        body.status is not None or body.start_date is not None
-    ):
+    if row.proposal_line_id is not None and body.status is not None:
         demand.revision += 1
         session.add(demand)
     audit(

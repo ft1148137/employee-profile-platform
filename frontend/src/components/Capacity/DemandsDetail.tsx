@@ -156,7 +156,11 @@ export function DemandsDetail({
             <DemandsBasis orgId={orgId} demandId={demandId} />
           )}
           {side === "incoming" && query.data.basis_url && (
-            <section aria-label="协调方案" className="space-y-3">
+            <section
+              id="capacity-plans"
+              aria-label="协调方案"
+              className="scroll-mt-20 space-y-3"
+            >
               <Button
                 variant="outline"
                 onClick={() =>
@@ -214,7 +218,11 @@ export function DemandsDetail({
           {side === "incoming" &&
             query.data.basis_url &&
             query.data.status === "accepted" && (
-              <DemandAssignments orgId={orgId} demand={query.data} />
+              <DemandAssignments
+                orgId={orgId}
+                demand={query.data}
+                canProposeChange={change}
+              />
             )}
           {(side === "outgoing" || query.data.basis_url) && (
             <DemandsAction

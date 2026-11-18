@@ -231,7 +231,38 @@ async function setup(page: Page, request: APIRequestContext) {
     },
     a,
   )
-  return { a, m, details, person }
+  const createLegacy = async () => {
+    const legacy = await create("合成手工分配需求")
+    const path = `${base}/capacity/demands/${legacy.id}`
+    const reply = await api(
+      `${path}/reply`,
+      {
+        revision: legacy.revision,
+        outcome: "can_do",
+        start_date: start,
+        end_date: later(13),
+        text: "按约定交付",
+      },
+      m,
+    )
+    await api(
+      `${path}/respond`,
+      { action: "accept", revision: reply.revision },
+      a,
+    )
+    await api(
+      `${path}/assignments`,
+      {
+        employee_id: person("C").id,
+        allocation_percent: 70,
+        start_date: start,
+        due_date: later(13),
+      },
+      m,
+    )
+    return legacy.id
+  }
+  return { a, m, details, person, createLegacy, secondWeek: later(7) }
 }
 
 test("资源方提交换人，需求方匿名确认后替换原分配", async ({
@@ -285,4 +316,31 @@ test("资源方提交换人，需求方匿名确认后替换原分配", async ({
   await expect(
     assignments.getByRole("article", { name: "合成接替员工" }),
   ).toContainText("进行中")
+})
+
+test("已承诺分配从行内发起变更，旧手工分配仍能直接保存开始日期", async ({
+  page,
+  request,
+}) => {
+  const { m, details, createLegacy, secondWeek } = await setup(page, request)
+  await details(m)
+  const assignments = page.getByRole("region", { name: "部门内分配" })
+  const committed = assignments.getByRole("article", { name: "合成原员工" })
+  await expect(committed).toBeVisible()
+  await expect(
+    committed.getByRole("form", { name: "修改开始日期" }),
+  ).toHaveCount(0)
+  await committed.getByRole("link", { name: "发起开始日期变更" }).click()
+  const plans = page.getByRole("region", { name: "协调方案" })
+  await plans.getByRole("button", { name: "调整投入分段" }).first().click()
+  await expect(
+    plans.getByRole("form", { name: "编辑投入分段" }).getByLabel("开始日期"),
+  ).toBeVisible()
+
+  await details(m, await createLegacy())
+  const legacy = assignments.getByRole("article", { name: "合成接替员工" })
+  const startForm = legacy.getByRole("form", { name: "修改开始日期" })
+  await startForm.getByLabel("调整后的开始日期").fill(secondWeek)
+  await startForm.getByRole("button", { name: "保存开始日期" }).click()
+  await expect(legacy).toContainText(`开始：${secondWeek}`)
 })
