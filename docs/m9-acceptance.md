@@ -1,16 +1,16 @@
 # M9 验收记录
 
-核对基线为 `master 236b68fed78ad969bba73e6fc2b71e3a41b1c778`（2026-11-18，北京时间），包含 C5 / PR #367。父 issue 为 [NERE-639](mention://issue/01a1de41-e0de-76f4-a626-40c9e9b7ec68)，记录任务为 NERE-787。[基线提交检查](https://github.com/ft1148137/employee-profile-platform/commit/236b68fed78ad969bba73e6fc2b71e3a41b1c778/checks)
+阶段审查基线为 `master 236b68fed78ad969bba73e6fc2b71e3a41b1c778`（2026-11-18，北京时间），包含 C5 / PR #367。父 issue 为 [NERE-639](mention://issue/01a1de41-e0de-76f4-a626-40c9e9b7ec68)，记录任务为 NERE-787。[基线提交检查](https://github.com/ft1148137/employee-profile-platform/commit/236b68fed78ad969bba73e6fc2b71e3a41b1c778/checks)
 
-已有自动化用例的结果见下表。Reviewer 在同一基线的第 2 阶段审查中发现四项业务缺口。已承诺分配的开始日期修复已通过，普通答复轮次、确认卡审批来源和借调跨方拒绝三项待补证据。真实模型兜底后达标，原推荐仍有未达标案例。发布准备的证据覆盖源码许可和自签 HTTPS，制品再分发核验、公网证书实测和公开发布仍待处理。M9.1 人工回归见文末。
+已有自动化用例的结果见下表。Reviewer 在该基线的第 2 阶段审查中发现四项业务缺口。补证代码基线为 `master 2e1fc34f5e5878c510577ba03089457316ef3e6a`（2026-11-18，北京时间），包含三项修复。四个业务回归的 PR 测试均通过，主干浏览器实跑状态见下文。真实模型兜底后达标，原推荐仍有未达标案例。发布准备的证据覆盖源码许可和自签 HTTPS，制品再分发核验、公网证书实测和公开发布仍待处理。M9.1 人工回归见文末。
 
 ## 依据与交付
 
 第 2 阶段核对前的 14 个前置子 issue 均为 done，16 个关联 PR 均已合并，必需检查通过。#352、#353、#356、#359 的 Playwright 分片按路径规则跳过，汇总门禁成功。功能测试采用各 PR 的 CI 结果，真实模型与 HTTPS 实测沿用原报告。本轮只核对文档、源码和检查记录，未在本地复跑 pytest、Playwright、Docker、真实飞书或真实模型。
 
-基线 `236b68fe` 的合并后 Playwright 在 Chromium shard 2 的初始画像流程失败，由 NERE-796 单独跟踪。下表 CI 链接指向各 PR 的检查结果。[master 失败运行](https://github.com/ft1148137/employee-profile-platform/actions/runs/44240652893) · [NERE-796](mention://issue/01a1ed0c-bb9c-73c3-8cf5-f58176a8ad94)
+审查基线 `236b68fe` 的合并后 Playwright 在 Chromium shard 2 的初始画像流程失败。下表列出各 PR 的检查结果。主干运行按提交流水线单独核对。[master 失败运行](https://github.com/ft1148137/employee-profile-platform/actions/runs/44240652893) · [NERE-796](mention://issue/01a1ed0c-bb9c-73c3-8cf5-f58176a8ad94)
 
-文档 PR #368 的合并提交 `3cbec709` 的 Playwright 汇总通过，浏览器分片因文档路径跳过。该提交的 Compose 通过，Backend 分片 3 执行测试失败。NERE-796 的初始画像浏览器实测由修复 PR 及其主干运行补证。[Playwright 汇总](https://github.com/ft1148137/employee-profile-platform/actions/runs/44242736634) · [Compose](https://github.com/ft1148137/employee-profile-platform/actions/runs/44242736640) · [Backend 运行](https://github.com/ft1148137/employee-profile-platform/actions/runs/44242736679)
+文档 PR #368 的合并提交 `3cbec709` 的 Playwright 汇总通过，浏览器分片因文档路径跳过。该提交的 Compose 通过，Backend 分片 3 执行测试失败。[Playwright 汇总](https://github.com/ft1148137/employee-profile-platform/actions/runs/44242736634) · [Compose](https://github.com/ft1148137/employee-profile-platform/actions/runs/44242736640) · [Backend 运行](https://github.com/ft1148137/employee-profile-platform/actions/runs/44242736679)
 
 | 子 issue | 交付与 PR | CI 证据 |
 | --- | --- | --- |
@@ -28,15 +28,23 @@
 | NERE-786 C5 | [#367](https://github.com/ft1148137/employee-profile-platform/pull/367) 已生效安排的正式变更 | [后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44239173978)、[网页](https://github.com/ft1148137/employee-profile-platform/actions/runs/44239173900) |
 | NERE-788 隐私修复 | [#364](https://github.com/ft1148137/employee-profile-platform/pull/364)、[#365](https://github.com/ft1148137/employee-profile-platform/pull/365) 自由文本与升级前会话保护 | [#364 后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44214095349)、[#365 后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44217580596) |
 | NERE-789 接力修复 | [#362](https://github.com/ft1148137/employee-profile-platform/pull/362) 全程参与者与接力共存 | [后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44211869389) |
+| NERE-794 提议轮次和审批修复 | [#372](https://github.com/ft1148137/employee-profile-platform/pull/372) 普通答复轮次、审批来源和借调跨方拒绝，合并提交 `2e1fc34f` | [后端重跑](https://github.com/ft1148137/employee-profile-platform/actions/runs/44244499661/attempts/2) |
 | NERE-795 开始日期修复 | [#369](https://github.com/ft1148137/employee-profile-platform/pull/369) 已承诺段的开始日期走正式变更，合并提交 `65acbc0f` | [后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44242388416)、[网页](https://github.com/ft1148137/employee-profile-platform/actions/runs/44242388420) |
+| NERE-796 初始画像浏览器回归 | [#371](https://github.com/ft1148137/employee-profile-platform/pull/371) 假模型按工具分流与重试数据隔离，合并提交 `538c7828` | [PR Playwright](https://github.com/ft1148137/employee-profile-platform/actions/runs/44244047067/attempts/2) |
+
+### 初始画像 Playwright 补证
+
+NERE-796 复现了部门能力默认值调用 `submit_department_capabilities` 被旧假模型当作画像起草处理、访问不存在的 `records`，以及原重试复用首轮已被占用邮箱而收到 422。#371 按工具名区分部门能力默认值和画像起草，保留原合成邮箱完成 Jira 自动关联，再用每次运行专用邮箱签发账号。修复 PR 的 Chromium shard 2 报告中，[initial-profiles.spec.ts](../frontend/tests/initial-profiles.spec.ts) 的「the fake model accepts department defaults without drafting records」与「employee reviews initial profile and updates on desktop and mobile」均实跑通过。[PR Playwright 运行](https://github.com/ft1148137/employee-profile-platform/actions/runs/44244047067/attempts/2)
+
+修复合入后，提交 `538c7828` 的 master Playwright 已取消。核对时，包含三项修复的 `2e1fc34f` 已触发新的 master Playwright，实跑结论待补。[取消的主干运行](https://github.com/ft1148137/employee-profile-platform/actions/runs/44246037538) · [补证基线的主干运行](https://github.com/ft1148137/employee-profile-platform/actions/runs/44246496911)
 
 ## 父 issue 验收逐条对照
 
 | 验收 | 测试文件和用例 | 实际结果与边界 |
 | --- | --- | --- |
 | 1. 方案提议、接受及审批，保留各方决定和理由 | [test_m9_proposal.py](../backend/tests/api/routes/test_m9_proposal.py) 的 `test_reply_with_option_creates_hold`、`test_current_assignment_constraint_rejects_valid_segments`、`test_proposer_cannot_approve_as_requesting_manager`、`test_rejection_and_withdraw_are_idempotent`；[test_m9_proposal_entries.py](../backend/tests/api/routes/test_m9_proposal_entries.py) 的 `test_human_confirms_proposal_then_acceptance`、`test_model_has_no_direct_commitment_tools`、`test_mcp_accept_guard_and_legacy_flow` | #357、#363 后端 CI 通过。B 方有权代表提交即记 B 方审批，A 方接受后普通方案生效。提议人不能再替 A 方审批，拒绝理由随决定保留。网页或助手确认卡由本人确认，MCP 不能接受待处理的方案提议。卡片测试使用合成输入和适配器。历史提议后改走普通答复的轮次兼容、确认卡审批来源见 1a、1b |
-| 1a. 历史提议终结后处理本轮普通答复 | [NERE-794](mention://issue/01a1ed06-38f0-73d2-91c1-f0efc88cf50a)，第 2 阶段审查 | **待修。** 基线 `236b68fe` 上，B 方重发不带方案的答复后，A 方回应仍会被分派给上一轮终态提议。待补接受后可手工分配、追问、撤回和旧版本重放的用例与结果 |
-| 1b. 审批保留实际入口 | [NERE-794](mention://issue/01a1ed06-38f0-73d2-91c1-f0efc88cf50a)，第 2 阶段审查 | **待修。** 基线 `236b68fe` 上，飞书确认产生的答复事件记为 `feishu`，同轮资源方审批固定记为 `web`。待核对网页表单、网页助手和飞书的真实确认路径，分别记录 `web`、`bot` 和 `feishu`，两种业务记录的来源一致 |
+| 1a. 历史提议终结后处理本轮普通答复 | [test_m9_proposal.py](../backend/tests/api/routes/test_m9_proposal.py) 的 `test_response_uses_new_plain_reply_after_proposal_ends` | 基线 `236b68fe` 上，本轮普通答复仍可能被上一轮终态提议拦住。**#372 修复，后端 CI 五个参数场景通过。** 拒绝、过期或 B 方撤回旧提议后，A 方可接受新普通答复，B 方可手工分配。另验证普通追问和撤回可完成，旧版本重放仍返回 `proposal_decided` |
+| 1b. 审批保留实际入口 | [test_m9_proposal.py](../backend/tests/api/routes/test_m9_proposal.py) 的 `test_reply_with_option_creates_hold`；[test_m9_proposal_entries.py](../backend/tests/api/routes/test_m9_proposal_entries.py) 的 `test_human_confirms_proposal_then_acceptance` | 基线 `236b68fe` 上，飞书确认的答复事件记为 `feishu`，资源方审批错误记为 `web`。**#372 修复，后端 CI 三个入口通过。** 网页表单、网页助手确认和飞书回调分别记录 `web`、`bot`、`feishu`，资源方审批与同轮答复事件一致 |
 | 2. 临时预占及到期释放 | [test_m9_proposal.py](../backend/tests/api/routes/test_m9_proposal.py) 的 `test_expired_hold_is_released_without_worker`；[test_m9_proposal_display.py](../backend/tests/api/routes/test_m9_proposal_display.py) 的 `test_weekly_hold_details_expire_and_exclude_together`；[m9-proposal.spec.ts](../frontend/tests/m9-proposal.spec.ts) 的「按方案答复预占，接受后逐段生效并通知员工」 | #357、#358 CI 通过。初次提议的预占有效期为 72 小时，期间计入每周占用，尚无正式分配。到期即从容量计算排除，周期任务补记失败状态。浏览器验证预占显示与转为分配，到期分支由后端覆盖 |
 | 3. 最终复核、原子承诺、防重复提交 | [test_m9_proposal.py](../backend/tests/api/routes/test_m9_proposal.py) 的 `test_invalid_or_stale_option_never_holds`、`test_recheck_failure_is_persisted`、`test_current_assignment_constraint_rejects_valid_segments`；[test_m9_proposal_concurrency.py](../backend/tests/api/routes/test_m9_proposal_concurrency.py) 的 `test_propose_rechecks_latest_snapshot_after_employee_lock`、`test_accept_competes_with_one_terminal_transition`、`test_accept_rechecks_expiry_after_waiting_for_employee` | #357 后端 CI 通过。旧快照被拦，在职、容量或权限变化可使接受失败，锁内再次检查到期。多段一次生成，每个提议行只生成一条分配。并发和回滚断言见下一节 |
 | 4. 资源冲突提示 | [test_m9_proposal_concurrency.py](../backend/tests/api/routes/test_m9_proposal_concurrency.py) 的 `test_competing_proposals_do_not_overbook`；[test_m9_proposal.py](../backend/tests/api/routes/test_m9_proposal.py) 的 `test_accept_conflict_hides_unreadable_demand_source`；[m9-proposal.spec.ts](../frontend/tests/m9-proposal.spec.ts) 的「同周争抢给出来源和超出比例，撤回后旧确认显示当前状态」 | #357、#358 CI 通过。争用同一员工同一周返回 409，界面可显示超出比例和可读来源。无权看的来源只显示「其他需求」，不回传人名、员工 ID 或需求原文 |
@@ -45,7 +53,7 @@
 | 7. 已生效安排走正式变更 | [test_m9_change.py](../backend/tests/api/routes/test_m9_change.py) 的 `test_switch_person_changes_commitment_only_after_acceptance`、`test_changes_replace_only_different_segments`、`test_change_can_add_a_person_then_remove_them`、`test_change_can_end_before_the_original_window`、`test_direct_edits_of_a_committed_segment_require_a_change`；[m9-change.spec.ts](../frontend/tests/m9-change.spec.ts) 的「资源方提交换人，需求方匿名确认后替换原分配」 | #367 CI 通过。B 发提议、A 比较匿名的前后安排后接受。相同段保留，变化段在同一事务取消或新建，包含投入变化。拒绝、过期或复核失败时保留原承诺。延期审批、标记完成、取消离职员工分配及旧手工流程沿用原入口。已承诺段的开始日期调整见 7a。 |
 | 7a. 已承诺分配的开始日期须经正式变更 | [test_m9_change.py](../backend/tests/api/routes/test_m9_change.py) 的 `test_committed_start_moves_to_second_week_only_after_acceptance`；[m9-change.spec.ts](../frontend/tests/m9-change.spec.ts) 的「已承诺分配从行内发起变更，旧手工分配仍能直接保存开始日期」 | 基线 `236b68fe` 上，B 方可直接推迟已承诺段的开始日期，提前释放投入。**#369 修复，后端和 Playwright 用例均通过。** 直接 PATCH 返回 409，原段、需求详情与版本、业务事件和周负荷保持原值。A 方接受正式变更后才替换该段并释放第一周投入。网页已承诺行提供「发起开始日期变更」，手工分配仍可直接保存开始日期 |
 | 8. 借调须原部门经理和本人同意，拒绝保护及关系不变 | [test_m9_borrow.py](../backend/tests/api/routes/test_m9_borrow.py) 的 `test_borrow_consent_order_and_projections`、`test_decline_is_private_and_leaves_profiles_unchanged`、`test_borrow_failure_releases_holds`；[m9-borrow.spec.ts](../frontend/tests/m9-borrow.spec.ts) 的「借调双方同意后生成匿名分配」「本人不同意后仅本人看得到理由」 | #366 CI 通过。B 提议后须原部门经理选人、本人同意、A 接受，最后一方同意时生成分配。部门归属、直属上级和画像审批关系沿用原关系；后端断言核对原部门与画像审批路由。本人不同意时其他方只看到「借调未达成」，本人理由不进审计详情，画像、证据、找人、覆盖率和导出结果保持原样。拒绝不用于考核，产品没有考核功能。B 方在生效分配里仍看到匿名「借调 1 人」、投入和日期。跨方拒绝见 8a |
-| 8a. 借调拒绝遵守一人一方 | [NERE-794](mention://issue/01a1ed06-38f0-73d2-91c1-f0efc88cf50a)，第 2 阶段审查 | **待修。** 基线 `236b68fe` 上，兼管 A 方的原部门经理在选人后仍可代表 A 方拒绝，导致整单预占释放。待核对已选人的原部门经理和已同意的员工均不能跨方拒绝，越权尝试后审批、预占、事件和需求版本保持原值，独立 A 方仍可拒绝 |
+| 8a. 借调拒绝遵守一人一方 | [test_m9_borrow.py](../backend/tests/api/routes/test_m9_borrow.py) 的 `test_borrow_party_cannot_also_reject_as_requesting_manager` | 基线 `236b68fe` 上，兼管 A 方的原部门经理在选人后仍可代表 A 方拒绝并释放整单预占。**#372 修复，后端 CI 两个参数场景通过。** 已选人的原部门经理和已同意的员工尝试跨方拒绝均返回 403，审批、预占、事件、提议和需求版本保持原值。独立 A 方仍可拒绝并释放预占 |
 | 9. 发布准备 | [许可证核验](licenses.md)、[HTTPS 实测](m9-https-test.md)；[test_https_config.py](../deploy/test_https_config.py) 的 `test_project_isolation_and_streaming`、`test_acme_http_challenge_and_storage`、`test_acme_port_validation`；[贡献指南](../CONTRIBUTING.md)、[发布内容草稿](release-draft.md) | #352、#353、#356 门禁通过。许可证和发布文档按原报告验收；HTTPS 配置测试及浏览器实测采用 R2 本地证据，配置测试尚未接入 CI。发布边界见下文 |
 
 ## 重点验收：双方审批、并发与全有或全无
