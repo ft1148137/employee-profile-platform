@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, JsonValue, StrictBool, ValidationError
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
-from app.domains.bot import attachments, reviews
+from app.domains.bot import attachments, project_drafts, reviews, team_workload
 from app.domains.bot import schemas as s
 from app.domains.bot.levels import name_levels
 from app.domains.bot.models import BotSession
@@ -24,6 +24,7 @@ from app.domains.capacity import proposal as capacity_proposal
 from app.domains.capacity.demand_schemas import (
     DemandPublic,
     PlanReplyDemandInput,
+    ProjectInput,
 )
 from app.domains.capacity.models import DemandOutcome
 from app.domains.capacity.schemas import Via
@@ -100,6 +101,8 @@ class CoordinationInput(BaseModel):
         "simulate_plan",
         "compare_plan_options",
         "get_approval_status",
+        "prepare_project_draft",
+        "get_named_workload",
     ]
     arguments: dict[str, JsonValue]
 
@@ -111,6 +114,18 @@ class PreparePlanProposalInput(BaseModel):
     outside_basis: StrictBool = False
     lender_department_id: UUID | None = None
     borrow_headcount: int | None = Field(default=None, strict=True, ge=1)
+
+
+BOT_COORDINATION_FUNCTIONS = {
+    "prepare_project_draft": {
+        "description": "只生成项目草稿。先查能力词典和可选部门；用户须在网页点击确认才创建项目。",
+        "parameters": ProjectInput.model_json_schema(),
+    },
+    "get_named_workload": {
+        "description": "按完整姓名查询管辖内员工的周负荷，部门可选；普通员工仅可查自己。不需要需求编号。",
+        "parameters": team_workload.NamedWorkloadQuery.model_json_schema(),
+    },
+}
 
 
 def confirm_plan_reply(
@@ -336,6 +351,9 @@ def definitions(
                         "按当前用户权限调查、模拟和比较部门方案；方案不是承诺。"
                         "simulate_plan 首次模拟只传 demand_id，生成快照和候选方案；"
                         "已有首次模拟后，传 demand_id 和 assignees 校验自定方案。"
+                        "项目草稿和姓名查负荷的 function 及 arguments JSON Schema：\n"
+                        + json.dumps(BOT_COORDINATION_FUNCTIONS, ensure_ascii=False)
+                        + "\n"
                         "各 function 的说明及 arguments JSON Schema 如下（required 为必填字段）：\n"
                         + json.dumps(
                             {
@@ -712,14 +730,27 @@ def call(
     on_read: Callable[[set[str]], None] | None = None,
 ) -> JsonValue:
     if name in {"coordination", "prepare_plan_proposal"}:
-        if (
-            session.channel not in ("web", "feishu")
-            or not read_capacity_settings(p, db).enabled
-        ):
+        if session.channel not in ("web", "feishu"):
             return {"error": "不允许调用此工具"}
+        if not read_capacity_settings(p, db).enabled:
+            return {
+                "error": team_workload.DISABLED
+                if name == "coordination"
+                and arguments.get("function") == "get_named_workload"
+                else "不允许调用此工具"
+            }
         try:
             if name == "coordination":
                 coord_request = CoordinationInput.model_validate(arguments)
+                if coord_request.function == "get_named_workload":
+                    query = team_workload.NamedWorkloadQuery.model_validate(
+                        coord_request.arguments
+                    )
+                    return redact(team_workload.read(db, p, query, on_read))
+                if coord_request.function == "prepare_project_draft":
+                    project_input = ProjectInput.model_validate(coord_request.arguments)
+                    project_drafts.prepare(db, p, session, cards, project_input)
+                    return {"message": "项目草稿已生成，请在网页核对并点击确认创建项目"}
                 coord_tool = COORDINATION[coord_request.function]
                 input_body = coord_tool.input_model.model_validate(
                     coord_request.arguments

@@ -11,6 +11,7 @@ import AppSidebar from "@/components/Sidebar/AppSidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { isLoggedIn } from "@/hooks/useAuth"
 import { useOrg } from "@/hooks/useOrg"
+import { authReturnPath } from "@/utils"
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
@@ -20,10 +21,9 @@ export const Route = createFileRoute("/_layout")({
       new URLSearchParams(location.searchStr).get("view") === "org-chart"
     )
       throw redirect({ to: "/org-chart", replace: true })
-    const search =
-      location.pathname === "/oauth/consent"
-        ? { next: location.href }
-        : undefined
+    const search = authReturnPath(location.pathname, location.searchStr)
+      ? { next: location.href }
+      : undefined
     if (!isLoggedIn()) {
       throw redirect({
         to: "/login",

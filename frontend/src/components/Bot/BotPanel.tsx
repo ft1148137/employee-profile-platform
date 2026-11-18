@@ -170,6 +170,13 @@ export function BotConversation({
       client.invalidateQueries({ queryKey: ["change-requests", orgId] })
       client.invalidateQueries({ queryKey: ["inbox", orgId] })
       client.invalidateQueries({ queryKey: ["profile", orgId] })
+      if (
+        result.response.messages.some(
+          (message) =>
+            message.type === "project_draft_card" && message.project_id,
+        )
+      )
+        client.invalidateQueries({ queryKey: ["capacity", orgId] })
     },
     onError: (error, _input, startedAt) => {
       if (selection.current !== startedAt) return
@@ -263,6 +270,10 @@ export function BotConversation({
       }}
     />
   )
+  const latestProjectDraft = messages
+    .flatMap(({ payload }) => ("messages" in payload ? payload.messages : []))
+    .reverse()
+    .find((message) => message.type === "project_draft_card")
   const content = (
     <>
       {!fullPage && conversations()}
@@ -307,7 +318,12 @@ export function BotConversation({
                       dictionary={dictionary.data}
                       key={i}
                       message={message}
-                      disabled={busy || conflict}
+                      disabled={
+                        busy ||
+                        conflict ||
+                        (message.type === "project_draft_card" &&
+                          message !== latestProjectDraft)
+                      }
                       onAction={(action) => send.mutate(action)}
                     />
                   ))

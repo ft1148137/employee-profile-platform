@@ -13,7 +13,7 @@ import { ThemeProvider } from "./components/theme-provider"
 import { Toaster } from "./components/ui/sonner"
 import "./index.css"
 import { routeTree } from "./routeTree.gen"
-import { redirectToPasswordChange } from "./utils"
+import { authReturnPath, redirectToPasswordChange } from "./utils"
 
 client.setConfig({
   baseURL: import.meta.env.VITE_API_URL ?? "",
@@ -24,7 +24,11 @@ const handleApiError = (error: Error) => {
   if (redirectToPasswordChange(error)) return
   if (error instanceof AxiosError && error.response?.status === 401) {
     localStorage.removeItem("access_token")
-    window.location.href = `/login${window.location.pathname === "/oauth/consent" ? `?next=${encodeURIComponent(window.location.pathname + window.location.search)}` : ""}`
+    const next = authReturnPath(
+      window.location.pathname,
+      window.location.search,
+    )
+    window.location.href = `/login${next ? `?next=${encodeURIComponent(next)}` : ""}`
   }
 }
 client.instance.interceptors.response.use(undefined, (error: unknown) => {

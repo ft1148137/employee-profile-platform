@@ -13,6 +13,7 @@ from pydantic import (
 
 from app.authz.principal import Principal
 from app.domains.bot.attachments import AttachmentPublic
+from app.domains.capacity.demand_schemas import ProjectInput
 from app.domains.change_request.schemas import RequestReviewer, SubmitInput, ToolInput
 from app.domains.profile.models import AssessmentStatus
 from app.domains.review.direct import DirectEditInput
@@ -156,8 +157,18 @@ class CapacityAction(ToolInput):
     card_id: UUID
 
 
+class ProjectDraftAction(ToolInput):
+    action: Literal["confirm_project_draft"]
+    card_id: UUID
+
+
 Action = (
-    RequestAction | QuestionAction | ReviewAction | ProfileEditAction | CapacityAction
+    RequestAction
+    | QuestionAction
+    | ReviewAction
+    | ProfileEditAction
+    | CapacityAction
+    | ProjectDraftAction
 )
 
 
@@ -165,6 +176,16 @@ class CardField(BaseModel):
     label: str
     value: str
     unclear: bool = False
+
+
+class ProjectDraftCard(BaseModel):
+    type: Literal["project_draft_card"] = "project_draft_card"
+    card_id: UUID = Field(default_factory=uuid4)
+    project: ProjectInput
+    fields: list[CardField]
+    actions: list[ProjectDraftAction] = Field(default_factory=list)
+    project_id: UUID | None = None
+    web_link: str | None = None
 
 
 class RulePlanFallback(BaseModel):
@@ -293,6 +314,7 @@ Message = Annotated[
     | ReviewCard
     | ProfileEditCard
     | CapacityCard
+    | ProjectDraftCard
     | PlanCard,
     Field(discriminator="type"),
 ]
