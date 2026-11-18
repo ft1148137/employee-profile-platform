@@ -1,4 +1,5 @@
-from collections import Counter
+from collections import Counter, defaultdict
+from collections.abc import Iterator
 from datetime import date, timedelta
 from typing import Any, Literal, cast
 
@@ -8,12 +9,44 @@ from app.domains.capacity.calendar import WeekLoad, shortfalls, week_start
 
 Verdict = Literal["feasible", "conditional", "infeasible", "insufficient_data"]
 PHASED_APPROVAL = "需求方同意分阶段交付"
+EXTRA_CAPABILITY_FINDINGS: dict[tuple[bool, bool | None], tuple[str, Verdict, str]] = {
+    (True, False): ("required_capability_below", "infeasible", "必需能力未达标"),
+    (True, None): (
+        "required_capability_unknown",
+        "insufficient_data",
+        "必需能力未确认",
+    ),
+    (False, False): ("optional_capability_below", "feasible", "可选能力未达标"),
+    (False, None): ("optional_capability_unknown", "feasible", "可选能力未确认"),
+}
 
 
 class Validation(BaseModel):
     verdict: Verdict
     findings: list[dict[str, Any]]
     summary: dict[str, Any]
+
+
+def extra_capability_matches(
+    demand: dict[str, Any], person: dict[str, Any]
+) -> Iterator[tuple[dict[str, Any], bool | None]]:
+    published = person.get("extra_levels", {})
+    for capability in demand.get("extra_capabilities", []):
+        level = published.get(capability["key"])
+        minimum = capability["minimum_level"]
+        levels = capability["levels"]
+        if level is None:
+            yield capability, None
+        else:
+            yield (
+                capability,
+                minimum is None
+                or (
+                    level in levels
+                    and minimum in levels
+                    and levels.index(level) >= levels.index(minimum)
+                ),
+            )
 
 
 def validate(
@@ -25,6 +58,8 @@ def validate(
 ) -> Validation:
     """Validate saved inputs only; no database reads or writes."""
     demand = data["demand"]
+    has_extra_capabilities = bool(demand.get("extra_capabilities"))
+    primary_name = demand.get("capability_name", "主能力")
     candidates = {p["employee_id"]: p for p in data["candidates"]}
     levels = data["rules"]["levels"]
     current_week = date.fromisoformat(data["rules"]["current_week"])
@@ -34,6 +69,7 @@ def validate(
     newcomer_ids: set[str] = set()
     finish: date | None = None
     allocations: dict[tuple[str, date], int] = {}
+    matched_extras: dict[str, list[str]] = {}
 
     def add(
         code: str,
@@ -98,6 +134,29 @@ def validate(
             )
             week += timedelta(days=7)
         person = candidates.get(employee_id)
+        if has_extra_capabilities and employee_id not in matched_extras:
+            matched_extras[employee_id] = []
+            unmet: dict[tuple[bool, bool | None], list[str]] = defaultdict(list)
+            if person is None or person["level"] is None:
+                unmet[True, None].append(primary_name)
+            for capability, matches in extra_capability_matches(demand, person or {}):
+                name = capability["name"]
+                if matches:
+                    matched_extras[employee_id].append(name)
+                else:
+                    unmet[capability["required"], matches].append(name)
+            for status, (
+                code,
+                finding_level,
+                message,
+            ) in EXTRA_CAPABILITY_FINDINGS.items():
+                if names := unmet.get(status):
+                    add(
+                        code,
+                        finding_level,
+                        f"{message}：{'、'.join(names)}",
+                        employee_id=employee_id,
+                    )
         if person is None:
             add(
                 "borrow",
@@ -124,10 +183,14 @@ def validate(
             add(
                 "level_too_low",
                 "infeasible",
-                "能力等级低于需求",
+                f"主能力等级低于需求：{primary_name}"
+                if has_extra_capabilities
+                else "能力等级低于需求",
                 employee_id=employee_id,
             )
-        elif not person["in_basis"]:
+        elif not person["in_basis"] and (
+            level is not None or not has_extra_capabilities
+        ):
             add(
                 "outside_basis",
                 "conditional",
@@ -283,5 +346,8 @@ def validate(
             "newcomer_count": len(newcomer_ids),
             "affected_assignment_ids": affected,
             "approvers": approvers,
+            **(
+                {"matched_extra_capabilities": matched_extras} if matched_extras else {}
+            ),
         },
     )
