@@ -23,6 +23,7 @@ from app.domains.capacity.models import (
     CapacityApproval,
     CapacityAssignment,
     CapacityDemandEvent,
+    CapacitySetting,
 )
 from app.domains.capacity.settings import CapacityForbidden
 from app.domains.im import actions as im_actions
@@ -395,6 +396,11 @@ def test_mcp_rejection_preserves_authorization(
         db.flush()
         member.employee_id = person.id
         db.add(member)
+        db.add(
+            CapacitySetting(
+                org_id=member.org_id, enabled=True, updated_by_user_id=user_id
+            )
+        )
         db.commit()
         headers = initialize(client, token_for(db, person)[0])
     else:
