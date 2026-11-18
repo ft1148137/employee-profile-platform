@@ -430,6 +430,12 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
                 warning="等级已调整，请重新选择或清空"
                 if item.after
                 and not level_exists(item.capability.level_rubric, item.after.level)
+                else "请选择等级"
+                if request.origin == RequestOrigin.ASSIGNMENT_FEEDBACK
+                and item.op == ChangeOp.ADD
+                and item.after
+                and item.after.level is None
+                and (item.capability.level_rubric or {}).get("levels")
                 else None,
             )
         )
@@ -484,6 +490,17 @@ def submit(
     if not items:
         raise InvalidItems([{"index": 0, "message": "至少需要一项改动"}])
     public = _public(principal, session, request.id)
+    if request.origin == RequestOrigin.ASSIGNMENT_FEEDBACK:
+        missing_levels: list[dict[str, int | str]] = [
+            {"index": index, "message": "请选择等级"}
+            for index, item in enumerate(public.items)
+            if item.op == ChangeOp.ADD
+            and item.after
+            and item.after.level is None
+            and (item.capability.level_rubric or {}).get("levels")
+        ]
+        if missing_levels:
+            raise InvalidItems(missing_levels)
     inputs = [
         ItemInput(
             op=i.op,

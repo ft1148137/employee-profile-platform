@@ -7,6 +7,10 @@ import {
 } from "@/client"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
+import {
+  AssignmentFeedback,
+  useFeedbackAssignments,
+} from "./AssignmentFeedback"
 import { CapacityError, useCapacityRefresh } from "./AssignmentFields"
 
 const statuses: Record<string, string> = {
@@ -96,6 +100,32 @@ export function BorrowRequests({
           request={request}
           mine={mine}
         />
+      ))}
+      {!mine && <CompletedBorrowAssignments orgId={orgId} />}
+    </section>
+  )
+}
+
+function CompletedBorrowAssignments({ orgId }: { orgId: string }) {
+  const assignments = useFeedbackAssignments(orgId)
+  if (assignments.isPending) return <ProfileLoading />
+  if (assignments.isError)
+    return <ProfileError retry={() => assignments.refetch()} />
+  if (!assignments.data.length) return null
+  return (
+    <section aria-label="已结束的借调分配" className="space-y-3">
+      <h2 className="text-lg font-semibold">已结束的借调分配</h2>
+      {assignments.data.map((assignment) => (
+        <article
+          key={assignment.id}
+          className="space-y-2 rounded-xl border p-4"
+        >
+          <h3 className="font-medium">{assignment.employee_name}</h3>
+          <p>
+            {assignment.demand_title} · {assignment.due_date}
+          </p>
+          <AssignmentFeedback orgId={orgId} assignment={assignment} />
+        </article>
       ))}
     </section>
   )

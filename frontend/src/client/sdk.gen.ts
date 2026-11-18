@@ -281,6 +281,9 @@ import type {
   capacitySubmitProjectData,
   capacitySubmitProjectErrors,
   capacitySubmitProjectResponses,
+  capacityTrackingCreateAssignmentFeedbackData,
+  capacityTrackingCreateAssignmentFeedbackErrors,
+  capacityTrackingCreateAssignmentFeedbackResponses,
   capacityTrackingGetAssignmentTrackingData,
   capacityTrackingGetAssignmentTrackingErrors,
   capacityTrackingGetAssignmentTrackingResponses,
@@ -290,6 +293,9 @@ import type {
   capacityTrackingLinkAssignmentTaskData,
   capacityTrackingLinkAssignmentTaskErrors,
   capacityTrackingLinkAssignmentTaskResponses,
+  capacityTrackingListFeedbackAssignmentsData,
+  capacityTrackingListFeedbackAssignmentsErrors,
+  capacityTrackingListFeedbackAssignmentsResponses,
   capacityTrackingSearchAssignmentTasksData,
   capacityTrackingSearchAssignmentTasksErrors,
   capacityTrackingSearchAssignmentTasksResponses,
@@ -1340,6 +1346,53 @@ export class CapacityService {
 }
 
 export class CapacityTrackingService {
+  /**
+   * List Feedback Assignments
+   */
+  public static trackingListFeedbackAssignments<
+    ThrowOnError extends boolean = true,
+  >(
+    options: Options<capacityTrackingListFeedbackAssignmentsData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityTrackingListFeedbackAssignmentsResponses,
+      capacityTrackingListFeedbackAssignmentsErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/assignments/feedback",
+      ...options,
+    })
+  }
+
+  /**
+   * Create Assignment Feedback
+   */
+  public static trackingCreateAssignmentFeedback<
+    ThrowOnError extends boolean = true,
+  >(
+    options: Options<
+      capacityTrackingCreateAssignmentFeedbackData,
+      ThrowOnError
+    >,
+  ) {
+    return (options.client ?? client).post<
+      capacityTrackingCreateAssignmentFeedbackResponses,
+      capacityTrackingCreateAssignmentFeedbackErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/assignments/{assignment_id}/feedback",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
   /**
    * Get Assignment Tracking
    */

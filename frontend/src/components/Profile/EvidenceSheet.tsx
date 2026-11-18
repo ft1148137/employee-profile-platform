@@ -23,6 +23,8 @@ function EvidenceContent({ evidence }: { evidence: EvidenceDetail }) {
         受限内容：仅本人和管辖该部门的经理可见
       </p>
     )
+  if (evidence.source === "assignment_feedback")
+    return <p className="whitespace-pre-wrap">{text(content.comment)}</p>
   if (evidence.kind === "work_record") {
     const url = evidence.task?.url
     const safeUrl = url && /^https?:\/\//i.test(url) ? url : null

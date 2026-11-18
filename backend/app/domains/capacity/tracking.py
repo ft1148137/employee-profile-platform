@@ -1,12 +1,15 @@
 from datetime import date, datetime
+from typing import NamedTuple
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+from fastapi import HTTPException
 from sqlalchemy import tuple_
 from sqlmodel import Session, col, or_, select
 
 from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
+from app.domains.audit.models import ActorKind
 from app.domains.base import utc_now
 from app.domains.capacity.assignment import assignment_lender
 from app.domains.capacity.demand import demand_row, responder_user_ids
@@ -15,6 +18,7 @@ from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityAssignmentTask,
     CapacityDemand,
+    CapacityProposalLine,
     CapacitySetting,
     CapacityUnavailability,
     TrackingState,
@@ -28,7 +32,12 @@ from app.domains.capacity.settings import (
 )
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.inbox.service import add_item
-from app.domains.org.models import Employee, EmploymentStatus, ExternalIdentity
+from app.domains.org.models import (
+    Employee,
+    EmploymentStatus,
+    ExternalIdentity,
+    Organization,
+)
 from app.domains.org.timezone import read_timezone
 from app.domains.work.models import Task
 
@@ -63,6 +72,129 @@ class TaskLinkInput(CapacityInput):
 
 class DemandTrackingRisk(CapacityInput):
     message: str | None
+
+
+class FeedbackTarget(NamedTuple):
+    id: UUID
+    employee_id: UUID
+    employee_name: str
+    demand_title: str
+    due_date: date
+    closed_at: datetime | None
+    levels: dict[str, str | None]
+    default_keys: list[str]
+    requester_user_id: UUID
+    requesting_department_id: UUID | None
+
+
+class FeedbackNotCompleted(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(409, "分配完成后才能写反馈")
+
+
+def feedback_targets(
+    principal: Principal,
+    session: Session,
+    *,
+    demand_id: UUID | None = None,
+    assignment_id: UUID | None = None,
+) -> list[FeedbackTarget]:
+    if assignment_id is not None:
+        session.exec(
+            select(Organization)
+            .where(Organization.id == principal.org_id)
+            .with_for_update(read=True)
+        ).one()
+    require_enabled(principal, session)
+    query = (
+        select(CapacityAssignment, CapacityDemand, Employee.display_name)
+        .join(
+            Employee,
+            (col(Employee.org_id) == CapacityAssignment.org_id)
+            & (col(Employee.id) == CapacityAssignment.employee_id),
+        )
+        .join(
+            CapacityDemand,
+            (col(CapacityDemand.org_id) == CapacityAssignment.org_id)
+            & (col(CapacityDemand.id) == CapacityAssignment.demand_id),
+        )
+        .where(
+            employee_scope_clause(principal),
+            principal.actor_type == ActorKind.USER,
+            Employee.employment_status == EmploymentStatus.ACTIVE,
+            col(Employee.id).is_distinct_from(principal.employee_id),
+            CapacityDemand.requester_user_id != principal.user_id,
+            ~(
+                col(CapacityDemand.requesting_department_id).in_(
+                    principal.managed_department_ids
+                )
+                & (
+                    col(CapacityDemand.requesting_department_id)
+                    != CapacityDemand.target_department_id
+                )
+            ),
+        )
+    )
+    if assignment_id is not None:
+        rows = session.exec(
+            query.where(CapacityAssignment.id == assignment_id).with_for_update(
+                of=(CapacityAssignment, Employee)
+            )
+        ).all()
+        if not rows:
+            raise CapacityNotFound("未找到这条分配，或你没有权限写反馈")
+        if rows[0][0].status != AssignmentStatus.DONE:
+            raise FeedbackNotCompleted()
+    else:
+        query = query.where(CapacityAssignment.status == AssignmentStatus.DONE)
+        if demand_id is None:
+            query = query.join(
+                CapacityProposalLine,
+                (col(CapacityProposalLine.org_id) == CapacityAssignment.org_id)
+                & (col(CapacityProposalLine.id) == CapacityAssignment.proposal_line_id),
+            ).where(col(CapacityProposalLine.lender_department_id).is_not(None))
+        else:
+            query = query.where(
+                CapacityDemand.id == demand_id,
+                or_(
+                    principal.is_org_admin,
+                    col(CapacityDemand.target_department_id).in_(
+                        principal.managed_department_ids
+                    ),
+                ),
+            )
+        rows = session.exec(
+            query.order_by(
+                col(CapacityAssignment.closed_at).desc(), col(CapacityAssignment.id)
+            )
+        ).all()
+    results = []
+    for row, demand, name in rows:
+        levels = {demand.capability_key: demand.minimum_level}
+        defaults = [demand.capability_key]
+        for extra in demand.extra_capabilities:
+            if isinstance(key := extra.get("key"), str):
+                level = extra.get("minimum_level")
+                levels[key] = level if isinstance(level, str) else None
+                if extra.get("required"):
+                    defaults.append(key)
+        results.append(
+            FeedbackTarget(
+                row.id,
+                row.employee_id,
+                name,
+                demand.role_name or demand.description,
+                row.due_date,
+                row.closed_at,
+                levels,
+                defaults,
+                demand.requester_user_id,
+                demand.requesting_department_id
+                if demand.requesting_department_id != demand.target_department_id
+                else None,
+            )
+        )
+    return results
 
 
 def assignment_for_viewer(

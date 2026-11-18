@@ -222,5 +222,5 @@ export async function setupPlans(
     )
     await page.goto(`/capacity?tab=incoming&demand=${demand.id}&plans=1`)
   }
-  return { api, base, person, a, m, start, later, demand, open }
+  return { api, base, person, a, m, start, later, demand, open, admin }
 }

@@ -26,6 +26,7 @@ class RequestOrigin(StrEnum):
     MANUAL = "manual"
     CORRECTION = "correction"
     IMPORT = "import"
+    ASSIGNMENT_FEEDBACK = "assignment_feedback"
 
 
 class SubmissionVia(StrEnum):

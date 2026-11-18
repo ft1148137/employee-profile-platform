@@ -1,7 +1,9 @@
+from datetime import date
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Query
+from pydantic import BaseModel
 
 from app.api.deps import SessionDep
 from app.authz.deps import OrgPrincipalDep
@@ -12,8 +14,65 @@ from app.domains.capacity.tracking import (
     TaskLinkInput,
     TrackingTask,
 )
+from app.domains.change_request import assignment_feedback
+from app.domains.change_request.assignment_feedback import FeedbackInput
 
 router = APIRouter(prefix="/orgs/{org_id}/capacity", tags=["capacity-tracking"])
+
+
+class FeedbackAssignment(BaseModel):
+    id: UUID
+    employee_name: str
+    demand_title: str
+    due_date: date
+    default_keys: list[str]
+    has_feedback: bool
+
+
+@router.get("/assignments/feedback")
+def list_feedback_assignments(
+    principal: OrgPrincipalDep, session: SessionDep, demand_id: UUID | None = None
+) -> list[FeedbackAssignment]:
+    rows = tracking.feedback_targets(principal, session, demand_id=demand_id)
+    recorded = assignment_feedback.recorded_feedback(
+        session, principal.org_id, [row.id for row in rows]
+    )
+    return [
+        FeedbackAssignment(
+            id=row.id,
+            employee_name=row.employee_name,
+            demand_title=row.demand_title,
+            due_date=row.due_date,
+            default_keys=row.default_keys,
+            has_feedback=str(row.id) in recorded,
+        )
+        for row in rows
+    ]
+
+
+@router.post("/assignments/{assignment_id}/feedback", status_code=201)
+def create_assignment_feedback(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    assignment_id: UUID,
+    body: FeedbackInput,
+) -> UUID:
+    (target,) = tracking.feedback_targets(
+        principal, session, assignment_id=assignment_id
+    )
+    request_id = assignment_feedback.create_feedback(
+        principal,
+        session,
+        body,
+        assignment_id=target.id,
+        employee_id=target.employee_id,
+        closed_at=target.closed_at,
+        levels=target.levels,
+        requester_user_id=target.requester_user_id,
+        requesting_department_id=target.requesting_department_id,
+    )
+    session.commit()
+    return request_id
 
 
 @router.get("/assignments/{assignment_id}/tracking")

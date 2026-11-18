@@ -12,7 +12,11 @@ from app.domains.capability.models import CapabilityDefinition, DepartmentCapabi
 from app.domains.capability.service import get_schema, list_capabilities
 from app.domains.capability.stats import CapabilityStatsForbidden, latest_profiles
 from app.domains.change_request.models import ChangeItem
-from app.domains.evidence.models import Evidence, EvidenceStatus
+from app.domains.evidence.models import (
+    ASSIGNMENT_FEEDBACK_SOURCE,
+    Evidence,
+    EvidenceStatus,
+)
 from app.domains.org.models import Department, Organization
 from app.domains.org.service import managed_scope
 from app.domains.profile.models import AssessmentStatus, ProfileVersion
@@ -216,6 +220,7 @@ def find_people(
                 Evidence.org_id == principal.org_id,
                 col(Evidence.id).in_(evidence_ids),
                 Evidence.status == EvidenceStatus.ACTIVE,
+                Evidence.source != ASSIGNMENT_FEEDBACK_SOURCE,
             )
         ).all()
     }

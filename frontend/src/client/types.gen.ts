@@ -3751,6 +3751,50 @@ export type FailedEmployee = {
 }
 
 /**
+ * FeedbackAssignment
+ */
+export type FeedbackAssignment = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Employee Name
+   */
+  employee_name: string
+  /**
+   * Demand Title
+   */
+  demand_title: string
+  /**
+   * Due Date
+   */
+  due_date: string
+  /**
+   * Default Keys
+   */
+  default_keys: Array<string>
+  /**
+   * Has Feedback
+   */
+  has_feedback: boolean
+}
+
+/**
+ * FeedbackInput
+ */
+export type FeedbackInput = {
+  /**
+   * Text
+   */
+  text: string
+  /**
+   * Capability Keys
+   */
+  capability_keys: Array<string>
+}
+
+/**
  * FieldChange
  */
 export type FieldChange = {
@@ -6516,6 +6560,7 @@ export type RequestOrigin =
   | "manual"
   | "correction"
   | "import"
+  | "assignment_feedback"
 
 /**
  * RequestPreview
@@ -10097,6 +10142,83 @@ export type capacityDecideExtensionRequestResponses = {
 
 export type capacityDecideExtensionRequestResponse =
   capacityDecideExtensionRequestResponses[keyof capacityDecideExtensionRequestResponses]
+
+export type capacityTrackingListFeedbackAssignmentsData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: {
+    /**
+     * Demand Id
+     */
+    demand_id?: string | null
+  }
+  url: "/api/v1/orgs/{org_id}/capacity/assignments/feedback"
+}
+
+export type capacityTrackingListFeedbackAssignmentsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityTrackingListFeedbackAssignmentsError =
+  capacityTrackingListFeedbackAssignmentsErrors[keyof capacityTrackingListFeedbackAssignmentsErrors]
+
+export type capacityTrackingListFeedbackAssignmentsResponses = {
+  /**
+   * Response Capacity-Tracking-List Feedback Assignments
+   *
+   * Successful Response
+   */
+  200: Array<FeedbackAssignment>
+}
+
+export type capacityTrackingListFeedbackAssignmentsResponse =
+  capacityTrackingListFeedbackAssignmentsResponses[keyof capacityTrackingListFeedbackAssignmentsResponses]
+
+export type capacityTrackingCreateAssignmentFeedbackData = {
+  body: FeedbackInput
+  path: {
+    /**
+     * Assignment Id
+     */
+    assignment_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/assignments/{assignment_id}/feedback"
+}
+
+export type capacityTrackingCreateAssignmentFeedbackErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityTrackingCreateAssignmentFeedbackError =
+  capacityTrackingCreateAssignmentFeedbackErrors[keyof capacityTrackingCreateAssignmentFeedbackErrors]
+
+export type capacityTrackingCreateAssignmentFeedbackResponses = {
+  /**
+   * Response Capacity-Tracking-Create Assignment Feedback
+   *
+   * Successful Response
+   */
+  201: string
+}
+
+export type capacityTrackingCreateAssignmentFeedbackResponse =
+  capacityTrackingCreateAssignmentFeedbackResponses[keyof capacityTrackingCreateAssignmentFeedbackResponses]
 
 export type capacityTrackingGetAssignmentTrackingData = {
   body?: never

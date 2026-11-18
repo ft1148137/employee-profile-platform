@@ -9,6 +9,8 @@ from sqlmodel import Field
 
 from app.domains.base import TenantRecord, enum_type, tenant_fk
 
+ASSIGNMENT_FEEDBACK_SOURCE = "assignment_feedback"
+
 
 class EvidenceKind(StrEnum):
     WORK_RECORD = "work_record"

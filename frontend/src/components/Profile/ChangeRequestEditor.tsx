@@ -56,7 +56,9 @@ export function ChangeRequestEditor({
       ? (selection.request.items ?? []).map((item) => ({
           op: item.op,
           capability_key: item.capability.key,
-          statement: item.after?.statement ?? "撤回这条判断",
+          statement:
+            item.after?.statement ??
+            (item.op === "attach_evidence" ? "补充依据" : "撤回这条判断"),
           level: item.after?.level,
           owner_statement: item.owner_statement,
           objection: item.objection,
@@ -368,9 +370,11 @@ export function ChangeRequestEditor({
                     <div>
                       <p className="text-sm text-muted-foreground">修改后</p>
                       <p>
-                        {after.op === "retract"
-                          ? "撤回这条判断"
-                          : after.after?.statement}
+                        {after.op === "attach_evidence"
+                          ? "补充依据，保留原判断"
+                          : after.op === "retract"
+                            ? "撤回这条判断"
+                            : after.after?.statement}
                       </p>
                       <p>
                         等级：
@@ -454,7 +458,9 @@ export function ChangeRequestEditor({
                     <legend className="px-1 font-semibold">
                       {capability?.name ?? "能力已移出当前词典"}
                     </legend>
-                    {item.op === "retract" ? (
+                    {item.op === "attach_evidence" ? (
+                      <p>补充依据，保留原判断</p>
+                    ) : item.op === "retract" ? (
                       <p>撤回这条判断</p>
                     ) : (
                       <>

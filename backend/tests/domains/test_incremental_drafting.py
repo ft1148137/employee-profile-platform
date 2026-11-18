@@ -15,6 +15,8 @@ from app.domains.change_request.models import (
     ChangeItem,
     ChangeItemEvidence,
     ProfileChangeRequest,
+    RequestOrigin,
+    RequestStatus,
     ReviewDecision,
 )
 from app.domains.drafting import incremental
@@ -351,8 +353,9 @@ def test_incremental_writer_defends_against_unlevelled_items(
     )
 
 
+@pytest.mark.parametrize("with_feedback", [False, True])
 def test_modify_requires_review_and_replacement_retains_records(
-    incremental_context: tuple, db: Session, pi_service: PiHarness
+    incremental_context: tuple, db: Session, pi_service: PiHarness, with_feedback: bool
 ) -> None:
     org = incremental_context[0]
     pi_service.replies.append({"items": [answer(op="modify")]})
@@ -360,12 +363,29 @@ def test_modify_requires_review_and_replacement_retains_records(
     pending = rows(db, ProfileChangeRequest, org)[0]
     assert pending.status == "pending_owner" and pending.revision == 1
     original_id = pending.id
+    feedback = {}
+    if with_feedback:
+        for _ in range(2):
+            other = ProfileChangeRequest(
+                org_id=org,
+                subject_employee_id=pending.subject_employee_id,
+                origin=RequestOrigin.ASSIGNMENT_FEEDBACK,
+                status=RequestStatus.PENDING_OWNER,
+                author={"actor_type": "user"},
+            )
+            db.add(other)
+            db.flush()
+            feedback[other.id] = other.model_dump()
     ingest(db, org, record(person(), key="API-4"))
     db.commit()
     pi_service.replies.append({"items": [answer(op="modify", evidence=["R1", "R2"])]})
     run(incremental_context, db)
     assert pending.id == original_id and pending.revision == 2
-    assert len(rows(db, ProfileChangeRequest, org)) == 1
+    assert {
+        row.id: row.model_dump()
+        for row in rows(db, ProfileChangeRequest, org)
+        if row.id != original_id
+    } == feedback
     assert len(rows(db, ChangeItem, org)) == 1
     assert len(rows(db, ChangeItemEvidence, org)) == 2
     assert len(rows(db, InboxItem, org)) == 1
