@@ -30,7 +30,7 @@
 | NERE-795 开始日期修复 | [#369](https://github.com/ft1148137/employee-profile-platform/pull/369) 已承诺段的开始日期走正式变更，合并提交 `65acbc0f` | [后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44242388416)、[网页](https://github.com/ft1148137/employee-profile-platform/actions/runs/44242388420) |
 | NERE-796 初始画像浏览器回归 | [#371](https://github.com/ft1148137/employee-profile-platform/pull/371) 假模型按工具分流与重试数据隔离，合并提交 `538c7828` | [后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44244046880)、[网页重跑](https://github.com/ft1148137/employee-profile-platform/actions/runs/44244047067/attempts/2) |
 | NERE-798 MCP 事件来源测试修复 | [#373](https://github.com/ft1148137/employee-profile-platform/pull/373) 限定需求与排序并独立断言 MCP 来源，合并提交 `3aea6591` | [后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44249884159)、[网页](https://github.com/ft1148137/employee-profile-platform/actions/runs/44249884225) |
-| NERE-799 降级历史保护（E41／D-024） | `c782001bc001` `downgrade()` 并发锁与全库协商／审批历史阻断 | 本地独立测试库 9 项迁移与降级用例通过（详见下文，PR CI 待合入复核） |
+| NERE-799 降级历史保护（E41／D-024） | [#375](https://github.com/ft1148137/employee-profile-platform/pull/375) `c782001bc001` `downgrade()` 并发锁与全库协商／审批历史阻断，合并提交 `e5c38c38` | [后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44260062786)、[网页](https://github.com/ft1148137/employee-profile-platform/actions/runs/44260062844)，及本地独立测试库 9 项迁移与降级用例通过（详见下文） |
 
 ### 初始画像与主干 CI 补证
 
@@ -109,7 +109,7 @@ D1 与 NERE-799 均未连接或升级长期演示环境。
 - [ ] 补齐周确认后点「重新模拟」，方案恢复可用。
 - [ ] 在网页助手方案卡真实点击方案链接，落到对应需求和原方案。
 - [ ] 由员工提交一条真实延期申请，有权审批人拒绝，确认分配日期保持原值。
-- [ ] 从真实飞书同一会话取得人员回复，收窄读取范围后，在网页打开同一会话看到旧回复隐藏。
+- [ ] 网页原会话与飞书原会话各自验证人员范围收窄后的旧回复隐藏与新回复过滤（两端历史按设计不互通，不做跨端回放）。
 - [ ] 造出失效的旧方案，看到「数据已变化，请重新模拟」，并确认旧方案不能继续提交。
 
 ### M9 新增

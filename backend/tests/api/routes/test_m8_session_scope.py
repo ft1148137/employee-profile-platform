@@ -22,7 +22,7 @@ from tests.domains.test_im_gateway import principal
 
 pytest_plugins = ("tests.api.routes.test_m8_coordination_tools",)
 
-HIDDEN = "你的权限已变化，这条之前的回复已隐藏"
+HIDDEN = "你的权限已变化，这条之前的回复已隐藏，请重新提问"
 PRIVATE = "合成 B 部门姓名与个人负荷"
 
 

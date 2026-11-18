@@ -1,10 +1,11 @@
+import logging
 from uuid import UUID
 
 from procrastinate.exceptions import JobRetry
 from procrastinate.job_context import JobContext
 from procrastinate.jobs import Job
 from procrastinate.retry import BaseRetryStrategy
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
 from app.core.db import engine
@@ -23,6 +24,8 @@ from app.domains.source.sync import execute_sync
 from app.worker.app import app
 from app.worker.health import write_heartbeat
 from app.worker.tenant import tenant_task
+
+logger = logging.getLogger(__name__)
 
 
 class SyncRetry(BaseRetryStrategy):
@@ -55,11 +58,21 @@ def cleanup_bot_messages(timestamp: int) -> None:  # noqa: ARG001
 @app.task(name="capacity.expire_proposals", queueing_lock="capacity_expire_proposals")
 def expire_proposals(timestamp: int) -> None:  # noqa: ARG001
     with Session(engine) as session:
-        org_ids = session.exec(select(Organization.id)).all()
+        org_ids = session.exec(
+            select(Organization.id).order_by(col(Organization.id))
+        ).all()
     for org_id in org_ids:
         with Session(engine) as session:
-            expire(Principal.system_worker(org_id), session)
-            session.commit()
+            try:
+                expire(Principal.system_worker(org_id), session)
+                session.commit()
+            except Exception as exc:
+                session.rollback()
+                logger.error(
+                    "Proposal expiration failed for org %s (%s)",
+                    org_id,
+                    type(exc).__name__,
+                )
 
 
 @app.periodic(cron="*/5 * * * *")
