@@ -83,9 +83,10 @@ test("reset password requires two clicks and disappears after reload", async ({
   ).json()
   await logInUser(page, email, password)
   await page.goto("/admin/assistant")
+  const resetMessage = `重置密码 ${people[0].account.user_id}`
   await page
     .getByRole("textbox", { name: "发给管理助手的消息" })
-    .fill(`重置密码 ${people[0].account.user_id}`)
+    .fill(resetMessage)
   await page.getByRole("button", { name: "发送", exact: true }).click()
   const card = page.getByRole("region", { name: "设置改动确认卡" })
   await expect(card.getByText("重置密码", { exact: true })).toBeVisible({
@@ -111,7 +112,12 @@ test("reset password requires two clicks and disappears after reload", async ({
     card.getByRole("button", { name: "撤销", exact: true }),
   ).toHaveCount(0)
   await expect(card).not.toContainText(people[0].account.user_id)
-  await expectChineseCopy(page, [people[0].account.user_id, secret])
+  // Session previews truncate the message at 40 characters, including the UUID.
+  await expectChineseCopy(page, [
+    people[0].account.user_id,
+    resetMessage.slice(0, 40),
+    secret,
+  ])
   await page.reload()
   await expect(card.getByRole("status")).toHaveText("已应用")
   await expect(card.getByLabel("初始密码", { exact: true })).toHaveCount(0)

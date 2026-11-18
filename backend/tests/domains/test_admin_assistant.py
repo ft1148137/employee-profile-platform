@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 
 from app.authz.deps import get_org_principal
 from app.authz.principal import Principal
+from app.domains.admin import overview
 from app.domains.admin_assistant import core, store
 from app.domains.admin_assistant.models import (
     AdminAssistantMessage,
@@ -116,6 +117,9 @@ def test_turn_and_private_sessions(
         )["messages"][0]["text"]
     )
     enable(db, org_id)
+    # Freeze overview time so any earlier worker heartbeat cannot tick a second between calls.
+    now = utc_now()
+    monkeypatch.setattr(overview, "utc_now", lambda: now)
     expected = client.get(base + "/admin/overview", headers=auth["admin"]).json()
 
     def reply(_config: object, **kwargs: object) -> TurnResult:
