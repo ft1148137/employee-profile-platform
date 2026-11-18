@@ -569,6 +569,10 @@ export type AssignmentStatus = "active" | "done" | "cancelled"
  */
 export type AssignmentUpdateInput = {
   /**
+   * Allocation Percent
+   */
+  allocation_percent?: number | null
+  /**
    * Start Date
    */
   start_date?: string | null
@@ -1465,6 +1469,36 @@ export type ChangeItemPublic = {
 export type ChangeOp = "add" | "modify" | "retract" | "attach_evidence"
 
 /**
+ * ChangeProposalInput
+ */
+export type ChangeProposalInput = {
+  /**
+   * Option Id
+   */
+  option_id: string
+  /**
+   * Revision
+   */
+  revision: number
+  /**
+   * Reason
+   */
+  reason: string
+  /**
+   * Outside Basis
+   */
+  outside_basis?: boolean
+  /**
+   * Lender Department Id
+   */
+  lender_department_id?: string | null
+  /**
+   * Borrow Headcount
+   */
+  borrow_headcount?: number | null
+}
+
+/**
  * ChangeRequestPublic
  */
 export type ChangeRequestPublic = {
@@ -1793,6 +1827,20 @@ export type ClaimPublic = {
    * Evidence
    */
   evidence?: Array<ClaimEvidencePublic>
+}
+
+/**
+ * CommitmentArrangement
+ */
+export type CommitmentArrangement = {
+  /**
+   * Participants
+   */
+  participants: Array<ProposalParticipant>
+  /**
+   * Lines
+   */
+  lines?: Array<ProposalLinePublic> | null
 }
 
 /**
@@ -5624,6 +5672,11 @@ export type ProposalDetail = {
    */
   fail_reason: string | null
   /**
+   * Kind
+   */
+  kind?: "initial" | "change"
+  previous?: CommitmentArrangement | null
+  /**
    * Revision
    */
   revision: number
@@ -5757,6 +5810,11 @@ export type ProposalSummary = {
    * Fail Reason
    */
   fail_reason: string | null
+  /**
+   * Kind
+   */
+  kind?: "initial" | "change"
+  previous?: CommitmentArrangement | null
   /**
    * Revision
    */
@@ -8748,6 +8806,42 @@ export type capacityReplyDemandResponses = {
 
 export type capacityReplyDemandResponse =
   capacityReplyDemandResponses[keyof capacityReplyDemandResponses]
+
+export type capacityProposeChangeData = {
+  body: ChangeProposalInput
+  path: {
+    /**
+     * Demand Id
+     */
+    demand_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/change"
+}
+
+export type capacityProposeChangeErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityProposeChangeError =
+  capacityProposeChangeErrors[keyof capacityProposeChangeErrors]
+
+export type capacityProposeChangeResponses = {
+  /**
+   * Successful Response
+   */
+  200: DemandPublic
+}
+
+export type capacityProposeChangeResponse =
+  capacityProposeChangeResponses[keyof capacityProposeChangeResponses]
 
 export type capacityRespondDemandData = {
   body: RespondInput

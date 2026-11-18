@@ -236,6 +236,9 @@ import type {
   capacityListWorkloadsData,
   capacityListWorkloadsErrors,
   capacityListWorkloadsResponses,
+  capacityProposeChangeData,
+  capacityProposeChangeErrors,
+  capacityProposeChangeResponses,
   capacityPutCapacitySettingsData,
   capacityPutCapacitySettingsErrors,
   capacityPutCapacitySettingsResponses,
@@ -891,6 +894,28 @@ export class CapacityService {
       responseType: "json",
       security: [{ scheme: "bearer", type: "http" }],
       url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/reply",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * Propose Change
+   */
+  public static proposeChange<ThrowOnError extends boolean = true>(
+    options: Options<capacityProposeChangeData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capacityProposeChangeResponses,
+      capacityProposeChangeErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/change",
       ...options,
       headers: {
         "Content-Type": "application/json",

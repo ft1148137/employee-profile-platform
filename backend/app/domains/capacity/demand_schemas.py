@@ -140,6 +140,15 @@ class PlanReplyInput(ReplyInput):
     borrow_headcount: int | None = Field(default=None, strict=True, ge=1)
 
 
+class ChangeProposalInput(CapacityInput):
+    option_id: UUID
+    revision: int = Field(strict=True, ge=1)
+    reason: Note
+    outside_basis: StrictBool = False
+    lender_department_id: UUID | None = None
+    borrow_headcount: int | None = Field(default=None, strict=True, ge=1)
+
+
 class PlanReplyDemandInput(PlanReplyInput, ReplyDemandInput):
     pass
 
@@ -226,10 +235,17 @@ class ProposalParticipant(CapacityInput):
     segments: list[ProposalSegment]
 
 
+class CommitmentArrangement(CapacityInput):
+    participants: list[ProposalParticipant]
+    lines: list[ProposalLinePublic] | None = None
+
+
 class ProposalSummary(CapacityInput):
     id: UUID
     status: ProposalStatus
     fail_reason: str | None
+    kind: Literal["initial", "change"] = "initial"
+    previous: CommitmentArrangement | None = None
     revision: int
     hold_expires_at: datetime
     committed_at: datetime | None

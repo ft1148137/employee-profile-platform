@@ -57,6 +57,11 @@ class CommitmentConfirmationRequired(HTTPException):
         super().__init__(409, detail)
 
 
+class LegacyAllocationEditInvalid(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(422, "旧分配不支持直接修改投入比例")
+
+
 class DepartedAssignmentConflict(HTTPException):
     def __init__(self) -> None:
         super().__init__(
@@ -313,6 +318,13 @@ def change_due_date(
         )
     elif new_committed_end_date is not None:
         raise CapacityConflict()
+    if (
+        row.proposal_line_id is not None
+        and due_date != row.due_date
+        and due_date <= old
+    ):
+        demand.revision += 1
+        session.add(demand)
     row.due_date = due_date
     session.add(row)
 
@@ -461,6 +473,14 @@ def update_assignment(
         raise CapacityNotFound()
     if row.status != AssignmentStatus.ACTIVE:
         raise CapacityConflict()
+    if row.proposal_line_id is not None and (
+        (cancelling and subject.employment_status == EmploymentStatus.ACTIVE)
+        or body.allocation_percent is not None
+        or (body.due_date is not None and body.due_date < row.due_date)
+    ):
+        raise CommitmentConfirmationRequired("已生效的安排请发起变更")
+    if body.allocation_percent is not None:
+        raise LegacyAllocationEditInvalid()
     if body.due_date:
         change_due_date(
             principal,
@@ -495,6 +515,11 @@ def update_assignment(
     elif body.status is not None:
         row.status, row.closed_at = AssignmentStatus(body.status), utc_now()
         session.add(row)
+    if row.proposal_line_id is not None and (
+        body.status is not None or body.start_date is not None
+    ):
+        demand.revision += 1
+        session.add(demand)
     audit(
         principal,
         session,

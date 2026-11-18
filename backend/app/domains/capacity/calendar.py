@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import Literal
 from uuid import UUID
@@ -58,6 +59,7 @@ def loads(
     exclude_assignment_id: UUID | None = None,
     exclude_proposal_id: UUID | None = None,
     exclude_demand_id: UUID | None = None,
+    exclude_committed_demand_id: UUID | None = None,
 ) -> dict[UUID, list[WeekLoad]]:
     end = from_week + timedelta(weeks=weeks)
     records = {
@@ -80,7 +82,7 @@ def loads(
         )
     ).all()
     holds = session.exec(
-        select(CapacityProposalLine, CapacityProposal.hold_expires_at)
+        select(CapacityProposalLine, CapacityProposal)
         .join(
             CapacityProposal,
             (col(CapacityProposal.org_id) == CapacityProposalLine.org_id)
@@ -124,7 +126,6 @@ def loads(
                 a
                 for a in assignments
                 if a.employee_id == employee_id
-                and a.id != exclude_assignment_id
                 and (a.start_date or week_start(a.created_at.date()))
                 <= start + timedelta(days=6)
                 and a.due_date >= start
@@ -137,14 +138,48 @@ def loads(
                 )
                 for d in range(5)
             )
-            details = [
-                HoldLoad(
-                    allocation_percent=line.allocation_percent, expires_at=expires_at
+            amounts: dict[UUID, int] = defaultdict(int)
+            proposals: dict[UUID, CapacityProposal] = {}
+            details: list[HoldLoad] = []
+            for line, proposal in holds:
+                if (
+                    line.employee_id == employee_id
+                    and line.start_date <= start + timedelta(days=6)
+                    and line.end_date >= start
+                ):
+                    if proposal.kind == "change":
+                        amounts[proposal.id] += line.allocation_percent
+                        proposals[proposal.id] = proposal
+                    else:
+                        details.append(
+                            HoldLoad(
+                                allocation_percent=line.allocation_percent,
+                                expires_at=proposal.hold_expires_at,
+                            )
+                        )
+            for proposal_id, amount in amounts.items():
+                proposal = proposals[proposal_id]
+                amount -= sum(
+                    a.allocation_percent
+                    for a in overlapping
+                    if a.demand_id == proposal.demand_id
+                    and a.proposal_line_id is not None
                 )
-                for line, expires_at in holds
-                if line.employee_id == employee_id
-                and line.start_date <= start + timedelta(days=6)
-                and line.end_date >= start
+                if amount > 0:
+                    details.append(
+                        HoldLoad(
+                            allocation_percent=amount,
+                            expires_at=proposal.hold_expires_at,
+                        )
+                    )
+            overlapping = [
+                a
+                for a in overlapping
+                if a.id != exclude_assignment_id
+                and not (
+                    a.demand_id == exclude_committed_demand_id
+                    and a.proposal_line_id is not None
+                )
             ]
             held = sum(hold.allocation_percent for hold in details)
             result[employee_id].append(

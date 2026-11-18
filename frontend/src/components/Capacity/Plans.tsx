@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "@tanstack/react-router"
 import { AxiosError } from "axios"
 import { useId, useState } from "react"
 import {
+  type AssigneeInput,
   type CasePublic,
   PlanningService,
   type PlanReplyInput,
@@ -317,6 +318,150 @@ function RevisionControls({
   )
 }
 
+function SegmentEditor({
+  plan,
+  orgId,
+  initial,
+  onSaved,
+}: {
+  plan: CasePublic
+  orgId: string
+  initial: AssigneeInput[]
+  onSaved: () => Promise<unknown>
+}) {
+  const id = useId()
+  const [segments, setSegments] = useState(initial)
+  const save = useMutation({
+    mutationFn: () =>
+      PlanningService.createOption({
+        path: { org_id: orgId, case_id: plan.id },
+        body: { assignees: segments },
+      }),
+    onSuccess: onSaved,
+  })
+  const demand = records([plan.data.demand])[0]
+  const update = (index: number, changes: Partial<AssigneeInput>) =>
+    setSegments((previous) =>
+      previous.map((segment, i) =>
+        i === index ? { ...segment, ...changes } : segment,
+      ),
+    )
+  return (
+    <form
+      className="space-y-3 border-t pt-3"
+      aria-label="编辑投入分段"
+      onSubmit={(event) => {
+        event.preventDefault()
+        save.mutate()
+      }}
+    >
+      <fieldset className="space-y-3" disabled={save.isPending}>
+        {segments.map((segment, index) => (
+          <div
+            key={index}
+            className="grid gap-2 rounded-lg bg-muted/30 p-3 sm:grid-cols-2"
+          >
+            <label>
+              <span>人员</span>
+              <select
+                className="block h-9 w-full rounded-md border bg-background px-3"
+                required
+                value={segment.employee_id}
+                onChange={(event) =>
+                  update(index, { employee_id: event.target.value })
+                }
+              >
+                <option value="">请选择人员</option>
+                {plan.people.map((person) => (
+                  <option key={person.employee_id} value={person.employee_id}>
+                    {person.display_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor={`${id}-percent-${index}`}>
+              投入比例（%）
+              <Input
+                id={`${id}-percent-${index}`}
+                type="number"
+                min={10}
+                max={100}
+                required
+                value={segment.allocation_percent}
+                onChange={(event) =>
+                  update(index, {
+                    allocation_percent: Number(event.target.value),
+                  })
+                }
+              />
+            </label>
+            <label htmlFor={`${id}-start-${index}`}>
+              开始日期
+              <Input
+                id={`${id}-start-${index}`}
+                type="date"
+                required
+                value={segment.start_date}
+                onChange={(event) =>
+                  update(index, { start_date: event.target.value })
+                }
+              />
+            </label>
+            <label htmlFor={`${id}-end-${index}`}>
+              结束日期
+              <Input
+                id={`${id}-end-${index}`}
+                type="date"
+                required
+                value={segment.end_date}
+                min={segment.start_date}
+                onChange={(event) =>
+                  update(index, { end_date: event.target.value })
+                }
+              />
+            </label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setSegments((previous) =>
+                  previous.filter((_, i) => i !== index),
+                )
+              }
+            >
+              移除此段
+            </Button>
+          </div>
+        ))}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setSegments((previous) => [
+                ...previous,
+                {
+                  employee_id: "",
+                  start_date: label(demand?.window_start, ""),
+                  end_date: label(demand?.committed_end_date, ""),
+                  allocation_percent: Number(demand?.allocation_percent),
+                },
+              ])
+            }
+          >
+            增加分段
+          </Button>
+          <Button type="submit" disabled={!segments.length}>
+            模拟调整后的安排
+          </Button>
+        </div>
+      </fieldset>
+      {save.error && <p role="alert">{errorText(save.error)}</p>}
+    </form>
+  )
+}
+
 export type SelectedPlanReply = Pick<
   PlanReplyInput,
   | "option_id"
@@ -343,6 +488,7 @@ function OptionCard({
 }) {
   const borrowCountId = useId()
   const [lender, setLender] = useState("")
+  const [editSegments, setEditSegments] = useState(false)
   const [borrowCount, setBorrowCount] = useState("1")
   const borrowing = option.kind === "borrow"
   const departments = records(option.params.departments)
@@ -584,10 +730,41 @@ function OptionCard({
               })
             }
           >
-            按此方案答复
+            {demand?.change ? "按此方案变更" : "按此方案答复"}
           </Button>
         </div>
       )}
+      {!!demand?.change &&
+        onReply &&
+        !borrowing &&
+        !plan.stale &&
+        !locks.size && (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditSegments(!editSegments)}
+            >
+              {editSegments ? "关闭分段编辑" : "调整投入分段"}
+            </Button>
+            {editSegments && (
+              <SegmentEditor
+                plan={plan}
+                orgId={orgId}
+                initial={assignees.map((segment) => ({
+                  employee_id: label(segment.employee_id, ""),
+                  start_date: label(segment.start_date, ""),
+                  end_date: label(segment.end_date, ""),
+                  allocation_percent: Number(segment.allocation_percent),
+                }))}
+                onSaved={async () => {
+                  setEditSegments(false)
+                  await onRevised()
+                }}
+              />
+            )}
+          </>
+        )}
       <RevisionControls
         option={option}
         plan={plan}
@@ -601,10 +778,12 @@ function OptionCard({
 export function Plans({
   orgId,
   demandId,
+  change = false,
   onReply,
 }: {
   orgId: string
   demandId: string
+  change?: boolean
   onReply?: (reply: SelectedPlanReply) => void
 }) {
   const client = useQueryClient()
@@ -635,11 +814,10 @@ export function Plans({
       const caseId = localStorage.getItem(storageKey)
       if (caseId) {
         try {
-          return (
-            await PlanningService.getCase({
-              path: { org_id: orgId, case_id: caseId },
-            })
-          ).data
+          const { data } = await PlanningService.getCase({
+            path: { org_id: orgId, case_id: caseId },
+          })
+          return change && data.stale ? create() : data
         } catch (error) {
           if (!(error instanceof AxiosError) || error.response?.status !== 404)
             throw error
