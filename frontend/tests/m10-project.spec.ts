@@ -6,7 +6,7 @@ import {
 } from "@playwright/test"
 import type { EmployeeAccount } from "../src/client"
 
-test.use({ storageState: { cookies: [], origins: [] } })
+test.use({ storageState: { cookies: [], origins: [] }, actionTimeout: 15_000 })
 
 async function setupProjectManagers(request: APIRequestContext) {
   async function api(
@@ -181,7 +181,7 @@ test("需求方创建多角色项目并看到承接方答复和排程影响", as
     if (index === 0) {
       await role.getByRole("button", { name: "添加额外能力" }).click()
       await role
-        .getByLabel("额外能力", { exact: true })
+        .getByRole("combobox", { name: "额外能力", exact: true })
         .selectOption({ label: "合成验证" })
       await role.getByRole("checkbox", { name: "必需（不勾选为可选）" }).check()
     }
@@ -215,9 +215,9 @@ test("需求方创建多角色项目并看到承接方答复和排程影响", as
     "已答复",
   )
   await page.getByRole("link", { name: "合成跨部门交付" }).click()
-  await expect(
-    page.getByRole("region", { name: "项目详情" }),
-  ).not.toContainText("交付要求：技术验证")
+  const receivingProject = page.getByRole("region", { name: "项目详情" })
+  await expect(receivingProject).toContainText("接口开发 · 研发")
+  await expect(receivingProject).not.toContainText("交付要求：技术验证")
 
   await open(page, "A", projectPath)
   const details = page.getByRole("region", { name: "项目详情" })
