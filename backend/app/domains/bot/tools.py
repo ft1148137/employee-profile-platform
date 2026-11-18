@@ -7,7 +7,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from pydantic import BaseModel, Field, JsonValue, ValidationError
+from pydantic import BaseModel, Field, JsonValue, StrictBool, ValidationError
 from sqlmodel import Session, col, select
 
 from app.authz.principal import Principal
@@ -20,6 +20,13 @@ from app.domains.capability.schemas import SuggestCapability
 from app.domains.capability.search import PeopleSearchInput, find_people
 from app.domains.capacity import assistant as capacity
 from app.domains.capacity import demand as capacity_demand
+from app.domains.capacity import proposal as capacity_proposal
+from app.domains.capacity.demand_schemas import (
+    DemandPublic,
+    ProposalLineInput,
+    ReplyDemandInput,
+)
+from app.domains.capacity.schemas import Via
 from app.domains.capacity.settings import read_settings as read_capacity_settings
 from app.domains.change_request import employee
 from app.domains.change_request.models import RequestStatus
@@ -31,6 +38,7 @@ from app.domains.model.client import ModelUnavailable
 from app.domains.model.pi_client import ToolDefinition
 from app.domains.org.models import Department, Employee, EmploymentStatus
 from app.domains.planning import service as planning_service
+from app.domains.planning.models import PlanningOption, PlanningSnapshot, PlanVerdict
 from app.domains.planning.schemas import VERDICT_LABELS, CasePublic, OptionPublic
 from app.domains.planning.tools import COORDINATION_TOOLS
 from app.domains.planning.tools import Result as CoordinationResult
@@ -95,6 +103,63 @@ class PreparePlanProposalInput(BaseModel):
     case_id: UUID
     option_id: UUID
     text: str = Field(min_length=1, max_length=2000)
+    outside_basis: StrictBool = False
+
+
+def confirm_plan_reply(
+    p: Principal, db: Session, body: ReplyDemandInput, *, via: Via, client_name: str
+) -> DemandPublic:
+    """Compose Planning reads and Capacity writes only after a human clicks."""
+    row = capacity_demand.demand_row(p, db, body.demand_id, lock=True)
+    if not capacity_demand.represents_department(p, row.target_department_id):
+        raise planning_service.PlanningStale()
+    if body.outcome == "not_now":
+        raise capacity_proposal.ProposalConflict("暂不能承接的答复不能带方案")
+    found = db.exec(
+        select(PlanningOption, PlanningSnapshot.case_id)
+        .join(
+            PlanningSnapshot,
+            (col(PlanningSnapshot.org_id) == PlanningOption.org_id)
+            & (col(PlanningSnapshot.id) == PlanningOption.snapshot_id),
+        )
+        .where(PlanningOption.org_id == p.org_id, PlanningOption.id == body.option_id)
+    ).one_or_none()
+    if found is None:
+        raise planning_service.PlanningStale()
+    saved, case_id = found
+    _, snapshot, case_demand = planning_service.authorized_case(p, db, case_id)
+    if case_demand.id != row.id or saved.snapshot_id != snapshot.id:
+        raise planning_service.PlanningStale()
+    if saved.verdict not in (PlanVerdict.FEASIBLE, PlanVerdict.CONDITIONAL):
+        raise capacity_proposal.ProposalConflict("只有可行或有条件可行的方案可以提议")
+    raw = saved.params.get("assignees")
+    if not isinstance(raw, list) or not raw:
+        raise capacity_proposal.ProposalConflict("方案尚无可安排的人员，请重新规划")
+    lines = [
+        ProposalLineInput.model_validate({**item, "outside_basis": body.outside_basis})
+        for item in raw
+        if isinstance(item, dict)
+    ]
+    if len(lines) != len(raw):
+        raise planning_service.PlanningStale()
+    capacity_proposal.check_lines(p, db, row, lines)
+    current = planning_service.get_case(p, db, case_id)
+    if current.stale or current.snapshot_id != saved.snapshot_id:
+        raise planning_service.PlanningStale()
+    capacity_demand.reply_demand(
+        p,
+        db,
+        **body.model_dump(
+            exclude={"option_id", "outside_basis", "start_date", "end_date"}
+        ),
+        start_date=min(line.start_date for line in lines),
+        end_date=max(line.end_date for line in lines),
+        via=via,
+        client_name=client_name,
+    )
+    assert body.option_id is not None
+    capacity_proposal.create(p, db, row, body.option_id, lines)
+    return capacity_demand.get_demand(p, db, row.id)
 
 
 TEAM_INPUTS: dict[str, type[BaseModel]] = {
@@ -288,7 +353,8 @@ def definitions(
                 ToolDefinition(
                     name="prepare_plan_proposal",
                     description=(
-                        "只为答复方生成需求答复确认卡；经理点击确认才发送承诺。"
+                        "只为答复方生成方案确认卡；经理点击确认才预占投入 72 小时，"
+                        "需求方点击接受卡后才锁定人员投入并生成分配。"
                         "说明与系统追加的完整方案条件合计最多 2000 字；"
                         "超限时按工具提示缩短说明后重新预览，不删减方案条件。"
                     ),
@@ -736,18 +802,27 @@ def call(
                 },
             )
             card = plan_card(option, case)
-            if (
-                card.rule_fallback is not None
-                and isinstance(reply_result, dict)
-                and "error" not in reply_result
-            ):
+            if isinstance(reply_result, dict) and "error" not in reply_result:
                 for message in cards:
                     if isinstance(message, s.CapacityCard) and str(
                         message.card_id
                     ) == reply_result.get("card_id"):
-                        message.plan = card.model_copy(
-                            update={"fields": plan_metrics(option), "changes": None}
-                        )
+                        if outcome != "not_now":
+                            reply_body = ReplyDemandInput.model_validate(
+                                {
+                                    **message.arguments,
+                                    "option_id": str(option.id),
+                                    "outside_basis": proposal.outside_basis,
+                                }
+                            )
+                            content = capacity.check_demand_reply(db, p, reply_body)
+                            message.arguments = reply_body.model_dump(mode="json")
+                            message.content = content
+                            reply_result["preview"] = message.content
+                        if card.rule_fallback is not None:
+                            message.plan = card.model_copy(
+                                update={"fields": plan_metrics(option), "changes": None}
+                            )
             return redact(reply_result)
         except ValidationError as exc:
             return {"error": validation_message(exc, "工具参数不正确")}

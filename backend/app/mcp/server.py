@@ -100,11 +100,15 @@ async def list_tools(
                         )
                 if tool in COORDINATION_TOOLS:
                     description += "。方案不是承诺；只按当前用户权限返回结果。"
+                schema = tool.input_model.model_json_schema()
+                if tool.name == "reply_demand":
+                    for field in ("option_id", "outside_basis"):
+                        schema["properties"].pop(field, None)
                 tools.append(
                     types.Tool(
                         name=tool.name,
                         description=description,
-                        input_schema=tool.input_model.model_json_schema(),
+                        input_schema=schema,
                     )
                 )
             return types.ListToolsResult(tools=tools)
@@ -137,6 +141,13 @@ def invoke(
             session.commit()
             if tool is None:
                 raise McpRequestError(404, "工具不存在")
+            if params.name == "reply_demand" and {
+                "option_id",
+                "outside_basis",
+            }.intersection(params.arguments or {}):
+                raise McpRequestError(
+                    400, "MCP 不能提议方案或预占人员，请在网页或助手确认卡里操作"
+                )
             body = tool.input_model.model_validate(params.arguments or {})
             arguments = {key: getattr(body, key) for key in type(body).model_fields}
             if tool.name in ("draft_update_request", "submit_request"):

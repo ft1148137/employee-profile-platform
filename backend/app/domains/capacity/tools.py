@@ -1,3 +1,10 @@
+from typing import Literal
+from uuid import UUID
+
+from sqlmodel import Session
+
+from app.authz.principal import Principal
+from app.domains.capacity import demand, proposal
 from app.domains.capacity.assignment import list_my_assignments
 from app.domains.capacity.demand import (
     capacity_reference,
@@ -6,22 +13,66 @@ from app.domains.capacity.demand import (
     list_capacity_departments,
     list_demands,
     reply_demand,
-    respond_demand,
     submit_demand,
 )
 from app.domains.capacity.demand_schemas import (
     DemandIdInput,
     DemandInput,
     DemandListInput,
+    DemandPublic,
     ReferenceInput,
     ReplyDemandInput,
     RespondDemandInput,
 )
 from app.domains.capacity.extension import request_extension
 from app.domains.capacity.extension_schemas import RequestExtensionInput
-from app.domains.capacity.schemas import CapacityInput, WorkloadRequestInput
+from app.domains.capacity.schemas import CapacityInput, Via, WorkloadRequestInput
+from app.domains.capacity.settings import CapacityForbidden
 from app.domains.capacity.workload import get_my_workload, request_workload_change
 from app.domains.employee_tools import EmployeeTool
+
+
+class McpProposalAcceptanceForbidden(CapacityForbidden):
+    def __init__(self) -> None:
+        super().__init__()
+        self.detail = "接受方案会锁定对方资源，请在网页或助手的确认卡里操作"
+
+
+def respond_demand(
+    principal: Principal,
+    session: Session,
+    demand_id: UUID,
+    action: Literal["accept", "follow_up", "withdraw"],
+    revision: int,
+    text: str | None = None,
+    *,
+    via: Via = "web",
+    client_name: str | None = None,
+) -> DemandPublic:
+    row = demand.demand_row(principal, session, demand_id, lock=True)
+    if (
+        via == "mcp"
+        and action == "accept"
+        and principal.user_id is not None
+        and (
+            row.requester_user_id == principal.user_id
+            or row.requesting_department_id in principal.managed_department_ids
+        )
+    ):
+        current = proposal.latest(session, principal.org_id, demand_id, lock=True)
+        if current is not None and current.status == "pending":
+            raise McpProposalAcceptanceForbidden()
+    return demand.respond_demand(
+        principal,
+        session,
+        demand_id,
+        action,
+        revision,
+        text,
+        via=via,
+        client_name=client_name,
+    )
+
 
 CAPACITY_TOOLS = (
     EmployeeTool(
@@ -51,14 +102,14 @@ CAPACITY_TOOLS = (
     ),
     EmployeeTool(
         "reply_demand",
-        "代表本部门答复需求并确认承诺日期",
+        "代表本部门答复需求并确认承诺日期；MCP 不提议方案或预占人员",
         ReplyDemandInput,
         reply_demand,
         True,
     ),
     EmployeeTool(
         "respond_demand",
-        "接受、追问或撤回我方需求",
+        "接受、追问或撤回我方需求；有提议时追问为拒绝（需理由），接受须点击网页或助手确认卡",
         RespondDemandInput,
         respond_demand,
         True,
