@@ -554,6 +554,7 @@ export type {
   ChangeItemPublic,
   ChangeOp,
   ChangeProposalInput,
+  ChangeProposalParticipant,
   ChangeRequestPublic,
   ChangeRequestsPublic,
   changeRequestsReadChangeRequestsData,

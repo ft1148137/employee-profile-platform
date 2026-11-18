@@ -9,9 +9,9 @@ from sqlmodel import Session, select
 
 from app.domains.base import utc_now
 from app.domains.capacity.calendar import WeekLoad, loads
-from app.domains.capacity.models import CapacityDemand, CapacityProposal
-from app.domains.capacity.proposal import current_principal
-from app.domains.org.models import OrgMembership
+from app.domains.capacity.models import CapacityDemand, CapacityProposal, CapacityWeek
+from app.domains.capacity.proposal import _aligned_participants, current_principal
+from app.domains.org.models import Employee, OrgMembership
 from app.domains.planning.snapshot import build, current_fingerprint
 from tests.api.routes.test_m9_proposal import (
     case as case,
@@ -19,6 +19,7 @@ from tests.api.routes.test_m9_proposal import (
 from tests.api.routes.test_m9_proposal import (
     plan,
     propose,
+    respond,
     segments,
 )
 from tests.api.routes.test_m9_proposal import (
@@ -238,3 +239,231 @@ def test_planning_consumes_hold_details_without_changing_fingerprint(
         }
     ]
     assert fingerprint == before == current_fingerprint(db, principal, other)
+
+
+def _add_department_employee(
+    db: Session,
+    demand: Any,
+    admin_user_id: UUID,
+    code: str,
+    name: str,
+    other_percent: int = 27,
+) -> Employee:
+    employee = Employee(
+        org_id=demand.org_id,
+        department_id=demand.target_department_id,
+        employee_code=code,
+        display_name=name,
+    )
+    db.add(employee)
+    db.flush()
+    for week in (demand.window_start, demand.window_start + timedelta(days=7)):
+        db.add(
+            CapacityWeek(
+                org_id=demand.org_id,
+                employee_id=employee.id,
+                week_start=week,
+                other_percent=other_percent,
+                confirmed_by_user_id=admin_user_id,
+            )
+        )
+    db.commit()
+    db.refresh(employee)
+    return employee
+
+
+def test_anonymous_change_aligns_numbers_and_marks_replacement(
+    case: tuple, client: TestClient, db: Session
+) -> None:
+    url, people, auth, demand = case
+    admin_user_id = db.exec(
+        select(OrgMembership.user_id).where(
+            OrgMembership.org_id == demand.org_id,
+            OrgMembership.employee_id.is_(None),  # type: ignore[union-attr]
+        )
+    ).first()
+    assert admin_user_id is not None
+    e91 = _add_department_employee(db, demand, admin_user_id, "E91", "合成替补甲")
+    e92 = _add_department_employee(db, demand, admin_user_id, "E92", "合成替补乙")
+    demand.headcount = 3
+    db.commit()
+
+    def line_for(employee_id: UUID) -> dict[str, Any]:
+        return {
+            "employee_id": str(employee_id),
+            "allocation_percent": 40,
+            "start_date": demand.window_start.isoformat(),
+            "end_date": demand.window_end.isoformat(),
+        }
+
+    initial_lines = [
+        line_for(people["E04"].id),
+        line_for(people["E05"].id),
+        line_for(e91.id),
+    ]
+    reply = propose(client, case, plan(client, case, initial_lines))
+    assert reply.status_code == 200, reply.text
+    accepted = respond(client, case, reply.json()["revision"])
+    assert accepted.status_code == 200, accepted.text
+    db.refresh(demand)
+
+    # Replace E05 with E92 while keeping identical headcount, dates, and percent.
+    changed_lines = [
+        line_for(people["E04"].id),
+        line_for(e92.id),
+        line_for(e91.id),
+    ]
+    option = plan(client, case, changed_lines)
+    offer = client.post(
+        f"{url}/capacity/demands/{demand.id}/change",
+        headers=auth["b"],
+        json={
+            "option_id": option["id"],
+            "reason": "换人保证交付",
+            "revision": demand.revision,
+            "outside_basis": True,
+        },
+    )
+    assert offer.status_code == 200, offer.text
+
+    a_response = client.get(f"{url}/capacity/demands/{demand.id}", headers=auth["a"])
+    assert a_response.status_code == 200, a_response.text
+    a_proposal = a_response.json()["proposal"]
+    prev_participants = a_proposal["previous"]["participants"]
+    curr_participants = a_proposal["participants"]
+    assert [p["number"] for p in prev_participants] == [1, 2, 3]
+    assert [p["number"] for p in curr_participants] == [1, 2, 3]
+    assert sorted(p["status"] for p in prev_participants) == [
+        "replaced",
+        "unchanged",
+        "unchanged",
+    ]
+    assert sorted(p["status"] for p in curr_participants) == [
+        "replaced",
+        "unchanged",
+        "unchanged",
+    ]
+    prev_replaced = [
+        p["number"] for p in prev_participants if p["status"] == "replaced"
+    ]
+    curr_replaced = [
+        p["number"] for p in curr_participants if p["status"] == "replaced"
+    ]
+    assert prev_replaced == curr_replaced
+    assert {p["number"] for p in prev_participants if p["status"] == "unchanged"} == {
+        p["number"] for p in curr_participants if p["status"] == "unchanged"
+    }
+
+    # Verify B-side sees the new employee set and alignment holds regardless of key order.
+    b_proposal = client.get(
+        f"{url}/capacity/demands/{demand.id}", headers=auth["b"]
+    ).json()["proposal"]
+    assert {line["employee_id"] for line in b_proposal["previous"]["lines"]} == {
+        str(people["E04"].id),
+        str(people["E05"].id),
+        str(e91.id),
+    }
+    assert {line["employee_id"] for line in b_proposal["lines"]} == {
+        str(people["E04"].id),
+        str(e92.id),
+        str(e91.id),
+    }
+    prev_by_emp = {
+        line["employee_id"]: p["number"]
+        for line, p in zip(
+            b_proposal["previous"]["lines"],
+            b_proposal["previous"]["participants"],
+            strict=True,
+        )
+    }
+    _, reordered = _aligned_participants(
+        {
+            people["E04"].id: [],
+            people["E05"].id: [],
+            e91.id: [],
+        },
+        {
+            e92.id: [],
+            e91.id: [],
+            people["E04"].id: [],
+        },
+    )
+    assert [(p.number, p.status) for p in reordered] == [
+        (1, "unchanged"),
+        (2, "replaced"),
+        (3, "unchanged"),
+    ]
+
+    # Privacy boundary: A-side response must contain no B-side IDs, names, codes, or loads.
+    assert a_proposal["previous"]["lines"] is None
+    assert "lines" not in a_proposal
+    for secret in (
+        "employee_id",
+        "employee_name",
+        "other_percent",
+        "platform_percent",
+        "hold_percent",
+        "capacity_percent",
+        "available_percent",
+    ):
+        assert secret not in a_response.text
+    for emp in (people["E04"], people["E05"], e91, e92):
+        assert str(emp.id) not in a_response.text
+        assert emp.display_name not in a_response.text
+        if emp.employee_code:
+            assert emp.employee_code not in a_response.text
+
+    # Reject and verify add / remove status tagging as well.
+    rejected = respond(
+        client, case, offer.json()["revision"], "follow_up", text="改人再看"
+    )
+    assert rejected.status_code == 200, rejected.text
+    db.refresh(demand)
+    expanded = client.post(
+        f"{url}/capacity/demands/{demand.id}/change",
+        headers=auth["b"],
+        json={
+            "option_id": plan(
+                client, case, [*changed_lines, line_for(people["E05"].id)]
+            )["id"],
+            "reason": "增补一人",
+            "revision": demand.revision,
+            "outside_basis": True,
+        },
+    )
+    assert expanded.status_code == 200, expanded.text
+    exp_prop = client.get(
+        f"{url}/capacity/demands/{demand.id}", headers=auth["a"]
+    ).json()["proposal"]
+    assert sorted(p["status"] for p in exp_prop["participants"]) == [
+        "added",
+        "unchanged",
+        "unchanged",
+        "unchanged",
+    ]
+    assert [p["number"] for p in exp_prop["participants"]] == [1, 2, 3, 4]
+
+    respond(client, case, expanded.json()["revision"], "follow_up", text="改为缩减一人")
+    db.refresh(demand)
+    reduced = client.post(
+        f"{url}/capacity/demands/{demand.id}/change",
+        headers=auth["b"],
+        json={
+            "option_id": plan(client, case, [line_for(people["E04"].id)])["id"],
+            "reason": "缩减到一人",
+            "revision": demand.revision,
+            "outside_basis": True,
+        },
+    )
+    assert reduced.status_code == 200, reduced.text
+    red_prop = client.get(
+        f"{url}/capacity/demands/{demand.id}", headers=auth["a"]
+    ).json()["proposal"]
+    assert sorted(p["status"] for p in red_prop["previous"]["participants"]) == [
+        "removed",
+        "removed",
+        "unchanged",
+    ]
+    assert len(red_prop["participants"]) == 1
+    assert red_prop["participants"][0]["status"] == "unchanged"
+    assert red_prop["participants"][0]["number"] == prev_by_emp[str(people["E04"].id)]

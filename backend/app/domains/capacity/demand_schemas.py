@@ -2,7 +2,13 @@ from datetime import date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, StrictBool, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    StrictBool,
+    StringConstraints,
+    model_validator,
+)
 
 from app.domains.capability.search import PeopleSearchRow
 from app.domains.capacity.models import (
@@ -230,13 +236,23 @@ class BorrowDecisionInput(CapacityInput):
     reason: Note | None = None
 
 
+ParticipantChangeStatus = Literal["unchanged", "replaced", "added", "removed"]
+
+
 class ProposalParticipant(CapacityInput):
     number: int
     segments: list[ProposalSegment]
 
 
+class ChangeProposalParticipant(ProposalParticipant):
+    status: ParticipantChangeStatus
+
+
+ParticipantPublic = ChangeProposalParticipant | ProposalParticipant
+
+
 class CommitmentArrangement(CapacityInput):
-    participants: list[ProposalParticipant]
+    participants: list[ParticipantPublic]
     lines: list[ProposalLinePublic] | None = None
 
 
@@ -250,7 +266,7 @@ class ProposalSummary(CapacityInput):
     hold_expires_at: datetime
     committed_at: datetime | None
     headcount: int
-    participants: list[ProposalParticipant]
+    participants: list[ParticipantPublic]
     allocation_percents: list[int]
     start_date: date
     end_date: date
