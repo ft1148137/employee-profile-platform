@@ -1,15 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useLocation, useNavigate } from "@tanstack/react-router"
 import { AxiosError } from "axios"
-import { useState } from "react"
+import { useId, useState } from "react"
 import {
   type CasePublic,
   PlanningService,
-  type ReplyInput,
+  type PlanReplyInput,
   type ReviseInput,
 } from "@/client"
 import { ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { isCapacityAccessDenied } from "./shared"
 
 function records(value: unknown): Record<string, unknown>[] {
@@ -316,6 +317,17 @@ function RevisionControls({
   )
 }
 
+export type SelectedPlanReply = Pick<
+  PlanReplyInput,
+  | "option_id"
+  | "outcome"
+  | "start_date"
+  | "end_date"
+  | "outside_basis"
+  | "lender_department_id"
+  | "borrow_headcount"
+>
+
 function OptionCard({
   option,
   plan,
@@ -327,13 +339,16 @@ function OptionCard({
   plan: CasePublic
   orgId: string
   onRevised: () => Promise<unknown>
-  onReply?: (
-    reply: Pick<
-      ReplyInput,
-      "option_id" | "outcome" | "start_date" | "end_date" | "outside_basis"
-    >,
-  ) => void
+  onReply?: (reply: SelectedPlanReply) => void
 }) {
+  const borrowCountId = useId()
+  const [lender, setLender] = useState("")
+  const [borrowCount, setBorrowCount] = useState("1")
+  const borrowing = option.kind === "borrow"
+  const departments = records(option.params.departments)
+  const demand = records([plan.data.demand])[0]
+  const maxBorrow = Number(demand?.headcount)
+  const count = Number(borrowCount)
   const people = new Map(
     plan.people.map((person) => [person.employee_id, person.display_name]),
   )
@@ -432,7 +447,7 @@ function OptionCard({
         ) : (
           <p>尚未确定具体人员</p>
         )}
-        {records(option.params.departments).map((department, index) => (
+        {departments.map((department, index) => (
           <p key={index}>候选部门：{label(department.department_name)}</p>
         ))}
       </div>
@@ -493,30 +508,85 @@ function OptionCard({
         </ul>
       </div>
       {onReply && ["feasible", "conditional"].includes(option.verdict) && (
-        <Button
-          disabled={plan.stale || !assignees.length}
-          title={
-            !assignees.length
-              ? "方案尚无可安排的人员，请选择其他方案"
-              : undefined
-          }
-          onClick={() =>
-            onReply({
-              outside_basis: option.findings.some(
-                (finding) => finding.code === "outside_basis",
-              ),
-              option_id: option.id,
-              outcome: option.verdict === "feasible" ? "can_do" : "partial",
-              start_date:
-                assignees
-                  .map((person) => label(person.start_date, ""))
-                  .sort()[0] || null,
-              end_date: label(option.summary.finish_date, "") || null,
-            })
-          }
-        >
-          按此方案答复
-        </Button>
+        <div className="space-y-3">
+          {borrowing && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block space-y-2 text-sm">
+                <span>借出部门</span>
+                <select
+                  className="h-10 w-full rounded-md border bg-background px-3"
+                  value={lender}
+                  onChange={(event) => setLender(event.target.value)}
+                >
+                  <option value="">请选择</option>
+                  {departments.map((department) => (
+                    <option
+                      key={label(department.department_id)}
+                      value={label(department.department_id)}
+                    >
+                      {label(department.department_name)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label
+                htmlFor={borrowCountId}
+                className="block space-y-2 text-sm"
+              >
+                <span>借调人数</span>
+                <Input
+                  id={borrowCountId}
+                  type="number"
+                  min={1}
+                  max={maxBorrow}
+                  value={borrowCount}
+                  onChange={(event) => setBorrowCount(event.target.value)}
+                />
+              </label>
+            </div>
+          )}
+          <Button
+            disabled={
+              plan.stale ||
+              (borrowing
+                ? !lender ||
+                  !Number.isInteger(count) ||
+                  count < 1 ||
+                  count > maxBorrow
+                : !assignees.length)
+            }
+            title={
+              !borrowing && !assignees.length
+                ? "方案尚无可安排的人员，请选择其他方案"
+                : undefined
+            }
+            onClick={() =>
+              onReply({
+                outside_basis: option.findings.some(
+                  (finding) => finding.code === "outside_basis",
+                ),
+                option_id: option.id,
+                outcome: option.verdict === "feasible" ? "can_do" : "partial",
+                ...(borrowing
+                  ? {
+                      lender_department_id: lender,
+                      borrow_headcount: count,
+                      start_date: label(demand?.window_start, "") || null,
+                      end_date: label(demand?.window_end, "") || null,
+                    }
+                  : {
+                      start_date:
+                        assignees
+                          .map((person) => label(person.start_date, ""))
+                          .sort()[0] || null,
+                      end_date: label(option.summary.finish_date, "") || null,
+                    }),
+              })
+            }
+          >
+            按此方案答复
+          </Button>
+        </div>
       )}
       <RevisionControls
         option={option}
@@ -535,12 +605,7 @@ export function Plans({
 }: {
   orgId: string
   demandId: string
-  onReply?: (
-    reply: Pick<
-      ReplyInput,
-      "option_id" | "outcome" | "start_date" | "end_date" | "outside_basis"
-    >,
-  ) => void
+  onReply?: (reply: SelectedPlanReply) => void
 }) {
   const client = useQueryClient()
   const navigate = useNavigate()

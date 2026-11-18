@@ -10,6 +10,7 @@ from app.authz.principal import Principal
 from app.domains.base import utc_now
 from app.domains.capacity import calendar
 from app.domains.capacity.assignment_schemas import (
+    AnonymousBorrowAssignment,
     AssignmentInput,
     AssignmentPublic,
     AssignmentUpdateInput,
@@ -33,6 +34,7 @@ from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityDemand,
     CapacityDemandEvent,
+    CapacityProposalLine,
     DemandEventKind,
     DemandStatus,
 )
@@ -123,12 +125,26 @@ def check_capacity(
         raise AssignmentCapacityConflict(weeks, allocation_percent)
 
 
+def assignment_lender(session: Session, row: CapacityAssignment) -> UUID | None:
+    return (
+        session.exec(
+            select(CapacityProposalLine.lender_department_id).where(
+                CapacityProposalLine.org_id == row.org_id,
+                CapacityProposalLine.id == row.proposal_line_id,
+            )
+        ).first()
+        if row.proposal_line_id
+        else None
+    )
+
+
 def assignment_rows(
     principal: Principal,
     session: Session,
     assignment_id: UUID,
     *,
     allow_departed: bool = False,
+    allow_borrow: bool = False,
 ) -> tuple[CapacityAssignment, CapacityDemand]:
     """Lock demand before assignment; callers enforce their operation's permission."""
     require_enabled(principal, session)
@@ -151,14 +167,16 @@ def assignment_rows(
         .execution_options(populate_existing=True)
     ).one()
     session.refresh(row, with_for_update=True)
-    if allow_departed:
+    if allow_departed or (allow_borrow and assignment_lender(session, row) is not None):
         subject = session.exec(
             select(Employee)
             .where(Employee.org_id == principal.org_id, Employee.id == row.employee_id)
             .with_for_update()
             .execution_options(populate_existing=True)
         ).one_or_none()
-        if subject is None:
+        if subject is None or (
+            not allow_departed and subject.employment_status != EmploymentStatus.ACTIVE
+        ):
             raise CapacityNotFound()
     else:
         employee(principal, session, row.employee_id, lock=True)
@@ -175,6 +193,8 @@ def change_due_date(
     commitment_note: str | None,
     via: Via,
     client_name: str | None,
+    *,
+    lender_department_id: UUID | None = None,
 ) -> None:
     """Apply a date change after assignment_rows has established the lock order."""
     if principal.user_id is None:
@@ -183,9 +203,20 @@ def change_due_date(
     old = demand.committed_end_date
     if old is None:
         raise CapacityConflict()
-    subject = employee(principal, session, row.employee_id)
-    if subject.department_id not in managed_scope(
-        session, principal.org_id, frozenset({demand.target_department_id})
+    subject_department = (
+        employee(principal, session, row.employee_id).department_id
+        if lender_department_id is None
+        else session.exec(
+            select(Employee.department_id).where(
+                Employee.org_id == row.org_id,
+                Employee.id == row.employee_id,
+            )
+        ).one()
+    )
+    if subject_department not in managed_scope(
+        session,
+        principal.org_id,
+        frozenset({lender_department_id or demand.target_department_id}),
     ):
         raise CapacityNotFound()
     start = row.start_date or calendar.week_start(row.created_at.date())
@@ -228,6 +259,10 @@ def change_due_date(
         validate_department_text(
             principal, session, demand.target_department_id, commitment_note
         )
+        if lender_department_id is not None:
+            validate_department_text(
+                principal, session, lender_department_id, commitment_note
+            )
         validate_load_words(principal, session, demand, commitment_note)
         demand.committed_end_date = new_committed_end_date
         demand.revision += 1
@@ -540,17 +575,24 @@ def list_demand_assignments(
             else_=col(Employee.display_name),
         )
     )
+    borrowed = col(CapacityProposalLine.lender_department_id).is_not(None)
     rows = session.exec(
-        select(CapacityAssignment, Employee)
+        select(CapacityAssignment, Employee, CapacityProposalLine.lender_department_id)
         .join(
             Employee,
             (col(Employee.org_id) == CapacityAssignment.org_id)
             & (col(Employee.id) == CapacityAssignment.employee_id),
         )
+        .outerjoin(
+            CapacityProposalLine,
+            (col(CapacityProposalLine.org_id) == CapacityAssignment.org_id)
+            & (col(CapacityProposalLine.id) == CapacityAssignment.proposal_line_id),
+        )
         .where(
             CapacityAssignment.org_id == principal.org_id,
             CapacityAssignment.demand_id == demand.id,
             or_(
+                borrowed,
                 employee_scope_clause(principal),
                 and_(
                     col(Employee.employment_status) == EmploymentStatus.INACTIVE,
@@ -566,10 +608,17 @@ def list_demand_assignments(
                 ),
             ),
         )
-        .order_by(visible_name, col(CapacityAssignment.id))
+        .order_by(case((borrowed, ""), else_=visible_name), col(CapacityAssignment.id))
     ).all()
     data = [
-        DepartedDemandAssignment(
+        AnonymousBorrowAssignment(
+            allocation_percent=row.allocation_percent,
+            start_date=row.start_date,
+            due_date=row.due_date,
+            status=row.status,
+        )
+        if lender is not None
+        else DepartedDemandAssignment(
             id=row.id,
             allocation_percent=row.allocation_percent,
             start_date=row.start_date,
@@ -584,6 +633,6 @@ def list_demand_assignments(
             employee_name=subject.display_name,
             employee_departed=subject.employment_status == EmploymentStatus.INACTIVE,
         )
-        for row, subject in rows
+        for row, subject, lender in rows
     ]
     return DemandAssignmentList(data=data, count=len(data))

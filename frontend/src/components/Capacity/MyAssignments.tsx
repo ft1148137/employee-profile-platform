@@ -14,6 +14,7 @@ import {
   useExtensions,
   useMyAssignments,
 } from "./AssignmentFields"
+import { BorrowRequests } from "./BorrowRequests"
 import { assignmentStatuses } from "./DemandAssignments"
 
 const extensionStatuses = {
@@ -38,6 +39,7 @@ export function MyAssignments({ orgId }: { orgId: string }) {
   return (
     <section aria-label="我的分配" className="space-y-4">
       <h2 className="text-lg font-semibold">我的分配</h2>
+      <BorrowRequests orgId={orgId} mine />
       {!assignments.data.count && (
         <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
           暂无分配。

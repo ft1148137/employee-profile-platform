@@ -23,16 +23,17 @@ from app.domains.capacity.assignment_schemas import (
     MyAssignmentList,
 )
 from app.domains.capacity.demand_schemas import (
+    BorrowDecisionInput,
+    BorrowRequest,
     CapacityReference,
     DemandBasis,
     DemandInput,
     DemandList,
     DemandListInput,
     DemandPublic,
-    ProposalLineInput,
+    PlanReplyInput,
     ProposalWithdrawInput,
     ReferenceInput,
-    ReplyInput,
     RespondInput,
 )
 from app.domains.capacity.extension_schemas import (
@@ -60,7 +61,12 @@ from app.domains.capacity.schemas import (
 )
 from app.domains.org.schemas import DepartmentsPublic
 from app.domains.planning import service as planning
-from app.domains.planning.models import PlanningOption, PlanningSnapshot, PlanVerdict
+from app.domains.planning.models import (
+    OptionKind,
+    PlanningOption,
+    PlanningSnapshot,
+    PlanVerdict,
+)
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["capacity"])
 
@@ -184,10 +190,18 @@ def get_demand_basis(
 
 @router.post("/capacity/demands/{demand_id}/reply")
 def reply_demand(
-    principal: OrgPrincipalDep, session: SessionDep, demand_id: UUID, body: ReplyInput
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    demand_id: UUID,
+    body: PlanReplyInput,
 ) -> DemandPublic:
+    fields = {"lender_department_id", "borrow_headcount"}
     if body.option_id is None:
-        result = demand.reply_demand(principal, session, demand_id, **body.model_dump())
+        if body.lender_department_id is not None or body.borrow_headcount is not None:
+            raise proposal.ProposalConflict("只有借调方案可以指定借出部门和人数")
+        result = demand.reply_demand(
+            principal, session, demand_id, **body.model_dump(exclude=fields)
+        )
     else:
         row = demand.demand_row(principal, session, demand_id, lock=True)
         if not demand.represents_department(principal, row.target_department_id):
@@ -214,19 +228,14 @@ def reply_demand(
             raise planning.PlanningStale()
         if saved.verdict not in (PlanVerdict.FEASIBLE, PlanVerdict.CONDITIONAL):
             raise proposal.ProposalConflict("只有可行或有条件可行的方案可以提议")
-        raw = saved.params.get("assignees")
-        if not isinstance(raw, list) or not raw:
-            raise proposal.ProposalConflict("方案尚无可安排的人员，请重新规划")
-        lines = [
-            ProposalLineInput.model_validate(
-                {**item, "outside_basis": body.outside_basis}
-            )
-            for item in raw
-            if isinstance(item, dict)
-        ]
-        if len(lines) != len(raw):
-            raise planning.PlanningStale()
-        proposal.check_lines(principal, session, row, lines)
+        lines = proposal.plan_lines(
+            principal,
+            session,
+            row,
+            body,
+            saved.params,
+            borrow=saved.kind == OptionKind.BORROW,
+        )
         current = planning.get_case(principal, session, case_id)
         if current.stale or current.snapshot_id != saved.snapshot_id:
             raise planning.PlanningStale()
@@ -235,7 +244,8 @@ def reply_demand(
             session,
             demand_id,
             **body.model_dump(
-                exclude={"option_id", "outside_basis", "start_date", "end_date"}
+                exclude=fields
+                | {"option_id", "outside_basis", "start_date", "end_date"}
             ),
             start_date=min(line.start_date for line in lines),
             end_date=max(line.end_date for line in lines),
@@ -259,6 +269,28 @@ def respond_demand(
         raise
     session.commit()
     return result
+
+
+@router.get("/capacity/borrow-requests")
+def list_borrow_requests(
+    principal: OrgPrincipalDep, session: SessionDep, mine: bool = False
+) -> list[BorrowRequest]:
+    return proposal.borrow_requests(principal, session, mine=mine)
+
+
+@router.post("/capacity/borrow-requests/{line_id}/decision", status_code=204)
+def decide_borrow_request(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    line_id: UUID,
+    body: BorrowDecisionInput,
+) -> None:
+    try:
+        proposal.decide_borrow(principal, session, line_id, body)
+    except proposal.ProposalFailed:
+        session.commit()
+        raise
+    session.commit()
 
 
 @router.post("/capacity/proposals/{proposal_id}/withdraw")

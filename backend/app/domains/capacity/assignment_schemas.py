@@ -70,8 +70,16 @@ class DepartedDemandAssignment(CapacityInput):
     employee_departed: Literal[True]
 
 
+class AnonymousBorrowAssignment(CapacityInput):
+    headcount: int = 1
+    allocation_percent: int
+    start_date: date | None
+    due_date: date
+    status: AssignmentStatus
+
+
 class DemandAssignmentList(CapacityInput):
-    data: list[DemandAssignment | DepartedDemandAssignment]
+    data: list[DemandAssignment | DepartedDemandAssignment | AnonymousBorrowAssignment]
     count: int
 
 

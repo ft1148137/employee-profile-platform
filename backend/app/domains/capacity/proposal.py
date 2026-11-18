@@ -15,13 +15,20 @@ from app.domains.base import utc_now
 from app.domains.capacity import calendar
 from app.domains.capacity.demand import (
     demand_row,
+    department,
     get_demand,
     get_demand_basis,
+    qualified_people,
     represents_department,
     responder_user_ids,
 )
 from app.domains.capacity.demand_schemas import (
+    BorrowCandidate,
+    BorrowDecisionInput,
+    BorrowLineInput,
+    BorrowRequest,
     DemandPublic,
+    PlanReplyInput,
     ProposalApprovalPublic,
     ProposalDetail,
     ProposalLineInput,
@@ -43,11 +50,16 @@ from app.domains.capacity.models import (
     ProposalStatus,
 )
 from app.domains.capacity.schemas import Via
-from app.domains.capacity.settings import CapacityForbidden, CapacityNotFound, audit
+from app.domains.capacity.settings import (
+    CapacityForbidden,
+    CapacityNotFound,
+    audit,
+    require_enabled,
+)
 from app.domains.capacity.workload import notify_employee
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.inbox.service import add_item
-from app.domains.org.models import Employee, EmploymentStatus
+from app.domains.org.models import Employee, EmploymentStatus, OrgMembership
 from app.domains.org.service import managed_scope
 from app.models import User
 
@@ -182,6 +194,8 @@ def check_lines(
     *,
     exclude: UUID | None = None,
     conflict_viewer: Principal | None = None,
+    lender_department_id: UUID | None = None,
+    lenders: dict[UUID, Principal] | None = None,
 ) -> None:
     if not lines:
         raise ProposalConflict("方案没有可安排的人员")
@@ -200,17 +214,22 @@ def check_lines(
         if person is None or person.employment_status != EmploymentStatus.ACTIVE:
             raise ProposalConflict("方案人员已不在职，请重新规划")
         people[employee_id] = person
-    target = managed_scope(
-        session, principal.org_id, frozenset({demand.target_department_id})
+    target_id = lender_department_id or demand.target_department_id
+    target = managed_scope(session, principal.org_id, frozenset({target_id}))
+    basis = (
+        set(qualified_people(principal, session, demand, target_id))
+        if lender_department_id is not None
+        else {
+            p.employee_id for p in get_demand_basis(principal, session, demand.id).data
+        }
     )
-    basis = {
-        p.employee_id for p in get_demand_basis(principal, session, demand.id).data
-    }
     requested: dict[UUID, dict[date, int]] = defaultdict(lambda: defaultdict(int))
     for line in lines:
         person = people[line.employee_id]
         if (
-            not can_view_employee(principal, person)
+            not can_view_employee(
+                lenders[line.employee_id] if lenders else principal, person
+            )
             or person.department_id not in target
         ):
             raise ProposalConflict("方案人员已不在目标部门管辖范围内，请重新规划")
@@ -272,12 +291,64 @@ def check_lines(
             )
 
 
+def plan_lines(
+    principal: Principal,
+    session: Session,
+    demand: CapacityDemand,
+    body: PlanReplyInput,
+    params: dict[str, JsonValue],
+    *,
+    borrow: bool,
+) -> list[ProposalLineInput | BorrowLineInput]:
+    if borrow:
+        departments = params.get("departments")
+        if (
+            body.lender_department_id is None
+            or body.borrow_headcount is None
+            or body.borrow_headcount > demand.headcount
+            or not isinstance(departments, list)
+            or not any(
+                isinstance(entry, dict)
+                and entry.get("department_id") == str(body.lender_department_id)
+                for entry in departments
+            )
+        ):
+            raise ProposalConflict(
+                "请从保存的借调方案选择借出部门和人数，人数不能超过需求"
+            )
+        return [
+            BorrowLineInput(
+                lender_department_id=body.lender_department_id,
+                allocation_percent=demand.allocation_percent,
+                start_date=demand.window_start,
+                end_date=demand.window_end,
+            )
+            for _ in range(body.borrow_headcount)
+        ]
+    if body.lender_department_id is not None or body.borrow_headcount is not None:
+        raise ProposalConflict("只有借调方案可以指定借出部门和人数")
+    raw = params.get("assignees")
+    if (
+        not isinstance(raw, list)
+        or not raw
+        or not all(isinstance(item, dict) for item in raw)
+    ):
+        raise ProposalConflict("方案尚无可安排的人员，请重新规划")
+    lines = [
+        ProposalLineInput.model_validate({**item, "outside_basis": body.outside_basis})
+        for item in raw
+        if isinstance(item, dict)
+    ]
+    check_lines(principal, session, demand, lines)
+    return list(lines)
+
+
 def create(
     principal: Principal,
     session: Session,
     demand: CapacityDemand,
     option_id: UUID,
-    lines: list[ProposalLineInput],
+    lines: list[ProposalLineInput | BorrowLineInput],
 ) -> CapacityProposal:
     assert principal.user_id is not None
     row = CapacityProposal(
@@ -309,7 +380,33 @@ def create(
         )
     )
     session.flush()
+    if isinstance(lines[0], BorrowLineInput):
+        for user_id in responder_user_ids(
+            session, principal.org_id, lines[0].lender_department_id
+        ):
+            add_item(
+                session,
+                InboxItem(
+                    org_id=principal.org_id,
+                    recipient_user_id=user_id,
+                    kind=InboxKind.CAPACITY,
+                    message="借调请求",
+                ),
+            )
     return row
+
+
+def approvals_for(session: Session, row: CapacityProposal) -> list[CapacityApproval]:
+    return list(
+        session.exec(
+            select(CapacityApproval)
+            .where(
+                CapacityApproval.org_id == row.org_id,
+                CapacityApproval.proposal_id == row.id,
+            )
+            .order_by(col(CapacityApproval.created_at), col(CapacityApproval.id))
+        ).all()
+    )
 
 
 def public(
@@ -319,14 +416,31 @@ def public(
     if row is None:
         return None
     lines = lines_for(session, row)
-    approvals = session.exec(
-        select(CapacityApproval)
-        .where(
-            CapacityApproval.org_id == principal.org_id,
-            CapacityApproval.proposal_id == row.id,
-        )
-        .order_by(col(CapacityApproval.created_at), col(CapacityApproval.id))
-    ).all()
+    approvals = approvals_for(session, row)
+    borrowed = any(line.lender_department_id is not None for line in lines)
+    lender_count = sum(
+        a.party == "lender_manager" and a.decision == "approved" for a in approvals
+    )
+    progress = None
+    if borrowed:
+        if row.status == ProposalStatus.FAILED:
+            progress = "借调未达成"
+        elif row.status == ProposalStatus.PENDING:
+            progress = (
+                f"原部门已同意 {lender_count}/{len(lines)}"
+                if lender_count < len(lines)
+                else "原部门已安排人员，等待本人同意"
+                if sum(
+                    a.party == "employee" and a.decision == "approved"
+                    for a in approvals
+                )
+                < len(lines)
+                else "借调已获同意，等待需求方接受"
+            )
+        else:
+            progress = (
+                "借调已生效" if row.status == ProposalStatus.COMMITTED else "借调已撤回"
+            )
     detailed = represents_department(principal, demand.target_department_id)
     reply = session.exec(
         select(CapacityDemandEvent)
@@ -344,16 +458,17 @@ def public(
     for line in sorted(
         lines, key=lambda line: (line.start_date, line.created_at, line.id)
     ):
-        if line.employee_id is not None:
+        if line.employee_id is not None and not borrowed:
             grouped.setdefault(line.employee_id, []).append(line)
     summary = ProposalSummary(
         id=row.id,
         status=row.status,
-        fail_reason=row.fail_reason,
+        fail_reason=None if borrowed else row.fail_reason,
         revision=row.revision,
         hold_expires_at=row.hold_expires_at,
         committed_at=row.committed_at,
-        headcount=len({line.employee_id for line in lines if line.employee_id}),
+        headcount=len(lines) if borrowed else len(grouped),
+        borrow_progress=progress,
         participants=[
             ProposalParticipant(
                 number=index,
@@ -373,10 +488,13 @@ def public(
                 reason=a.reason if detailed or a.user_id == principal.user_id else None,
             )
             for a in approvals
+            if a.party not in ("employee", "lender_manager")
         ],
     )
     if not detailed:
         return summary
+    if borrowed:
+        return ProposalDetail(**summary.model_dump(), lines=[])
     people = {
         p.id: p
         for p in session.exec(
@@ -436,6 +554,8 @@ def fail(
     *,
     via: Via = "web",
 ) -> None:
+    if reason == "borrow_declined":
+        principal = Principal.system_worker(row.org_id)
     row.status, row.fail_reason = ProposalStatus.FAILED, reason
     row.revision += 1
     demand.status = DemandStatus.SUBMITTED
@@ -529,16 +649,54 @@ def accept(
     row: CapacityProposal,
     *,
     via: Via,
+    requester_accepts: bool = True,
 ) -> None:
     if expire_locked(principal, session, demand, row, via=via):
         raise ProposalFailed("方案已过期，请对方重新安排", code="proposal_expired")
+    lines = lines_for(session, row)
+    lender_department_id = lines[0].lender_department_id
+    approvals = approvals_for(session, row)
+    requester = next((a for a in approvals if a.party == "requester"), None)
+    if requester_accepts:
+        if requester is not None:
+            raise decided(row)
+        if any(
+            a.user_id == principal.user_id and a.party in ("lender_manager", "employee")
+            for a in approvals
+        ) or any(
+            lender_department_id is not None
+            and line.employee_id == principal.employee_id
+            and line.employee_id is not None
+            for line in lines
+        ):
+            raise ProposalSelfApprovalForbidden()
+        assert principal.user_id is not None
+        requester = CapacityApproval(
+            org_id=principal.org_id,
+            proposal_id=row.id,
+            party="requester",
+            decision="approved",
+            user_id=principal.user_id,
+            via=via,
+        )
+    employee_approvals = {
+        a.line_id: a.user_id
+        for a in approvals
+        if a.party == "employee" and a.decision == "approved"
+    }
+    if lender_department_id is not None and (
+        requester is None or set(employee_approvals) != {line.id for line in lines}
+    ):
+        if requester_accepts:
+            session.add(requester)
+            row.revision += 1
+            session.add(row)
+            session.flush()
+        return
+    assert requester is not None
     try:
         proposer = current_principal(session, principal.org_id, row.proposed_by_user_id)
-        accepter = (
-            current_principal(session, principal.org_id, principal.user_id)
-            if principal.user_id
-            else principal
-        )
+        accepter = current_principal(session, principal.org_id, requester.user_id)
         if not represents_department(proposer, demand.target_department_id):
             raise ProposalConflict("提议人已没有目标部门的审批权限")
         if not (
@@ -551,13 +709,55 @@ def accept(
             or demand.status != DemandStatus.REPLIED
         ):
             raise ProposalConflict("需求版本已变化，请重新规划")
-        lines = lines_for(session, row)
         if any(line.employee_id is None for line in lines):
             raise ProposalConflict("借调尚未完成审批")
         inputs = [ProposalLineInput.model_validate(line) for line in lines]
-        check_lines(
-            proposer, session, demand, inputs, exclude=row.id, conflict_viewer=accepter
-        )
+        if lender_department_id is None:
+            check_lines(
+                proposer,
+                session,
+                demand,
+                inputs,
+                exclude=row.id,
+                conflict_viewer=accepter,
+            )
+        else:
+            representatives = responder_user_ids(
+                session, row.org_id, lender_department_id
+            )
+            selected = {
+                a.line_id: a.user_id
+                for a in approvals
+                if a.party == "lender_manager" and a.decision == "approved"
+            }
+            if (
+                set(selected) != {line.id for line in lines}
+                or not set(selected.values()) <= representatives
+            ):
+                raise ProposalConflict("原部门审批权限已变化")
+            if any(
+                current_principal(
+                    session, row.org_id, employee_approvals[line.id]
+                ).employee_id
+                != line.employee_id
+                for line in lines
+            ):
+                raise ProposalConflict("借调员工的账号已变化")
+            lenders = {
+                line_input.employee_id: current_principal(
+                    session, row.org_id, selected[line.id]
+                )
+                for line, line_input in zip(lines, inputs, strict=True)
+            }
+            check_lines(
+                next(iter(lenders.values())),
+                session,
+                demand,
+                inputs,
+                exclude=row.id,
+                lender_department_id=lender_department_id,
+                lenders=lenders,
+            )
     except ProposalConflict as error:
         if expire_locked(principal, session, demand, row, via=via):
             raise ProposalFailed(
@@ -569,9 +769,15 @@ def accept(
             demand,
             row,
             "recheck_failed",
-            "方案复核未通过，需要重新规划",
+            "借调未达成"
+            if lender_department_id is not None
+            else "方案复核未通过，需要重新规划",
             via=via,
         )
+        if lender_department_id is not None:
+            raise ProposalFailed(
+                "借调未达成", code="proposal_recheck_failed"
+            ) from error
         # The accepter only receives department-level failure details.
         raise ProposalFailed(
             "方案复核未通过，请对方重新安排",
@@ -581,16 +787,8 @@ def accept(
     if expire_locked(principal, session, demand, row, via=via):
         raise ProposalFailed("方案已过期，请对方重新安排", code="proposal_expired")
     assert principal.user_id is not None
-    session.add(
-        CapacityApproval(
-            org_id=principal.org_id,
-            proposal_id=row.id,
-            party="requester",
-            decision="approved",
-            user_id=principal.user_id,
-            via=via,
-        )
-    )
+    if requester_accepts:
+        session.add(requester)
     for line in lines:
         assert line.employee_id is not None
         assignment = CapacityAssignment(
@@ -651,6 +849,248 @@ def accept(
     session.flush()
 
 
+def borrow_requests(
+    principal: Principal, session: Session, *, mine: bool
+) -> list[BorrowRequest]:
+    require_enabled(principal, session)
+    if mine and principal.employee_id is None:
+        return []
+    rows = session.exec(
+        select(CapacityProposalLine, CapacityProposal, CapacityDemand)
+        .join(
+            CapacityProposal,
+            (col(CapacityProposal.id) == CapacityProposalLine.proposal_id)
+            & (col(CapacityProposal.org_id) == CapacityProposalLine.org_id),
+        )
+        .join(
+            CapacityDemand,
+            (col(CapacityDemand.id) == CapacityProposal.demand_id)
+            & (col(CapacityDemand.org_id) == CapacityProposal.org_id),
+        )
+        .where(
+            CapacityProposalLine.org_id == principal.org_id,
+            col(CapacityProposalLine.lender_department_id).is_not(None),
+            col(CapacityProposal.status).in_(
+                (ProposalStatus.PENDING, ProposalStatus.FAILED)
+            ),
+            *(
+                [CapacityProposalLine.employee_id == principal.employee_id]
+                if mine
+                else []
+            ),
+        )
+        .order_by(col(CapacityProposal.created_at).desc(), col(CapacityProposalLine.id))
+    ).all()
+    result: list[BorrowRequest] = []
+    representatives: dict[UUID, set[UUID]] = {}
+    candidates: dict[UUID, list[BorrowCandidate]] = {}
+    for line, row, demand in rows:
+        lender = line.lender_department_id
+        assert lender is not None
+        if not mine:
+            if lender not in representatives:
+                representatives[lender] = responder_user_ids(
+                    session, row.org_id, lender
+                )
+            if principal.user_id not in representatives[lender]:
+                continue
+        own = None
+        if mine:
+            own = next(
+                (
+                    a
+                    for a in approvals_for(session, row)
+                    if a.party == "employee"
+                    and a.line_id == line.id
+                    and a.user_id == principal.user_id
+                ),
+                None,
+            )
+        if row.status == ProposalStatus.FAILED or row.hold_expires_at <= utc_now():
+            status = "failed"
+        elif mine:
+            status = "waiting_commitment" if own is not None else "pending_consent"
+        else:
+            status = "pending_selection" if line.employee_id is None else "selected"
+        if status == "pending_selection" and demand.id not in candidates:
+            candidates[demand.id] = [
+                BorrowCandidate(
+                    employee_id=person.employee_id, display_name=person.display_name
+                )
+                for person in qualified_people(
+                    principal, session, demand, lender
+                ).values()
+                if person.employee_id != principal.employee_id
+            ]
+        result.append(
+            BorrowRequest(
+                id=line.id,
+                description=demand.description,
+                capability_name=demand.capability_name,
+                borrower_department=department(
+                    session, row.org_id, demand.target_department_id
+                ).name,
+                allocation_percent=line.allocation_percent,
+                start_date=line.start_date,
+                end_date=line.end_date,
+                status=status,
+                reason=own.reason if mine and own else None,
+                candidates=candidates[demand.id]
+                if status == "pending_selection"
+                else [],
+            )
+        )
+    return result
+
+
+def decide_borrow(
+    principal: Principal, session: Session, line_id: UUID, body: BorrowDecisionInput
+) -> None:
+    require_enabled(principal, session)
+    line, row = session.exec(
+        select(CapacityProposalLine, CapacityProposal)
+        .join(
+            CapacityProposal,
+            (col(CapacityProposal.id) == CapacityProposalLine.proposal_id)
+            & (col(CapacityProposal.org_id) == CapacityProposalLine.org_id),
+        )
+        .where(
+            CapacityProposalLine.org_id == principal.org_id,
+            CapacityProposalLine.id == line_id,
+        )
+    ).one_or_none() or (None, None)
+    if (
+        line is None
+        or row is None
+        or line.lender_department_id is None
+        or principal.user_id is None
+    ):
+        raise CapacityNotFound()
+    demand = session.exec(
+        select(CapacityDemand)
+        .where(CapacityDemand.org_id == row.org_id, CapacityDemand.id == row.demand_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).one()
+    session.refresh(row, with_for_update=True)
+    session.refresh(line)
+    manager = body.action in ("select", "reject")
+    if manager:
+        if principal.user_id not in responder_user_ids(
+            session, row.org_id, line.lender_department_id
+        ):
+            raise CapacityNotFound()
+    elif line.employee_id is None or line.employee_id != principal.employee_id:
+        raise CapacityNotFound()
+    if row.status != ProposalStatus.PENDING:
+        raise decided(row)
+    if expire_locked(principal, session, demand, row):
+        raise ProposalFailed("借调未达成", code="proposal_expired")
+    party = "lender_manager" if manager else "employee"
+    approvals = approvals_for(session, row)
+    if any(a.party == party and a.line_id == line.id for a in approvals):
+        raise decided(row)
+    lines = lines_for(session, row)
+    if (
+        principal.user_id in (row.proposed_by_user_id, demand.requester_user_id)
+        or any(a.user_id == principal.user_id and a.party != party for a in approvals)
+        or (
+            manager
+            and any(
+                other.employee_id is not None
+                and other.employee_id == principal.employee_id
+                for other in lines
+            )
+        )
+    ):
+        raise ProposalSelfApprovalForbidden()
+    if body.action == "select":
+        if body.employee_id is None:
+            raise ProposalConflict("请选择借调员工")
+        if any(other.employee_id == body.employee_id for other in lines):
+            raise ProposalConflict("这名员工已在本次借调中")
+        member = session.exec(
+            select(OrgMembership)
+            .join(User, col(OrgMembership.user_id) == User.id)
+            .join(
+                Employee,
+                (col(Employee.org_id) == OrgMembership.org_id)
+                & (col(Employee.id) == OrgMembership.employee_id),
+            )
+            .where(
+                employee_scope_clause(principal),
+                OrgMembership.org_id == row.org_id,
+                OrgMembership.employee_id == body.employee_id,
+                User.is_active,
+            )
+        ).one_or_none()
+        if member is None:
+            raise ProposalConflict("借调员工需要可登录的账号")
+        if member.user_id in (
+            principal.user_id,
+            row.proposed_by_user_id,
+            demand.requester_user_id,
+            *(a.user_id for a in approvals if a.party != "employee"),
+        ):
+            raise ProposalSelfApprovalForbidden()
+        check_lines(
+            principal,
+            session,
+            demand,
+            [
+                ProposalLineInput(
+                    employee_id=body.employee_id,
+                    allocation_percent=line.allocation_percent,
+                    start_date=line.start_date,
+                    end_date=line.end_date,
+                )
+            ],
+            lender_department_id=line.lender_department_id,
+        )
+        if expire_locked(principal, session, demand, row):
+            raise ProposalFailed("借调未达成", code="proposal_expired")
+        line.employee_id = body.employee_id
+        session.add(line)
+        add_item(
+            session,
+            InboxItem(
+                org_id=row.org_id,
+                recipient_employee_id=line.employee_id,
+                kind=InboxKind.CAPACITY,
+                message="借调请求待你确认",
+            ),
+        )
+    if body.action == "reject" and body.reason is None:
+        raise ProposalConflict("请填写拒绝理由")
+    declined = body.action in ("reject", "decline")
+    session.add(
+        CapacityApproval(
+            org_id=row.org_id,
+            proposal_id=row.id,
+            line_id=line.id,
+            user_id=principal.user_id,
+            party=party,
+            via="web",
+            decision="rejected" if declined else "approved",
+            reason=(body.reason or "未填写理由") if declined else None,
+        )
+    )
+    if declined:
+        fail(
+            principal,
+            session,
+            demand,
+            row,
+            "rejected" if manager else "borrow_declined",
+            "借调未达成",
+        )
+    else:
+        row.revision += 1
+        session.add(row)
+        session.flush()
+        accept(principal, session, demand, row, via="web", requester_accepts=False)
+
+
 def respond(
     principal: Principal,
     session: Session,
@@ -673,6 +1113,8 @@ def respond(
     if action == "accept":
         accept(principal, session, demand, row, via=via)
     elif action == "follow_up":
+        if any(a.party == "requester" for a in approvals_for(session, row)):
+            raise decided(row)
         if not text or not text.strip() or len(text) > 500:
             raise ProposalConflict("拒绝方案时必须填写不超过 500 字的理由")
         assert principal.user_id is not None

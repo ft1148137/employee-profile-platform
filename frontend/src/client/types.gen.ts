@@ -334,6 +334,29 @@ export type AdminUserMessage = {
 }
 
 /**
+ * AnonymousBorrowAssignment
+ */
+export type AnonymousBorrowAssignment = {
+  /**
+   * Headcount
+   */
+  headcount?: number
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Start Date
+   */
+  start_date: string | null
+  /**
+   * Due Date
+   */
+  due_date: string
+  status: AssignmentStatus
+}
+
+/**
  * AnswerInput
  */
 export type AnswerInput = {
@@ -847,6 +870,84 @@ export type Body_sources_import_work_records = {
    * File
    */
   file: Blob | File
+}
+
+/**
+ * BorrowCandidate
+ */
+export type BorrowCandidate = {
+  /**
+   * Employee Id
+   */
+  employee_id: string
+  /**
+   * Display Name
+   */
+  display_name: string
+}
+
+/**
+ * BorrowDecisionInput
+ */
+export type BorrowDecisionInput = {
+  /**
+   * Action
+   */
+  action: "select" | "reject" | "accept" | "decline"
+  /**
+   * Employee Id
+   */
+  employee_id?: string | null
+  /**
+   * Reason
+   */
+  reason?: string | null
+}
+
+/**
+ * BorrowRequest
+ */
+export type BorrowRequest = {
+  /**
+   * Start Date
+   */
+  start_date: string
+  /**
+   * End Date
+   */
+  end_date: string
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Description
+   */
+  description: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  /**
+   * Borrower Department
+   */
+  borrower_department: string
+  /**
+   * Status
+   */
+  status: string
+  /**
+   * Reason
+   */
+  reason?: string | null
+  /**
+   * Candidates
+   */
+  candidates?: Array<BorrowCandidate>
 }
 
 /**
@@ -2048,7 +2149,9 @@ export type DemandAssignmentList = {
   /**
    * Data
    */
-  data: Array<DemandAssignment | DepartedDemandAssignment>
+  data: Array<
+    DemandAssignment | DepartedDemandAssignment | AnonymousBorrowAssignment
+  >
   /**
    * Count
    */
@@ -5005,6 +5108,45 @@ export type PlanCard = {
 }
 
 /**
+ * PlanReplyInput
+ */
+export type PlanReplyInput = {
+  /**
+   * Option Id
+   */
+  option_id?: string | null
+  /**
+   * Outside Basis
+   */
+  outside_basis?: boolean
+  outcome: DemandOutcome
+  /**
+   * Start Date
+   */
+  start_date?: string | null
+  /**
+   * End Date
+   */
+  end_date?: string | null
+  /**
+   * Text
+   */
+  text: string
+  /**
+   * Revision
+   */
+  revision: number
+  /**
+   * Lender Department Id
+   */
+  lender_department_id?: string | null
+  /**
+   * Borrow Headcount
+   */
+  borrow_headcount?: number | null
+}
+
+/**
  * PlanVerdict
  */
 export type PlanVerdict =
@@ -5522,6 +5664,10 @@ export type ProposalDetail = {
    */
   approvals: Array<ProposalApprovalPublic>
   /**
+   * Borrow Progress
+   */
+  borrow_progress?: string | null
+  /**
    * Lines
    */
   lines: Array<ProposalLinePublic>
@@ -5651,6 +5797,10 @@ export type ProposalSummary = {
    * Approvals
    */
   approvals: Array<ProposalApprovalPublic>
+  /**
+   * Borrow Progress
+   */
+  borrow_progress?: string | null
 }
 
 /**
@@ -5791,37 +5941,6 @@ export type QuestionsList = {
    * Count
    */
   count: number
-}
-
-/**
- * ReplyInput
- */
-export type ReplyInput = {
-  /**
-   * Option Id
-   */
-  option_id?: string | null
-  /**
-   * Outside Basis
-   */
-  outside_basis?: boolean
-  outcome: DemandOutcome
-  /**
-   * Start Date
-   */
-  start_date?: string | null
-  /**
-   * End Date
-   */
-  end_date?: string | null
-  /**
-   * Text
-   */
-  text: string
-  /**
-   * Revision
-   */
-  revision: number
 }
 
 /**
@@ -8595,7 +8714,7 @@ export type capacityGetDemandBasisResponse =
   capacityGetDemandBasisResponses[keyof capacityGetDemandBasisResponses]
 
 export type capacityReplyDemandData = {
-  body: ReplyInput
+  body: PlanReplyInput
   path: {
     /**
      * Demand Id
@@ -8665,6 +8784,81 @@ export type capacityRespondDemandResponses = {
 
 export type capacityRespondDemandResponse =
   capacityRespondDemandResponses[keyof capacityRespondDemandResponses]
+
+export type capacityListBorrowRequestsData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: {
+    /**
+     * Mine
+     */
+    mine?: boolean
+  }
+  url: "/api/v1/orgs/{org_id}/capacity/borrow-requests"
+}
+
+export type capacityListBorrowRequestsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityListBorrowRequestsError =
+  capacityListBorrowRequestsErrors[keyof capacityListBorrowRequestsErrors]
+
+export type capacityListBorrowRequestsResponses = {
+  /**
+   * Response Capacity-List Borrow Requests
+   *
+   * Successful Response
+   */
+  200: Array<BorrowRequest>
+}
+
+export type capacityListBorrowRequestsResponse =
+  capacityListBorrowRequestsResponses[keyof capacityListBorrowRequestsResponses]
+
+export type capacityDecideBorrowRequestData = {
+  body: BorrowDecisionInput
+  path: {
+    /**
+     * Line Id
+     */
+    line_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/borrow-requests/{line_id}/decision"
+}
+
+export type capacityDecideBorrowRequestErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityDecideBorrowRequestError =
+  capacityDecideBorrowRequestErrors[keyof capacityDecideBorrowRequestErrors]
+
+export type capacityDecideBorrowRequestResponses = {
+  /**
+   * Successful Response
+   */
+  204: void
+}
+
+export type capacityDecideBorrowRequestResponse =
+  capacityDecideBorrowRequestResponses[keyof capacityDecideBorrowRequestResponses]
 
 export type capacityWithdrawProposalData = {
   body: ProposalWithdrawInput

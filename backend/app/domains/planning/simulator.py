@@ -219,7 +219,7 @@ def borrow(data: dict[str, Any], departments: list[dict[str, Any]]) -> dict[str,
     demand = data["demand"]
     start = date.fromisoformat(demand["window_start"])
     end = date.fromisoformat(demand["window_end"])
-    condition = "需原部门经理确认余量和本人同意，借调流程在 M9"
+    condition = "需原部门经理同意并安排人员，且被借调员工本人同意"
     return {
         "kind": "borrow",
         "params": {
