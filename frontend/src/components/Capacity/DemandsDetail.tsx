@@ -4,6 +4,7 @@ import { AxiosError } from "axios"
 import { useState } from "react"
 import {
   CapacityService,
+  type CommitmentArrangement,
   type DemandOutcome,
   type DemandPublic,
   type PlanReplyInput,
@@ -71,6 +72,12 @@ export function DemandsDetail({
         })
       ).data,
   })
+  const change =
+    side === "incoming" &&
+    query.data?.status === "accepted" &&
+    query.data.proposal?.status !== "pending" &&
+    (query.data.proposal?.kind === "change" ||
+      query.data.proposal?.status === "committed")
   return (
     <div className="space-y-5">
       <Button variant="outline" onClick={back}>
@@ -111,12 +118,16 @@ export function DemandsDetail({
             {(query.data.events ?? []).map((event, index) => (
               <article key={index} className="space-y-2 border-l-2 pl-4">
                 <p className="font-medium">
-                  {events[event.kind]} · {dateLabel(event.created_at)}
+                  {event.kind === "commitment_changed" && event.start_date
+                    ? "安排变更"
+                    : events[event.kind]}{" "}
+                  · {dateLabel(event.created_at)}
                   {event.kind === "replied" &&
                     ` · 答复人：${side === "outgoing" ? "对方部门经理" : (event.responder_name ?? "对方部门经理")}`}
                 </p>
                 {event.outcome && <p>结论：{outcomes[event.outcome]}</p>}
-                {event.kind === "commitment_changed" ? (
+                {event.kind === "commitment_changed" &&
+                event.previous_end_date !== event.end_date ? (
                   <p>
                     承诺日期由 {event.previous_end_date} 改为 {event.end_date}
                   </p>
@@ -159,14 +170,19 @@ export function DemandsDetail({
                   })
                 }
               >
-                {plansOpen ? "关闭方案" : "生成方案 / 查看方案"}
+                {plansOpen
+                  ? "关闭方案"
+                  : change
+                    ? "发起变更"
+                    : "生成方案 / 查看方案"}
               </Button>
               {plansOpen && (
                 <Plans
+                  change={change}
                   orgId={orgId}
                   demandId={demandId}
                   onReply={
-                    query.data.status === "submitted"
+                    query.data.status === "submitted" || change
                       ? (reply) => {
                           setSelected(reply)
                           requestAnimationFrame(() =>
@@ -207,6 +223,8 @@ export function DemandsDetail({
               demand={query.data}
               side={side}
               selected={selected}
+              change={change}
+              clearSelection={() => setSelected(null)}
             />
           )}
         </>
@@ -338,11 +356,15 @@ function DemandsAction({
   demand,
   side,
   selected,
+  change,
+  clearSelection,
 }: {
   orgId: string
   demand: DemandPublic
   side: "outgoing" | "incoming"
   selected: SelectedPlanReply | null
+  change: boolean
+  clearSelection: () => void
 }) {
   const cache = useQueryClient()
   const [outcome, setOutcome] = useState<DemandOutcome>(
@@ -380,6 +402,65 @@ function DemandsAction({
       }),
     onSuccess: refresh,
   })
+  const propose = useMutation({
+    mutationFn: (body: { option_id: string; outside_basis: boolean }) =>
+      CapacityService.proposeChange({
+        path,
+        body: {
+          ...body,
+          reason: text,
+          revision: demand.revision,
+          lender_department_id: selected?.lender_department_id,
+          borrow_headcount: selected?.borrow_headcount,
+        },
+      }),
+    onSuccess: () => {
+      clearSelection()
+      refresh()
+    },
+  })
+  if (change && selected?.option_id) {
+    const optionId = selected.option_id
+    return (
+      <form
+        id="demand-reply"
+        aria-label="发起安排变更"
+        className="max-w-3xl space-y-4 rounded-xl border p-5"
+        onSubmit={(event) => {
+          event.preventDefault()
+          propose.mutate({
+            option_id: optionId,
+            outside_basis: new FormData(event.currentTarget).has(
+              "outside_basis",
+            ),
+          })
+        }}
+      >
+        <fieldset disabled={propose.isPending} className="space-y-4">
+          <label className="block space-y-2 text-sm font-medium">
+            <span>变更理由</span>
+            <textarea
+              required
+              maxLength={500}
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              className="min-h-28 w-full rounded-md border bg-background p-3"
+            />
+          </label>
+          {selected.outside_basis && (
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="outside_basis" required />
+              方案包含不在依据中的人员，我确认按自己的判断安排
+            </label>
+          )}
+          <Button type="submit" disabled={!text.trim()}>
+            发送变更提议
+          </Button>
+        </fieldset>
+        <ProposalError error={propose.error} />
+      </form>
+    )
+  }
   const latestReply = [...(demand.events ?? [])]
     .reverse()
     .find((event) => event.kind === "replied")
@@ -663,25 +744,17 @@ function ProposalPanel({
   const requesterApproved = proposal.approvals.some(
     (approval) => approval.party === "requester",
   )
-  const groups = new Map<string, ProposalLinePublic[]>()
-  if (side === "incoming" && "lines" in proposal)
-    for (const line of proposal.lines) {
-      const parts = groups.get(line.employee_id) ?? []
-      parts.push(line)
-      groups.set(line.employee_id, parts)
-    }
-  const people = groups.size
-    ? Array.from(groups.values(), (parts) => ({
-        name: parts[0].employee_name,
-        segments: parts,
-      }))
-    : proposal.participants.map((person) => ({
-        name: `第 ${person.number} 人`,
-        segments: person.segments,
-      }))
+  const change = proposal.kind === "change"
+  const acceptLabel = change ? "接受变更" : "接受方案"
+  const rejectLabel = change ? "拒绝变更" : "拒绝方案"
   return (
-    <section aria-label="方案提议" className="space-y-4 rounded-xl border p-5">
-      <h3 className="text-lg font-semibold">方案提议 · {label}</h3>
+    <section
+      aria-label={change ? "安排变更提议" : "方案提议"}
+      className="space-y-4 rounded-xl border p-5"
+    >
+      <h3 className="text-lg font-semibold">
+        {change ? "安排变更提议" : "方案提议"} · {label}
+      </h3>
       <p>
         {proposal.headcount} 人 · {proposal.start_date} 至 {proposal.end_date}
       </p>
@@ -689,21 +762,27 @@ function ProposalPanel({
         <p>预占到期：{dateLabel(proposal.hold_expires_at)}</p>
       )}
       <p className="whitespace-pre-wrap break-words">
-        条件：{proposal.conditions}
+        {change ? "变更理由" : "条件"}：{proposal.conditions}
       </p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {people.map((person, index) => (
-          <div key={index} className="space-y-2 rounded-lg bg-muted/30 p-3">
-            <h4 className="font-medium">{person.name}</h4>
-            {person.segments.map((segment, i) => (
-              <p key={i} className="text-sm">
-                投入 {segment.allocation_percent}% · {segment.start_date} 至{" "}
-                {segment.end_date}
-              </p>
-            ))}
-          </div>
-        ))}
-      </div>
+      {proposal.previous && (
+        <section aria-label="变更前" className="space-y-2">
+          <h4 className="font-semibold">变更前</h4>
+          <ProposalPeople arrangement={proposal.previous} side={side} />
+        </section>
+      )}
+      <section
+        aria-label={change ? "变更后" : "安排详情"}
+        className="space-y-2"
+      >
+        {change && <h4 className="font-semibold">变更后</h4>}
+        <ProposalPeople
+          arrangement={{
+            participants: proposal.participants,
+            lines: "lines" in proposal ? proposal.lines : null,
+          }}
+          side={side}
+        />
+      </section>
       {proposal.approvals.map((approval, index) => (
         <p key={index} className="whitespace-pre-wrap break-words">
           {{
@@ -737,7 +816,7 @@ function ProposalPanel({
                     disabled={mutation.isPending}
                     onClick={() => setAction("accept")}
                   >
-                    接受方案
+                    {acceptLabel}
                   </Button>
                   <Button
                     variant="outline"
@@ -747,7 +826,7 @@ function ProposalPanel({
                       setAction("follow_up")
                     }}
                   >
-                    拒绝方案
+                    {rejectLabel}
                   </Button>
                 </>
               )
@@ -780,16 +859,18 @@ function ProposalPanel({
         <DialogContent>
           <DialogTitle>
             {action === "accept"
-              ? "接受方案"
+              ? acceptLabel
               : action === "follow_up"
-                ? "拒绝方案"
+                ? rejectLabel
                 : "撤回提议"}
           </DialogTitle>
           <DialogDescription>
             {action === "accept"
               ? proposal.borrow_progress
                 ? "接受后记录需求方同意，原部门经理和员工本人也同意后才生成分配"
-                : "接受后对方部门的人员投入会被锁定并生成分配"
+                : change
+                  ? "接受后将按新方案替换现有安排"
+                  : "接受后对方部门的人员投入会被锁定并生成分配"
               : action === "follow_up"
                 ? "拒绝后对方需要重新安排"
                 : "撤回后预占将释放，对方无法再接受这条提议"}
@@ -840,5 +921,45 @@ function ProposalPanel({
         </DialogContent>
       </Dialog>
     </section>
+  )
+}
+
+function ProposalPeople({
+  arrangement,
+  side,
+}: {
+  arrangement: CommitmentArrangement
+  side: "incoming" | "outgoing"
+}) {
+  const groups = new Map<string, ProposalLinePublic[]>()
+  if (side === "incoming" && arrangement.lines)
+    for (const line of arrangement.lines) {
+      const parts = groups.get(line.employee_id) ?? []
+      parts.push(line)
+      groups.set(line.employee_id, parts)
+    }
+  const people = groups.size
+    ? Array.from(groups.values(), (parts) => ({
+        name: parts[0].employee_name,
+        segments: parts,
+      }))
+    : arrangement.participants.map((person) => ({
+        name: `第 ${person.number} 人`,
+        segments: person.segments,
+      }))
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {people.map((person, index) => (
+        <div key={index} className="space-y-2 rounded-lg bg-muted/30 p-3">
+          <h4 className="font-medium">{person.name}</h4>
+          {person.segments.map((segment, i) => (
+            <p key={i} className="text-sm">
+              投入 {segment.allocation_percent}% · {segment.start_date} 至{" "}
+              {segment.end_date}
+            </p>
+          ))}
+        </div>
+      ))}
+    </div>
   )
 }

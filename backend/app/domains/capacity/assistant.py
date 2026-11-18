@@ -26,6 +26,7 @@ from app.domains.capacity.models import (
     CapacityRequestStatus,
     DemandOutcome,
     DemandStatus,
+    ProposalStatus,
 )
 from app.domains.capacity.schemas import WorkloadRequestInput
 from app.domains.capacity.settings import (
@@ -40,6 +41,13 @@ from app.domains.capacity.workload import employee, get_my_workload
 from app.domains.change_request.schemas import validation_message
 from app.domains.model.pi_client import ToolDefinition
 from app.domains.org.models import Department
+
+
+class ChangeOnWeb(CapacityConflict):
+    def __init__(self) -> None:
+        super().__init__()
+        self.detail = "请在网页发起或确认变更"
+
 
 READS = {t.name: t for t in CAPACITY_TOOLS if not t.writes}
 WRITES = {t.name: t for t in CAPACITY_TOOLS if t.writes}
@@ -208,6 +216,12 @@ def check_demand_response(db: Session, p: Principal, value: BaseModel) -> str:
         or row.requesting_department_id in p.managed_department_ids
     ):
         raise CapacityNotFound(demand.DEMAND_NOT_FOUND)
+    if (
+        row.status == DemandStatus.ACCEPTED
+        and proposal.latest(db, p.org_id, row.id, status=ProposalStatus.COMMITTED)
+        is not None
+    ):
+        raise ChangeOnWeb()
     if row.revision != body.revision or row.status in (
         DemandStatus.ACCEPTED,
         DemandStatus.WITHDRAWN,
@@ -256,6 +270,12 @@ def check_demand_reply(db: Session, p: Principal, value: BaseModel) -> str:
         raise CapacityNotFound(demand.DEMAND_NOT_FOUND)
     if p.user_id is None or p.user_id == row.requester_user_id:
         raise CapacityForbidden()
+    if (
+        row.status == DemandStatus.ACCEPTED
+        and proposal.latest(db, p.org_id, row.id, status=ProposalStatus.COMMITTED)
+        is not None
+    ):
+        raise ChangeOnWeb()
     if row.revision != body.revision or row.status != DemandStatus.SUBMITTED:
         raise CapacityConflict()
     description, _, conditions = body.text.partition("\n条件：")

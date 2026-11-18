@@ -21,6 +21,7 @@ from app.domains.capacity.models import (
     CapacityProposalLine,
     CapacityUnavailability,
     CapacityWeek,
+    DemandStatus,
     ProposalStatus,
 )
 from app.domains.org.models import Department, Employee, EmploymentStatus
@@ -192,9 +193,23 @@ def _inputs(
         )
     ).all()
     cutoff = utc_now() - timedelta(days=FRESH_DAYS)
+    commitment = (
+        session.exec(
+            select(CapacityProposal.id)
+            .where(
+                CapacityProposal.org_id == principal.org_id,
+                CapacityProposal.demand_id == demand.id,
+                CapacityProposal.status == ProposalStatus.COMMITTED,
+            )
+            .limit(1)
+        ).first()
+        if demand.status == DemandStatus.ACCEPTED
+        else None
+    )
     raw_inputs: dict[str, Any] = {
         "current_week": current_week.isoformat(),
         "revision": demand.revision,
+        **({"change": True} if commitment is not None else {}),
         "candidates": [
             (
                 str(e.id),
@@ -279,6 +294,7 @@ def build(
         start,
         weeks,
         exclude_demand_id=demand.id,
+        exclude_committed_demand_id=demand.id if raw.get("change", False) else None,
     )
     assigned_ids = set(
         session.exec(
@@ -308,6 +324,7 @@ def build(
         "demand": {
             "id": str(demand.id),
             "revision": demand.revision,
+            "change": raw.get("change", False),
             "capability_key": demand.capability_key,
             "minimum_level": demand.minimum_level,
             "headcount": demand.headcount,
@@ -347,6 +364,11 @@ def build(
                 "allocation_percent": a.allocation_percent,
             }
             for a in assignments
+            if not (
+                raw.get("change", False)
+                and a.demand_id == demand.id
+                and a.proposal_line_id is not None
+            )
         ],
         "rules": {
             "fresh_days": FRESH_DAYS,

@@ -1,3 +1,4 @@
+from collections import Counter
 from datetime import date, timedelta
 from typing import Any, Literal, cast
 
@@ -174,6 +175,18 @@ def validate(
     covered_headcount = demand["headcount"]
     week = week_start(date.fromisoformat(demand["window_start"]))
     last_week = week_start(date.fromisoformat(demand["window_end"]))
+    required = demand["headcount"]
+    if demand.get("change") and finish is not None:
+        committed_end = date.fromisoformat(
+            demand["committed_end_date"] or demand["window_end"]
+        )
+        if finish < committed_end:
+            add("early_finish", "conditional", "需求方同意提前结束")
+        last_week = week_start(finish)
+        maximum = max(Counter(start for _, start in allocations).values(), default=0)
+        if 0 < maximum < required:
+            required = maximum
+            add("reduced_headcount", "conditional", "需求方同意减少人数")
     while week <= last_week:
         active = {
             employee_id: percent
@@ -181,7 +194,7 @@ def validate(
             if start == week
         }
         covered_headcount = min(covered_headcount, len(active))
-        if len(active) < demand["headcount"]:
+        if len(active) < required:
             add("headcount_gap", "infeasible", "该周覆盖人数少于需求", week=week)
         gap_person_weeks += (
             max(
@@ -201,6 +214,9 @@ def validate(
             (assignee["start_date"], assignee["end_date"])
         )
     periods = sorted({period for parts in segments.values() for period in parts})
+    coverage_end = (
+        finish.isoformat() if demand.get("change") and finish else demand["window_end"]
+    )
     reachable_ends: set[int] = set()
     relay = False
     # Keep all reachable phase ends; parallel work must not hide a relay chain.
@@ -211,7 +227,7 @@ def validate(
         handoff = start.toordinal() - 1 in reachable_ends
         if handoff or start_text <= demand["window_start"]:
             reachable_ends.add(end.toordinal())
-            relay = relay or (handoff and end_text >= demand["window_end"])
+            relay = relay or (handoff and end_text >= coverage_end)
     phased = phased or relay or any(len(parts) > 1 for parts in segments.values())
     # The simulator adds its condition after checking the individual phases.
     if phased and kind != "phased":
@@ -242,6 +258,10 @@ def validate(
     ]
     codes = {finding["code"] for finding in findings}
     approvers = ["本部门经理确认答复"]
+    if "reduced_headcount" in codes:
+        approvers.append("需求方同意减少人数")
+    if "early_finish" in codes:
+        approvers.append("需求方同意提前结束")
     if "outside_window" in codes or kind == "delay":
         approvers.append("需求方接受新日期")
     if kind == "reduce_scope" or "reduced_allocation" in codes:

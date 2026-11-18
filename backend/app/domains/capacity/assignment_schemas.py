@@ -17,6 +17,7 @@ class AssignmentInput(CapacityInput):
 
 
 class AssignmentUpdateInput(CapacityInput):
+    allocation_percent: int | None = Field(default=None, strict=True, ge=10, le=100)
     start_date: date | None = None
     due_date: date | None = None
     status: Literal["done", "cancelled"] | None = None
@@ -26,10 +27,23 @@ class AssignmentUpdateInput(CapacityInput):
     @model_validator(mode="after")
     def one_change(self) -> AssignmentUpdateInput:
         if (
-            sum(v is not None for v in (self.due_date, self.start_date, self.status))
+            sum(
+                v is not None
+                for v in (
+                    self.due_date,
+                    self.start_date,
+                    self.status,
+                    self.allocation_percent,
+                )
+            )
             != 1
         ):
             raise ValueError("请只修改完成日期、开始日期或关闭分配中的一项")
+        if (
+            "allocation_percent" in self.model_fields_set
+            and self.allocation_percent is None
+        ):
+            raise ValueError("请填写投入比例")
         if self.due_date is None and self.new_committed_end_date:
             raise ValueError("只有修改完成日期时才能修改承诺日期")
         if self.new_committed_end_date is not None and self.commitment_note is None:

@@ -26,6 +26,7 @@ from app.domains.capacity.demand_schemas import (
     BorrowDecisionInput,
     BorrowRequest,
     CapacityReference,
+    ChangeProposalInput,
     DemandBasis,
     DemandInput,
     DemandList,
@@ -178,7 +179,7 @@ def list_demands(
 def get_demand(
     principal: OrgPrincipalDep, session: SessionDep, demand_id: UUID
 ) -> DemandPublic:
-    return demand.get_demand(principal, session, demand_id)
+    return demand.get_demand(principal, session, demand_id, include_previous=True)
 
 
 @router.get("/capacity/demands/{demand_id}/basis")
@@ -195,50 +196,68 @@ def reply_demand(
     demand_id: UUID,
     body: PlanReplyInput,
 ) -> DemandPublic:
-    fields = {"lender_department_id", "borrow_headcount"}
     if body.option_id is None:
         if body.lender_department_id is not None or body.borrow_headcount is not None:
             raise proposal.ProposalConflict("只有借调方案可以指定借出部门和人数")
         result = demand.reply_demand(
-            principal, session, demand_id, **body.model_dump(exclude=fields)
-        )
-    else:
-        row = demand.demand_row(principal, session, demand_id, lock=True)
-        if not demand.represents_department(principal, row.target_department_id):
-            raise planning.PlanningStale()
-        if body.outcome == DemandOutcome.NOT_NOW:
-            raise proposal.ProposalConflict("暂不能承接的答复不能带方案")
-        found = session.exec(
-            select(PlanningOption, PlanningSnapshot.case_id)
-            .join(
-                PlanningSnapshot,
-                (col(PlanningSnapshot.org_id) == PlanningOption.org_id)
-                & (col(PlanningSnapshot.id) == PlanningOption.snapshot_id),
-            )
-            .where(
-                PlanningOption.org_id == principal.org_id,
-                PlanningOption.id == body.option_id,
-            )
-        ).one_or_none()
-        if found is None:
-            raise planning.PlanningStale()
-        saved, case_id = found
-        _, snapshot, case_demand = planning.authorized_case(principal, session, case_id)
-        if case_demand.id != demand_id or saved.snapshot_id != snapshot.id:
-            raise planning.PlanningStale()
-        if saved.verdict not in (PlanVerdict.FEASIBLE, PlanVerdict.CONDITIONAL):
-            raise proposal.ProposalConflict("只有可行或有条件可行的方案可以提议")
-        lines = proposal.plan_lines(
             principal,
             session,
-            row,
-            body,
-            saved.params,
-            borrow=saved.kind == OptionKind.BORROW,
+            demand_id,
+            **body.model_dump(exclude={"lender_department_id", "borrow_headcount"}),
         )
-        current = planning.get_case(principal, session, case_id)
-        if current.stale or current.snapshot_id != saved.snapshot_id:
-            raise planning.PlanningStale()
+    else:
+        result = propose_plan(principal, session, demand_id, body)
+    session.commit()
+    return result
+
+
+def propose_plan(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    demand_id: UUID,
+    body: PlanReplyInput | ChangeProposalInput,
+) -> DemandPublic:
+    fields = {"lender_department_id", "borrow_headcount"}
+    assert body.option_id is not None
+    row = demand.demand_row(principal, session, demand_id, lock=True)
+    if not demand.represents_department(principal, row.target_department_id):
+        raise planning.PlanningStale()
+    if isinstance(body, PlanReplyInput) and body.outcome == DemandOutcome.NOT_NOW:
+        raise proposal.ProposalConflict("暂不能承接的答复不能带方案")
+    found = session.exec(
+        select(PlanningOption, PlanningSnapshot.case_id)
+        .join(
+            PlanningSnapshot,
+            (col(PlanningSnapshot.org_id) == PlanningOption.org_id)
+            & (col(PlanningSnapshot.id) == PlanningOption.snapshot_id),
+        )
+        .where(
+            PlanningOption.org_id == principal.org_id,
+            PlanningOption.id == body.option_id,
+        )
+    ).one_or_none()
+    if found is None:
+        raise planning.PlanningStale()
+    saved, case_id = found
+    _, snapshot, case_demand = planning.authorized_case(principal, session, case_id)
+    if case_demand.id != demand_id or saved.snapshot_id != snapshot.id:
+        raise planning.PlanningStale()
+    if saved.verdict not in (PlanVerdict.FEASIBLE, PlanVerdict.CONDITIONAL):
+        raise proposal.ProposalConflict("只有可行或有条件可行的方案可以提议")
+    lines = proposal.plan_lines(
+        principal,
+        session,
+        row,
+        body,
+        saved.params,
+        borrow=saved.kind == OptionKind.BORROW,
+    )
+    current = planning.get_case(principal, session, case_id)
+    if current.stale or current.snapshot_id != saved.snapshot_id:
+        raise planning.PlanningStale()
+    if isinstance(body, ChangeProposalInput):
+        proposal.create(principal, session, row, body.option_id, lines, change=body)
+    else:
         demand.reply_demand(
             principal,
             session,
@@ -251,7 +270,17 @@ def reply_demand(
             end_date=max(line.end_date for line in lines),
         )
         proposal.create(principal, session, row, body.option_id, lines)
-        result = demand.get_demand(principal, session, demand_id)
+    return demand.get_demand(principal, session, demand_id, include_previous=True)
+
+
+@router.post("/capacity/demands/{demand_id}/change")
+def propose_change(
+    principal: OrgPrincipalDep,
+    session: SessionDep,
+    demand_id: UUID,
+    body: ChangeProposalInput,
+) -> DemandPublic:
+    result = propose_plan(principal, session, demand_id, body)
     session.commit()
     return result
 

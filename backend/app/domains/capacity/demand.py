@@ -369,12 +369,18 @@ def demand_row(
     return row
 
 
-def get_demand(principal: Principal, session: Session, demand_id: UUID) -> DemandPublic:
+def get_demand(
+    principal: Principal,
+    session: Session,
+    demand_id: UUID,
+    *,
+    include_previous: bool = False,
+) -> DemandPublic:
     from app.domains.capacity.proposal import public
 
     row = demand_row(principal, session, demand_id)
     result = demand_public(principal, session, row)
-    result.proposal = public(principal, session, row)
+    result.proposal = public(principal, session, row, include_previous=include_previous)
     if represents_department(principal, row.target_department_id):
         result.basis_url = f"/orgs/{principal.org_id}/capacity/demands/{row.id}/basis"
     return result

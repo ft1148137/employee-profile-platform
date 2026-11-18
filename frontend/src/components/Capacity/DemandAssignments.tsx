@@ -92,114 +92,117 @@ export function DemandAssignments({
             人。可以从本部门其他在职员工中选择；选择不会改变画像，也不会改变依据人数，需求方看到的内容不变。
           </p>
         ) : null)}
-      {demand.proposal?.status !== "committed" && (
-        <form
-          aria-label="新增分配"
-          className="space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault()
-            const data = new FormData(event.currentTarget)
-            create.mutate({
-              employee_id: String(data.get("employee_id")),
-              allocation_percent: Number(data.get("allocation_percent")),
-              start_date: String(data.get("start_date")),
-              outside_basis: data.has("outside_basis"),
-              due_date: String(data.get("due_date")),
-            })
-          }}
-        >
-          <fieldset
-            disabled={create.isPending || !basis.isSuccess || !query.isSuccess}
-            className="grid gap-3 sm:grid-cols-3"
+      {demand.proposal?.status !== "committed" &&
+        demand.proposal?.kind !== "change" && (
+          <form
+            aria-label="新增分配"
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault()
+              const data = new FormData(event.currentTarget)
+              create.mutate({
+                employee_id: String(data.get("employee_id")),
+                allocation_percent: Number(data.get("allocation_percent")),
+                start_date: String(data.get("start_date")),
+                outside_basis: data.has("outside_basis"),
+                due_date: String(data.get("due_date")),
+              })
+            }}
           >
-            <label className="space-y-2 text-sm">
-              <span>从依据中选择员工</span>
-              <select
-                name="employee_id"
-                required
-                className="h-10 w-full rounded-md border bg-background px-3"
-                value={employeeId}
-                onChange={(event) => setEmployeeId(event.target.value)}
-              >
-                <option value="" disabled>
-                  请选择
-                </option>
-                {[
-                  { label: "依据中的员工", people: basis.data?.data },
-                  {
-                    label: "本部门其他在职员工（不在依据中）",
-                    people: basis.data?.others,
-                  },
-                ].map(({ label, people }) => (
-                  <optgroup key={label} label={label}>
-                    {people
-                      ?.filter(
-                        (person) =>
-                          !query.data?.data.some(
-                            (row) =>
-                              "employee_id" in row &&
-                              row.employee_id === person.employee_id &&
-                              row.status === "active",
-                          ),
-                      )
-                      .map((person) => (
-                        <option
-                          key={person.employee_id}
-                          value={person.employee_id}
-                        >
-                          {person.display_name}
-                        </option>
-                      ))}
-                  </optgroup>
-                ))}
-              </select>
-            </label>
-            <label htmlFor={`${id}-percent`} className="space-y-2 text-sm">
-              <span>投入比例（%）</span>
-              <Input
-                id={`${id}-percent`}
-                type="number"
-                name="allocation_percent"
-                min={10}
-                max={100}
-                step={1}
-                required
-                defaultValue={demand.allocation_percent}
-              />
-            </label>
-            <DateField
-              label="开始日期"
-              name="start_date"
-              min={demand.committed_start_date ?? undefined}
-            />
-            <DateField
-              label="预计完成日期"
-              name="due_date"
-              max={demand.committed_end_date ?? undefined}
-            />
-            {basis.data?.others.some(
-              (person) => person.employee_id === employeeId,
-            ) && (
-              <label
-                htmlFor={`${id}-outside`}
-                key={employeeId}
-                className="flex items-center gap-2 text-sm sm:col-span-3"
-              >
-                <Input
-                  id={`${id}-outside`}
-                  type="checkbox"
-                  name="outside_basis"
+            <fieldset
+              disabled={
+                create.isPending || !basis.isSuccess || !query.isSuccess
+              }
+              className="grid gap-3 sm:grid-cols-3"
+            >
+              <label className="space-y-2 text-sm">
+                <span>从依据中选择员工</span>
+                <select
+                  name="employee_id"
                   required
-                  className="size-4"
-                />
-                该员工不在依据中，我确认按自己的判断安排
+                  className="h-10 w-full rounded-md border bg-background px-3"
+                  value={employeeId}
+                  onChange={(event) => setEmployeeId(event.target.value)}
+                >
+                  <option value="" disabled>
+                    请选择
+                  </option>
+                  {[
+                    { label: "依据中的员工", people: basis.data?.data },
+                    {
+                      label: "本部门其他在职员工（不在依据中）",
+                      people: basis.data?.others,
+                    },
+                  ].map(({ label, people }) => (
+                    <optgroup key={label} label={label}>
+                      {people
+                        ?.filter(
+                          (person) =>
+                            !query.data?.data.some(
+                              (row) =>
+                                "employee_id" in row &&
+                                row.employee_id === person.employee_id &&
+                                row.status === "active",
+                            ),
+                        )
+                        .map((person) => (
+                          <option
+                            key={person.employee_id}
+                            value={person.employee_id}
+                          >
+                            {person.display_name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  ))}
+                </select>
               </label>
-            )}
-            <Button type="submit">确认分配</Button>
-          </fieldset>
-          <CapacityError error={create.error} />
-        </form>
-      )}
+              <label htmlFor={`${id}-percent`} className="space-y-2 text-sm">
+                <span>投入比例（%）</span>
+                <Input
+                  id={`${id}-percent`}
+                  type="number"
+                  name="allocation_percent"
+                  min={10}
+                  max={100}
+                  step={1}
+                  required
+                  defaultValue={demand.allocation_percent}
+                />
+              </label>
+              <DateField
+                label="开始日期"
+                name="start_date"
+                min={demand.committed_start_date ?? undefined}
+              />
+              <DateField
+                label="预计完成日期"
+                name="due_date"
+                max={demand.committed_end_date ?? undefined}
+              />
+              {basis.data?.others.some(
+                (person) => person.employee_id === employeeId,
+              ) && (
+                <label
+                  htmlFor={`${id}-outside`}
+                  key={employeeId}
+                  className="flex items-center gap-2 text-sm sm:col-span-3"
+                >
+                  <Input
+                    id={`${id}-outside`}
+                    type="checkbox"
+                    name="outside_basis"
+                    required
+                    className="size-4"
+                  />
+                  该员工不在依据中，我确认按自己的判断安排
+                </label>
+              )}
+              <Button type="submit">确认分配</Button>
+            </fieldset>
+            <CapacityError error={create.error} />
+          </form>
+        )}
       {basis.isError && <ProfileError retry={() => basis.refetch()} />}
       {query.isPending ? (
         <ProfileLoading />
@@ -290,13 +293,17 @@ function AssignmentRow({
                 标记完成
               </Button>
             )}
-            <Button
-              variant="outline"
-              disabled={update.isPending}
-              onClick={() => update.mutate({ status: "cancelled" })}
-            >
-              取消分配
-            </Button>
+            {(!("proposal_line_id" in row) ||
+              !row.proposal_line_id ||
+              row.employee_departed) && (
+              <Button
+                variant="outline"
+                disabled={update.isPending}
+                onClick={() => update.mutate({ status: "cancelled" })}
+              >
+                取消分配
+              </Button>
+            )}
           </div>
           {"status" in row && (
             <form
@@ -338,7 +345,11 @@ function AssignmentRow({
               <fieldset disabled={update.isPending} className="space-y-3">
                 <DateField
                   label="调整后的完成日期"
-                  min={row.start_date ?? undefined}
+                  min={
+                    "proposal_line_id" in row && row.proposal_line_id
+                      ? row.due_date
+                      : (row.start_date ?? undefined)
+                  }
                   value={dueDate}
                   onChange={(event) => setDueDate(event.target.value)}
                 />
