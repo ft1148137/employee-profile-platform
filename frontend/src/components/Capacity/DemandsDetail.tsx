@@ -778,6 +778,9 @@ function ProposalPanel({
   })
   const label = proposalLabel(proposal, now)
   const pending = proposal.status === "pending" && label !== "已过期"
+  useEffect(() => {
+    if (!pending && !mutation.isPending) setAction(null)
+  }, [pending, mutation.isPending])
   const requesterApproved = proposal.approvals.some(
     (approval) => approval.party === "requester",
   )
@@ -893,7 +896,7 @@ function ProposalPanel({
         )}
       <ProposalError error={mutation.error} />
       <Dialog
-        open={action !== null}
+        open={action !== null && pending}
         onOpenChange={(open) => {
           if (!open && !mutation.isPending) setAction(null)
         }}
@@ -920,6 +923,17 @@ function ProposalPanel({
           <form
             onSubmit={(event) => {
               event.preventDefault()
+              const current = Date.now()
+              if (
+                !pending ||
+                mutation.isPending ||
+                proposal.status !== "pending" ||
+                (Number.isFinite(expiresAt) && expiresAt <= current)
+              ) {
+                setNow(current)
+                setAction(null)
+                return
+              }
               mutation.mutate()
             }}
             className="space-y-4"
@@ -940,6 +954,7 @@ function ProposalPanel({
               <Button
                 type="submit"
                 disabled={
+                  !pending ||
                   mutation.isPending ||
                   (action === "follow_up" && !reason.trim())
                 }

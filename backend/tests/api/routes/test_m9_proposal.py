@@ -449,6 +449,83 @@ def test_expired_hold_is_released_without_worker(
     assert not rows(db, CapacityAssignment, demand)
 
 
+@pytest.mark.parametrize("action", ["follow_up", "withdraw", "b_withdraw"])
+def test_expired_reject_and_withdraw_follow_expiry_semantics(
+    case: tuple, client: TestClient, db: Session, action: str
+) -> None:
+    from app.domains.audit.models import AuditEvent
+    from app.domains.inbox.models import InboxItem
+
+    url, people, auth, demand = case
+    reply = propose(client, case)
+    assert reply.status_code == 200, reply.text
+    demand_rev = reply.json()["revision"]
+    prop = reply.json()["proposal"]
+    row = proposal_row(db, demand)
+    row.hold_expires_at = utc_now() - timedelta(seconds=1)
+    db.add(row)
+    db.commit()
+
+    before_events = {e.id for e in rows(db, CapacityDemandEvent, demand)}
+    before_notices = {n.id for n in rows(db, InboxItem, demand)}
+    before_audits = {a.id for a in rows(db, AuditEvent, demand)}
+    before_approvals = len(rows(db, CapacityApproval, demand))
+
+    def send() -> Response:
+        if action == "b_withdraw":
+            return client.post(
+                f"{url}/capacity/proposals/{prop['id']}/withdraw",
+                headers=auth["b"],
+                json={"revision": prop["revision"]},
+            )
+        return respond(client, case, demand_rev, action, text="迟到的拒绝")
+
+    result = send()
+    assert result.status_code == 409, result.text
+    assert result.json()["detail"]["code"] == "proposal_expired"
+
+    db.expire_all()
+    updated = proposal_row(db, demand)
+    assert updated.status == "failed"
+    assert updated.fail_reason == "expired"
+    assert updated.revision == prop["revision"] + 1
+    db.refresh(demand)
+    assert demand.status == "submitted"
+    assert demand.revision == demand_rev + 1
+    assert not rows(db, CapacityAssignment, demand)
+    assert len(rows(db, CapacityApproval, demand)) == before_approvals
+    assert (
+        loads(db, demand.org_id, [people["E04"].id], demand.window_start, 2)[
+            people["E04"].id
+        ][0].hold_percent
+        == 0
+    )
+
+    new_events = [
+        e for e in rows(db, CapacityDemandEvent, demand) if e.id not in before_events
+    ]
+    assert len(new_events) == 1
+    assert new_events[0].kind == DemandEventKind.PROPOSAL_FAILED
+    assert new_events[0].text == "方案已过期，需要重新规划"
+
+    new_notices = [n for n in rows(db, InboxItem, demand) if n.id not in before_notices]
+    assert {n.message for n in new_notices} == {"方案已过期，需要重新规划"}
+    assert {demand.requester_user_id, updated.proposed_by_user_id} <= {
+        n.recipient_user_id for n in new_notices
+    }
+
+    new_audits = [a for a in rows(db, AuditEvent, demand) if a.id not in before_audits]
+    assert len(new_audits) == 1
+    assert new_audits[0].action == "capacity.demand_follow_up"
+    assert new_audits[0].details["fail_reason"] == "expired"
+
+    before_counts = counts(db, demand)
+    replay = send()
+    assert replay.status_code == 409
+    assert replay.json()["detail"]["code"] == "proposal_decided"
+    assert counts(db, demand) == before_counts
+
+
 def test_unexpected_second_assignment_error_rolls_everything_back(
     case: tuple, client: TestClient, db: Session
 ) -> None:

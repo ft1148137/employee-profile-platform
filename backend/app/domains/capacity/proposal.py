@@ -1424,6 +1424,8 @@ def respond(
         else demand.revision
     )
     check_pending(row, revision, expected)
+    if expire_locked(principal, session, demand, row, via=via):
+        raise ProposalFailed("方案已过期，请对方重新安排", code="proposal_expired")
     if action == "accept":
         accept(principal, session, demand, row, via=via)
     elif action == "follow_up":
@@ -1522,6 +1524,8 @@ def withdraw(
         raise CapacityNotFound()
     session.refresh(row, with_for_update=True)
     check_pending(row, revision, row.revision)
+    if expire_locked(principal, session, demand, row):
+        raise ProposalFailed("方案已过期，请重新规划", code="proposal_expired")
     withdraw_locked(principal, session, demand, row)
     return get_demand(principal, session, demand.id)
 
