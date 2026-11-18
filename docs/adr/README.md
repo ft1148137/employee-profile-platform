@@ -47,3 +47,7 @@
 - [ADR-0047：协调 Agent 的工具与权限边界](0047-coordination-agent.md)
 - [ADR-0048：员工助手最终回复的交付时权限复核](0048-bot-final-delivery-visibility.md)
 - [ADR-0049：方案预占与原子承诺](0049-proposal-hold-commitment.md)
+- [ADR-0051：项目需求聚合与角色依赖](0051-capacity-projects-and-roles.md)
+- [ADR-0052：分配执行跟踪](0052-assignment-tracking.md)
+- [ADR-0053：分配完成后的工作反馈](0053-assignment-feedback-evidence.md)
+- [ADR-0054：排程评测与 SolverPort](0054-solver-port.md)（B2 已按 D-033 放行。CP-SAT 用单个需求的授权快照生成候选，承诺仍须人工确认）
