@@ -15,7 +15,7 @@ from sqlmodel import Session, delete, select
 from app.core.security import create_access_token
 from app.domains.base import utc_now
 from app.domains.bot import core, delivery, store
-from app.domains.bot.schemas import TurnResponse
+from app.domains.bot.schemas import TextMessage, TurnResponse
 from app.domains.capability.models import CapabilitySchemaVersion, SchemaStatus
 from app.domains.capacity.models import (
     CapacityApproval,
@@ -279,6 +279,143 @@ def test_reply_prose_without_case_invalidates_inherited_context(
     assert store.state_for_turn(db, current, session) is None
     db.refresh(session)
     assert session.state_ciphertext is None
+
+
+@pytest.mark.parametrize("channel", ["web", "feishu"])
+@pytest.mark.parametrize("surface", ["history", "continuation", "delivery"])
+@pytest.mark.parametrize("old_scope", ["partial", "full_unchanged", "full_narrowed"])
+def test_upgrade_safeguards_saved_coordination_context(
+    privacy_case: tuple,
+    db: Session,
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    channel: Literal["web", "feishu"],
+    surface: str,
+    old_scope: str,
+) -> None:
+    people, users, demand, outside, private = privacy_case
+    p = principal(db, demand.org_id, people["b"].id)
+    session = store.create_session(db, p, channel)
+    text = TextMessage(text=private)
+    scope = store.session_scope(db, p)
+    if old_scope == "partial":
+        # S3 recorded only the responder, including on turns inheriting this context.
+        del scope["visible_employee_ids"]
+        scope["read_employee_ids"] = [str(people["b"].id)]
+    for steps in ([{"name": "调查并模拟部门协调方案", "ok": True}], []):
+        store.append_message(
+            db,
+            session,
+            "assistant",
+            {
+                "messages": [text.model_dump(mode="json")],
+                "steps": steps,
+                "scope": scope,
+            },
+        )
+    old_state = {
+        "messages": [
+            {"role": "toolResult", "toolName": "coordination", "content": private},
+            {"role": "assistant", "content": private},
+        ]
+    }
+    store.save_scoped_state(db, p, session, old_state, scope=scope)
+    hidden = old_scope != "full_unchanged"
+    if hidden:
+        people["target"].department_id = outside.id
+        db.add(people["target"])
+    db.commit()
+
+    if surface == "history":
+        response = client.get(
+            f"/api/v1/bot/sessions/{session.id}/messages",
+            params={"org_id": str(p.org_id)},
+            headers=headers(users["b"].id),
+        )
+        assert response.status_code == 200, response.text
+        assert (private in response.text) is not hidden
+        if hidden:
+            assert response.text.count(store.HIDDEN_REPLY) == 2
+    elif surface == "delivery":
+        pending = TurnResponse(messages=[text])
+        pending._principal, pending._scope = p, scope
+        with delivery.guard(db, pending) as protected:
+            assert protected.messages == [
+                TextMessage(text=delivery.SCOPE_CHANGED) if hidden else text
+            ]
+    else:
+        states: list[object] = []
+
+        def model(_config: object, **kwargs: object) -> TurnResult:
+            states.append(kwargs["session_state"])
+            if hidden:
+                db.refresh(session)
+                assert session.state_ciphertext is None
+            return TurnResult(
+                text="新回复", stop_reason="stop", model_calls=1, tool_calls=0
+            )
+
+        monkeypatch.setattr(core.pi_client, "run_turn", model)
+        core.turn(db, p, session.id, "继续上一轮")
+        assert states == [None if hidden else old_state]
+
+
+@pytest.mark.parametrize("channel", ["web", "feishu"])
+def test_upgrade_preserves_precise_scope_for_new_structured_reads(
+    privacy_case: tuple,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    channel: Literal["web", "feishu"],
+) -> None:
+    people, _, demand, outside, _ = privacy_case
+    p = principal(db, demand.org_id, people["b"].id)
+    reply = db.exec(
+        select(CapacityDemandEvent).where(
+            CapacityDemandEvent.org_id == p.org_id,
+            CapacityDemandEvent.demand_id == demand.id,
+        )
+    ).one()
+    reply.text = ""
+    db.add(reply)
+    db.commit()
+    session = store.create_session(db, p, channel)
+    text = "结构化答复"
+    state = {"messages": [text]}
+
+    def model(_config: object, **kwargs: object) -> TurnResult:
+        result = kwargs["on_tool_call"](
+            "coordination",
+            {
+                "function": "get_approval_status",
+                "arguments": {"demand_id": str(demand.id)},
+            },
+        )
+        assert result["events"][0]["responder_name"] == people["b"].display_name
+        return TurnResult(
+            text=text,
+            stop_reason="stop",
+            model_calls=1,
+            tool_calls=1,
+            session_state=state,
+        )
+
+    monkeypatch.setattr(core.pi_client, "run_turn", model)
+    pending = core.turn(db, p, session.id, "查看审批")
+    message = store.messages_for(db, session)[-1]
+    saved = store.load_state(db, session, scoped=True)
+    for scope in (message.payload["scope"], saved["scope"]):
+        assert scope["read_scope_format"] == store.READ_SCOPE_FORMAT
+        assert scope["read_employee_ids"] == [str(people["b"].id)]
+        assert "visible_employee_ids" not in scope
+    people["target"].department_id = outside.id
+    db.add(people["target"])
+    db.commit()
+
+    assert text in str(store.list_messages(db, p, session.id))
+    assert "read_scope_format" not in str(store.list_messages(db, p, session.id))
+    assert store.state_for_turn(db, p, session) == state
+    with delivery.guard(db, pending) as protected:
+        assert protected.messages == [TextMessage(text=text)]
 
 
 @pytest.fixture

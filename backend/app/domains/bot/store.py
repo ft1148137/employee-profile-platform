@@ -34,6 +34,7 @@ from app.domains.org.service import visible_employee
 logger = logging.getLogger(__name__)
 
 HIDDEN_REPLY = "你的权限已变化，这条之前的回复已隐藏"
+READ_SCOPE_FORMAT = "complete_v1"
 SENSITIVE_TOOLS = {
     "coordination",
     "prepare_plan_proposal",
@@ -338,6 +339,12 @@ def scope_shrank(
 ) -> bool:
     if not isinstance(previous, dict):
         return legacy_sensitive
+    # Older partial read sets could miss employees mentioned in coordination prose.
+    if (
+        "read_employee_ids" in previous
+        and previous.get("read_scope_format") != READ_SCOPE_FORMAT
+    ):
+        return True
     old_departments = previous.get("managed_department_ids")
     new_departments = current["managed_department_ids"]
     old_employees = previous.get(
