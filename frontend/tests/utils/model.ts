@@ -26,15 +26,20 @@ export const test = base.extend<{ modelUrl: string }>({
       let raw = ""
       for await (const chunk of req) raw += chunk
       const request = JSON.parse(raw)
-      const admin = request.tools?.some(
-        (tool: { function: { name: string } }) =>
-          tool.function.name === "propose_changes",
+      const toolNames: string[] =
+        request.tools?.map(
+          (tool: { function: { name: string } }) => tool.function.name,
+        ) ?? []
+      const admin = toolNames.includes("propose_changes")
+      const chat = toolNames.includes("get_my_requests") || admin
+      const drafting = toolNames.includes("submit_draft")
+      const departmentDefaults = toolNames.includes(
+        "submit_department_capabilities",
       )
-      const chat =
-        request.tools?.some(
-          (tool: { function: { name: string } }) =>
-            tool.function.name === "get_my_requests",
-        ) || admin
+      if (toolNames.length && !chat && !drafting && !departmentDefaults) {
+        res.writeHead(400).end("Unsupported fake model tool")
+        return
+      }
       const last = request.messages.at(-1)
       if (chat && !admin && last?.role === "tool") {
         const result = JSON.parse(last.content)
@@ -45,8 +50,7 @@ export const test = base.extend<{ modelUrl: string }>({
           )?.id
         }
       }
-      const toolResult =
-        request.messages.at(-1)?.role === "tool" || !request.tools?.length
+      const toolResult = last?.role === "tool" || !toolNames.length
       const jiraRequest =
         admin &&
         request.messages.some(
@@ -70,7 +74,7 @@ export const test = base.extend<{ modelUrl: string }>({
         (m: { role: string }) => m.role === "user",
       ).content
       const body = (
-        request.tools?.length && !chat
+        drafting
           ? JSON.parse(typeof content === "string" ? content : content[0].text)
           : { capabilities: [], records: [] }
       ) as {
@@ -124,7 +128,9 @@ export const test = base.extend<{ modelUrl: string }>({
                               : JSON.stringify(last).includes("补充")
                                 ? "draft_update_request"
                                 : "get_my_requests"
-                            : "submit_draft",
+                            : departmentDefaults
+                              ? "submit_department_capabilities"
+                              : "submit_draft",
                         arguments: JSON.stringify(
                           admin
                             ? {
@@ -220,7 +226,9 @@ export const test = base.extend<{ modelUrl: string }>({
                                       ],
                                     }
                                   : {}
-                              : { items },
+                              : departmentDefaults
+                                ? { capability_keys: [] }
+                                : { items },
                         ),
                       },
                     },

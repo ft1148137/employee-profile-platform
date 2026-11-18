@@ -4,6 +4,7 @@ import type {
   CapabilitiesPublic,
   ChangeRequestsPublic,
   ExternalIdentitiesPublic,
+  RosterImportPreview,
   SetupPublic,
 } from "../src/client"
 import { expectChineseCopy } from "./utils/copy"
@@ -39,31 +40,36 @@ test("employee reviews initial profile and updates on desktop and mobile", async
   const { org_id: orgId, access_token: token } = await initialized.json()
   const headers = { Authorization: `Bearer ${token}` }
   const base = `/api/v1/orgs/${orgId}`
-  const uploaded = await request.post(`${base}/roster/imports`, {
-    headers,
-    multipart: {
-      file: {
-        name: "roster.csv",
-        mimeType: "text/csv",
-        buffer: readFileSync(
-          path.resolve(
-            import.meta.dirname,
-            "../../examples/test-enterprises/qingli-saas/roster.csv",
-          ),
-        ),
+  const roster = readFileSync(
+    path.resolve(
+      import.meta.dirname,
+      "../../examples/test-enterprises/qingli-saas/roster.csv",
+    ),
+    "utf8",
+  )
+  async function applyRoster(csv: string) {
+    const uploaded = await request.post(`${base}/roster/imports`, {
+      headers,
+      multipart: {
+        file: {
+          name: "roster.csv",
+          mimeType: "text/csv",
+          buffer: Buffer.from(csv),
+        },
       },
-    },
-  })
-  expect(uploaded.ok()).toBeTruthy()
-  const preview = await uploaded.json()
-  expect(
-    (
-      await request.post(`${base}/roster/imports/${preview.id}/apply`, {
+    })
+    await expect(uploaded).toBeOK()
+    const preview: RosterImportPreview = await uploaded.json()
+    const applied = await request.post(
+      `${base}/roster/imports/${preview.id}/apply`,
+      {
         headers,
         data: { base_revision: preview.base_revision },
-      })
-    ).ok(),
-  ).toBeTruthy()
+      },
+    )
+    await expect(applied).toBeOK()
+  }
+  await applyRoster(roster)
   expect(
     (
       await request.post(`${base}/capability-schema`, {
@@ -71,9 +77,6 @@ test("employee reviews initial profile and updates on desktop and mobile", async
         data: { template_id: "tech-rnd" },
       })
     ).ok(),
-  ).toBeTruthy()
-  expect(
-    (await request.post(`${base}/accounts/issue`, { headers, data: {} })).ok(),
   ).toBeTruthy()
   expect(
     (
@@ -129,6 +132,16 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     expect(linked.ok()).toBeTruthy()
     expect((await linked.json()).linked).toBe(links.length)
   }
+  // Keep Jira's original emails through linking, then use unique login emails.
+  await applyRoster(
+    roster.replace(
+      /@qingli-saas\.example\.com/g,
+      `+${username}@qingli-saas.example.com`,
+    ),
+  )
+  expect(
+    (await request.post(`${base}/accounts/issue`, { headers, data: {} })).ok(),
+  ).toBeTruthy()
   expect(
     (
       await request.put(`${base}/model-setting`, {
@@ -258,9 +271,9 @@ test("employee reviews initial profile and updates on desktop and mobile", async
   await expect(
     page.getByRole("heading", { name: "待你过目：系统起草的初始画像" }),
   ).toBeVisible()
-  await expect(
-    page.getByRole("region", { name: /^草稿改动：/ }).first(),
-  ).toBeVisible()
+  const draftItem = page.getByRole("region", { name: /^草稿改动：/ }).first()
+  await expect(draftItem).toBeVisible()
+  await expect(draftItem).toContainText("合成模型能力建议")
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     await page.getByRole("button", { name: "直接提交", exact: true }).click()
@@ -391,6 +404,42 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     ).json()
     expect(history.data.find((r) => r.id === sent.id)?.status).toBe("withdrawn")
   }
+})
+
+test("the fake model accepts department defaults without drafting records", async ({
+  modelUrl,
+  request,
+}) => {
+  // Playwright owns the server, even when Pi connects through a Docker host alias.
+  const endpoint = new URL(`${modelUrl}/chat/completions`)
+  endpoint.hostname = "127.0.0.1"
+  const response = await request.post(endpoint.href, {
+    data: {
+      model: "synthetic",
+      stream: true,
+      tools: [
+        {
+          type: "function",
+          function: { name: "submit_department_capabilities" },
+        },
+      ],
+      messages: [
+        {
+          role: "user",
+          content: JSON.stringify({
+            department_name: "合成部门",
+            capabilities: [{ key: "synthetic" }],
+          }),
+        },
+      ],
+    },
+  })
+  await expect(response).toBeOK()
+  const [event] = (await response.text()).split("\n\n")
+  const { function: call } = JSON.parse(event.slice("data: ".length)).choices[0]
+    .delta.tool_calls[0]
+  expect(call.name).toBe("submit_department_capabilities")
+  expect(JSON.parse(call.arguments)).toEqual({ capability_keys: [] })
 })
 
 test("progress shows pause, exclusions and failures; retries and confirmation use the right scope", async ({
