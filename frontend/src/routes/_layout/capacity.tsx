@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { tabSearch } from "@/components/Admin/AdminTabs"
 import { Approvals } from "@/components/Capacity/Approvals"
+import { BorrowRequests } from "@/components/Capacity/BorrowRequests"
 import { IncomingDemands, OutgoingDemands } from "@/components/Capacity/Demands"
 import { MyAssignments } from "@/components/Capacity/MyAssignments"
 import { MyWorkload } from "@/components/Capacity/MyWorkload"
@@ -55,7 +56,14 @@ function CapacityPage() {
       ? [{ value: "outgoing", title: "我提的需求", component: OutgoingDemands }]
       : []),
     ...(roles.includes("org_admin") || roles.includes("dept_manager")
-      ? [{ value: "incoming", title: "收到的需求", component: IncomingDemands }]
+      ? [
+          {
+            value: "incoming",
+            title: "收到的需求",
+            component: IncomingDemands,
+          },
+          { value: "borrows", title: "借调请求", component: BorrowRequests },
+        ]
       : []),
   ]
   return (

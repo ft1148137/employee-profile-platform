@@ -11,7 +11,7 @@ from app.domains.capacity.models import (
     DemandStatus,
     ProposalStatus,
 )
-from app.domains.capacity.schemas import CapacityInput, WorkloadPublic
+from app.domains.capacity.schemas import CapacityInput, Note, WorkloadPublic
 
 
 class ReferenceInput(CapacityInput):
@@ -135,6 +135,15 @@ class ReplyDemandInput(ReplyInput, DemandIdInput):
     pass
 
 
+class PlanReplyInput(ReplyInput):
+    lender_department_id: UUID | None = None
+    borrow_headcount: int | None = Field(default=None, strict=True, ge=1)
+
+
+class PlanReplyDemandInput(PlanReplyInput, ReplyDemandInput):
+    pass
+
+
 class RespondDemandInput(RespondInput, DemandIdInput):
     pass
 
@@ -187,6 +196,31 @@ class ProposalSegment(CapacityInput):
     allocation_percent: int
 
 
+class BorrowLineInput(ProposalSegment):
+    lender_department_id: UUID
+
+
+class BorrowCandidate(CapacityInput):
+    employee_id: UUID
+    display_name: str
+
+
+class BorrowRequest(ProposalSegment):
+    id: UUID
+    description: str
+    capability_name: str
+    borrower_department: str
+    status: str
+    reason: str | None = None
+    candidates: list[BorrowCandidate] = Field(default_factory=list)
+
+
+class BorrowDecisionInput(CapacityInput):
+    action: Literal["select", "reject", "accept", "decline"]
+    employee_id: UUID | None = None
+    reason: Note | None = None
+
+
 class ProposalParticipant(CapacityInput):
     number: int
     segments: list[ProposalSegment]
@@ -206,6 +240,7 @@ class ProposalSummary(CapacityInput):
     end_date: date
     conditions: str
     approvals: list[ProposalApprovalPublic]
+    borrow_progress: str | None = None
 
 
 class ProposalLineInput(CapacityInput):

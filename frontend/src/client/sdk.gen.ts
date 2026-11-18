@@ -185,6 +185,9 @@ import type {
   capacityCreateAssignmentData,
   capacityCreateAssignmentErrors,
   capacityCreateAssignmentResponses,
+  capacityDecideBorrowRequestData,
+  capacityDecideBorrowRequestErrors,
+  capacityDecideBorrowRequestResponses,
   capacityDecideExtensionRequestData,
   capacityDecideExtensionRequestErrors,
   capacityDecideExtensionRequestResponses,
@@ -206,6 +209,9 @@ import type {
   capacityGetMyWorkloadData,
   capacityGetMyWorkloadErrors,
   capacityGetMyWorkloadResponses,
+  capacityListBorrowRequestsData,
+  capacityListBorrowRequestsErrors,
+  capacityListBorrowRequestsResponses,
   capacityListCapacityDepartmentsData,
   capacityListCapacityDepartmentsErrors,
   capacityListCapacityDepartmentsResponses,
@@ -907,6 +913,45 @@ export class CapacityService {
       responseType: "json",
       security: [{ scheme: "bearer", type: "http" }],
       url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/respond",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * List Borrow Requests
+   */
+  public static listBorrowRequests<ThrowOnError extends boolean = true>(
+    options: Options<capacityListBorrowRequestsData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityListBorrowRequestsResponses,
+      capacityListBorrowRequestsErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/borrow-requests",
+      ...options,
+    })
+  }
+
+  /**
+   * Decide Borrow Request
+   */
+  public static decideBorrowRequest<ThrowOnError extends boolean = true>(
+    options: Options<capacityDecideBorrowRequestData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capacityDecideBorrowRequestResponses,
+      capacityDecideBorrowRequestErrors,
+      ThrowOnError
+    >({
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/borrow-requests/{line_id}/decision",
       ...options,
       headers: {
         "Content-Type": "application/json",

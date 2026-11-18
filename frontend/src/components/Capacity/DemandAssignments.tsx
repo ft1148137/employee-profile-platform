@@ -210,18 +210,31 @@ export function DemandAssignments({
           {!query.data.count && (
             <p className="text-muted-foreground">暂无分配。</p>
           )}
-          {query.data.data.map((row) => (
-            <AssignmentRow
-              key={`${row.id}:${row.start_date}:${row.due_date}`}
-              orgId={orgId}
-              row={row}
-              committedEndDate={demand.committed_end_date ?? null}
-              committedStartDate={demand.committed_start_date ?? null}
-              canEdit={managedDepartmentIds.includes(
-                demand.target_department_id,
-              )}
-            />
-          ))}
+          {query.data.data.map((row, index) =>
+            !("id" in row) ? (
+              <article
+                key={`borrow-${index}`}
+                className="space-y-2 rounded-lg border p-3"
+              >
+                <h4 className="font-medium">借调 {row.headcount} 人</h4>
+                <p className="text-sm">
+                  投入 {row.allocation_percent}% · {row.start_date} 至{" "}
+                  {row.due_date} · {assignmentStatuses[row.status]}
+                </p>
+              </article>
+            ) : (
+              <AssignmentRow
+                key={`${row.id}:${row.start_date}:${row.due_date}`}
+                orgId={orgId}
+                row={row}
+                committedEndDate={demand.committed_end_date ?? null}
+                committedStartDate={demand.committed_start_date ?? null}
+                canEdit={managedDepartmentIds.includes(
+                  demand.target_department_id,
+                )}
+              />
+            ),
+          )}
         </>
       )}
     </section>

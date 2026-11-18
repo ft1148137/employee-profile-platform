@@ -16,7 +16,7 @@ from app.domains.capacity.demand_schemas import (
     CountCapacityReference,
     DemandInput,
     LimitedCapacityReference,
-    ReplyDemandInput,
+    PlanReplyDemandInput,
     RespondDemandInput,
 )
 from app.domains.capacity.extension_schemas import RequestExtensionInput
@@ -233,7 +233,9 @@ def check_demand_response(db: Session, p: Principal, value: BaseModel) -> str:
             + f"\n/capacity?tab=outgoing&demand={row.id}"
             + f"\n预占到期时间：{pending.hold_expires_at.isoformat()}"
             + (
-                "\n确认后对方部门的人员投入会被锁定并生成分配"
+                "\n确认后记录需求方接受，原部门经理和员工本人也同意后才生成分配"
+                if body.action == "accept" and pending.borrow_progress
+                else "\n确认后对方部门的人员投入会被锁定并生成分配"
                 if body.action == "accept"
                 else "\n确认后拒绝方案并释放预占"
                 if body.action == "follow_up"
@@ -248,7 +250,7 @@ def check_demand_response(db: Session, p: Principal, value: BaseModel) -> str:
 
 
 def check_demand_reply(db: Session, p: Principal, value: BaseModel) -> str:
-    body = ReplyDemandInput.model_validate(value)
+    body = PlanReplyDemandInput.model_validate(value)
     row = demand.demand_row(p, db, body.demand_id)
     if not demand.represents_department(p, row.target_department_id):
         raise CapacityNotFound(demand.DEMAND_NOT_FOUND)
@@ -264,7 +266,13 @@ def check_demand_reply(db: Session, p: Principal, value: BaseModel) -> str:
         f"条件：{conditions.strip() or '无'}\n说明：{description}\n修订：{body.revision}\n"
         "确认后把答复发给需求方，不分配人员，不改其他承诺。"
     )
-    if body.option_id is not None:
+    if body.lender_department_id is not None:
+        lender = demand.department(db, p.org_id, body.lender_department_id)
+        content += (
+            f"\n借出部门：{lender.name} · 借调 {body.borrow_headcount} 人"
+            "\n确认后通知原部门经理选人，选人后才开始预占。"
+        )
+    elif body.option_id is not None:
         content += (
             "\n确认后把方案发给需求方，并为这些人预占投入 72 小时；需求方接受后才生成分配"
             + ("\n本次明确同意安排需求依据以外的人员" if body.outside_basis else "")
@@ -418,7 +426,11 @@ def act(
         require_enabled(p, db)
         name = next(write for kind, write, _ in PREPARES.values() if kind == card.kind)
         try:
-            body = WRITES[name].input_model.model_validate(card.arguments)
+            plan_reply = card.kind == "demand_reply" and card.arguments.get("option_id")
+            input_model = (
+                PlanReplyDemandInput if plan_reply else WRITES[name].input_model
+            )
+            body = input_model.model_validate(card.arguments)
         except ValidationError:
             card.status, card.result = "failed", "申请内容已变化，请重新生成确认卡"
             return card
@@ -432,7 +444,7 @@ def act(
                     result = confirm_plan_reply(
                         p,
                         db,
-                        ReplyDemandInput.model_validate(body),
+                        PlanReplyDemandInput.model_validate(body),
                         via="feishu" if session.channel == "feishu" else "bot",
                         client_name=session.channel,
                     )

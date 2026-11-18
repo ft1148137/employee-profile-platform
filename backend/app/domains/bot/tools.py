@@ -23,9 +23,9 @@ from app.domains.capacity import demand as capacity_demand
 from app.domains.capacity import proposal as capacity_proposal
 from app.domains.capacity.demand_schemas import (
     DemandPublic,
-    ProposalLineInput,
-    ReplyDemandInput,
+    PlanReplyDemandInput,
 )
+from app.domains.capacity.models import DemandOutcome
 from app.domains.capacity.schemas import Via
 from app.domains.capacity.settings import read_settings as read_capacity_settings
 from app.domains.change_request import employee
@@ -38,7 +38,12 @@ from app.domains.model.client import ModelUnavailable
 from app.domains.model.pi_client import ToolDefinition
 from app.domains.org.models import Department, Employee, EmploymentStatus
 from app.domains.planning import service as planning_service
-from app.domains.planning.models import PlanningOption, PlanningSnapshot, PlanVerdict
+from app.domains.planning.models import (
+    OptionKind,
+    PlanningOption,
+    PlanningSnapshot,
+    PlanVerdict,
+)
 from app.domains.planning.schemas import VERDICT_LABELS, CasePublic, OptionPublic
 from app.domains.planning.tools import COORDINATION_TOOLS
 from app.domains.planning.tools import Result as CoordinationResult
@@ -104,10 +109,12 @@ class PreparePlanProposalInput(BaseModel):
     option_id: UUID
     text: str = Field(min_length=1, max_length=2000)
     outside_basis: StrictBool = False
+    lender_department_id: UUID | None = None
+    borrow_headcount: int | None = Field(default=None, strict=True, ge=1)
 
 
 def confirm_plan_reply(
-    p: Principal, db: Session, body: ReplyDemandInput, *, via: Via, client_name: str
+    p: Principal, db: Session, body: PlanReplyDemandInput, *, via: Via, client_name: str
 ) -> DemandPublic:
     """Compose Planning reads and Capacity writes only after a human clicks."""
     row = capacity_demand.demand_row(p, db, body.demand_id, lock=True)
@@ -132,17 +139,9 @@ def confirm_plan_reply(
         raise planning_service.PlanningStale()
     if saved.verdict not in (PlanVerdict.FEASIBLE, PlanVerdict.CONDITIONAL):
         raise capacity_proposal.ProposalConflict("只有可行或有条件可行的方案可以提议")
-    raw = saved.params.get("assignees")
-    if not isinstance(raw, list) or not raw:
-        raise capacity_proposal.ProposalConflict("方案尚无可安排的人员，请重新规划")
-    lines = [
-        ProposalLineInput.model_validate({**item, "outside_basis": body.outside_basis})
-        for item in raw
-        if isinstance(item, dict)
-    ]
-    if len(lines) != len(raw):
-        raise planning_service.PlanningStale()
-    capacity_proposal.check_lines(p, db, row, lines)
+    lines = capacity_proposal.plan_lines(
+        p, db, row, body, saved.params, borrow=saved.kind == OptionKind.BORROW
+    )
     current = planning_service.get_case(p, db, case_id)
     if current.stale or current.snapshot_id != saved.snapshot_id:
         raise planning_service.PlanningStale()
@@ -150,7 +149,14 @@ def confirm_plan_reply(
         p,
         db,
         **body.model_dump(
-            exclude={"option_id", "outside_basis", "start_date", "end_date"}
+            exclude={
+                "option_id",
+                "outside_basis",
+                "start_date",
+                "end_date",
+                "lender_department_id",
+                "borrow_headcount",
+            }
         ),
         start_date=min(line.start_date for line in lines),
         end_date=max(line.end_date for line in lines),
@@ -787,6 +793,30 @@ def call(
                         "请缩短说明后重新预览，保留全部方案条件。"
                     )
                 }
+            if option.kind == OptionKind.BORROW:
+                borrow_body = PlanReplyDemandInput(
+                    demand_id=row.id,
+                    option_id=option.id,
+                    outcome=DemandOutcome(outcome),
+                    revision=row.revision,
+                    text=text,
+                    lender_department_id=proposal.lender_department_id,
+                    borrow_headcount=proposal.borrow_headcount,
+                    start_date=row.window_start,
+                    end_date=row.window_end,
+                )
+                capacity_proposal.plan_lines(
+                    p, db, row, borrow_body, option.params, borrow=True
+                )
+                start_date, end_date = (
+                    row.window_start.isoformat(),
+                    row.window_end.isoformat(),
+                )
+            elif (
+                proposal.lender_department_id is not None
+                or proposal.borrow_headcount is not None
+            ):
+                return {"error": "只有借调方案可以指定借出部门和人数"}
             reply_result = capacity.call(
                 db,
                 p,
@@ -808,15 +838,19 @@ def call(
                         message.card_id
                     ) == reply_result.get("card_id"):
                         if outcome != "not_now":
-                            reply_body = ReplyDemandInput.model_validate(
+                            reply_body = PlanReplyDemandInput.model_validate(
                                 {
                                     **message.arguments,
                                     "option_id": str(option.id),
                                     "outside_basis": proposal.outside_basis,
+                                    "lender_department_id": proposal.lender_department_id,
+                                    "borrow_headcount": proposal.borrow_headcount,
                                 }
                             )
                             content = capacity.check_demand_reply(db, p, reply_body)
-                            message.arguments = reply_body.model_dump(mode="json")
+                            message.arguments = reply_body.model_dump(
+                                mode="json", exclude_none=True
+                            )
                             message.content = content
                             reply_result["preview"] = message.content
                         if card.rule_fallback is not None:

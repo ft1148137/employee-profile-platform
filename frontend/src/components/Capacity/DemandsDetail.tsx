@@ -6,8 +6,8 @@ import {
   CapacityService,
   type DemandOutcome,
   type DemandPublic,
+  type PlanReplyInput,
   type ProposalLinePublic,
-  type ReplyInput,
   type RespondInput,
 } from "@/client"
 import { dateLabel } from "@/components/Profile/fields"
@@ -23,7 +23,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { DemandAssignments } from "./DemandAssignments"
 import { DemandsReference } from "./DemandsReference"
-import { Plans } from "./Plans"
+import { Plans, type SelectedPlanReply } from "./Plans"
 import { isCapacityAccessDenied, WorkloadBand } from "./shared"
 
 export const demandStatuses = {
@@ -60,10 +60,7 @@ export function DemandsDetail({
   plansOpen?: boolean
 }) {
   const navigate = useNavigate()
-  const [selected, setSelected] = useState<Pick<
-    ReplyInput,
-    "option_id" | "outcome" | "start_date" | "end_date" | "outside_basis"
-  > | null>(null)
+  const [selected, setSelected] = useState<SelectedPlanReply | null>(null)
   const query = useQuery({
     queryKey: ["capacity", orgId, "demand", demandId],
     retry: (count, error) => !isCapacityAccessDenied(error) && count < 3,
@@ -345,10 +342,7 @@ function DemandsAction({
   orgId: string
   demand: DemandPublic
   side: "outgoing" | "incoming"
-  selected: Pick<
-    ReplyInput,
-    "option_id" | "outcome" | "start_date" | "end_date" | "outside_basis"
-  > | null
+  selected: SelectedPlanReply | null
 }) {
   const cache = useQueryClient()
   const [outcome, setOutcome] = useState<DemandOutcome>(
@@ -370,13 +364,15 @@ function DemandsAction({
   })
   const reply = useMutation({
     mutationFn: (
-      dates: Pick<ReplyInput, "start_date" | "end_date" | "outside_basis">,
+      dates: Pick<PlanReplyInput, "start_date" | "end_date" | "outside_basis">,
     ) =>
       CapacityService.replyDemand({
         path,
         body: {
           ...dates,
           option_id: selected?.option_id,
+          lender_department_id: selected?.lender_department_id,
+          borrow_headcount: selected?.borrow_headcount,
           outcome,
           text: text.trim(),
           revision: demand.revision,
@@ -421,7 +417,11 @@ function DemandsAction({
               </label>
             )}
             {selected && (
-              <p>已选择协调方案，发送后将预占人员投入，等待需求方确认。</p>
+              <p>
+                {selected.borrow_headcount
+                  ? `拟借调 ${selected.borrow_headcount} 人，发送后通知原部门经理选人。`
+                  : "已选择协调方案，发送后将预占人员投入，等待需求方确认。"}
+              </p>
             )}
             <p className="text-sm text-muted-foreground">
               答复会发给对方部门，不要写本部门员工的姓名；不写负荷说法（例如基本满、饱和、有余量），只写能否承接、时间和条件。在助手里可以让
@@ -535,6 +535,8 @@ const proposalStatuses: Record<string, string> = {
 }
 
 function proposalLabel(proposal: NonNullable<DemandPublic["proposal"]>) {
+  if (proposal.status !== "pending" && proposal.borrow_progress)
+    return proposal.borrow_progress
   if (proposal.status === "failed")
     return (
       { rejected: "被拒", expired: "已过期", recheck_failed: "复核未通过" }[
@@ -546,7 +548,7 @@ function proposalLabel(proposal: NonNullable<DemandPublic["proposal"]>) {
     Date.parse(proposal.hold_expires_at) <= Date.now()
   )
     return "已过期"
-  return proposalStatuses[proposal.status]
+  return proposal.borrow_progress ?? proposalStatuses[proposal.status]
 }
 
 function ProposalError({ error }: { error: Error | null }) {
@@ -657,7 +659,10 @@ function ProposalPanel({
     },
   })
   const label = proposalLabel(proposal)
-  const pending = label === "等待需求方确认"
+  const pending = proposal.status === "pending" && label !== "已过期"
+  const requesterApproved = proposal.approvals.some(
+    (approval) => approval.party === "requester",
+  )
   const groups = new Map<string, ProposalLinePublic[]>()
   if (side === "incoming" && "lines" in proposal)
     for (const line of proposal.lines) {
@@ -711,54 +716,56 @@ function ProposalPanel({
           {approval.reason && `，理由：${approval.reason}`}
         </p>
       ))}
-      {!pending && label !== "已生效" && (
-        <p>
-          {{
-            被拒: "对方拒绝了方案，需要重新规划。",
-            已过期: "预占已到期，请重新规划。",
-            复核未通过: "容量、版本或权限已变化，请重新规划。",
-            已撤回: "提议已撤回，预占已释放。",
-          }[label] ?? "方案未达成，请重新规划。"}
-        </p>
-      )}
+      {!pending &&
+        proposal.status !== "committed" &&
+        !proposal.borrow_progress && (
+          <p>
+            {{
+              被拒: "对方拒绝了方案，需要重新规划。",
+              已过期: "预占已到期，请重新规划。",
+              复核未通过: "容量、版本或权限已变化，请重新规划。",
+              已撤回: "提议已撤回，预占已释放。",
+            }[label] ?? "方案未达成，请重新规划。"}
+          </p>
+        )}
       {pending && (
         <div className="flex flex-wrap gap-3">
-          {side === "outgoing" ? (
-            <>
-              <Button
-                disabled={mutation.isPending}
-                onClick={() => setAction("accept")}
-              >
-                接受方案
-              </Button>
-              <Button
-                variant="outline"
-                disabled={mutation.isPending}
-                onClick={() => {
-                  setReason("")
-                  setAction("follow_up")
-                }}
-              >
-                拒绝方案
-              </Button>
-            </>
-          ) : (
-            demand.basis_url && (
-              <Button
-                variant="outline"
-                disabled={mutation.isPending}
-                onClick={() => setAction("withdraw")}
-              >
-                撤回提议
-              </Button>
-            )
-          )}
+          {side === "outgoing"
+            ? !requesterApproved && (
+                <>
+                  <Button
+                    disabled={mutation.isPending}
+                    onClick={() => setAction("accept")}
+                  >
+                    接受方案
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={mutation.isPending}
+                    onClick={() => {
+                      setReason("")
+                      setAction("follow_up")
+                    }}
+                  >
+                    拒绝方案
+                  </Button>
+                </>
+              )
+            : demand.basis_url && (
+                <Button
+                  variant="outline"
+                  disabled={mutation.isPending}
+                  onClick={() => setAction("withdraw")}
+                >
+                  撤回提议
+                </Button>
+              )}
         </div>
       )}
       {side === "incoming" &&
         demand.basis_url &&
         !pending &&
-        label !== "已生效" && (
+        proposal.status !== "committed" && (
           <Button variant="outline" onClick={replan}>
             重新规划
           </Button>
@@ -780,7 +787,9 @@ function ProposalPanel({
           </DialogTitle>
           <DialogDescription>
             {action === "accept"
-              ? "接受后对方部门的人员投入会被锁定并生成分配"
+              ? proposal.borrow_progress
+                ? "接受后记录需求方同意，原部门经理和员工本人也同意后才生成分配"
+                : "接受后对方部门的人员投入会被锁定并生成分配"
               : action === "follow_up"
                 ? "拒绝后对方需要重新安排"
                 : "撤回后预占将释放，对方无法再接受这条提议"}

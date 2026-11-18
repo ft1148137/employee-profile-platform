@@ -504,12 +504,9 @@ def submit_demand(
     return demand_public(principal, session, row)
 
 
-def get_demand_basis(
-    principal: Principal, session: Session, demand_id: UUID
-) -> DemandBasis:
-    row = demand_row(principal, session, demand_id)
-    if not represents_department(principal, row.target_department_id):
-        raise CapacityNotFound(DEMAND_NOT_FOUND)
+def qualified_people(
+    principal: Principal, session: Session, row: CapacityDemand, department_id: UUID
+) -> dict[UUID, PeopleSearchRow]:
     people: dict[UUID, PeopleSearchRow] = {}
     skip = 0
     while True:
@@ -517,7 +514,7 @@ def get_demand_basis(
             session,
             principal,
             PeopleSearchInput(
-                department_id=row.target_department_id,
+                department_id=department_id,
                 capability_key=row.capability_key,
                 minimum_level=row.minimum_level,
                 skip=skip,
@@ -530,6 +527,16 @@ def get_demand_basis(
         skip += len(page.data)
         if skip >= page.count or not page.data:
             break
+    return people
+
+
+def get_demand_basis(
+    principal: Principal, session: Session, demand_id: UUID
+) -> DemandBasis:
+    row = demand_row(principal, session, demand_id)
+    if not represents_department(principal, row.target_department_id):
+        raise CapacityNotFound(DEMAND_NOT_FOUND)
+    people = qualified_people(principal, session, row, row.target_department_id)
     employees = list(
         session.exec(
             select(Employee).where(
