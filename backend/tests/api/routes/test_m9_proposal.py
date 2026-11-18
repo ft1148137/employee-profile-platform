@@ -975,6 +975,10 @@ def _snapshot_m9_migration_state(session: Session) -> dict[str, Any]:
 def test_downgrade_refuses_single_segment_with_proposal_and_approvals(
     migration_engine: Engine, seed_path: Path
 ) -> None:
+    from pathlib import Path
+
+    from alembic.script import ScriptDirectory
+
     from tests.utils.migrations import migrate
 
     with Session(migration_engine) as session:
@@ -1043,7 +1047,8 @@ def test_downgrade_refuses_single_segment_with_proposal_and_approvals(
         session.commit()
         before = _snapshot_m9_migration_state(session)
 
-    assert before["version"] == "c782001bc001"
+    scripts = ScriptDirectory(str(Path(__file__).resolve().parents[3] / "app/alembic"))
+    assert before["version"] == scripts.get_current_head()
     assert len(before["proposals"]) == 1
     assert len(before["lines"]) == 1
     assert len(before["approvals"]) == 2
@@ -1210,7 +1215,7 @@ def test_downgrade_blocks_concurrent_m9_write_before_checking(
 
     from sqlalchemy import text
 
-    from tests.utils.migrations import migrate
+    from tests.utils.migrations import insert_historical_rows, migrate
 
     with Session(migration_engine) as session:
         employee, member, demand = _seed_migration_demand(session, seed_path)
@@ -1218,13 +1223,15 @@ def test_downgrade_blocks_concurrent_m9_write_before_checking(
         demand_id = demand.id
         actor_id = member.user_id
         session.commit()
+    migrate(migration_engine, "downgrade", "c782001bc001")
 
     inserted = Event()
     release = Event()
 
     def writer() -> None:
         with Session(migration_engine) as writer_session:
-            writer_session.add(
+            insert_historical_rows(
+                writer_session,
                 CapacityDemandEvent(
                     org_id=org_id,
                     demand_id=demand_id,
@@ -1232,9 +1239,8 @@ def test_downgrade_blocks_concurrent_m9_write_before_checking(
                     actor_user_id=actor_id,
                     text="并发写入事件",
                     via="web",
-                )
+                ),
             )
-            writer_session.flush()
             inserted.set()
             assert release.wait(timeout=10)
             writer_session.commit()
@@ -1275,9 +1281,9 @@ def test_downgrade_blocks_concurrent_m9_write_before_checking(
             ).scalar_one()
             == "c782001bc001"
         )
-        events = session.exec(select(CapacityDemandEvent)).all()
-        assert len(events) == 1
-        assert events[0].kind == DemandEventKind.COMMITTED
+        assert session.execute(
+            text("SELECT kind FROM capacity_demand_event")
+        ).scalars().all() == [DemandEventKind.COMMITTED]
 
 
 def test_accept_conflict_hides_unreadable_demand_source(

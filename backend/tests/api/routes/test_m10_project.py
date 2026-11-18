@@ -18,7 +18,7 @@ from app.domains.capacity.models import (
     CapacitySetting,
 )
 from app.domains.inbox.models import InboxItem, InboxKind
-from app.domains.org.models import Department, OrgMembership, RoleGrant
+from app.domains.org.models import Department, Employee, OrgMembership, RoleGrant
 from app.models import User
 
 
@@ -37,7 +37,14 @@ def project_data(
         user = User(username=f"{uuid4()}@example.com", hashed_password="unused")
         db.add_all([department, user])
         db.flush()
-        membership = OrgMembership(org_id=org, user_id=user.id)
+        person = Employee(
+            org_id=org,
+            department_id=department.id,
+            display_name=f"合成私密答复人{index}",
+        )
+        db.add(person)
+        db.flush()
+        membership = OrgMembership(org_id=org, user_id=user.id, employee_id=person.id)
         db.add(membership)
         db.flush()
         db.add(
@@ -188,6 +195,7 @@ def test_project_rejects_invalid_roles(
 def test_project_views_keep_department_boundaries(
     project_data: tuple,
     client: TestClient,
+    db: Session,
 ) -> None:
     base, auth, body, actors = project_data
     created = client.post(f"{base}/projects", headers=auth["manager"], json=body)
@@ -202,10 +210,19 @@ def test_project_views_keep_department_boundaries(
     )
     assert response.status_code == 200, response.text
     responder_name = response.json()["events"][-1]["responder_name"]
-    assert responder_name
+    assert responder_name == "合成私密答复人0"
+    responder = db.exec(
+        select(OrgMembership).where(
+            OrgMembership.org_id == UUID(base.split("/")[-2]),
+            OrgMembership.user_id == actors[0],
+        )
+    ).one()
+    assert responder.employee_id is not None
     a = client.get(url, headers=auth["manager"])
     assert a.status_code == 200, a.text
-    assert a.json()["roles"][0]["demand"]["events"][-1]["responder_name"] is None
+    event = a.json()["roles"][0]["demand"]["events"][-1]
+    assert event["responder_name"] is None
+    assert set(event["basis"]) == {"department_name", "capability_name", "count"}
     b = client.get(url, headers=auth["b1"])
     assert b.status_code == 200, b.text
     assert b.json()["roles"][0]["status"] == "replied"
@@ -214,6 +231,7 @@ def test_project_views_keep_department_boundaries(
     assert body["description"] not in b.text
     for side in (a, b):
         assert responder_name not in side.text
+        assert str(responder.employee_id) not in side.text
         assert not any(str(user_id) in side.text for user_id in actors)
 
     for role in ("manager", "b1"):

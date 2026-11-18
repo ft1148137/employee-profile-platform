@@ -217,12 +217,6 @@ def reference_for_viewer(
 ) -> CapacityReference:
     if not requester_view and represents_department(principal, target_department_id):
         return reference
-    return requester_reference(reference)
-
-
-def requester_reference(
-    reference: DetailedCapacityReference,
-) -> CountCapacityReference | LimitedCapacityReference:
     if 0 < reference.count < 3:
         return LimitedCapacityReference(
             department_name=reference.department_name,
@@ -586,7 +580,9 @@ def create_demand(
         capability_name=reference.capability_name,
         project_id=project_id,
         role_name=role.role_name if role else None,
-        extra_capabilities=role.model_dump(mode="json")["extra_capabilities"]
+        extra_capabilities=[
+            item.model_dump(mode="json") for item in role.extra_capabilities
+        ]
         if role
         else [],
         **body.model_dump(),

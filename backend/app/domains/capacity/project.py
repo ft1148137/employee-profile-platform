@@ -270,8 +270,9 @@ def get_project(
         )
     ):
         prerequisites[dependency.demand_id].append(dependency.depends_on_demand_id)
-    outcomes = dict(
-        session.exec(
+    outcomes = {
+        demand_id: DemandOutcome(value) if value is not None else None
+        for demand_id, value in session.exec(
             select(CapacityDemandEvent.demand_id, CapacityDemandEvent.outcome)
             .where(
                 CapacityDemandEvent.org_id == principal.org_id,
@@ -279,8 +280,8 @@ def get_project(
                 CapacityDemandEvent.kind == DemandEventKind.REPLIED,
             )
             .order_by(col(CapacityDemandEvent.created_at), col(CapacityDemandEvent.id))
-        ).all()
-    )
+        )
+    }
     roles = [demand.project_role_summary(row, name) for row, name in rows]
     demands = (
         {
