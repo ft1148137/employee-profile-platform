@@ -114,6 +114,9 @@ import type {
   botActData,
   botActErrors,
   botActResponses,
+  botConfirmFeishuProjectDraftData,
+  botConfirmFeishuProjectDraftErrors,
+  botConfirmFeishuProjectDraftResponses,
   botCreateSessionData,
   botCreateSessionErrors,
   botCreateSessionResponses,
@@ -126,6 +129,9 @@ import type {
   botListSessionsData,
   botListSessionsErrors,
   botListSessionsResponses,
+  botReadFeishuProjectDraftData,
+  botReadFeishuProjectDraftErrors,
+  botReadFeishuProjectDraftResponses,
   botSettingsGetBotSettingsData,
   botSettingsGetBotSettingsErrors,
   botSettingsGetBotSettingsResponses,
@@ -2282,6 +2288,42 @@ export class BotService {
         "Content-Type": "application/json",
         ...options.headers,
       },
+    })
+  }
+
+  /**
+   * Read Feishu Project Draft
+   */
+  public static readFeishuProjectDraft<ThrowOnError extends boolean = true>(
+    options: Options<botReadFeishuProjectDraftData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      botReadFeishuProjectDraftResponses,
+      botReadFeishuProjectDraftErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/bot/sessions/project-drafts/feishu",
+      ...options,
+    })
+  }
+
+  /**
+   * Confirm Feishu Project Draft
+   */
+  public static confirmFeishuProjectDraft<ThrowOnError extends boolean = true>(
+    options: Options<botConfirmFeishuProjectDraftData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      botConfirmFeishuProjectDraftResponses,
+      botConfirmFeishuProjectDraftErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/bot/sessions/project-drafts/feishu",
+      ...options,
     })
   }
 

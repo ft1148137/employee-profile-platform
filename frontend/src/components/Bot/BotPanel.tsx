@@ -151,7 +151,7 @@ export function BotConversation({
             created_at: new Date().toISOString(),
           }
     },
-    onSuccess: (result, _input, startedAt) => {
+    onSuccess: (result, input, startedAt) => {
       if (selection.current !== startedAt) return
       if (!result) {
         setMessages((previous) => previous.slice(0, -1))
@@ -170,6 +170,8 @@ export function BotConversation({
       client.invalidateQueries({ queryKey: ["change-requests", orgId] })
       client.invalidateQueries({ queryKey: ["inbox", orgId] })
       client.invalidateQueries({ queryKey: ["profile", orgId] })
+      if ("action" in input && input.action === "confirm_project_draft")
+        client.invalidateQueries({ queryKey: ["capacity", orgId] })
     },
     onError: (error, _input, startedAt) => {
       if (selection.current !== startedAt) return
@@ -263,6 +265,10 @@ export function BotConversation({
       }}
     />
   )
+  const latestProjectDraft = messages
+    .flatMap(({ payload }) => ("messages" in payload ? payload.messages : []))
+    .reverse()
+    .find((message) => message.type === "project_draft_card")
   const content = (
     <>
       {!fullPage && conversations()}
@@ -307,7 +313,12 @@ export function BotConversation({
                       dictionary={dictionary.data}
                       key={i}
                       message={message}
-                      disabled={busy || conflict}
+                      disabled={
+                        busy ||
+                        conflict ||
+                        (message.type === "project_draft_card" &&
+                          message !== latestProjectDraft)
+                      }
                       onAction={(action) => send.mutate(action)}
                     />
                   ))

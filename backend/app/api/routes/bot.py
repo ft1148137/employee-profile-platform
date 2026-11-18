@@ -5,9 +5,11 @@ from fastapi.responses import StreamingResponse
 
 from app.api.deps import SessionDep
 from app.authz.deps import OrgPrincipalDep
-from app.domains.bot import attachments, core, store, streaming
+from app.domains.bot import attachments, core, project_drafts, store, streaming
 from app.domains.bot.schemas import (
     Action,
+    ProjectDraftAction,
+    ProjectDraftCard,
     SessionCreated,
     SessionMessage,
     TurnInput,
@@ -79,7 +81,40 @@ def act(
     session_id: UUID,
     body: Action,
 ) -> TurnResponse:
-    return core.act(session, principal, session_id, body)
+    if (
+        isinstance(body, ProjectDraftAction)
+        and store.get_session(session, principal, session_id).channel != "web"
+    ):
+        raise store.BotSessionNotFound()
+    return core.act(session, principal, session_id, body, web_project_confirmation=True)
+
+
+@router.get("/project-drafts/feishu")
+def read_feishu_project_draft(
+    principal: OrgPrincipalDep, session: SessionDep, draft: str
+) -> ProjectDraftCard:
+    session_id, card_id = project_drafts.feishu_link(session, principal, draft)
+    cards = [
+        card
+        for message in store.list_messages(session, principal, session_id)
+        if message.role == "assistant" and isinstance(message.payload, dict)
+        for card in TurnResponse.model_validate(message.payload).messages
+    ]
+    return project_drafts.latest(cards, card_id)
+
+
+@router.post("/project-drafts/feishu")
+def confirm_feishu_project_draft(
+    principal: OrgPrincipalDep, session: SessionDep, draft: str
+) -> TurnResponse:
+    session_id, card_id = project_drafts.feishu_link(session, principal, draft)
+    return core.act(
+        session,
+        principal,
+        session_id,
+        ProjectDraftAction(action="confirm_project_draft", card_id=card_id),
+        web_project_confirmation=True,
+    )
 
 
 @router.post("/{session_id}/attachments")

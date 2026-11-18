@@ -67,6 +67,20 @@ def plan_links(message: s.Message) -> list[tuple[str, str]]:
 def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
     if isinstance(message, s.TextMessage):
         return message.text, []
+    if isinstance(message, s.ProjectDraftCard):
+        lines = ["项目草稿：" + message.project.title]
+        lines.extend(f"{field.label}：{field.value}" for field in message.fields)
+        # Leave room for the link within Feishu's card text budget.
+        if len("\n\n".join(lines)) > 2500:
+            lines[2:] = [
+                f"{field.label}：{field.value.splitlines()[0][:90]}"
+                for field in message.fields[1:]
+            ]
+        if message.web_link:
+            lines.append(
+                f"在网页核对并确认：{settings.FRONTEND_HOST.rstrip('/')}{message.web_link}"
+            )
+        return "\n\n".join(lines), []
     if isinstance(message, s.CapacityCard):
         questions = "\n".join(message.questions)
         fields = "\n".join(

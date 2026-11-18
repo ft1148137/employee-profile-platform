@@ -18,6 +18,17 @@ export function safeNext(value: unknown): string {
   return url.pathname + url.search + url.hash
 }
 
+export function authReturnPath(
+  pathname: string,
+  search: string,
+): string | undefined {
+  if (
+    pathname === "/oauth/consent" ||
+    (pathname === "/assistant" && new URLSearchParams(search).has("draft"))
+  )
+    return pathname + search
+}
+
 export function redirectToPasswordChange(err: unknown): boolean {
   if (
     err instanceof AxiosError &&
@@ -25,7 +36,11 @@ export function redirectToPasswordChange(err: unknown): boolean {
     err.response.data?.detail?.code === "password_change_required"
   ) {
     if (window.location.pathname !== "/change-password") {
-      window.location.href = `/change-password${window.location.pathname === "/oauth/consent" ? `?next=${encodeURIComponent(window.location.pathname + window.location.search)}` : ""}`
+      const next = authReturnPath(
+        window.location.pathname,
+        window.location.search,
+      )
+      window.location.href = `/change-password${next ? `?next=${encodeURIComponent(next)}` : ""}`
     }
     return true
   }

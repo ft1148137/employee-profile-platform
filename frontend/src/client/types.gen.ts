@@ -5817,6 +5817,51 @@ export type ProjectDetail = {
 }
 
 /**
+ * ProjectDraftAction
+ */
+export type ProjectDraftAction = {
+  /**
+   * Action
+   */
+  action: "confirm_project_draft"
+  /**
+   * Card Id
+   */
+  card_id: string
+}
+
+/**
+ * ProjectDraftCard
+ */
+export type ProjectDraftCard = {
+  /**
+   * Type
+   */
+  type?: "project_draft_card"
+  /**
+   * Card Id
+   */
+  card_id?: string
+  project: ProjectInput
+  /**
+   * Fields
+   */
+  fields: Array<CardField>
+  /**
+   * Actions
+   */
+  actions?: Array<ProjectDraftAction>
+  /**
+   * Project Id
+   */
+  project_id?: string | null
+  /**
+   * Web Link
+   */
+  web_link?: string | null
+}
+
+/**
  * ProjectImpact
  */
 export type ProjectImpact = {
@@ -7862,6 +7907,9 @@ export type TurnResponse = {
     | ({
         type: "capacity_card"
       } & CapacityCard)
+    | ({
+        type: "project_draft_card"
+      } & ProjectDraftCard)
     | ({
         type: "plan_card"
       } & PlanCard)
@@ -11535,6 +11583,7 @@ export type botActData = {
     | ReviewAction
     | ProfileEditAction
     | CapacityAction
+    | ProjectDraftAction
   path: {
     /**
      * Session Id
@@ -11567,6 +11616,78 @@ export type botActResponses = {
 }
 
 export type botActResponse = botActResponses[keyof botActResponses]
+
+export type botReadFeishuProjectDraftData = {
+  body?: never
+  path?: never
+  query: {
+    /**
+     * Draft
+     */
+    draft: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  url: "/api/v1/bot/sessions/project-drafts/feishu"
+}
+
+export type botReadFeishuProjectDraftErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type botReadFeishuProjectDraftError =
+  botReadFeishuProjectDraftErrors[keyof botReadFeishuProjectDraftErrors]
+
+export type botReadFeishuProjectDraftResponses = {
+  /**
+   * Successful Response
+   */
+  200: ProjectDraftCard
+}
+
+export type botReadFeishuProjectDraftResponse =
+  botReadFeishuProjectDraftResponses[keyof botReadFeishuProjectDraftResponses]
+
+export type botConfirmFeishuProjectDraftData = {
+  body?: never
+  path?: never
+  query: {
+    /**
+     * Draft
+     */
+    draft: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  url: "/api/v1/bot/sessions/project-drafts/feishu"
+}
+
+export type botConfirmFeishuProjectDraftErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type botConfirmFeishuProjectDraftError =
+  botConfirmFeishuProjectDraftErrors[keyof botConfirmFeishuProjectDraftErrors]
+
+export type botConfirmFeishuProjectDraftResponses = {
+  /**
+   * Successful Response
+   */
+  200: TurnResponse
+}
+
+export type botConfirmFeishuProjectDraftResponse =
+  botConfirmFeishuProjectDraftResponses[keyof botConfirmFeishuProjectDraftResponses]
 
 export type botUploadAttachmentData = {
   body: Body_bot_upload_attachment

@@ -245,6 +245,8 @@ def list_workloads(
     department_id: UUID | None = None,
     from_week: date | None = None,
     weeks: int = 8,
+    *,
+    employee_name: str | None = None,
 ) -> WorkloadList:
     require_enabled(principal, session)
     if not principal.is_org_admin and not principal.managed_department_ids:
@@ -268,6 +270,10 @@ def list_workloads(
         ):
             raise CapacityNotFound()
         query = query.where(Employee.department_id == department_id)
+    if employee_name is not None:
+        query = query.where(
+            func.lower(Employee.display_name) == func.lower(employee_name)
+        )
     rows = list(
         session.exec(
             query.order_by(

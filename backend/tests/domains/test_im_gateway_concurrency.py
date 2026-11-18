@@ -13,6 +13,7 @@ from sqlmodel import Session, create_engine
 
 from app.domains.bot import schemas as s
 from app.domains.im import actions, gateway
+from app.worker import monitor
 from tests.domains.test_im_conversation import setup
 from tests.domains.test_im_gateway import event
 
@@ -219,6 +220,8 @@ def test_maintenance_pool_wait_does_not_block_loop(
         elif path == "notify":
             operation = notifications.send_pending(small_pool, {})
         else:
+            # Exercise the database wait during startup without alerting other test tenants.
+            monkeypatch.setattr(monitor, "PROCESS_STARTED_AT", now)
             monkeypatch.setattr(g, "refresh", no_refresh)
             operation = g.run()
         held = small_pool.connect()

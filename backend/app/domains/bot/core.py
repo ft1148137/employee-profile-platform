@@ -5,12 +5,13 @@ from time import monotonic
 from uuid import UUID
 
 from pydantic import JsonValue
-from sqlmodel import Session
+from sqlmodel import Session, select
 
+from app.authz.deps import get_org_principal
 from app.authz.principal import Principal
 from app.domains import manager_tools
 from app.domains.base import utc_now
-from app.domains.bot import attachments, delivery, store, tools
+from app.domains.bot import attachments, delivery, project_drafts, store, tools
 from app.domains.bot import schemas as s
 from app.domains.bot.admission import (
     BotBusy,
@@ -30,7 +31,9 @@ from app.domains.inbox import service as inbox
 from app.domains.model import pi_client
 from app.domains.model.client import ModelServiceError, ModelUnavailable
 from app.domains.model.service import model_config, read_setting, supports_images
+from app.domains.org.models import Organization
 from app.domains.review import direct
+from app.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +86,8 @@ def turn(
     started = monotonic()
     steps: list[s.ToolStep] = []
     cards: list[s.Message] = []
+    project_draft_attempted = False
+    project_draft_error: str | None = None
     manual_fallback = False
     # Keep the scope that admitted inherited state, not a later persistence snapshot.
     scope = store.session_scope(db, p)
@@ -95,6 +100,7 @@ def turn(
         scope["read_employee_ids"] = read_ids
 
     def call(name: str, args: dict[str, JsonValue]) -> JsonValue:
+        nonlocal project_draft_attempted, project_draft_error
         title = tools.TITLES.get(
             name,
             tools.COORDINATION_TITLES.get(
@@ -126,10 +132,18 @@ def turn(
                     if isinstance(ids, list):
                         report_reads({str(id) for id in ids})
         ok = not (isinstance(result, dict) and "error" in result)
+        if name == "coordination" and args.get("function") == "prepare_project_draft":
+            project_draft_attempted = True
+            error = result.get("error") if isinstance(result, dict) else None
+            project_draft_error = error if isinstance(error, str) else None
         steps.append(s.ToolStep(name=title, ok=ok))
         if stream:
             stream.on_tool(title, "end", ok)
         return result
+
+    def on_text(text: str) -> None:
+        if stream and not project_draft_attempted:
+            stream.on_text(text)
 
     try:
         visible_scope = dict(scope)
@@ -186,7 +200,9 @@ def turn(
                 input=tools.redact_text(model_input),
                 tools=tools.definitions(p, db=db, channel=session.channel),
                 on_tool_call=call,
-                stream=replace(stream, on_tool=lambda *_: None) if stream else None,
+                stream=replace(stream, on_text=on_text, on_tool=lambda *_: None)
+                if stream
+                else None,
             )
             if stream:
                 stream.check()
@@ -194,11 +210,12 @@ def turn(
             if result.stop_reason != "stop":
                 raise ModelUnavailable()
             store.save_scoped_state(db, p, session, result.session_state, scope=scope)
-            messages: list[s.Message] = (
-                [s.TextMessage(text="\n".join(filter(None, [notice, result.text])))]
-                if result.text or notice
-                else []
-            )
+            messages: list[s.Message] = []
+            reply_text = project_draft_error if project_draft_attempted else result.text
+            if notice or reply_text:
+                messages.append(
+                    s.TextMessage(text="\n".join(filter(None, [notice, reply_text])))
+                )
             messages.extend(cards)
             if stream:
                 stream.check()
@@ -260,7 +277,20 @@ def act(
     *,
     client_name: str = "内置机器人",
     commit: bool = True,
+    web_project_confirmation: bool = False,
 ) -> s.TurnResponse:
+    if isinstance(action, s.ProjectDraftAction):
+        if not web_project_confirmation:
+            raise project_drafts.DraftUnavailable()
+        db.exec(
+            select(Organization)
+            .where(Organization.id == p.org_id)
+            .with_for_update(read=True)
+        ).one()
+        user = db.get(User, p.user_id, populate_existing=True) if p.user_id else None
+        if user is None or not user.is_active:
+            raise store.BotSessionNotFound()
+        p = get_org_principal(p.org_id, user, db)
     session = store.get_session(db, p, session_id, lock=True)
     if session.lease_until and session.lease_until > utc_now():
         return s.TurnResponse(messages=[s.TextMessage(text="忙，请稍后再试")])
@@ -271,7 +301,9 @@ def act(
         for card in s.TurnResponse.model_validate(message.payload).messages
     ]
     messages: list[s.Message]
-    if isinstance(action, s.CapacityAction):
+    if isinstance(action, s.ProjectDraftAction):
+        messages = [project_drafts.confirm(db, p, session, cards, action)]
+    elif isinstance(action, s.CapacityAction):
         messages = [capacity.act(db, p, session, cards, action)]
     elif isinstance(action, s.ProfileEditAction):
         edit_card = next(

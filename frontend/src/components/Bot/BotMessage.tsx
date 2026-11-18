@@ -6,6 +6,7 @@ import type {
   Claim,
   PlanCard,
   ProfileEditAction,
+  ProjectDraftAction,
   QuestionAction,
   RequestAction,
   ReviewAction,
@@ -15,6 +16,7 @@ import { levelLabel } from "@/components/Profile/fields"
 import { RequestReviewers } from "@/components/Profile/RequestReviewers"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
 import { Button } from "@/components/ui/button"
+import { ProjectDraftMessage } from "./ProjectDraftMessage"
 
 export type BotAction =
   | RequestAction
@@ -22,6 +24,7 @@ export type BotAction =
   | ReviewAction
   | ProfileEditAction
   | CapacityAction
+  | ProjectDraftAction
 const actionLabels = {
   confirm_submit: "确认提交",
   continue_editing: "继续修改",
@@ -49,6 +52,14 @@ export function BotMessage({
   onAction: (action: BotAction) => void
 }) {
   const [answer, setAnswer] = useState("")
+  if (message.type === "project_draft_card")
+    return (
+      <ProjectDraftMessage
+        card={message}
+        disabled={disabled}
+        onConfirm={onAction}
+      />
+    )
   const displayLevel = (claim: Claim | null | undefined, key: string) =>
     claim?.level_name ??
     (claim?.level
