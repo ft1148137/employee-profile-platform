@@ -131,7 +131,10 @@ def respond(
 
 
 def rows(db: Session, model: Any, demand: Any) -> list[Any]:
-    return list(db.exec(select(model).where(model.org_id == demand.org_id)).all())
+    statement = select(model).where(model.org_id == demand.org_id)
+    if hasattr(model, "demand_id"):
+        statement = statement.where(model.demand_id == demand.id)
+    return list(db.exec(statement.order_by(model.created_at, model.id)).all())
 
 
 def proposal_row(db: Session, demand: Any) -> CapacityProposal:
