@@ -2,7 +2,7 @@
 
 核对基线为 `master 236b68fed78ad969bba73e6fc2b71e3a41b1c778`（2026-11-18，北京时间），包含 C5 / PR #367。父 issue 为 [NERE-639](mention://issue/01a1de41-e0de-76f4-a626-40c9e9b7ec68)，记录任务为 NERE-787。[基线提交检查](https://github.com/ft1148137/employee-profile-platform/commit/236b68fed78ad969bba73e6fc2b71e3a41b1c778/checks)
 
-已有自动化用例的结果见下表。Reviewer 在同一基线的第 2 阶段审查中发现四项业务缺口，相关验收行保留待修结论，待补修复用例和 CI 结果。真实模型兜底后达标，原推荐仍有未达标案例。发布准备的证据覆盖源码许可和自签 HTTPS，制品再分发核验、公网证书实测和公开发布仍待处理。M9.1 人工回归见文末。
+已有自动化用例的结果见下表。Reviewer 在同一基线的第 2 阶段审查中发现四项业务缺口。已承诺分配的开始日期修复已通过，普通答复轮次、确认卡审批来源和借调跨方拒绝三项待补证据。真实模型兜底后达标，原推荐仍有未达标案例。发布准备的证据覆盖源码许可和自签 HTTPS，制品再分发核验、公网证书实测和公开发布仍待处理。M9.1 人工回归见文末。
 
 ## 依据与交付
 
@@ -26,6 +26,7 @@
 | NERE-786 C5 | [#367](https://github.com/ft1148137/employee-profile-platform/pull/367) 已生效安排的正式变更 | [后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44239173978)、[网页](https://github.com/ft1148137/employee-profile-platform/actions/runs/44239173900) |
 | NERE-788 隐私修复 | [#364](https://github.com/ft1148137/employee-profile-platform/pull/364)、[#365](https://github.com/ft1148137/employee-profile-platform/pull/365) 自由文本与升级前会话保护 | [#364 后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44214095349)、[#365 后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44217580596) |
 | NERE-789 接力修复 | [#362](https://github.com/ft1148137/employee-profile-platform/pull/362) 全程参与者与接力共存 | [后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44211869389) |
+| NERE-795 开始日期修复 | [#369](https://github.com/ft1148137/employee-profile-platform/pull/369) 已承诺段的开始日期走正式变更，合并提交 `65acbc0f` | [后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44242388416)、[网页](https://github.com/ft1148137/employee-profile-platform/actions/runs/44242388420) |
 
 ## 父 issue 验收逐条对照
 
@@ -40,7 +41,7 @@
 | 5. 方案被拒后待重新规划 | [test_m9_proposal.py](../backend/tests/api/routes/test_m9_proposal.py) 的 `test_rejection_and_withdraw_are_idempotent`、`test_rejection_reason_limit_and_revision`；[m9-proposal.spec.ts](../frontend/tests/m9-proposal.spec.ts) 的「拒绝理由必填，拒绝后可重新规划且释放预占」 | #357、#358 CI 通过。A 方须填拒绝理由，初次提议失败并释放预占，需求回到「待答复」。B 方可点「重新规划」。变更被拒时原承诺继续生效 |
 | 6. 审批后通知、审计和分配 | [test_m9_proposal.py](../backend/tests/api/routes/test_m9_proposal.py) 的 `test_commit_audit_notifications_and_privacy`；[m9-proposal.spec.ts](../frontend/tests/m9-proposal.spec.ts) 的「按方案答复预占，接受后逐段生效并通知员工」 | #357、#358 CI 通过。答复、接受和分配有审计，A、B 和员工有站内通知，同一员工多段逐段落库。A 方无 B 方个人标识。本项验证站内通知，真实飞书投递未重测 |
 | 7. 已生效安排走正式变更 | [test_m9_change.py](../backend/tests/api/routes/test_m9_change.py) 的 `test_switch_person_changes_commitment_only_after_acceptance`、`test_changes_replace_only_different_segments`、`test_change_can_add_a_person_then_remove_them`、`test_change_can_end_before_the_original_window`、`test_direct_edits_of_a_committed_segment_require_a_change`；[m9-change.spec.ts](../frontend/tests/m9-change.spec.ts) 的「资源方提交换人，需求方匿名确认后替换原分配」 | #367 CI 通过。B 发提议、A 比较匿名的前后安排后接受。相同段保留，变化段在同一事务取消或新建，包含投入变化。拒绝、过期或复核失败时保留原承诺。延期审批、标记完成、取消离职员工分配及旧手工流程沿用原入口 |
-| 7a. 已承诺分配的开始日期须经正式变更 | [NERE-795](mention://issue/01a1ed06-462a-7f35-9e39-c236a029da19)，第 2 阶段审查 | **待修。** 基线 `236b68fe` 上，B 方可在网页直接推迟已承诺段的开始日期，提前释放投入。待核对直接 PATCH 返回 409 且原段、版本、周负荷和业务事件保持原值，网页引导正式变更，A 方接受后才替换；旧手工分配仍可调整 |
+| 7a. 已承诺分配的开始日期须经正式变更 | [test_m9_change.py](../backend/tests/api/routes/test_m9_change.py) 的 `test_committed_start_moves_to_second_week_only_after_acceptance`；[m9-change.spec.ts](../frontend/tests/m9-change.spec.ts) 的「已承诺分配从行内发起变更，旧手工分配仍能直接保存开始日期」 | 基线 `236b68fe` 上，B 方可直接推迟已承诺段的开始日期，提前释放投入。**#369 修复，后端和 Playwright 用例均通过。** 直接 PATCH 返回 409，原段、需求详情与版本、业务事件和周负荷保持原值。A 方接受正式变更后才替换该段并释放第一周投入。网页已承诺行提供「发起开始日期变更」，手工分配仍可直接保存开始日期 |
 | 8. 借调须原部门经理和本人同意，拒绝保护及关系不变 | [test_m9_borrow.py](../backend/tests/api/routes/test_m9_borrow.py) 的 `test_borrow_consent_order_and_projections`、`test_decline_is_private_and_leaves_profiles_unchanged`、`test_borrow_failure_releases_holds`；[m9-borrow.spec.ts](../frontend/tests/m9-borrow.spec.ts) 的「借调双方同意后生成匿名分配」「本人不同意后仅本人看得到理由」 | #366 CI 通过。B 提议后须原部门经理选人、本人同意、A 接受，最后一方同意时生成分配。部门归属、直属上级和画像审批关系沿用原关系；后端断言核对原部门与画像审批路由。本人不同意时其他方只看到「借调未达成」，本人理由不进审计详情，画像、证据、找人、覆盖率和导出结果保持原样。拒绝不用于考核，产品没有考核功能。B 方在生效分配里仍看到匿名「借调 1 人」、投入和日期。跨方拒绝见 8a |
 | 8a. 借调拒绝遵守一人一方 | [NERE-794](mention://issue/01a1ed06-38f0-73d2-91c1-f0efc88cf50a)，第 2 阶段审查 | **待修。** 基线 `236b68fe` 上，兼管 A 方的原部门经理在选人后仍可代表 A 方拒绝，导致整单预占释放。待核对已选人的原部门经理和已同意的员工均不能跨方拒绝，越权尝试后审批、预占、事件和需求版本保持原值，独立 A 方仍可拒绝 |
 | 9. 发布准备 | [许可证核验](licenses.md)、[HTTPS 实测](m9-https-test.md)；[test_https_config.py](../deploy/test_https_config.py) 的 `test_project_isolation_and_streaming`、`test_acme_http_challenge_and_storage`、`test_acme_port_validation`；[贡献指南](../CONTRIBUTING.md)、[发布内容草稿](release-draft.md) | #352、#353、#356 门禁通过。许可证和发布文档按原报告验收；HTTPS 配置测试及浏览器实测采用 R2 本地证据，配置测试尚未接入 CI。发布边界见下文 |
