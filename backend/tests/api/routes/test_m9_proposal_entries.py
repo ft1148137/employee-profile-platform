@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from app.authz.principal import Principal
+from app.core.db import engine
 from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
 from app.domains.bot import core, store, tools
@@ -22,15 +23,18 @@ from app.domains.capacity.calendar import loads
 from app.domains.capacity.models import (
     CapacityApproval,
     CapacityAssignment,
+    CapacityDemand,
     CapacityDemandEvent,
     CapacitySetting,
     DemandEventKind,
+    DemandStatus,
 )
 from app.domains.capacity.settings import CapacityForbidden
 from app.domains.im import actions as im_actions
 from app.domains.im.adapters.base import Event
 from app.domains.im.models import ImAction
 from app.domains.im.rendering import render
+from app.domains.inbox.models import InboxItem
 from app.domains.planning import service
 from app.domains.planning.models import PlanningSnapshot
 from app.domains.planning.tools import (
@@ -172,6 +176,128 @@ def test_mcp_can_release_pending_proposal_without_accepting(
         },
     )
     assert duplicate.get("isError") and counts(db, demand) == before
+
+
+@pytest.mark.parametrize("action", ["follow_up", "withdraw"])
+def test_mcp_expired_reject_and_withdraw_commit_expiry(
+    case: tuple, client: TestClient, db: Session, action: str
+) -> None:
+    reply = propose(client, case)
+    assert reply.status_code == 200, reply.text
+    demand_rev = reply.json()["revision"]
+    prop = reply.json()["proposal"]
+    _, people, _, demand = case
+    row = proposal_row(db, demand)
+    row.hold_expires_at = utc_now() - timedelta(seconds=1)
+    db.add(row)
+    db.commit()
+
+    before_events = {e.id for e in rows(db, CapacityDemandEvent, demand)}
+    before_notices = {n.id for n in rows(db, InboxItem, demand)}
+    before_approvals = len(rows(db, CapacityApproval, demand))
+
+    unauthorized_headers = initialize(
+        client, token_for(db, people["E02"])[0], name="Synthetic unauthorized client"
+    )
+    headers = initialize(
+        client, token_for(db, people["E01"])[0], name="Synthetic C3 client"
+    )
+    args = {
+        "demand_id": str(demand.id),
+        "action": action,
+        "revision": demand_rev,
+        "text": "迟到的拒绝" if action == "follow_up" else None,
+    }
+    denied = call(client, unauthorized_headers, "respond_demand", args)
+    assert denied.get("isError")
+    assert json.loads(denied["content"][0]["text"])["status"] == 404
+
+    with Session(engine) as verify_db:
+        assert proposal_row(verify_db, demand).status == "pending"
+        assert {
+            e.id for e in rows(verify_db, CapacityDemandEvent, demand)
+        } == before_events
+        assert {n.id for n in rows(verify_db, InboxItem, demand)} == before_notices
+        before_audits = {a.id for a in rows(verify_db, AuditEvent, demand)}
+
+    result = call(client, headers, "respond_demand", args)
+    assert result.get("isError")
+    payload = json.loads(result["content"][0]["text"])
+    assert payload["status"] == 409
+    assert payload["detail"]["code"] == "proposal_expired"
+
+    with Session(engine) as verify_db:
+        updated = proposal_row(verify_db, demand)
+        assert updated.status == "failed"
+        assert updated.fail_reason == "expired"
+        assert updated.revision == prop["revision"] + 1
+        saved_demand = verify_db.get_one(CapacityDemand, demand.id)
+        assert saved_demand.status == DemandStatus.SUBMITTED
+        assert saved_demand.revision == demand_rev + 1
+        assert saved_demand.committed_start_date is None
+        assert saved_demand.committed_end_date is None
+        assert not rows(verify_db, CapacityAssignment, demand)
+        assert len(rows(verify_db, CapacityApproval, demand)) == before_approvals
+        assert (
+            loads(verify_db, demand.org_id, [people["E04"].id], demand.window_start, 2)[
+                people["E04"].id
+            ][0].hold_percent
+            == 0
+        )
+
+        new_events = [
+            e
+            for e in rows(verify_db, CapacityDemandEvent, demand)
+            if e.id not in before_events
+        ]
+        assert len(new_events) == 1
+        assert new_events[0].kind == DemandEventKind.PROPOSAL_FAILED
+        assert new_events[0].text == "方案已过期，需要重新规划"
+        assert new_events[0].via == "mcp"
+
+        new_notices = [
+            n for n in rows(verify_db, InboxItem, demand) if n.id not in before_notices
+        ]
+        assert {n.message for n in new_notices} == {"方案已过期，需要重新规划"}
+        assert {demand.requester_user_id, updated.proposed_by_user_id} <= {
+            n.recipient_user_id for n in new_notices
+        }
+
+        new_audits = [
+            a for a in rows(verify_db, AuditEvent, demand) if a.id not in before_audits
+        ]
+        tool_audits = [a for a in new_audits if a.action == "mcp.tool_called"]
+        biz_audits = [a for a in new_audits if a.action != "mcp.tool_called"]
+        assert len(tool_audits) == 1
+        assert tool_audits[0].target_id == "respond_demand"
+        assert len(biz_audits) == 1
+        assert biz_audits[0].action == "capacity.demand_follow_up"
+        assert biz_audits[0].details["fail_reason"] == "expired"
+        assert biz_audits[0].details["via"] == "mcp"
+        assert biz_audits[0].details["proposal_id"] == prop["id"]
+
+        before_counts = counts(verify_db, demand)
+        before_notice_ids = {n.id for n in rows(verify_db, InboxItem, demand)}
+        before_audit_ids = {a.id for a in rows(verify_db, AuditEvent, demand)}
+
+    replay = call(client, headers, "respond_demand", args)
+    assert replay.get("isError")
+    replay_payload = json.loads(replay["content"][0]["text"])
+    assert replay_payload["status"] == 409
+    assert replay_payload["detail"]["code"] == "proposal_decided"
+
+    with Session(engine) as replay_db:
+        assert counts(replay_db, demand) == before_counts
+        assert {n.id for n in rows(replay_db, InboxItem, demand)} == before_notice_ids
+        assert proposal_row(replay_db, demand).status == "failed"
+        replay_audits = [
+            a
+            for a in rows(replay_db, AuditEvent, demand)
+            if a.id not in before_audit_ids
+        ]
+        assert len(replay_audits) == 1
+        assert replay_audits[0].action == "mcp.tool_called"
+        assert replay_audits[0].target_id == "respond_demand"
 
 
 @pytest.mark.parametrize("channel", ["web", "feishu"])

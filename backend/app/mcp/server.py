@@ -33,6 +33,7 @@ from app.domains.access_token.service import get_setting
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
 from app.domains.capacity.models import RequesterPolicy
+from app.domains.capacity.proposal import ProposalFailed
 from app.domains.capacity.settings import read_settings
 from app.domains.capacity.tools import CAPACITY_TOOLS
 from app.domains.change_request.models import ReviewVia
@@ -75,6 +76,15 @@ def available_tools(principal: Principal, session: Session) -> dict[str, Employe
 class McpRequestError(HTTPException):
     def __init__(self, status: int, message: str) -> None:
         super().__init__(status, message)
+
+
+def _http_error_message(tool_name: str, exc: HTTPException) -> str:
+    if tool_name in {t.name for t in COORDINATION_TOOLS}:
+        return "操作未完成，请检查权限或参数"
+    return json.dumps(
+        {"status": exc.status_code, "detail": exc.detail},
+        ensure_ascii=False,
+    )
 
 
 async def list_tools(
@@ -192,15 +202,23 @@ def invoke(
                 if params.name in {t.name for t in COORDINATION_TOOLS}
                 else validation_message(exc)
             )
-        except HTTPException as exc:
-            message = (
-                "操作未完成，请检查权限或参数"
-                if params.name in {t.name for t in COORDINATION_TOOLS}
-                else json.dumps(
-                    {"status": exc.status_code, "detail": exc.detail},
-                    ensure_ascii=False,
+        except ProposalFailed as exc:
+            # Commit legitimate domain state transitions (e.g. proposal expiry) before returning the error.
+            try:
+                session.commit()
+                return types.CallToolResult(
+                    is_error=True,
+                    content=[
+                        types.TextContent(
+                            type="text", text=_http_error_message(params.name, exc)
+                        )
+                    ],
                 )
-            )
+            except Exception:
+                # Never let SDK exception logging include SQL, credentials or input text.
+                message = "操作失败，请稍后重试"
+        except HTTPException as exc:
+            message = _http_error_message(params.name, exc)
         except Exception:
             # Never let SDK exception logging include SQL, credentials or input text.
             message = "操作失败，请稍后重试"
