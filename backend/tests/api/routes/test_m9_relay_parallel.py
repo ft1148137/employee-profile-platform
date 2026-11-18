@@ -1,5 +1,5 @@
 from copy import deepcopy
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,6 +10,7 @@ from app.domains.org.models import Employee
 from app.domains.planning.validator import validate
 from app.domains.profile.models import ProfileVersion
 from tests.api.routes.test_m7_planning_simulator import START, data, person
+from tests.api.routes.test_m7_planning_validator import planning_case as planning_case
 from tests.api.routes.test_m7_planning_validator import planning_setup as planning_setup
 
 APPROVAL = "需求方同意分阶段交付"
@@ -143,6 +144,35 @@ def test_rest_parallel_relay(
         assert result["verdict"] == "feasible"
         assert result["summary"]["conditions"] == []
         assert APPROVAL not in result["summary"]["approvers"]
+
+
+def test_rest_short_assignment_starting_at_minimum_date(
+    planning_case: tuple, client: TestClient
+) -> None:
+    url, employees, auth, _, case = planning_case
+    assignees = [
+        {
+            "employee_id": str(employees["E04"].id),
+            "allocation_percent": 50,
+            "start_date": date.min.isoformat(),
+            "end_date": (date.min + timedelta(days=1)).isoformat(),
+        }
+    ]
+    response = client.post(
+        f"{url}/planning/cases/{case['id']}/options",
+        headers=auth["b"],
+        json={"assignees": assignees},
+    )
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["params"]["assignees"] == assignees
+    assert result["verdict"] == "infeasible"
+    assert result["summary"]["finish_date"] == assignees[0]["end_date"]
+    assert result["summary"]["covered_headcount"] == 0
+    codes = {finding["code"] for finding in result["findings"]}
+    assert {"outside_window", "headcount_gap"} <= codes
+    assert "phased" not in codes
+    assert APPROVAL not in result["summary"]["approvers"]
 
 
 @pytest.mark.parametrize(

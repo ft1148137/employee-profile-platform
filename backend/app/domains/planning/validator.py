@@ -201,16 +201,16 @@ def validate(
             (assignee["start_date"], assignee["end_date"])
         )
     periods = sorted({period for parts in segments.values() for period in parts})
-    reachable_ends: set[date] = set()
+    reachable_ends: set[int] = set()
     relay = False
     # Keep all reachable phase ends; parallel work must not hide a relay chain.
     for start_text, end_text in periods:
         start, end = date.fromisoformat(start_text), date.fromisoformat(end_text)
         if start > end:
             continue
-        handoff = start - timedelta(days=1) in reachable_ends
+        handoff = start.toordinal() - 1 in reachable_ends
         if handoff or start_text <= demand["window_start"]:
-            reachable_ends.add(end)
+            reachable_ends.add(end.toordinal())
             relay = relay or (handoff and end_text >= demand["window_end"])
     phased = phased or relay or any(len(parts) > 1 for parts in segments.values())
     # The simulator adds its condition after checking the individual phases.
