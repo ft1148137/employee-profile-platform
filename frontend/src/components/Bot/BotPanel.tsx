@@ -151,7 +151,7 @@ export function BotConversation({
             created_at: new Date().toISOString(),
           }
     },
-    onSuccess: (result, _input, startedAt) => {
+    onSuccess: (result, input, startedAt) => {
       if (selection.current !== startedAt) return
       if (!result) {
         setMessages((previous) => previous.slice(0, -1))
@@ -170,12 +170,7 @@ export function BotConversation({
       client.invalidateQueries({ queryKey: ["change-requests", orgId] })
       client.invalidateQueries({ queryKey: ["inbox", orgId] })
       client.invalidateQueries({ queryKey: ["profile", orgId] })
-      if (
-        result.response.messages.some(
-          (message) =>
-            message.type === "project_draft_card" && message.project_id,
-        )
-      )
+      if ("action" in input && input.action === "confirm_project_draft")
         client.invalidateQueries({ queryKey: ["capacity", orgId] })
     },
     onError: (error, _input, startedAt) => {
