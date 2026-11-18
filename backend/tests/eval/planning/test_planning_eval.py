@@ -182,11 +182,30 @@ def _setup(
         },
     )
     db.add(capability)
+    extras = {
+        extra["key"]: CapabilityDefinition(
+            org_id=org.id,
+            schema_version_id=schema.id,
+            key=extra["key"],
+            name=extra["name"],
+            level_rubric={
+                "levels": [{"key": level, "label": level} for level in extra["levels"]]
+            },
+        )
+        for extra in case.get("extra_capabilities", [])
+    }
+    db.add_all(extras.values())
     db.flush()
     start = this_week(db, org.id)
     for person in case["people"]:
         employee = employees[person["code"]]
+        claims = [
+            (extras[key].id, level)
+            for key, level in person.get("extra_levels", {}).items()
+        ]
         if person.get("level"):
+            claims.insert(0, (capability.id, person["level"]))
+        if claims:
             db.add(
                 ProfileVersion(
                     org_id=org.id,
@@ -199,15 +218,16 @@ def _setup(
                         "claims": [
                             {
                                 "id": str(uuid4()),
-                                "capability_definition_id": str(capability.id),
+                                "capability_definition_id": str(capability_id),
                                 "statement": "合成能力判断",
-                                "level": person["level"],
+                                "level": level,
                                 "assessment_status": "confirmed",
                                 "confidence": None,
                                 "explanation": None,
                                 "generated_by": {"actor_type": "user"},
                                 "evidence": [],
                             }
+                            for capability_id, level in claims
                         ]
                     },
                 )
@@ -247,6 +267,10 @@ def _setup(
         capability_key=capability.key,
         capability_name=capability.name,
         minimum_level=demand_config.get("minimum_level", "routine"),
+        extra_capabilities=[
+            {field: extra[field] for field in ("key", "minimum_level", "required")}
+            for extra in case.get("extra_capabilities", [])
+        ],
         headcount=demand_config.get("headcount", 1),
         allocation_percent=demand_config.get("allocation_percent", 50),
         window_start=start,
@@ -317,6 +341,10 @@ def _exercise(db: Session, client: TestClient, case: dict) -> dict:
             assert actual["verdict"] == expected["verdict"]
             for code in expected.get("findings", []):
                 assert code in {finding["code"] for finding in actual["findings"]}
+            if "assignees" in expected:
+                assert [
+                    row["employee_id"] for row in actual["params"]["assignees"]
+                ] == [str(employees[code].id) for code in expected["assignees"]]
         for kind in case["expect"].get("absent_kinds", []):
             assert kind not in options
         if "newcomer_required" in case["expect"]:

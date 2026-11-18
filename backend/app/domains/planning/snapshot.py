@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from typing import Any
 from uuid import UUID
 
+from pydantic import JsonValue
 from sqlmodel import Session, col, select
 
 from app.authz.policies import employee_scope_clause
@@ -27,6 +28,47 @@ from app.domains.capacity.models import (
 from app.domains.org.models import Department, Employee, EmploymentStatus
 from app.domains.org.service import managed_scope
 from app.domains.profile.models import ProfileVersion
+
+
+def _level_order(capability: CapabilityDefinition | None) -> list[str]:
+    rubric = capability.level_rubric if capability else None
+    raw_levels = (rubric or {}).get("levels", [])
+    return (
+        [str(v["key"]) for v in raw_levels if isinstance(v, dict) and "key" in v]
+        if isinstance(raw_levels, list)
+        else []
+    )
+
+
+def _extra_capabilities(
+    session: Session, org_id: UUID, demand: CapacityDemand
+) -> list[dict[str, JsonValue]]:
+    if not demand.extra_capabilities:
+        return []
+    keys = [item["key"] for item in demand.extra_capabilities]
+    schema = get_schema(session, org_id)
+    definitions = {
+        capability.key: capability
+        for capability in session.exec(
+            select(CapabilityDefinition).where(
+                CapabilityDefinition.org_id == org_id,
+                CapabilityDefinition.schema_version_id == schema.id,
+                col(CapabilityDefinition.key).in_(keys),
+            )
+        )
+    }
+    extras: list[dict[str, JsonValue]] = []
+    for index, item in enumerate(demand.extra_capabilities, 1):
+        capability = definitions.get(str(item["key"]))
+        levels: list[JsonValue] = [*_level_order(capability)]
+        extras.append(
+            {
+                **item,
+                "name": capability.name if capability else f"额外能力 {index}",
+                "levels": levels,
+            }
+        )
+    return extras
 
 
 def external_departments(
@@ -83,7 +125,7 @@ def _inputs(
     demand: CapacityDemand,
 ) -> tuple[
     list[Employee],
-    dict[UUID, tuple[str | None, UUID | None]],
+    dict[UUID, dict[str, str | None]],
     dict[str, Any],
     list[dict[str, object]],
     list[CapacityAssignment],
@@ -128,22 +170,21 @@ def _inputs(
             )
         ).all()
     }
-    claims: dict[UUID, tuple[str | None, UUID | None]] = {}
+    extras = _extra_capabilities(session, principal.org_id, demand)
+    relevant_keys = {demand.capability_key, *(str(item["key"]) for item in extras)}
+    claims: dict[UUID, dict[str, str | None]] = {}
     for eid, version in latest.items():
         raw = version.snapshot.get("claims", [])
         if isinstance(raw, list):
             for claim in raw:
-                if (
-                    isinstance(claim, dict)
-                    and keys.get(str(claim.get("capability_definition_id")))
-                    == demand.capability_key
-                ):
+                if not isinstance(claim, dict):
+                    continue
+                key = keys.get(str(claim.get("capability_definition_id")))
+                if key is not None and key in relevant_keys:
                     level = claim.get("level")
-                    claims[eid] = (
-                        level if isinstance(level, str) else None,
-                        version.id,
+                    claims.setdefault(eid, {}).setdefault(
+                        key, level if isinstance(level, str) else None
                     )
-                    break
     weeks = list(
         session.exec(
             select(CapacityWeek).where(
@@ -210,6 +251,7 @@ def _inputs(
         "current_week": current_week.isoformat(),
         "revision": demand.revision,
         **({"change": True} if commitment is not None else {}),
+        **({"extra_capabilities": extras} if extras else {}),
         "candidates": [
             (
                 str(e.id),
@@ -269,7 +311,9 @@ def _inputs(
 
 def _fingerprint(raw_inputs: dict[str, Any]) -> str:
     ordered = {
-        key: sorted(value) if isinstance(value, list) else value
+        key: sorted(value)
+        if isinstance(value, list) and key != "extra_capabilities"
+        else value
         for key, value in raw_inputs.items()
     }
     return hashlib.sha256(json.dumps(ordered, sort_keys=True).encode()).hexdigest()
@@ -312,13 +356,7 @@ def build(
             CapabilityDefinition.key == demand.capability_key,
         )
     ).first()
-    rubric = capability.level_rubric if capability else None
-    raw_levels = rubric.get("levels", []) if rubric else []
-    levels = (
-        [str(v["key"]) for v in raw_levels if isinstance(v, dict) and "key" in v]
-        if isinstance(raw_levels, list)
-        else []
-    )
+    extras = raw.get("extra_capabilities", [])
     today = utc_now().date()
     data = {
         "demand": {
@@ -327,6 +365,14 @@ def build(
             "change": raw.get("change", False),
             "capability_key": demand.capability_key,
             "minimum_level": demand.minimum_level,
+            **(
+                {
+                    "capability_name": demand.capability_name,
+                    "extra_capabilities": extras,
+                }
+                if extras
+                else {}
+            ),
             "headcount": demand.headcount,
             "allocation_percent": demand.allocation_percent,
             "window_start": demand.window_start.isoformat(),
@@ -342,7 +388,17 @@ def build(
             {
                 "employee_id": str(e.id),
                 "department_id": str(e.department_id),
-                "level": claims.get(e.id, (None, None))[0],
+                "level": claims.get(e.id, {}).get(demand.capability_key),
+                **(
+                    {
+                        "extra_levels": {
+                            item["key"]: claims.get(e.id, {}).get(item["key"])
+                            for item in extras
+                        }
+                    }
+                    if extras
+                    else {}
+                ),
                 "in_basis": e.id in basis_ids,
                 "newcomer": (0 <= (today - e.hire_date).days <= 365)
                 if e.hire_date
@@ -373,7 +429,7 @@ def build(
         "rules": {
             "fresh_days": FRESH_DAYS,
             "minimum_percent": 10,
-            "levels": levels,
+            "levels": _level_order(capability),
             "current_week": raw["current_week"],
         },
     }

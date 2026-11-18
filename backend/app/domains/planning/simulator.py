@@ -22,10 +22,14 @@ def _ranked(
     levels = data["rules"]["levels"]
     minimum = demand["minimum_level"]
     weeks = _weeks(start, end, date.fromisoformat(data["rules"]["current_week"]))
-    ranked = []
+    ranked: list[tuple[dict[str, Any], int, int]] = []
     for person in data["candidates"]:
         level = person["level"]
-        if not person["in_basis"] or person["employment_status"] != "active":
+        if (
+            not person["in_basis"]
+            or person["employment_status"] != "active"
+            or (level is None and demand.get("extra_capabilities"))
+        ):
             continue
         if (
             level is not None
@@ -37,6 +41,15 @@ def _ranked(
             )
         ):
             continue
+        extras = list(validator.extra_capability_matches(demand, person))
+        if any(
+            capability["required"] and not matches for capability, matches in extras
+        ):
+            continue
+        optional_matches = sum(
+            matches is True and not capability["required"]
+            for capability, matches in extras
+        )
         loads = {date.fromisoformat(w["week_start"]): w for w in person["weeks"]}
         available = min(
             (
@@ -49,8 +62,9 @@ def _ranked(
             ),
             default=0,
         )
-        ranked.append((person, available))
-    return sorted(ranked, key=lambda item: (-item[1], item[0]["employee_id"]))
+        ranked.append((person, available, optional_matches))
+    ranked.sort(key=lambda item: (-item[1], -item[2], item[0]["employee_id"]))
+    return [(person, available) for person, available, _ in ranked]
 
 
 def _params(
@@ -220,6 +234,8 @@ def borrow(data: dict[str, Any], departments: list[dict[str, Any]]) -> dict[str,
     start = date.fromisoformat(demand["window_start"])
     end = date.fromisoformat(demand["window_end"])
     condition = "需原部门经理同意并安排人员，且被借调员工本人同意"
+    if any(item["required"] for item in demand.get("extra_capabilities", [])):
+        condition += "，安排前需确认人员满足角色的全部必需能力"
     return {
         "kind": "borrow",
         "params": {

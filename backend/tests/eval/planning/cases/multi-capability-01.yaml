@@ -1,0 +1,42 @@
+id: multi-capability-01
+category: 能力不达标
+enterprise: qiguang-aiot
+roles: [QG001, QG006, QG002]
+extra_capabilities:
+  - key: device-debug
+    name: 设备调试
+    levels: [guided, independent]
+    minimum_level: independent
+    required: true
+  - key: protocol-trace
+    name: 协议追踪
+    levels: [guided, independent]
+    minimum_level: null
+    required: false
+people:
+  - code: QG007
+    level: routine
+    other: 0
+    extra_levels: {device-debug: guided, protocol-trace: independent}
+  - code: QG008
+    level: routine
+    other: 20
+    extra_levels: {device-debug: independent}
+  - code: QG009
+    level: routine
+    other: 20
+    extra_levels: {device-debug: independent, protocol-trace: guided}
+  - code: QG010
+    level: routine
+    other: 0
+    extra_levels: {protocol-trace: independent}
+expect:
+  options:
+    - kind: direct
+      verdict: feasible
+      assignees: [QG009]
+  denied: [a_manager, a_employee]
+custom:
+  code: QG007
+  verdict: infeasible
+  finding: required_capability_below

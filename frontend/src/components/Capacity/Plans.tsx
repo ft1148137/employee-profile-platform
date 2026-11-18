@@ -514,17 +514,15 @@ function OptionCard({
     grouped.set(employeeId, parts)
   }
   const affected = strings(option.summary.affected_assignment_ids)
+  const matchedExtras = records([option.summary.matched_extra_capabilities])[0]
   const locks = new Set(strings(option.params.locked_employee_ids))
   const base = plan.options.find(
     (item) => item.id === option.summary.base_option_id,
   )
   const diff = records([option.summary.diff])[0]
   const unconfirmedFindings = option.findings.filter(
-    (finding) =>
-      finding.code === "unconfirmed" || finding.level === "insufficient_data",
+    (finding) => finding.code === "unconfirmed",
   )
-  const hasInsufficientData =
-    option.verdict === "insufficient_data" || unconfirmedFindings.length > 0
   const unconfirmedIncludesSelf =
     !!employeeId &&
     unconfirmedFindings.some((finding) => finding.employee_id === employeeId)
@@ -602,6 +600,12 @@ function OptionCard({
                 {number(parts[0].allocation_percent)}% ·{" "}
                 {label(parts[0].start_date)} 至 {label(parts[0].end_date)}
                 {locks.has(employeeId) && " · 已锁定"}
+                {matchedExtras && (
+                  <p className="pl-4 text-sm text-muted-foreground">
+                    满足的额外能力：
+                    {strings(matchedExtras[employeeId]).join("、") || "无"}
+                  </p>
+                )}
                 {parts.length > 1 && (
                   <ul className="pl-4">
                     {parts.slice(1).map((person, index) => (
@@ -657,7 +661,7 @@ function OptionCard({
         ) : (
           <p>暂无已发现风险</p>
         )}
-        {hasInsufficientData && (
+        {unconfirmedFindings.length > 0 && (
           <p className="mt-2 text-sm text-muted-foreground">
             请前往「需求与容量 →
             团队负荷」，由有管辖权的经理确认相关人员对应周的其他工作占比
