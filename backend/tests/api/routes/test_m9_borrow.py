@@ -292,6 +292,13 @@ def test_borrow_consent_order_and_projections(
                 assert employee_id not in text and worker.display_name not in text
     (assignment,) = rows(db, CapacityAssignment, demand)
     assert assignment.proposal_line_id == line.id and held() == 0
+    accepted = [
+        event
+        for event in rows(db, AuditEvent, demand)
+        if event.action == "capacity.demand_accepted"
+    ]
+    assert [event.actor_id for event in accepted] == [str(demand.requester_user_id)]
+
     assert worker.department_id == department_id
     assert review_assignment(db, demand.org_id, worker.id) == reviewers
     b = client.get(f"{path}/assignments", headers=auth["b"])

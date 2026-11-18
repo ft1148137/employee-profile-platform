@@ -2,6 +2,7 @@
 
 from collections import defaultdict
 from datetime import date, timedelta
+from typing import cast
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -651,7 +652,10 @@ def accept(
     via: Via,
     requester_accepts: bool = True,
 ) -> None:
-    if expire_locked(principal, session, demand, row, via=via):
+    failure_actor = (
+        principal if requester_accepts else Principal.system_worker(row.org_id)
+    )
+    if expire_locked(failure_actor, session, demand, row, via=via):
         raise ProposalFailed("方案已过期，请对方重新安排", code="proposal_expired")
     lines = lines_for(session, row)
     lender_department_id = lines[0].lender_department_id
@@ -759,12 +763,12 @@ def accept(
                 lenders=lenders,
             )
     except ProposalConflict as error:
-        if expire_locked(principal, session, demand, row, via=via):
+        if expire_locked(failure_actor, session, demand, row, via=via):
             raise ProposalFailed(
                 "方案已过期，请对方重新安排", code="proposal_expired"
             ) from error
         fail(
-            principal,
+            failure_actor,
             session,
             demand,
             row,
@@ -784,11 +788,11 @@ def accept(
             code="proposal_recheck_failed",
             reason=error.detail,
         ) from error
-    if expire_locked(principal, session, demand, row, via=via):
+    if expire_locked(failure_actor, session, demand, row, via=via):
         raise ProposalFailed("方案已过期，请对方重新安排", code="proposal_expired")
-    assert principal.user_id is not None
     if requester_accepts:
         session.add(requester)
+    acceptance_via = cast(Via, requester.via)
     for line in lines:
         assert line.employee_id is not None
         assignment = CapacityAssignment(
@@ -804,12 +808,12 @@ def accept(
         assert_assignment_line(session, assignment)
         session.add(assignment)
         audit(
-            principal,
+            accepter,
             session,
             "capacity.assignment_created",
             "capacity_assignment",
             assignment.id,
-            via,
+            acceptance_via,
             None,
             {
                 "proposal_id": str(row.id),
@@ -827,22 +831,22 @@ def accept(
             CapacityDemandEvent(
                 org_id=principal.org_id,
                 demand_id=demand.id,
-                actor_user_id=principal.user_id,
+                actor_user_id=requester.user_id,
                 kind=kind,
                 text="",
-                via=via,
+                via=acceptance_via,
             )
         )
     for employee_id in sorted({line.employee_id for line in lines if line.employee_id}):
         notify_employee(principal, session, employee_id)
     notify_parties(principal, session, demand, "方案已接受，安排已生效")
     audit(
-        principal,
+        accepter,
         session,
         "capacity.demand_accepted",
         "capacity_demand",
         demand.id,
-        via,
+        acceptance_via,
         None,
         {"proposal_id": str(row.id)},
     )
@@ -984,7 +988,8 @@ def decide_borrow(
         raise CapacityNotFound()
     if row.status != ProposalStatus.PENDING:
         raise decided(row)
-    if expire_locked(principal, session, demand, row):
+    failure_actor = principal if manager else Principal.system_worker(row.org_id)
+    if expire_locked(failure_actor, session, demand, row):
         raise ProposalFailed("借调未达成", code="proposal_expired")
     party = "lender_manager" if manager else "employee"
     approvals = approvals_for(session, row)
@@ -1088,7 +1093,8 @@ def decide_borrow(
         row.revision += 1
         session.add(row)
         session.flush()
-        accept(principal, session, demand, row, via="web", requester_accepts=False)
+        if not manager:
+            accept(principal, session, demand, row, via="web", requester_accepts=False)
 
 
 def respond(
