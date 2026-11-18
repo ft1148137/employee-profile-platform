@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useNavigate } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { AxiosError } from "axios"
 import { useEffect, useState } from "react"
 import {
@@ -34,7 +34,7 @@ export const demandStatuses = {
   withdrawn: "已撤回",
 }
 
-const outcomes: Record<DemandOutcome, string> = {
+export const demandOutcomes: Record<DemandOutcome, string> = {
   can_do: "能做",
   partial: "能做一部分",
   not_now: "暂时不能",
@@ -72,6 +72,7 @@ export function DemandsDetail({
         })
       ).data,
   })
+  const prerequisites = query.data?.project?.prerequisites ?? []
   const change =
     side === "incoming" &&
     query.data?.status === "accepted" &&
@@ -102,6 +103,34 @@ export function DemandsDetail({
             <h2 className="text-xl font-semibold">
               {query.data.capability_name} · {demandStatuses[query.data.status]}
             </h2>
+            {query.data.project && (
+              <div className="space-y-2 rounded-lg bg-muted/40 p-3 text-sm">
+                <p>
+                  所属项目 ·{" "}
+                  <Link
+                    className="font-medium underline underline-offset-4"
+                    to="/capacity"
+                    search={{ tab: "projects", project: query.data.project.id }}
+                  >
+                    {query.data.project.title}
+                  </Link>
+                </p>
+                <p>角色 · {query.data.project.role_name}</p>
+                {prerequisites.length > 0 && (
+                  <ul aria-label="前置角色" className="space-y-1">
+                    {prerequisites.map((role) => (
+                      <li key={role.id}>
+                        前置角色 · {role.role_name}（
+                        {role.target_department_name}） ·{" "}
+                        {demandStatuses[role.status]} ·{" "}
+                        {role.committed_start_date ?? role.window_start} 至{" "}
+                        {role.committed_end_date ?? role.window_end}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
             <p>
               {query.data.headcount} 人 · 每人 {query.data.allocation_percent}%
               · {query.data.window_start} 至 {query.data.window_end}
@@ -125,7 +154,7 @@ export function DemandsDetail({
                   {event.kind === "replied" &&
                     ` · 答复人：${side === "outgoing" ? "对方部门经理" : (event.responder_name ?? "对方部门经理")}`}
                 </p>
-                {event.outcome && <p>结论：{outcomes[event.outcome]}</p>}
+                {event.outcome && <p>结论：{demandOutcomes[event.outcome]}</p>}
                 {event.kind === "commitment_changed" &&
                 event.previous_end_date !== event.end_date ? (
                   <p>
@@ -526,7 +555,7 @@ function DemandsAction({
                 }
                 className="h-10 w-full rounded-md border bg-background px-3"
               >
-                {Object.entries(outcomes).map(([key, label]) => (
+                {Object.entries(demandOutcomes).map(([key, label]) => (
                   <option key={key} value={key}>
                     {label}
                   </option>

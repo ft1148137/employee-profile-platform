@@ -5,6 +5,7 @@ import { BorrowRequests } from "@/components/Capacity/BorrowRequests"
 import { IncomingDemands, OutgoingDemands } from "@/components/Capacity/Demands"
 import { MyAssignments } from "@/components/Capacity/MyAssignments"
 import { MyWorkload } from "@/components/Capacity/MyWorkload"
+import { Projects } from "@/components/Capacity/ProjectDetail"
 import {
   useCapacityDisabled,
   useCapacitySettings,
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/_layout/capacity")({
   validateSearch: (search: Record<string, unknown>) => ({
     ...tabSearch(search),
     ...(typeof search.demand === "string" ? { demand: search.demand } : {}),
+    ...(typeof search.project === "string" ? { project: search.project } : {}),
     ...(search.plans === "1" || search.plans === 1
       ? { plans: 1 as const }
       : {}),
@@ -32,7 +34,7 @@ function CapacityPage() {
   const { org, roles, employeeId } = useOrg()
   const settings = useCapacitySettings(org?.id)
   const disabled = useCapacityDisabled(org?.id)
-  const { tab, demand, plans } = Route.useSearch()
+  const { tab, demand, plans, project } = Route.useSearch()
   const navigate = Route.useNavigate()
   if (!org) return <OrgState />
   if (disabled || settings.data?.enabled === false)
@@ -53,7 +55,14 @@ function CapacityPage() {
     ...(roles.includes("org_admin") ||
     roles.includes("dept_manager") ||
     (employeeId && settings.data.requester_policy === "everyone")
-      ? [{ value: "outgoing", title: "我提的需求", component: OutgoingDemands }]
+      ? [
+          {
+            value: "outgoing",
+            title: "我提的需求",
+            component: OutgoingDemands,
+          },
+          { value: "projects", title: "项目需求", component: Projects },
+        ]
       : []),
     ...(roles.includes("org_admin") || roles.includes("dept_manager")
       ? [
@@ -86,7 +95,9 @@ function CapacityPage() {
         </TabsList>
         {tabs.map((item) => (
           <TabsContent key={item.value} value={item.value}>
-            {item.value === "incoming" && demand ? (
+            {item.value === "projects" ? (
+              <Projects orgId={org.id} projectId={project} />
+            ) : item.value === "incoming" && demand ? (
               <IncomingDemands
                 orgId={org.id}
                 demand={demand}
