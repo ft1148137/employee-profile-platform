@@ -81,6 +81,32 @@ export type ActivateCapabilitySchema = {
 }
 
 /**
+ * ActiveBorrowAssignment
+ */
+export type ActiveBorrowAssignment = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Employee Name
+   */
+  employee_name: string
+  /**
+   * Demand Title
+   */
+  demand_title: string
+  /**
+   * Start Date
+   */
+  start_date: string | null
+  /**
+   * Due Date
+   */
+  due_date: string
+}
+
+/**
  * ActiveSchemaPublic
  */
 export type ActiveSchemaPublic = {
@@ -10142,6 +10168,40 @@ export type capacityDecideExtensionRequestResponses = {
 
 export type capacityDecideExtensionRequestResponse =
   capacityDecideExtensionRequestResponses[keyof capacityDecideExtensionRequestResponses]
+
+export type capacityTrackingListActiveBorrowAssignmentsData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/assignments/active-borrows"
+}
+
+export type capacityTrackingListActiveBorrowAssignmentsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityTrackingListActiveBorrowAssignmentsError =
+  capacityTrackingListActiveBorrowAssignmentsErrors[keyof capacityTrackingListActiveBorrowAssignmentsErrors]
+
+export type capacityTrackingListActiveBorrowAssignmentsResponses = {
+  /**
+   * Response Capacity-Tracking-List Active Borrow Assignments
+   *
+   * Successful Response
+   */
+  200: Array<ActiveBorrowAssignment>
+}
+
+export type capacityTrackingListActiveBorrowAssignmentsResponse =
+  capacityTrackingListActiveBorrowAssignmentsResponses[keyof capacityTrackingListActiveBorrowAssignmentsResponses]
 
 export type capacityTrackingListFeedbackAssignmentsData = {
   body?: never

@@ -293,6 +293,9 @@ import type {
   capacityTrackingLinkAssignmentTaskData,
   capacityTrackingLinkAssignmentTaskErrors,
   capacityTrackingLinkAssignmentTaskResponses,
+  capacityTrackingListActiveBorrowAssignmentsData,
+  capacityTrackingListActiveBorrowAssignmentsErrors,
+  capacityTrackingListActiveBorrowAssignmentsResponses,
   capacityTrackingListFeedbackAssignmentsData,
   capacityTrackingListFeedbackAssignmentsErrors,
   capacityTrackingListFeedbackAssignmentsResponses,
@@ -1346,6 +1349,29 @@ export class CapacityService {
 }
 
 export class CapacityTrackingService {
+  /**
+   * List Active Borrow Assignments
+   */
+  public static trackingListActiveBorrowAssignments<
+    ThrowOnError extends boolean = true,
+  >(
+    options: Options<
+      capacityTrackingListActiveBorrowAssignmentsData,
+      ThrowOnError
+    >,
+  ) {
+    return (options.client ?? client).get<
+      capacityTrackingListActiveBorrowAssignmentsResponses,
+      capacityTrackingListActiveBorrowAssignmentsErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/assignments/active-borrows",
+      ...options,
+    })
+  }
+
   /**
    * List Feedback Assignments
    */

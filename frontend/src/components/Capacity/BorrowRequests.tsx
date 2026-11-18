@@ -4,6 +4,7 @@ import {
   type BorrowDecisionInput,
   type BorrowRequest,
   CapacityService,
+  CapacityTrackingService,
 } from "@/client"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
@@ -12,6 +13,7 @@ import {
   useFeedbackAssignments,
 } from "./AssignmentFeedback"
 import { CapacityError, useCapacityRefresh } from "./AssignmentFields"
+import { AssignmentTracking } from "./AssignmentTracking"
 
 const statuses: Record<string, string> = {
   pending_selection: "待选人",
@@ -101,7 +103,47 @@ export function BorrowRequests({
           mine={mine}
         />
       ))}
-      {!mine && <CompletedBorrowAssignments orgId={orgId} />}
+      {!mine && (
+        <>
+          <ActiveBorrowAssignments orgId={orgId} />
+          <CompletedBorrowAssignments orgId={orgId} />
+        </>
+      )}
+    </section>
+  )
+}
+
+function ActiveBorrowAssignments({ orgId }: { orgId: string }) {
+  const assignments = useQuery({
+    queryKey: ["capacity", orgId, "active-borrow-assignments"],
+    queryFn: async () =>
+      (
+        await CapacityTrackingService.trackingListActiveBorrowAssignments({
+          path: { org_id: orgId },
+        })
+      ).data,
+  })
+  if (assignments.isPending) return <ProfileLoading />
+  if (assignments.isError)
+    return <ProfileError retry={() => assignments.refetch()} />
+  if (!assignments.data.length) return null
+  return (
+    <section aria-label="进行中的借调分配" className="space-y-3">
+      <h2 className="text-lg font-semibold">进行中的借调分配</h2>
+      {assignments.data.map((assignment) => (
+        <article
+          key={assignment.id}
+          className="space-y-2 rounded-xl border p-4"
+        >
+          <h3 className="font-medium">{assignment.employee_name}</h3>
+          <p>
+            {assignment.demand_title} ·{" "}
+            {assignment.start_date && `${assignment.start_date} 至 `}
+            {assignment.due_date}
+          </p>
+          <AssignmentTracking orgId={orgId} assignmentId={assignment.id} />
+        </article>
+      ))}
     </section>
   )
 }
