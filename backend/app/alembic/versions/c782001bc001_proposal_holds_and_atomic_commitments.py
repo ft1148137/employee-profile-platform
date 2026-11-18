@@ -2,8 +2,9 @@
 
 Revision ID: c782001bc001
 Revises: c696001bc001
-Downgrade discards proposal and approval records. Multiple active segments
-are rejected before any schema or data changes; operators must resolve them first.
+Downgrade rejects any M9 proposal, approval, linked assignment, or proposal demand
+event records, as well as multiple active segments, before any schema or data
+changes; only empty or pre-M9 compatible databases can downgrade.
 
 """
 
@@ -227,19 +228,67 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     connection = op.get_bind()
-    # Block writers before checking, so the original unique index can be restored safely.
+    # Block concurrent writers across all M9-touched tables before checking.
     connection.execute(
-        sa.text("LOCK TABLE capacity_assignment IN ACCESS EXCLUSIVE MODE")
-    )
-    groups = connection.scalar(
         sa.text(
-            "SELECT count(*) FROM (SELECT org_id,demand_id,employee_id FROM capacity_assignment WHERE status='active' GROUP BY org_id,demand_id,employee_id HAVING count(*) > 1) AS segments"
+            "LOCK TABLE capacity_assignment, capacity_proposal, capacity_proposal_line, capacity_approval, capacity_demand_event IN ACCESS EXCLUSIVE MODE"
         )
     )
-    if groups:
-        raise RuntimeError(
-            f"有 {groups} 组同一员工的多段进行中分配，请先人工处理再降级"
+    groups = (
+        connection.scalar(
+            sa.text(
+                "SELECT count(*) FROM (SELECT org_id,demand_id,employee_id FROM capacity_assignment WHERE status='active' GROUP BY org_id,demand_id,employee_id HAVING count(*) > 1) AS segments"
+            )
         )
+        or 0
+    )
+    proposals = connection.scalar(sa.text("SELECT count(*) FROM capacity_proposal")) or 0
+    proposal_lines = (
+        connection.scalar(sa.text("SELECT count(*) FROM capacity_proposal_line")) or 0
+    )
+    approvals = connection.scalar(sa.text("SELECT count(*) FROM capacity_approval")) or 0
+    linked_assignments = (
+        connection.scalar(
+            sa.text(
+                "SELECT count(*) FROM capacity_assignment WHERE proposal_line_id IS NOT NULL"
+            )
+        )
+        or 0
+    )
+    proposal_events = (
+        connection.scalar(
+            sa.text(
+                "SELECT count(*) FROM capacity_demand_event WHERE kind IN ('committed', 'proposal_failed')"
+            )
+        )
+        or 0
+    )
+    blockers: list[str] = []
+    if groups:
+        blockers.append(f"有 {groups} 组同一员工的多段进行中分配")
+    history_parts: list[str] = []
+    if proposals:
+        history_parts.append(f"capacity_proposal={proposals}")
+    if proposal_lines:
+        history_parts.append(f"capacity_proposal_line={proposal_lines}")
+    if approvals:
+        history_parts.append(f"capacity_approval={approvals}")
+    if linked_assignments:
+        history_parts.append(
+            f"capacity_assignment.proposal_line_id={linked_assignments}"
+        )
+    if proposal_events:
+        history_parts.append(
+            f"capacity_demand_event(committed/proposal_failed)={proposal_events}"
+        )
+    if history_parts:
+        blockers.append(
+            "存在会被 M9 降级删除或解绑的协商与审批历史（"
+            + "、".join(history_parts)
+            + "）"
+        )
+    if blockers:
+        raise RuntimeError("；".join(blockers) + "，请先人工处理再降级")
     op.drop_constraint(
         "fk_assignment_proposal_line", "capacity_assignment", type_="foreignkey"
     )

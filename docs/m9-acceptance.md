@@ -30,6 +30,7 @@
 | NERE-795 开始日期修复 | [#369](https://github.com/ft1148137/employee-profile-platform/pull/369) 已承诺段的开始日期走正式变更，合并提交 `65acbc0f` | [后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44242388416)、[网页](https://github.com/ft1148137/employee-profile-platform/actions/runs/44242388420) |
 | NERE-796 初始画像浏览器回归 | [#371](https://github.com/ft1148137/employee-profile-platform/pull/371) 假模型按工具分流与重试数据隔离，合并提交 `538c7828` | [后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44244046880)、[网页重跑](https://github.com/ft1148137/employee-profile-platform/actions/runs/44244047067/attempts/2) |
 | NERE-798 MCP 事件来源测试修复 | [#373](https://github.com/ft1148137/employee-profile-platform/pull/373) 限定需求与排序并独立断言 MCP 来源，合并提交 `3aea6591` | [后端](https://github.com/ft1148137/employee-profile-platform/actions/runs/44249884159)、[网页](https://github.com/ft1148137/employee-profile-platform/actions/runs/44249884225) |
+| NERE-799 降级历史保护（E41／D-024） | `c782001bc001` `downgrade()` 并发锁与全库协商／审批历史阻断 | 本地独立测试库 9 项迁移与降级用例通过（详见下文，PR CI 待合入复核） |
 
 ### 初始画像与主干 CI 补证
 
@@ -67,7 +68,13 @@ NERE-796 复现了部门能力默认值调用 `submit_department_capabilities` �
 | 部分审批后复核失败，或写到第二段时异常 | [test_m9_proposal.py](../backend/tests/api/routes/test_m9_proposal.py) 的 `test_recheck_failure_is_persisted`、`test_unexpected_second_assignment_error_rolls_everything_back` | #357 后端 CI 通过。已有 B 方审批时，复核失败会释放预占、记录失败，分配数为零。注入第二段写入异常时事务全部回滚，保留原待处理提议及原 B 方审批 |
 | 借调竞争、变更竞争与替换回滚 | [test_m9_borrow.py](../backend/tests/api/routes/test_m9_borrow.py) 的 `test_two_borrows_cannot_overbook_worker`、`test_each_borrow_line_requires_a_different_person`、`test_borrow_failure_releases_holds`；[test_m9_change.py](../backend/tests/api/routes/test_m9_change.py) 的 `test_changes_replace_only_different_segments`、`test_extension_and_change_compete_for_the_same_segment`、`test_change_from_and_to_a_borrowed_employee` | #366、#367 后端 CI 通过。借调竞争不能超额，一条借调失败释放整单预占。只改第二段、两段并一段均覆盖并发和故障注入，确认最多替换一次，异常后保留原分配。新借调的变更等待原部门和本人同意 |
 
-C1 的迁移唯一 head 为 `c782001bc001`。[test_m9_proposal.py](../backend/tests/api/routes/test_m9_proposal.py) 的 `test_m9_migration_roundtrip_with_seed` 和 `test_downgrade_refuses_multiple_active_segments` 随 #357 后端 CI 通过。合成库验证升级、降级及再次升级，存在无法回到旧约束的多段有效分配时明确拒绝降级。D1 未连接数据库或升级长期演示环境。
+C1 的迁移唯一 head 为 `c782001bc001`。[test_m9_proposal.py](../backend/tests/api/routes/test_m9_proposal.py) 的 `test_m9_migration_roundtrip_with_seed` 和 `test_downgrade_refuses_multiple_active_segments` 随 #357 后端 CI 通过；NERE-799（E41／D-024）在 `c782001bc001` 的 `downgrade()` 补齐五表 `ACCESS EXCLUSIVE` 并发锁与协商／审批历史阻断后，本地隔离 PostgreSQL 测试库（端口 `15799`）实测以下 9 项迁移／降级用例全部通过：
+- `test_m9_migration_roundtrip_with_seed`、`test_downgrade_allows_pre_m9_compatible_records`：空库及含兼容旧数据（无 `proposal_line_id` 关联、含 `commitment_changed` 事件）的库可降级至 `c696001bc001` 并保留旧记录，再重新升级至 `c782001bc001`。
+- `test_downgrade_refuses_multiple_active_segments`：保留多段进行中分配阻断与原有诊断，完整保留分配及提议记录。
+- `test_downgrade_refuses_single_segment_with_proposal_and_approvals`：单段进行中分配关联提议行并含提议、逐方审批与协商事件时降级报错，另开事务核对迁移版本（`c782001bc001`）、各表记录内容、条数及 `proposal_line_id` 关联完整保留。
+- `test_downgrade_refuses_targeted_history_without_active_segments`（`[committed]`、`[proposal_failed]`、`[done_assignment]`、`[pending_proposal]`）：仅含目标事件（`committed` 或 `proposal_failed`）、已结束分配关联提议行、或无分配的提议与审批时均阻断降级并完整保留原记录。
+- `test_downgrade_blocks_concurrent_m9_write_before_checking`：并发写入未提交期间，`downgrade()` 阻塞在锁等待上，待写入提交后检出 `committed` 事件并拒绝降级。
+D1 与 NERE-799 均未连接或升级长期演示环境。
 
 ## 前序事项与阶段修复
 

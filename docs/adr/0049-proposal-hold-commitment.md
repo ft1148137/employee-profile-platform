@@ -1,6 +1,6 @@
 # ADR-0049：方案预占与原子承诺
 
-状态：已采用。依据 M9 C1、E39(2)、E40（2026-11-18）。
+状态：已采用。依据 M9 C1、E39(2)、E40、E41（D-024，2026-11-18）。
 
 ## 背景与决策
 
@@ -70,8 +70,14 @@ MCP 不能触发预占或方案接受；C3 负责扩展助手确认卡入口。
 过期审计的 actor 为 system_worker；需求事件的必填用户外键沿用提议人以记录来源，
 不将其解释为新的人工审批。Evidence 和画像版本均不修改。
 
-downgrade 会丢弃提议、审批及新增类型的需求事件，不删除正式分配。
-恢复旧唯一索引前先锁分配表并检查同人同需求多条 active 记录；存在时明确报错，
-整个迁移事务回滚，不能静默合并日期、取最大比例或删除分配。
-无此类数据时保留分配，删除新关联并恢复旧索引，可再次 upgrade。
+`downgrade()` 在同一个迁移事务内先以 `ACCESS EXCLUSIVE` 锁住 `capacity_assignment`、
+`capacity_proposal`、`capacity_proposal_line`、`capacity_approval`、`capacity_demand_event`
+五张表以防止检查与降级之间发生并发写入，再执行全库检查；任何解绑、`DELETE` 或破坏性 DDL
+均位于检查之后。除保留原有同人同需求多条 `active` 分配阻断及其诊断外，只要存在任意
+`capacity_proposal`、`capacity_proposal_line`、`capacity_approval` 记录，或任意
+`capacity_assignment.proposal_line_id IS NOT NULL`（包含已结束分配），或任意
+`capacity_demand_event.kind IN ('committed', 'proposal_failed')` 记录，一律报错并回滚
+整个迁移事务，完整保留数据库版本（`c782001bc001`）、结构、关联与全部历史记录。仅空库或只含
+兼容旧结构数据（如无 `proposal_line_id` 关联且仅含 `commitment_changed` 等旧事件）的库可降级
+至 `c696001bc001` 并再次升级至 `c782001bc001`。
 没有新增依赖、企业配置或通用审批引擎。

@@ -819,6 +819,390 @@ def test_downgrade_refuses_multiple_active_segments(
         assert session.exec(select(CapacityProposal)).one().status == "committed"
 
 
+def _seed_migration_demand(session: Session, seed_path: Path) -> tuple[Any, Any, Any]:
+    from app.core.db import init_db
+    from app.domains.capacity.models import CapacityDemand
+    from app.domains.org.models import Employee
+    from app.seed.loader import load_demo
+
+    init_db(session)
+    session.commit()
+    load_demo(session, seed_path)
+    employee = session.exec(select(Employee).order_by(Employee.id)).first()
+    assert employee is not None
+    member = session.exec(
+        select(OrgMembership)
+        .where(OrgMembership.org_id == employee.org_id)
+        .order_by(OrgMembership.id)
+    ).first()
+    assert member is not None
+    start = utc_now().date()
+    demand = CapacityDemand(
+        org_id=employee.org_id,
+        requesting_department_id=employee.department_id,
+        target_department_id=employee.department_id,
+        requester_user_id=member.user_id,
+        capability_key="synthetic",
+        capability_name="合成能力",
+        headcount=1,
+        allocation_percent=50,
+        window_start=start,
+        window_end=start,
+        description="合成迁移守卫需求",
+    )
+    session.add(demand)
+    session.flush()
+    return employee, member, demand
+
+
+def _snapshot_m9_migration_state(session: Session) -> dict[str, Any]:
+    from sqlalchemy import text
+
+    return {
+        "version": session.execute(
+            text("SELECT version_num FROM alembic_version")
+        ).scalar_one(),
+        "proposals": [
+            r.model_dump()
+            for r in session.exec(
+                select(CapacityProposal).order_by(CapacityProposal.id)
+            ).all()
+        ],
+        "lines": [
+            r.model_dump()
+            for r in session.exec(
+                select(CapacityProposalLine).order_by(CapacityProposalLine.id)
+            ).all()
+        ],
+        "approvals": [
+            r.model_dump()
+            for r in session.exec(
+                select(CapacityApproval).order_by(CapacityApproval.id)
+            ).all()
+        ],
+        "assignments": [
+            r.model_dump()
+            for r in session.exec(
+                select(CapacityAssignment).order_by(CapacityAssignment.id)
+            ).all()
+        ],
+        "events": [
+            r.model_dump()
+            for r in session.exec(
+                select(CapacityDemandEvent).order_by(CapacityDemandEvent.id)
+            ).all()
+        ],
+    }
+
+
+def test_downgrade_refuses_single_segment_with_proposal_and_approvals(
+    migration_engine: Engine, seed_path: Path
+) -> None:
+    from tests.utils.migrations import migrate
+
+    with Session(migration_engine) as session:
+        employee, member, demand = _seed_migration_demand(session, seed_path)
+        row = CapacityProposal(
+            org_id=employee.org_id,
+            demand_id=demand.id,
+            source_option_id=employee.id,
+            proposed_by_user_id=member.user_id,
+            demand_revision=1,
+            hold_expires_at=utc_now() + timedelta(hours=72),
+            status="committed",
+            committed_at=utc_now(),
+        )
+        session.add(row)
+        session.flush()
+        line = CapacityProposalLine(
+            org_id=employee.org_id,
+            proposal_id=row.id,
+            employee_id=employee.id,
+            start_date=demand.window_start,
+            end_date=demand.window_end,
+            allocation_percent=50,
+        )
+        session.add(line)
+        session.flush()
+        for party in ("resource_manager", "requester"):
+            session.add(
+                CapacityApproval(
+                    org_id=employee.org_id,
+                    proposal_id=row.id,
+                    party=party,
+                    decision="approved",
+                    user_id=member.user_id,
+                    via="web",
+                )
+            )
+        session.add(
+            CapacityAssignment(
+                org_id=employee.org_id,
+                demand_id=demand.id,
+                employee_id=employee.id,
+                proposal_line_id=line.id,
+                allocation_percent=50,
+                start_date=demand.window_start,
+                due_date=demand.window_end,
+                assigned_by_user_id=member.user_id,
+            )
+        )
+        for kind in (
+            DemandEventKind.REPLIED,
+            DemandEventKind.ACCEPTED,
+            DemandEventKind.COMMITTED,
+            DemandEventKind.COMMITMENT_CHANGED,
+        ):
+            session.add(
+                CapacityDemandEvent(
+                    org_id=employee.org_id,
+                    demand_id=demand.id,
+                    kind=kind,
+                    actor_user_id=member.user_id,
+                    text=f"合成事件 {kind.value}",
+                    via="web",
+                )
+            )
+        session.commit()
+        before = _snapshot_m9_migration_state(session)
+
+    assert before["version"] == "c782001bc001"
+    assert len(before["proposals"]) == 1
+    assert len(before["lines"]) == 1
+    assert len(before["approvals"]) == 2
+    assert len(before["assignments"]) == 1
+    assert before["assignments"][0]["proposal_line_id"] == before["lines"][0]["id"]
+    assert len(before["events"]) == 4
+
+    with pytest.raises(RuntimeError, match="协商与审批历史"):
+        migrate(migration_engine, "downgrade", "c696001bc001")
+
+    with Session(migration_engine) as session:
+        assert _snapshot_m9_migration_state(session) == before
+
+
+@pytest.mark.parametrize(
+    "target",
+    ["committed", "proposal_failed", "done_assignment", "pending_proposal"],
+)
+def test_downgrade_refuses_targeted_history_without_active_segments(
+    migration_engine: Engine, seed_path: Path, target: str
+) -> None:
+    from app.domains.capacity.models import AssignmentStatus
+    from tests.utils.migrations import migrate
+
+    with Session(migration_engine) as session:
+        employee, member, demand = _seed_migration_demand(session, seed_path)
+        if target in ("committed", "proposal_failed"):
+            session.add(
+                CapacityDemandEvent(
+                    org_id=employee.org_id,
+                    demand_id=demand.id,
+                    kind=DemandEventKind(target),
+                    actor_user_id=member.user_id,
+                    text=f"仅目标事件 {target}",
+                    via="web",
+                )
+            )
+        else:
+            row = CapacityProposal(
+                org_id=employee.org_id,
+                demand_id=demand.id,
+                source_option_id=employee.id,
+                proposed_by_user_id=member.user_id,
+                demand_revision=1,
+                hold_expires_at=utc_now() + timedelta(hours=72),
+                status="committed" if target == "done_assignment" else "pending",
+                committed_at=utc_now() if target == "done_assignment" else None,
+            )
+            session.add(row)
+            session.flush()
+            line = CapacityProposalLine(
+                org_id=employee.org_id,
+                proposal_id=row.id,
+                employee_id=employee.id,
+                start_date=demand.window_start,
+                end_date=demand.window_end,
+                allocation_percent=50,
+            )
+            session.add(line)
+            session.flush()
+            if target == "done_assignment":
+                session.add(
+                    CapacityAssignment(
+                        org_id=employee.org_id,
+                        demand_id=demand.id,
+                        employee_id=employee.id,
+                        proposal_line_id=line.id,
+                        allocation_percent=50,
+                        start_date=demand.window_start,
+                        due_date=demand.window_end,
+                        status=AssignmentStatus.DONE,
+                        closed_at=utc_now(),
+                        assigned_by_user_id=member.user_id,
+                    )
+                )
+            else:
+                session.add(
+                    CapacityApproval(
+                        org_id=employee.org_id,
+                        proposal_id=row.id,
+                        party="resource_manager",
+                        decision="approved",
+                        user_id=member.user_id,
+                        via="web",
+                    )
+                )
+        session.commit()
+        before = _snapshot_m9_migration_state(session)
+
+    with pytest.raises(RuntimeError, match="协商与审批历史"):
+        migrate(migration_engine, "downgrade", "c696001bc001")
+
+    with Session(migration_engine) as session:
+        assert _snapshot_m9_migration_state(session) == before
+
+
+def test_downgrade_allows_pre_m9_compatible_records(
+    migration_engine: Engine, seed_path: Path
+) -> None:
+    import sqlalchemy as sa
+
+    from tests.utils.migrations import migrate
+
+    with Session(migration_engine) as session:
+        employee, member, demand = _seed_migration_demand(session, seed_path)
+        assignment = CapacityAssignment(
+            org_id=employee.org_id,
+            demand_id=demand.id,
+            employee_id=employee.id,
+            proposal_line_id=None,
+            allocation_percent=50,
+            start_date=demand.window_start,
+            due_date=demand.window_end,
+            assigned_by_user_id=member.user_id,
+        )
+        event_row = CapacityDemandEvent(
+            org_id=employee.org_id,
+            demand_id=demand.id,
+            kind=DemandEventKind.COMMITMENT_CHANGED,
+            actor_user_id=member.user_id,
+            text="旧结构兼容变更事件",
+            via="web",
+        )
+        session.add(assignment)
+        session.add(event_row)
+        session.commit()
+        assignment_id = assignment.id
+        event_id = event_row.id
+
+    migrate(migration_engine, "downgrade", "c696001bc001")
+    assert "capacity_proposal" not in sa.inspect(migration_engine).get_table_names()
+    with Session(migration_engine) as session:
+        assert (
+            session.execute(
+                sa.text("SELECT version_num FROM alembic_version")
+            ).scalar_one()
+            == "c696001bc001"
+        )
+        assert (
+            session.execute(
+                sa.text("SELECT kind FROM capacity_demand_event WHERE id = :id"),
+                {"id": event_id},
+            ).scalar_one()
+            == "commitment_changed"
+        )
+        assert (
+            session.execute(
+                sa.text("SELECT id FROM capacity_assignment WHERE id = :id"),
+                {"id": assignment_id},
+            ).scalar_one()
+            == assignment_id
+        )
+
+    migrate(migration_engine, "upgrade", "head")
+    assert "capacity_proposal" in sa.inspect(migration_engine).get_table_names()
+
+
+def test_downgrade_blocks_concurrent_m9_write_before_checking(
+    migration_engine: Engine, seed_path: Path
+) -> None:
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    from sqlalchemy import text
+
+    from tests.utils.migrations import migrate
+
+    with Session(migration_engine) as session:
+        employee, member, demand = _seed_migration_demand(session, seed_path)
+        org_id = employee.org_id
+        demand_id = demand.id
+        actor_id = member.user_id
+        session.commit()
+
+    inserted = Event()
+    release = Event()
+
+    def writer() -> None:
+        with Session(migration_engine) as writer_session:
+            writer_session.add(
+                CapacityDemandEvent(
+                    org_id=org_id,
+                    demand_id=demand_id,
+                    kind=DemandEventKind.COMMITTED,
+                    actor_user_id=actor_id,
+                    text="并发写入事件",
+                    via="web",
+                )
+            )
+            writer_session.flush()
+            inserted.set()
+            assert release.wait(timeout=10)
+            writer_session.commit()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        write_future = pool.submit(writer)
+        assert inserted.wait(timeout=10)
+        downgrade_future = pool.submit(
+            migrate, migration_engine, "downgrade", "c696001bc001"
+        )
+        deadline = time.monotonic() + 10
+        locked = False
+        while time.monotonic() < deadline:
+            with migration_engine.connect() as probe:
+                waiting = probe.execute(
+                    text(
+                        "SELECT count(*) FROM pg_stat_activity "
+                        "WHERE datname = current_database() "
+                        "AND state = 'active' "
+                        "AND wait_event_type = 'Lock' "
+                        "AND query LIKE 'LOCK TABLE capacity_assignment%'"
+                    )
+                ).scalar_one()
+            if waiting >= 1:
+                locked = True
+                break
+            time.sleep(0.02)
+        release.set()
+        write_future.result(timeout=10)
+        assert locked
+        with pytest.raises(RuntimeError, match="协商与审批历史"):
+            downgrade_future.result(timeout=10)
+
+    with Session(migration_engine) as session:
+        assert (
+            session.execute(
+                text("SELECT version_num FROM alembic_version")
+            ).scalar_one()
+            == "c782001bc001"
+        )
+        events = session.exec(select(CapacityDemandEvent)).all()
+        assert len(events) == 1
+        assert events[0].kind == DemandEventKind.COMMITTED
+
+
 def test_accept_conflict_hides_unreadable_demand_source(
     case: tuple, client: TestClient, db: Session
 ) -> None:
