@@ -87,6 +87,7 @@ dependencies = [
     { name = "lark-oapi" },
     { name = "mcp" },
     { name = "openpyxl" },
+    { name = "ortools" },
     { name = "procrastinate" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pwdlib", extra = ["argon2", "bcrypt"] },
@@ -105,7 +106,6 @@ dependencies = [
 dev = [
     { name = "coverage" },
     { name = "mypy" },
-    { name = "ortools" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-split" },
@@ -126,6 +126,7 @@ requires-dist = [
     { name = "lark-oapi", specifier = "==1.7.5" },
     { name = "mcp", specifier = "==2.3.0" },
     { name = "openpyxl", specifier = ">=3.1.5,<4" },
+    { name = "ortools", specifier = "==9.15.6755" },
     { name = "procrastinate", specifier = "~=3.10.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6,<4.0.0" },
     { name = "pwdlib", extras = ["argon2", "bcrypt"], specifier = ">=0.3.1" },
@@ -144,7 +145,6 @@ requires-dist = [
 dev = [
     { name = "coverage", specifier = ">=7.4.3,<8.0.0" },
     { name = "mypy", specifier = ">=1.8.0,<3.0.0" },
-    { name = "ortools", specifier = "==9.15.6755" },
     { name = "pytest", specifier = ">=7.4.3,<10.0.0" },
     { name = "pytest-cov", specifier = ">=7,<8" },
     { name = "pytest-split", specifier = "==0.11.0" },

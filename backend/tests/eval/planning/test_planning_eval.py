@@ -338,10 +338,13 @@ def _exercise(db: Session, client: TestClient, case: dict) -> dict:
         assert business_rows(db, org_id) == before
         options = {item["kind"]: item for item in result["options"]}
         data = result["data"]
+        if optimized := options.get("optimized"):
+            assert full_plan(data, optimized["params"]["assignees"])
         eligible = [
             option["params"]["assignees"]
             for kind, option in options.items()
-            if kind != "borrow" and full_plan(data, option["params"]["assignees"])
+            if kind not in {"borrow", "optimized"}
+            and full_plan(data, option["params"]["assignees"])
         ]
         assert RuleSolver.candidates(data) == eligible
         chosen = min(eligible, key=lambda rows: delay(data, rows), default=[])

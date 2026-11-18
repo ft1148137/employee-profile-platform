@@ -1,4 +1,4 @@
-"""Offline scheduling over saved Planning snapshots, in submission order."""
+"""Scheduling interface and submission-order rules for Planning snapshots."""
 
 from collections import Counter
 from collections.abc import Callable, Sequence

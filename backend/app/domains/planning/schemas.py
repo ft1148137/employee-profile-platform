@@ -20,6 +20,7 @@ KIND_LABELS: dict[OptionKind, str] = {
     OptionKind.DELAY: "推迟交付",
     OptionKind.REDUCE_SCOPE: "缩小范围",
     OptionKind.PHASED: "分阶段交付",
+    OptionKind.OPTIMIZED: "优化方案",
     OptionKind.CUSTOM: "自定方案",
 }
 VERDICT_LABELS: dict[PlanVerdict, str] = {

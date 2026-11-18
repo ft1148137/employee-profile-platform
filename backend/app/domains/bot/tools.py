@@ -517,7 +517,8 @@ def plan_card(option: OptionPublic, case: CasePublic) -> s.PlanCard:
         (
             o
             for o in case.options
-            if o.kind != "custom" and o.snapshot_id == option.snapshot_id
+            if o.kind not in {OptionKind.CUSTOM, OptionKind.OPTIMIZED}
+            and o.snapshot_id == option.snapshot_id
         ),
         key=lambda o: VERDICT_ORDER[o.verdict],
         default=None,
@@ -535,7 +536,11 @@ def plan_card(option: OptionPublic, case: CasePublic) -> s.PlanCard:
             link=f"{base_link}#case={case.id}&option={best.id}",
         )
     return s.PlanCard(
-        title=f"{option.kind_label}方案",
+        title=(
+            option.kind_label
+            if option.kind == OptionKind.OPTIMIZED
+            else f"{option.kind_label}方案"
+        ),
         fields=fields,
         changes=changes,
         link=link,

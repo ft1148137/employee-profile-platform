@@ -10,9 +10,10 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from app.domains.org.models import Organization
+from app.domains.planning.cpsat import CpSatSolver
 from app.domains.planning.solver import Role, RuleSolver, Solution
 from app.models import User
-from scripts.eval_solver import CpSatSolver, metrics
+from scripts.eval_solver import metrics
 from scripts.export_planning_case import anonymize, export_saved
 from tests.eval.planning.contention.cases import HERE, load_cases
 from tests.eval.planning.test_planning_eval import HERE as PLANNING
