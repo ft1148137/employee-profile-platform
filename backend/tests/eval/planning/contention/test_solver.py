@@ -65,6 +65,32 @@ def test_audit_detects_double_booking() -> None:
     )
 
 
+def test_extended_commitment_leaves_capacity_for_overlapping_role() -> None:
+    original, _, _, overlap, *_ = EVAL_CASES["trap-primary"]
+    demand = original.snapshot["demand"]
+    change = Role(
+        original.key,
+        {
+            **original.snapshot,
+            "demand": {
+                **demand,
+                "change": True,
+                "committed_start_date": demand["window_start"],
+                "committed_end_date": "2026-12-06",
+            },
+        },
+    )
+    roles = [change, overlap]
+    for solver in (RuleSolver(), CpSatSolver()):
+        result = solver.solve(roles)
+        expected = solver.solve([overlap])
+        assert list(expected.filled) == [overlap.key]
+        assert result == Solution(expected.filled, (change.key,))
+        stats = metrics(roles, result)
+        assert stats == metrics([overlap], expected)
+        assert stats["violations"] == 0
+
+
 @pytest.mark.parametrize("name", REPLAYS)
 def test_export_saved_replay(
     name: str,

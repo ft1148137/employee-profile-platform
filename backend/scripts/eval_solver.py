@@ -60,12 +60,16 @@ class CpSatSolver:
                 start, end = map(
                     date.fromisoformat, (d["window_start"], d["window_end"])
                 )
+                committed_end = date.fromisoformat(
+                    d.get("committed_end_date") or d["window_end"]
+                )
                 if (
                     week_start(start).isoformat() < data["rules"]["current_week"]
                     or start.isoformat()
                     < (d.get("committed_start_date") or d["window_start"])
-                    or end.isoformat()
-                    > (d.get("committed_end_date") or d["window_end"])
+                    or end > committed_end
+                    # An earlier finish on a change requires requester approval.
+                    or (d.get("change") and end < committed_end)
                 ):
                     continue
                 picked = model.new_bool_var(f"{role.key}:{offset}")
