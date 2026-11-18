@@ -92,18 +92,16 @@ test("较差推荐同时展示规则方案、差别和两个可打开的链接",
   const person = (code: string) =>
     accounts.find((row) => row.employee_code === code)!
   const tokens = new Map<string, string>()
-  for (const code of ["A", "M", "W"]) {
-    if (code !== "W") {
-      await api(
-        `${base}/role-grants`,
-        {
-          user_id: person(code).account!.user_id,
-          role: "dept_manager",
-          department_id: person(code).department!.id,
-        },
-        admin.access_token,
-      )
-    }
+  for (const code of ["A", "M"]) {
+    await api(
+      `${base}/role-grants`,
+      {
+        user_id: person(code).account!.user_id,
+        role: "dept_manager",
+        department_id: person(code).department!.id,
+      },
+      admin.access_token,
+    )
     const reset = await api(
       `${base}/accounts/${person(code).account!.user_id}/reset-password`,
       {},
