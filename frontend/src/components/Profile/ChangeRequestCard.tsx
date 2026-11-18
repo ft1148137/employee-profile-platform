@@ -242,6 +242,7 @@ export function ChangeRequestCard({
                     id={`request-${request.id}`}
                     className="space-y-3 border-b py-3 last:border-0"
                   >
+                    {request.origin === "assignment_feedback" && "工作反馈 · "}
                     {requestSummary(request)}
                     {isOwner && request.status === "pending_review" && (
                       <RequestReviewers reviewers={request.reviewers} />
@@ -257,6 +258,25 @@ export function ChangeRequestCard({
                           profileItems={profileItems}
                         />
                       ))}
+                    {request.origin === "assignment_feedback" &&
+                      open.includes(request) && (
+                        <EvidenceRows
+                          items={Array.from(
+                            new Map(
+                              request.items?.flatMap((item) =>
+                                (item.evidence ?? []).map(
+                                  (ref) =>
+                                    [
+                                      ref.evidence_id,
+                                      { ...ref, id: ref.evidence_id },
+                                    ] as const,
+                                ),
+                              ),
+                            ).values(),
+                          )}
+                          onSelect={onEvidence}
+                        />
+                      )}
                     {request.items?.some((item) => item.decision) && (
                       <ul className="space-y-2">
                         {request.items.map((item) => (
@@ -288,15 +308,20 @@ export function ChangeRequestCard({
                         requestId={request.id}
                       />
                     )}
-                    {isOwner && request.status === "draft" && (
-                      <Button
-                        className="ml-2"
-                        variant="outline"
-                        onClick={() => onEdit({ request })}
-                      >
-                        继续修改
-                      </Button>
-                    )}
+                    {isOwner &&
+                      (request.status === "draft" ||
+                        (request.origin === "assignment_feedback" &&
+                          request.status === "pending_owner")) && (
+                        <Button
+                          className="ml-2"
+                          variant="outline"
+                          onClick={() => onEdit({ request })}
+                        >
+                          {request.status === "pending_owner"
+                            ? "过目并提交"
+                            : "继续修改"}
+                        </Button>
+                      )}
                     {isOwner && request.status === "pending_review" && (
                       <Button
                         className="ml-2"
@@ -369,15 +394,16 @@ function CompactChange({
             value={before?.assessment_status ?? "unknown"}
           />
         )}
-        <span>
-          → 修改后：
-          {item.after?.level ? displayLevel(item.after.level) : "未定级"}
-        </span>
-        {item.after ? (
-          <StatusBadge
-            kind="assessment_status"
-            value={item.after.assessment_status}
-          />
+        {item.op === "attach_evidence" ? (
+          <span>补充依据</span>
+        ) : item.after ? (
+          <>
+            <span>→ 修改后：{displayLevel(item.after.level)}</span>
+            <StatusBadge
+              kind="assessment_status"
+              value={item.after.assessment_status}
+            />
+          </>
         ) : (
           <span>撤回</span>
         )}

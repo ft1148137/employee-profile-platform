@@ -262,7 +262,7 @@ function EmployeeDetails() {
           )}
         </Tabs>
       </EmployeeDetailTabs>
-      {isAdmin && (
+      {evidenceId && (
         <EvidenceSheet
           orgId={org.id}
           evidenceId={evidenceId}

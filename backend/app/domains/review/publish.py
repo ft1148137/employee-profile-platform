@@ -13,6 +13,7 @@ from app.domains.change_request.models import (
     ChangeItemEvidence,
     ChangeOp,
     ProfileChangeRequest,
+    RequestOrigin,
     ReviewDecision,
     ReviewVia,
 )
@@ -136,7 +137,10 @@ def publish(
         if (target.id if target else None) != item.target_claim_id:
             raise RequestConflict("目标判断已被其他请求取代，请重新查看")
         if item.op == ChangeOp.ATTACH_EVIDENCE and target is not None:
-            if decision.via == ReviewVia.SYNC:
+            if (
+                decision.via == ReviewVia.SYNC
+                or request.origin == RequestOrigin.ASSIGNMENT_FEEDBACK
+            ):
                 explanation = target.explanation
             after = ClaimAfter.model_validate(
                 target.model_dump(

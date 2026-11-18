@@ -9,11 +9,16 @@ import {
   type DemandAssignment,
   type DemandPublic,
   type DepartedDemandAssignment,
+  type FeedbackAssignment,
 } from "@/client"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useOrg } from "@/hooks/useOrg"
+import {
+  AssignmentFeedback,
+  useFeedbackAssignments,
+} from "./AssignmentFeedback"
 import {
   CapacityError,
   CommitmentFields,
@@ -44,6 +49,7 @@ export function DemandAssignments({
   const refresh = useCapacityRefresh(orgId)
   const { managedDepartmentIds } = useOrg()
   const path = { org_id: orgId, demand_id: demand.id }
+  const feedback = useFeedbackAssignments(orgId, demand.id)
   const query = useQuery({
     queryKey: ["capacity", orgId, "assignments", demand.id],
     queryFn: async () =>
@@ -239,6 +245,7 @@ export function DemandAssignments({
                 key={`${row.id}:${row.start_date}:${row.due_date}`}
                 orgId={orgId}
                 row={row}
+                feedback={feedback.data?.find((item) => item.id === row.id)}
                 committedEndDate={demand.committed_end_date ?? null}
                 committedStartDate={demand.committed_start_date ?? null}
                 canProposeChange={canProposeChange}
@@ -250,6 +257,7 @@ export function DemandAssignments({
           )}
         </>
       )}
+      <CapacityError error={feedback.error} />
     </section>
   )
 }
@@ -257,6 +265,7 @@ export function DemandAssignments({
 function AssignmentRow({
   orgId,
   row,
+  feedback,
   committedEndDate,
   committedStartDate,
   canEdit,
@@ -264,6 +273,7 @@ function AssignmentRow({
 }: {
   orgId: string
   row: DemandAssignment | DepartedDemandAssignment
+  feedback?: FeedbackAssignment
   committedEndDate: string | null
   committedStartDate: string | null
   canEdit: boolean
@@ -391,6 +401,7 @@ function AssignmentRow({
         </>
       )}
       <CapacityError error={update.error} />
+      {feedback && <AssignmentFeedback orgId={orgId} assignment={feedback} />}
     </article>
   )
 }

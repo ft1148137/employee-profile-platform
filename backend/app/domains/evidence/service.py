@@ -15,6 +15,7 @@ from app.domains.audit.models import ActorKind
 from app.domains.audit.service import record_audit
 from app.domains.capability.models import CapabilityDefinition
 from app.domains.evidence.models import (
+    ASSIGNMENT_FEEDBACK_SOURCE,
     Evidence,
     EvidenceKind,
     EvidenceStatus,
@@ -108,6 +109,14 @@ def evidence_access(
         if request is not None and permissions.get(request.id, False):
             access[e.id] = (e, True)
     for e, employee, request in rows:
+        if e.source == ASSIGNMENT_FEEDBACK_SOURCE:
+            access[e.id] = (
+                e,
+                can_view_evidence_content(
+                    principal, subject_employee=employee, visibility=e.visibility
+                ),
+            )
+            continue
         readable = access.get(e.id, (e, False))[1] or can_view_evidence_content(
             principal, subject_employee=employee, visibility=e.visibility
         )
