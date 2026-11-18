@@ -94,9 +94,10 @@ def test_unavailability_notifies_managers_without_changing_commitments(
     )
     db.commit()
     subject = people["w"]
-    before = [
-        item.model_dump() for item in (row, proposal, approval, demand, downstream)
-    ]
+    commitments = (row, proposal, approval, demand, downstream)
+    for item in commitments:
+        db.refresh(item)
+    before = [item.model_dump() for item in commitments]
     try:
         api(
             "/unavailability",
@@ -107,9 +108,7 @@ def test_unavailability_notifies_managers_without_changing_commitments(
                 "end_date": (row.due_date + timedelta(days=1)).isoformat(),
             },
         )
-        for item, expected in zip(
-            (row, proposal, approval, demand, downstream), before, strict=True
-        ):
+        for item, expected in zip(commitments, before, strict=True):
             db.refresh(item)
             assert item.model_dump() == expected
         (notice, queued) = db.exec(
