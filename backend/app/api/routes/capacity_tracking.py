@@ -68,6 +68,8 @@ def create_assignment_feedback(
         employee_id=target.employee_id,
         closed_at=target.closed_at,
         levels=target.levels,
+        requester_user_id=target.requester_user_id,
+        requesting_department_id=target.requesting_department_id,
     )
     session.commit()
     return request_id

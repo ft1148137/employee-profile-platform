@@ -20,7 +20,13 @@ from app.domains.capacity.models import (
 from app.domains.change_request.models import ProfileChangeRequest, RequestOrigin
 from app.domains.evidence.models import EvidenceKind, Visibility
 from app.domains.evidence.service import append_evidence
-from app.domains.org.models import Department, Employee, Organization
+from app.domains.org.models import (
+    Department,
+    Employee,
+    Organization,
+    OrgMembership,
+    RoleGrant,
+)
 from app.domains.profile.models import ProfileVersion
 from tests.api.routes.test_m6_capacity_assignment import case as case
 from tests.utils.migrations import migrate
@@ -383,6 +389,24 @@ def test_borrowed_feedback_scope(
         ]
         for role in ("a", "am", "bm"):
             api(f"/evidence/{evidence_id}", role, status=404)
+        membership = db.exec(
+            select(OrgMembership).where(
+                OrgMembership.org_id == org.id,
+                OrgMembership.user_id == users["am"].id,
+            )
+        ).one()
+        db.add(
+            RoleGrant(
+                org_id=org.id,
+                membership_id=membership.id,
+                role="dept_manager",
+                department_id=lender.id,
+            )
+        )
+        db.commit()
+        assert api(f"/employees/{people['w'].id}/evidence", "am")["data"][0]["redacted"]
+        api(f"/evidence/{evidence_id}", "am", status=404)
+        api(path, "am", BODY, status=404)
         assert (
             api(f"/capacity/demands/{demand.id}/assignments", "bm")["data"][0][
                 "headcount"

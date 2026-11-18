@@ -80,6 +80,8 @@ def create_feedback(
     employee_id: UUID,
     closed_at: datetime | None,
     levels: dict[str, str | None],
+    requester_user_id: UUID,
+    requesting_department_id: UUID | None,
 ) -> UUID:
     # The route holds the assignment lock across this check and the commit.
     org_id = principal.org_id
@@ -101,7 +103,13 @@ def create_feedback(
         content={"comment": body.text},
         visibility=Visibility.RESTRICTED,
         occurred_at=closed_at,
-        provenance={"user_id": str(principal.user_id)},
+        provenance={
+            "user_id": str(principal.user_id),
+            "requester_user_id": str(requester_user_id),
+            "requesting_department_id": str(requesting_department_id)
+            if requesting_department_id
+            else None,
+        },
     )
     if not created:
         raise FeedbackConflict("该分配已有相同反馈，请通过证据更正流程纠错")

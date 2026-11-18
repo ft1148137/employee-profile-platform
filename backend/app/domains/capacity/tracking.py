@@ -83,6 +83,8 @@ class FeedbackTarget(NamedTuple):
     closed_at: datetime | None
     levels: dict[str, str | None]
     default_keys: list[str]
+    requester_user_id: UUID
+    requesting_department_id: UUID | None
 
 
 class FeedbackNotCompleted(HTTPException):
@@ -186,6 +188,10 @@ def feedback_targets(
                 row.closed_at,
                 levels,
                 defaults,
+                demand.requester_user_id,
+                demand.requesting_department_id
+                if demand.requesting_department_id != demand.target_department_id
+                else None,
             )
         )
     return results

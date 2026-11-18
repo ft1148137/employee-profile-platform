@@ -40,12 +40,30 @@ class EvidenceNotFound(HTTPException):
         super().__init__(404, "证据不存在或你没有权限查看")
 
 
+FEEDBACK_SCOPE_KEYS = {"requester_user_id", "requesting_department_id"}
+
+
 def restricted_title(kind: EvidenceKind) -> str:
     return {
         EvidenceKind.SELF_REPORT: "员工自述（受限）",
         EvidenceKind.MANAGER_REVIEW: "经理评价（受限）",
         EvidenceKind.WORK_RECORD: "工作记录（受限）",
     }[kind]
+
+
+def _feedback_requester(principal: Principal, evidence: Evidence) -> bool:
+    return (
+        evidence.source == ASSIGNMENT_FEEDBACK_SOURCE
+        and principal.employee_id != evidence.subject_employee_id
+        and (
+            evidence.provenance.get("requester_user_id") == str(principal.user_id)
+            or any(
+                str(department_id)
+                == evidence.provenance.get("requesting_department_id")
+                for department_id in principal.managed_department_ids
+            )
+        )
+    )
 
 
 def evidence_access(
@@ -112,7 +130,8 @@ def evidence_access(
         if e.source == ASSIGNMENT_FEEDBACK_SOURCE:
             access[e.id] = (
                 e,
-                can_view_evidence_content(
+                not _feedback_requester(principal, e)
+                and can_view_evidence_content(
                     principal, subject_employee=employee, visibility=e.visibility
                 ),
             )
@@ -166,7 +185,8 @@ def list_evidence(
         data=[
             evidence_summary(
                 e,
-                can_view_evidence_content(
+                not _feedback_requester(principal, e)
+                and can_view_evidence_content(
                     principal, subject_employee=employee, visibility=e.visibility
                 ),
             )
@@ -221,7 +241,9 @@ def read_evidence(
         {evidence_id},
         review_permissions=permissions,
     )
-    if evidence_id not in access:
+    if evidence_id not in access or _feedback_requester(
+        principal, access[evidence_id][0]
+    ):
         raise EvidenceNotFound()
     return evidence_details(
         session,
@@ -329,7 +351,12 @@ def evidence_details(
         result[evidence_id] = EvidenceDetail(
             **evidence_summary(evidence, readable).model_dump(),
             content=evidence.content if readable else None,
-            provenance=evidence.provenance
+            provenance={
+                key: value
+                for key, value in evidence.provenance.items()
+                if evidence.source != ASSIGNMENT_FEEDBACK_SOURCE
+                or key not in FEEDBACK_SCOPE_KEYS
+            }
             if readable
             else {
                 "source": evidence.source,
@@ -465,7 +492,12 @@ def supersede_evidence(
             title=title,
             occurred_at=occurred_at,
             event_id=event_id,
-            provenance=provenance,
+            provenance={
+                **provenance,
+                **{key: original.provenance.get(key) for key in FEEDBACK_SCOPE_KEYS},
+            }
+            if original.source == ASSIGNMENT_FEEDBACK_SOURCE
+            else provenance,
         ),
     )
     if not created:
