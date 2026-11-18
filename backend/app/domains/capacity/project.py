@@ -4,9 +4,11 @@ from datetime import date
 from graphlib import CycleError, TopologicalSorter
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlmodel import Session, col, or_, select
 
 from app.authz.principal import Principal
+from app.domains.capability.service import get_schema, level_exists, list_capabilities
 from app.domains.capacity import demand
 from app.domains.capacity.demand_schemas import (
     ProjectDetail,
@@ -33,6 +35,13 @@ from app.domains.capacity.settings import CapacityNotFound, require_enabled
 from app.domains.org.models import Department
 
 PROJECT_NOT_FOUND = "未找到这个项目需求，或你没有权限查看。"
+
+
+class ProjectCapabilityInvalid(HTTPException):
+    def __init__(self, role_name: str, detail: str) -> None:
+        super().__init__(
+            422, f"角色「{role_name}」的{detail}，请从当前能力词典重新选择"
+        )
 
 
 class InvalidProjectDependencies(ValueError):
@@ -150,6 +159,24 @@ def submit_project(
     requester = demand.require_requesting_department(
         principal, session, body.requesting_department_id
     )
+    if any(role.extra_capabilities for role in body.roles):
+        schema = get_schema(session, principal.org_id)
+        capabilities = {
+            row.key: row
+            for row in list_capabilities(session, principal.org_id, schema.id)
+        }
+        for role in body.roles:
+            for extra in role.extra_capabilities:
+                capability = capabilities.get(extra.key)
+                if capability is None:
+                    raise ProjectCapabilityInvalid(
+                        role.role_name,
+                        f"额外能力「{extra.key}」不在当前启用的能力词典中",
+                    )
+                if not level_exists(capability.level_rubric, extra.minimum_level):
+                    raise ProjectCapabilityInvalid(
+                        role.role_name, f"额外能力「{capability.name}」的最低等级已失效"
+                    )
     row = CapacityProject(
         org_id=principal.org_id,
         requesting_department_id=body.requesting_department_id,

@@ -17,6 +17,7 @@ from app.domains.capacity.models import (
     CapacityProject,
     CapacitySetting,
 )
+from app.domains.im.models import ImBinding, ImNotification
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.org.models import Department, Employee, OrgMembership, RoleGrant
 from app.models import User
@@ -44,6 +45,17 @@ def project_data(
         )
         db.add(person)
         db.flush()
+        if index == 0:
+            db.add(
+                ImBinding(
+                    org_id=org,
+                    employee_id=person.id,
+                    platform="feishu",
+                    external_user_id="synthetic-user",
+                    external_chat_id="synthetic-chat",
+                    bot_identity="synthetic-bot",
+                )
+            )
         membership = OrgMembership(org_id=org, user_id=user.id, employee_id=person.id)
         db.add(membership)
         db.flush()
@@ -111,6 +123,25 @@ def project_data(
     db.commit()
 
 
+def assert_no_project_submission(db: Session, org: UUID) -> None:
+    for model in (
+        CapacityProject,
+        CapacityDemand,
+        CapacityDemandEvent,
+        CapacityDemandDependency,
+        ImNotification,
+    ):
+        assert db.exec(select(model).where(model.org_id == org)).all() == []
+    assert (
+        db.exec(
+            select(InboxItem.id).where(
+                InboxItem.org_id == org, InboxItem.kind == InboxKind.CAPACITY
+            )
+        ).all()
+        == []
+    )
+
+
 def test_project_submission_is_atomic(
     project_data: tuple,
     client: TestClient,
@@ -123,17 +154,10 @@ def test_project_submission_is_atomic(
     bad = client.post(f"{base}/projects", headers=auth["manager"], json=body)
     assert bad.status_code == 404, bad.text
     org = UUID(base.split("/")[-2])
-    for model in (
-        CapacityProject,
-        CapacityDemand,
-        CapacityDemandEvent,
-        CapacityDemandDependency,
-    ):
-        assert db.exec(select(model).where(model.org_id == org)).all() == []
+    assert_no_project_submission(db, org)
     notices = select(InboxItem.recipient_user_id).where(
         InboxItem.org_id == org, InboxItem.kind == InboxKind.CAPACITY
     )
-    assert db.exec(notices).all() == []
     roles[-1]["target_department_id"] = original
     response = client.post(f"{base}/projects", headers=auth["manager"], json=body)
     assert response.status_code == 200, response.text
@@ -155,6 +179,10 @@ def test_project_submission_is_atomic(
         {actors[0]: 2, actors[1]: 1, actors[2]: 1}
     )
     assert (
+        len(db.exec(select(ImNotification).where(ImNotification.org_id == org)).all())
+        == 2
+    )
+    assert (
         db.exec(
             select(CapacityDemand).where(
                 CapacityDemand.org_id == org, CapacityDemand.role_name == "合成角色0"
@@ -164,6 +192,54 @@ def test_project_submission_is_atomic(
         .extra_capabilities
         == roles[0]["extra_capabilities"]
     )
+
+
+@pytest.mark.parametrize(
+    ("removed", "message"),
+    [
+        (True, "不在当前启用的能力词典中"),
+        (False, "最低等级"),
+    ],
+    ids=["removed-optional-capability", "removed-minimum-level"],
+)
+def test_project_rejects_stale_extra_capability(
+    project_data: tuple, client: TestClient, db: Session, removed: bool, message: str
+) -> None:
+    base, auth, body, _ = project_data
+    dictionary_url = f"{base.removesuffix('/capacity')}/capabilities"
+    editor = client.get(f"{dictionary_url}/editor", headers=auth["admin"])
+    assert editor.status_code == 200, editor.text
+    dictionary = editor.json()
+    definitions = dictionary["definitions"]
+    extra = definitions[2]
+    levels = extra["level_rubric"]["levels"]
+    last_role = body["roles"][-1]
+    last_role["extra_capabilities"] = [
+        {
+            "key": extra["key"],
+            "minimum_level": None if removed else levels[-1]["key"],
+            "required": not removed,
+        }
+    ]
+    if removed:
+        definitions.remove(extra)
+    else:
+        levels.pop()
+    updated = client.post(
+        f"{dictionary_url}/versions",
+        headers=auth["admin"],
+        json={
+            "expected_version": dictionary["expected_version"],
+            "definitions": definitions,
+        },
+    )
+    assert updated.status_code == 200, updated.text
+
+    response = client.post(f"{base}/projects", headers=auth["manager"], json=body)
+    assert response.status_code == 422, response.text
+    assert last_role["role_name"] in response.json()["detail"]
+    assert message in response.json()["detail"]
+    assert_no_project_submission(db, UUID(base.split("/")[-2]))
 
 
 @pytest.mark.parametrize(
