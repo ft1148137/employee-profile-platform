@@ -1499,6 +1499,24 @@ export type ChangeProposalInput = {
 }
 
 /**
+ * ChangeProposalParticipant
+ */
+export type ChangeProposalParticipant = {
+  /**
+   * Number
+   */
+  number: number
+  /**
+   * Segments
+   */
+  segments: Array<ProposalSegment>
+  /**
+   * Status
+   */
+  status: "unchanged" | "replaced" | "added" | "removed"
+}
+
+/**
  * ChangeRequestPublic
  */
 export type ChangeRequestPublic = {
@@ -1836,7 +1854,7 @@ export type CommitmentArrangement = {
   /**
    * Participants
    */
-  participants: Array<ProposalParticipant>
+  participants: Array<ChangeProposalParticipant | ProposalParticipant>
   /**
    * Lines
    */
@@ -5695,7 +5713,7 @@ export type ProposalDetail = {
   /**
    * Participants
    */
-  participants: Array<ProposalParticipant>
+  participants: Array<ChangeProposalParticipant | ProposalParticipant>
   /**
    * Allocation Percents
    */
@@ -5834,7 +5852,7 @@ export type ProposalSummary = {
   /**
    * Participants
    */
-  participants: Array<ProposalParticipant>
+  participants: Array<ChangeProposalParticipant | ProposalParticipant>
   /**
    * Allocation Percents
    */

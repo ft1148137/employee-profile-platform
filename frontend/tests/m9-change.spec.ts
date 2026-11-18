@@ -9,7 +9,11 @@ import { expectChineseCopy } from "./utils/copy"
 
 test.use({ storageState: { cookies: [], origins: [] }, actionTimeout: 15000 })
 
-async function setup(page: Page, request: APIRequestContext) {
+async function setup(
+  page: Page,
+  request: APIRequestContext,
+  extraWorkers: Array<[string, string]> = [],
+) {
   const password = "synthetic-proposal-password-2026"
   const api = async (
     url: string,
@@ -48,6 +52,10 @@ async function setup(page: Page, request: APIRequestContext) {
             `M,合成答复经理,研发,,m-${crypto.randomUUID()}@example.com`,
             `B,合成原员工,研发,M,b-${crypto.randomUUID()}@example.com`,
             `C,合成接替员工,研发,M,c-${crypto.randomUUID()}@example.com`,
+            ...extraWorkers.map(
+              ([code, name]) =>
+                `${code},${name},研发,M,${code.toLowerCase()}-${crypto.randomUUID()}@example.com`,
+            ),
           ].join("\n"),
         ),
       },
@@ -120,7 +128,8 @@ async function setup(page: Page, request: APIRequestContext) {
   }
   const a = tokens.get("A")!
   const m = tokens.get("M")!
-  for (const code of ["B", "C"]) {
+  const workerCodes = ["B", "C", ...extraWorkers.map(([code]) => code)]
+  for (const code of workerCodes) {
     await api(
       `${base}/employees/${person(code).id}/profile/direct-edits`,
       {
@@ -152,7 +161,7 @@ async function setup(page: Page, request: APIRequestContext) {
   await api(
     `${base}/capacity/weeks`,
     {
-      items: ["B", "C"].map((code) => ({
+      items: workerCodes.map((code) => ({
         employee_id: person(code).id,
         other_percent: 0,
       })),
@@ -162,15 +171,15 @@ async function setup(page: Page, request: APIRequestContext) {
     m,
     "PUT",
   )
-  const create = (description = "合成换人需求") =>
+  const create = (description = "合成换人需求", headcount = 1, percent = 70) =>
     api(
       `${base}/capacity/demands`,
       {
         requesting_department_id: person("A").department!.id,
         target_department_id: person("M").department!.id,
         capability_key: "delivery",
-        headcount: 1,
-        allocation_percent: 70,
+        headcount,
+        allocation_percent: percent,
         window_start: start,
         window_end: later(13),
         description,
@@ -262,7 +271,19 @@ async function setup(page: Page, request: APIRequestContext) {
     )
     return legacy.id
   }
-  return { a, m, details, person, createLegacy, secondWeek: later(7) }
+  return {
+    api,
+    base,
+    a,
+    m,
+    create,
+    details,
+    person,
+    createLegacy,
+    start,
+    later,
+    secondWeek: later(7),
+  }
 }
 
 test("资源方提交换人，需求方匿名确认后替换原分配", async ({
@@ -343,4 +364,104 @@ test("已承诺分配从行内发起变更，旧手工分配仍能直接保存�
   await startForm.getByLabel("调整后的开始日期").fill(secondWeek)
   await startForm.getByRole("button", { name: "保存开始日期" }).click()
   await expect(legacy).toContainText(`开始：${secondWeek}`)
+})
+
+test("三人同比例换掉一人时，A方变更前后两栏序号对齐并标出替换项", async ({
+  page,
+  request,
+}) => {
+  const s = await setup(page, request, [
+    ["D", "合成人员乙"],
+    ["E", "合成人员丙"],
+  ])
+  const multi = await s.create("三人换人需求", 3, 30)
+  const makeLines = (codes: string[]) =>
+    codes.map((code) => ({
+      employee_id: s.person(code).id,
+      allocation_percent: 30,
+      start_date: s.start,
+      end_date: s.later(13),
+    }))
+  const case1 = await s.api(
+    `${s.base}/planning/demands/${multi.id}/cases`,
+    {},
+    s.m,
+  )
+  const opt1 = await s.api(
+    `${s.base}/planning/cases/${case1.id}/options`,
+    { assignees: makeLines(["B", "D", "E"]) },
+    s.m,
+  )
+  const proposed = await s.api(
+    `${s.base}/capacity/demands/${multi.id}/reply`,
+    {
+      option_id: opt1.id,
+      revision: multi.revision,
+      outcome: "can_do",
+      text: "按约定交付",
+    },
+    s.m,
+  )
+  const accepted = await s.api(
+    `${s.base}/capacity/demands/${multi.id}/respond`,
+    { action: "accept", revision: proposed.revision },
+    s.a,
+  )
+  const case2 = await s.api(
+    `${s.base}/planning/demands/${multi.id}/cases`,
+    {},
+    s.m,
+  )
+  const opt2 = await s.api(
+    `${s.base}/planning/cases/${case2.id}/options`,
+    { assignees: makeLines(["B", "C", "E"]) },
+    s.m,
+  )
+  await s.api(
+    `${s.base}/capacity/demands/${multi.id}/change`,
+    {
+      option_id: opt2.id,
+      reason: "更换其中一位参与人",
+      revision: accepted.revision,
+    },
+    s.m,
+  )
+
+  await s.details(s.a, multi.id)
+  const proposal = page.getByRole("region", { name: "安排变更提议" })
+  const before = proposal.getByRole("region", { name: "变更前" })
+  const after = proposal.getByRole("region", { name: "变更后" })
+  await expect(before).toContainText("将被更换")
+  await expect(after).toContainText("已更换为新人员")
+
+  const beforeHeadings = (await before.locator("h4").allTextContents()).filter(
+    (text) => text !== "变更前",
+  )
+  const afterHeadings = (await after.locator("h4").allTextContents()).filter(
+    (text) => text !== "变更后",
+  )
+  expect(beforeHeadings).toHaveLength(3)
+  expect(afterHeadings).toHaveLength(3)
+
+  const beforeReplaced = beforeHeadings.filter((t) => t.includes("将被更换"))
+  const afterReplaced = afterHeadings.filter((t) =>
+    t.includes("已更换为新人员"),
+  )
+  expect(beforeReplaced).toHaveLength(1)
+  expect(afterReplaced).toHaveLength(1)
+  const replacedNumber = beforeReplaced[0].match(/^第 (\d+) 人/)?.[1]
+  expect(replacedNumber).toBeTruthy()
+  expect(afterReplaced[0]).toBe(`第 ${replacedNumber} 人（已更换为新人员）`)
+
+  const unchangedBefore = beforeHeadings.filter((t) => !t.includes("将被更换"))
+  const unchangedAfter = afterHeadings.filter(
+    (t) => !t.includes("已更换为新人员"),
+  )
+  expect(unchangedAfter).toEqual(unchangedBefore)
+  expect(unchangedBefore.every((t) => /^第 \d+ 人$/.test(t))).toBeTruthy()
+
+  await expect(proposal).not.toContainText(
+    /合成原员工|合成接替员工|合成人员乙|合成人员丙|合成答复经理/,
+  )
+  await expectChineseCopy(page)
 })

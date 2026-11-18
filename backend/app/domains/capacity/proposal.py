@@ -31,8 +31,11 @@ from app.domains.capacity.demand_schemas import (
     BorrowLineInput,
     BorrowRequest,
     ChangeProposalInput,
+    ChangeProposalParticipant,
     CommitmentArrangement,
     DemandPublic,
+    ParticipantChangeStatus,
+    ParticipantPublic,
     PlanReplyInput,
     ProposalApprovalPublic,
     ProposalDetail,
@@ -501,13 +504,13 @@ def approvals_for(session: Session, row: CapacityProposal) -> list[CapacityAppro
     )
 
 
-def arrangement(
+def _grouped_lines(
     principal: Principal,
     session: Session,
     lines: list[CapacityProposalLine],
     *,
     detailed: bool,
-) -> CommitmentArrangement:
+) -> tuple[dict[UUID, list[ProposalSegment]], list[ProposalLinePublic] | None]:
     people = {}
     if detailed:
         people = {
@@ -532,9 +535,8 @@ def arrangement(
         lines, key=lambda line: (line.start_date, line.created_at, line.id)
     ):
         borrowed = line.lender_department_id is not None
-        key = line.id if borrowed else line.employee_id
-        if key is not None:
-            groups.setdefault(key, []).append(ProposalSegment.model_validate(line))
+        key = line.employee_id if line.employee_id is not None else line.id
+        groups.setdefault(key, []).append(ProposalSegment.model_validate(line))
         if not borrowed and line.employee_id is not None and line.employee_id in people:
             details.append(
                 ProposalLinePublic(
@@ -547,13 +549,68 @@ def arrangement(
                     outside_basis=line.outside_basis,
                 )
             )
+    return groups, details if detailed else None
+
+
+def arrangement(
+    principal: Principal,
+    session: Session,
+    lines: list[CapacityProposalLine],
+    *,
+    detailed: bool,
+) -> CommitmentArrangement:
+    groups, details = _grouped_lines(principal, session, lines, detailed=detailed)
     return CommitmentArrangement(
         participants=[
             ProposalParticipant(number=index, segments=segments)
             for index, segments in enumerate(groups.values(), start=1)
         ],
-        lines=details if detailed else None,
+        lines=details,
     )
+
+
+def _aligned_participants(
+    prev_groups: dict[UUID, list[ProposalSegment]],
+    curr_groups: dict[UUID, list[ProposalSegment]],
+) -> tuple[list[ParticipantPublic], list[ParticipantPublic]]:
+    prev_numbers = {key: index for index, key in enumerate(prev_groups, start=1)}
+    removed = [key for key in prev_groups if key not in curr_groups]
+    added = [key for key in curr_groups if key not in prev_groups]
+    replacements = list(zip(removed, added, strict=False))
+    replaced_prev = {old_key for old_key, _ in replacements}
+    replaced_curr = {
+        new_key: prev_numbers[old_key] for old_key, new_key in replacements
+    }
+    next_number = len(prev_groups) + 1
+    prev_participants: list[ParticipantPublic] = [
+        ChangeProposalParticipant(
+            number=prev_numbers[key],
+            segments=segments,
+            status=(
+                "replaced"
+                if key in replaced_prev
+                else "removed"
+                if key not in curr_groups
+                else "unchanged"
+            ),
+        )
+        for key, segments in prev_groups.items()
+    ]
+    curr_participants: list[ParticipantPublic] = []
+    for key, segments in curr_groups.items():
+        status: ParticipantChangeStatus
+        if key in prev_numbers:
+            number, status = prev_numbers[key], "unchanged"
+        elif key in replaced_curr:
+            number, status = replaced_curr[key], "replaced"
+        else:
+            number, status = next_number, "added"
+            next_number += 1
+        curr_participants.append(
+            ChangeProposalParticipant(number=number, segments=segments, status=status)
+        )
+    curr_participants.sort(key=lambda item: item.number)
+    return prev_participants, curr_participants
 
 
 def public(
@@ -605,26 +662,35 @@ def public(
             col(CapacityDemandEvent.id).desc(),
         )
     ).first()
-    current = arrangement(principal, session, lines, detailed=detailed)
     previous = None
     if (
         include_previous
         and row.replaces_proposal_id is not None
         and row.status == ProposalStatus.PENDING
     ):
-        previous = arrangement(
-            principal,
-            session,
-            [
-                line.model_copy(
-                    update={"start_date": a.start_date, "end_date": a.due_date}
-                )
-                for a, line in active_segments(
-                    session, row.org_id, row.demand_id, row.replaces_proposal_id
-                )
-            ],
-            detailed=detailed,
+        prev_lines = [
+            line.model_copy(update={"start_date": a.start_date, "end_date": a.due_date})
+            for a, line in active_segments(
+                session, row.org_id, row.demand_id, row.replaces_proposal_id
+            )
+        ]
+        prev_groups, prev_details = _grouped_lines(
+            principal, session, prev_lines, detailed=detailed
         )
+        curr_groups, curr_details = _grouped_lines(
+            principal, session, lines, detailed=detailed
+        )
+        prev_participants, curr_participants = _aligned_participants(
+            prev_groups, curr_groups
+        )
+        previous = CommitmentArrangement(
+            participants=prev_participants, lines=prev_details
+        )
+        current = CommitmentArrangement(
+            participants=curr_participants, lines=curr_details
+        )
+    else:
+        current = arrangement(principal, session, lines, detailed=detailed)
     summary = ProposalSummary(
         id=row.id,
         status=row.status,
@@ -949,7 +1015,6 @@ def accept(
         if row.replaces_proposal_id is not None
         else []
     )
-    old_people = {assignment.employee_id for assignment, _ in old_segments}
     unchanged: dict[tuple[UUID, date | None, date, int], list[CapacityAssignment]] = (
         defaultdict(list)
     )
@@ -1049,8 +1114,14 @@ def accept(
                 via=acceptance_via,
             )
         )
-    new_people = {line.employee_id for line in lines if line.employee_id is not None}
-    for employee_id in sorted(old_people ^ new_people):
+    changed_people = {
+        line.employee_id for line in added if line.employee_id is not None
+    } | {
+        assignment.employee_id
+        for replaced in unchanged.values()
+        for assignment in replaced
+    }
+    for employee_id in sorted(changed_people):
         notify_employee(principal, session, employee_id)
     notify_parties(
         principal,

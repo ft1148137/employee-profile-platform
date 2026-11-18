@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { AxiosError } from "axios"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   CapacityService,
   type CommitmentArrangement,
@@ -623,7 +623,10 @@ const proposalStatuses: Record<string, string> = {
   withdrawn: "已撤回",
 }
 
-function proposalLabel(proposal: NonNullable<DemandPublic["proposal"]>) {
+function proposalLabel(
+  proposal: NonNullable<DemandPublic["proposal"]>,
+  now = Date.now(),
+) {
   if (proposal.status !== "pending" && proposal.borrow_progress)
     return proposal.borrow_progress
   if (proposal.status === "failed")
@@ -634,7 +637,7 @@ function proposalLabel(proposal: NonNullable<DemandPublic["proposal"]>) {
     )
   if (
     proposal.status === "pending" &&
-    Date.parse(proposal.hold_expires_at) <= Date.now()
+    Date.parse(proposal.hold_expires_at) <= now
   )
     return "已过期"
   return proposal.borrow_progress ?? proposalStatuses[proposal.status]
@@ -713,6 +716,32 @@ function ProposalPanel({
 }) {
   const proposal = demand.proposal!
   const cache = useQueryClient()
+  const [now, setNow] = useState(() => Date.now())
+  const expiresAt = Date.parse(proposal.hold_expires_at)
+  useEffect(() => {
+    if (proposal.status !== "pending" || !Number.isFinite(expiresAt)) return
+    let timer: number | undefined
+    const schedule = () => {
+      const current = Date.now()
+      const remaining = expiresAt - current
+      if (remaining <= 0) {
+        setNow(current)
+        return
+      }
+      timer = window.setTimeout(
+        () => {
+          const next = Date.now()
+          setNow(next)
+          if (next < expiresAt) schedule()
+        },
+        Math.min(remaining, 0x7fffffff),
+      )
+    }
+    schedule()
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
+  }, [proposal.status, expiresAt])
   const [action, setAction] = useState<
     "accept" | "follow_up" | "withdraw" | null
   >(null)
@@ -747,7 +776,7 @@ function ProposalPanel({
         refresh()
     },
   })
-  const label = proposalLabel(proposal)
+  const label = proposalLabel(proposal, now)
   const pending = proposal.status === "pending" && label !== "已过期"
   const requesterApproved = proposal.approvals.some(
     (approval) => approval.party === "requester",
@@ -775,7 +804,11 @@ function ProposalPanel({
       {proposal.previous && (
         <section aria-label="变更前" className="space-y-2">
           <h4 className="font-semibold">变更前</h4>
-          <ProposalPeople arrangement={proposal.previous} side={side} />
+          <ProposalPeople
+            arrangement={proposal.previous}
+            side={side}
+            phase="previous"
+          />
         </section>
       )}
       <section
@@ -789,6 +822,7 @@ function ProposalPanel({
             lines: "lines" in proposal ? proposal.lines : null,
           }}
           side={side}
+          phase={change ? "current" : undefined}
         />
       </section>
       {proposal.approvals.map((approval, index) => (
@@ -932,12 +966,28 @@ function ProposalPanel({
   )
 }
 
+function participantLabel(
+  person: CommitmentArrangement["participants"][number],
+  phase?: "previous" | "current",
+) {
+  const status = "status" in person ? person.status : undefined
+  if (status === "replaced")
+    return phase === "previous"
+      ? `第 ${person.number} 人（将被更换）`
+      : `第 ${person.number} 人（已更换为新人员）`
+  if (status === "added") return `第 ${person.number} 人（新增）`
+  if (status === "removed") return `第 ${person.number} 人（移除）`
+  return `第 ${person.number} 人`
+}
+
 function ProposalPeople({
   arrangement,
   side,
+  phase,
 }: {
   arrangement: CommitmentArrangement
   side: "incoming" | "outgoing"
+  phase?: "previous" | "current"
 }) {
   const groups = new Map<string, ProposalLinePublic[]>()
   if (side === "incoming" && arrangement.lines)
@@ -952,7 +1002,7 @@ function ProposalPeople({
         segments: parts,
       }))
     : arrangement.participants.map((person) => ({
-        name: `第 ${person.number} 人`,
+        name: participantLabel(person, phase),
         segments: person.segments,
       }))
   return (

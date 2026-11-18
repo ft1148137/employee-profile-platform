@@ -24,6 +24,7 @@ from app.domains.capacity.models import (
     CapacityWeek,
 )
 from app.domains.inbox.models import InboxItem
+from app.domains.org.models import Employee, OrgMembership
 from tests.api.routes.test_m9_borrow import decide
 from tests.api.routes.test_m9_borrow import offered as offered
 from tests.api.routes.test_m9_proposal import case as case
@@ -609,3 +610,122 @@ def test_change_simulation_rejects_overbooking(client: TestClient, case: tuple) 
     option = plan(client, case, segments(case, percent=100))
     assert option["verdict"] == "infeasible"
     assert "over_capacity" in {finding["code"] for finding in option["findings"]}
+
+
+def test_change_commitment_notifies_only_employees_with_segment_changes(
+    client: TestClient, case: tuple, db: Session
+) -> None:
+    _, people, _, demand = case
+    admin_user_id = db.exec(
+        select(OrgMembership.user_id).where(
+            OrgMembership.org_id == demand.org_id,
+            OrgMembership.employee_id.is_(None),  # type: ignore[union-attr]
+        )
+    ).first()
+    assert admin_user_id is not None
+    extras = {}
+    for code, name in (
+        ("E91", "合成段新增员工"),
+        ("E92", "合成段移除员工"),
+        ("E93", "合成整人新增员工"),
+    ):
+        emp = Employee(
+            org_id=demand.org_id,
+            department_id=demand.target_department_id,
+            employee_code=code,
+            display_name=name,
+        )
+        db.add(emp)
+        db.flush()
+        for week in (demand.window_start, demand.window_start + timedelta(days=7)):
+            db.add(
+                CapacityWeek(
+                    org_id=demand.org_id,
+                    employee_id=emp.id,
+                    week_start=week,
+                    other_percent=10,
+                    confirmed_by_user_id=admin_user_id,
+                )
+            )
+        extras[code] = emp
+    demand.headcount = 3
+    demand.allocation_percent = 20
+    db.commit()
+
+    week1_start = demand.window_start
+    week1_end = week1_start + timedelta(days=6)
+    week2_start = week1_start + timedelta(days=7)
+    week2_end = demand.window_end
+
+    def seg(emp_id: Any, start: date, end: date, percent: int) -> dict[str, Any]:
+        return {
+            "employee_id": str(emp_id),
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "allocation_percent": percent,
+        }
+
+    initial_lines = [
+        seg(people["E04"].id, week1_start, week2_end, 50),  # unchanged across both
+        seg(people["E05"].id, week1_start, week1_end, 30),  # kept
+        seg(people["E05"].id, week2_start, week2_end, 50),  # percent changed -> 40
+        seg(extras["E91"].id, week1_start, week1_end, 40),  # kept
+        seg(extras["E91"].id, week2_start, week2_end, 30),  # segment removed
+        seg(extras["E92"].id, week1_start, week2_end, 30),  # removed completely
+    ]
+    reply = propose(client, case, plan(client, case, initial_lines))
+    assert reply.status_code == 200, reply.text
+    accepted = respond(client, case, reply.json()["revision"])
+    assert accepted.status_code == 200, accepted.text
+    db.refresh(demand)
+
+    changed_lines = [
+        seg(people["E04"].id, week1_start, week2_end, 50),  # completely unchanged
+        seg(people["E05"].id, week1_start, week1_end, 30),
+        seg(people["E05"].id, week2_start, week2_end, 40),  # percent changed
+        seg(extras["E91"].id, week1_start, week1_end, 40),  # week2 segment removed
+        seg(extras["E93"].id, week1_start, week2_end, 30),  # new employee added
+    ]
+    offer = submit_change(client, case, plan(client, case, changed_lines))
+    assert offer.status_code == 200, offer.text
+    notice_ids = {row.id for row in rows(db, InboxItem, demand)}
+    committed = respond(client, case, offer.json()["revision"])
+    assert committed.status_code == 200, committed.text
+    db.expire_all()
+    notified = {
+        row.recipient_employee_id
+        for row in rows(db, InboxItem, demand)
+        if row.id not in notice_ids and row.recipient_employee_id is not None
+    }
+    assert notified == {
+        people["E05"].id,
+        extras["E91"].id,
+        extras["E92"].id,
+        extras["E93"].id,
+    }
+    assert people["E04"].id not in notified
+
+    # Second change: date shift on E93, E91 segment addition; E04 & E05 unchanged.
+    db.refresh(demand)
+    shifted_lines = [
+        seg(people["E04"].id, week1_start, week2_end, 50),  # unchanged
+        seg(people["E05"].id, week1_start, week1_end, 30),  # unchanged
+        seg(people["E05"].id, week2_start, week2_end, 40),  # unchanged
+        seg(extras["E91"].id, week1_start, week1_end, 40),
+        seg(extras["E91"].id, week2_start, week2_end, 20),  # segment added
+        seg(extras["E93"].id, week2_start, week2_end, 30),  # start_date shifted
+    ]
+    offer2 = submit_change(client, case, plan(client, case, shifted_lines))
+    assert offer2.status_code == 200, offer2.text
+    notice_ids2 = {row.id for row in rows(db, InboxItem, demand)}
+    committed2 = respond(client, case, offer2.json()["revision"])
+    assert committed2.status_code == 200, committed2.text
+    db.expire_all()
+    notified2 = {
+        row.recipient_employee_id
+        for row in rows(db, InboxItem, demand)
+        if row.id not in notice_ids2 and row.recipient_employee_id is not None
+    }
+    assert notified2 == {extras["E91"].id, extras["E93"].id}
+    assert people["E04"].id not in notified2
+    assert people["E05"].id not in notified2
