@@ -58,8 +58,7 @@ type CapacityReference = (
 )
 
 
-class DemandInput(ReferenceInput):
-    requesting_department_id: UUID
+class DemandFields(ReferenceInput):
     headcount: int = Field(strict=True, ge=1, le=50)
     allocation_percent: int = Field(strict=True, ge=10, le=100)
     window_start: date
@@ -68,12 +67,68 @@ class DemandInput(ReferenceInput):
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
     ]
 
+
+class DemandInput(DemandFields):
+    requesting_department_id: UUID
+
     @model_validator(mode="after")
     def valid_window(self) -> DemandInput:
         if self.window_end < self.window_start:
             raise ValueError("结束日期不能早于开始日期")
         if self.requesting_department_id == self.target_department_id:
             raise ValueError("目标部门不能是需求方部门本身")
+        return self
+
+
+class ExtraCapability(CapacityInput):
+    key: str = Field(min_length=1, max_length=200)
+    minimum_level: str | None = Field(default=None, max_length=200)
+    required: StrictBool
+
+
+class ProjectRoleInput(DemandFields):
+    role_name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=50)
+    ]
+    extra_capabilities: list[ExtraCapability] = Field(
+        default_factory=list, max_length=5
+    )
+    depends_on: list[Annotated[int, Field(strict=True, ge=0)]] = Field(
+        default_factory=list, max_length=11
+    )
+
+    @model_validator(mode="after")
+    def distinct_capabilities(self) -> ProjectRoleInput:
+        keys = {item.key for item in self.extra_capabilities}
+        if self.capability_key in keys or len(keys) != len(self.extra_capabilities):
+            raise ValueError("主能力和额外能力不能重复")
+        return self
+
+    def as_demand(self, requesting_department_id: UUID) -> DemandInput:
+        return DemandInput(
+            requesting_department_id=requesting_department_id,
+            **self.model_dump(
+                exclude={"role_name", "extra_capabilities", "depends_on"}
+            ),
+        )
+
+
+class ProjectInput(CapacityInput):
+    title: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+    ]
+    description: str = Field(default="", max_length=2000)
+    requesting_department_id: UUID
+    roles: list[ProjectRoleInput] = Field(min_length=1, max_length=12)
+
+    @model_validator(mode="after")
+    def previous_roles_only(self) -> ProjectInput:
+        for index, role in enumerate(self.roles):
+            role.as_demand(self.requesting_department_id)
+            if any(dep >= index for dep in role.depends_on):
+                raise ValueError("前置角色必须是同一项目中前面已填写的角色")
+            if len(set(role.depends_on)) != len(role.depends_on):
+                raise ValueError("同一前置角色不能重复选择")
         return self
 
 
@@ -302,6 +357,24 @@ class ProposalWithdrawInput(CapacityInput):
     revision: int = Field(strict=True, ge=1)
 
 
+class ProjectRoleSummary(BaseModel):
+    id: UUID
+    role_name: str
+    target_department_name: str
+    status: DemandStatus
+    window_start: date
+    window_end: date
+    committed_start_date: date | None
+    committed_end_date: date | None
+
+
+class DemandProject(BaseModel):
+    id: UUID
+    title: str
+    role_name: str
+    prerequisites: list[ProjectRoleSummary] = Field(default_factory=list)
+
+
 class DemandPublic(DemandInput):
     id: UUID
     capability_name: str
@@ -313,8 +386,26 @@ class DemandPublic(DemandInput):
     committed_end_date: date | None = None
     basis_url: str | None = None
     proposal: ProposalDetail | ProposalSummary | None = None
+    project: DemandProject | None = None
 
 
 class DemandList(BaseModel):
     data: list[DemandPublic]
     count: int
+
+
+class ProjectSummary(BaseModel):
+    id: UUID
+    title: str
+    requesting_department_name: str
+    created_at: datetime
+
+
+class ProjectRole(ProjectRoleSummary):
+    outcome: DemandOutcome | None = None
+    demand: DemandPublic | None = None
+
+
+class ProjectDetail(ProjectSummary):
+    description: str | None = None
+    roles: list[ProjectRole]
