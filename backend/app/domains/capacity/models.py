@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKeyConstraint,
     Index,
+    String,
     UniqueConstraint,
     text,
 )
@@ -57,6 +58,19 @@ class DemandOutcome(StrEnum):
     CAN_DO = "can_do"
     PARTIAL = "partial"
     NOT_NOW = "not_now"
+
+
+class TrackingState(StrEnum):
+    NO_TASKS = "no_tasks"
+    ON_TRACK = "on_track"
+    TASKS_DONE = "tasks_done"
+    OVERDUE = "overdue"
+    HANDED_OVER = "handed_over"
+
+
+TRACKING_STATE_CHECK = (
+    "tracking_state IN ('no_tasks', 'on_track', 'tasks_done', 'overdue', 'handed_over')"
+)
 
 
 class AssignmentStatus(StrEnum):
@@ -285,6 +299,7 @@ class CapacityAssignment(TenantRecord, table=True):
         tenant_fk("employee_id", "employee"),
         tenant_fk("proposal_line_id", "capacity_proposal_line"),
         member_fk("assigned_by_user_id"),
+        CheckConstraint(TRACKING_STATE_CHECK, name="assignment_tracking_state"),
         CheckConstraint(
             "allocation_percent BETWEEN 10 AND 100", name="assignment_allocation"
         ),
@@ -318,6 +333,24 @@ class CapacityAssignment(TenantRecord, table=True):
     assigned_by_user_id: UUID
     proposal_line_id: UUID | None = None
     closed_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+
+    tracking_state: TrackingState | None = Field(default=None, sa_type=String)
+    tracking_changed_at: datetime | None = Field(
+        default=None, sa_type=DateTime(timezone=True)
+    )
+
+
+class CapacityAssignmentTask(TenantRecord, table=True):
+    __tablename__ = "capacity_assignment_task"
+    __table_args__ = (
+        tenant_fk("assignment_id", "capacity_assignment"),
+        tenant_fk("task_id", "task"),
+        member_fk("linked_by_user_id"),
+        UniqueConstraint("org_id", "assignment_id", "task_id"),
+    )
+    assignment_id: UUID
+    task_id: UUID
+    linked_by_user_id: UUID
 
 
 class CapacityExtensionRequest(CapacityDecision, TenantRecord, table=True):

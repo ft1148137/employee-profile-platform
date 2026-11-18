@@ -47,7 +47,6 @@ class Adapter(Protocol):
         text: str,
         buttons: list[tuple[str, str]],
         *,
-        link: tuple[str, str] | None = None,
         links: list[tuple[str, str]] | None = None,
     ) -> str: ...
     async def answer_callback(self, callback_id: str) -> None: ...

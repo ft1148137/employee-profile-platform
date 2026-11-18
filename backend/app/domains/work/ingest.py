@@ -53,6 +53,7 @@ class SourceRecord(BaseModel):
     title: str
     task_type: str | None = None
     status: str | None = None
+    status_category: str | None = None
     created_at: AwareDatetime | None = None
     updated_at: AwareDatetime | None = None
     resolved: AwareDatetime | None = None
@@ -308,6 +309,8 @@ def ingest_record(
             "occurred_at",
         )
     }
+    if record.source == "jira" and record.status_category is not None:
+        attributes["status_category"] = record.status_category
     attributes["people"] = [
         {
             "id": p.external_id,

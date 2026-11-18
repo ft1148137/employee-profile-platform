@@ -42,6 +42,7 @@ class JiraIssue(BaseModel):
     summary: str
     issue_type: str | None = None
     status: str | None = None
+    status_category: str | None = None
     created: datetime
     updated: datetime
     resolved: datetime | None = None
@@ -211,6 +212,9 @@ class JiraClient:
             summary=fields["summary"],
             issue_type=(fields.get("issuetype") or {}).get("name"),
             status=(fields.get("status") or {}).get("name"),
+            status_category=(
+                (fields.get("status") or {}).get("statusCategory") or {}
+            ).get("key"),
             created=fields["created"],
             updated=fields["updated"],
             resolved=fields.get("resolutiondate"),

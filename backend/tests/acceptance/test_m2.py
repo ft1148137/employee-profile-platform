@@ -3,6 +3,7 @@
 import runpy
 from collections.abc import Callable, Generator
 from datetime import datetime, timedelta
+from functools import partial
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -159,7 +160,7 @@ def test_sync_draft_repeat_migrate(
         monkeypatch.setattr(
             tasks,
             "execute_sync",
-            lambda p, r, a: sync.execute_sync(p, r, a, page_size=10),
+            partial(sync.execute_sync, page_size=10),
         )
         failed = synchronize(enterprise, client, deployment)
         assert failed["status"] == "failed" and failed["counts"]["records"] == 10

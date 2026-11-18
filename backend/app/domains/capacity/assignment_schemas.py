@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import Field, StrictBool, model_validator
 
-from app.domains.capacity.models import AssignmentStatus
+from app.domains.capacity.models import AssignmentStatus, TrackingState
 from app.domains.capacity.schemas import CapacityInput, Note
 
 
@@ -90,6 +90,9 @@ class AnonymousBorrowAssignment(CapacityInput):
     start_date: date | None
     due_date: date
     status: AssignmentStatus
+    tracking_state: TrackingState | None = Field(
+        default=None, exclude_if=lambda state: state is None
+    )
 
 
 class DemandAssignmentList(CapacityInput):

@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from sqlalchemy import Engine
 from sqlmodel import Session, col, select, update
 
+from app.authz.principal import Principal
 from app.core.config import settings
 from app.domains.base import utc_now
 from app.domains.im.adapters.base import Adapter, ImError
@@ -109,6 +110,31 @@ def pending_ids(engine: Engine, org_id: UUID) -> list[UUID]:
         return ids
 
 
+def tracking_notice(db: Session, item: InboxItem, principal: Principal) -> str | None:
+    from app.domains.capacity.demand import demand_row, represents_department
+    from app.domains.capacity.tracking import TRACKING_NOTICE, UNAVAILABILITY_NOTICE
+
+    if item.kind != InboxKind.CAPACITY or not item.message.startswith(
+        (f"{TRACKING_NOTICE}：", f"{UNAVAILABILITY_NOTICE}：")
+    ):
+        return None
+    body, _, url = item.message.rpartition("\n")
+    if not url.startswith("/capacity?tab=incoming&demand=") or not url.endswith(
+        "&plans=1"
+    ):
+        return None
+    try:
+        demand_id = UUID(
+            url.removeprefix("/capacity?tab=incoming&demand=").removesuffix("&plans=1")
+        )
+        demand = demand_row(principal, db, demand_id)
+    except ValueError, HTTPException:
+        return None
+    if not represents_department(principal, demand.target_department_id):
+        return None
+    return f"{body}\n{settings.FRONTEND_HOST.rstrip('/')}{url}"
+
+
 @contextmanager
 def claim(
     engine: Engine, org_id: UUID, notification_id: UUID
@@ -159,9 +185,11 @@ def claim(
             and bound.bot_identity == setting.bot_identity
             and bound.created_at <= row.created_at
         )
+        custom_text = None
         if valid and bound:
             try:
                 principal = principal_for(db, bound)
+                custom_text = tracking_notice(db, item, principal)
                 if item.kind == InboxKind.ADMIN_TODOS:
                     valid = (
                         principal.is_org_admin
@@ -191,7 +219,7 @@ def claim(
             else f"{REMINDERS[item.kind]}，在网页处理：{settings.FRONTEND_HOST.rstrip('/')}/capacity?tab=approvals"
             if item.kind == InboxKind.CAPACITY
             and item.message in (WORKLOAD_REVIEW_NOTICE, EXTENSION_REVIEW_NOTICE)
-            else REMINDERS[item.kind] + "，在网页或私聊我查看。",
+            else custom_text or REMINDERS[item.kind] + "，在网页或私聊我查看。",
         )
         yield notice
         if not notice.attempted:

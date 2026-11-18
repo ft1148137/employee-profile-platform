@@ -683,6 +683,8 @@ def register_unavailability(
     session: Session,
     body: UnavailabilityInput,
 ) -> UnavailabilityPublic:
+    from app.domains.capacity.tracking import notify_unavailability
+
     require_enabled(principal, session)
     subject = employee(principal, session, body.employee_id, lock=True)
     if not can_view_employee(principal, subject):
@@ -713,6 +715,7 @@ def register_unavailability(
     )
     if subject.id != principal.employee_id:
         notify_employee(principal, session, subject.id)
+    notify_unavailability(session, row)
     return unavailability_public(principal, session, row, subject)
 
 

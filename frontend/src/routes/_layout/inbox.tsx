@@ -29,7 +29,13 @@ const kindLabels: Record<InboxKind, string> = {
   decided: "画像审批结果",
 }
 
-function capacitySearch(message: string): { tab?: string } {
+const trackingLink =
+  /\n\/capacity\?tab=incoming&demand=([0-9a-f-]{36})&plans=1$/
+
+function capacitySearch(message: string) {
+  const tracking = message.match(trackingLink)
+  if (tracking)
+    return { tab: "incoming", demand: tracking[1], plans: 1 as const }
   if (message === "借调请求待你确认") return { tab: "assignments" }
   if (["有负荷调整申请等你审批", "有延期申请等你审批"].includes(message))
     return { tab: "approvals" }
@@ -203,7 +209,9 @@ function InboxContent({
                   {item.done_at && <span>已完成</span>}
                 </div>
                 <p className="my-3 break-words text-sm leading-relaxed">
-                  {item.message}
+                  {item.kind === "capacity"
+                    ? item.message.replace(trackingLink, "")
+                    : item.message}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {item.question_id && (
@@ -260,7 +268,9 @@ function InboxContent({
                           if (!item.read_at) read.mutate(item.id)
                         }}
                       >
-                        查看需求与容量
+                        {trackingLink.test(item.message)
+                          ? "打开方案页"
+                          : "查看需求与容量"}
                       </Link>
                     </Button>
                   )}

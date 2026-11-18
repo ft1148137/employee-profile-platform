@@ -14,6 +14,7 @@ ENTRYPOINTS = {
     "domains/__init__.py",
     "mcp/server.py",
 }
+TRACKING_MODULE = "app.domains.capacity.tracking"
 FORBIDDEN = {"profile", "evidence", "drafting", "source", "review", "change_request"}
 EXCEPTIONS = {
     "app.domains.review.routing",
@@ -52,7 +53,18 @@ def violations(root: Path) -> list[str]:
                 and not entrypoint
                 and not (
                     relative == "worker/tasks.py"
-                    and module == "app.domains.capacity.proposal.expire"
+                    and module
+                    in {
+                        "app.domains.capacity.proposal.expire",
+                        f"{TRACKING_MODULE}.recompute",
+                    }
+                )
+                and not (
+                    relative == "api/routes/capacity_tracking.py"
+                    and (
+                        module == TRACKING_MODULE
+                        or module.startswith(f"{TRACKING_MODULE}.")
+                    )
                 )
                 and not (
                     planning
@@ -138,6 +150,14 @@ def test_capacity_import_boundaries() -> None:
         ),
         ("worker/tasks.py", "from app.domains.capacity import proposal"),
         ("worker/other.py", "from app.domains.capacity.proposal import expire"),
+        (
+            "api/routes/capacity_tracking.py",
+            "from app.domains.capacity import proposal",
+        ),
+        ("api/routes/other.py", "from app.domains.capacity import tracking"),
+        ("worker/tasks.py", "from app.domains.capacity import tracking"),
+        ("worker/other.py", f"from {TRACKING_MODULE} import recompute"),
+        ("domains/source/sync.py", f"from {TRACKING_MODULE} import recompute"),
     ],
 )
 def test_import_counterexamples(tmp_path: Path, relative: str, source: str) -> None:
@@ -156,6 +176,25 @@ def test_worker_expiration_entrypoint(tmp_path: Path) -> None:
     assert violations(tmp_path) == [
         "worker/tasks.py: app.domains.capacity.proposal.accept"
     ]
+
+
+def test_tracking_route_entrypoint(tmp_path: Path) -> None:
+    path = tmp_path / "api/routes/capacity_tracking.py"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "from app.domains.capacity import tracking\n"
+        f"from {TRACKING_MODULE} import AssignmentTracking, TrackingTask"
+    )
+    assert violations(tmp_path) == []
+
+
+def test_worker_tracking_entrypoint(tmp_path: Path) -> None:
+    path = tmp_path / "worker/tasks.py"
+    path.parent.mkdir()
+    path.write_text(f"from {TRACKING_MODULE} import recompute")
+    assert violations(tmp_path) == []
+    path.write_text(f"from {TRACKING_MODULE} import recompute, set_task_link")
+    assert violations(tmp_path) == [f"worker/tasks.py: {TRACKING_MODULE}.set_task_link"]
 
 
 def foreign_key_violations(metadata: MetaData) -> list[str]:

@@ -228,6 +228,79 @@ def list_projects(principal: Principal, session: Session) -> list[ProjectSummary
     ]
 
 
+def project_role_rows(
+    session: Session, org_id: UUID, project_id: UUID
+) -> list[tuple[CapacityDemand, str]]:
+    return list(
+        session.exec(
+            select(CapacityDemand, Department.name)
+            .join(
+                Department,
+                (col(Department.org_id) == CapacityDemand.org_id)
+                & (col(Department.id) == CapacityDemand.target_department_id),
+            )
+            .where(
+                CapacityDemand.org_id == org_id,
+                CapacityDemand.project_id == project_id,
+            )
+            .order_by(col(CapacityDemand.created_at), col(CapacityDemand.id))
+        )
+    )
+
+
+def project_dependencies(
+    session: Session, org_id: UUID, project_id: UUID
+) -> dict[UUID, list[UUID]]:
+    prerequisites: dict[UUID, list[UUID]] = defaultdict(list)
+    for dependency in session.exec(
+        select(CapacityDemandDependency).where(
+            CapacityDemandDependency.org_id == org_id,
+            CapacityDemandDependency.project_id == project_id,
+        )
+    ):
+        prerequisites[dependency.demand_id].append(dependency.depends_on_demand_id)
+    return prerequisites
+
+
+def unavailability_impact(
+    session: Session, affected: CapacityDemand, projected_end: date
+) -> tuple[list[str], int]:
+    assert affected.project_id is not None
+    roles = [
+        demand.project_role_summary(row, department)
+        for row, department in project_role_rows(
+            session, affected.org_id, affected.project_id
+        )
+    ]
+    dependencies = project_dependencies(session, affected.org_id, affected.project_id)
+    baseline = analyze_project(roles, dependencies, {})
+    forecast = analyze_project(
+        [
+            role.model_copy(
+                update={
+                    "committed_end_date": max(
+                        projected_end, role.committed_end_date or role.window_end
+                    ),
+                }
+            )
+            if role.id == affected.id
+            else role
+            for role in roles
+        ],
+        dependencies,
+        {},
+    )
+    original = {
+        item.role.id: item.forecast_end for stage in baseline.stages for item in stage
+    }
+    return [
+        f"{item.role.role_name}（{item.role.target_department_name}）"
+        for stage in forecast.stages
+        for item in stage
+        if item.role.id != affected.id and item.forecast_end != original[item.role.id]
+    ], forecast.delay_days
+
+
 def get_project(
     principal: Principal, session: Session, project_id: UUID
 ) -> ProjectDetail:
@@ -243,33 +316,14 @@ def get_project(
         project.requester_user_id == principal.user_id
         or demand.represents_department(principal, project.requesting_department_id)
     )
-    rows = session.exec(
-        select(CapacityDemand, Department.name)
-        .join(
-            Department,
-            (col(Department.org_id) == CapacityDemand.org_id)
-            & (col(Department.id) == CapacityDemand.target_department_id),
-        )
-        .where(
-            CapacityDemand.org_id == principal.org_id,
-            CapacityDemand.project_id == project.id,
-        )
-        .order_by(col(CapacityDemand.created_at), col(CapacityDemand.id))
-    ).all()
+    rows = project_role_rows(session, principal.org_id, project.id)
     if not requester_view and not any(
         demand.represents_department(principal, row.target_department_id)
         for row, _ in rows
     ):
         raise CapacityNotFound(PROJECT_NOT_FOUND)
 
-    prerequisites: dict[UUID, list[UUID]] = defaultdict(list)
-    for dependency in session.exec(
-        select(CapacityDemandDependency).where(
-            CapacityDemandDependency.org_id == principal.org_id,
-            CapacityDemandDependency.project_id == project.id,
-        )
-    ):
-        prerequisites[dependency.demand_id].append(dependency.depends_on_demand_id)
+    prerequisites = project_dependencies(session, principal.org_id, project.id)
     outcomes = {
         demand_id: DemandOutcome(value) if value is not None else None
         for demand_id, value in session.exec(

@@ -13,6 +13,7 @@ from app.api.routes import (
     capabilities,
     capability_templates,
     capacity,
+    capacity_tracking,
     change_requests,
     drafting_settings,
     employees,
@@ -46,6 +47,7 @@ from app.core.config import settings
 
 api_router = APIRouter()
 api_router.include_router(capacity.router)
+api_router.include_router(capacity_tracking.router)
 api_router.include_router(planning.router)
 api_router.include_router(people_search.router)
 api_router.include_router(admin_assistant.router)

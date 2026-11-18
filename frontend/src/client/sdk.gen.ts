@@ -275,6 +275,21 @@ import type {
   capacitySubmitProjectData,
   capacitySubmitProjectErrors,
   capacitySubmitProjectResponses,
+  capacityTrackingGetAssignmentTrackingData,
+  capacityTrackingGetAssignmentTrackingErrors,
+  capacityTrackingGetAssignmentTrackingResponses,
+  capacityTrackingGetDemandTrackingRiskData,
+  capacityTrackingGetDemandTrackingRiskErrors,
+  capacityTrackingGetDemandTrackingRiskResponses,
+  capacityTrackingLinkAssignmentTaskData,
+  capacityTrackingLinkAssignmentTaskErrors,
+  capacityTrackingLinkAssignmentTaskResponses,
+  capacityTrackingSearchAssignmentTasksData,
+  capacityTrackingSearchAssignmentTasksErrors,
+  capacityTrackingSearchAssignmentTasksResponses,
+  capacityTrackingUnlinkAssignmentTaskData,
+  capacityTrackingUnlinkAssignmentTaskErrors,
+  capacityTrackingUnlinkAssignmentTaskResponses,
   capacityUpdateAssignmentData,
   capacityUpdateAssignmentErrors,
   capacityUpdateAssignmentResponses,
@@ -1314,6 +1329,102 @@ export class CapacityService {
         "Content-Type": "application/json",
         ...options.headers,
       },
+    })
+  }
+}
+
+export class CapacityTrackingService {
+  /**
+   * Get Assignment Tracking
+   */
+  public static trackingGetAssignmentTracking<
+    ThrowOnError extends boolean = true,
+  >(options: Options<capacityTrackingGetAssignmentTrackingData, ThrowOnError>) {
+    return (options.client ?? client).get<
+      capacityTrackingGetAssignmentTrackingResponses,
+      capacityTrackingGetAssignmentTrackingErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/assignments/{assignment_id}/tracking",
+      ...options,
+    })
+  }
+
+  /**
+   * Search Assignment Tasks
+   */
+  public static trackingSearchAssignmentTasks<
+    ThrowOnError extends boolean = true,
+  >(options: Options<capacityTrackingSearchAssignmentTasksData, ThrowOnError>) {
+    return (options.client ?? client).get<
+      capacityTrackingSearchAssignmentTasksResponses,
+      capacityTrackingSearchAssignmentTasksErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/assignments/{assignment_id}/tasks/search",
+      ...options,
+    })
+  }
+
+  /**
+   * Link Assignment Task
+   */
+  public static trackingLinkAssignmentTask<ThrowOnError extends boolean = true>(
+    options: Options<capacityTrackingLinkAssignmentTaskData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capacityTrackingLinkAssignmentTaskResponses,
+      capacityTrackingLinkAssignmentTaskErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/assignments/{assignment_id}/tasks",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * Unlink Assignment Task
+   */
+  public static trackingUnlinkAssignmentTask<
+    ThrowOnError extends boolean = true,
+  >(options: Options<capacityTrackingUnlinkAssignmentTaskData, ThrowOnError>) {
+    return (options.client ?? client).delete<
+      capacityTrackingUnlinkAssignmentTaskResponses,
+      capacityTrackingUnlinkAssignmentTaskErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/assignments/{assignment_id}/tasks/{task_id}",
+      ...options,
+    })
+  }
+
+  /**
+   * Get Demand Tracking Risk
+   */
+  public static trackingGetDemandTrackingRisk<
+    ThrowOnError extends boolean = true,
+  >(options: Options<capacityTrackingGetDemandTrackingRiskData, ThrowOnError>) {
+    return (options.client ?? client).get<
+      capacityTrackingGetDemandTrackingRiskResponses,
+      capacityTrackingGetDemandTrackingRiskErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/tracking",
+      ...options,
     })
   }
 }

@@ -1,5 +1,6 @@
 """Transactional queueing and resumable, serialized source ingestion."""
 
+from collections.abc import Callable
 from datetime import UTC, datetime, time, timedelta
 from uuid import UUID
 
@@ -212,6 +213,7 @@ def jira_record(issue: JiraIssue) -> SourceRecord:
         title=issue.summary,
         task_type=issue.issue_type,
         status=issue.status,
+        status_category=issue.status_category,
         created_at=issue.created,
         updated_at=issue.updated,
         resolved=issue.resolved,
@@ -375,7 +377,12 @@ def _finish(
 
 
 def execute_sync(
-    principal: Principal, run_id: UUID, initial_attempts: int = 0, page_size: int = 100
+    principal: Principal,
+    run_id: UUID,
+    initial_attempts: int = 0,
+    page_size: int = 100,
+    *,
+    after_ingest: Callable[[Session, UUID], None] | None = None,
 ) -> None:
     # A dedicated connection retains the session lock across page commits and releases it on exit.
     with engine.connect() as db_connection, Session(db_connection) as session:
@@ -414,6 +421,8 @@ def execute_sync(
             session.commit()
             try:
                 _ingest(session, run, connection, page_size)
+                if after_ingest is not None:
+                    after_ingest(session, run.org_id)
                 _finish(session, run, "succeeded")
             except Exception as error:
                 session.rollback()

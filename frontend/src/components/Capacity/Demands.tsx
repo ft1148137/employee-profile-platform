@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { useState } from "react"
-import { CapacityService } from "@/client"
+import { CapacityService, CapacityTrackingService } from "@/client"
 import { dateLabel } from "@/components/Profile/fields"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
@@ -67,16 +67,35 @@ function Demands({
         })
       ).data,
   })
+  const risk = useQuery({
+    queryKey: ["capacity", orgId, "tracking-risk", selected],
+    enabled: side === "outgoing" && selected !== null,
+    retry: false,
+
+    queryFn: async () =>
+      (
+        await CapacityTrackingService.trackingGetDemandTrackingRisk({
+          path: { org_id: orgId, demand_id: selected! },
+        })
+      ).data,
+  })
   if (selected)
     return (
-      <DemandsDetail
-        key={selected}
-        orgId={orgId}
-        demandId={selected}
-        side={side}
-        plansOpen={plansOpen}
-        back={() => setSelected(null)}
-      />
+      <div className="space-y-4">
+        {risk.data?.message && (
+          <p role="status" className="rounded-lg border p-3 text-sm">
+            {risk.data.message}
+          </p>
+        )}
+        <DemandsDetail
+          key={selected}
+          orgId={orgId}
+          demandId={selected}
+          side={side}
+          plansOpen={plansOpen}
+          back={() => setSelected(null)}
+        />
+      </div>
     )
   if (creating)
     return (
