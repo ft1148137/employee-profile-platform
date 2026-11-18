@@ -1,5 +1,6 @@
 import json
 import re
+from collections.abc import Callable
 from dataclasses import replace
 from typing import Literal, cast
 from uuid import UUID
@@ -32,6 +33,7 @@ from app.domains.org.models import Department, Employee, EmploymentStatus
 from app.domains.planning import service as planning_service
 from app.domains.planning.schemas import VERDICT_LABELS, CasePublic, OptionPublic
 from app.domains.planning.tools import COORDINATION_TOOLS
+from app.domains.planning.tools import Result as CoordinationResult
 from app.domains.profile.service import read_profile
 from app.domains.review import direct
 
@@ -128,6 +130,8 @@ def team_call(
     cards: list[s.Message],
     name: str,
     arguments: dict[str, JsonValue],
+    *,
+    on_read: Callable[[set[str]], None] | None = None,
 ) -> JsonValue:
     if not p.managed_department_ids:
         return {"error": "不允许调用此工具"}
@@ -138,6 +142,8 @@ def team_call(
         return {"error": validation_message(exc, "工具参数不正确")}
     if isinstance(body, PeopleSearchInput):
         result = find_people(db, p, body).model_dump(mode="json")
+        if on_read:
+            on_read({row["employee_id"] for row in result["data"]})
         for row in result["data"]:
             row["profile_url"] = f"/employees/{row['employee_id']}"
         return result
@@ -161,6 +167,9 @@ def team_call(
             )
         if body.department_id:
             query = query.where(Employee.department_id == body.department_id)
+        rows = db.exec(query.order_by(col(Employee.id)).limit(100)).all()
+        if on_read:
+            on_read({str(e.id) for e, _ in rows})
         return {
             "data": [
                 {
@@ -169,11 +178,13 @@ def team_call(
                     "department": d.name,
                     "title": e.title,
                 }
-                for e, d in db.exec(query.order_by(col(Employee.id)).limit(100)).all()
+                for e, d in rows
             ]
         }
     assert isinstance(body, (MemberInput, ProfileEditInput))
     subject = team_member(db, p, body.employee_id)
+    if on_read:
+        on_read({str(subject.id)})
     if isinstance(body, ProfileEditInput):
         edit = direct.DirectEditInput(
             items=body.items, base_revision=body.base_revision
@@ -624,6 +635,8 @@ def call(
     cards: list[s.Message],
     name: str,
     arguments: dict[str, JsonValue],
+    *,
+    on_read: Callable[[set[str]], None] | None = None,
 ) -> JsonValue:
     if name in {"coordination", "prepare_plan_proposal"}:
         if (
@@ -640,12 +653,21 @@ def call(
                 )
                 with db.begin_nested():
                     result = coord_tool.handler(p, db, input_body)
+                read_ids = (
+                    result._read_employee_ids
+                    if isinstance(result, CoordinationResult)
+                    else None
+                )
+                if on_read and read_ids is not None:
+                    on_read(read_ids)
                 data = result.model_dump(mode="json")
                 if (
                     coord_request.function in {"simulate_plan", "compare_plan_options"}
                     and "error" not in data
                 ):
                     case = planning_service.get_case(p, db, UUID(data["case_id"]))
+                    if on_read and read_ids is not None:
+                        on_read({str(person.employee_id) for person in case.people})
                     row = capacity_demand.demand_row(p, db, case.demand_id)
                     if not capacity_demand.represents_department(
                         p, row.target_department_id
@@ -665,6 +687,8 @@ def call(
                 return redact(data)
             proposal = PreparePlanProposalInput.model_validate(arguments)
             case = planning_service.get_case(p, db, proposal.case_id)
+            if on_read:
+                on_read({str(person.employee_id) for person in case.people})
             row = capacity_demand.demand_row(p, db, case.demand_id)
             if not capacity_demand.represents_department(p, row.target_department_id):
                 return {"error": "无权查看方案"}
@@ -761,7 +785,7 @@ def call(
             return {"error": "附件不存在"}
     if name in TEAM_INPUTS:
         try:
-            return redact(team_call(db, p, cards, name, arguments))
+            return redact(team_call(db, p, cards, name, arguments, on_read=on_read))
         except employee.InvalidItems as exc:
             return {"error": "；".join(str(e["message"]) for e in exc.errors)}
     if name in reviews.INPUTS:
