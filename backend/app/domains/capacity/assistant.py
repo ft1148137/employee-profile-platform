@@ -337,6 +337,8 @@ def call(
 ) -> JsonValue:
     try:
         require_enabled(p, db)
+        if name == "prepare_demand_reply" and arguments.get("option_id") is not None:
+            return {"error": "带方案的答复请使用 prepare_plan_proposal 生成确认卡"}
         if name in READS:
             tool = READS[name]
             body = tool.input_model.model_validate(arguments)

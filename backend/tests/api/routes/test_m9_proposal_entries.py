@@ -415,9 +415,21 @@ def test_mcp_rejection_preserves_authorization(
         if failure == "long"
         else "合成理由",
     }
-    before = counts(db, row)
-    assert call(client, headers, "respond_demand", args)["isError"]
-    assert counts(db, row) == before and proposal_row(db, row).status == "pending"
+    try:
+        before = counts(db, row)
+        assert call(client, headers, "respond_demand", args)["isError"]
+        assert counts(db, row) == before and proposal_row(db, row).status == "pending"
+    finally:
+        if failure == "foreign":
+            db.rollback()
+            db.delete(
+                db.exec(
+                    select(CapacitySetting).where(
+                        CapacitySetting.org_id == member.org_id
+                    )
+                ).one()
+            )
+            db.commit()
 
 
 def test_coordination_proposal_projection_and_private_reads(
@@ -461,6 +473,24 @@ def test_model_has_no_direct_commitment_tools(case: tuple, db: Session) -> None:
         cards: list[s.Message] = []
         result = tools.call(db, b, session, cards, name, {})
         assert result.get("error") and not cards
+    cards = []
+    result = tools.call(
+        db,
+        b,
+        session,
+        cards,
+        "prepare_demand_reply",
+        {
+            "demand_id": str(row.id),
+            "revision": row.revision,
+            "outcome": "can_do",
+            "start_date": row.window_start.isoformat(),
+            "end_date": row.window_end.isoformat(),
+            "text": "合成方案",
+            "option_id": str(row.id),
+        },
+    )
+    assert result.get("error") and not cards
 
 
 def test_mcp_reply_schema_and_legacy_accept(

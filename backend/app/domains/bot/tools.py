@@ -799,29 +799,30 @@ def call(
                     "start_date": start_date,
                     "end_date": end_date,
                     "text": text,
-                    **(
-                        {
-                            "option_id": str(option.id),
-                            "outside_basis": proposal.outside_basis,
-                        }
-                        if outcome != "not_now"
-                        else {}
-                    ),
                 },
             )
             card = plan_card(option, case)
-            if (
-                card.rule_fallback is not None
-                and isinstance(reply_result, dict)
-                and "error" not in reply_result
-            ):
+            if isinstance(reply_result, dict) and "error" not in reply_result:
                 for message in cards:
                     if isinstance(message, s.CapacityCard) and str(
                         message.card_id
                     ) == reply_result.get("card_id"):
-                        message.plan = card.model_copy(
-                            update={"fields": plan_metrics(option), "changes": None}
-                        )
+                        if outcome != "not_now":
+                            reply_body = ReplyDemandInput.model_validate(
+                                {
+                                    **message.arguments,
+                                    "option_id": str(option.id),
+                                    "outside_basis": proposal.outside_basis,
+                                }
+                            )
+                            content = capacity.check_demand_reply(db, p, reply_body)
+                            message.arguments = reply_body.model_dump(mode="json")
+                            message.content = content
+                            reply_result["preview"] = message.content
+                        if card.rule_fallback is not None:
+                            message.plan = card.model_copy(
+                                update={"fields": plan_metrics(option), "changes": None}
+                            )
             return redact(reply_result)
         except ValidationError as exc:
             return {"error": validation_message(exc, "工具参数不正确")}
