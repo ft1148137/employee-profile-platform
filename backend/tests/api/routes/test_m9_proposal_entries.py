@@ -134,8 +134,16 @@ def test_mcp_can_release_pending_proposal_without_accepting(
     )
     assert current.status == ("submitted" if action == "follow_up" else "withdrawn")
     assert not rows(db, CapacityAssignment, demand)
-    event = rows(db, CapacityDemandEvent, demand)[-1]
-    assert event.via == "mcp"
+    events = rows(db, CapacityDemandEvent, demand)
+    (replied,) = [e for e in events if e.kind == DemandEventKind.REPLIED]
+    assert replied.via == "web"
+    target_kind = (
+        DemandEventKind.PROPOSAL_FAILED
+        if action == "follow_up"
+        else DemandEventKind.WITHDRAWN
+    )
+    (event,) = [e for e in events if e.kind == target_kind]
+    assert len(events) == 2 and event.via == "mcp"
     if action == "follow_up":
         assert proposal_row(db, demand).fail_reason == "rejected"
         decision = next(
