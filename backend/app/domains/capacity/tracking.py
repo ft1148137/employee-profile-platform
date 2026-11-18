@@ -4,7 +4,8 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
-from sqlalchemy import tuple_
+from sqlalchemy import and_, tuple_
+from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import Session, col, or_, select
 
 from app.authz.policies import employee_scope_clause
@@ -72,6 +73,14 @@ class TaskLinkInput(CapacityInput):
 
 class DemandTrackingRisk(CapacityInput):
     message: str | None
+
+
+class ActiveBorrowAssignment(CapacityInput):
+    id: UUID
+    employee_name: str
+    demand_title: str
+    start_date: date | None
+    due_date: date
 
 
 class FeedbackTarget(NamedTuple):
@@ -197,6 +206,58 @@ def feedback_targets(
     return results
 
 
+def _tracking_employee_scope(principal: Principal) -> ColumnElement[bool]:
+    return and_(
+        employee_scope_clause(principal),
+        col(Employee.employment_status) == EmploymentStatus.ACTIVE,
+    )
+
+
+def list_active_borrow_assignments(
+    principal: Principal, session: Session
+) -> list[ActiveBorrowAssignment]:
+    require_enabled(principal, session)
+    rows = session.exec(
+        select(CapacityAssignment, CapacityDemand, Employee.display_name)
+        .join(
+            Employee,
+            (col(Employee.org_id) == CapacityAssignment.org_id)
+            & (col(Employee.id) == CapacityAssignment.employee_id),
+        )
+        .join(
+            CapacityDemand,
+            (col(CapacityDemand.org_id) == CapacityAssignment.org_id)
+            & (col(CapacityDemand.id) == CapacityAssignment.demand_id),
+        )
+        .join(
+            CapacityProposalLine,
+            (col(CapacityProposalLine.org_id) == CapacityAssignment.org_id)
+            & (col(CapacityProposalLine.id) == CapacityAssignment.proposal_line_id),
+        )
+        .where(
+            _tracking_employee_scope(principal),
+            col(Employee.department_id).in_(principal.managed_department_ids),
+            col(CapacityProposalLine.lender_department_id).is_not(None),
+            CapacityAssignment.status == AssignmentStatus.ACTIVE,
+        )
+        .order_by(
+            col(CapacityAssignment.due_date),
+            col(Employee.display_name),
+            col(CapacityAssignment.id),
+        )
+    )
+    return [
+        ActiveBorrowAssignment(
+            id=row.id,
+            employee_name=name,
+            demand_title=demand.role_name or demand.description,
+            start_date=row.start_date,
+            due_date=row.due_date,
+        )
+        for row, demand, name in rows
+    ]
+
+
 def assignment_for_viewer(
     principal: Principal, session: Session, assignment_id: UUID, *, lock: bool = False
 ) -> CapacityAssignment:
@@ -214,9 +275,8 @@ def assignment_for_viewer(
             & (col(CapacityDemand.id) == CapacityAssignment.demand_id),
         )
         .where(
-            employee_scope_clause(principal),
+            _tracking_employee_scope(principal),
             CapacityAssignment.id == assignment_id,
-            Employee.employment_status == EmploymentStatus.ACTIVE,
             or_(
                 Employee.id == principal.employee_id,
                 col(Employee.department_id).in_(principal.managed_department_ids),

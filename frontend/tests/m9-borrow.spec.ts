@@ -194,18 +194,35 @@ async function setup(page: Page, request: APIRequestContext) {
     demand,
     open,
     department: person("L").department!.id,
+    admin,
+    api,
+    base,
+    start,
+    workerEmail: person("B").work_email!,
   }
 }
 
 for (const approve of [true, false]) {
   test(
-    approve ? "借调双方同意后生成匿名分配" : "本人不同意后仅本人看得到理由",
+    approve
+      ? "借出经理在借调页跟踪任务，借入经理仅看匿名进度"
+      : "本人不同意后仅本人看得到理由",
     async ({ page, request }) => {
       test.setTimeout(120000)
-      const { a, m, lender, employee, demand, open, department } = await setup(
-        page,
-        request,
-      )
+      const {
+        a,
+        m,
+        lender,
+        employee,
+        demand,
+        open,
+        department,
+        admin,
+        api,
+        base,
+        start,
+        workerEmail,
+      } = await setup(page, request)
       const incoming = `tab=incoming&demand=${demand.id}`
       const outgoing = `tab=outgoing&demand=${demand.id}`
       await open(m, `${incoming}&plans=1`)
@@ -255,10 +272,87 @@ for (const approve of [true, false]) {
           .getByRole("button", { name: "确认接受", exact: true })
           .click()
         await expect(proposal).toContainText("借调已生效")
+
+        const taskKey = "SYN-BORROW-TRACK"
+        const taskTitle = "合成借调交付"
+        const imported = await request.post(`${base}/sources/csv/imports`, {
+          headers: { Authorization: `Bearer ${admin.access_token}` },
+          multipart: {
+            file: {
+              name: "tasks.csv",
+              mimeType: "text/csv",
+              buffer: Buffer.from(
+                [
+                  "记录编号,来源,发生时间,执行人账号,标题,状态",
+                  `${taskKey},合成工作台,${start}T09:00:00+08:00,${workerEmail},${taskTitle},已完成`,
+                ].join("\n"),
+              ),
+            },
+          },
+        })
+        expect(imported.ok(), await imported.text()).toBeTruthy()
+        await expect
+          .poll(
+            async () =>
+              (await api(`${base}/sync-runs`, undefined, admin.access_token))
+                .data[0]?.status,
+            { timeout: 30_000 },
+          )
+          .toBe("succeeded")
+
+        await open(lender, "")
+        await page.getByRole("tab", { name: "借调请求" }).click()
+        const active = page.getByRole("region", { name: "进行中的借调分配" })
+        const assignment = active
+          .getByRole("article")
+          .filter({ hasText: "合成借调员工" })
+        await expect(assignment).toContainText("合成借调需求")
+        await assignment.getByLabel("任务编号或标题").fill(taskKey)
+        await assignment.getByRole("button", { name: "搜索任务" }).click()
+        await assignment
+          .getByRole("button", { name: "关联任务", exact: true })
+          .click()
+        const linked = assignment.getByRole("list", { name: "已关联任务" })
+        await expect(linked).toContainText(`${taskKey} · ${taskTitle}`)
+
         await open(m, incoming)
         const assignments = page.getByRole("region", { name: "部门内分配" })
         await expect(assignments).toContainText("借调 1 人")
+        await expect(assignments).toContainText(
+          "关联任务已全部完成，可以结束分配",
+        )
         await expect(assignments).not.toContainText("合成借调员工")
+        await expect(assignments).not.toContainText(taskKey)
+        await expect(assignments.getByLabel("任务编号或标题")).toHaveCount(0)
+
+        await open(lender, "")
+        await page.getByRole("tab", { name: "借调请求" }).click()
+        await expect(linked).toContainText(taskKey)
+        await linked.getByRole("button", { name: "取消关联" }).click()
+        await expect(linked).toHaveCount(0)
+        await expect(
+          assignment.getByText("未关联任务", { exact: true }),
+        ).toBeVisible()
+
+        const [row] = await api(
+          `${base}/capacity/assignments/active-borrows`,
+          undefined,
+          lender,
+        )
+        await api(
+          `${base}/capacity/assignments/${row.id}`,
+          { status: "done" },
+          lender,
+          "PATCH",
+        )
+        await page.reload()
+        const completed = page.getByRole("region", { name: "已结束的借调分配" })
+        await expect(completed).toContainText("合成借调员工")
+        await completed.getByRole("button", { name: "写反馈" }).click()
+        await expect(
+          completed.getByLabel("工作反馈（20～500 字）"),
+        ).toBeVisible()
+        await expect(active).toHaveCount(0)
       } else {
         await card.getByLabel("拒绝理由").fill("仅本人可见的合成理由")
         await card.getByLabel("拒绝原因").selectOption("priority")

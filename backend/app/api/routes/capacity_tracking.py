@@ -9,6 +9,7 @@ from app.api.deps import SessionDep
 from app.authz.deps import OrgPrincipalDep
 from app.domains.capacity import tracking
 from app.domains.capacity.tracking import (
+    ActiveBorrowAssignment,
     AssignmentTracking,
     DemandTrackingRisk,
     TaskLinkInput,
@@ -27,6 +28,13 @@ class FeedbackAssignment(BaseModel):
     due_date: date
     default_keys: list[str]
     has_feedback: bool
+
+
+@router.get("/assignments/active-borrows")
+def list_active_borrow_assignments(
+    principal: OrgPrincipalDep, session: SessionDep
+) -> list[ActiveBorrowAssignment]:
+    return tracking.list_active_borrow_assignments(principal, session)
 
 
 @router.get("/assignments/feedback")

@@ -157,6 +157,10 @@ def test_borrowed_tasks_visible_to_owner_and_lender(
     case: tuple, db: Session, tracked: Tracked
 ) -> None:
     api, _, demand, people, users, _ = case
+    active_borrows = "/assignments/active-borrows"
+    feedback = "/assignments/feedback"
+    tracking_path = tracked.path + "/tracking"
+    assert api(active_borrows, "cm") == []
     row = db.get(CapacityAssignment, tracked.assignment)
     assert row
     # The employee's manager C is now outside the target department's hierarchy.
@@ -190,21 +194,52 @@ def test_borrowed_tasks_visible_to_owner_and_lender(
     db.commit()
     try:
         tasks = tracked.path + "/tasks"
+        visible = {
+            "id": str(tracked.assignment),
+            "employee_name": people["w"].display_name,
+            "demand_title": demand.description,
+            "start_date": row.start_date.isoformat(),
+            "due_date": row.due_date.isoformat(),
+        }
+        assert api(active_borrows, "cm") == [visible]
+        assert api(feedback, "cm") == []
+        for role in ("a", "am", "bm", "w", "admin"):
+            assert api(active_borrows, role) == []
+        assert api(active_borrows, "foreign", other_org=True) == []
+        api(active_borrows, "foreign", status=404)
         assert (
             api(tasks, "cm", {"task_id": str(tracked.task)})["tracking_state"]
             == "on_track"
         )
-        assert (
-            api(tracked.path + "/tracking", "w")["tasks"][0]["external_key"]
-            == "PRIVATE-123"
-        )
-        api(tracked.path + "/tracking", "bm", status=404)
+        assert api(tracking_path, "w")["tasks"][0]["external_key"] == "PRIVATE-123"
+        api(tracking_path, "bm", status=404)
         api(tasks, "bm", {"task_id": str(tracked.task)}, status=404)
         listing = api(f"/demands/{demand.id}/assignments", "bm")["data"]
         assert (
             listing[0]["headcount"] == 1 and listing[0]["tracking_state"] == "on_track"
         )
         assert {"id", "employee_id", "employee_name", "tasks"}.isdisjoint(listing[0])
+
+        subject = people["w"]
+        subject.department_id = demand.target_department_id
+        db.commit()
+        assert api(active_borrows, "cm") == []
+        api(tracking_path, "cm", status=404)
+        assert api(active_borrows, "bm") == [visible]
+        assert len(api(tracking_path, "bm")["tasks"]) == 1
+
+        subject.department_id = lender.id
+        subject.employment_status = "inactive"
+        db.commit()
+        assert api(active_borrows, "cm") == []
+        api(tracking_path, "cm", status=404)
+
+        subject.employment_status = "active"
+        db.commit()
+        api(tracked.path, "cm", {"status": "done"}, method="PATCH")
+        assert api(active_borrows, "cm") == []
+        assert [entry["id"] for entry in api(feedback, "cm")] == [visible["id"]]
+        assert api(feedback, "bm") == []
     finally:
         db.refresh(row)
         row.proposal_line_id = None
