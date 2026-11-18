@@ -536,7 +536,11 @@ def plan_card(option: OptionPublic, case: CasePublic) -> s.PlanCard:
             link=f"{base_link}#case={case.id}&option={best.id}",
         )
     return s.PlanCard(
-        title=f"{option.kind_label.removesuffix('方案')}方案",
+        title=(
+            option.kind_label
+            if option.kind == OptionKind.OPTIMIZED
+            else f"{option.kind_label}方案"
+        ),
         fields=fields,
         changes=changes,
         link=link,

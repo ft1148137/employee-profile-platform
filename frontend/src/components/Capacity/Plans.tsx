@@ -535,7 +535,7 @@ function OptionCard({
         selected ? "border-primary bg-primary/5 ring-2 ring-primary/30" : ""
       }`}
       aria-label={
-        option.kind_label.endsWith("方案")
+        option.kind === "optimized"
           ? option.kind_label
           : `${option.kind_label}方案`
       }
