@@ -17,6 +17,52 @@ const statuses: Record<string, string> = {
   failed: "借调未达成",
 }
 
+export type RejectionReason = NonNullable<BorrowDecisionInput["reason_code"]>
+
+const rejectionReasons: Record<RejectionReason, string> = {
+  capacity: "人手或余量不足",
+  skill: "能力不匹配",
+  timing: "时间不合适",
+  priority: "与其他工作冲突",
+  scope: "需求不清或范围变化",
+  other: "其他",
+}
+
+export function rejectionReasonLabel(code: string | null | undefined) {
+  return (
+    Object.entries(rejectionReasons).find(([key]) => key === code)?.[1] ??
+    "未分类"
+  )
+}
+
+export function RejectionReasonSelect({
+  value,
+  onChange,
+}: {
+  value: RejectionReason | ""
+  onChange: (value: RejectionReason | "") => void
+}) {
+  return (
+    <label className="block space-y-2 text-sm font-medium">
+      <span>拒绝原因</span>
+      <select
+        className="h-10 w-full rounded-md border bg-background px-3"
+        value={value}
+        onChange={(event) =>
+          onChange(event.target.value as RejectionReason | "")
+        }
+      >
+        <option value="">请选择原因</option>
+        {Object.entries(rejectionReasons).map(([code, label]) => (
+          <option key={code} value={code}>
+            {label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 export function BorrowRequests({
   orgId,
   mine = false,
@@ -66,6 +112,7 @@ function BorrowRequestCard({
 }) {
   const [employee, setEmployee] = useState("")
   const [reason, setReason] = useState("")
+  const [reasonCode, setReasonCode] = useState<RejectionReason | "">("")
   const refresh = useCapacityRefresh(orgId)
   const mutation = useMutation({
     mutationFn: (body: BorrowDecisionInput) =>
@@ -89,7 +136,12 @@ function BorrowRequestCard({
         {request.end_date}
       </p>
       <p className="whitespace-pre-wrap break-words">{request.description}</p>
-      {request.reason && <p>你的拒绝理由：{request.reason}</p>}
+      {request.reason && (
+        <p>
+          你的拒绝理由：{rejectionReasonLabel(request.reason_code)} ·{" "}
+          {request.reason}
+        </p>
+      )}
       {(selectable || consent) && (
         <fieldset className="space-y-3" disabled={mutation.isPending}>
           {selectable && (
@@ -109,9 +161,13 @@ function BorrowRequestCard({
               </select>
             </label>
           )}
+          <RejectionReasonSelect value={reasonCode} onChange={setReasonCode} />
           <label className="block space-y-2 text-sm">
             <span>
-              拒绝理由{mine ? "（选填，仅本人可见）" : "（拒绝时必填）"}
+              拒绝理由
+              {mine && reasonCode !== "other"
+                ? "（选填，仅本人可见）"
+                : "（拒绝时必填）"}
             </span>
             <textarea
               className="min-h-16 w-full rounded-md border bg-background p-3"
@@ -135,10 +191,14 @@ function BorrowRequestCard({
             </Button>
             <Button
               variant="outline"
-              disabled={!mine && !reason.trim()}
+              disabled={
+                !reasonCode ||
+                ((!mine || reasonCode === "other") && !reason.trim())
+              }
               onClick={() =>
                 mutation.mutate({
                   action: mine ? "decline" : "reject",
+                  reason_code: reasonCode || null,
                   reason: reason.trim() || null,
                 })
               }

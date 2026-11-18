@@ -126,6 +126,7 @@ def test_mcp_can_release_pending_proposal_without_accepting(
             "action": action,
             "revision": reply.json()["revision"],
             "text": "合成拒绝理由" if action == "follow_up" else None,
+            **({"reason_code": "priority"} if action == "follow_up" else {}),
         },
     )
     assert not result.get("isError"), result
@@ -207,6 +208,7 @@ def test_mcp_expired_reject_and_withdraw_commit_expiry(
         "action": action,
         "revision": demand_rev,
         "text": "迟到的拒绝" if action == "follow_up" else None,
+        **({"reason_code": "timing"} if action == "follow_up" else {}),
     }
     denied = call(client, unauthorized_headers, "respond_demand", args)
     assert denied.get("isError")
@@ -432,7 +434,15 @@ def test_confirmation_rechecks_and_keeps_failure_boundary(
         held.hold_expires_at = utc_now() - timedelta(seconds=1)
         db.add(held)
     elif change == "decided":
-        demands.respond_demand(a, db, row.id, "follow_up", args["revision"], "合成拒绝")
+        demands.respond_demand(
+            a,
+            db,
+            row.id,
+            "follow_up",
+            args["revision"],
+            "合成拒绝",
+            reason_code="priority",
+        )
     else:
         original = demands.respond_demand
 
@@ -554,6 +564,7 @@ def test_mcp_rejection_preserves_authorization(
     args = {
         "demand_id": str(row.id),
         "action": "follow_up",
+        "reason_code": "scope",
         "revision": reply.json()["revision"] - (failure == "stale"),
         "text": None
         if failure == "missing"

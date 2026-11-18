@@ -17,7 +17,7 @@ from app.domains.capacity.models import (
     DemandStatus,
     ProposalStatus,
 )
-from app.domains.capacity.schemas import CapacityInput, Note, WorkloadPublic
+from app.domains.capacity.schemas import CapacityInput, Note, ReasonCode, WorkloadPublic
 
 
 class ReferenceInput(CapacityInput):
@@ -146,6 +146,7 @@ class ReplyInput(CapacityInput):
     option_id: UUID | None = None
     outside_basis: StrictBool = False
     outcome: DemandOutcome
+    reason_code: ReasonCode | None = None
     start_date: date | None = None
     end_date: date | None = None
     text: Annotated[
@@ -177,6 +178,7 @@ class ReplyInput(CapacityInput):
 
 class RespondInput(CapacityInput):
     action: Literal["accept", "follow_up", "withdraw"]
+    reason_code: ReasonCode | None = None
     text: (
         Annotated[
             str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
@@ -257,6 +259,7 @@ class ProposalApprovalPublic(CapacityInput):
     party: str
     decision: str
     reason: str | None
+    reason_code: str | None = None
     created_at: datetime
 
 
@@ -282,6 +285,7 @@ class BorrowRequest(ProposalSegment):
     borrower_department: str
     status: str
     reason: str | None = None
+    reason_code: str | None = None
     candidates: list[BorrowCandidate] = Field(default_factory=list)
 
 
@@ -289,6 +293,7 @@ class BorrowDecisionInput(CapacityInput):
     action: Literal["select", "reject", "accept", "decline"]
     employee_id: UUID | None = None
     reason: Note | None = None
+    reason_code: ReasonCode | None = None
 
 
 ParticipantChangeStatus = Literal["unchanged", "replaced", "added", "removed"]
@@ -355,6 +360,40 @@ class ProposalDetail(ProposalSummary):
 
 class ProposalWithdrawInput(CapacityInput):
     revision: int = Field(strict=True, ge=1)
+
+
+class ProposalDecision(BaseModel):
+    id: UUID
+    kind: str
+    status: ProposalStatus
+    fail_reason: str | None
+    created_at: datetime
+    approvals: list[ProposalApprovalPublic]
+
+
+class DemandHistoryEvent(CapacityInput):
+    kind: DemandEventKind
+    text: str | None
+    created_at: datetime
+    outcome: DemandOutcome | None
+    reason_code: str | None
+
+
+class SnapshotOptionDecision(BaseModel):
+    kind_label: str
+    verdict_label: str
+
+
+class SnapshotDecision(BaseModel):
+    id: UUID
+    created_at: datetime
+    options: list[SnapshotOptionDecision] = Field(default_factory=list)
+
+
+class DemandHistory(BaseModel):
+    proposals: list[ProposalDecision]
+    events: list[DemandHistoryEvent]
+    snapshots: list[SnapshotDecision] = Field(default_factory=list)
 
 
 class ProjectRoleSummary(BaseModel):

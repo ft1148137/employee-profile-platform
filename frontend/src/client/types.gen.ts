@@ -906,6 +906,17 @@ export type BorrowDecisionInput = {
    * Reason
    */
   reason?: string | null
+  /**
+   * Reason Code
+   */
+  reason_code?:
+    | "capacity"
+    | "skill"
+    | "timing"
+    | "priority"
+    | "scope"
+    | "other"
+    | null
 }
 
 /**
@@ -948,6 +959,10 @@ export type BorrowRequest = {
    * Reason
    */
   reason?: string | null
+  /**
+   * Reason Code
+   */
+  reason_code?: string | null
   /**
    * Candidates
    */
@@ -2355,6 +2370,44 @@ export type DemandEventPublic = {
    * Revision
    */
   revision?: number | null
+}
+
+/**
+ * DemandHistory
+ */
+export type DemandHistory = {
+  /**
+   * Proposals
+   */
+  proposals: Array<ProposalDecision>
+  /**
+   * Events
+   */
+  events: Array<DemandHistoryEvent>
+  /**
+   * Snapshots
+   */
+  snapshots?: Array<SnapshotDecision>
+}
+
+/**
+ * DemandHistoryEvent
+ */
+export type DemandHistoryEvent = {
+  kind: DemandEventKind
+  /**
+   * Text
+   */
+  text: string | null
+  /**
+   * Created At
+   */
+  created_at: string
+  outcome: DemandOutcome | null
+  /**
+   * Reason Code
+   */
+  reason_code: string | null
 }
 
 /**
@@ -5228,6 +5281,17 @@ export type PlanReplyInput = {
   outside_basis?: boolean
   outcome: DemandOutcome
   /**
+   * Reason Code
+   */
+  reason_code?:
+    | "capacity"
+    | "skill"
+    | "timing"
+    | "priority"
+    | "scope"
+    | "other"
+    | null
+  /**
    * Start Date
    */
   start_date?: string | null
@@ -5956,9 +6020,40 @@ export type ProposalApprovalPublic = {
    */
   reason: string | null
   /**
+   * Reason Code
+   */
+  reason_code?: string | null
+  /**
    * Created At
    */
   created_at: string
+}
+
+/**
+ * ProposalDecision
+ */
+export type ProposalDecision = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Kind
+   */
+  kind: string
+  status: ProposalStatus
+  /**
+   * Fail Reason
+   */
+  fail_reason: string | null
+  /**
+   * Created At
+   */
+  created_at: string
+  /**
+   * Approvals
+   */
+  approvals: Array<ProposalApprovalPublic>
 }
 
 /**
@@ -6430,6 +6525,17 @@ export type RespondInput = {
    * Action
    */
   action: "accept" | "follow_up" | "withdraw"
+  /**
+   * Reason Code
+   */
+  reason_code?:
+    | "capacity"
+    | "skill"
+    | "timing"
+    | "priority"
+    | "scope"
+    | "other"
+    | null
   /**
    * Text
    */
@@ -7160,6 +7266,38 @@ export type SetupTokenResult = {
    * Token
    */
   token: string
+}
+
+/**
+ * SnapshotDecision
+ */
+export type SnapshotDecision = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Created At
+   */
+  created_at: string
+  /**
+   * Options
+   */
+  options?: Array<SnapshotOptionDecision>
+}
+
+/**
+ * SnapshotOptionDecision
+ */
+export type SnapshotOptionDecision = {
+  /**
+   * Kind Label
+   */
+  kind_label: string
+  /**
+   * Verdict Label
+   */
+  verdict_label: string
 }
 
 /**
@@ -9166,6 +9304,42 @@ export type capacityGetDemandResponses = {
 
 export type capacityGetDemandResponse =
   capacityGetDemandResponses[keyof capacityGetDemandResponses]
+
+export type capacityGetDemandHistoryData = {
+  body?: never
+  path: {
+    /**
+     * Demand Id
+     */
+    demand_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/demands/{demand_id}/history"
+}
+
+export type capacityGetDemandHistoryErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityGetDemandHistoryError =
+  capacityGetDemandHistoryErrors[keyof capacityGetDemandHistoryErrors]
+
+export type capacityGetDemandHistoryResponses = {
+  /**
+   * Successful Response
+   */
+  200: DemandHistory
+}
+
+export type capacityGetDemandHistoryResponse =
+  capacityGetDemandHistoryResponses[keyof capacityGetDemandHistoryResponses]
 
 export type capacityGetDemandBasisData = {
   body?: never

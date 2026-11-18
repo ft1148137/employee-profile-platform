@@ -327,7 +327,11 @@ test("资源方提交换人，需求方匿名确认后替换原分配", async ({
     .getByRole("dialog")
     .getByRole("button", { name: "确认接受" })
     .click()
-  await expect(page.getByText("安排变更已生效")).toBeVisible()
+  await expect(
+    page
+      .getByRole("region", { name: "事件时间线", exact: true })
+      .getByText("安排变更已生效"),
+  ).toBeVisible()
 
   await details(m)
   const assignments = page.getByRole("region", { name: "部门内分配" })

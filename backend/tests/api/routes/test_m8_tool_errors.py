@@ -9,6 +9,7 @@ from app.domains.bot import schemas as s
 from app.domains.model.pi_client import TurnResult
 from app.domains.planning import service
 from app.domains.planning.models import PlanningCase
+from tests.api.routes.test_m7_planning_readonly import business_rows
 from tests.domains.test_bot_core import enable
 from tests.domains.test_im_gateway import principal
 
@@ -73,6 +74,7 @@ def test_model_corrects_business_error_in_same_turn(
         assert compared["options"][0]["id"] == option_id
         if mistake == "name":
             proposal = {"case_id": plan["case_id"], "option_id": option_id}
+            before = business_rows(db, row.org_id)
             error = use(
                 "prepare_plan_proposal",
                 {
@@ -81,16 +83,35 @@ def test_model_corrects_business_error_in_same_turn(
                 },
             )
             assert error == {"error": "答复只写部门层面的结论，不写人名"}
-            result = use(
+            missing_reason = use(
                 "prepare_plan_proposal",
                 {
                     **proposal,
                     "text": "部门可在约定时间交付",
                 },
             )
+            assert (
+                "原因类型" in missing_reason["error"]
+                and "card_id" not in missing_reason
+            )
+            assert business_rows(db, row.org_id) == before
+            result = use(
+                "prepare_demand_reply",
+                {
+                    "demand_id": str(row.id),
+                    "revision": row.revision,
+                    "outcome": "not_now",
+                    "text": "目前无法承接",
+                    "reason_code": "skill",
+                },
+            )
             assert result["status"] == "pending"
+            assert business_rows(db, row.org_id) == before
         return TurnResult(
-            text="已修正方案", stop_reason="stop", model_calls=2, tool_calls=5
+            text="已修正方案",
+            stop_reason="stop",
+            model_calls=2,
+            tool_calls=6 if mistake == "name" else 5,
         )
 
     monkeypatch.setattr(core.pi_client, "run_turn", fake_turn)
@@ -103,6 +124,7 @@ def test_model_corrects_business_error_in_same_turn(
     )
     assert any(isinstance(m, s.PlanCard) for m in response.messages)
     if mistake == "name":
+        assert sum(isinstance(m, s.CapacityCard) for m in response.messages) == 1
         assert any(
             isinstance(m, s.CapacityCard) and m.status == "pending"
             for m in response.messages

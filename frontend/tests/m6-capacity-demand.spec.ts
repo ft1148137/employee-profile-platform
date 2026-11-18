@@ -265,6 +265,7 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
         page.getByRole("region", { name: "事件时间线" }),
       ).toContainText("能否分阶段承接？")
     await page.getByLabel("答复结论").selectOption({ label: conclusion })
+    if (!index) await page.getByLabel("拒绝原因").selectOption("capacity")
     await page.getByLabel("最早开始日期").fill("2026-12-05")
     await page.getByLabel("承诺完成日期").fill("2026-12-25")
     if (!index) {

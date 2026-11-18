@@ -19,6 +19,15 @@ Note = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)
 ]
 Via = Literal["web", "bot", "feishu", "mcp"]
+ReasonCode = Literal["capacity", "skill", "timing", "priority", "scope", "other"]
+REASON_LABELS: dict[ReasonCode, str] = {
+    "capacity": "人手或余量不足",
+    "skill": "能力不匹配",
+    "timing": "时间不合适",
+    "priority": "与其他工作冲突",
+    "scope": "需求不清或范围变化",
+    "other": "其他",
+}
 
 
 class CapacityInput(BaseModel):

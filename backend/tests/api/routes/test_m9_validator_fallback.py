@@ -92,15 +92,26 @@ def test_worse_recommendation_keeps_both_choices(
             "text": "请核对部门方案",
         },
     )
-    assert result["status"] == "pending"
-    reply = cards[0]
-    assert isinstance(reply, s.CapacityCard)
-    assert_no_b_people(reply.model_dump(mode="json"), people)
-    assert reply.arguments["outcome"] == "not_now"
-    assert reply.plan is not None
-    assert reply.plan.fields[1].value == "不可行"
-    fallback = reply.plan.rule_fallback
+    assert isinstance(result, dict) and "请用答复卡重新提交" in str(result["error"])
+    assert not cards and business_rows(db, demand.org_id) == before
+    compare_arguments = {
+        "function": "compare_plan_options",
+        "arguments": {"case_id": str(case.id), "option_ids": [str(option.id)]},
+    }
+    tools.call(
+        db,
+        manager,
+        session,
+        cards,
+        "coordination",
+        compare_arguments,
+    )
+    (comparison,) = cards
+    assert isinstance(comparison, s.PlanCard)
+    assert comparison.fields[1].value == "不可行"
+    fallback = comparison.rule_fallback
     assert fallback is not None
+    assert_no_b_people(fallback.model_dump(mode="json"), people)
     assert {f.label for f in fallback.fields} == {
         "类型",
         "结论",
@@ -116,30 +127,39 @@ def test_worse_recommendation_keeps_both_choices(
     )
     link = f"/capacity?tab=incoming&demand={demand.id}&plans=1"
     best = next(o for o in case.options if o.verdict == "feasible")
-    assert reply.plan.link == f"{link}#case={case.id}&option={option.id}"
+    assert comparison.link == f"{link}#case={case.id}&option={option.id}"
     assert fallback.link == f"{link}#case={case.id}&option={best.id}"
-    assert reply.plan.link != fallback.link
-    text, actions = render(reply)
+    assert comparison.link != fallback.link
+    text, actions = render(comparison)
     assert "规则引擎方案" in text and "不可行 → 可行" in text
     assert text.count(link) == 2
     assert f"#case={case.id}&option={option.id}" in text
     assert f"#case={case.id}&option={best.id}" in text
-    assert len(text) < 12000 and len(actions) == 2
+    assert len(text) < 12000 and not actions
     cards.clear()
-    tools.call(
+    result = tools.call(
         db,
         manager,
         session,
         cards,
-        "coordination",
+        "prepare_demand_reply",
         {
-            "function": "compare_plan_options",
-            "arguments": {"case_id": str(case.id), "option_ids": [str(option.id)]},
+            "demand_id": str(demand.id),
+            "revision": demand.revision,
+            "outcome": "not_now",
+            "reason_code": "capacity",
+            "text": "请核对部门答复",
         },
     )
-    assert isinstance(cards[0], s.PlanCard)
-    assert cards[0].rule_fallback == fallback
-    assert render(cards[0])[0].count(link) == 2
+    assert result["status"] == "pending"
+    (reply,) = cards
+    assert isinstance(reply, s.CapacityCard)
+    assert reply.arguments["outcome"] == "not_now"
+    assert reply.arguments["reason_code"] == "capacity"
+    assert reply.plan is None
+    assert_no_b_people(reply.model_dump(mode="json"), people)
+    reply_text, reply_actions = render(reply)
+    assert len(reply_text) < 12000 and len(reply_actions) == 2
     assert business_rows(db, demand.org_id) == before
     for code in ("E01", "E04", "E10", "foreign"):
         viewer = principal(db, people[code].org_id, people[code].id)
@@ -151,6 +171,16 @@ def test_worse_recommendation_keeps_both_choices(
             denied,
             "prepare_plan_proposal",
             {"case_id": str(case.id), "option_id": str(option.id), "text": "合成答复"},
+        )
+        assert "error" in result and not denied
+        assert_no_b_people(result, people)
+        result = tools.call(
+            db,
+            viewer,
+            store.create_session(db, viewer, channel=channel),
+            denied,
+            "coordination",
+            compare_arguments,
         )
         assert "error" in result and not denied
         assert_no_b_people(result, people)

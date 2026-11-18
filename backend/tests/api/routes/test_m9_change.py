@@ -480,7 +480,14 @@ def test_switch_person_changes_commitment_only_after_acceptance(
     audit_ids = {row.id for row in rows(db, AuditEvent, demand)}
     notice_ids = {row.id for row in rows(db, InboxItem, demand)}
     result = (
-        respond(client, case, revision, "follow_up", text="暂不接受这次变更")
+        respond(
+            client,
+            case,
+            revision,
+            "follow_up",
+            text="暂不接受这次变更",
+            reason_code="timing",
+        )
         if outcome == "rejected"
         else respond(client, case, revision)
     )

@@ -153,7 +153,12 @@ def test_reply_snapshots_are_filtered_only_on_output(
     reply = client.post(
         f"{path}/reply",
         headers=auth["b"],
-        json={"outcome": "not_now", "text": "合成答复", "revision": 1},
+        json={
+            "outcome": "not_now",
+            "reason_code": "capacity",
+            "text": "合成答复",
+            "revision": 1,
+        },
     )
     assert reply.status_code == 200, reply.text
     assert_reference(reply.json()["events"][-1]["basis"], count, own=True)

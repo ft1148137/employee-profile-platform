@@ -133,7 +133,7 @@ def test_bot_privacy_and_proposal_card(
     assert rejected == {"error": "答复只写部门层面的结论，不写人名"}
     assert len(b_cards) == plan_count
     assert business_rows(db, row.org_id) == before
-    result = tools.call(
+    missing_reason = tools.call(
         db,
         b,
         b_session,
@@ -143,6 +143,23 @@ def test_bot_privacy_and_proposal_card(
             "case_id": plan["case_id"],
             "option_id": choice,
             "text": "部门可在约定时间交付",
+        },
+    )
+    assert "原因类型" in missing_reason["error"]
+    assert len(b_cards) == plan_count
+    assert business_rows(db, row.org_id) == before
+    result = tools.call(
+        db,
+        b,
+        b_session,
+        b_cards,
+        "prepare_demand_reply",
+        {
+            "demand_id": str(row.id),
+            "revision": row.revision,
+            "outcome": "not_now",
+            "text": "目前无法承接",
+            "reason_code": "skill",
         },
     )
     assert result["status"] == "pending"

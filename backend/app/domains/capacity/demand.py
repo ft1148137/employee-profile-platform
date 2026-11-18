@@ -22,6 +22,8 @@ from app.domains.capacity.demand_schemas import (
     DemandBasis,
     DemandBasisPerson,
     DemandEventPublic,
+    DemandHistory,
+    DemandHistoryEvent,
     DemandInput,
     DemandList,
     DemandOtherPerson,
@@ -44,7 +46,7 @@ from app.domains.capacity.models import (
     DemandStatus,
     RequesterPolicy,
 )
-from app.domains.capacity.schemas import Via
+from app.domains.capacity.schemas import REASON_LABELS, ReasonCode, Via
 from app.domains.capacity.settings import (
     CapacityConflict,
     CapacityForbidden,
@@ -101,6 +103,20 @@ class DemandReplyLoadInvalid(HTTPException):
         super().__init__(
             422, "答复会发给对方部门，不写负荷说法，只写能否承接、时间和条件"
         )
+
+
+class RejectionReasonInvalid(HTTPException):
+    def __init__(self, message: str) -> None:
+        super().__init__(422, message)
+
+
+def require_rejection_reason(reason_code: ReasonCode | None, text: str | None) -> None:
+    if reason_code is None:
+        raise RejectionReasonInvalid(
+            f"请选择原因类型（{' / '.join(REASON_LABELS.values())}）"
+        )
+    if reason_code == "other" and not (text and text.strip()):
+        raise RejectionReasonInvalid("选择「其他」时必须填写说明")
 
 
 def require_requester(principal: Principal, session: Session) -> None:
@@ -467,6 +483,37 @@ def get_demand(
     return result
 
 
+def decision_history(
+    principal: Principal, session: Session, row: CapacityDemand
+) -> DemandHistory:
+    from app.domains.capacity import proposal
+
+    detailed = represents_department(principal, row.target_department_id)
+    events = session.exec(
+        select(CapacityDemandEvent)
+        .where(
+            CapacityDemandEvent.org_id == principal.org_id,
+            CapacityDemandEvent.demand_id == row.id,
+        )
+        .order_by(col(CapacityDemandEvent.created_at), col(CapacityDemandEvent.id))
+    ).all()
+    return DemandHistory(
+        proposals=proposal.decision_history(principal, session, row),
+        events=[
+            DemandHistoryEvent(
+                kind=event.kind,
+                created_at=event.created_at,
+                text=event.text
+                if detailed or event.kind != DemandEventKind.REPLIED
+                else None,
+                outcome=event.outcome,
+                reason_code=event.reason_code,
+            )
+            for event in events
+        ],
+    )
+
+
 def list_demands(
     principal: Principal,
     session: Session,
@@ -775,6 +822,7 @@ def reply_demand(
     option_id: UUID | None = None,
     outside_basis: bool = False,
     *,
+    reason_code: ReasonCode | None = None,
     via: Via = "web",
     client_name: str | None = None,
 ) -> DemandPublic:
@@ -787,6 +835,7 @@ def reply_demand(
         revision=revision,
         start_date=start_date,
         end_date=end_date,
+        reason_code=reason_code,
     )
     row = demand_row(principal, session, demand_id, lock=True)
     if not represents_department(principal, row.target_department_id):
@@ -795,6 +844,8 @@ def reply_demand(
         raise CapacityForbidden()
     if row.revision != revision or row.status != DemandStatus.SUBMITTED:
         raise CapacityConflict()
+    if body.outcome == DemandOutcome.NOT_NOW:
+        require_rejection_reason(body.reason_code, body.text)
     validate_department_text(principal, session, row.target_department_id, body.text)
     reference = validate_reply_text(principal, session, row, body.text)
     session.add(
@@ -805,6 +856,9 @@ def reply_demand(
             actor_user_id=principal.user_id,
             text=body.text,
             outcome=body.outcome,
+            reason_code=body.reason_code
+            if body.outcome == DemandOutcome.NOT_NOW
+            else None,
             start_date=body.start_date,
             end_date=body.end_date,
             basis=reference.model_dump(mode="json"),
@@ -846,10 +900,13 @@ def respond_demand(
     revision: int,
     text: str | None = None,
     *,
+    reason_code: ReasonCode | None = None,
     via: Via = "web",
     client_name: str | None = None,
 ) -> DemandPublic:
-    body = RespondInput(action=action, revision=revision, text=text)
+    body = RespondInput(
+        action=action, revision=revision, text=text, reason_code=reason_code
+    )
     row = demand_row(principal, session, demand_id, lock=True)
     if principal.user_id is None or not (
         row.requester_user_id == principal.user_id
@@ -863,7 +920,15 @@ def respond_demand(
         revision <= latest.demand_revision or not proposal.reply_superseded(row, latest)
     ):
         return proposal.respond(
-            principal, session, row, latest, action, revision, text, via=via
+            principal,
+            session,
+            row,
+            latest,
+            action,
+            revision,
+            text,
+            reason_code=body.reason_code,
+            via=via,
         )
     if row.revision != revision or row.status in (
         DemandStatus.ACCEPTED,

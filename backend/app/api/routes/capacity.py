@@ -29,6 +29,7 @@ from app.domains.capacity.demand_schemas import (
     CapacityReference,
     ChangeProposalInput,
     DemandBasis,
+    DemandHistory,
     DemandInput,
     DemandList,
     DemandListInput,
@@ -40,6 +41,8 @@ from app.domains.capacity.demand_schemas import (
     ProposalWithdrawInput,
     ReferenceInput,
     RespondInput,
+    SnapshotDecision,
+    SnapshotOptionDecision,
 )
 from app.domains.capacity.extension_schemas import (
     ExtensionDecisionInput,
@@ -68,10 +71,12 @@ from app.domains.org.schemas import DepartmentsPublic
 from app.domains.planning import service as planning
 from app.domains.planning.models import (
     OptionKind,
+    PlanningCase,
     PlanningOption,
     PlanningSnapshot,
     PlanVerdict,
 )
+from app.domains.planning.schemas import KIND_LABELS, VERDICT_LABELS
 
 router = APIRouter(prefix="/orgs/{org_id}", tags=["capacity"])
 
@@ -207,6 +212,56 @@ def get_demand(
     principal: OrgPrincipalDep, session: SessionDep, demand_id: UUID
 ) -> DemandPublic:
     return demand.get_demand(principal, session, demand_id, include_previous=True)
+
+
+@router.get("/capacity/demands/{demand_id}/history")
+def get_demand_history(
+    principal: OrgPrincipalDep, session: SessionDep, demand_id: UUID
+) -> DemandHistory:
+    row = demand.demand_row(principal, session, demand_id)
+    history = demand.decision_history(principal, session, row)
+    if demand.represents_department(principal, row.target_department_id):
+        snapshots: dict[UUID, SnapshotDecision] = {}
+        for snapshot_id, created_at, kind, verdict in session.exec(
+            select(
+                PlanningSnapshot.id,
+                PlanningSnapshot.created_at,
+                PlanningOption.kind,
+                PlanningOption.verdict,
+            )
+            .join(
+                PlanningCase,
+                (col(PlanningCase.org_id) == PlanningSnapshot.org_id)
+                & (col(PlanningCase.id) == PlanningSnapshot.case_id),
+            )
+            .outerjoin(
+                PlanningOption,
+                (col(PlanningOption.org_id) == PlanningSnapshot.org_id)
+                & (col(PlanningOption.snapshot_id) == PlanningSnapshot.id),
+            )
+            .where(
+                PlanningCase.org_id == principal.org_id,
+                PlanningCase.demand_id == row.id,
+            )
+            .order_by(
+                col(PlanningSnapshot.created_at),
+                col(PlanningSnapshot.id),
+                col(PlanningOption.created_at),
+                col(PlanningOption.id),
+            )
+        ):
+            snapshot = snapshots.setdefault(
+                snapshot_id, SnapshotDecision(id=snapshot_id, created_at=created_at)
+            )
+            if kind is not None and verdict is not None:
+                snapshot.options.append(
+                    SnapshotOptionDecision(
+                        kind_label=KIND_LABELS[OptionKind(kind)],
+                        verdict_label=VERDICT_LABELS[PlanVerdict(verdict)],
+                    )
+                )
+        history.snapshots = list(snapshots.values())
+    return history
 
 
 @router.get("/capacity/demands/{demand_id}/basis")

@@ -311,15 +311,13 @@ test("较差推荐同时展示规则方案、差别和两个可打开的链接",
     await expect(card).toContainText("规则引擎方案")
     await expect(card).toContainText("不可行 → 可行")
     await expect(card).toContainText("新人数")
-    const reply = panel.getByRole("region", {
-      name: "答复部门需求",
-      exact: true,
-    })
-    await expect(reply).toContainText("规则引擎方案")
-    await expect(reply).toContainText("不可行 → 可行")
+    await expect(card).toContainText("自定方案")
     await expect(
-      reply.getByRole("button", { name: "确认", exact: true }),
-    ).toBeEnabled()
+      panel.getByText("请核对两个方案", { exact: true }),
+    ).toBeVisible()
+    await expect(
+      panel.getByRole("region", { name: "答复部门需求", exact: true }),
+    ).toHaveCount(0)
     await expectChineseCopy(page)
     const createdSnapshots: string[] = []
     page.on("request", (req) => {
