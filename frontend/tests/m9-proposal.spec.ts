@@ -441,11 +441,7 @@ test("撤回提议需要再次确认，过期方案不可答复", async ({ page,
   expect(plan.id).toBeTruthy()
 })
 
-test("预占跨过到期时刻后按钮消失且状态自动更新为已过期", async ({
-  page,
-  request,
-}) => {
-  test.setTimeout(120000)
+async function proposeSingleOption(page: Page, request: APIRequestContext) {
   const s = await setup(page, request)
   const planCase = await s.api(
     `${s.base}/planning/demands/${s.demand.id}/cases`,
@@ -476,7 +472,15 @@ test("预占跨过到期时刻后按钮消失且状态自动更新为已过期",
     },
     s.m,
   )
-  const expiresAt = Date.parse(proposed.proposal.hold_expires_at)
+  return { s, expiresAt: Date.parse(proposed.proposal.hold_expires_at) }
+}
+
+test("预占跨过到期时刻后按钮消失且状态自动更新为已过期", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(120000)
+  const { s, expiresAt } = await proposeSingleOption(page, request)
   await page.clock.install()
   await s.details(s.a)
   const proposal = page.getByRole("region", { name: "方案提议", exact: true })
@@ -493,4 +497,75 @@ test("预占跨过到期时刻后按钮消失且状态自动更新为已过期",
   await expect(proposal).toContainText("预占已到期，请重新规划。")
   await expect(acceptBtn).toHaveCount(0)
   await expect(rejectBtn).toHaveCount(0)
+})
+
+test("已打开的确认框跨过预占到期时刻后关闭并阻止提交", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(120000)
+  const { s, expiresAt } = await proposeSingleOption(page, request)
+  const submits: string[] = []
+  page.on("request", (req) => {
+    if (
+      req.method() === "POST" &&
+      (req.url().includes("/respond") || req.url().includes("/withdraw"))
+    )
+      submits.push(req.url())
+  })
+
+  await page.clock.install()
+  await s.details(s.a)
+  const proposal = page.getByRole("region", { name: "方案提议", exact: true })
+  await page.getByRole("button", { name: "接受方案", exact: true }).click()
+  const dialog = page.getByRole("dialog")
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole("button", { name: "确认接受" })).toBeEnabled()
+
+  const browserNow = await page.evaluate(() => Date.now())
+  await page.clock.fastForward(Math.max(1000, expiresAt - browserNow + 5000))
+
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "确认接受" })).toHaveCount(0)
+  await expect(proposal).toContainText("已过期")
+  await expect(proposal).toContainText("预占已到期，请重新规划。")
+  await expect(
+    page.getByRole("button", { name: "接受方案", exact: true }),
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole("button", { name: "拒绝方案", exact: true }),
+  ).toHaveCount(0)
+  expect(submits).toHaveLength(0)
+})
+
+test("确认框提交时预占期限刚过会拦截请求并显示已过期", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(120000)
+  const { s, expiresAt } = await proposeSingleOption(page, request)
+  const submits: string[] = []
+  page.on("request", (req) => {
+    if (
+      req.method() === "POST" &&
+      (req.url().includes("/respond") || req.url().includes("/withdraw"))
+    )
+      submits.push(req.url())
+  })
+
+  await page.clock.install()
+  await s.details(s.a)
+  const proposal = page.getByRole("region", { name: "方案提议", exact: true })
+  await page.getByRole("button", { name: "拒绝方案", exact: true }).click()
+  const dialog = page.getByRole("dialog")
+  await expect(dialog).toBeVisible()
+  await dialog.getByLabel("拒绝理由").fill("期限刚过时尝试提交")
+
+  await page.clock.setSystemTime(expiresAt + 1000)
+  await dialog.getByRole("button", { name: "确认拒绝" }).click()
+
+  await expect(dialog).toHaveCount(0)
+  await expect(proposal).toContainText("已过期")
+  await expect(proposal).toContainText("预占已到期，请重新规划。")
+  expect(submits).toHaveLength(0)
 })

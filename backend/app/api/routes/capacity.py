@@ -329,7 +329,11 @@ def withdraw_proposal(
     proposal_id: UUID,
     body: ProposalWithdrawInput,
 ) -> DemandPublic:
-    result = proposal.withdraw(principal, session, proposal_id, body.revision)
+    try:
+        result = proposal.withdraw(principal, session, proposal_id, body.revision)
+    except proposal.ProposalFailed:
+        session.commit()
+        raise
     session.commit()
     return result
 
