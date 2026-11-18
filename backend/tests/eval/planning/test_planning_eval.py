@@ -39,6 +39,7 @@ from app.domains.org.models import (
     RoleGrant,
 )
 from app.domains.planning.models import PlanningCase, PlanningOption, PlanningSnapshot
+from app.domains.planning.solver import Role, RuleSolver, delay, full_plan
 from app.domains.profile.models import ProfileVersion
 from app.models import User
 from tests.api.routes.test_m7_planning_readonly import business_rows
@@ -336,6 +337,17 @@ def _exercise(db: Session, client: TestClient, case: dict) -> dict:
         assert client.get(case_url, headers=auth["b_manager"]).status_code == 200
         assert business_rows(db, org_id) == before
         options = {item["kind"]: item for item in result["options"]}
+        data = result["data"]
+        eligible = [
+            option["params"]["assignees"]
+            for kind, option in options.items()
+            if kind != "borrow" and full_plan(data, option["params"]["assignees"])
+        ]
+        assert RuleSolver.candidates(data) == eligible
+        chosen = min(eligible, key=lambda rows: delay(data, rows), default=[])
+        solved = RuleSolver().solve([Role("1", data)])
+        assert solved.filled == ({"1": chosen} if chosen else {})
+        assert solved.unfilled == (() if chosen else ("1",))
         for expected in case["expect"]["options"]:
             actual = options[expected["kind"]]
             assert actual["verdict"] == expected["verdict"]

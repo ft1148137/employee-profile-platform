@@ -1,0 +1,615 @@
+{
+  "demand": {
+    "capability_key": "0",
+    "headcount": 1,
+    "allocation_percent": 50,
+    "minimum_level": "2",
+    "extra_capabilities": [
+      {
+        "key": "1",
+        "name": "1",
+        "levels": [
+          "1",
+          "2"
+        ],
+        "minimum_level": "2",
+        "required": true
+      },
+      {
+        "key": "2",
+        "name": "2",
+        "levels": [
+          "1",
+          "2"
+        ],
+        "minimum_level": null,
+        "required": false
+      }
+    ],
+    "change": false,
+    "window_start": "2026-11-16",
+    "window_end": "2026-11-29",
+    "committed_start_date": null,
+    "committed_end_date": null
+  },
+  "candidates": [
+    {
+      "employee_id": "001",
+      "department_id": "001",
+      "level": "2",
+      "extra_levels": {
+        "1": "2",
+        "2": null
+      },
+      "newcomer": false,
+      "in_basis": true,
+      "employment_status": "active",
+      "weeks": [
+        {
+          "week_start": "2026-11-16",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-11-23",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-11-30",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-07",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-14",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-21",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-28",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-04",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-11",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-18",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        }
+      ]
+    },
+    {
+      "employee_id": "002",
+      "department_id": "001",
+      "level": null,
+      "extra_levels": {
+        "1": null,
+        "2": null
+      },
+      "newcomer": false,
+      "in_basis": false,
+      "employment_status": "active",
+      "weeks": [
+        {
+          "week_start": "2026-11-16",
+          "capacity_percent": 100,
+          "other_percent": null,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "unconfirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-11-23",
+          "capacity_percent": 100,
+          "other_percent": null,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "unconfirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-11-30",
+          "capacity_percent": 100,
+          "other_percent": null,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "unconfirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-07",
+          "capacity_percent": 100,
+          "other_percent": null,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "unconfirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-14",
+          "capacity_percent": 100,
+          "other_percent": null,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "unconfirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-21",
+          "capacity_percent": 100,
+          "other_percent": null,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "unconfirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-28",
+          "capacity_percent": 100,
+          "other_percent": null,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "unconfirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-04",
+          "capacity_percent": 100,
+          "other_percent": null,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "unconfirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-11",
+          "capacity_percent": 100,
+          "other_percent": null,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "unconfirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-18",
+          "capacity_percent": 100,
+          "other_percent": null,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "unconfirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        }
+      ]
+    },
+    {
+      "employee_id": "003",
+      "department_id": "001",
+      "level": "2",
+      "extra_levels": {
+        "1": "1",
+        "2": "2"
+      },
+      "newcomer": false,
+      "in_basis": true,
+      "employment_status": "active",
+      "weeks": [
+        {
+          "week_start": "2026-11-16",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-11-23",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-11-30",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-07",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-14",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-21",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-28",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-04",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-11",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-18",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        }
+      ]
+    },
+    {
+      "employee_id": "004",
+      "department_id": "001",
+      "level": "2",
+      "extra_levels": {
+        "1": null,
+        "2": "2"
+      },
+      "newcomer": false,
+      "in_basis": true,
+      "employment_status": "active",
+      "weeks": [
+        {
+          "week_start": "2026-11-16",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-11-23",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-11-30",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-07",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-14",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-21",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-28",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-04",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-11",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-18",
+          "capacity_percent": 100,
+          "other_percent": 0,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        }
+      ]
+    },
+    {
+      "employee_id": "005",
+      "department_id": "001",
+      "level": "2",
+      "extra_levels": {
+        "1": "2",
+        "2": "1"
+      },
+      "newcomer": false,
+      "in_basis": true,
+      "employment_status": "active",
+      "weeks": [
+        {
+          "week_start": "2026-11-16",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-11-23",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-11-30",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-07",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-14",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-21",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2026-12-28",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-04",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-11",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        },
+        {
+          "week_start": "2027-01-18",
+          "capacity_percent": 100,
+          "other_percent": 20,
+          "platform_percent": 0,
+          "hold_percent": 0,
+          "status": "confirmed",
+          "legacy_start": false,
+          "confirmed_at": null
+        }
+      ]
+    }
+  ],
+  "rules": {
+    "levels": [
+      "1",
+      "2",
+      "3"
+    ],
+    "current_week": "2026-11-16"
+  }
+}
