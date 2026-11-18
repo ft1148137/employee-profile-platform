@@ -209,6 +209,9 @@ import type {
   capacityGetMyWorkloadData,
   capacityGetMyWorkloadErrors,
   capacityGetMyWorkloadResponses,
+  capacityGetProjectData,
+  capacityGetProjectErrors,
+  capacityGetProjectResponses,
   capacityListBorrowRequestsData,
   capacityListBorrowRequestsErrors,
   capacityListBorrowRequestsResponses,
@@ -227,6 +230,9 @@ import type {
   capacityListMyAssignmentsData,
   capacityListMyAssignmentsErrors,
   capacityListMyAssignmentsResponses,
+  capacityListProjectsData,
+  capacityListProjectsErrors,
+  capacityListProjectsResponses,
   capacityListUnavailabilityData,
   capacityListUnavailabilityErrors,
   capacityListUnavailabilityResponses,
@@ -263,6 +269,9 @@ import type {
   capacitySubmitDemandData,
   capacitySubmitDemandErrors,
   capacitySubmitDemandResponses,
+  capacitySubmitProjectData,
+  capacitySubmitProjectErrors,
+  capacitySubmitProjectResponses,
   capacityUpdateAssignmentData,
   capacityUpdateAssignmentErrors,
   capacityUpdateAssignmentResponses,
@@ -800,6 +809,64 @@ export class CapacityService {
       responseType: "json",
       security: [{ scheme: "bearer", type: "http" }],
       url: "/api/v1/orgs/{org_id}/capacity/reference",
+      ...options,
+    })
+  }
+
+  /**
+   * List Projects
+   */
+  public static listProjects<ThrowOnError extends boolean = true>(
+    options: Options<capacityListProjectsData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityListProjectsResponses,
+      capacityListProjectsErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/projects",
+      ...options,
+    })
+  }
+
+  /**
+   * Submit Project
+   */
+  public static submitProject<ThrowOnError extends boolean = true>(
+    options: Options<capacitySubmitProjectData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).post<
+      capacitySubmitProjectResponses,
+      capacitySubmitProjectErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/projects",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    })
+  }
+
+  /**
+   * Get Project
+   */
+  public static getProject<ThrowOnError extends boolean = true>(
+    options: Options<capacityGetProjectData, ThrowOnError>,
+  ) {
+    return (options.client ?? client).get<
+      capacityGetProjectResponses,
+      capacityGetProjectErrors,
+      ThrowOnError
+    >({
+      responseType: "json",
+      security: [{ scheme: "bearer", type: "http" }],
+      url: "/api/v1/orgs/{org_id}/capacity/projects/{project_id}",
       ...options,
     })
   }

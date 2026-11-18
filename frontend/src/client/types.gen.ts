@@ -2374,10 +2374,6 @@ export type DemandInput = {
    */
   minimum_level?: string | null
   /**
-   * Requesting Department Id
-   */
-  requesting_department_id: string
-  /**
    * Headcount
    */
   headcount: number
@@ -2397,6 +2393,10 @@ export type DemandInput = {
    * Description
    */
   description: string
+  /**
+   * Requesting Department Id
+   */
+  requesting_department_id: string
 }
 
 /**
@@ -2433,6 +2433,28 @@ export type DemandOtherPerson = {
 export type DemandOutcome = "can_do" | "partial" | "not_now"
 
 /**
+ * DemandProject
+ */
+export type DemandProject = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Title
+   */
+  title: string
+  /**
+   * Role Name
+   */
+  role_name: string
+  /**
+   * Prerequisites
+   */
+  prerequisites?: Array<ProjectRoleSummary>
+}
+
+/**
  * DemandPublic
  */
 export type DemandPublic = {
@@ -2448,10 +2470,6 @@ export type DemandPublic = {
    * Minimum Level
    */
   minimum_level?: string | null
-  /**
-   * Requesting Department Id
-   */
-  requesting_department_id: string
   /**
    * Headcount
    */
@@ -2472,6 +2490,10 @@ export type DemandPublic = {
    * Description
    */
   description: string
+  /**
+   * Requesting Department Id
+   */
+  requesting_department_id: string
   /**
    * Id
    */
@@ -2509,6 +2531,7 @@ export type DemandPublic = {
    * Proposal
    */
   proposal?: ProposalDetail | ProposalSummary | null
+  project?: DemandProject | null
 }
 
 /**
@@ -3610,6 +3633,24 @@ export type ExternalIdentityPublic = {
   linked_by: string | null
   employee: IdentityEmployee | null
   candidate: IdentityCandidate | null
+}
+
+/**
+ * ExtraCapability
+ */
+export type ExtraCapability = {
+  /**
+   * Key
+   */
+  key: string
+  /**
+   * Minimum Level
+   */
+  minimum_level?: string | null
+  /**
+   * Required
+   */
+  required: boolean
 }
 
 /**
@@ -5655,6 +5696,250 @@ export type ProgressReviewStatus =
   | "disputed"
 
 /**
+ * ProjectDetail
+ */
+export type ProjectDetail = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Title
+   */
+  title: string
+  /**
+   * Requesting Department Name
+   */
+  requesting_department_name: string
+  /**
+   * Created At
+   */
+  created_at: string
+  /**
+   * Description
+   */
+  description?: string | null
+  /**
+   * Roles
+   */
+  roles: Array<ProjectRole>
+  schedule: ProjectSchedule
+}
+
+/**
+ * ProjectImpact
+ */
+export type ProjectImpact = {
+  role: ProjectRoleSummary
+  /**
+   * Reasons
+   */
+  reasons: Array<ProjectImpactReason>
+  /**
+   * Downstream
+   */
+  downstream: Array<ProjectRoleSummary>
+}
+
+export type ProjectImpactReason =
+  | "partial"
+  | "not_now"
+  | "late_commitment"
+  | "dependency"
+
+/**
+ * ProjectInput
+ */
+export type ProjectInput = {
+  /**
+   * Title
+   */
+  title: string
+  /**
+   * Description
+   */
+  description?: string
+  /**
+   * Requesting Department Id
+   */
+  requesting_department_id: string
+  /**
+   * Roles
+   */
+  roles: Array<ProjectRoleInput>
+}
+
+/**
+ * ProjectRole
+ */
+export type ProjectRole = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Role Name
+   */
+  role_name: string
+  /**
+   * Target Department Name
+   */
+  target_department_name: string
+  status: DemandStatus
+  /**
+   * Window Start
+   */
+  window_start: string
+  /**
+   * Window End
+   */
+  window_end: string
+  /**
+   * Committed Start Date
+   */
+  committed_start_date: string | null
+  /**
+   * Committed End Date
+   */
+  committed_end_date: string | null
+  outcome?: DemandOutcome | null
+  demand?: DemandPublic | null
+}
+
+/**
+ * ProjectRoleInput
+ */
+export type ProjectRoleInput = {
+  /**
+   * Target Department Id
+   */
+  target_department_id: string
+  /**
+   * Capability Key
+   */
+  capability_key: string
+  /**
+   * Minimum Level
+   */
+  minimum_level?: string | null
+  /**
+   * Headcount
+   */
+  headcount: number
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Window Start
+   */
+  window_start: string
+  /**
+   * Window End
+   */
+  window_end: string
+  /**
+   * Description
+   */
+  description: string
+  /**
+   * Role Name
+   */
+  role_name: string
+  /**
+   * Extra Capabilities
+   */
+  extra_capabilities?: Array<ExtraCapability>
+  /**
+   * Depends On
+   */
+  depends_on?: Array<number>
+}
+
+/**
+ * ProjectRoleSummary
+ */
+export type ProjectRoleSummary = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Role Name
+   */
+  role_name: string
+  /**
+   * Target Department Name
+   */
+  target_department_name: string
+  status: DemandStatus
+  /**
+   * Window Start
+   */
+  window_start: string
+  /**
+   * Window End
+   */
+  window_end: string
+  /**
+   * Committed Start Date
+   */
+  committed_start_date: string | null
+  /**
+   * Committed End Date
+   */
+  committed_end_date: string | null
+}
+
+/**
+ * ProjectSchedule
+ */
+export type ProjectSchedule = {
+  /**
+   * Stages
+   */
+  stages: Array<Array<ScheduledProjectRole>>
+  /**
+   * Impacts
+   */
+  impacts: Array<ProjectImpact>
+  /**
+   * Window End
+   */
+  window_end: string
+  /**
+   * Forecast End
+   */
+  forecast_end: string | null
+  /**
+   * Delay Days
+   */
+  delay_days: number
+}
+
+/**
+ * ProjectSummary
+ */
+export type ProjectSummary = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Title
+   */
+  title: string
+  /**
+   * Requesting Department Name
+   */
+  requesting_department_name: string
+  /**
+   * Created At
+   */
+  created_at: string
+}
+
+/**
  * ProposalApprovalPublic
  */
 export type ProposalApprovalPublic = {
@@ -6597,6 +6882,33 @@ export type SaveDictionary = {
    * Redraft
    */
   redraft?: boolean
+}
+
+/**
+ * ScheduledProjectRole
+ */
+export type ScheduledProjectRole = {
+  role: ProjectRoleSummary
+  /**
+   * Planned Start
+   */
+  planned_start: string
+  /**
+   * Planned End
+   */
+  planned_end: string
+  /**
+   * Earliest Start
+   */
+  earliest_start: string | null
+  /**
+   * Forecast Start
+   */
+  forecast_start: string | null
+  /**
+   * Forecast End
+   */
+  forecast_end: string | null
 }
 
 /**
@@ -8639,6 +8951,108 @@ export type capacityCapacityReferenceResponses = {
 
 export type capacityCapacityReferenceResponse =
   capacityCapacityReferenceResponses[keyof capacityCapacityReferenceResponses]
+
+export type capacityListProjectsData = {
+  body?: never
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/projects"
+}
+
+export type capacityListProjectsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityListProjectsError =
+  capacityListProjectsErrors[keyof capacityListProjectsErrors]
+
+export type capacityListProjectsResponses = {
+  /**
+   * Response Capacity-List Projects
+   *
+   * Successful Response
+   */
+  200: Array<ProjectSummary>
+}
+
+export type capacityListProjectsResponse =
+  capacityListProjectsResponses[keyof capacityListProjectsResponses]
+
+export type capacitySubmitProjectData = {
+  body: ProjectInput
+  path: {
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/projects"
+}
+
+export type capacitySubmitProjectErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacitySubmitProjectError =
+  capacitySubmitProjectErrors[keyof capacitySubmitProjectErrors]
+
+export type capacitySubmitProjectResponses = {
+  /**
+   * Successful Response
+   */
+  200: ProjectSummary
+}
+
+export type capacitySubmitProjectResponse =
+  capacitySubmitProjectResponses[keyof capacitySubmitProjectResponses]
+
+export type capacityGetProjectData = {
+  body?: never
+  path: {
+    /**
+     * Project Id
+     */
+    project_id: string
+    /**
+     * Org Id
+     */
+    org_id: string
+  }
+  query?: never
+  url: "/api/v1/orgs/{org_id}/capacity/projects/{project_id}"
+}
+
+export type capacityGetProjectErrors = {
+  /**
+   * Validation Error
+   */
+  422: HTTPValidationError
+}
+
+export type capacityGetProjectError =
+  capacityGetProjectErrors[keyof capacityGetProjectErrors]
+
+export type capacityGetProjectResponses = {
+  /**
+   * Successful Response
+   */
+  200: ProjectDetail
+}
+
+export type capacityGetProjectResponse =
+  capacityGetProjectResponses[keyof capacityGetProjectResponses]
 
 export type capacityListDemandsData = {
   body?: never
