@@ -24,6 +24,7 @@ from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityDemandEvent,
     CapacitySetting,
+    DemandEventKind,
 )
 from app.domains.capacity.settings import CapacityForbidden
 from app.domains.im import actions as im_actions
@@ -217,6 +218,17 @@ def test_human_confirms_proposal_then_acceptance(
     db.expire_all()
     pending = demands.get_demand(a, db, row.id)
     assert pending.proposal.status == "pending"
+    (approval,) = rows(db, CapacityApproval, row)
+    (event,) = [
+        event
+        for event in rows(db, CapacityDemandEvent, row)
+        if event.kind == DemandEventKind.REPLIED
+    ]
+    assert (
+        approval.party == "resource_manager"
+        and approval.user_id == b.user_id
+        and approval.via == event.via == ("bot" if channel == "web" else "feishu")
+    )
     assert (
         loads(db, row.org_id, [people["E04"].id], row.window_start, 2)[
             people["E04"].id

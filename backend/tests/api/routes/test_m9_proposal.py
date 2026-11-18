@@ -25,6 +25,7 @@ from app.domains.capacity.models import (
     CapacityProposal,
     CapacityProposalLine,
     CapacityWeek,
+    DemandEventKind,
 )
 from app.domains.org.models import OrgMembership, RoleGrant
 from app.domains.planning.models import PlanningOption
@@ -159,6 +160,13 @@ def test_reply_with_option_creates_hold(
     reply = propose(client, case)
     assert reply.status_code == 200, reply.text
     assert reply.json()["proposal"]["status"] == "pending"
+    (approval,) = rows(db, CapacityApproval, demand)
+    (event,) = [
+        event
+        for event in rows(db, CapacityDemandEvent, demand)
+        if event.kind == DemandEventKind.REPLIED
+    ]
+    assert approval.party == "resource_manager" and approval.via == event.via == "web"
     load = loads(db, demand.org_id, [people["E04"].id], demand.window_start, 2)[
         people["E04"].id
     ][0]
@@ -321,6 +329,92 @@ def test_rejection_and_withdraw_are_idempotent(
             a for a in rows(db, CapacityApproval, demand) if a.party == "requester"
         ]
         assert rejected[0].reason == "请调整交付时间"
+
+
+@pytest.mark.parametrize(
+    ("ending", "action"),
+    [
+        ("rejected", "accept"),
+        ("expired", "accept"),
+        ("withdrawn", "accept"),
+        ("rejected", "follow_up"),
+        ("rejected", "withdraw"),
+    ],
+)
+def test_response_uses_new_plain_reply_after_proposal_ends(
+    case: tuple, client: TestClient, db: Session, ending: str, action: str
+) -> None:
+    url, people, auth, demand = case
+    path = f"{url}/capacity/demands/{demand.id}"
+    reply = propose(client, case)
+    assert reply.status_code == 200, reply.text
+    old_revision = reply.json()["revision"]
+    if ending == "rejected":
+        result = respond(client, case, old_revision, "follow_up", text="请调整方案")
+        assert result.status_code == 200, result.text
+    elif ending == "expired":
+        row = proposal_row(db, demand)
+        row.hold_expires_at = utc_now() - timedelta(seconds=1)
+        db.commit()
+        result = respond(client, case, old_revision)
+        assert result.json()["detail"]["code"] == "proposal_expired"
+    else:
+        previous = reply.json()["proposal"]
+        result = client.post(
+            f"{url}/capacity/proposals/{previous['id']}/withdraw",
+            headers=auth["b"],
+            json={"revision": previous["revision"]},
+        )
+        assert result.status_code == 200, result.text
+
+    submitted = client.get(path, headers=auth["a"]).json()
+    assert submitted["status"] == "submitted"
+    assert submitted["proposal"]["status"] in ("failed", "withdrawn")
+    plain = client.post(
+        f"{path}/reply",
+        headers=auth["b"],
+        json={
+            "revision": submitted["revision"],
+            "outcome": "can_do",
+            "text": "可以按期承接",
+            "start_date": demand.window_start.isoformat(),
+            "end_date": demand.window_end.isoformat(),
+        },
+    )
+    assert plain.status_code == 200, plain.text
+    before = counts(db, demand)
+    replay = respond(client, case, old_revision, action, text="合成重试")
+    assert replay.status_code == 409
+    assert replay.json()["detail"]["code"] == "proposal_decided"
+    assert counts(db, demand) == before
+
+    result = respond(client, case, plain.json()["revision"], action, text="合成回应")
+    assert result.status_code == 200, result.text
+    assert (
+        result.json()["status"]
+        == {
+            "accept": "accepted",
+            "follow_up": "submitted",
+            "withdraw": "withdrawn",
+        }[action]
+    )
+    assert result.json()["proposal"] is None
+    assert counts(db, demand) == (before[0], before[1], before[2] + 1)
+    assert proposal_row(db, demand).status == submitted["proposal"]["status"]
+    if action == "accept":
+        assigned = client.post(
+            f"{path}/assignments",
+            headers=auth["b"],
+            json={
+                "employee_id": str(people["E04"].id),
+                "allocation_percent": 50,
+                "start_date": demand.window_start.isoformat(),
+                "due_date": demand.window_end.isoformat(),
+                "outside_basis": True,
+            },
+        )
+        assert assigned.status_code == 200, assigned.text
+        assert assigned.json()["proposal_line_id"] is None
 
 
 @pytest.mark.parametrize("worker", [False, True])

@@ -164,7 +164,7 @@ def confirm_plan_reply(
         client_name=client_name,
     )
     assert body.option_id is not None
-    capacity_proposal.create(p, db, row, body.option_id, lines)
+    capacity_proposal.create(p, db, row, body.option_id, lines, via=via)
     return capacity_demand.get_demand(p, db, row.id)
 
 
