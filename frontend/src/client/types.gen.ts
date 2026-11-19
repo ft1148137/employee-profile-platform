@@ -6573,6 +6573,10 @@ export type RequestAction = {
    * Request Id
    */
   request_id: string
+  /**
+   * Preview Id
+   */
+  preview_id?: string | null
 }
 
 /**

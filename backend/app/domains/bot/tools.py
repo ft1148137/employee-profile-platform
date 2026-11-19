@@ -3,7 +3,7 @@ import re
 from collections.abc import Callable
 from dataclasses import replace
 from typing import Literal, cast
-from uuid import UUID
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
@@ -552,6 +552,14 @@ def preview_card(db: Session, p: Principal, request_id: UUID) -> s.PreviewCard:
     preview = name_levels(
         db, p, s.Preview.model_validate(employee.preview(p, db, request_id))
     )
+    preview_id = (
+        uuid4()
+        if any(
+            item.submission_notice == employee.IMMEDIATE_RETRACTION_NOTICE
+            for item in preview.items
+        )
+        else None
+    )
     return s.PreviewCard(
         **preview.model_dump(),
         actions=[
@@ -560,6 +568,7 @@ def preview_card(db: Session, p: Principal, request_id: UUID) -> s.PreviewCard:
                 request_id=preview.request_id,
                 revision=preview.revision,
                 base_revision=preview.base_revision,
+                preview_id=preview_id if a == "confirm_submit" else None,
             )
             for a in ("confirm_submit", "continue_editing")
         ],
