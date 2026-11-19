@@ -219,10 +219,10 @@ def _tracking_employee_scope(principal: Principal) -> ColumnElement[bool]:
 
 
 def list_active_borrow_assignments(
-    principal: Principal, session: Session
+    principal: Principal, session: Session, *, assignment_id: UUID | None = None
 ) -> list[ActiveBorrowAssignment]:
     require_enabled(principal, session)
-    rows = session.exec(
+    query = (
         select(CapacityAssignment, CapacityDemand, Employee.display_name)
         .join(
             Employee,
@@ -245,7 +245,11 @@ def list_active_borrow_assignments(
             col(CapacityProposalLine.lender_department_id).is_not(None),
             CapacityAssignment.status == AssignmentStatus.ACTIVE,
         )
-        .order_by(
+    )
+    if assignment_id is not None:
+        query = query.where(CapacityAssignment.id == assignment_id)
+    rows = session.exec(
+        query.order_by(
             col(CapacityAssignment.due_date),
             col(Employee.display_name),
             col(CapacityAssignment.id),
@@ -574,7 +578,7 @@ def notify_managers(
                 session, row.org_id, employee_department, fallback_to_admin=False
             ):
                 recipients.setdefault(user_id, BORROW_TRACKING_URL)
-    for user_id in sorted(recipients):
+    for user_id, url in sorted(recipients.items()):
         if user_id == exclude_user_id:
             continue
         add_item(
@@ -583,8 +587,9 @@ def notify_managers(
                 org_id=demand.org_id,
                 recipient_user_id=user_id,
                 kind=InboxKind.CAPACITY,
-                message=f"{title}：{assignment}。{detail} 需求：{label}\n{recipients[user_id]}",
+                message=f"{title}：{assignment}。{detail} 需求：{label}\n{url}",
             ),
+            borrow_assignment_id=row.id if url == BORROW_TRACKING_URL else None,
         )
 
 
@@ -622,12 +627,17 @@ def notify_unavailability(session: Session, absence: CapacityUnavailability) -> 
             projected_end = date.fromordinal(
                 min(date.max.toordinal(), row.due_date.toordinal() + days)
             )
-            downstream, delay, has_downstream = unavailability_impact(
-                session, demand, projected_end
-            )
-            if downstream:
-                message += f"受影响的下游角色：{'、'.join(downstream)}。"
-            elif has_downstream:
+            impact = unavailability_impact(session, demand, projected_end)
+            if impact.shifted_roles:
+                message += f"受影响的下游角色：{'、'.join(impact.shifted_roles)}。"
+            if impact.unconfirmed_roles:
+                message += (
+                    f"日期待确认的下游角色：{'、'.join(impact.unconfirmed_roles)}。"
+                )
+            elif impact.has_downstream and not impact.shifted_roles:
                 message += "下游角色日期暂不受影响。"
-            message += f"项目预计比原窗口推迟 {delay} 天。"
+            if impact.delay_days is None:
+                message += "项目预计完工日待确认。"
+            else:
+                message += f"项目预计比原窗口推迟 {impact.delay_days} 天。"
         notify_managers(session, demand, row, message + "可重新模拟或发起变更提议。")

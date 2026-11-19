@@ -93,6 +93,8 @@ class ImNotification(TenantRecord, table=True):
         Index("ix_im_notification_pending", "org_id", "status", "created_at"),
     )
     inbox_item_id: UUID
+    # The capacity service resolves this ID under the recipient's current scope.
+    borrow_assignment_id: UUID | None = None
     employee_id: UUID
     platform: Platform = Field(sa_type=String)
     status: str = "pending"

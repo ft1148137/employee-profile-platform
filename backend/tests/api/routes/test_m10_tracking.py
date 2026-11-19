@@ -8,6 +8,7 @@ import pytest
 from sqlmodel import Session, delete, select
 
 from app.connectors.jira.client import CloudJiraClient, DataCenterJiraClient
+from app.core.db import engine
 from app.domains.base import utc_now
 from app.domains.capacity import tracking
 from app.domains.capacity.models import (
@@ -17,9 +18,10 @@ from app.domains.capacity.models import (
     CapacityProposalLine,
     CapacityUnavailability,
 )
-from app.domains.im.models import ImBinding, ImNotification
-from app.domains.im.notifications import tracking_notice
-from app.domains.inbox.models import InboxItem
+from app.domains.im.models import ImBinding, ImNotification, ImSetting
+from app.domains.im.notifications import claim, tracking_notice
+from app.domains.inbox.models import InboxItem, InboxKind
+from app.domains.inbox.service import add_item, my_inbox
 from app.domains.org.models import (
     Department,
     ExternalIdentity,
@@ -222,6 +224,38 @@ def test_borrowed_tasks_visible_to_owner_and_lender(
     db.add(line)
     db.flush()
     row.proposal_line_id = line.id
+    db.add_all(
+        [
+            ImBinding(
+                org_id=tracked.org,
+                employee_id=people["cm"].id,
+                platform="feishu",
+                external_user_id="manager",
+                external_chat_id="chat",
+                bot_identity="app",
+            ),
+            ImSetting(
+                org_id=tracked.org,
+                platform="feishu",
+                enabled=True,
+                bot_identity="app",
+                updated_by_user_id=users["admin"].id,
+            ),
+        ]
+    )
+    collision_line = CapacityProposalLine.model_validate(
+        {**line.model_dump(exclude={"id"}), "employee_id": people["cm"].id}
+    )
+    db.add(collision_line)
+    db.flush()
+    collision = CapacityAssignment.model_validate(
+        {
+            **row.model_dump(),
+            "id": UUID(hex=uuid4().hex[:24] + row.id.hex[-8:]),
+            "employee_id": people["cm"].id,
+            "proposal_line_id": collision_line.id,
+        }
+    )
     db.commit()
     try:
         tasks = tracked.path + "/tasks"
@@ -289,24 +323,69 @@ def test_borrowed_tasks_visible_to_owner_and_lender(
             )
             assert people["w"].display_name not in item.message
             assert str(row.employee_id) not in item.message
-        for item in borrow_notices:
-            assert item.message.endswith("/capacity?tab=borrows")
-            assert tracking_notice(
-                db, item, principal(db, tracked.org, people["cm"].id)
+        manager = principal(db, tracked.org, people["cm"].id)
+        other_manager = principal(db, tracked.org, people["am"].id)
+        public = my_inbox(manager, db).model_dump_json()
+        assert "borrow_assignment_id" not in public and str(row.id) not in public
+        db.add(collision)
+        legacy = InboxItem(
+            org_id=tracked.org,
+            recipient_user_id=users["cm"].id,
+            kind=InboxKind.CAPACITY,
+            message=borrow_notices[0].message,
+        )
+        add_item(db, legacy)
+        db.commit()
+        assert {entry["id"] for entry in api(active_borrows, "cm")} == {
+            str(row.id),
+            str(collision.id),
+        }
+        pending = {
+            notification.inbox_item_id: notification
+            for notification in db.exec(
+                select(ImNotification).where(
+                    ImNotification.org_id == tracked.org,
+                    ImNotification.employee_id == people["cm"].id,
+                )
             )
+        }
+        for item in borrow_notices:
+            queued = pending[item.id]
+            assert queued.borrow_assignment_id == row.id
+            assert item.message.endswith("/capacity?tab=borrows")
             assert (
-                tracking_notice(db, item, principal(db, tracked.org, people["am"].id))
+                tracking_notice(db, item, other_manager, borrow_assignment_id=row.id)
                 is None
             )
+            with claim(engine, tracked.org, queued.id) as notice:
+                assert notice is not None
+                assert notice.text.endswith("/capacity?tab=borrows")
+                assert str(row.id) not in notice.text
+        with claim(engine, tracked.org, pending[legacy.id].id) as notice:
+            assert notice is None
+
+        foreign_org = db.exec(
+            select(OrgMembership.org_id).where(
+                OrgMembership.user_id == users["foreign"].id
+            )
+        ).one()
+        with claim(engine, foreign_org, pending[borrow_notices[0].id].id) as notice:
+            assert notice is None
 
         subject = people["w"]
         subject.department_id = demand.target_department_id
         db.commit()
-        assert all(
-            tracking_notice(db, item, principal(db, tracked.org, people["cm"].id))
-            is None
-            for item in borrow_notices
-        )
+        assert [entry["id"] for entry in api(active_borrows, "cm")] == [
+            str(collision.id)
+        ]
+        for item in borrow_notices:
+            with claim(engine, tracked.org, pending[item.id].id) as notice:
+                assert notice is None
+        for queued in pending.values():
+            db.refresh(queued)
+            assert queued.status == "failed" and queued.attempts == 0
+        db.delete(collision)
+        db.commit()
         assert api(active_borrows, "cm") == []
         api(tracking_path, "cm", status=404)
         assert api(active_borrows, "bm") == [visible]
@@ -325,10 +404,14 @@ def test_borrowed_tasks_visible_to_owner_and_lender(
         assert [entry["id"] for entry in api(feedback, "cm")] == [visible["id"]]
         assert api(feedback, "bm") == []
     finally:
+        db.rollback()
+        if leftover := db.get(CapacityAssignment, collision.id):
+            db.delete(leftover)
         db.refresh(row)
         row.proposal_line_id = None
         lender.parent_department_id = original_parent
         db.flush()
+        db.delete(collision_line)
         db.delete(line)
         db.flush()
         db.delete(proposal)

@@ -33,7 +33,9 @@ REMINDERS = {
 }
 
 
-def enqueue(db: Session, item: InboxItem) -> None:
+def enqueue(
+    db: Session, item: InboxItem, *, borrow_assignment_id: UUID | None = None
+) -> None:
     employee_id = item.recipient_employee_id
     if employee_id is None and item.recipient_user_id:
         employee_id = db.exec(
@@ -57,6 +59,7 @@ def enqueue(db: Session, item: InboxItem) -> None:
             ImNotification(
                 org_id=item.org_id,
                 inbox_item_id=item.id,
+                borrow_assignment_id=borrow_assignment_id,
                 employee_id=employee_id,
                 platform=row.platform,
             )
@@ -110,7 +113,13 @@ def pending_ids(engine: Engine, org_id: UUID) -> list[UUID]:
         return ids
 
 
-def tracking_notice(db: Session, item: InboxItem, principal: Principal) -> str | None:
+def tracking_notice(
+    db: Session,
+    item: InboxItem,
+    principal: Principal,
+    *,
+    borrow_assignment_id: UUID | None = None,
+) -> str | None:
     from app.domains.capacity.demand import demand_row, represents_department
     from app.domains.capacity.tracking import (
         BORROW_TRACKING_URL,
@@ -119,18 +128,26 @@ def tracking_notice(db: Session, item: InboxItem, principal: Principal) -> str |
         list_active_borrow_assignments,
     )
 
-    if item.kind != InboxKind.CAPACITY or not item.message.startswith(
-        (f"{TRACKING_NOTICE}：", f"{UNAVAILABILITY_NOTICE}：")
+    if (
+        item.org_id != principal.org_id
+        or item.kind != InboxKind.CAPACITY
+        or not item.message.startswith(
+            (f"{TRACKING_NOTICE}：", f"{UNAVAILABILITY_NOTICE}：")
+        )
     ):
         return None
     body, _, url = item.message.rpartition("\n")
     if url == BORROW_TRACKING_URL:
-        label = body.partition("：")[2].partition("（")[0]
+        # Older notifications only have the display suffix, which cannot identify the source.
+        if borrow_assignment_id is None:
+            return None
         try:
-            visible = list_active_borrow_assignments(principal, db)
+            visible = list_active_borrow_assignments(
+                principal, db, assignment_id=borrow_assignment_id
+            )
         except HTTPException:
             return None
-        if any(label == f"分配 #{row.id.hex[-8:]}" for row in visible):
+        if visible:
             return f"{body}\n{settings.FRONTEND_HOST.rstrip('/')}{url}"
         return None
     if not url.startswith("/capacity?tab=incoming&demand=") or not url.endswith(
@@ -204,7 +221,9 @@ def claim(
         if valid and bound:
             try:
                 principal = principal_for(db, bound)
-                custom_text = tracking_notice(db, item, principal)
+                custom_text = tracking_notice(
+                    db, item, principal, borrow_assignment_id=row.borrow_assignment_id
+                )
                 if (
                     item.kind == InboxKind.CAPACITY
                     and item.message.endswith(f"\n{BORROW_TRACKING_URL}")
