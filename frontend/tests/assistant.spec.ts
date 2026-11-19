@@ -5,6 +5,43 @@ import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
+test("organization navigation wins while the post-login assistant is still loading", async ({
+  page,
+}) => {
+  let markRequested = () => {}
+  const requested = new Promise<void>((resolve) => {
+    markRequested = resolve
+  })
+  let unblock = () => {}
+  const pending = new Promise<void>((resolve) => {
+    unblock = resolve
+  })
+  await page.route(
+    /\/(?:assets\/assistant-[^/]+\.js|src\/routes\/_layout\/assistant\.tsx)(?:\?|$)/,
+    async (route) => {
+      markRequested()
+      await pending
+      await route.continue()
+    },
+  )
+  try {
+    await logInUser(
+      page,
+      "employee.platform@demo.example.com",
+      process.env.DEMO_USER_PASSWORD!,
+    )
+    await expect(page).toHaveURL("/assistant")
+    await requested
+    await page.getByRole("link", { name: "组织", exact: true }).click()
+    await expect(page).toHaveURL(/\/employees\/[^/]+$/)
+    await expect(
+      page.getByRole("heading", { name: "张伟", exact: true }),
+    ).toBeVisible()
+  } finally {
+    unblock()
+  }
+})
+
 test("admin unsent text returns with its conversation after leaving the page", async ({
   page,
 }) => {

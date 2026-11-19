@@ -27,10 +27,11 @@ export function ExportProfilesButtons({ orgId }: { orgId: string }) {
           <Button
             key={format}
             variant="outline"
+            title={format === "json" ? "JSON 格式" : undefined}
             disabled={download.isPending}
             onClick={() => download.mutate(format)}
           >
-            导出已发布画像（{format.toUpperCase()}）
+            导出已发布画像（{format === "csv" ? "CSV" : "结构化数据"}）
           </Button>
         ))}
       </div>

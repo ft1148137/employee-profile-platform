@@ -81,9 +81,12 @@ test("manager downloads every visible published judgment despite page filters", 
     expected.map((row) => row.employee_code ?? ""),
   )
   const jsonDownload = page.waitForEvent("download")
-  await page
-    .getByRole("button", { name: "导出已发布画像（JSON）", exact: true })
-    .click()
+  const jsonButton = page.getByRole("button", {
+    name: "导出已发布画像（结构化数据）",
+    exact: true,
+  })
+  await expect(jsonButton).toHaveAttribute("title", "JSON 格式")
+  await jsonButton.click()
   const jsonFile = await jsonDownload
   expect(jsonFile.suggestedFilename()).toBe("已发布画像.json")
   const jsonBytes = await jsonFile.createReadStream().then(async (stream) => {
