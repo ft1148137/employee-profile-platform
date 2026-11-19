@@ -48,7 +48,7 @@ export function usePendingApprovals() {
   const extensions = useExtensions(orgId, enabled)
   const own = useMyAssignments(orgId, enabled && !!employeeId)
   const incoming = useQuery({
-    queryKey: ["capacity", orgId, "demands", "incoming"],
+    queryKey: ["capacity", orgId, "demands", "incoming", "submitted"],
     enabled: enabled && manages,
     queryFn: async ({ signal }) => {
       const pending = new Map<string, DemandPublic>()
@@ -56,11 +56,11 @@ export function usePendingApprovals() {
       for (let skip = 0; ; skip += limit) {
         const { data: page } = await CapacityService.listDemands({
           path: { org_id: orgId },
-          query: { side: "incoming", skip, limit },
+          query: { side: "incoming", status: "submitted", skip, limit },
           signal,
         })
         for (const row of page.data) {
-          if (row.status === "submitted") pending.set(row.id, row)
+          if (row.can_reply === true) pending.set(row.id, row)
         }
         if (skip + limit >= page.count) return [...pending.values()]
       }

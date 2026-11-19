@@ -74,15 +74,21 @@ test("待审批角标汇总、分类与收到需求的角色入口", async ({ pa
     }),
   )
   const demandList = `**${base}/capacity/demands?*`
+  const demandPages: Array<{ status: string | null; skip: string | null }> = []
   await page.route(demandList, (route) => {
     const url = new URL(route.request().url())
-    const firstPage = url.searchParams.get("skip") === "0"
+    const skip = url.searchParams.get("skip")
+    demandPages.push({ status: url.searchParams.get("status"), skip })
     return route.fulfill({
       json: {
         count: 101,
-        data: firstPage
-          ? Array.from({ length: 100 }, () => ({ status: "replied" }))
-          : [demand],
+        data:
+          skip === "0"
+            ? Array.from({ length: 100 }, () => ({
+                status: "submitted",
+                can_reply: false,
+              }))
+            : [{ ...demand, can_reply: true }],
       },
     })
   })
@@ -103,6 +109,10 @@ test("待审批角标汇总、分类与收到需求的角色入口", async ({ pa
     "负荷与延期1",
     "收到需求1",
     "借调确认1",
+  ])
+  expect(demandPages).toEqual([
+    { status: "submitted", skip: "0" },
+    { status: "submitted", skip: "100" },
   ])
   await expect(page.getByText("合成画像员工", { exact: false })).toBeVisible()
   await expect(page.getByText("合成调整员工", { exact: false })).toBeVisible()

@@ -141,20 +141,17 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
   )
   const startWeek = (await api(`${base}/capacity/workloads/me`, undefined, e))
     .weeks[0].week_start
-  const demand = await api(
-    `${base}/capacity/demands`,
-    {
-      requesting_department_id: person("A").department!.id,
-      target_department_id: person("M").department!.id,
-      capability_key: "delivery",
-      headcount: 1,
-      allocation_percent: 30,
-      window_start: startWeek,
-      window_end: "2026-12-31",
-      description: "合成需求",
-    },
-    a,
-  )
+  const demandInput = {
+    requesting_department_id: person("A").department!.id,
+    target_department_id: person("M").department!.id,
+    capability_key: "delivery",
+    headcount: 1,
+    allocation_percent: 30,
+    window_start: startWeek,
+    window_end: "2026-12-31",
+    description: "合成需求",
+  }
+  const demand = await api(`${base}/capacity/demands`, demandInput, a)
   const reply = await api(
     `${base}/capacity/demands/${demand.id}/reply`,
     {
@@ -171,6 +168,59 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     { action: "accept", revision: reply.revision },
     a,
   )
+  const open = async (token: string, path = "/capacity?tab=approvals") => {
+    await page.goto("/login")
+    await page.evaluate(
+      ({ token, org }) => {
+        localStorage.setItem("access_token", token)
+        localStorage.setItem("current_org_id", org)
+      },
+      { token, org: admin.org_id },
+    )
+    await page.goto(path)
+  }
+  const incomingQueries: Array<{ status: string | null; skip: string | null }> =
+    []
+  page.on("request", (req) => {
+    const { pathname, searchParams } = new URL(req.url())
+    if (
+      pathname === `${base}/capacity/demands` &&
+      searchParams.get("side") === "incoming"
+    ) {
+      incomingQueries.push({
+        status: searchParams.get("status"),
+        skip: searchParams.get("skip"),
+      })
+    }
+  })
+  const pendingNav = page
+    .locator("#workspace-navigation")
+    .getByRole("link", { name: /^待审批/ })
+  const incomingFilter = page.getByRole("link", { name: /^收到需求/ })
+  const incoming = page.getByRole("region", { name: "收到需求" })
+  const expectNoIncoming = async () => {
+    await expect(incoming.getByRole("status")).toHaveText("目前没有待处理事项")
+    await expect(incoming.getByRole("article")).toHaveCount(0)
+    await expect(incomingFilter).toHaveText("收到需求0")
+    await expect(pendingNav).toHaveText("待审批")
+  }
+  await open(root, "/reviews?type=demand")
+  await expectNoIncoming()
+  expect(incomingQueries).toEqual([{ status: "submitted", skip: "0" }])
+
+  const ownDescription = "纯管理员自提需求"
+  await api(
+    `${base}/capacity/demands`,
+    { ...demandInput, description: ownDescription },
+    root,
+  )
+  await page.reload()
+  await expectNoIncoming()
+  await open(m, "/reviews?type=demand")
+  await expect(incoming.getByRole("article")).toContainText(ownDescription)
+  await expect(incomingFilter).toHaveText("收到需求1")
+  await expect(pendingNav).toHaveText("待审批1")
+
   await api(
     `${base}/capacity/weeks`,
     {
@@ -217,17 +267,6 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     )
   await workloadRequest(e, 60)
   await extensionRequest()
-  const open = async (token: string, path = "/capacity?tab=approvals") => {
-    await page.goto("/login")
-    await page.evaluate(
-      ({ token, org }) => {
-        localStorage.setItem("access_token", token)
-        localStorage.setItem("current_org_id", org)
-      },
-      { token, org: admin.org_id },
-    )
-    await page.goto(path)
-  }
   const teamReads: string[] = []
   page.on("request", (req) => {
     if (new URL(req.url()).pathname === `${base}/capacity/workloads`)

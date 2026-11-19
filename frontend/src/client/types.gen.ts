@@ -2599,6 +2599,10 @@ export type DemandPublic = {
   capability_name: string
   status: DemandStatus
   /**
+   * Can Reply
+   */
+  can_reply?: boolean
+  /**
    * Revision
    */
   revision: number
@@ -9572,6 +9576,10 @@ export type capacityListDemandsData = {
      * Limit
      */
     limit?: number
+    /**
+     * Status
+     */
+    status?: DemandStatus | null
   }
   url: "/api/v1/orgs/{org_id}/capacity/demands"
 }
