@@ -183,6 +183,7 @@ test("员工关联已完成的任务，经理看到可以结束分配", async ({
           [
             "记录编号,来源,发生时间,执行人账号,标题,状态",
             `SYN-TRACK,合成工作台,${start}T09:00:00+08:00,${email("w")},完成合成交付,已完成`,
+            `SYN-UNKNOWN,合成工作台,${start}T09:00:00+08:00,${email("w")},待核对合成任务,`,
           ].join("\n"),
         ),
       },
@@ -209,6 +210,12 @@ test("员工关联已完成的任务，经理看到可以结束分配", async ({
   }
   await open(worker, "tab=assignments")
   const personal = page.getByRole("region", { name: "我的分配", exact: true })
+  await personal.getByLabel("任务编号或标题").fill("SYN-UNKNOWN")
+  await personal.getByRole("button", { name: "搜索任务" }).click()
+  await personal.getByRole("button", { name: "关联任务", exact: true }).click()
+  await expect(personal.getByText("有关联任务状态待确认")).toBeVisible()
+  await personal.getByRole("button", { name: "取消关联" }).click()
+  await expect(personal.getByText("未关联任务", { exact: true })).toBeVisible()
   await personal.getByLabel("任务编号或标题").fill("SYN-TRACK")
   await personal.getByRole("button", { name: "搜索任务" }).click()
   await personal.getByRole("button", { name: "关联任务", exact: true }).click()
@@ -227,4 +234,20 @@ test("员工关联已完成的任务，经理看到可以结束分配", async ({
   await expect(
     department.getByRole("list", { name: "已关联任务" }),
   ).toContainText("SYN-TRACK")
+
+  await open(requester, `tab=outgoing&demand=${demand.id}`)
+  const outgoing = page.getByRole("region", { name: "需求详情" })
+  const summary = page.getByRole("status").filter({ hasText: "该角色执行跟踪" })
+  await expect(summary).toHaveText(
+    "该角色执行跟踪：关联任务已全部完成，待承接部门确认结束",
+  )
+  for (const privateValue of [
+    person("W").id,
+    "合成执行员工",
+    "SYN-TRACK",
+    "完成合成交付",
+  ]) {
+    await expect(outgoing).not.toContainText(privateValue)
+    await expect(summary).not.toContainText(privateValue)
+  }
 })

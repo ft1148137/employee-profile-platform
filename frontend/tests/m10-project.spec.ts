@@ -88,4 +88,32 @@ test("需求方创建多角色项目并看到承接方答复和排程影响", as
   await expect(page.getByRole("region", { name: "项目影响" })).toContainText(
     "预计比需求窗口晚 2 天",
   )
+
+  await open(page, "A", "/capacity?tab=outgoing")
+  const outgoing = page.locator("article").filter({ hasText: "角色：接口开发" })
+  await outgoing.getByRole("button", { name: "查看详情" }).click()
+  await page.getByLabel("追问内容").fill("请重新确认承接日期")
+  await page.getByRole("button", { name: "发送追问", exact: true }).click()
+  await expect(page.getByRole("region", { name: "需求详情" })).toContainText(
+    "待答复",
+  )
+  await open(page, "B", "/capacity?tab=incoming")
+  await incoming.getByRole("button", { name: "查看详情" }).click()
+  await page.getByLabel("答复结论").selectOption("not_now")
+  await page.getByLabel("拒绝原因").selectOption("scope")
+  await page.getByLabel("答复说明").fill("需重新确认交付范围")
+  await page.getByRole("button", { name: "确认发送答复" }).click()
+  await expect(page.getByRole("region", { name: "需求详情" })).toContainText(
+    "已答复",
+  )
+  await open(page, "A", projectPath)
+  await expect(
+    page.getByRole("region", { name: "分阶段时间表" }),
+  ).toContainText("预计完成 待确认")
+  const thirdStage = page.getByRole("table", { name: "第 3 阶段" })
+  await expect(thirdStage).toContainText("2026-12-05 至 2026-12-06")
+  await expect(thirdStage).toContainText("待确认")
+  await expect(page.getByRole("region", { name: "项目影响" })).toContainText(
+    "前置角色暂未给出可承接日期，项目预计完工日待确认。",
+  )
 })

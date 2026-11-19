@@ -66,11 +66,10 @@ class TrackingState(StrEnum):
     TASKS_DONE = "tasks_done"
     OVERDUE = "overdue"
     HANDED_OVER = "handed_over"
+    STATUS_UNKNOWN = "status_unknown"
 
 
-TRACKING_STATE_CHECK = (
-    "tracking_state IN ('no_tasks', 'on_track', 'tasks_done', 'overdue', 'handed_over')"
-)
+TRACKING_STATE_CHECK = "tracking_state IN ('no_tasks', 'on_track', 'tasks_done', 'overdue', 'handed_over', 'status_unknown')"
 
 
 class AssignmentStatus(StrEnum):

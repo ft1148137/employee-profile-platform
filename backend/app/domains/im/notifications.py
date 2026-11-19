@@ -112,13 +112,27 @@ def pending_ids(engine: Engine, org_id: UUID) -> list[UUID]:
 
 def tracking_notice(db: Session, item: InboxItem, principal: Principal) -> str | None:
     from app.domains.capacity.demand import demand_row, represents_department
-    from app.domains.capacity.tracking import TRACKING_NOTICE, UNAVAILABILITY_NOTICE
+    from app.domains.capacity.tracking import (
+        BORROW_TRACKING_URL,
+        TRACKING_NOTICE,
+        UNAVAILABILITY_NOTICE,
+        list_active_borrow_assignments,
+    )
 
     if item.kind != InboxKind.CAPACITY or not item.message.startswith(
         (f"{TRACKING_NOTICE}：", f"{UNAVAILABILITY_NOTICE}：")
     ):
         return None
     body, _, url = item.message.rpartition("\n")
+    if url == BORROW_TRACKING_URL:
+        label = body.partition("：")[2].partition("（")[0]
+        try:
+            visible = list_active_borrow_assignments(principal, db)
+        except HTTPException:
+            return None
+        if any(label == f"分配 #{row.id.hex[-8:]}" for row in visible):
+            return f"{body}\n{settings.FRONTEND_HOST.rstrip('/')}{url}"
+        return None
     if not url.startswith("/capacity?tab=incoming&demand=") or not url.endswith(
         "&plans=1"
     ):
@@ -139,6 +153,7 @@ def tracking_notice(db: Session, item: InboxItem, principal: Principal) -> str |
 def claim(
     engine: Engine, org_id: UUID, notification_id: UUID
 ) -> Generator[Pending | None]:
+    from app.domains.capacity.tracking import BORROW_TRACKING_URL
     from app.domains.capacity.workload import (
         EXTENSION_REVIEW_NOTICE,
         WORKLOAD_REVIEW_NOTICE,
@@ -190,6 +205,12 @@ def claim(
             try:
                 principal = principal_for(db, bound)
                 custom_text = tracking_notice(db, item, principal)
+                if (
+                    item.kind == InboxKind.CAPACITY
+                    and item.message.endswith(f"\n{BORROW_TRACKING_URL}")
+                    and custom_text is None
+                ):
+                    valid = False
                 if item.kind == InboxKind.ADMIN_TODOS:
                     valid = (
                         principal.is_org_admin

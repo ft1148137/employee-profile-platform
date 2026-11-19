@@ -75,6 +75,7 @@ def analyze_project(
         for role in roles
     }
     forecast_ends: dict[UUID, int] = {}
+    unconfirmed: set[UUID] = set()
     order = {role.id: i for i, role in enumerate(roles)}
     stages: list[list[ScheduledProjectRole]] = []
     affected: dict[UUID, list[ProjectImpactReason]] = {}
@@ -87,45 +88,61 @@ def analyze_project(
             earliest = max((planned_ends[p] + 1 for p in parents), default=0)
             start = role.committed_start_date or role.window_start
             end = role.committed_end_date or role.window_end
-            forecast_start = max(
-                start.toordinal(),
-                max((forecast_ends[p] + 1 for p in parents), default=0),
-            )
-            forecast_end = end.toordinal() + forecast_start - start.toordinal()
-            forecast_ends[role_id] = forecast_end
-            stage.append(
-                ScheduledProjectRole(
-                    role=role,
-                    planned_start=start,
-                    planned_end=end,
-                    earliest_start=calendar_date(earliest),
-                    forecast_start=calendar_date(forecast_start),
-                    forecast_end=calendar_date(forecast_end),
-                )
-            )
             reasons: list[ProjectImpactReason] = []
             outcome = outcomes.get(role_id)
-            if role.status in (DemandStatus.REPLIED, DemandStatus.ACCEPTED):
-                if outcome == DemandOutcome.PARTIAL:
-                    reasons.append("partial")
-                if outcome == DemandOutcome.NOT_NOW:
-                    reasons.append("not_now")
+            if outcome == DemandOutcome.PARTIAL and role.status in (
+                DemandStatus.REPLIED,
+                DemandStatus.ACCEPTED,
+            ):
+                reasons.append("partial")
+            if outcome == DemandOutcome.NOT_NOW and role.status in (
+                DemandStatus.SUBMITTED,
+                DemandStatus.REPLIED,
+                DemandStatus.ACCEPTED,
+            ):
+                reasons.append("not_now")
             if end > role.window_end:
                 reasons.append("late_commitment")
             if start.toordinal() < earliest:
                 reasons.append("dependency")
             if reasons:
                 affected[role_id] = reasons
+            parent_unconfirmed = any(p in unconfirmed for p in parents)
+            forecast_unconfirmed = parent_unconfirmed or "not_now" in reasons
+            forecast_start = forecast_end = 0
+            if forecast_unconfirmed:
+                unconfirmed.add(role_id)
+            else:
+                forecast_start = max(
+                    start.toordinal(),
+                    max((forecast_ends[p] + 1 for p in parents), default=0),
+                )
+                forecast_end = end.toordinal() + forecast_start - start.toordinal()
+                forecast_ends[role_id] = forecast_end
+            stage.append(
+                ScheduledProjectRole(
+                    role=role,
+                    planned_start=start,
+                    planned_end=end,
+                    earliest_start=None
+                    if parent_unconfirmed
+                    else calendar_date(earliest),
+                    forecast_start=calendar_date(forecast_start),
+                    forecast_end=calendar_date(forecast_end),
+                    forecast_unconfirmed=forecast_unconfirmed,
+                )
+            )
         stages.append(stage)
         sorter.done(*ready)
 
     downstream: dict[UUID, set[UUID]] = defaultdict(set)
-    for role_id in reversed(forecast_ends):
+    scheduled_ids = [item.role.id for stage in stages for item in stage]
+    for role_id in reversed(scheduled_ids):
         for parent in graph[role_id]:
             downstream[parent].add(role_id)
             downstream[parent].update(downstream[role_id])
     window_end = max(role.window_end for role in roles)
-    forecast_end = max(forecast_ends.values())
+    forecast_end = max(forecast_ends.values(), default=0)
     return ProjectSchedule(
         stages=stages,
         impacts=[
@@ -133,14 +150,17 @@ def analyze_project(
                 role=by_id[role_id],
                 reasons=reasons,
                 downstream=[
-                    by_id[item] for item in forecast_ends if item in downstream[role_id]
+                    by_id[item] for item in scheduled_ids if item in downstream[role_id]
                 ],
             )
             for role_id, reasons in affected.items()
         ],
         window_end=window_end,
-        forecast_end=calendar_date(forecast_end),
-        delay_days=max(0, forecast_end - window_end.toordinal()),
+        forecast_end=None if unconfirmed else calendar_date(forecast_end),
+        delay_days=None
+        if unconfirmed
+        else max(0, forecast_end - window_end.toordinal()),
+        forecast_unconfirmed=bool(unconfirmed),
     )
 
 
@@ -291,7 +311,7 @@ def project_dependencies(
 
 def unavailability_impact(
     session: Session, affected: CapacityDemand, projected_end: date
-) -> tuple[list[str], int]:
+) -> tuple[list[str], int, bool]:
     assert affected.project_id is not None
     roles = [
         demand.project_role_summary(row, department)
@@ -320,12 +340,18 @@ def unavailability_impact(
     original = {
         item.role.id: item.forecast_end for stage in baseline.stages for item in stage
     }
-    return [
-        f"{item.role.role_name}（{item.role.target_department_name}）"
-        for stage in forecast.stages
-        for item in stage
-        if item.role.id != affected.id and item.forecast_end != original[item.role.id]
-    ], forecast.delay_days
+    assert forecast.delay_days is not None
+    return (
+        [
+            f"{item.role.role_name}（{item.role.target_department_name}）"
+            for stage in forecast.stages
+            for item in stage
+            if item.role.id != affected.id
+            and item.forecast_end != original[item.role.id]
+        ],
+        forecast.delay_days,
+        any(affected.id in parents for parents in dependencies.values()),
+    )
 
 
 def get_project(

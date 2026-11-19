@@ -6120,7 +6120,11 @@ export type ProjectSchedule = {
   /**
    * Delay Days
    */
-  delay_days: number
+  delay_days: number | null
+  /**
+   * Forecast Unconfirmed
+   */
+  forecast_unconfirmed?: boolean
 }
 
 /**
@@ -7158,6 +7162,10 @@ export type ScheduledProjectRole = {
    * Forecast End
    */
   forecast_end: string | null
+  /**
+   * Forecast Unconfirmed
+   */
+  forecast_unconfirmed?: boolean
 }
 
 /**
@@ -7875,6 +7883,7 @@ export type TrackingState =
   | "tasks_done"
   | "overdue"
   | "handed_over"
+  | "status_unknown"
 
 /**
  * TrackingTask

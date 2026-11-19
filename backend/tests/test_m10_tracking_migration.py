@@ -73,6 +73,20 @@ def test_tracking_migration_roundtrip(
         )
     migrate(migration_engine, "upgrade", "head")
     if with_a1_data:
+        latest_parent = "c839001bc001"
+        migrate(migration_engine, "downgrade", latest_parent)
+        migrate(migration_engine, "upgrade", "head")
+        with Session(migration_engine) as db:
+            assignment = db.exec(select(CapacityAssignment)).one()
+            assignment.tracking_state = "status_unknown"
+            db.commit()
+        with pytest.raises(RuntimeError, match="存在关联任务状态待确认的分配"):
+            migrate(migration_engine, "downgrade", latest_parent)
+        with Session(migration_engine) as db:
+            assignment = db.exec(select(CapacityAssignment)).one()
+            assert assignment.tracking_state == "status_unknown"
+            assignment.tracking_state = None
+            db.commit()
         with Session(migration_engine) as db:
             assignment = db.exec(select(CapacityAssignment)).one()
             task = Task(

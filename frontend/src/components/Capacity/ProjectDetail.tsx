@@ -182,8 +182,11 @@ function ProjectDetail({
             >
               <h3 className="font-semibold">分阶段时间表</h3>
               <p className="text-sm text-muted-foreground">
-                预计完成 {project.schedule.forecast_end ?? "超出日期范围"} ·
-                需求窗口截至 {project.schedule.window_end}
+                预计完成{" "}
+                {project.schedule.forecast_unconfirmed
+                  ? "待确认"
+                  : (project.schedule.forecast_end ?? "超出日期范围")}{" "}
+                · 需求窗口截至 {project.schedule.window_end}
               </p>
               {project.schedule.stages.map((stage, index) => (
                 <div
@@ -217,6 +220,7 @@ function ProjectDetail({
                           earliest_start,
                           forecast_start,
                           forecast_end,
+                          forecast_unconfirmed,
                         }) => (
                           <tr key={role.id}>
                             <th scope="row" className="px-3 py-2 font-medium">
@@ -229,9 +233,11 @@ function ProjectDetail({
                               {earliest_start ?? "—"}
                             </td>
                             <td className="px-3 py-2">
-                              {forecast_start && forecast_end
-                                ? `${forecast_start} 至 ${forecast_end}`
-                                : "超出日期范围"}
+                              {forecast_unconfirmed
+                                ? "待确认"
+                                : forecast_start && forecast_end
+                                  ? `${forecast_start} 至 ${forecast_end}`
+                                  : "超出日期范围"}
                             </td>
                           </tr>
                         ),
@@ -247,7 +253,11 @@ function ProjectDetail({
                 className="space-y-3 rounded-xl border bg-muted/30 p-5"
               >
                 <h3 className="font-semibold">项目影响</h3>
-                <p>预计比需求窗口晚 {project.schedule.delay_days} 天。</p>
+                <p>
+                  {project.schedule.forecast_unconfirmed
+                    ? "前置角色暂未给出可承接日期，项目预计完工日待确认。"
+                    : `预计比需求窗口晚 ${project.schedule.delay_days} 天。`}
+                </p>
                 <ul className="space-y-3">
                   {project.schedule.impacts.map(
                     ({ role, reasons, downstream }) => (
