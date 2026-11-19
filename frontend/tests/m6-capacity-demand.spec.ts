@@ -188,7 +188,10 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
     )
     await page.goto(`/capacity?tab=${tab}`)
     await expect(
-      page.getByRole("heading", { name: "需求与容量", exact: true }),
+      page.getByRole("heading", {
+        name: tab === "incoming" ? "待审批" : "需求与容量",
+        exact: true,
+      }),
     ).toBeVisible()
     await expect(page.getByRole("status", { name: "正在加载" })).toHaveCount(0)
   }
@@ -204,8 +207,10 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
   }
   await open(tokens.get("A")!, "outgoing")
   await privatePage()
-  await expect(page.getByRole("tab", { name: "收到的需求" })).toHaveCount(0)
-  await page.getByRole("button", { name: "问一问 / 提需求" }).click()
+  await expect(
+    page.getByRole("link", { name: "收到需求", exact: true }),
+  ).toHaveCount(0)
+  await page.getByRole("button", { name: "手工提需求" }).click()
   await page
     .getByLabel("需求方部门", { exact: true })
     .selectOption(employee.department!.id)
@@ -242,14 +247,20 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
   await expect(detail).toContainText("待答复")
   await expect(page.getByRole("button", { name: "接受答复" })).toHaveCount(0)
   await privatePage()
-  await page.getByRole("button", { name: "返回列表" }).click()
-  await expect(page.getByRole("region", { name: "需求列表" })).toContainText(
-    "合成需求：接口联调",
-  )
+  const demandId = new URL(page.url()).searchParams.get("demand")
+  expect(demandId).toBeTruthy()
+  await page.getByRole("button", { name: "返回需求入口" }).click()
+  await expect(page.getByRole("link", { name: "去 AI 助手" })).toBeVisible()
+  await open(tokens.get("A")!, `outgoing&demand=${demandId}`)
+  await expect(detail).toContainText("合成需求：接口联调")
   await privatePage()
   for (const [index, conclusion] of ["暂时不能", "能做一部分"].entries()) {
     await open(tokens.get("M")!, "incoming")
-    await page.getByRole("button", { name: "查看详情", exact: true }).click()
+    await page
+      .getByRole("article")
+      .filter({ hasText: "合成需求：接口联调" })
+      .getByRole("link", { name: "查看详情", exact: true })
+      .click()
     const basis = page.getByRole("region", { name: "本部门依据" })
     for (const name of privateNames) await expect(basis).toContainText(name)
     await expect(basis).toContainText("独立完成")
@@ -280,9 +291,9 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
       .fill(index ? "可以分阶段承接" : "当前容量不足")
     await page.getByRole("button", { name: "确认发送答复" }).click()
     await expect(detail).toContainText("已答复")
-    await open(tokens.get("A")!, "outgoing")
+    await open(tokens.get("A")!, `outgoing&demand=${demandId}`)
+    await expect(detail).toContainText("合成需求：接口联调")
     await privatePage()
-    await page.getByRole("button", { name: "查看详情", exact: true }).click()
     const timeline = page.getByRole("region", { name: "事件时间线" })
     await expect(timeline).toContainText(`结论：${conclusion}`)
     await expect(timeline).toContainText("2026-12-05")
@@ -317,7 +328,7 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBeTruthy()
-  await post(
+  const withdrawable = await post(
     `${base}/capacity/demands`,
     {
       requesting_department_id: employee.department!.id,
@@ -331,22 +342,17 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
     },
     tokens.get("A"),
   )
-  await page.getByRole("button", { name: "返回列表" }).click()
-  await page.reload()
-  await page
-    .getByRole("article")
-    .filter({ hasText: "合成待撤回需求" })
-    .getByRole("button", { name: "查看详情" })
-    .click()
+  await open(tokens.get("A")!, `outgoing&demand=${withdrawable.id}`)
+  await expect(detail).toContainText("合成待撤回需求")
   await page.getByRole("button", { name: "撤回需求" }).click()
   await expect(detail).toContainText("已撤回")
   await expect(page.getByRole("button", { name: "撤回需求" })).toHaveCount(0)
   await privatePage()
   await settings("managers")
   await open(tokens.get("A")!, "outgoing")
-  await expect(page.getByRole("tab", { name: "我提的需求" })).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "手工提需求" })).toHaveCount(0)
   for (const token of [admin.access_token, tokens.get("M")!]) {
     await open(token, "outgoing")
-    await expect(page.getByRole("tab", { name: "我提的需求" })).toBeVisible()
+    await expect(page.getByRole("button", { name: "手工提需求" })).toBeVisible()
   }
 })

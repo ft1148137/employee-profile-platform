@@ -279,9 +279,11 @@ test("下级经理直开方案只见权限说明和返回入口，不显示需�
       /合成权限测试需求|合成研发员工|合成答复经理|合成下级经理|研发/,
     ),
   ).toHaveCount(0)
-  await page.getByRole("button", { name: "返回需求列表" }).click()
-  await expect(page.getByRole("region", { name: "需求列表" })).toBeVisible()
-  await expect(page).toHaveURL(/tab=incoming$/)
+  await page.getByRole("button", { name: "返回待审批" }).click()
+  await expect(
+    page.getByRole("region", { name: "收到需求", exact: true }),
+  ).toBeVisible()
+  await expect(page).toHaveURL("/reviews?type=demand")
 })
 
 test("目标部门经理直开方案仍可查看方案、依据和分配", async ({

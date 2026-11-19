@@ -146,9 +146,7 @@ test("小样本隐藏及零依据时选择本部门其他员工", async ({ page,
     admin.access_token,
   )
   await open(a, "outgoing")
-  await page
-    .getByRole("button", { name: "问一问 / 提需求", exact: true })
-    .click()
+  await page.getByRole("button", { name: "手工提需求", exact: true }).click()
   await page.getByLabel("目标部门").selectOption(person("M").department!.id)
   await page.getByLabel("能力", { exact: true }).selectOption("delivery")
   const reference = page.getByRole("region", { name: "即时参考" })
@@ -224,8 +222,7 @@ test("小样本隐藏及零依据时选择本部门其他员工", async ({ page,
     m,
     "PUT",
   )
-  await open(m, "incoming")
-  await page.getByRole("button", { name: "查看详情", exact: true }).click()
+  await open(m, `incoming&demand=${demand.id}`)
   const assignment = page.getByRole("region", { name: "部门内分配" })
   await expect(assignment).toContainText(
     "依据中达到要求的有 0 人，需要 2 人。可以从本部门其他在职员工中选择；选择不会改变画像，也不会改变依据人数，需求方看到的内容不变。",
@@ -251,8 +248,7 @@ test("小样本隐藏及零依据时选择本部门其他员工", async ({ page,
   await expect(
     assignment.getByRole("article", { name: person("B2").display_name }),
   ).toBeVisible()
-  await open(a, "outgoing")
-  await page.getByRole("button", { name: "查看详情", exact: true }).click()
+  await open(a, `outgoing&demand=${demand.id}`)
   await expect(page.getByRole("region", { name: "部门内分配" })).toHaveCount(0)
   for (const code of ["M", "B1", "B2"])
     await expect(page.locator("body")).not.toContainText(

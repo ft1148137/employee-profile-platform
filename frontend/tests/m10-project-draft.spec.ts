@@ -145,8 +145,6 @@ test("从网页助手核对项目草稿并创建项目需求", async ({ page, re
     expect(await before.json()).toEqual([])
     await draft.getByRole("button", { name: "确认创建项目" }).click()
     await expect(assistant.getByText("项目已创建。")).toBeVisible()
-    await page.goto("/capacity?tab=projects")
-    await expect(page.getByText(title, { exact: true })).toBeVisible()
 
     const askProgress = async (admin: boolean) => {
       const input = page.getByLabel(
@@ -178,6 +176,9 @@ test("从网页助手核对项目草稿并创建项目需求", async ({ page, re
     expect(expectedLink).toMatch(/^\/capacity\?tab=projects&project=/)
     await table.getByRole("link", { name: title, exact: true }).click()
     await expect(page).toHaveURL(expectedLink!)
+    await expect(
+      page.getByRole("heading", { name: title, exact: true }),
+    ).toBeVisible()
 
     await open(page, "A", "/assistant")
     await expect(

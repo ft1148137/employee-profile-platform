@@ -107,6 +107,9 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   await page.getByRole("button", { name: "保存设置", exact: true }).click()
   await expect(page.getByRole("status")).toContainText("需求与容量设置已保存")
   await page.goto("/capacity?tab=team")
+  const plan = page.getByRole("navigation", { name: "空间导航" })
+  await expect(plan.getByRole("link")).toHaveText(["团队负荷", "借调请求"])
+  await expect(page.getByRole("tablist")).toHaveCount(0)
   const chart = page.getByRole("table", { name: "团队负荷，按部门、姓名排序" })
   await expect(chart).toBeVisible()
   await expect(
@@ -129,12 +132,13 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   await expect(
     page.getByRole("link", { name: "规划", exact: true }),
   ).toBeVisible()
-  await expect(page.getByRole("tab", { name: "团队负荷" })).toHaveCount(0)
+  await expect(
+    page.getByRole("link", { name: "团队负荷", exact: true }),
+  ).toHaveCount(0)
   await page.goto("/capacity?tab=team")
-  await expect(page.getByRole("tab", { name: "我的负荷" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  )
+  await expect(
+    page.getByRole("link", { name: "我的负荷", exact: true }),
+  ).toHaveAttribute("aria-current", "page")
   await expect(
     page.getByText("无，未接 Jira 或未关联 Jira 账号", { exact: true }),
   ).toBeVisible()
@@ -168,10 +172,9 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
       page.getByRole("link", { name: "规划", exact: true }),
     ).toBeVisible()
     await page.reload()
-    await expect(page.getByRole("tab", { name: "待我审批" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    )
+    await expect(
+      page.getByRole("link", { name: /^负荷与延期/ }),
+    ).toHaveAttribute("aria-current", "page")
     const application = page.getByRole("article", {
       name: "员工的调整申请",
     })

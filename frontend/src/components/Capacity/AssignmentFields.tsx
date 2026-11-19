@@ -137,11 +137,12 @@ export function useMyAssignments(orgId: string, enabled = true) {
   })
 }
 
-export function useExtensions(orgId: string) {
+export function useExtensions(orgId: string, enabled = true) {
   return useQuery({
     queryKey: ["capacity", orgId, "extensions"],
     queryFn: async () =>
       (await CapacityService.listExtensionRequests({ path: { org_id: orgId } }))
         .data,
+    enabled,
   })
 }

@@ -55,7 +55,7 @@ export function ProjectCreate({
   return (
     <div className="max-w-4xl space-y-5">
       <Button variant="outline" onClick={back} disabled={submit.isPending}>
-        返回项目列表
+        返回项目入口
       </Button>
       <h2 className="text-xl font-semibold">新建项目需求</h2>
       <form

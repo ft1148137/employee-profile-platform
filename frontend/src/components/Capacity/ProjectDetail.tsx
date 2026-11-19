@@ -1,13 +1,10 @@
 import { useQuery } from "@tanstack/react-query"
-import { Link, useNavigate } from "@tanstack/react-router"
-import { useState } from "react"
+import { Link } from "@tanstack/react-router"
 import { CapacityService, type ProjectImpactReason } from "@/client"
-import { dateLabel } from "@/components/Profile/fields"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { demandOutcomes, demandStatuses } from "./DemandsDetail"
-import { ProjectCreate } from "./ProjectCreate"
 import { isCapacityAccessDenied } from "./shared"
 
 const impactLabels: Record<ProjectImpactReason, string> = {
@@ -22,83 +19,7 @@ export function Projects({
   projectId,
 }: {
   orgId: string
-  projectId?: string
-}) {
-  const navigate = useNavigate()
-  const [creating, setCreating] = useState(false)
-  const open = (id?: string) =>
-    navigate({ to: "/capacity", search: { tab: "projects", project: id } })
-  if (projectId)
-    return (
-      <ProjectDetail
-        orgId={orgId}
-        projectId={projectId}
-        back={() => void open()}
-      />
-    )
-  if (creating)
-    return (
-      <ProjectCreate
-        orgId={orgId}
-        back={() => setCreating(false)}
-        created={(id) => {
-          setCreating(false)
-          void open(id)
-        }}
-      />
-    )
-  return <ProjectList orgId={orgId} create={() => setCreating(true)} />
-}
-
-function ProjectList({ orgId, create }: { orgId: string; create: () => void }) {
-  const query = useQuery({
-    queryKey: ["capacity", orgId, "projects"],
-    queryFn: async () =>
-      (await CapacityService.listProjects({ path: { org_id: orgId } })).data,
-  })
-  return (
-    <section aria-label="项目需求列表" className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">项目需求</h2>
-        <Button onClick={create}>新建项目需求</Button>
-      </div>
-      {query.isPending ? (
-        <ProfileLoading />
-      ) : query.isError ? (
-        <ProfileError retry={() => query.refetch()} />
-      ) : query.data.length ? (
-        query.data.map((project) => (
-          <article key={project.id} className="space-y-2 rounded-xl border p-5">
-            <Link
-              className="font-semibold underline underline-offset-4"
-              to="/capacity"
-              search={{ tab: "projects", project: project.id }}
-            >
-              {project.title}
-            </Link>
-            <p className="text-sm text-muted-foreground">
-              {project.requesting_department_name} · 提交于{" "}
-              {dateLabel(project.created_at)}
-            </p>
-          </article>
-        ))
-      ) : (
-        <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
-          暂无发出的项目需求。
-        </p>
-      )}
-    </section>
-  )
-}
-
-function ProjectDetail({
-  orgId,
-  projectId,
-  back,
-}: {
-  orgId: string
   projectId: string
-  back: () => void
 }) {
   const query = useQuery({
     queryKey: ["capacity", orgId, "project", projectId],
@@ -113,8 +34,10 @@ function ProjectDetail({
   const project = query.data
   return (
     <div className="space-y-5">
-      <Button variant="outline" onClick={back}>
-        返回项目列表
+      <Button variant="outline" asChild>
+        <Link to="/capacity" search={{ tab: "projects" }}>
+          返回项目入口
+        </Link>
       </Button>
       {query.isPending ? (
         <ProfileLoading />

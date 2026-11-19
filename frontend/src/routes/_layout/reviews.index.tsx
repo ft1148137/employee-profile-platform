@@ -1,33 +1,211 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
+import type { PendingReviews } from "@/client"
+import { Approvals } from "@/components/Capacity/Approvals"
+import { BorrowRequestCard } from "@/components/Capacity/BorrowRequests"
+import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { viaLabels } from "@/components/Profile/RequestTimeline"
-import { useReviews } from "@/hooks/useReviews"
+import { Button } from "@/components/ui/button"
+import { useOrg } from "@/hooks/useOrg"
+import { usePendingApprovals } from "@/hooks/usePendingApprovals"
+
+const filters = {
+  all: "全部",
+  profile: "画像变更",
+  workload: "负荷与延期",
+  demand: "收到需求",
+  borrow: "借调确认",
+}
+
+type ApprovalType = keyof typeof filters
 
 export const Route = createFileRoute("/_layout/reviews/")({
   component: ReviewsPage,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { type?: ApprovalType } => ({
+    type:
+      typeof search.type === "string" &&
+      Object.keys(filters).includes(search.type)
+        ? (search.type as ApprovalType)
+        : undefined,
+  }),
   head: () => ({ meta: [{ title: "待审批 - 员工画像平台" }] }),
 })
+
 function ReviewsPage() {
-  const query = useReviews()
-  if (query.isPending) return <ProfileLoading />
-  if (query.isError) return <ProfileError retry={() => query.refetch()} />
+  const { type = "all" } = Route.useSearch()
+  const { org, employeeId } = useOrg()
+  const pending = usePendingApprovals()
+  if (!org) return <OrgState />
+  const { capacity, profile, counts, totalCount } = pending
+  const sections = [
+    {
+      type: "profile",
+      queries: [profile],
+      count: counts.profile,
+      content: <ProfileReviews data={profile.data} />,
+    },
+    {
+      type: "workload",
+      queries: pending.workloadQueries,
+      count: counts.workload,
+      content: (
+        <Approvals
+          orgId={org.id}
+          pendingWorkloads={pending.pendingWorkloads}
+          pendingExtensions={pending.pendingExtensions}
+        />
+      ),
+    },
+    {
+      type: "demand",
+      queries: pending.demandQueries,
+      count: counts.demand,
+      content: pending.demands.map((row) => (
+        <article key={row.id} className="space-y-2 rounded-xl border p-5">
+          <h3 className="font-semibold">{row.capability_name} · 待答复</h3>
+          {row.project && (
+            <p className="break-words text-sm">
+              项目：{row.project.title} · 角色：{row.project.role_name}
+            </p>
+          )}
+          <p className="whitespace-pre-wrap break-words">{row.description}</p>
+          <p className="text-sm text-muted-foreground">
+            {row.headcount} 人 · 每人 {row.allocation_percent}% ·{" "}
+            {row.window_start} 至 {row.window_end}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/capacity" search={{ tab: "incoming", demand: row.id }}>
+                查看详情
+              </Link>
+            </Button>
+            {employeeId && (
+              <Button variant="outline" asChild>
+                <Link
+                  to="/assistant"
+                  search={{
+                    mode: "personal",
+                    prompt: `请模拟并帮我答复部门需求 ${row.id}（${row.capability_name}，${row.headcount} 人，每人投入 ${row.allocation_percent}%，${row.window_start} 至 ${row.window_end}）。`,
+                  }}
+                >
+                  在 AI 助手中模拟并答复
+                </Link>
+              </Button>
+            )}
+          </div>
+        </article>
+      )),
+    },
+    {
+      type: "borrow",
+      queries: pending.borrowQueries,
+      count: counts.borrow,
+      content: pending.borrows.map(({ request, mine }) => (
+        <BorrowRequestCard
+          key={request.id}
+          orgId={org.id}
+          request={request}
+          mine={mine}
+        />
+      )),
+    },
+  ] as const
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <header className="border-b pb-6">
+      <header className="space-y-4 border-b pb-4">
         <h1 className="text-2xl font-semibold">待审批</h1>
-        <p className="mt-2 text-muted-foreground">
-          逐项核对员工的改动与依据，批准后才会发布画像。
-        </p>
+        <nav aria-label="待审批类型" className="flex flex-wrap gap-2">
+          {(Object.keys(filters) as ApprovalType[]).map((filter) => (
+            <Link
+              key={filter}
+              to="/reviews"
+              search={{ type: filter === "all" ? undefined : filter }}
+              activeOptions={{
+                exact: true,
+                includeSearch: true,
+                explicitUndefined: true,
+              }}
+              aria-current={type === filter ? "page" : undefined}
+              className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm hover:bg-muted aria-[current=page]:border-primary aria-[current=page]:bg-primary/10 aria-[current=page]:text-primary"
+            >
+              {filters[filter]}
+              <span className="tabular-nums">
+                {filter === "all" ? totalCount : counts[filter]}
+              </span>
+            </Link>
+          ))}
+        </nav>
       </header>
-      <p role="status">{query.data.count} 个请求待处理</p>
+      {type !== "profile" && capacity.isLoading && <ProfileLoading />}
+      {type !== "profile" && capacity.isError && (
+        <ProfileError retry={() => capacity.refetch()} />
+      )}
+      {type === "all" &&
+        !totalCount &&
+        capacity.isSuccess &&
+        sections.every(({ queries }) =>
+          queries.every((query) => query.isSuccess),
+        ) && (
+          <p role="status" className="text-muted-foreground">
+            目前没有待审批事项
+          </p>
+        )}
+      {sections
+        .filter(
+          ({ type: sectionType }) =>
+            (type === "all" || sectionType === type) &&
+            (sectionType === "profile" || capacity.isSuccess),
+        )
+        .map((section) => {
+          const loading = section.queries.some((query) => query.isPending)
+          const failed = section.queries.some((query) => query.isError)
+          if (type === "all" && !section.count && !loading && !failed)
+            return null
+          return (
+            <section
+              key={section.type}
+              aria-label={filters[section.type]}
+              className="space-y-3"
+            >
+              <h2 className="text-lg font-semibold">{filters[section.type]}</h2>
+              {loading ? (
+                <ProfileLoading />
+              ) : failed ? (
+                <ProfileError
+                  retry={() =>
+                    section.queries.forEach((query) => void query.refetch())
+                  }
+                />
+              ) : section.type === "profile" ||
+                section.count ||
+                (section.type === "workload" && section.queries.length) ? (
+                section.content
+              ) : (
+                <p role="status" className="text-muted-foreground">
+                  目前没有待处理事项
+                </p>
+              )}
+            </section>
+          )
+        })}
+    </div>
+  )
+}
+
+function ProfileReviews({ data }: { data?: PendingReviews }) {
+  return (
+    <>
+      <p role="status">{data?.count ?? 0} 个请求待处理</p>
       <ul className="space-y-4">
-        {query.data.data.map((request) => (
+        {(data?.data ?? []).map((request) => (
           <li key={request.id} className="rounded-xl border p-5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-semibold">
+              <h3 className="font-semibold">
                 {request.employee_name} ·{" "}
                 {request.department_name ?? "未分配部门"}
-              </h2>
+              </h3>
               <span>{request.item_count} 项改动</span>
             </div>
             <p className="text-sm text-muted-foreground">
@@ -54,6 +232,6 @@ function ReviewsPage() {
           </li>
         ))}
       </ul>
-    </div>
+    </>
   )
 }

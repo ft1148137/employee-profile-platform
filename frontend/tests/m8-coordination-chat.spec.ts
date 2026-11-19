@@ -259,8 +259,10 @@ test("需求理解卡、经理方案卡和模型失败后的手工答复", async
     demandId = demands.data.find(
       (item: { description: string }) => item.description === "合成跨部门交付",
     ).id
-    await page.goto("/capacity?tab=outgoing")
-    await expect(page.getByText("合成跨部门交付")).toBeVisible()
+    await page.goto(`/capacity?tab=outgoing&demand=${demandId}`)
+    await expect(page.getByRole("region", { name: "需求详情" })).toContainText(
+      "合成跨部门交付",
+    )
     await expectChineseCopy(page)
 
     panel = await openAssistant("M")
@@ -301,7 +303,7 @@ test("需求理解卡、经理方案卡和模型失败后的手工答复", async
     await panel.getByRole("button", { name: "发送", exact: true }).click()
     await panel.getByRole("link", { name: "前往收到的需求" }).click()
     await expect(page.getByText("合成跨部门交付")).toBeVisible()
-    await page.getByRole("button", { name: "查看详情" }).click()
+    await page.getByRole("link", { name: "查看详情" }).click()
     await page.getByRole("button", { name: "生成方案 / 查看方案" }).click()
     await expect(
       page.getByRole("article", { name: "直接安排方案" }),

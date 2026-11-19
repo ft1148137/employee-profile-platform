@@ -246,15 +246,18 @@ for (const approve of [true, false]) {
           .filter({ hasText: "借调请求待你确认" })
           .first()
         await expect(notice).toBeVisible()
-        await notice.getByRole("link", { name: "查看需求与容量" }).click()
-        await expect(page).toHaveURL(/\/capacity\?tab=assignments/)
+        await notice.getByRole("link", { name: "查看待审批" }).click()
+        await expect(page).toHaveURL("/reviews?type=borrow")
         await expect(
-          page.getByRole("tab", { name: "我的分配", selected: true }),
-        ).toBeVisible()
+          page.getByRole("link", { name: /^借调确认/ }),
+        ).toHaveAttribute("aria-current", "page")
       } else {
         await open(employee, "tab=assignments")
       }
-      const card = page.getByRole("region", { name: "借调请求" })
+      const card = page.getByRole("region", {
+        name: approve ? "借调确认" : "借调请求",
+        exact: true,
+      })
       await expect(
         card.getByRole("button", { name: "同意", exact: true }),
       ).toBeVisible()
@@ -263,7 +266,11 @@ for (const approve of [true, false]) {
       ).toBeVisible()
       if (approve) {
         await card.getByRole("button", { name: "同意", exact: true }).click()
-        await expect(card).toContainText("等待承诺生效")
+        await expect(card).not.toContainText("等待你确认")
+        await open(employee, "tab=mine")
+        await expect(
+          page.getByRole("region", { name: "借调请求", exact: true }),
+        ).toContainText("等待承诺生效")
         await open(a, outgoing)
         await page
           .getByRole("button", { name: "接受方案", exact: true })
@@ -326,7 +333,7 @@ for (const approve of [true, false]) {
         await trackingNotice.getByRole("link", { name: "打开借调页" }).click()
         await expect(page).toHaveURL(/\/capacity\?tab=borrows$/)
         await expect(
-          page.getByRole("tab", { name: "借调请求", selected: true }),
+          page.getByRole("link", { name: "借调请求", exact: true }),
         ).toBeVisible()
         const active = page.getByRole("region", { name: "进行中的借调分配" })
         const assignment = active
@@ -354,7 +361,7 @@ for (const approve of [true, false]) {
         await expect(assignments.getByLabel("任务编号或标题")).toHaveCount(0)
 
         await open(lender, "")
-        await page.getByRole("tab", { name: "借调请求" }).click()
+        await page.getByRole("link", { name: "借调请求", exact: true }).click()
         await expect(linked).toContainText(taskKey)
         await linked.getByRole("button", { name: "取消关联" }).click()
         await expect(linked).toHaveCount(0)

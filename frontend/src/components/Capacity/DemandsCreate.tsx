@@ -58,7 +58,7 @@ export function DemandsCreate({
   return (
     <div className="max-w-3xl space-y-5">
       <Button variant="outline" onClick={back} disabled={submit.isPending}>
-        返回列表
+        返回需求入口
       </Button>
       <h2 className="text-xl font-semibold">问一问 / 提需求</h2>
       <form

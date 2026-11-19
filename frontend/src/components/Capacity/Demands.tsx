@@ -1,19 +1,14 @@
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { useState } from "react"
-import { CapacityService, CapacityTrackingService } from "@/client"
-import { dateLabel } from "@/components/Profile/fields"
-import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
-import { Button } from "@/components/ui/button"
-import { DemandsCreate } from "./DemandsCreate"
-import { DemandsDetail, demandStatuses } from "./DemandsDetail"
+import { CapacityTrackingService } from "@/client"
+import { DemandsDetail } from "./DemandsDetail"
 
 export function OutgoingDemands({
   orgId,
   demand,
 }: {
   orgId: string
-  demand?: string
+  demand: string
 }) {
   return <Demands orgId={orgId} side="outgoing" demand={demand} />
 }
@@ -24,7 +19,7 @@ export function IncomingDemands({
   plansOpen,
 }: {
   orgId: string
-  demand?: string
+  demand: string
   plansOpen?: boolean
 }) {
   return (
@@ -45,117 +40,40 @@ function Demands({
 }: {
   orgId: string
   side: "outgoing" | "incoming"
-  demand?: string
+  demand: string
   plansOpen?: boolean
 }) {
   const navigate = useNavigate()
-  const selected = demand ?? null
-  const setSelected = (id: string | null) => {
-    navigate({
-      to: "/capacity",
-      search: { tab: side, ...(id ? { demand: id } : {}) },
-    })
-  }
-  const [creating, setCreating] = useState(false)
-  const query = useQuery({
-    queryKey: ["capacity", orgId, "demands", side],
-    queryFn: async () =>
-      (
-        await CapacityService.listDemands({
-          path: { org_id: orgId },
-          query: { side },
-        })
-      ).data,
-  })
   const risk = useQuery({
-    queryKey: ["capacity", orgId, "tracking-risk", selected],
-    enabled: side === "outgoing" && selected !== null,
+    queryKey: ["capacity", orgId, "tracking-risk", demand],
+    enabled: side === "outgoing",
     retry: false,
-
     queryFn: async () =>
       (
         await CapacityTrackingService.trackingGetDemandTrackingRisk({
-          path: { org_id: orgId, demand_id: selected! },
+          path: { org_id: orgId, demand_id: demand },
         })
       ).data,
   })
-  if (selected)
-    return (
-      <div className="space-y-4">
-        {risk.data?.message && (
-          <p role="status" className="rounded-lg border p-3 text-sm">
-            {risk.data.message}
-          </p>
-        )}
-        <DemandsDetail
-          key={selected}
-          orgId={orgId}
-          demandId={selected}
-          side={side}
-          plansOpen={plansOpen}
-          back={() => setSelected(null)}
-        />
-      </div>
-    )
-  if (creating)
-    return (
-      <DemandsCreate
+  return (
+    <div className="space-y-4">
+      {risk.data?.message && (
+        <p role="status" className="rounded-lg border p-3 text-sm">
+          {risk.data.message}
+        </p>
+      )}
+      <DemandsDetail
+        key={demand}
         orgId={orgId}
-        back={() => setCreating(false)}
-        created={(id) => {
-          setCreating(false)
-          setSelected(id)
+        demandId={demand}
+        side={side}
+        plansOpen={plansOpen}
+        back={() => {
+          if (side === "incoming")
+            navigate({ to: "/reviews", search: { type: "demand" } })
+          else navigate({ to: "/capacity", search: { tab: side } })
         }}
       />
-    )
-  return (
-    <section aria-label="需求列表" className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">
-          {side === "outgoing" ? "我提的需求" : "收到的需求"}
-        </h2>
-        {side === "outgoing" && (
-          <Button onClick={() => setCreating(true)}>问一问 / 提需求</Button>
-        )}
-      </div>
-      {query.isPending ? (
-        <ProfileLoading />
-      ) : query.isError ? (
-        <ProfileError retry={() => query.refetch()} />
-      ) : (
-        <>
-          {!query.data.count && (
-            <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
-              暂无需求。
-            </p>
-          )}
-          {query.data.data.map((row) => (
-            <article key={row.id} className="space-y-2 rounded-xl border p-5">
-              <p className="font-medium">
-                {row.capability_name} · {demandStatuses[row.status]}
-              </p>
-              {row.project && (
-                <p className="break-words text-sm">
-                  项目：{row.project.title} · 角色：{row.project.role_name}
-                </p>
-              )}
-              <p className="whitespace-pre-wrap break-words">
-                {row.description}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {row.headcount} 人 · 每人 {row.allocation_percent}% ·{" "}
-                {row.window_start} 至 {row.window_end}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                提交于 {dateLabel(row.created_at)}
-              </p>
-              <Button variant="outline" onClick={() => setSelected(row.id)}>
-                查看详情
-              </Button>
-            </article>
-          ))}
-        </>
-      )}
-    </section>
+    </div>
   )
 }

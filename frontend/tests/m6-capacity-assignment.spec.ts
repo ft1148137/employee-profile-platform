@@ -53,7 +53,10 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
     )
     await page.goto(`/capacity?tab=${tab}`)
     await expect(
-      page.getByRole("heading", { name: "需求与容量", exact: true }),
+      page.getByRole("heading", {
+        name: tab === "approvals" ? "待审批" : "需求与容量",
+        exact: true,
+      }),
     ).toBeVisible()
   }
   await open(admin.access_token, "team")
@@ -173,8 +176,7 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
     a,
   )
   const details = async (token: string, side: string) => {
-    await open(token, side)
-    await page.getByRole("button", { name: "查看详情", exact: true }).click()
+    await open(token, `${side}&demand=${demand.id}`)
   }
   await details(m, "incoming")
   const assignment = page.getByRole("region", { name: "部门内分配" })

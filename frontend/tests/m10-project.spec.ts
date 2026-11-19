@@ -10,7 +10,7 @@ test("需求方创建多角色项目并看到承接方答复和排程影响", as
   test.setTimeout(90_000)
   const { open } = await setupProjectManagers(request)
   await open(page, "A", "/capacity?tab=projects")
-  await page.getByRole("button", { name: "新建项目需求" }).click()
+  await page.getByRole("button", { name: "手工建项目" }).click()
   await page.getByLabel("项目名称").fill("合成跨部门交付")
   await page.getByLabel("需求方部门").selectOption({ label: "客户" })
   const addRole = page.getByRole("button", { name: "添加角色", exact: true })
@@ -52,14 +52,22 @@ test("需求方创建多角色项目并看到承接方答复和排程影响", as
   await expect(page.getByRole("table", { name: "第 3 阶段" })).toContainText(
     "2026-12-05 至 2026-12-06",
   )
-  await page.getByRole("tab", { name: "我提的需求" }).click()
+  const roleLink = page
+    .getByRole("region", { name: "项目详情" })
+    .getByRole("listitem")
+    .filter({ hasText: "接口开发" })
+    .getByRole("link", { name: "查看角色需求" })
+  const outgoingPath = (await roleLink.getAttribute("href"))!
+  await roleLink.click()
+  const roleDetail = page.getByRole("region", { name: "需求详情" })
   await expect(
-    page.getByText("项目：合成跨部门交付 · 角色：接口开发"),
+    roleDetail.getByRole("link", { name: "合成跨部门交付" }),
   ).toBeVisible()
+  await expect(roleDetail).toContainText("角色 · 接口开发")
 
   await open(page, "B", "/capacity?tab=incoming")
   const incoming = page.locator("article").filter({ hasText: "角色：接口开发" })
-  await incoming.getByRole("button", { name: "查看详情" }).click()
+  await incoming.getByRole("link", { name: "查看详情" }).click()
   await expect(page.getByRole("list", { name: "前置角色" })).toContainText(
     "技术验证（测试）",
   )
@@ -89,16 +97,14 @@ test("需求方创建多角色项目并看到承接方答复和排程影响", as
     "预计比需求窗口晚 2 天",
   )
 
-  await open(page, "A", "/capacity?tab=outgoing")
-  const outgoing = page.locator("article").filter({ hasText: "角色：接口开发" })
-  await outgoing.getByRole("button", { name: "查看详情" }).click()
+  await open(page, "A", outgoingPath)
   await page.getByLabel("追问内容").fill("请重新确认承接日期")
   await page.getByRole("button", { name: "发送追问", exact: true }).click()
   await expect(page.getByRole("region", { name: "需求详情" })).toContainText(
     "待答复",
   )
   await open(page, "B", "/capacity?tab=incoming")
-  await incoming.getByRole("button", { name: "查看详情" }).click()
+  await incoming.getByRole("link", { name: "查看详情" }).click()
   await page.getByLabel("答复结论").selectOption("not_now")
   await page.getByLabel("拒绝原因").selectOption("scope")
   await page.getByLabel("答复说明").fill("需重新确认交付范围")
