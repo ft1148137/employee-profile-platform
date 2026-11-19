@@ -82,9 +82,16 @@ def refresh_tracking(timestamp: int) -> None:  # noqa: ARG001
     with Session(engine) as session:
         org_ids = session.exec(select(Organization.id)).all()
     for org_id in org_ids:
-        with Session(engine) as session:
-            recompute(session, org_id)
-            session.commit()
+        try:
+            with Session(engine) as session:
+                recompute(session, org_id)
+                session.commit()
+        except Exception as exc:
+            logger.warning(
+                "Daily tracking refresh failed for org %s (%s)",
+                org_id,
+                type(exc).__name__,
+            )
 
 
 @app.periodic(cron="*/5 * * * *")
