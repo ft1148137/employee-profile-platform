@@ -136,6 +136,7 @@ class DemandListInput(CapacityInput):
     side: Literal["outgoing", "incoming"] = "outgoing"
     skip: int = Field(default=0, ge=0)
     limit: int = Field(default=50, ge=1, le=100)
+    status: DemandStatus | None = None
 
 
 class DemandIdInput(CapacityInput):
@@ -418,6 +419,7 @@ class DemandPublic(DemandInput):
     id: UUID
     capability_name: str
     status: DemandStatus
+    can_reply: bool = False
     revision: int
     created_at: datetime
     events: list[DemandEventPublic] = Field(default_factory=list)

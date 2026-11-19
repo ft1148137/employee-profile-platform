@@ -10,12 +10,14 @@ from httpx import Response
 from sqlalchemy import delete
 from sqlmodel import Session, select
 
+from app.authz.deps import get_org_principal
 from app.authz.principal import Principal
 from app.core.security import create_access_token
 from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
 from app.domains.capability.search import PeopleSearchInput, find_people
 from app.domains.capacity.calendar import this_week
+from app.domains.capacity.demand import demands_public
 from app.domains.capacity.models import (
     CapacityDemand,
     CapacityDemandEvent,
@@ -26,6 +28,7 @@ from app.domains.capacity.tools import CAPACITY_TOOLS
 from app.domains.inbox.models import InboxItem
 from app.domains.org.models import Department, OrgMembership, RoleGrant
 from app.domains.profile.models import ProfileVersion
+from app.models import User
 
 
 @pytest.fixture
@@ -180,6 +183,7 @@ def test_reference_privacy_submission_and_profile_invariance(
     assert response.status_code == 200, response.text
     row = response.json()
     assert row["revision"] == 1 and row["status"] == "submitted"
+    assert row["can_reply"] is False
     assert [e["kind"] for e in row["events"]] == ["submitted"]
     responses = [reference, response, api("departments")]
     for role, side in (
@@ -188,7 +192,7 @@ def test_reference_privacy_submission_and_profile_invariance(
         ("b", "incoming"),
     ):
         listing = api("demands", params={"side": side}, role=role)
-        assert listing.json()["data"] == [row]
+        assert listing.json()["data"] == [{**row, "can_reply": role == "b"}]
         assert listing.json()["count"] == 1
         responses.append(listing)
     responses.append(api(f"demands/{row['id']}"))
@@ -220,6 +224,75 @@ def test_reference_privacy_submission_and_profile_invariance(
     ).one()
     assert event.details == {"via": "web", "client_name": None}
     assert "PRIVATE_DEMAND" not in str(event.details)
+
+
+def test_pending_demand_filter_and_reply_permissions(
+    demand: tuple, db: Session, api: Callable[..., Response]
+) -> None:
+    _, employees, _, body, responder = demand
+    pending = api("demands", json=body, method="POST").json()
+    own = api("demands", json=body, role="admin", method="POST").json()
+    reply = {
+        "revision": 1,
+        "outcome": "can_do",
+        "text": "可以承接合成需求",
+        "start_date": body["window_start"],
+        "end_date": body["window_end"],
+    }
+    historical = []
+    for status in ("replied", "accepted", "withdrawn"):
+        created = api("demands", json=body, method="POST").json()
+        path = f"demands/{created['id']}"
+        result = created
+        if status != "withdrawn":
+            result = api(f"{path}/reply", role="b", method="POST", json=reply).json()
+        if status != "replied":
+            action = "accept" if status == "accepted" else "withdraw"
+            result = api(
+                f"{path}/respond",
+                method="POST",
+                json={"action": action, "revision": result["revision"]},
+            ).json()
+        assert result["status"] == status
+        assert result["can_reply"] is False
+        historical.append(created["id"])
+
+    params = {"side": "incoming", "status": "submitted", "limit": 1}
+    for role in ("admin", "b"):
+        assert (
+            api("demands", role=role, params={"side": "incoming"}).json()["count"] == 5
+        )
+        found = {}
+        for skip in (0, 1):
+            page = api("demands", role=role, params={**params, "skip": skip}).json()
+            assert page["count"] == 2
+            (row,) = page["data"]
+            assert row["status"] == "submitted"
+            assert "requester_user_id" not in row
+            found[row["id"]] = row["can_reply"]
+        assert found == {pending["id"]: True, own["id"]: role == "b"}
+    assert api("demands", role="manager", params=params).json() == {
+        "count": 0,
+        "data": [],
+    }
+    api("demands", role="foreign", params=params, code=404)
+    api("demands", role="admin", params={**params, "status": "invalid"}, code=422)
+    api(f"demands/{own['id']}/reply", role="admin", method="POST", json=reply, code=403)
+
+    for demand_id in historical:
+        assert api(f"demands/{demand_id}", role="b").json()["can_reply"] is False
+    assert api(f"demands/{pending['id']}", role="employee").json()["can_reply"] is False
+    org_id = employees["E01"].org_id
+    principal = get_org_principal(org_id, db.get_one(User, responder), db)
+    row = db.exec(
+        select(CapacityDemand).where(
+            CapacityDemand.org_id == org_id, CapacityDemand.id == UUID(pending["id"])
+        )
+    ).one()
+    assert demands_public(principal, db, [row])[0].can_reply is True
+    assert (
+        demands_public(principal, db, [row], requester_view=True)[0].can_reply is False
+    )
 
 
 @pytest.mark.parametrize(

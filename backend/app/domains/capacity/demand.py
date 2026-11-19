@@ -377,6 +377,12 @@ def demands_public(
         target_view = not requester_view and represents_department(
             principal, row.target_department_id
         )
+        result.can_reply = (
+            target_view
+            and row.status == DemandStatus.SUBMITTED
+            and principal.user_id is not None
+            and principal.user_id != row.requester_user_id
+        )
         result.events = [
             DemandEventPublic(
                 kind=e.kind,
@@ -526,6 +532,7 @@ def list_demands(
     side: Literal["outgoing", "incoming"] = "outgoing",
     skip: int = 0,
     limit: int = 50,
+    status: DemandStatus | None = None,
 ) -> DemandList:
     require_enabled(principal, session)
     query = select(CapacityDemand).where(CapacityDemand.org_id == principal.org_id)
@@ -542,6 +549,8 @@ def list_demands(
                 principal.managed_department_ids
             )
         )
+    if status is not None:
+        query = query.where(CapacityDemand.status == status)
     count = session.exec(select(func.count()).select_from(query.subquery())).one()
     rows = list(
         session.exec(
