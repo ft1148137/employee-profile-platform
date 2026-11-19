@@ -8,6 +8,7 @@ import {
 } from "@/client"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
+import { useBorrowRequests } from "@/hooks/usePendingApprovals"
 import {
   AssignmentFeedback,
   useFeedbackAssignments,
@@ -76,16 +77,7 @@ export function BorrowRequests({
   orgId: string
   mine?: boolean
 }) {
-  const query = useQuery({
-    queryKey: ["capacity", orgId, "borrows", mine],
-    queryFn: async () =>
-      (
-        await CapacityService.listBorrowRequests({
-          path: { org_id: orgId },
-          query: { mine },
-        })
-      ).data,
-  })
+  const query = useBorrowRequests(orgId, mine)
   if (query.isPending) return <ProfileLoading />
   if (query.isError) return <ProfileError retry={() => query.refetch()} />
   if (mine && query.data.length === 0) return null
@@ -173,7 +165,7 @@ function CompletedBorrowAssignments({ orgId }: { orgId: string }) {
   )
 }
 
-function BorrowRequestCard({
+export function BorrowRequestCard({
   orgId,
   request,
   mine,

@@ -241,11 +241,13 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     page.getByRole("form", { name: "合成员工的延期申请" }),
   ).toHaveCount(0)
   await open(d)
-  await expect(page.getByRole("tab", { name: "待我审批" })).toHaveAttribute(
-    "aria-selected",
-    "true",
+  await expect(page.getByRole("link", { name: /^负荷与延期/ })).toHaveAttribute(
+    "aria-current",
+    "page",
   )
-  await expect(page.getByRole("tab", { name: "团队负荷" })).toHaveCount(0)
+  await expect(
+    page.getByRole("link", { name: "团队负荷", exact: true }),
+  ).toHaveCount(0)
   await expect(
     page.getByRole("heading", { name: "合成员工 · 申请 60%", exact: true }),
   ).toBeVisible()
@@ -265,13 +267,12 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     const link = page
       .getByRole("listitem")
       .filter({ hasText: message })
-      .getByRole("link", { name: "查看需求与容量" })
-    await expect(link).toHaveAttribute("href", "/capacity?tab=approvals")
+      .getByRole("link", { name: "查看待审批" })
+    await expect(link).toHaveAttribute("href", "/reviews?type=workload")
     await link.click()
-    await expect(page.getByRole("tab", { name: "待我审批" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    )
+    await expect(
+      page.getByRole("link", { name: /^负荷与延期/ }),
+    ).toHaveAttribute("aria-current", "page")
     await page.goto("/inbox")
   }
   await page.goto("/capacity?tab=approvals")

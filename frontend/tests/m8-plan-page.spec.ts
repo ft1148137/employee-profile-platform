@@ -56,14 +56,14 @@ test("B 方经理无需模型查看方案，A 方经理看不到入口", async (
   expect(await page.locator("body").textContent()).not.toMatch(
     /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,
   )
-  await page.getByRole("button", { name: "返回列表" }).click()
+  await page.getByRole("button", { name: "返回待审批" }).click()
   await expect
     .poll(() => new URL(page.url()).searchParams.get("demand"))
     .toBeNull()
   await page
     .getByRole("article")
     .filter({ hasText: "合成方案需求" })
-    .getByRole("button", { name: "查看详情" })
+    .getByRole("link", { name: "查看详情" })
     .click()
   await expect
     .poll(() => new URL(page.url()).searchParams.get("demand"))

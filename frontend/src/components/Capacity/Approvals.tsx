@@ -1,48 +1,24 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
-import { CapacityService, type WorkloadRequestPublic } from "@/client"
-import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
+import {
+  CapacityService,
+  type ExtensionPublic,
+  type WorkloadRequestPublic,
+} from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { useOrg } from "@/hooks/useOrg"
-import { useExtensions, useMyAssignments } from "./AssignmentFields"
 import { ExtensionReviews } from "./ExtensionReviews"
 
-export function Approvals({ orgId }: { orgId: string }) {
-  const { employeeId } = useOrg()
-  const workloads = useQuery({
-    queryKey: ["capacity", orgId, "requests"],
-    queryFn: async () =>
-      (await CapacityService.listWorkloadRequests({ path: { org_id: orgId } }))
-        .data,
-  })
-  const extensions = useExtensions(orgId)
-  const own = useMyAssignments(orgId, !!employeeId)
-  if (
-    workloads.isPending ||
-    extensions.isPending ||
-    (employeeId && own.isPending)
-  )
-    return <ProfileLoading />
-  if (workloads.isError || extensions.isError || own.isError)
-    return (
-      <ProfileError
-        retry={() => {
-          workloads.refetch()
-          extensions.refetch()
-          if (employeeId) own.refetch()
-        }}
-      />
-    )
-  const pendingWorkloads = workloads.data.data.filter(
-    (row) => row.status === "pending",
-  )
-  const pendingExtensions = extensions.data.data.filter(
-    (row) =>
-      row.status === "pending" &&
-      !own.data?.data.some((item) => item.id === row.assignment_id),
-  )
+export function Approvals({
+  orgId,
+  pendingWorkloads,
+  pendingExtensions,
+}: {
+  orgId: string
+  pendingWorkloads: WorkloadRequestPublic[]
+  pendingExtensions: ExtensionPublic[]
+}) {
   return (
     <div className="space-y-6">
       {!pendingWorkloads.length && !pendingExtensions.length && (

@@ -195,11 +195,7 @@ test("旧分配表单收到离职冲突后提示并刷新候选人", async ({ pa
       } else await route.continue()
     },
   )
-  await page.goto("/capacity?tab=incoming")
-  await expect(
-    page.getByRole("button", { name: "查看详情", exact: true }),
-  ).toBeVisible({ timeout: 10000 })
-  await page.getByRole("button", { name: "查看详情", exact: true }).click()
+  await page.goto(`/capacity?tab=incoming&demand=${demand.id}`)
   const assignment = page.getByRole("region", { name: "部门内分配" })
   await assignment.getByLabel("从依据中选择员工").selectOption(person("B").id)
   await assignment.getByLabel("开始日期", { exact: true }).fill(startWeek)

@@ -33,15 +33,50 @@ const trackingLink =
   /\n\/capacity\?tab=incoming&demand=([0-9a-f-]{36})&plans=1$/
 const borrowLink = /\n\/capacity\?tab=borrows$/
 
-function capacitySearch(message: string) {
+function capacityDestination(message: string) {
   const tracking = message.match(trackingLink)
   if (tracking)
-    return { tab: "incoming", demand: tracking[1], plans: 1 as const }
-  if (borrowLink.test(message)) return { tab: "borrows" }
-  if (message === "借调请求待你确认") return { tab: "assignments" }
+    return {
+      to: "/capacity",
+      search: { tab: "incoming", demand: tracking[1], plans: 1 },
+      label: "打开方案页",
+    } as const
+  if (borrowLink.test(message))
+    return {
+      to: "/capacity",
+      search: { tab: "borrows" },
+      label: "打开借调页",
+    } as const
+  if (message === "借调请求待你确认")
+    return {
+      to: "/reviews",
+      search: { type: "borrow" },
+      label: "查看待审批",
+    } as const
   if (["有负荷调整申请等你审批", "有延期申请等你审批"].includes(message))
-    return { tab: "approvals" }
-  return {}
+    return {
+      to: "/reviews",
+      search: { type: "workload" },
+      label: "查看待审批",
+    } as const
+  return { to: "/capacity", search: {}, label: "查看需求与容量" } as const
+}
+
+function CapacityNoticeLink({
+  message,
+  onClick,
+}: {
+  message: string
+  onClick: () => void
+}) {
+  const { label, ...link } = capacityDestination(message)
+  return (
+    <Button variant="outline" asChild>
+      <Link {...link} onClick={onClick}>
+        {label}
+      </Link>
+    </Button>
+  )
 }
 
 function QuestionAnswer({
@@ -264,21 +299,12 @@ function InboxContent({
                       </Button>
                     )}
                   {item.kind === "capacity" && (
-                    <Button variant="outline" asChild>
-                      <Link
-                        to="/capacity"
-                        search={capacitySearch(item.message)}
-                        onClick={() => {
-                          if (!item.read_at) read.mutate(item.id)
-                        }}
-                      >
-                        {trackingLink.test(item.message)
-                          ? "打开方案页"
-                          : borrowLink.test(item.message)
-                            ? "打开借调页"
-                            : "查看需求与容量"}
-                      </Link>
-                    </Button>
+                    <CapacityNoticeLink
+                      message={item.message}
+                      onClick={() => {
+                        if (!item.read_at) read.mutate(item.id)
+                      }}
+                    />
                   )}
                   {!item.read_at && (
                     <Button

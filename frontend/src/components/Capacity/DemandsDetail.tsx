@@ -87,7 +87,7 @@ export function DemandsDetail({
   return (
     <div className="space-y-5">
       <Button variant="outline" onClick={back}>
-        {isCapacityAccessDenied(query.error) ? "返回需求列表" : "返回列表"}
+        {side === "incoming" ? "返回待审批" : "返回需求入口"}
       </Button>
       {query.isPending ? (
         <ProfileLoading />

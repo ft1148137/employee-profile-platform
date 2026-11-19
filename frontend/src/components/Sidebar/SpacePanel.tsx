@@ -1,7 +1,6 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import { Plus } from "lucide-react"
 import { SessionHistory } from "@/components/Bot/SessionHistory"
-import { useCapacitySettings } from "@/components/Capacity/shared"
 import { AdminConversations } from "@/components/Sidebar/AdminConversations"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,7 +13,7 @@ import {
 } from "@/hooks/useCurrentConversation"
 import { useInbox } from "@/hooks/useInbox"
 import { useOrg } from "@/hooks/useOrg"
-import { useReviews } from "@/hooks/useReviews"
+import { usePendingApprovals } from "@/hooks/usePendingApprovals"
 
 export const spaceTitles = {
   collab: "协同",
@@ -44,8 +43,7 @@ function tabItem(to: string, tab: string, title: string) {
 export function useWorkspaceNavigation() {
   const { org, roles, employeeId } = useOrg()
   const inbox = useInbox()
-  const reviews = useReviews()
-  const capacity = useCapacitySettings(org?.id)
+  const { capacity, totalCount: pending } = usePendingApprovals()
   const { pathname, search } = useLocation()
   const path = pathname.replace(/\/$/, "") || "/"
   const isAdmin = roles.includes("org_admin")
@@ -56,7 +54,6 @@ export function useWorkspaceNavigation() {
   const assistantSearch = searchMode ? { mode: searchMode } : undefined
   const ownProfile = employeeId ? `/employees/${employeeId}` : undefined
   const unread = inbox.data?.unread_count ?? 0
-  const pending = reviews.data?.count ?? 0
   const dictionary = tabItem("/admin/rules", "dictionary", "能力词典")
   const canPlan = capacity.data?.enabled && (employeeId || managesEmployees)
   const myLoad = tabItem("/capacity", "mine", "我的负荷")
@@ -190,7 +187,11 @@ export function useWorkspaceNavigation() {
           : "section" in item.search
             ? item.search.section === search.section
             : true),
-    ) ?? (path !== "/capacity" || !search.tab ? candidates[0] : undefined)
+    ) ??
+    (path !== "/capacity" ||
+    !["incoming", "outgoing", "projects"].includes(String(search.tab))
+      ? candidates[0]
+      : undefined)
 
   const pageTitle =
     active?.title ??

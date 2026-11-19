@@ -7,6 +7,7 @@ import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { MyAssignments } from "./MyAssignments"
 import { addWeeks, WorkloadNumbers, weekLabel, weekLoadLabel } from "./shared"
 
 export function MyWorkload({ orgId }: { orgId: string }) {
@@ -197,6 +198,7 @@ export function MyWorkload({ orgId }: { orgId: string }) {
           canWrite
         />
       </section>
+      <MyAssignments orgId={orgId} />
     </div>
   )
 }

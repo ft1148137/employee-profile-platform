@@ -108,6 +108,8 @@ for (const trigger of ["focus", "operation", "query"] as const) {
       await expect(menu).toBeVisible()
       await page.unroute(`**${endpoint}`)
     }
+    if (trigger === "query")
+      await page.getByRole("link", { name: "设置", exact: true }).click()
     await setEnabled(false)
     if (trigger === "focus") {
       await page.evaluate(() =>
@@ -120,7 +122,7 @@ for (const trigger of ["focus", "operation", "query"] as const) {
       await page.getByLabel("申请原因").fill("合成关闭后操作")
       await page.getByRole("button", { name: "提交申请", exact: true }).click()
     } else {
-      await page.getByRole("tab", { name: "我的分配", exact: true }).click()
+      await menu.click()
     }
     if (trigger === "focus") await expect(menu).toHaveCount(0)
     await expect(page.getByRole("status")).toHaveText(
@@ -133,7 +135,7 @@ for (const trigger of ["focus", "operation", "query"] as const) {
       document.dispatchEvent(new Event("visibilitychange", { bubbles: true })),
     )
     await expect(menu).toBeVisible()
-    await page.getByRole("tab", { name: "我的负荷", exact: true }).click()
+    await page.getByRole("link", { name: "我的负荷", exact: true }).click()
     await expect(page.getByLabel("申请负荷（%）")).toBeVisible()
   })
 }
