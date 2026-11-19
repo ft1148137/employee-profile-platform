@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { CalendarRange, MessagesSquare, Network, Settings } from "lucide-react"
+import type { AssistantMode } from "@/hooks/useAssistantWorkspace"
 import { type Space, spaceTitles } from "./SpacePanel"
 
 const icons = {
@@ -19,7 +20,7 @@ export function Main({
   space: Space
   active: Space
   to: string
-  search?: { tab: string }
+  search?: { tab: string } | { mode: AssistantMode }
   badge?: number
 }) {
   const Icon = icons[space]

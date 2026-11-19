@@ -200,7 +200,7 @@ async function checkSwitching(
   await expect(tab.getByLabel(label)).toBeEnabled()
   await input.fill("本页还没发出的合成文字")
   const resumed = administrator
-    ? page.waitForURL("/admin/assistant")
+    ? page.waitForURL("/assistant?mode=admin")
     : page.waitForResponse(
         (response) =>
           response.url().includes(`/${service}/sessions/`) &&

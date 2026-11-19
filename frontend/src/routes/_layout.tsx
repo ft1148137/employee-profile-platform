@@ -1,13 +1,8 @@
-import {
-  createFileRoute,
-  Outlet,
-  redirect,
-  useLocation,
-} from "@tanstack/react-router"
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 import axios, { AxiosError } from "axios"
 import { ChevronRight, Menu, PanelLeft } from "lucide-react"
 import { UsersService } from "@/client"
-import { BotPanel } from "@/components/Bot/BotPanel"
+import { AssistantHeader } from "@/components/Chat/AssistantHeader"
 import AppSidebar from "@/components/Sidebar/AppSidebar"
 import {
   SpacePanel,
@@ -23,7 +18,6 @@ import {
 } from "@/components/ui/sheet"
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
 import { isLoggedIn } from "@/hooks/useAuth"
-import { useOrg } from "@/hooks/useOrg"
 import { authReturnPath } from "@/utils"
 
 export const Route = createFileRoute("/_layout")({
@@ -74,8 +68,6 @@ function Layout() {
 }
 
 function Workspace() {
-  const { pathname } = useLocation()
-  const { roles } = useOrg()
   const { open, openMobile, setOpenMobile, toggleSidebar, isMobile } =
     useSidebar()
   const navigation = useWorkspaceNavigation()
@@ -83,7 +75,7 @@ function Workspace() {
   return (
     <>
       <AppSidebar {...navigation} />
-      {open && (
+      {open && !isMobile && (
         <aside
           id="workspace-navigation"
           className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r bg-sidebar md:flex"
@@ -130,7 +122,9 @@ function Workspace() {
               <PanelLeft aria-hidden="true" />
             </Button>
           )}
-          {!isAssistant && (
+          {isAssistant ? (
+            <AssistantHeader />
+          ) : (
             <nav
               aria-label="面包屑"
               className="flex min-w-0 items-center gap-2 text-sm"
@@ -162,9 +156,6 @@ function Workspace() {
           </div>
         </main>
       </div>
-      {roles.includes("org_admin") && !/^\/admin(?:\/|$)/.test(pathname) && (
-        <BotPanel />
-      )}
     </>
   )
 }

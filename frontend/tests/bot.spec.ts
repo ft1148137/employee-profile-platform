@@ -235,7 +235,7 @@ for (const width of [1440, 390]) {
       }),
     ).toBeVisible()
     await expectChineseCopy(page)
-    const canvasStart = width === 390 ? 64 : 64 + 256 + 320
+    const canvasStart = width === 390 ? 64 : 64 + 256
     const bounds = await panel.boundingBox()
     expect(bounds!.width).toBeLessThanOrEqual(width)
     expect(bounds!.width).toBe(width - canvasStart)

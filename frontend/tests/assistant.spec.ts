@@ -72,9 +72,11 @@ test("mobile unsent text survives page navigation, stays in its session and clea
     )
   const chooseSession = async () => {
     const previousInput = await input.elementHandle()
-    await page.getByRole("button", { name: "会话", exact: true }).click()
     await page
-      .getByRole("dialog", { name: "会话", exact: true })
+      .getByRole("button", { name: "打开空间导航", exact: true })
+      .click()
+    await page
+      .getByRole("dialog", { name: "空间导航", exact: true })
       .getByRole("button", { name: /合成草稿会话/ })
       .click()
     await expect(page).toHaveURL(`/assistant?session=${session}`)
@@ -90,9 +92,9 @@ test("mobile unsent text survives page navigation, stays in its session and clea
   await page.getByRole("link", { name: "组织", exact: true }).click()
   await page.getByRole("link", { name: /^协同/ }).click()
   await expect(input).toHaveValue("尚未发送的合成经历")
-  await page.getByRole("button", { name: "会话", exact: true }).click()
+  await page.getByRole("button", { name: "打开空间导航", exact: true }).click()
   await page
-    .getByRole("dialog", { name: "会话", exact: true })
+    .getByRole("dialog", { name: "空间导航", exact: true })
     .getByRole("button", { name: "新对话", exact: true })
     .click()
   await expect(page).toHaveURL("/assistant")
@@ -106,9 +108,9 @@ test("mobile unsent text survives page navigation, stays in its session and clea
   await expect(input).toHaveValue("")
   await chooseSession()
   await expect(input).toHaveValue("尚未发送的合成经历")
-  await page.getByRole("button", { name: "会话", exact: true }).click()
+  await page.getByRole("button", { name: "打开空间导航", exact: true }).click()
   await page
-    .getByRole("dialog", { name: "会话", exact: true })
+    .getByRole("dialog", { name: "空间导航", exact: true })
     .getByRole("button", { name: "新对话", exact: true })
     .click()
   await expect
@@ -235,8 +237,8 @@ test("prompt only prefills and mobile history selects sessions and opens a new c
   expect(turns).toBe(0)
   await page.setViewportSize({ width: 390, height: 844 })
   await expect(page.getByRole("region", { name: "历史对话" })).toHaveCount(0)
-  await page.getByRole("button", { name: "会话", exact: true }).click()
-  const sheet = page.getByRole("dialog", { name: "会话", exact: true })
+  await page.getByRole("button", { name: "打开空间导航", exact: true }).click()
+  const sheet = page.getByRole("dialog", { name: "空间导航", exact: true })
   await sheet.getByRole("button", { name: /合成历史会话/ }).click()
   await expect(sheet).toBeHidden()
   await expect(page).toHaveURL(`/assistant?session=${id}`)
@@ -244,7 +246,7 @@ test("prompt only prefills and mobile history selects sessions and opens a new c
   await expect(page.getByRole("navigation", { name: "面包屑" })).toContainText(
     "合成历史会话",
   )
-  await page.getByRole("button", { name: "会话", exact: true }).click()
+  await page.getByRole("button", { name: "打开空间导航", exact: true }).click()
   await sheet.getByRole("button", { name: "新对话", exact: true }).click()
   await expect(sheet).toBeHidden()
   await expect(input).toBeEnabled()

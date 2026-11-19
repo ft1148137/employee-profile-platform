@@ -22,7 +22,9 @@ function Home() {
     const session = !setup.data.completed
       ? history.data?.data.find((entry) => entry.purpose === "setup")?.id
       : undefined
-    return <Navigate to="/admin/assistant" search={{ session }} replace />
+    return (
+      <Navigate to="/assistant" search={{ mode: "admin", session }} replace />
+    )
   }
   if (employeeId) return <Navigate to="/assistant" replace />
   if (roles.includes("dept_manager"))

@@ -62,7 +62,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   const link = page.getByRole("button", { name: /确认所选候选/ })
   if (await link.isEnabled()) await link.click()
   await page.goto("/")
-  await expect(page).toHaveURL(/\/admin\/assistant\?session=/)
+  await expect(page).toHaveURL(/\/assistant\?mode=admin&session=/)
   await page.getByRole("button", { name: "完成模型配置", exact: true }).click()
   await expect(page.getByRole("alert")).toContainText("模型")
   await configureModel(page, modelUrl)

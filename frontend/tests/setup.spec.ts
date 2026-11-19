@@ -27,7 +27,7 @@ async function initialize(page: Page) {
   await page.goto(`/setup#token=${token}`)
   await fillSetup(page)
   await page.getByRole("button", { name: "创建企业并继续" }).click()
-  await expect(page).toHaveURL(/\/admin\/assistant\?session=/)
+  await expect(page).toHaveURL(/\/assistant\?mode=admin&session=/)
   await expect(page.getByRole("list", { name: "设置步骤" })).toBeVisible()
   await page.getByText("企业名称 · 已完成（展开修改）", { exact: true }).click()
   return token
@@ -201,7 +201,7 @@ test("skip model, stay in assistant and resume from setup todo", async ({
   await todo.getByRole("link", { name: "去处理", exact: true }).click()
   await expect(page).toHaveURL(sessionUrl)
   await page.goto("/setup-wizard")
-  await expect(page).toHaveURL("/admin/assistant")
+  await expect(page).toHaveURL("/assistant?mode=admin")
   await page.getByRole("link", { name: "设置", exact: true }).click()
   await expect(
     page.getByRole("link", { name: "首次设置", exact: false }),

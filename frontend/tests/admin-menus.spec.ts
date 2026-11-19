@@ -126,12 +126,12 @@ test("legacy addresses redirect to their new locations", async ({ page }) => {
   test.setTimeout(90000)
   const aliases = [
     ["accounts", "/employees"],
-    ["roster", "/admin/assistant"],
+    ["roster", "/assistant?mode=admin"],
     ["roles", "/employees?filter=roles"],
     ["identities", "/employees?filter=identities"],
     ["appeals", "/employees?filter=appeals"],
     ["drafting", "/admin/data-ai?tab=model"],
-    ["profile-imports", "/admin/assistant"],
+    ["profile-imports", "/assistant?mode=admin"],
     ["sources", "/admin/data-ai?tab=sources"],
     ["model", "/admin/data-ai?tab=model"],
     ["bot", "/admin/data-ai?tab=bot"],
@@ -141,13 +141,13 @@ test("legacy addresses redirect to their new locations", async ({ page }) => {
     ["connections?tab=unknown", "/admin/data-ai?tab=im"],
     ["im", "/admin/data-ai?tab=im"],
     ["assistants", "/admin/data-ai?tab=mcp"],
-    ["progress", "/admin/assistant"],
-    ["", "/admin/assistant"],
+    ["progress", "/assistant?mode=admin"],
+    ["", "/assistant?mode=admin"],
   ]
   for (const [tab, target] of [
     ["", "/employees"],
     ["accounts", "/employees"],
-    ["roster", "/admin/assistant"],
+    ["roster", "/assistant?mode=admin"],
     ["org-chart", "/org-chart"],
     ["roles", "/employees?filter=roles"],
     ["identities", "/employees?filter=identities"],
@@ -157,7 +157,7 @@ test("legacy addresses redirect to their new locations", async ({ page }) => {
     await expect(page).toHaveURL(target)
   }
   await page.goto("/admin/rules?tab=profile-import")
-  await expect(page).toHaveURL("/admin/assistant")
+  await expect(page).toHaveURL("/assistant?mode=admin")
   for (const [old, target] of aliases) {
     await page.goto(`/admin/${old}`)
     await expect(page).toHaveURL(target)

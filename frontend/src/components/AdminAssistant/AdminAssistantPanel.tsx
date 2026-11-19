@@ -8,6 +8,7 @@ import {
   type AdminTurnInput,
   type AdminTurnResponse,
   type AdminUserMessage,
+  type TableCard,
 } from "@/client"
 import {
   actorLabels,
@@ -39,6 +40,15 @@ const labels: Record<string, string> = {
   work_email: "工作邮箱",
   employment_status: "在职状态",
   department: "部门",
+  department_name: "部门",
+  requesting_department_name: "发起部门",
+  capability_name: "能力",
+  statement: "能力判断",
+  level_name: "等级",
+  evidence_count: "证据数",
+  latest_evidence_at: "最近证据时间",
+  published_by: "批准人",
+  published_at: "发布时间",
   account: "账号",
   roles: "角色",
   username: "登录邮箱",
@@ -69,6 +79,9 @@ const labels: Record<string, string> = {
   details: "详情",
   open: "待处理",
   upheld: "维持原决定",
+  confirmed: "已确认",
+  tentative: "暂定",
+  disputed: "存在争议",
   reopened: "允许重新提交",
   preview: "待确认",
   applied: "已导入",
@@ -125,6 +138,101 @@ function cellText(value: unknown, field = ""): string {
         targetLabels[String(value)] ??
         String(value))
     : String(value)
+}
+
+function ReadTable({ table }: { table: TableCard }) {
+  const { columns } = table
+  const personId = columns.includes("capability_name")
+    ? columns.indexOf("employee_id")
+    : -1
+  const projectId =
+    table.page === "/capacity" && columns.includes("requesting_department_name")
+      ? columns.indexOf("id")
+      : -1
+  const shown = columns
+    .map((column, index) => ({ column, index }))
+    .filter(
+      ({ column, index }) =>
+        index !== personId &&
+        index !== projectId &&
+        !(personId >= 0 && ["capability_key", "level"].includes(column)),
+    )
+
+  return (
+    <div className="overflow-x-auto rounded-xl border p-3">
+      <p>
+        {table.title}
+        {table.queried_at && (
+          <span className="ml-2 text-xs text-muted-foreground">
+            查询于{" "}
+            {new Date(table.queried_at).toLocaleTimeString("zh-CN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+        )}
+        （共 {table.total} 条，最多显示 20 条）
+      </p>
+      <table className="w-max min-w-full text-left text-sm">
+        <thead>
+          <tr>
+            {shown.map(({ column }) => (
+              <th key={column} className="whitespace-nowrap p-2">
+                {projectId >= 0 && column === "title"
+                  ? "项目名称"
+                  : (labels[column] ?? "信息")}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {shown.map(({ column, index }) => {
+                const text = cellText(row[index], column)
+                const employeeId = row[personId]
+                const project = row[projectId]
+                return (
+                  <td
+                    key={column}
+                    className="min-w-[8em] max-w-64 break-words p-2"
+                  >
+                    {column === "display_name" &&
+                    typeof employeeId === "string" ? (
+                      <Link
+                        to="/employees/$employeeId"
+                        params={{ employeeId }}
+                        className="underline"
+                      >
+                        {text}
+                      </Link>
+                    ) : column === "title" && typeof project === "string" ? (
+                      <Link
+                        to="/capacity"
+                        search={{ tab: "projects", project }}
+                        className="underline"
+                      >
+                        {text}
+                      </Link>
+                    ) : (
+                      text
+                    )}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Link
+        to={table.page}
+        search={projectId >= 0 ? { tab: "projects" } : undefined}
+        className="underline"
+      >
+        打开对应页面
+      </Link>
+    </div>
+  )
 }
 
 function displayInput(body: AdminUserMessage): AdminUserMessage {
@@ -212,8 +320,8 @@ export function AdminAssistantPanel({
       if (event.key !== storageKey) return
       preserveText.current = true
       navigate({
-        to: "/admin/assistant",
-        search: { session: event.newValue || undefined },
+        to: "/assistant",
+        search: { mode: "admin", session: event.newValue || undefined },
       })
     }
     window.addEventListener("storage", follow)
@@ -298,8 +406,8 @@ export function AdminAssistantPanel({
       if (mounted.current && selection.current === startedAt) {
         rememberConversation(storageKey, id)
         navigate({
-          to: "/admin/assistant",
-          search: { session: id },
+          to: "/assistant",
+          search: { mode: "admin", session: id },
           replace: true,
         })
       }
@@ -507,55 +615,7 @@ export function AdminAssistantPanel({
                         disabled={busy}
                       />
                     ) : message.type === "table" ? (
-                      <div
-                        key={i}
-                        className="overflow-x-auto rounded-xl border p-3"
-                      >
-                        <p>
-                          {message.title}
-                          {message.queried_at && (
-                            <span className="ml-2 text-xs text-muted-foreground">
-                              查询于{" "}
-                              {new Date(message.queried_at).toLocaleTimeString(
-                                "zh-CN",
-                                { hour: "2-digit", minute: "2-digit" },
-                              )}
-                            </span>
-                          )}
-                          （共 {message.total} 条，最多显示 20 条）
-                        </p>
-                        <table className="w-max min-w-full text-left text-sm">
-                          <thead>
-                            <tr>
-                              {message.columns.map((column) => (
-                                <th
-                                  key={column}
-                                  className="whitespace-nowrap p-2"
-                                >
-                                  {labels[column] ?? "信息"}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {message.rows.map((row, rowIndex) => (
-                              <tr key={rowIndex}>
-                                {row.map((cell, cellIndex) => (
-                                  <td
-                                    key={cellIndex}
-                                    className="min-w-[8em] max-w-64 break-words p-2"
-                                  >
-                                    {cellText(cell, message.columns[cellIndex])}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        <Link to={message.page} className="underline">
-                          打开对应页面
-                        </Link>
-                      </div>
+                      <ReadTable key={i} table={message} />
                     ) : (
                       <BotMessage
                         key={i}

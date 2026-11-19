@@ -182,7 +182,9 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     ).toBeTruthy()
   }
   await logInUser(page, `${username}@example.com`, password)
-  await expect(page).toHaveURL(/\/admin\/assistant(?:\?session=[0-9a-f-]+)?$/)
+  await expect(page).toHaveURL(
+    /\/assistant\?mode=admin(?:&session=[0-9a-f-]+)?$/,
+  )
   await page.goto("/admin/data-ai?tab=model")
   const blocked = await request.post(
     `${base}/setup/steps/initial_profiles/complete`,

@@ -237,7 +237,7 @@ for (const width of [1440, 390]) {
       page.getByRole("region", { name: "设置改动确认卡" }).getByRole("status"),
     ).toHaveText("已撤销")
     await page.reload()
-    await expect(page).toHaveURL(/\/admin\/assistant\?session=/)
+    await expect(page).toHaveURL(/\/assistant\?mode=admin&session=/)
     await expect(
       page.getByRole("region", { name: "设置改动确认卡" }).getByRole("status"),
     ).toHaveText("已撤销")

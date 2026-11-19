@@ -1,5 +1,17 @@
-import { Link, useLocation } from "@tanstack/react-router"
+import { Link, useLocation, useNavigate } from "@tanstack/react-router"
+import { Plus } from "lucide-react"
+import { SessionHistory } from "@/components/Bot/SessionHistory"
 import { useCapacitySettings } from "@/components/Capacity/shared"
+import { AdminConversations } from "@/components/Sidebar/AdminConversations"
+import { Button } from "@/components/ui/button"
+import {
+  type AssistantMode,
+  useAssistantWorkspace,
+} from "@/hooks/useAssistantWorkspace"
+import {
+  rememberConversation,
+  useCurrentConversation,
+} from "@/hooks/useCurrentConversation"
 import { useInbox } from "@/hooks/useInbox"
 import { useOrg } from "@/hooks/useOrg"
 import { useReviews } from "@/hooks/useReviews"
@@ -18,6 +30,7 @@ type Item = {
   to: string
   search?:
     | { tab: string }
+    | { mode: AssistantMode }
     | { section: "account" | "integrations" | "preferences" }
   badge?: number
 }
@@ -38,7 +51,9 @@ export function useWorkspaceNavigation() {
   const isAdmin = roles.includes("org_admin")
   const isManager = roles.includes("dept_manager")
   const managesEmployees = isAdmin || isManager
-  const assistant = isAdmin ? "/admin/assistant" : "/assistant"
+  const assistant = "/assistant"
+  const { searchMode } = useAssistantWorkspace()
+  const assistantSearch = searchMode ? { mode: searchMode } : undefined
   const ownProfile = employeeId ? `/employees/${employeeId}` : undefined
   const unread = inbox.data?.unread_count ?? 0
   const pending = reviews.data?.count ?? 0
@@ -53,7 +68,7 @@ export function useWorkspaceNavigation() {
         title: "处理中心",
         items: [
           ...(isAdmin || employeeId
-            ? [{ title: "AI 助手", to: assistant }]
+            ? [{ title: "AI 助手", to: assistant, search: assistantSearch }]
             : []),
           ...(org ? [{ title: "收件箱", to: "/inbox", badge: unread }] : []),
           ...(managesEmployees || pending
@@ -172,7 +187,9 @@ export function useWorkspaceNavigation() {
         !item.search ||
         ("tab" in item.search
           ? item.search.tab === search.tab
-          : item.search.section === search.section),
+          : "section" in item.search
+            ? item.search.section === search.section
+            : true),
     ) ?? (path !== "/capacity" || !search.tab ? candidates[0] : undefined)
 
   const pageTitle =
@@ -194,7 +211,11 @@ export function useWorkspaceNavigation() {
     groups: groups[space],
     active,
     destinations: {
-      collab: { to: assistant, badge: unread + pending },
+      collab: {
+        to: assistant,
+        search: assistantSearch,
+        badge: unread + pending,
+      },
       org: ownProfile
         ? { to: ownProfile }
         : managesEmployees
@@ -217,10 +238,22 @@ export function SpacePanel({
 > & {
   onNavigate?: () => void
 }) {
+  const { org, mode, searchMode, storageKey } = useAssistantWorkspace()
+  const { pathname, search } = useLocation()
+  const navigate = useNavigate()
+  const remembered = useCurrentConversation(storageKey)
+  const session =
+    pathname === "/assistant" &&
+    !search.draft &&
+    typeof search.session === "string"
+      ? search.session
+      : undefined
+  const showHistory = space === "collab" && org && storageKey
+
   return (
     <nav
       aria-label="空间导航"
-      className="min-h-0 flex-1 overflow-y-auto px-3 pb-4"
+      className={`min-h-0 flex-1 px-3 pb-4 ${showHistory ? "flex flex-col" : "overflow-y-auto"}`}
     >
       <p className="px-2 py-4 text-lg font-semibold tracking-tight">
         {spaceTitles[space]}
@@ -228,7 +261,7 @@ export function SpacePanel({
       {groups
         .filter((group) => group.items.length)
         .map(({ title, items }) => (
-          <div className="mb-5" key={title ?? space}>
+          <div className="mb-5 shrink-0" key={title ?? space}>
             {title && (
               <p className="mb-1 px-2 text-xs font-medium text-muted-foreground">
                 {title}
@@ -236,14 +269,14 @@ export function SpacePanel({
             )}
             <ul className="space-y-0.5">
               {items.map((item) => (
-                <li key={item.title}>
+                <li key={item.title} className="flex items-center gap-1">
                   <Link
                     to={item.to}
                     search={item.search}
                     activeOptions={{ exact: true }}
                     aria-current={item === active ? "page" : undefined}
                     onClick={onNavigate}
-                    className="flex min-h-9 items-center gap-2 rounded-md border-l-2 border-transparent px-2.5 py-1 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring aria-[current=page]:border-primary aria-[current=page]:bg-primary/10 aria-[current=page]:font-medium aria-[current=page]:text-foreground"
+                    className="flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-md border-l-2 border-transparent px-2.5 py-1 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring aria-[current=page]:border-primary aria-[current=page]:bg-primary/10 aria-[current=page]:font-medium aria-[current=page]:text-foreground"
                   >
                     <span>{item.title}</span>
                     {!!item.badge && (
@@ -252,11 +285,55 @@ export function SpacePanel({
                       </span>
                     )}
                   </Link>
+                  {item.to === "/assistant" && storageKey && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="新对话"
+                      title="新对话"
+                      onClick={() => {
+                        rememberConversation(storageKey, "")
+                        navigate({
+                          to: "/assistant",
+                          search: { mode: searchMode },
+                          state: { assistantRestart: Date.now() },
+                        })
+                        onNavigate?.()
+                      }}
+                    >
+                      <Plus aria-hidden="true" />
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>
           </div>
         ))}
+      {showHistory && (
+        <>
+          <h2 className="mb-1 px-2 text-xs font-medium text-muted-foreground">
+            最近会话
+          </h2>
+          {mode === "admin" ? (
+            <AdminConversations
+              orgId={org.id}
+              selected={session}
+              onSelect={onNavigate}
+            />
+          ) : (
+            <SessionHistory
+              orgId={org.id}
+              currentId={
+                pathname === "/assistant" && !search.draft
+                  ? (session ?? remembered)
+                  : undefined
+              }
+              explicitMode={searchMode === "personal"}
+              onSelect={onNavigate}
+            />
+          )}
+        </>
+      )}
     </nav>
   )
 }

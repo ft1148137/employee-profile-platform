@@ -70,7 +70,7 @@ test("manual console completes all fifteen tabs without a model", async ({
     })
     await post("/setup/steps/model/skip")
     await logInUser(page, email, password)
-    await expect(page).toHaveURL(/\/admin\/assistant$/)
+    await expect(page).toHaveURL(/\/assistant\?mode=admin$/)
     await expect(page.getByRole("log")).toContainText(
       "请先在模型设置里配置模型，也可以继续使用手工页面。",
     )

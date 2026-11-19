@@ -56,7 +56,7 @@ test("admin exports a dictionary and opens material import in the assistant", as
   await page.getByRole("button", { name: "导出当前词典" }).click()
   expect((await exported).suggestedFilename()).toBe("本企业能力词典.yaml")
   await page.getByRole("link", { name: "在管理助手中导入词典" }).click()
-  await expect(page).toHaveURL(/\/admin\/assistant/)
+  await expect(page).toHaveURL(/\/assistant\?mode=admin/)
   await expect(
     page.getByRole("textbox", { name: "发给管理助手的消息" }),
   ).toHaveValue("帮我按这份材料导入能力词典")

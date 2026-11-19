@@ -4,7 +4,12 @@ import type { SetupPublic } from "../../src/client"
 const manualPages = new WeakMap<Page, string>()
 
 export async function openAdminAssistant(page: Page) {
-  if (new URL(page.url()).pathname === "/admin/assistant") return
+  const current = new URL(page.url())
+  if (
+    current.pathname === "/assistant" &&
+    current.searchParams.get("mode") === "admin"
+  )
+    return
   manualPages.set(page, page.url())
   const id = await page.evaluate(
     () =>

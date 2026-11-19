@@ -47,11 +47,14 @@ test("manager downloads every visible published judgment despite page filters", 
   expect(jsonRows.map((r) => [r.employee_code, r.capability_key])).toEqual(
     expected.map((r) => [r.employee_code, r.capability_key]),
   )
-  await page.goto("/find-people")
+  await page.goto("/employees")
   await expect(
     page.getByText("导出本人可见的全部已发布判断，不受页面筛选影响。"),
   ).toBeVisible()
-  await page.getByLabel("最近证据起始日期").fill("2099-01-01")
+  await page
+    .getByRole("textbox", { name: "搜索姓名" })
+    .fill("没有匹配的合成员工")
+  await expect(page.getByText("共 0 名员工")).toBeVisible()
   const downloadPromise = page.waitForEvent("download")
   await page
     .getByRole("button", { name: "导出已发布画像（CSV）", exact: true })
@@ -77,6 +80,18 @@ test("manager downloads every visible published judgment despite page filters", 
   expect(lines.slice(1).map((line) => line.split(",")[0])).toEqual(
     expected.map((row) => row.employee_code ?? ""),
   )
+  const jsonDownload = page.waitForEvent("download")
+  await page
+    .getByRole("button", { name: "导出已发布画像（JSON）", exact: true })
+    .click()
+  const jsonFile = await jsonDownload
+  expect(jsonFile.suggestedFilename()).toBe("已发布画像.json")
+  const jsonBytes = await jsonFile.createReadStream().then(async (stream) => {
+    const chunks: Buffer[] = []
+    for await (const chunk of stream) chunks.push(chunk)
+    return Buffer.concat(chunks)
+  })
+  expect(JSON.parse(jsonBytes.toString("utf8"))).toEqual(jsonRows)
   await page.screenshot({
     path: test.info().outputPath("profile-export.png"),
     fullPage: true,
