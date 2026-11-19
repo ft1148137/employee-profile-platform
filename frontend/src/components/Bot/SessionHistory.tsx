@@ -3,11 +3,14 @@ import { useNavigate } from "@tanstack/react-router"
 import { BotService } from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
 
-export function useBotConversations(orgId: string | undefined) {
+export function useBotConversations(
+  orgId: string | undefined,
+  staleTime = 30_000,
+) {
   return useQuery({
     queryKey: ["conversation-history", orgId, false],
     enabled: !!orgId,
-    staleTime: 30000,
+    staleTime,
     queryFn: async () =>
       (await BotService.listSessions({ query: { org_id: orgId! } })).data,
   })

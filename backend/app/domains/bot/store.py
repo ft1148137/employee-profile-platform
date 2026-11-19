@@ -28,6 +28,7 @@ from app.domains.bot.models import (
 )
 from app.domains.bot.settings import read_settings
 from app.domains.capacity.settings import read_settings as read_capacity_settings
+from app.domains.model.service import read_setting
 from app.domains.org.models import Employee, Organization
 from app.domains.org.service import visible_employee
 
@@ -77,6 +78,7 @@ class SessionSummary(BaseModel):
 class SessionList(BaseModel):
     data: list[SessionSummary]
     retention_days: int
+    model_available: bool = True
 
 
 def list_sessions(
@@ -92,9 +94,10 @@ def list_sessions(
         message_type = AdminAssistantMessage
         owner = col(AdminAssistantSession.user_id) == principal.user_id
     else:
-        if principal.employee_id is None:
+        if principal.employee_id is not None:
+            visible_employee(db, principal, principal.employee_id)
+        elif not principal.managed_department_ids:
             raise BotSessionNotFound()
-        visible_employee(db, principal, principal.employee_id)
         session_type = BotSession
         message_type = BotMessage
         owner = (col(BotSession.employee_id) == principal.employee_id) & (
@@ -141,8 +144,10 @@ def list_sessions(
         )
         .limit(50)
     ).all()
+    setting = read_setting(db, principal.org_id)
     return SessionList(
         retention_days=days,
+        model_available=bool(setting and setting.enabled and setting.model),
         data=[
             SessionSummary(
                 **row.model_dump(

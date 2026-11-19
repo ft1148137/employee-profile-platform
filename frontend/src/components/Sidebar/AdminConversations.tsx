@@ -6,11 +6,14 @@ import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { useSetup } from "@/hooks/useSetup"
 
-export function useAdminConversations(orgId: string | undefined) {
+export function useAdminConversations(
+  orgId: string | undefined,
+  staleTime = 30_000,
+) {
   return useQuery({
     queryKey: ["conversation-history", orgId, true],
     enabled: !!orgId,
-    staleTime: 30000,
+    staleTime,
     queryFn: async () =>
       (
         await AdminAssistantService.assistantListSessions({

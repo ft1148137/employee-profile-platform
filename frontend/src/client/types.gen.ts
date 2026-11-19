@@ -7276,6 +7276,10 @@ export type SessionList = {
    * Retention Days
    */
   retention_days: number
+  /**
+   * Model Available
+   */
+  model_available?: boolean
 }
 
 /**
