@@ -170,7 +170,7 @@ isolated(
       localStorage.setItem("current_org_id", orgId)
     }, company)
     await page.goto("/settings")
-    await page.getByRole("tab", { name: "档案", exact: true }).click()
+    await page.getByRole("tab", { name: "档案与账号", exact: true }).click()
     const info = page.getByRole("region", { name: "员工信息" })
     await expect(info).toContainText("工号")
     await expect(info).toContainText("HL025")

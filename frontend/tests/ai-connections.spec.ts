@@ -29,7 +29,7 @@ test("HTTPS connection examples do not show the local HTTP notice", async ({
     await page.getByRole("button", { name: "登录", exact: true }).click()
     await expect(page.getByTestId("user-menu")).toBeVisible()
     await page.goto("https://platform.example.test/settings")
-    await page.getByRole("tab", { name: "连接 AI 助手" }).click()
+    await page.getByRole("link", { name: "连接与集成" }).click()
     await expect(page.getByTestId("cursor-config")).toContainText(
       "https://platform.example.test/mcp",
     )
@@ -63,8 +63,8 @@ test("enterprise switch and personal token lifecycle", async ({
   let id = ""
   let employeeHeaders = {}
   try {
-    await page.getByRole("link", { name: "数据与 AI", exact: true }).click()
-    await page.getByRole("tab", { name: "外部 AI 助手", exact: true }).click()
+    await page.getByRole("link", { name: "设置", exact: true }).click()
+    await page.getByRole("link", { name: "外部 AI 助手", exact: true }).click()
     await expect(
       page.getByText(
         "打开后，员工的画像、证据和自述会发给外部助手的厂商。请先确认企业允许这些数据外发。",
@@ -88,7 +88,7 @@ test("enterprise switch and personal token lifecycle", async ({
     )
     employeeHeaders = { Authorization: `Bearer ${accessToken}` }
     await employee.goto("/settings")
-    await employee.getByRole("tab", { name: "连接 AI 助手" }).click()
+    await employee.getByRole("link", { name: "连接与集成" }).click()
     await expect(employee.getByText(httpNotice)).toBeVisible()
     await employee.getByLabel("令牌名称").fill(name)
     const created = employee.waitForResponse(
@@ -127,14 +127,14 @@ test("enterprise switch and personal token lifecycle", async ({
       ...(await employee.getByRole("group").locator("code").allTextContents()),
     ])
     await employee.reload()
-    await employee.getByRole("tab", { name: "连接 AI 助手" }).click()
+    await employee.getByRole("link", { name: "连接与集成" }).click()
     await expect(employee.getByTestId("new-token")).toHaveCount(0)
     await expect(employee.getByText(name, { exact: true })).toBeVisible()
     await page.getByRole("checkbox", { name: "允许外部 AI 助手" }).uncheck()
     await page.getByRole("button", { name: "保存", exact: true }).click()
     await expect(page.getByRole("status")).toHaveText("已保存")
     await employee.reload()
-    await employee.getByRole("tab", { name: "连接 AI 助手" }).click()
+    await employee.getByRole("link", { name: "连接与集成" }).click()
     await expect(
       employee.getByText(
         "企业管理员关闭了这个功能。需要使用的话，请联系企业管理员在「数据与 AI → 外部 AI 助手」开启。",

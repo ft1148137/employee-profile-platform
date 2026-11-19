@@ -236,8 +236,8 @@ test("bot steps remain after leaving the assistant and reloading", async ({
   await expect(
     panel.getByText("查看请求进度：失败", { exact: true }),
   ).toBeVisible()
-  await page.getByRole("link", { name: "我的画像", exact: true }).click()
-  await page.getByRole("link", { name: "聊天", exact: true }).click()
+  await page.getByRole("link", { name: "组织", exact: true }).click()
+  await page.getByRole("link", { name: /^协同/ }).click()
   await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
   await page.reload()
   await expect(panel.getByText("2 步", { exact: true })).toBeVisible()

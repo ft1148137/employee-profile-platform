@@ -25,7 +25,7 @@ test("admin exports a dictionary and opens material import in the assistant", as
   expect(initialized.ok()).toBeTruthy()
   await logInUser(page, email, password)
   await page.goto("/admin/rules?tab=dictionary")
-  await page.getByRole("tab", { name: "能力词典", exact: true }).click()
+  await page.getByRole("link", { name: "能力词典", exact: true }).click()
   await expectChineseCopy(page, ["YAML", "AI"])
   await expect(page.getByRole("button", { name: "下载模板" })).toHaveCount(0)
   await expect(page.locator('input[type="file"]')).toHaveCount(0)
@@ -73,7 +73,7 @@ for (const email of [
   test(`${email} can export but cannot edit`, async ({ page }) => {
     await logInUser(page, email, process.env.DEMO_USER_PASSWORD!)
     await page.goto("/admin/rules?tab=dictionary")
-    await page.getByRole("tab", { name: "能力词典", exact: true }).click()
+    await page.getByRole("link", { name: "能力词典", exact: true }).click()
     await expect(
       page.getByRole("button", { name: "导出当前词典" }),
     ).toBeEnabled()
@@ -155,7 +155,6 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
   await logInUser(page, email, "synthetic-password-2026")
   await page.setViewportSize({ width: 375, height: 812 })
   await page.goto("/admin/rules?tab=dictionary")
-  await page.getByRole("tab", { name: "能力词典", exact: true }).click()
   await page.getByRole("button", { name: "编辑词典", exact: true }).click()
   const editor = page.getByRole("region", { name: "网页编辑能力词典" })
   const retained = editor.getByRole("article", {
@@ -207,7 +206,6 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
     page.getByRole("status").filter({ hasText: "新词典已启用" }),
   ).toBeVisible()
   await page.reload()
-  await page.getByRole("tab", { name: "能力词典", exact: true }).click()
   await expect(page.getByText("当前第 2 版 · 2 项能力")).toBeVisible()
   await page.getByRole("button", { name: "编辑词典", exact: true }).click()
   await expect(retained.getByLabel("等级描述")).toHaveValue(
@@ -262,7 +260,7 @@ test("admin browses categories, levels, published counts and searches", async ({
     process.env.DEMO_USER_PASSWORD!,
   )
   await page.goto("/admin/rules?tab=dictionary")
-  await page.getByRole("tab", { name: "能力词典", exact: true }).click()
+  await page.getByRole("link", { name: "能力词典", exact: true }).click()
   const browser = page.getByRole("region", { name: "浏览能力词典" })
   const first = browser.getByRole("article").first()
   await expect(
@@ -308,7 +306,7 @@ test("employee browses and searches without requesting statistics", async ({
     process.env.DEMO_USER_PASSWORD!,
   )
   await page.goto("/admin/rules?tab=dictionary")
-  await page.getByRole("tab", { name: "能力词典", exact: true }).click()
+  await page.getByRole("link", { name: "能力词典", exact: true }).click()
   const browser = page.getByRole("region", { name: "浏览能力词典" })
   const card = browser.getByRole("article").first()
   await expect(card).toBeVisible()

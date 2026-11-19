@@ -13,7 +13,7 @@ async function openE02(page: Page, email: string) {
   await logInUser(page, email, password)
   if (email === "employee.platform@demo.example.com") {
     await expect(page).toHaveURL("/assistant")
-    await page.getByRole("link", { name: "我的画像", exact: true }).click()
+    await page.getByRole("link", { name: "组织", exact: true }).click()
   }
   if (email !== "employee.platform@demo.example.com") {
     await page.goto("/employees")
@@ -58,10 +58,10 @@ test("administrator reads capability, Jira evidence and earlier published snapsh
   await expect(page.getByRole("dialog")).toContainText("PLAT-104")
   await expect(page.getByRole("dialog")).toContainText("背景")
   await page.getByRole("button", { name: "关闭", exact: true }).click()
-  await page.getByRole("tab", { name: "版本历史" }).click()
+  await page.getByRole("tab", { name: "证据与历史", exact: true }).click()
   await expect(
     page
-      .getByRole("tabpanel", { name: "版本历史", exact: true })
+      .getByRole("region", { name: "版本历史", exact: true })
       .getByRole("listitem"),
   ).toHaveCount(2)
   await page.getByRole("button", { name: /^r1 ·/ }).click()
@@ -94,7 +94,7 @@ for (const [role, email, restricted] of [
       })
       await expect(api).toContainText("能独立完成复杂任务")
       await expect(api).toContainText("已确认")
-      for (const name of ["证据", "版本历史", "档案"])
+      for (const name of ["证据与历史", "档案与账号"])
         await expect(page.getByRole("tab", { name, exact: true })).toHaveCount(
           0,
         )
@@ -120,15 +120,15 @@ for (const [role, email, restricted] of [
       })
       return
     }
-    await page.getByRole("tab", { name: "证据", exact: true }).click()
+    await page.getByRole("tab", { name: "证据与历史", exact: true }).click()
     await page.getByLabel("证据类型").selectOption("self_report")
     await expect(
       page
-        .getByRole("tabpanel", { name: "证据", exact: true })
+        .getByRole("region", { name: "证据", exact: true })
         .getByRole("listitem"),
     ).toHaveCount(1)
     await page
-      .getByRole("tabpanel", { name: "证据", exact: true })
+      .getByRole("region", { name: "证据", exact: true })
       .getByRole("button")
       .click()
     const sheet = page.getByRole("dialog")
@@ -155,7 +155,7 @@ test("profile recovers from errors", async ({ page }) => {
   )
   await logInUser(page, "employee.platform@demo.example.com", password)
   await expect(page).toHaveURL("/assistant")
-  await page.getByRole("link", { name: "我的画像", exact: true }).click()
+  await page.getByRole("link", { name: "组织", exact: true }).click()
   await expect(page.getByRole("alert")).toBeVisible()
   await page.unroute("**/employees/*/profile")
   await page.getByRole("button", { name: "重试" }).click()
@@ -177,10 +177,10 @@ test("administrator tolerates incomplete evidence fields", async ({ page }) => {
       },
     })
   })
-  await page.getByRole("tab", { name: "证据", exact: true }).click()
+  await page.getByRole("tab", { name: "证据与历史", exact: true }).click()
   await page.getByLabel("证据类型").selectOption("work_record")
   await page
-    .getByRole("tabpanel", { name: "证据", exact: true })
+    .getByRole("region", { name: "证据", exact: true })
     .getByRole("button")
     .first()
     .click()

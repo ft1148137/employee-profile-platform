@@ -11,7 +11,7 @@ import {
 import { AccountActions } from "@/components/Admin/AccountTable"
 import { ChangeHistory } from "@/components/Admin/ChangeHistory"
 import { ConfirmActionDialog } from "@/components/Admin/ConfirmActionDialog"
-import { Disputes } from "@/components/Admin/Disputes"
+import { Disputes, useDisputes } from "@/components/Admin/Disputes"
 import { departmentOptions } from "@/components/Admin/departments"
 import { IssueAccountsDialog } from "@/components/Admin/IssueAccountsDialog"
 import {
@@ -39,11 +39,13 @@ export function EmployeeDetailTabs({
   tab,
   onTabChange,
   children,
+  evidence,
 }: {
   employee: EmployeeSummary
   tab?: string
   onTabChange: (tab: string) => void
   children: ReactNode
+  evidence: ReactNode
 }) {
   const { org, roles } = useOrg()
   const orgId = org!.id
@@ -90,43 +92,26 @@ export function EmployeeDetailTabs({
   }
   const employee = person.data?.data[0]
   const options = departmentOptions(departments.data?.data ?? [])
-  const tabs = [
-    ["profile", "画像"],
-    ["fields", "档案"],
-    ...(isAdmin
-      ? [
-          ["account", "账号与角色"],
-          ["identities", "Jira 账号"],
-          ["appeals", "争议"],
-        ]
-      : []),
-  ]
-  const selected = tabs.some(([value]) => value === tab) ? tab : "profile"
-  if (!isAdmin)
-    return (
-      <div className="space-y-6">
-        <header className="border-b pb-6">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h1 className="text-3xl font-semibold">{summary.display_name}</h1>
-            <p className="text-sm text-muted-foreground">
-              工号 {summary.employee_code ?? "未填写"}
-            </p>
-          </div>
-          <p className="mt-2 text-muted-foreground">
-            {summary.title ?? "未填写职位"} ·{" "}
-            {summary.department?.name ?? "未分配部门"}
-          </p>
-        </header>
-        {children}
-      </div>
-    )
+  const disputes = useDisputes(isAdmin ? orgId : undefined, employeeId)
+  const pendingDisputes = disputes.data?.length ?? 0
+  const showAppeals = tab === "appeals"
+  const selected =
+    tab === "account" || tab === "fields" || tab === "identities"
+      ? "account"
+      : isAdmin && (tab === "evidence" || tab === "versions")
+        ? "evidence"
+        : "capabilities"
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-6">
         <div className="flex items-center gap-4">
-          <Avatar className="size-16 text-2xl">
-            <AvatarFallback>{summary.display_name.slice(0, 1)}</AvatarFallback>
-          </Avatar>
+          {isAdmin && (
+            <Avatar className="size-16 text-2xl">
+              <AvatarFallback>
+                {summary.display_name.slice(0, 1)}
+              </AvatarFallback>
+            </Avatar>
+          )}
           <div>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h1 className="text-3xl font-semibold">{summary.display_name}</h1>
@@ -138,15 +123,19 @@ export function EmployeeDetailTabs({
               {summary.title ?? "未填写职位"} ·{" "}
               {summary.department?.name ?? "未分配部门"}
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              直属上级：{summary.manager?.display_name ?? "暂无上级"}
-            </p>
+            {isAdmin && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                直属上级：{summary.manager?.display_name ?? "暂无上级"}
+              </p>
+            )}
           </div>
-          <Badge variant="secondary">
-            {summary.employment_status === "inactive"
-              ? "已离职 · 归档只读"
-              : employmentLabels[summary.employment_status]}
-          </Badge>
+          {isAdmin && (
+            <Badge variant="secondary">
+              {summary.employment_status === "inactive"
+                ? "已离职 · 归档只读"
+                : employmentLabels[summary.employment_status]}
+            </Badge>
+          )}
         </div>
         {isAdmin &&
           employee?.employment_status === "active" &&
@@ -201,156 +190,171 @@ export function EmployeeDetailTabs({
             }}
           />
         )}
+      {isAdmin && (pendingDisputes > 0 || showAppeals) && (
+        <details
+          key={String(showAppeals)}
+          open={showAppeals}
+          className="rounded-xl border border-amber-500/40 bg-amber-500/10"
+        >
+          <summary className="cursor-pointer px-4 py-3 font-medium">
+            争议处理{disputes.isSuccess && ` · ${pendingDisputes} 项待处理`}
+          </summary>
+          <div className="border-t border-amber-500/40 bg-background p-4">
+            <Disputes orgId={orgId} employeeId={employeeId} />
+          </div>
+        </details>
+      )}
       <Tabs value={selected} onValueChange={onTabChange} className="gap-6">
         <TabsList
           aria-label="员工详情"
           className="h-auto flex-wrap justify-start"
         >
-          {tabs.map(([value, title]) => (
-            <TabsTrigger key={value} value={value}>
-              {title}
-            </TabsTrigger>
-          ))}
+          <TabsTrigger value="capabilities">能力画像</TabsTrigger>
+          {isAdmin && <TabsTrigger value="evidence">证据与历史</TabsTrigger>}
+          <TabsTrigger value="account">
+            {isAdmin ? "档案与账号" : "档案"}
+          </TabsTrigger>
         </TabsList>
-        <TabsContent value="profile" className="space-y-6">
-          <EmployeeSummaryContent employee={summary} showHeading={false} />
+        <TabsContent value="capabilities" className="space-y-6">
+          {isAdmin && (
+            <EmployeeSummaryContent employee={summary} showHeading={false} />
+          )}
           {children}
         </TabsContent>
-        <TabsContent value="fields" className="space-y-6">
+        {isAdmin && (
+          <TabsContent value="evidence" className="space-y-6">
+            {evidence}
+          </TabsContent>
+        )}
+        <TabsContent value="account" className="space-y-6">
           <EmployeeFields
             summary={summary}
-            employeeCode={employee?.employee_code}
             workEmail={employee?.work_email}
             departmentName={
               options.find((d) => d.id === summary.department?.id)?.name
             }
           />
-          {isAdmin && <ChangeHistory employeeId={employeeId} />}
-        </TabsContent>
-        {isAdmin && (
-          <TabsContent value="account" className="space-y-6">
-            {person.isPending ? (
-              <ProfileLoading />
-            ) : (
-              employee && (
-                <section
-                  aria-label="账号与角色"
-                  className="space-y-4 rounded-xl border p-5"
-                >
-                  <h2 className="text-lg font-semibold">账号与角色</h2>
-                  <p>
-                    邮箱：
-                    {employee.account?.username ??
-                      employee.work_email ??
-                      "未填写"}{" "}
-                    · {accountLabels[employee.account?.status ?? "none"]}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-3">
-                    {employee.employment_status === "active" &&
-                      (!employee.account ||
-                        employee.account.status === "pending_first_login") && (
-                        <IssueAccountsDialog
-                          orgId={orgId}
-                          employees={[
-                            {
-                              id: employee.id,
-                              employee_code: employee.employee_code,
-                              display_name: employee.display_name,
-                              status: employee.account?.status ?? "none",
-                            },
-                          ]}
-                          onIssued={refresh}
-                        />
-                      )}
-                    <AccountActions
-                      employee={employee}
-                      onResetPassword={() => setResetPassword(true)}
-                    />
-                    {employee.account &&
-                      employee.account.status !== "disabled" &&
-                      departments.isSuccess &&
-                      employee.employment_status === "active" && (
-                        <RoleGrantDialog
-                          orgId={orgId}
-                          employeeId={employeeId}
-                          grants={employee.roles}
-                          departments={options}
+          {isAdmin && (
+            <>
+              {person.isPending ? (
+                <ProfileLoading />
+              ) : (
+                employee && (
+                  <section
+                    aria-label="账号与角色"
+                    className="space-y-4 rounded-xl border p-5"
+                  >
+                    <h2 className="text-lg font-semibold">账号与角色</h2>
+                    <p>
+                      邮箱：
+                      {employee.account?.username ??
+                        employee.work_email ??
+                        "未填写"}{" "}
+                      · {accountLabels[employee.account?.status ?? "none"]}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      {employee.employment_status === "active" &&
+                        (!employee.account ||
+                          employee.account.status ===
+                            "pending_first_login") && (
+                          <IssueAccountsDialog
+                            orgId={orgId}
+                            employees={[
+                              {
+                                id: employee.id,
+                                employee_code: employee.employee_code,
+                                display_name: employee.display_name,
+                                status: employee.account?.status ?? "none",
+                              },
+                            ]}
+                            onIssued={refresh}
+                          />
+                        )}
+                      <AccountActions
+                        employee={employee}
+                        onResetPassword={() => setResetPassword(true)}
+                      />
+                      {employee.account &&
+                        employee.account.status !== "disabled" &&
+                        departments.isSuccess &&
+                        employee.employment_status === "active" && (
+                          <RoleGrantDialog
+                            orgId={orgId}
+                            employeeId={employeeId}
+                            grants={employee.roles}
+                            departments={options}
+                            onSuccess={refresh}
+                          />
+                        )}
+                    </div>
+                    {employee.roles.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        暂无管理角色
+                      </p>
+                    )}
+                    {employee.roles.map((grant) => (
+                      <div
+                        key={grant.id}
+                        className="flex flex-wrap items-center gap-3 text-sm"
+                      >
+                        <span>
+                          {roleLabels[grant.role]}
+                          {grant.department
+                            ? ` · ${options.find((d) => d.id === grant.department_id)?.name ?? grant.department.name}`
+                            : ""}
+                        </span>
+                        <ConfirmActionDialog
+                          title="撤销角色"
+                          description={`确认撤销${employee.display_name}的${roleLabels[grant.role]}角色？`}
+                          action={() =>
+                            RolesService.revokeRole({
+                              path: { org_id: orgId, grant_id: grant.id },
+                            })
+                          }
                           onSuccess={refresh}
                         />
-                      )}
-                  </div>
-                  {employee.roles.length === 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      暂无管理角色
-                    </p>
-                  )}
-                  {employee.roles.map((grant) => (
-                    <div
-                      key={grant.id}
-                      className="flex flex-wrap items-center gap-3 text-sm"
-                    >
-                      <span>
-                        {roleLabels[grant.role]}
-                        {grant.department
-                          ? ` · ${options.find((d) => d.id === grant.department_id)?.name ?? grant.department.name}`
-                          : ""}
-                      </span>
-                      <ConfirmActionDialog
-                        title="撤销角色"
-                        description={`确认撤销${employee.display_name}的${roleLabels[grant.role]}角色？`}
-                        action={() =>
-                          RolesService.revokeRole({
-                            path: { org_id: orgId, grant_id: grant.id },
-                          })
-                        }
-                        onSuccess={refresh}
-                      />
-                    </div>
-                  ))}
-                </section>
-              )
-            )}
-            <ChangeHistory employeeId={employeeId} />
-            {resetPassword && employee?.account && (
-              <ResetPasswordDialog
-                orgId={orgId}
-                userId={employee.account.user_id}
-                name={employee.display_name}
-                open
-                onClose={() => {
-                  setResetPassword(false)
-                  refresh()
-                }}
-              />
-            )}
-          </TabsContent>
-        )}
-        {isAdmin && (
-          <TabsContent value="identities">
-            <h2 className="mb-4 text-lg font-semibold">Jira 账号匹配</h2>
-            <p className="mb-4 text-sm text-muted-foreground">
-              解除后不会再次自动关联，仍可手动选择账号。
-            </p>
-            <IdentityTable orgId={orgId} employeeId={employeeId} />
-          </TabsContent>
-        )}
-        {isAdmin && (
-          <TabsContent value="appeals">
-            <Disputes orgId={orgId} employeeId={employeeId} />
-          </TabsContent>
-        )}
+                      </div>
+                    ))}
+                  </section>
+                )
+              )}
+              {resetPassword && employee?.account && (
+                <ResetPasswordDialog
+                  orgId={orgId}
+                  userId={employee.account.user_id}
+                  name={employee.display_name}
+                  open
+                  onClose={() => {
+                    setResetPassword(false)
+                    refresh()
+                  }}
+                />
+              )}
+              <section
+                className="rounded-xl border p-5"
+                aria-label="Jira 账号匹配"
+              >
+                <h2 className="mb-4 text-lg font-semibold">Jira 账号匹配</h2>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  解除后不会再次自动关联，仍可手动选择账号。
+                </p>
+                <IdentityTable orgId={orgId} employeeId={employeeId} />
+              </section>
+              <ChangeHistory employeeId={employeeId} />
+            </>
+          )}
+        </TabsContent>
       </Tabs>
     </div>
   )
 }
 
-export function EmployeeFields({
+function EmployeeFields({
   summary,
   workEmail,
   departmentName,
 }: {
   summary: EmployeeSummary
-  employeeCode?: string | null
   workEmail?: string | null
   departmentName?: string
 }) {

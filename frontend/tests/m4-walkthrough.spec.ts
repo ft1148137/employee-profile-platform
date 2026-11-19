@@ -209,7 +209,9 @@ test("M4: employee update, manager publication, history and self-review denial",
   const card = page.locator(`[id="request-${draft.id}"]`)
   await expect(card).toContainText("合成能力：批准")
   await expect(card.getByText("请求时间线", { exact: true })).toHaveCount(0)
-  await expect(page.getByRole("tab", { name: "版本历史" })).toHaveCount(0)
+  await expect(
+    page.getByRole("tab", { name: "证据与历史", exact: true }),
+  ).toHaveCount(0)
   const timeline = await request.get(
     `${base}/employees/${owner.id}/change-requests/${draft.id}/timeline`,
     { headers: ownerHeaders },

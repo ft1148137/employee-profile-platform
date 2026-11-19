@@ -19,7 +19,7 @@ test("employees generate a code, see bindings and unbind from personal settings"
     route.fulfill({ json: rows }),
   )
   await page.goto("/settings")
-  await page.getByRole("tab", { name: "IM 绑定", exact: true }).click()
+  await page.getByRole("link", { name: "连接与集成", exact: true }).click()
   await expect(page.getByText("还没有绑定聊天账号")).toBeVisible()
   const generated = page.waitForResponse(
     (response) =>
@@ -60,7 +60,7 @@ test("employees generate a code, see bindings and unbind from personal settings"
   await expect(notification).not.toBeChecked()
   await expect(page.getByRole("status")).toHaveText("推送设置已保存")
   await page.reload()
-  await page.getByRole("tab", { name: "IM 绑定", exact: true }).click()
+  await page.getByRole("link", { name: "连接与集成", exact: true }).click()
   await expect(notification).not.toBeChecked()
   await notification.click()
   await expect(notification).toBeChecked()
@@ -112,7 +112,7 @@ test("accounts without an employee identity cannot generate a binding code", asy
     process.env.DEMO_USER_PASSWORD!,
   )
   await page.goto("/settings")
-  await page.getByRole("tab", { name: "IM 绑定", exact: true }).click()
+  await page.getByRole("link", { name: "连接与集成", exact: true }).click()
   await expect(page.getByText("当前账号没有员工身份，不能绑定。")).toBeVisible()
   await expect(page.getByRole("button", { name: "生成绑定码" })).toHaveCount(0)
 })

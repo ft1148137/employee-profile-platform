@@ -58,8 +58,8 @@ test("audit records show account and revoked role labels with filters", async ({
     { headers },
   )
   expect(revoked.ok()).toBeTruthy()
-  await page.getByText("更多", { exact: true }).click()
-  await page.getByRole("menuitem", { name: "审计日志", exact: true }).click()
+  await page.getByRole("link", { name: "设置", exact: true }).click()
+  await page.getByRole("link", { name: "审计日志", exact: true }).click()
   const rows = page
     .getByRole("row")
     .filter({ hasText: "（employee11@demo.example.com）" })

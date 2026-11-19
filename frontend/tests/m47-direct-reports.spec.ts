@@ -97,7 +97,7 @@ test("值班经理在设置页看到实际审批人，授权为审批人后不�
     { accessToken: changed.access_token, orgId: admin.org_id },
   )
   await page.goto("/settings")
-  const panel = page.getByRole("tabpanel")
+  const panel = page.getByRole("region", { name: "个人信息" })
   await expect(panel).toContainText("合成直属下属（工号：REPORT）")
   await expect(panel).toContainText("由 合成部门经理（部门经理）审批")
   await expect(panel).toContainText(

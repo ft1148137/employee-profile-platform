@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, type Page, test } from "@playwright/test"
 import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -15,16 +15,17 @@ test.beforeEach(async ({ page }) => {
 
 const groups = [
   {
-    name: "能力与规则",
+    space: "组织",
     path: "/admin/rules",
     tabs: [
       ["dictionary", "能力词典"],
       ["approval", "审批规则"],
       ["reminders", "定期提醒"],
+      ["capacity", "需求与容量规则"],
     ],
   },
   {
-    name: "数据与 AI",
+    space: "设置",
     path: "/admin/data-ai",
     tabs: [
       ["sources", "数据来源"],
@@ -36,106 +37,82 @@ const groups = [
   },
 ]
 
-test("management menus open every tab and more keeps audit", async ({
+const navigation = (page: Page) =>
+  page.getByRole("navigation", { name: "空间导航" })
+
+test("management sections and audit open from the space navigation", async ({
   page,
 }) => {
   test.setTimeout(90000)
+  for (const name of ["连接", "首页", "首次设置"])
+    await expect(page.getByRole("link", { name, exact: true })).toHaveCount(0)
   await expect(
-    page.getByRole("navigation", { name: "管理菜单" }).getByRole("link"),
-  ).toHaveCount(2)
-  await expect(
-    page.getByRole("link", { name: "连接", exact: true }),
-  ).toHaveCount(0)
-  await expect(
-    page.getByRole("menuitem", { name: "审计日志", exact: true }),
-  ).toBeHidden()
-  await expect(
-    page.getByRole("link", { name: "首页", exact: true }),
+    page.getByRole("button", { name: "更多", exact: true }),
   ).toHaveCount(0)
   for (const group of groups) {
-    await page.getByRole("link", { name: group.name, exact: true }).click()
-    await expect(
-      page
-        .getByRole("tablist", { name: group.name, exact: true })
-        .getByRole("tab", { selected: true }),
-    ).toHaveText(group.tabs[0][1])
-    if (group.path === "/admin/data-ai")
-      await expect(
-        page
-          .getByRole("tablist", { name: group.name, exact: true })
-          .getByRole("tab"),
-      ).toHaveCount(5)
+    await page
+      .getByTestId("app-rail")
+      .getByRole("link", { name: group.space, exact: true })
+      .click()
     for (const [tab, name] of group.tabs) {
-      await page.getByRole("tab", { name, exact: true }).click()
-      await expect(page).toHaveURL(
-        tab === group.tabs[0][0] ? group.path : `${group.path}?tab=${tab}`,
-      )
-      const panel = page.getByRole("tabpanel", { name, exact: true })
-      await expect(panel).toBeVisible()
+      const link = navigation(page).getByRole("link", { name, exact: true })
+      await link.click()
+      await expect(page).toHaveURL(`${group.path}?tab=${tab}`)
+      await expect(link).toHaveAttribute("aria-current", "page")
+      await expect(
+        navigation(page).locator('[aria-current="page"]'),
+      ).toHaveCount(1)
+      const main = page.getByRole("main")
+      await expect(main.getByRole("tablist")).toHaveCount(0)
       if (tab === "approval")
-        await expect(
-          panel.getByRole("form", { name: "审批规则" }),
-        ).toBeVisible()
+        await expect(main.getByRole("form", { name: "审批规则" })).toBeVisible()
       else if (tab === "reminders")
         await expect(
-          panel.getByRole("region", { name: "持续更新提醒" }),
+          main.getByRole("region", { name: "持续更新提醒" }),
         ).toBeVisible()
       else
         await expect(
-          panel.getByRole("heading", { name, exact: true }),
+          main.getByRole("heading", { name, exact: true }),
         ).toBeVisible()
-      await expect(
-        page
-          .getByRole("tablist", { name: group.name, exact: true })
-          .getByRole("tab", { selected: true }),
-      ).toHaveText(name)
     }
   }
-  await page.getByText("更多", { exact: true }).click()
-  await page.getByRole("menuitem", { name: "审计日志", exact: true }).click()
+  await navigation(page).getByRole("link", { name: "审计日志" }).click()
   await expect(
     page.getByRole("heading", { name: "审计日志", exact: true }),
   ).toBeVisible()
-  await page.getByRole("button", { name: "更多", exact: true }).click()
-  await expect(
-    page.getByRole("menuitem", { name: "首次设置", exact: false }),
-  ).toHaveCount(0)
 })
 
-test("direct tab links survive reload and history, invalid tabs use the first", async ({
+test("direct section links survive reload and history, invalid values use the first", async ({
   page,
 }) => {
   test.setTimeout(90000)
+  const active = () => navigation(page).locator('[aria-current="page"]')
   for (const group of groups) {
     for (const [tab, name] of group.tabs) {
       await page.goto(`${group.path}?tab=${tab}`)
-      await expect(
-        page
-          .getByRole("tablist", { name: group.name, exact: true })
-          .getByRole("tab", { selected: true }),
-      ).toHaveText(name)
+      await expect(active()).toHaveText(name)
     }
     await page.reload()
-    await expect(
-      page
-        .getByRole("tablist", { name: group.name, exact: true })
-        .getByRole("tab", { selected: true }),
-    ).toHaveText(group.tabs[group.tabs.length - 1][1])
+    await expect(active()).toHaveText(group.tabs[group.tabs.length - 1][1])
     await page.goto(`${group.path}?tab=unknown`)
-    await expect(
-      page
-        .getByRole("tablist", { name: group.name, exact: true })
-        .getByRole("tab", { selected: true }),
-    ).toHaveText(group.tabs[0][1])
+    await expect(active()).toHaveText(group.tabs[0][1])
   }
-  await page.setViewportSize({ width: 375, height: 812 })
+  await page.setViewportSize({ width: 390, height: 844 })
   await page.goto("/admin/rules?tab=reminders")
-  await page.getByRole("tab", { name: "审批规则", exact: true }).click()
+  const open = page.getByRole("button", { name: "打开空间导航" })
+  const drawer = page.getByRole("dialog", { name: "空间导航", exact: true })
+  await expect(navigation(page)).toHaveCount(0)
+  await open.click()
+  await expect(drawer).toBeVisible()
+  await drawer.getByRole("link", { name: "审批规则", exact: true }).click()
+  await expect(drawer).toBeHidden()
+  await expect(page.getByRole("form", { name: "审批规则" })).toBeVisible()
   await page.goBack()
-  await expect(
-    page.getByRole("tab", { name: "定期提醒", exact: true }),
-  ).toHaveAttribute("aria-selected", "true")
   await expect(page.getByRole("region", { name: "持续更新提醒" })).toBeVisible()
+  await open.click()
+  await expect(active()).toHaveText("定期提醒")
+  await page.keyboard.press("Escape")
+  await expect(open).toBeFocused()
   await expect(page.getByRole("heading", { name: "自动起草设置" })).toHaveCount(
     0,
   )
@@ -187,13 +164,20 @@ test("legacy addresses redirect to their new locations", async ({ page }) => {
   }
 })
 
-test("personal settings have only personal tabs and advanced options start collapsed", async ({
+test("personal settings has three links and advanced options start collapsed", async ({
   page,
 }) => {
   await page.goto("/settings")
-  for (const name of ["能力词典", "审批规则"])
-    await expect(page.getByRole("tab", { name, exact: true })).toHaveCount(0)
-  await page.getByRole("link", { name: "查看企业能力词典" }).click()
+  for (const name of ["账号与安全", "连接与集成", "偏好与代理"])
+    await expect(
+      navigation(page).getByRole("link", { name, exact: true }),
+    ).toBeVisible()
+  await expect(page.getByRole("main").getByRole("tablist")).toHaveCount(0)
+  await expect(
+    page.getByRole("link", { name: "查看企业能力词典" }),
+  ).toHaveCount(0)
+  await page.getByRole("link", { name: "组织", exact: true }).click()
+  await navigation(page).getByRole("link", { name: "能力词典" }).click()
   await expect(page).toHaveURL("/admin/rules?tab=dictionary")
   await page.goto("/admin/data-ai?tab=bot")
   await expect(page.getByLabel("聊天原文保留天数")).toBeHidden()

@@ -90,7 +90,7 @@ for (const trigger of ["focus", "operation", "query"] as const) {
       { token, orgId: admin.org_id },
     )
     await page.goto("/capacity")
-    const menu = page.getByRole("link", { name: "需求与容量", exact: true })
+    const menu = page.getByRole("link", { name: "规划", exact: true })
     await expect(menu).toBeVisible()
     await expect(page.getByLabel("申请负荷（%）")).toBeVisible()
     if (trigger === "operation") {

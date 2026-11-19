@@ -38,7 +38,7 @@ for (const account of ["admin", "manager.platform", "employee.platform"]) {
     if (account === "employee.platform") {
       await expect(page).toHaveURL("/assistant")
       await expectChineseCopy(page)
-      await page.getByRole("link", { name: "我的画像", exact: true }).click()
+      await page.getByRole("link", { name: "组织", exact: true }).click()
     }
     if (account !== "employee.platform") {
       await page.goto("/employees")
@@ -59,7 +59,9 @@ for (const account of ["admin", "manager.platform", "employee.platform"]) {
     await expectChineseCopy(page)
     await page.keyboard.press("Escape")
     await page.goto("/settings")
-    await expect(page.getByRole("tabpanel")).toContainText("登录名")
+    await expect(page.getByRole("region", { name: "个人信息" })).toContainText(
+      "登录名",
+    )
     const login = await request.post("/api/v1/login/access-token", {
       form: { username: `${account}@demo.example.com`, password },
     })
@@ -69,12 +71,13 @@ for (const account of ["admin", "manager.platform", "employee.platform"]) {
     })
     const { username } = await me.json()
     await expectChineseCopy(page, [username])
-    await page.getByRole("tab", { name: "修改密码" }).click()
     await page.getByRole("button", { name: "保存密码" }).click()
     await expect(page.getByText("请输入密码").first()).toBeVisible()
     await expectChineseCopy(page)
-    await page.getByRole("tab", { name: "外观", exact: true }).click()
-    await page.getByRole("tabpanel").getByTestId("theme-button").click()
+    await page
+      .getByRole("region", { name: "外观" })
+      .getByTestId("theme-button")
+      .click()
     await expect(page.getByRole("menuitem", { name: "跟随系统" })).toBeVisible()
     await expectChineseCopy(page)
   })
@@ -108,7 +111,7 @@ for (const [account, own] of [
     await logInUser(page, `${account}@demo.example.com`, password)
     if (own) {
       await expect(page).toHaveURL("/assistant")
-      await page.getByRole("link", { name: "我的画像", exact: true }).click()
+      await page.getByRole("link", { name: "组织", exact: true }).click()
     }
     if (!own) await page.goto("/employees")
     if (!own)
@@ -147,7 +150,7 @@ test("new employee logs in to a real empty profile without a dictionary", async 
   await createUser({ email, password, withEmptyProfile: true })
   await logInUser(page, email, password)
   await expect(page).toHaveURL("/assistant")
-  await page.getByRole("link", { name: "我的画像", exact: true }).click()
+  await page.getByRole("link", { name: "组织", exact: true }).click()
   await expect(
     page.getByRole("heading", { name: "你的画像还没有内容" }),
   ).toBeVisible()

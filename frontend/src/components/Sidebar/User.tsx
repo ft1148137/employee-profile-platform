@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/sidebar"
 import useAuth from "@/hooks/useAuth"
 import { getInitials } from "@/utils"
-import { railItemClass } from "./Main"
 
 interface UserInfoProps {
   fullName?: string
@@ -127,12 +126,6 @@ export function User({ user }: { user: any }) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </SidebarMenuItem>
-      <SidebarMenuItem>
-        <button type="button" className={railItemClass} onClick={handleLogout}>
-          <LogOut className="size-5" aria-hidden="true" />
-          <span className="whitespace-nowrap">退出登录</span>
-        </button>
       </SidebarMenuItem>
     </SidebarMenu>
   )

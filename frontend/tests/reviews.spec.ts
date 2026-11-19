@@ -135,7 +135,7 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
     }
     if (reviewer === "delegate") {
       await enter(await login(manager), "/settings")
-      await page.getByRole("tab", { name: "代理审批", exact: true }).click()
+      await page.getByRole("link", { name: "偏好与代理", exact: true }).click()
       await page
         .getByLabel("代理人", { exact: true })
         .selectOption({ label: "合成管理员" })
@@ -150,7 +150,7 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       await page.getByRole("button", { name: "保存代理", exact: true }).click()
       await expect(page.getByLabel("代理记录")).toContainText("代理中")
       await page.reload()
-      await page.getByRole("tab", { name: "代理审批", exact: true }).click()
+      await page.getByRole("link", { name: "偏好与代理", exact: true }).click()
       await expect(page.getByLabel("代理记录")).toContainText("合成管理员")
       await expectChineseCopy(page)
     }
@@ -372,9 +372,10 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
     }
     if (reviewer === "admin") {
       await page.setViewportSize({ width: 1280, height: 900 })
+      await page.getByRole("link", { name: "组织", exact: true }).click()
       await page.getByRole("link", { name: "员工", exact: true }).click()
       await page.getByRole("row").filter({ hasText: "合成员工" }).click()
-      await page.getByRole("tab", { name: "证据", exact: true }).click()
+      await page.getByRole("tab", { name: "证据与历史", exact: true }).click()
       await page.getByLabel("证据类型").selectOption("self_report")
       let release = () => {}
       const gate = new Promise<void>((resolve) => {
@@ -389,7 +390,7 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
         url.url().includes(`${base}/evidence/`),
       )
       await page
-        .getByRole("tabpanel", { name: "证据", exact: true })
+        .getByRole("region", { name: "证据", exact: true })
         .getByRole("button")
         .first()
         .click()
@@ -445,7 +446,9 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       path: info.outputPath("review-results-mobile.png"),
       fullPage: true,
     })
-    await expect(page.getByRole("tab", { name: "版本历史" })).toHaveCount(0)
+    await expect(
+      page.getByRole("tab", { name: "证据与历史", exact: true }),
+    ).toHaveCount(0)
     const versions = await request.get(
       `${base}/employees/${subject.id}/profile-versions`,
       { headers: ownerHeaders },
@@ -484,7 +487,7 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
     ).toBeTruthy()
     if (reviewer === "delegate") {
       await enter(await login(manager), "/settings")
-      await page.getByRole("tab", { name: "代理审批", exact: true }).click()
+      await page.getByRole("link", { name: "偏好与代理", exact: true }).click()
       await page.getByRole("button", { name: "撤销代理", exact: true }).click()
       await expect(page.getByLabel("代理记录")).toContainText("已撤销")
     }

@@ -155,7 +155,8 @@ test("manual console completes all fifteen tabs without a model", async ({
   })
 
   await test.step("rules / dictionary: publish through the web editor", async () => {
-    await page.getByRole("link", { name: "能力与规则", exact: true }).click()
+    await page.getByRole("link", { name: "组织", exact: true }).click()
+    await page.getByRole("link", { name: "能力词典", exact: true }).click()
     await page.getByRole("button", { name: "编辑词典", exact: true }).click()
     const editor = page.getByRole("region", { name: "网页编辑能力词典" })
     await editor.getByRole("button", { name: "新增能力", exact: true }).click()
@@ -179,7 +180,7 @@ test("manual console completes all fifteen tabs without a model", async ({
   })
 
   await test.step("rules / approval: save and reopen", async () => {
-    await page.getByRole("tab", { name: "审批规则", exact: true }).click()
+    await page.getByRole("link", { name: "审批规则", exact: true }).click()
     const form = page.getByRole("form", { name: "审批规则", exact: true })
     await form.getByLabel("员工过目期限（天）").fill("7")
     await form.getByRole("button", { name: "保存审批规则" }).click()
@@ -204,7 +205,7 @@ test("manual console completes all fifteen tabs without a model", async ({
   })
 
   await test.step("rules / reminders: save a yearly reminder", async () => {
-    await page.getByRole("tab", { name: "定期提醒", exact: true }).click()
+    await page.getByRole("link", { name: "定期提醒", exact: true }).click()
     const section = page.getByRole("region", { name: "持续更新提醒" })
     await section.getByRole("combobox", { name: "提醒周期" }).click()
     await page.getByRole("option", { name: "每年", exact: true }).click()
@@ -217,7 +218,8 @@ test("manual console completes all fifteen tabs without a model", async ({
   })
 
   await test.step("data / sources: save Jira and import work records", async () => {
-    await page.getByRole("link", { name: "数据与 AI", exact: true }).click()
+    await page.getByRole("link", { name: "设置", exact: true }).click()
+    await page.getByRole("link", { name: "数据来源", exact: true }).click()
     await saveCloud(
       page,
       "https://synthetic.atlassian.net",
@@ -317,11 +319,20 @@ test("manual console completes all fifteen tabs without a model", async ({
       },
       owner,
     )
-    await page.goto(`/employees/${accounts.data[0].id}?tab=appeals`)
+    const employeePath = `/employees/${accounts.data[0].id}`
+    await page.goto(employeePath)
+    const banner = page.getByText("争议处理 · 1 项待处理", { exact: true })
+    await expect(banner).toBeVisible()
+    await expect(page.getByText("申诉原因：希望补充合成依据")).toBeHidden()
+    await banner.click()
+    await expect(page.getByText("申诉原因：希望补充合成依据")).toBeVisible()
+    await page.goto(`${employeePath}?tab=appeals`)
     await expect(page.getByText("申诉原因：希望补充合成依据")).toBeVisible()
     await page.getByLabel("处理说明").fill("请补充后重新提交")
     await page.getByRole("button", { name: "允许重新提交" }).click()
-    await expect(page.getByRole("status")).toContainText("0 项待处理申诉")
+    await expect(
+      page.getByRole("status").filter({ hasText: "待处理申诉" }),
+    ).toHaveText("0 项待处理申诉")
     await page.reload()
     expect(await get("/appeals")).toHaveLength(0)
   })
@@ -343,7 +354,7 @@ test("manual console completes all fifteen tabs without a model", async ({
   })
 
   await test.step("data / bot: save the question guide", async () => {
-    await page.getByRole("tab", { name: "内置机器人", exact: true }).click()
+    await page.getByRole("link", { name: "内置机器人", exact: true }).click()
     await page
       .getByLabel("提问指南", { exact: true })
       .fill("先询问员工希望补充的合成经历。")
@@ -356,8 +367,8 @@ test("manual console completes all fifteen tabs without a model", async ({
   })
 
   await test.step("data / IM: save Feishu credentials without a live connection", async () => {
-    await page.getByRole("link", { name: "数据与 AI", exact: true }).click()
-    await page.getByRole("tab", { name: "IM 入口", exact: true }).click()
+    await page.getByRole("link", { name: "设置", exact: true }).click()
+    await page.getByRole("link", { name: "IM 入口", exact: true }).click()
     const form = page.getByRole("form", { name: "飞书", exact: true })
     await form.getByLabel("应用标识", { exact: true }).fill("synthetic-app")
     await form
@@ -384,7 +395,7 @@ test("manual console completes all fifteen tabs without a model", async ({
   })
 
   await test.step("data / external assistants: save the enterprise switch", async () => {
-    await page.getByRole("tab", { name: "外部 AI 助手", exact: true }).click()
+    await page.getByRole("link", { name: "外部 AI 助手", exact: true }).click()
     await page.getByRole("checkbox", { name: "允许外部 AI 助手" }).check()
     await page.getByLabel("允许的客户端", { exact: true }).fill("Cursor")
     await page.getByRole("button", { name: "保存", exact: true }).click()
@@ -411,8 +422,8 @@ test("manual console completes all fifteen tabs without a model", async ({
       .getByRole("link", { name: "去处理", exact: true })
       .click()
     await expect(page).toHaveURL("/admin/data-ai?tab=model")
-    await page.getByText("更多", { exact: true }).click()
-    await page.getByRole("menuitem", { name: "审计日志", exact: true }).click()
+    await page.getByRole("link", { name: "设置", exact: true }).click()
+    await page.getByRole("link", { name: "审计日志", exact: true }).click()
     await page.getByRole("combobox", { name: "操作类型筛选" }).click()
     await page.getByRole("option", { name: "角色", exact: true }).click()
     await expect(

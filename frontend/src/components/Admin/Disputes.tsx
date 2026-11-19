@@ -7,6 +7,20 @@ import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { useOrg } from "@/hooks/useOrg"
 
+export function useDisputes(orgId?: string, employeeId?: string) {
+  return useQuery({
+    queryKey: ["disputes", orgId, employeeId],
+    enabled: !!orgId,
+    queryFn: async () =>
+      (
+        await AppealsService.listDisputes({
+          path: { org_id: orgId! },
+          query: { employee_id: employeeId },
+        })
+      ).data,
+  })
+}
+
 export function Disputes({
   orgId,
   employeeId,
@@ -15,16 +29,7 @@ export function Disputes({
   employeeId?: string
 }) {
   const { employeeId: currentEmployeeId } = useOrg()
-  const query = useQuery({
-    queryKey: ["disputes", orgId, employeeId],
-    queryFn: async () =>
-      (
-        await AppealsService.listDisputes({
-          path: { org_id: orgId },
-          query: { employee_id: employeeId },
-        })
-      ).data,
-  })
+  const query = useDisputes(orgId, employeeId)
   if (query.isPending) return <ProfileLoading />
   if (query.isError) return <ProfileError retry={() => query.refetch()} />
   return (

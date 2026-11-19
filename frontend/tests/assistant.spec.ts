@@ -25,7 +25,7 @@ test("admin unsent text returns with its conversation after leaving the page", a
   const input = page.getByLabel("发给管理助手的消息")
   await expect(input).toBeEnabled()
   await input.fill("尚未发送的合成管理说明")
-  await page.getByRole("link", { name: "员工", exact: true }).click()
+  await page.getByRole("link", { name: "组织", exact: true }).click()
   await expect(page).toHaveURL("/employees")
   await page.goBack()
   await expect(input).toHaveValue("尚未发送的合成管理说明")
@@ -87,8 +87,8 @@ test("mobile unsent text survives page navigation, stays in its session and clea
   await chooseSession()
   await expect(input).toBeEnabled()
   await input.fill("尚未发送的合成经历")
-  await page.getByRole("link", { name: "我的画像", exact: true }).click()
-  await page.getByRole("link", { name: "聊天", exact: true }).click()
+  await page.getByRole("link", { name: "组织", exact: true }).click()
+  await page.getByRole("link", { name: /^协同/ }).click()
   await expect(input).toHaveValue("尚未发送的合成经历")
   await page.getByRole("button", { name: "会话", exact: true }).click()
   await page
@@ -129,8 +129,8 @@ test("mobile unsent text survives page navigation, stays in its session and clea
   )
   await page.getByRole("button", { name: "发送", exact: true }).click()
   await expect(input).toHaveValue("")
-  await page.getByRole("link", { name: "我的画像", exact: true }).click()
-  await page.getByRole("link", { name: "聊天", exact: true }).click()
+  await page.getByRole("link", { name: "组织", exact: true }).click()
+  await page.getByRole("link", { name: /^协同/ }).click()
   await expect(input).toHaveValue("")
   await input.fill("刷新后不保留")
   await page.reload()
@@ -150,19 +150,27 @@ for (const manager of [false, true]) {
     )
     await expect(page).toHaveURL("/assistant")
     const rail = page.getByTestId("app-rail")
-    const names = [
-      "聊天",
-      "收件箱",
-      ...(manager ? ["待审批"] : []),
-      "我的画像",
-      ...(manager ? ["我的团队", "组织架构", "找人"] : []),
-      "设置",
-    ]
-    await expect(rail.getByRole("link")).toHaveCount(names.length)
-    for (const name of names)
+    await expect(rail.getByRole("link")).toHaveText(
+      ["协同", "组织", "设置"].map(
+        (name) => new RegExp(`^${name}(?:\\s*\\d+)?$`),
+      ),
+    )
+    const spacePanel = page.getByRole("navigation", { name: "空间导航" })
+    await expect(
+      spacePanel.getByRole("link", { name: "AI 助手" }),
+    ).toBeInViewport()
+    await expect(
+      spacePanel.getByRole("link", { name: /^收件箱/ }),
+    ).toBeInViewport()
+    if (manager) {
       await expect(
-        rail.getByRole("link", { name: new RegExp(`^${name}(?: \\d+)?$`) }),
+        spacePanel.getByRole("link", { name: /^待审批/ }),
       ).toBeInViewport()
+    } else {
+      await expect(
+        spacePanel.getByRole("link", { name: /^待审批/ }),
+      ).toHaveCount(0)
+    }
     await expect(page.getByRole("region", { name: "历史对话" })).toBeVisible()
     await expect(
       page.getByRole("navigation", { name: "面包屑" }),
@@ -177,7 +185,7 @@ for (const manager of [false, true]) {
         `../../docs/screenshots/m4.3/assistant-${manager ? "manager" : "employee"}.png`,
       ),
     })
-    await rail.getByRole("link", { name: "我的画像", exact: true }).click()
+    await rail.getByRole("link", { name: "组织", exact: true }).click()
     await expect(page).toHaveURL(/\/employees\/[^/]+$/)
     await expect(
       page.getByRole("button", { name: "打开画像机器人" }),
@@ -264,10 +272,11 @@ test("manager without employee identity keeps the team landing and cannot start 
     process.env.DEMO_USER_PASSWORD!,
   )
   await expect(page).toHaveURL("/employees")
+  await page.getByRole("link", { name: /^协同/ }).click()
   await expect(
     page
-      .getByTestId("app-rail")
-      .getByRole("link", { name: "聊天", exact: true }),
+      .getByRole("navigation", { name: "空间导航" })
+      .getByRole("link", { name: "AI 助手", exact: true }),
   ).toHaveCount(0)
   await page.goto("/assistant")
   await expect(page.getByRole("alert")).toContainText("没有员工身份")

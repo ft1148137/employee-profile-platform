@@ -186,7 +186,7 @@ for (const action of ["允许", "拒绝", "企业关闭"] as const) {
       ).ok(),
     ).toBeTruthy()
     await page.goto("/settings")
-    await page.getByRole("tab", { name: "连接 AI 助手" }).click()
+    await page.getByRole("link", { name: "连接与集成" }).click()
     const grants = page.getByRole("region", { name: "已授权的客户端" })
     await expect(
       grants.getByText("合成测试助手", { exact: true }),
