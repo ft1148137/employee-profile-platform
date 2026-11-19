@@ -45,6 +45,14 @@ for (const size of [
         ],
       })
     })
+    await page.route("**/me/inbox?*", (route) =>
+      route.fulfill({
+        json: { data: [], count: 0, unread_count: 3, pending_count: 0 },
+      }),
+    )
+    await page.route("**/orgs/*/reviews", (route) =>
+      route.fulfill({ json: { data: [], count: 2 } }),
+    )
     await logInUser(
       page,
       "admin@demo.example.com",
@@ -72,16 +80,29 @@ for (const size of [
     for (const link of await rail.getByRole("link").all()) {
       await expect(link).toBeInViewport({ ratio: 1 })
     }
-    for (const name of ["能力与规则", "数据与 AI"]) {
-      await expect(
-        page
-          .getByRole("navigation", { name: "管理菜单" })
-          .getByRole("link", { name, exact: true }),
-      ).toBeInViewport({ ratio: 1 })
-    }
-    await expect(page.getByText("更多", { exact: true })).toBeInViewport({
-      ratio: 1,
-    })
+    const spacePanel = page.getByRole("navigation", { name: "空间导航" })
+    await expect(
+      rail.getByRole("link", { name: "协同 5", exact: true }),
+    ).toBeVisible()
+    await expect(
+      spacePanel.getByRole("link", { name: "收件箱 3", exact: true }),
+    ).toBeVisible()
+    await expect(
+      spacePanel.getByRole("link", { name: "待审批 2", exact: true }),
+    ).toBeVisible()
+    await expect(
+      spacePanel.getByRole("link", { name: "AI 助手" }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: "更多", exact: true }),
+    ).toHaveCount(0)
+    await page.getByRole("button", { name: "折叠空间导航" }).click()
+    await expect(spacePanel).toHaveCount(0)
+    await expect(rail).toBeVisible()
+    await page.getByRole("button", { name: "展开空间导航" }).click()
+    await expect(
+      spacePanel.getByRole("link", { name: "AI 助手" }),
+    ).toBeVisible()
     await expect(page.getByTestId("user-menu")).toBeInViewport({ ratio: 1 })
     await sidebar
       .getByRole("link", { name: entries[1].preview, exact: true })
@@ -96,7 +117,8 @@ for (const size of [
       page.getByRole("navigation", { name: "面包屑" }),
     ).toContainText(entries[1].preview)
     const node = await rail.elementHandle()
-    await page.getByRole("link", { name: "员工", exact: true }).click()
+    await rail.getByRole("link", { name: "组织", exact: true }).click()
+    await spacePanel.getByRole("link", { name: "员工", exact: true }).click()
     await expect(
       page.getByRole("heading", { name: "员工", exact: true }),
     ).toBeVisible()
@@ -112,7 +134,7 @@ for (const size of [
           "../../docs/screenshots/m4.2/admin-rail-people.png",
         ),
       })
-    await page.getByRole("link", { name: "聊天", exact: true }).click()
+    await page.getByRole("link", { name: /^协同/ }).click()
     await sidebar
       .getByRole("link", { name: entries[0].preview, exact: true })
       .click()
@@ -199,21 +221,20 @@ test("unconfigured model allows history and every manual menu", async ({
   await page.getByRole("link", { name: "合成历史对话", exact: true }).click()
   await expect(page.getByRole("log")).toContainText("历史内容仍可查看")
   await expect(page.getByRole("log")).toContainText(reason)
-  for (const [name, route] of [
-    ["能力与规则", "/admin/rules"],
-    ["数据与 AI", "/admin/data-ai"],
+  const rail = page.getByTestId("app-rail")
+  const spacePanel = page.getByRole("navigation", { name: "空间导航" })
+  for (const [space, name, route] of [
+    ["组织", "能力词典", "/admin/rules?tab=dictionary"],
+    ["设置", "数据来源", "/admin/data-ai?tab=sources"],
   ]) {
-    await page
-      .getByRole("navigation", { name: "管理菜单" })
-      .getByRole("link", { name, exact: true })
-      .click()
+    await rail.getByRole("link", { name: space, exact: true }).click()
+    await spacePanel.getByRole("link", { name, exact: true }).click()
     await expect(page).toHaveURL(route)
   }
-  await page.getByRole("button", { name: "更多", exact: true }).click()
-  await expect(
-    page.getByRole("menuitem", { name: "首次设置", exact: false }),
-  ).toHaveCount(0)
-  await page.getByRole("menuitem", { name: "审计日志", exact: true }).click()
+  await expect(spacePanel.getByRole("link", { name: "首次设置" })).toHaveCount(
+    0,
+  )
+  await spacePanel.getByRole("link", { name: "审计日志", exact: true }).click()
   await expect(
     page.getByRole("heading", { name: "审计日志", exact: true }),
   ).toBeVisible()
@@ -357,14 +378,11 @@ test("mobile conversation sheet switches sessions and starts a new task", async 
   await expect(page.getByRole("navigation", { name: "面包屑" })).toContainText(
     "新对话",
   )
-  // Short windows move trailing manual entries into More, keeping the rail visible.
-  await page.setViewportSize({ width: 390, height: 480 })
-  await page.getByRole("button", { name: "更多", exact: true }).click()
-  await expect(
-    page.getByRole("menuitem", { name: "数据与 AI", exact: true }),
-  ).toBeVisible()
-  await page.getByRole("menuitem", { name: "数据与 AI", exact: true }).click()
-  await expect(page).toHaveURL("/admin/data-ai")
+  await page.getByTestId("app-rail").getByRole("link", { name: "设置" }).click()
+  await page.getByRole("button", { name: "打开空间导航" }).click()
+  const navigation = page.getByRole("dialog", { name: "空间导航", exact: true })
+  await navigation.getByRole("link", { name: "数据来源", exact: true }).click()
+  await expect(page).toHaveURL("/admin/data-ai?tab=sources")
 })
 
 test("employees have assistant navigation without a floating bot", async ({
@@ -376,27 +394,23 @@ test("employees have assistant navigation without a floating bot", async ({
     process.env.DEMO_USER_PASSWORD!,
   )
   const rail = page.getByTestId("app-rail")
+  const spacePanel = page.getByRole("navigation", { name: "空间导航" })
+  await expect(spacePanel.getByRole("link", { name: /^收件箱/ })).toBeVisible()
+  await expect(spacePanel.getByRole("link", { name: "AI 助手" })).toBeVisible()
+  await rail.getByRole("link", { name: "组织", exact: true }).click()
   await expect(
-    rail.getByRole("link", { name: "我的画像", exact: true }),
+    spacePanel.getByRole("link", { name: "我的画像", exact: true }),
   ).toBeVisible()
   await expect(
-    rail.getByRole("link", { name: /^收件箱(?: \d+)?$/, exact: true }),
+    spacePanel.getByRole("link", { name: "能力词典", exact: true }),
   ).toBeVisible()
-  for (const name of [
-    "员工",
-    "首页",
-    "人员",
-    "能力与规则",
-    "数据与 AI",
-    "连接",
-  ])
-    await expect(rail.getByRole("link", { name, exact: true })).toHaveCount(0)
+  for (const name of ["员工", "我的团队", "组织架构", "审批规则", "找人"])
+    await expect(
+      spacePanel.getByRole("link", { name, exact: true }),
+    ).toHaveCount(0)
   await expect(
     rail.getByRole("button", { name: "更多", exact: true }),
   ).toHaveCount(0)
-  await expect(
-    rail.getByRole("link", { name: "聊天", exact: true }),
-  ).toBeVisible()
   await expect(
     page.getByRole("button", { name: "打开画像机器人", exact: true }),
   ).toHaveCount(0)

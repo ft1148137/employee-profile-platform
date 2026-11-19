@@ -112,7 +112,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   ).toHaveCount(0)
   await open(tokens.get("E")!)
   await expect(
-    page.getByRole("link", { name: "需求与容量", exact: true }),
+    page.getByRole("link", { name: "规划", exact: true }),
   ).toBeVisible()
   await expect(page.getByRole("tab", { name: "团队负荷" })).toHaveCount(0)
   await page.goto("/capacity?tab=team")
@@ -150,7 +150,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     ).toHaveCount(2)
     await open(tokens.get("M")!, "/capacity?tab=approvals")
     await expect(
-      page.getByRole("link", { name: "需求与容量", exact: true }),
+      page.getByRole("link", { name: "规划", exact: true }),
     ).toBeVisible()
     await page.reload()
     await expect(page.getByRole("tab", { name: "待我审批" })).toHaveAttribute(
@@ -344,7 +344,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
       }),
     ).toBeVisible()
     await expect(
-      page.getByRole("link", { name: "需求与容量", exact: true }),
+      page.getByRole("link", { name: "规划", exact: true }),
     ).toHaveCount(0)
   }
   await open(tokens.get("M")!, "/find-people")

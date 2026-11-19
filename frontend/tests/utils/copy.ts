@@ -12,15 +12,18 @@ const allowedWords = [
   "RKNN",
 ]
 
-/** Ignore addresses and URLs (user data), and explicitly allow technical terms. */
+/** Ignore addresses, URLs and exact fixture values, and allow named technical terms. */
 export async function expectChineseCopy(
   scope: Page | Locator,
   extraAllowedWords: string[] = [],
+  fixtureValues: string[] = [],
 ) {
   const root = "mainFrame" in scope ? scope.locator("body") : scope
   // biome-ignore lint/performance/useDomNodeTextContent: This check must exclude hidden text.
   const visibleText = await root.innerText()
-  const text = visibleText
+  const text = fixtureValues
+    .filter(Boolean)
+    .reduce((copy, value) => copy.split(value).join(" "), visibleText)
     .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, "")
     .replace(/https?:\/\/\S+/gi, "")
   const allowed = new Set(

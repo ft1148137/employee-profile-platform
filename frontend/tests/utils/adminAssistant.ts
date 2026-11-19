@@ -13,7 +13,7 @@ export async function openAdminAssistant(page: Page) {
       )?.[1],
   )
   if (id) await page.goto(`/admin/assistant?session=${id}`)
-  else await page.getByRole("link", { name: "聊天", exact: true }).click()
+  else await page.getByRole("link", { name: /^协同/ }).click()
   await expect(
     page.getByRole("heading", { name: "管理助手", exact: true }),
   ).toBeVisible()

@@ -39,20 +39,20 @@ test("admin manages account, roles and history from the unified employee detail"
     name: "员工详情",
     exact: true,
   })
-  for (const name of ["画像", "档案", "账号与角色", "Jira 账号", "争议"]) {
+  for (const name of ["能力画像", "证据与历史", "档案与账号"]) {
     await expect(
       detailTabs.getByRole("tab", { name, exact: true }),
     ).toBeVisible()
   }
-  await detailTabs.getByRole("tab", { name: "档案", exact: true }).click()
+  await expect(detailTabs.getByRole("tab")).toHaveCount(3)
+  await expect(page.getByRole("tablist")).toHaveCount(1)
+  await expect(page.getByText(/^争议处理/)).toHaveCount(0)
   await expect(page.getByRole("region", { name: "员工信息" })).toContainText(
     "E12",
   )
-  await detailTabs.getByRole("tab", { name: "Jira 账号", exact: true }).click()
   await expect(
     page.getByRole("heading", { name: "Jira 账号匹配" }),
   ).toBeVisible()
-  await detailTabs.getByRole("tab", { name: "账号与角色", exact: true }).click()
   const history = page.getByRole("region", { name: "修改记录" })
   await expect(history).toContainText("生成账号")
   await page.getByRole("button", { name: "重置密码", exact: true }).click()
@@ -116,7 +116,7 @@ test("admin manages account, roles and history from the unified employee detail"
 })
 
 for (const username of ["manager.platform", "employee.platform"]) {
-  test(`${username} sees only compact profile, including a restricted tab URL`, async ({
+  test(`${username} sees only authorized profile and personnel fields on legacy links`, async ({
     page,
     request,
   }) => {
@@ -145,24 +145,41 @@ for (const username of ["manager.platform", "employee.platform"]) {
     const adminRequests: string[] = []
     page.on("request", (request) => {
       if (
-        /\/(accounts|role-grants|external-identities|appeals)(\?|$)/.test(
+        /\/(accounts|role-grants|external-identities|appeals)([/?]|$)/.test(
           request.url(),
         )
       )
         adminRequests.push(request.url())
     })
     await page.goto(`/employees/${subject.id}?tab=account`)
-    await expect(
-      page.getByRole("tablist", { name: "员工详情", exact: true }),
-    ).toHaveCount(0)
-    await expect(page.getByRole("region", { name: "员工信息" })).toHaveCount(0)
-    for (const tab of ["证据", "版本历史", "档案"])
+    const detailTabs = page.getByRole("tablist", {
+      name: "员工详情",
+      exact: true,
+    })
+    await expect(detailTabs.getByRole("tab")).toHaveCount(2)
+    for (const tab of ["证据与历史", "档案与账号", "争议"])
       await expect(
-        page.getByRole("tab", { name: tab, exact: true }),
+        detailTabs.getByRole("tab", { name: tab, exact: true }),
       ).toHaveCount(0)
+    await expect(page.getByRole("region", { name: "账号与角色" })).toHaveCount(
+      0,
+    )
+    await expect(
+      page.getByRole("region", { name: "Jira 账号匹配" }),
+    ).toHaveCount(0)
     await page.goto(`/employees/${subject.id}?tab=fields`)
     await page.reload()
-    await expect(page.getByRole("region", { name: "员工信息" })).toHaveCount(0)
+    await expect(
+      detailTabs.getByRole("tab", {
+        name: "档案",
+        exact: true,
+        selected: true,
+      }),
+    ).toBeVisible()
+    await expect(page.getByRole("region", { name: "员工信息" })).toBeVisible()
+    await expect(page.getByRole("region", { name: "账号与角色" })).toHaveCount(
+      0,
+    )
     await expect(
       page.getByRole("button", { name: "调岗", exact: true }),
     ).toHaveCount(0)
@@ -243,7 +260,9 @@ test("link a searched Jira account to this employee and unlink it", async ({
       ).ok(),
     ).toBeTruthy()
   await page.goto(`/employees/${employee.id}?tab=identities`)
-  await page.getByRole("tab", { name: "未关联", exact: true }).click()
+  await page
+    .getByRole("combobox", { name: "账号关联状态" })
+    .selectOption("unlinked")
   await page.getByLabel("搜索账号、名字或邮箱").fill(identity.external_id)
   await page
     .getByRole("combobox", { name: "关联账号", exact: true })

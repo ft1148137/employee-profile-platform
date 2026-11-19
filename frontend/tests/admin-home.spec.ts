@@ -253,7 +253,9 @@ test("assistant shows status and appeal todo through resubmission", async ({
   await page.getByLabel("处理说明").fill("请在新草稿补充合成依据")
   await expectChineseCopy(page)
   await page.getByRole("button", { name: "允许重新提交" }).click()
-  await expect(page.getByRole("status")).toContainText("0 项待处理申诉")
+  await expect(
+    page.getByRole("status").filter({ hasText: "待处理申诉" }),
+  ).toHaveText("0 项待处理申诉")
   await page.goto("/admin")
   await expect(
     page.getByRole("region", { name: "今天要处理的事" }),

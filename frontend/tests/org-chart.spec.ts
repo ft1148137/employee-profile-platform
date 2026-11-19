@@ -73,7 +73,7 @@ test("admin opens department reporting tree, person chain and employee details",
     page.getByRole("heading", { name: "员工", exact: true }),
   ).toBeVisible()
   await page
-    .getByRole("navigation", { name: "主导航", exact: true })
+    .getByRole("navigation", { name: "空间导航", exact: true })
     .getByRole("link", { name: "组织架构", exact: true })
     .click()
   await expect(page).toHaveURL(/\/org-chart$/)
@@ -224,7 +224,7 @@ test("manager chart excludes other departments", async ({ page }, testInfo) => {
     page.getByRole("heading", { name: "员工", exact: true }),
   ).toBeVisible()
   await page
-    .getByRole("navigation", { name: "主导航", exact: true })
+    .getByRole("navigation", { name: "空间导航", exact: true })
     .getByRole("link", { name: "组织架构", exact: true })
     .click()
   await expect(
@@ -261,9 +261,10 @@ test("employees cannot navigate to or open org chart", async ({ page }) => {
     "employee.platform@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
+  await page.getByRole("link", { name: "组织", exact: true }).click()
   await expect(
     page
-      .getByRole("navigation", { name: "主导航", exact: true })
+      .getByRole("navigation", { name: "空间导航", exact: true })
       .getByRole("link", { name: "组织架构", exact: true }),
   ).toHaveCount(0)
   await page.goto("/org-chart")

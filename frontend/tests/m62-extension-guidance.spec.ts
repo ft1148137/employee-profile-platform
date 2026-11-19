@@ -179,7 +179,7 @@ test("延期显示审批人、受阻指引和代理标示，代理给目标经�
   await expect(extension).toContainText("2026-12-31 或之前再申请")
   const delegate = async (code: string) => {
     await page.goto("/settings")
-    await page.getByRole("tab", { name: "代理审批", exact: true }).click()
+    await page.getByRole("link", { name: "偏好与代理", exact: true }).click()
     await page
       .getByLabel("代理人", { exact: true })
       .selectOption(person(code).account!.user_id)
@@ -208,7 +208,7 @@ test("延期显示审批人、受阻指引和代理标示，代理给目标经�
     page.getByRole("article", { name: "员工的调整申请" }),
   ).toContainText("代 合成原审批人 审批（原审批人：合成原审批人）")
   await open(tokens.get("C")!, "/settings")
-  await page.getByRole("tab", { name: "代理审批", exact: true }).click()
+  await page.getByRole("link", { name: "偏好与代理", exact: true }).click()
   await page.getByRole("button", { name: "撤销代理" }).click()
   await expect(page.getByRole("region", { name: "代理记录" })).toContainText(
     "已撤销",

@@ -44,7 +44,7 @@ for (const [decision, summary] of [
       },
     )
     await logInUser(page, "employee.platform@demo.example.com", password)
-    await page.getByRole("link", { name: "我的画像", exact: true }).click()
+    await page.getByRole("link", { name: "组织", exact: true }).click()
     const processed = page.getByRole("region", { name: "已处理请求" })
     await expect(processed).toContainText(summary)
     await expect(processed).toContainText("合成能力1：批准")
@@ -136,7 +136,7 @@ test("old initial draft previews the current value and submits an edited proposa
     await route.fulfill({ json: { ...draft, status: "pending_review" } })
   })
   await logInUser(page, "employee.platform@demo.example.com", password)
-  await page.getByRole("link", { name: "我的画像", exact: true }).click()
+  await page.getByRole("link", { name: "组织", exact: true }).click()
   await page.getByRole("button", { name: "直接提交", exact: true }).click()
   const dialog = page.getByRole("dialog")
   await expect(dialog).toContainText("经理已发布的当前判断")

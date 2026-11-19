@@ -205,23 +205,40 @@ export function IdentityTable({
           重试
         </Button>
       )}
-      <Tabs
-        value={status}
-        onValueChange={(value) => {
-          setStatus(value === "linked" ? "linked" : "unlinked")
-          resetSelection()
-        }}
-      >
-        <TabsList aria-label="账号关联状态">
-          <TabsTrigger value="unlinked" disabled={actionPending}>
-            未关联{!employeeId && `（${unlinked.length}）`}
-          </TabsTrigger>
-          <TabsTrigger value="linked" disabled={actionPending}>
-            已关联{!employeeId && `（${linked.length}）`}
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {!employeeId && (
+        <Tabs
+          value={status}
+          onValueChange={(value) => {
+            setStatus(value === "linked" ? "linked" : "unlinked")
+            resetSelection()
+          }}
+        >
+          <TabsList aria-label="账号关联状态">
+            <TabsTrigger value="unlinked" disabled={actionPending}>
+              未关联（{unlinked.length}）
+            </TabsTrigger>
+            <TabsTrigger value="linked" disabled={actionPending}>
+              已关联（{linked.length}）
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      )}
       <div className="flex flex-wrap items-center gap-3">
+        {employeeId && (
+          <select
+            aria-label="账号关联状态"
+            className="h-9 rounded-md border bg-background px-3 text-sm"
+            value={status}
+            disabled={actionPending}
+            onChange={(event) => {
+              setStatus(event.target.value === "linked" ? "linked" : "unlinked")
+              resetSelection()
+            }}
+          >
+            <option value="linked">已关联</option>
+            <option value="unlinked">未关联</option>
+          </select>
+        )}
         <Input
           aria-label="搜索账号、名字或邮箱"
           placeholder="搜索账号、名字或邮箱"

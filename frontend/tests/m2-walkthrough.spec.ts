@@ -85,8 +85,8 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
   await page.getByRole("button", { name: "完成模型配置", exact: true }).click()
   await page.goto("/admin/rules?tab=approval")
   await expect(
-    page.getByRole("tab", { name: "审批规则", exact: true, selected: true }),
-  ).toBeVisible()
+    page.getByRole("link", { name: "审批规则", exact: true }),
+  ).toHaveAttribute("aria-current", "page")
   await expect(page.getByLabel("全企业需要经理确认")).toBeChecked()
   await expect(page.getByLabel("员工过目期限（天）")).toHaveValue("14")
   await page.goto("/admin/data-ai?tab=model")
@@ -132,7 +132,7 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
     .fill("synthetic-new-password-2026")
   await page.getByRole("button", { name: "保存密码" }).click()
   await expect(page).toHaveURL("/assistant")
-  await page.getByRole("link", { name: "我的画像", exact: true }).click()
+  await page.getByRole("link", { name: "组织", exact: true }).click()
   await expect(
     page.getByRole("heading", { name: "待你过目：系统起草的初始画像" }),
   ).toBeVisible()

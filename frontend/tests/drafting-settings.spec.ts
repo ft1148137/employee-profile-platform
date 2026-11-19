@@ -34,12 +34,12 @@ test("drafting settings and personal choice persist with role boundaries", async
   })
   await logInUser(employeePage, "employee.platform@demo.example.com", password)
   await expect(employeePage).toHaveURL("/assistant")
-  await employeePage
-    .getByRole("link", { name: "我的画像", exact: true })
-    .click()
+  await employeePage.getByRole("link", { name: "组织", exact: true }).click()
   const employeeProfileUrl = new URL(employeePage.url()).pathname
   await employeePage.goto("/settings")
-  await employeePage.getByRole("tab", { name: "自动起草", exact: true }).click()
+  await employeePage
+    .getByRole("link", { name: "偏好与代理", exact: true })
+    .click()
   const employeeToken = await employeePage.evaluate(() =>
     localStorage.getItem("access_token"),
   )
@@ -129,7 +129,7 @@ test("drafting settings and personal choice persist with role boundaries", async
     })
     await employeePage.reload()
     await employeePage
-      .getByRole("tab", { name: "自动起草", exact: true })
+      .getByRole("link", { name: "偏好与代理", exact: true })
       .click()
     await expect(
       employeePage.getByText("企业目前没有打开自动起草。"),
@@ -141,17 +141,18 @@ test("drafting settings and personal choice persist with role boundaries", async
     await expect(toggle).not.toBeChecked()
     await employeePage.reload()
     await employeePage
-      .getByRole("tab", { name: "自动起草", exact: true })
+      .getByRole("link", { name: "偏好与代理", exact: true })
       .click()
     await expect(toggle).not.toBeChecked()
-    await expect(
-      employeePage.getByRole("link", { name: "能力与规则", exact: true }),
-    ).toHaveCount(0)
     await expectChineseCopy(employeePage)
     await employeePage.screenshot({
       path: "test-results/auto-draft-preference.png",
       fullPage: true,
     })
+    await employeePage.getByRole("link", { name: "组织", exact: true }).click()
+    await expect(
+      employeePage.getByRole("link", { name: "审批规则", exact: true }),
+    ).toHaveCount(0)
     await logInUser(managerPage, "manager.platform@demo.example.com", password)
     await managerPage.goto(employeeProfileUrl)
     await expect(
@@ -159,7 +160,7 @@ test("drafting settings and personal choice persist with role boundaries", async
     ).toBeVisible()
     await expect(managerPage.getByRole("switch")).toHaveCount(0)
     await expect(
-      managerPage.getByRole("link", { name: "能力与规则", exact: true }),
+      managerPage.getByRole("link", { name: "审批规则", exact: true }),
     ).toHaveCount(0)
   } finally {
     expect(

@@ -233,11 +233,13 @@ test("M4.3 screenshots: file preview, web approval, profiles, settings and direc
     ).toBeTruthy()
     await enter(ownerToken, "/assistant")
     await expect(page.getByRole("region", { name: "历史对话" })).toBeVisible()
+    await page.getByRole("link", { name: "组织", exact: true }).click()
     await expect(
       page
-        .getByTestId("app-rail")
+        .getByRole("navigation", { name: "空间导航" })
         .getByRole("link", { name: "我的团队", exact: true }),
     ).toHaveCount(0)
+    await page.getByRole("link", { name: /^协同/ }).click()
     await expect(page.getByLabel("选择对话附件")).toBeEnabled()
     const upload = page.waitForResponse(
       (response) =>
@@ -277,11 +279,13 @@ test("M4.3 screenshots: file preview, web approval, profiles, settings and direc
 
     await enter(managerToken, "/assistant")
     await expect(page.getByRole("region", { name: "历史对话" })).toBeVisible()
+    await page.getByRole("link", { name: "组织", exact: true }).click()
     await expect(
       page
-        .getByTestId("app-rail")
+        .getByRole("navigation", { name: "空间导航" })
         .getByRole("link", { name: "我的团队", exact: true }),
     ).toBeVisible()
+    await page.getByRole("link", { name: /^协同/ }).click()
     await page.getByLabel("发给机器人的消息").fill("列出待审批，批准这条请求")
     await page.getByRole("button", { name: "发送", exact: true }).click()
     const review = page.getByRole("region", { name: "审批决定复述" })
@@ -312,16 +316,17 @@ test("M4.3 screenshots: file preview, web approval, profiles, settings and direc
     await expect(capability).not.toContainText("独立完成订单接口设计与联调")
     await expect(capability).not.toContainText("依据")
     await expect(
-      page.getByRole("tab", { name: "档案", exact: true }),
+      page.getByRole("tab", { name: "档案与账号", exact: true }),
     ).toHaveCount(0)
     await screenshot("manager-team-profile")
-    await page.goto("/settings")
+    await page.getByRole("link", { name: "组织", exact: true }).click()
     await page.getByRole("tab", { name: "档案", exact: true }).click()
     await expect(page.getByRole("region", { name: "员工信息" })).toContainText(
       "研发部",
     )
+    await page.goto("/settings?section=integrations")
     await expect(
-      page.getByRole("tab", { name: "Jira 账号", exact: true }),
+      page.getByRole("heading", { name: "Jira 账号", exact: true }),
     ).toBeVisible()
     await screenshot("manager-settings")
 
@@ -332,13 +337,14 @@ test("M4.3 screenshots: file preview, web approval, profiles, settings and direc
       page.getByRole("button", { name: "直接修改", exact: true }),
     ).toHaveCount(0)
     await screenshot("employee-profile")
-    await page.goto("/settings")
+    await page.getByRole("link", { name: "组织", exact: true }).click()
     await page.getByRole("tab", { name: "档案", exact: true }).click()
     await expect(page.getByRole("region", { name: "员工信息" })).toContainText(
       "研发部",
     )
+    await page.goto("/settings?section=preferences")
     await expect(
-      page.getByRole("tab", { name: "自动起草", exact: true }),
+      page.getByRole("region", { name: "自动起草偏好", exact: true }),
     ).toBeVisible()
     await screenshot("employee-settings")
 

@@ -5,10 +5,23 @@ import {
   useLocation,
 } from "@tanstack/react-router"
 import axios, { AxiosError } from "axios"
+import { ChevronRight, Menu, PanelLeft } from "lucide-react"
 import { UsersService } from "@/client"
 import { BotPanel } from "@/components/Bot/BotPanel"
 import AppSidebar from "@/components/Sidebar/AppSidebar"
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import {
+  SpacePanel,
+  spaceTitles,
+  useWorkspaceNavigation,
+} from "@/components/Sidebar/SpacePanel"
+import { Button } from "@/components/ui/button"
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
 import { isLoggedIn } from "@/hooks/useAuth"
 import { useOrg } from "@/hooks/useOrg"
 import { authReturnPath } from "@/utils"
@@ -53,30 +66,105 @@ export const Route = createFileRoute("/_layout")({
 })
 
 function Layout() {
-  const location = useLocation()
-  const { roles } = useOrg()
-  const assistant = ["/admin/assistant", "/assistant"].includes(
-    location.pathname.replace(/\/$/, ""),
-  )
   return (
     <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset className="min-w-0">
-        {!assistant && (
-          <header className="sticky top-0 z-10 h-16 shrink-0 border-b bg-background" />
-        )}
+      <Workspace />
+    </SidebarProvider>
+  )
+}
+
+function Workspace() {
+  const { pathname } = useLocation()
+  const { roles } = useOrg()
+  const { open, openMobile, setOpenMobile, toggleSidebar, isMobile } =
+    useSidebar()
+  const navigation = useWorkspaceNavigation()
+  const { space, pageTitle, isAssistant } = navigation
+  return (
+    <>
+      <AppSidebar {...navigation} />
+      {open && (
+        <aside
+          id="workspace-navigation"
+          className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r bg-sidebar md:flex"
+        >
+          <SpacePanel {...navigation} />
+        </aside>
+      )}
+      <div
+        className={`flex min-w-0 flex-1 flex-col ${isAssistant ? "h-dvh" : ""}`}
+      >
+        <header className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b bg-background px-3 md:px-4">
+          {isMobile ? (
+            <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+              <SheetTrigger asChild>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label="打开空间导航"
+                >
+                  <Menu aria-hidden="true" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="left"
+                aria-describedby={undefined}
+                className="w-64 max-w-full gap-0 bg-sidebar"
+              >
+                <SheetTitle className="sr-only">空间导航</SheetTitle>
+                <SpacePanel
+                  {...navigation}
+                  onNavigate={() => setOpenMobile(false)}
+                />
+              </SheetContent>
+            </Sheet>
+          ) : (
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              aria-label={open ? "折叠空间导航" : "展开空间导航"}
+              aria-expanded={open}
+              aria-controls={open ? "workspace-navigation" : undefined}
+              onClick={toggleSidebar}
+            >
+              <PanelLeft aria-hidden="true" />
+            </Button>
+          )}
+          {!isAssistant && (
+            <nav
+              aria-label="面包屑"
+              className="flex min-w-0 items-center gap-2 text-sm"
+            >
+              <span className="shrink-0 text-muted-foreground">
+                {spaceTitles[space]}
+              </span>
+              {pageTitle && (
+                <>
+                  <ChevronRight
+                    aria-hidden="true"
+                    className="size-4 shrink-0 text-muted-foreground"
+                  />
+                  <span aria-current="page" className="truncate font-medium">
+                    {pageTitle}
+                  </span>
+                </>
+              )}
+            </nav>
+          )}
+        </header>
         <main
           className={
-            assistant ? "flex min-h-0 flex-1 flex-col" : "flex-1 p-6 md:p-8"
+            isAssistant ? "min-h-0 flex-1" : "flex-1 p-4 md:p-6 xl:p-8"
           }
         >
-          <div className={assistant ? "h-dvh min-h-0" : "mx-auto max-w-7xl"}>
+          <div className={isAssistant ? "h-full min-h-0" : "mx-auto max-w-7xl"}>
             <Outlet />
           </div>
         </main>
-      </SidebarInset>
-      {roles.includes("org_admin") &&
-        !/^\/admin(?:\/|$)/.test(location.pathname) && <BotPanel />}
-    </SidebarProvider>
+      </div>
+      {roles.includes("org_admin") && !/^\/admin(?:\/|$)/.test(pathname) && (
+        <BotPanel />
+      )}
+    </>
   )
 }

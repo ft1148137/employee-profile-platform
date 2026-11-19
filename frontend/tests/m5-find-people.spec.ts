@@ -47,7 +47,7 @@ test("manager filters by capability and minimum level and opens the profile", as
     expect(query.get("minimum_level")).toBe("independent_complex")
     return route.fulfill({ json: { data: [row], count: 1 } })
   })
-  await page.getByRole("link", { name: "找人", exact: true }).click()
+  await page.goto("/find-people")
   await page.getByRole("combobox", { name: "能力（必选）" }).click()
   await page.getByRole("option", { name: capability.name, exact: true }).click()
   await page.getByRole("combobox", { name: "最低等级" }).click()

@@ -11,7 +11,7 @@ test("employee sees character counts and cannot preview oversized text", async (
     "employee.platform@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
-  await page.getByRole("link", { name: "我的画像", exact: true }).click()
+  await page.getByRole("link", { name: "组织", exact: true }).click()
   await page
     .getByRole("region", { name: "初始画像草稿", exact: true })
     .getByRole("button", { name: "修改", exact: true })

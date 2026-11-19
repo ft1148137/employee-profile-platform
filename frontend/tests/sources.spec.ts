@@ -209,8 +209,9 @@ for (const account of ["manager.platform", "employee.platform"]) {
       `${account}@demo.example.com`,
       process.env.DEMO_USER_PASSWORD!,
     )
+    await page.getByRole("link", { name: "设置", exact: true }).click()
     await expect(
-      page.getByRole("link", { name: "数据与 AI", exact: true }),
+      page.getByRole("link", { name: "数据来源", exact: true }),
     ).toHaveCount(0)
     await page.goto("/admin/sources")
     await expect(page.getByRole("alert")).toContainText(

@@ -48,7 +48,7 @@ test("grant and revoke a department manager, preserve the last administrator", a
   await expect(
     page.getByRole("heading", { name: "账号与角色", exact: true }),
   ).toBeVisible()
-  await expectChineseCopy(page, ["admin", "superadmin"])
+  await expectChineseCopy(page, ["admin", "superadmin"], ["demo-jira-10"])
   await page.screenshot({
     path: "test-results/admin-roles.png",
     animations: "disabled",
@@ -65,7 +65,7 @@ test("grant and revoke a department manager, preserve the last administrator", a
   await dialog.getByRole("combobox", { name: "部门", exact: true }).click()
   await page.getByRole("option", { name: "平台研发部", exact: true }).click()
   await expect(page.getByRole("listbox")).toBeHidden()
-  await expectChineseCopy(page, ["admin", "superadmin"])
+  await expectChineseCopy(page, ["admin", "superadmin"], ["demo-jira-10"])
   await page.screenshot({
     path: "test-results/admin-grant-role.png",
     animations: "disabled",
@@ -83,7 +83,7 @@ test("grant and revoke a department manager, preserve the last administrator", a
   await expect(row).toContainText("平台研发部")
   await row.getByRole("button", { name: "撤销角色", exact: true }).click()
   await expect(dialog).toContainText("部门经理")
-  await expectChineseCopy(page, ["admin", "superadmin"])
+  await expectChineseCopy(page, ["admin", "superadmin"], ["demo-jira-10"])
   await dialog.getByRole("button", { name: "确认撤销角色" }).click()
   await expect(row).toContainText("暂无管理角色")
   const adminGrant = await request.post(`${base}/role-grants`, {
@@ -117,7 +117,7 @@ test("grant and revoke a department manager, preserve the last administrator", a
     "不能移除最后一名有效的企业管理员",
   )
   await expect(dialog).toBeVisible()
-  await expectChineseCopy(page, ["admin", "superadmin"])
+  await expectChineseCopy(page, ["admin", "superadmin"], ["demo-jira-10"])
   await page.unroute(revokePattern)
   await dialog.getByRole("button", { name: "取消", exact: true }).click()
   await page.reload()

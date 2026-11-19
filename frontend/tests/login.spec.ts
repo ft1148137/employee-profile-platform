@@ -63,7 +63,7 @@ test("Log in with email regardless of case", async ({ page }) => {
   )
   await page.getByRole("button", { name: "登录" }).click()
   await expect(page).toHaveURL("/assistant")
-  await page.getByRole("link", { name: "我的画像", exact: true }).click()
+  await page.getByRole("link", { name: "组织", exact: true }).click()
   await page.waitForURL(/\/employees\/[0-9a-f-]+$/)
   await expect(page.getByTestId("user-menu")).toBeVisible()
 })
@@ -106,7 +106,8 @@ for (const viewport of [
 
     await page.waitForURL((url) => !url.pathname.startsWith("/login"))
 
-    const logout = page.getByRole("button", { name: "退出登录", exact: true })
+    await page.getByTestId("user-menu").click()
+    const logout = page.getByRole("menuitem", { name: "退出登录", exact: true })
     await expect(logout).toBeInViewport({ ratio: 1 })
     await expect(logout).toHaveText("退出登录")
     await logout.click()

@@ -17,8 +17,8 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
   await expect(
     page.getByRole("heading", { name: "管理助手", exact: true }),
   ).toBeVisible()
-  await page.getByRole("link", { name: "数据与 AI", exact: true }).click()
-  await page.getByRole("tab", { name: "IM 入口", exact: true }).click()
+  await page.getByRole("link", { name: "设置", exact: true }).click()
+  await page.getByRole("link", { name: "IM 入口", exact: true }).click()
   await expect(page.getByRole("heading", { name: "IM 入口" })).toBeVisible()
   await expectChineseCopy(page, ["Telegram"])
   const token = await page.evaluate(() => localStorage.getItem("access_token"))
@@ -164,8 +164,9 @@ for (const [tab, message] of [
       "employee.platform@demo.example.com",
       process.env.DEMO_USER_PASSWORD!,
     )
+    await page.getByRole("link", { name: "设置", exact: true }).click()
     await expect(
-      page.getByRole("link", { name: "数据与 AI", exact: true }),
+      page.getByRole("link", { name: "数据来源", exact: true }),
     ).toHaveCount(0)
     await page.goto(`/admin/data-ai?tab=${tab}`)
     await expect(page.getByRole("alert")).toHaveText(message)

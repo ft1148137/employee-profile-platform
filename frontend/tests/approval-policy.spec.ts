@@ -23,7 +23,7 @@ test("admin saves approval policy versions and category overrides", async ({
   const original = await (await request.get(url, { headers })).json()
   try {
     await page.goto("/admin/rules?tab=approval")
-    await page.getByRole("tab", { name: "审批规则", exact: true }).click()
+    await page.getByRole("link", { name: "审批规则", exact: true }).click()
     const form = page.getByRole("form", { name: "审批规则", exact: true })
     await expect(form.getByLabel("全企业需要经理确认")).toBeVisible()
     await expectChineseCopy(page)
@@ -50,7 +50,7 @@ test("admin saves approval policy versions and category overrides", async ({
     await expect(history).toContainText(`第 ${saved.current.version + 1} 版`)
     await expect(history).toContainText("员工过目期限：7 天")
     await page.reload()
-    await page.getByRole("tab", { name: "审批规则", exact: true }).click()
+    await page.getByRole("link", { name: "审批规则", exact: true }).click()
     await expect(form.getByLabel("员工过目期限（天）")).toHaveValue("9")
     await expect(
       form.getByLabel(original.categories[0], { exact: true }),
@@ -78,9 +78,10 @@ test("employee cannot see approval policy settings", async ({ page }) => {
     process.env.DEMO_USER_PASSWORD!,
   )
   await page.goto("/settings")
-  await expect(page.getByRole("tab", { name: "个人信息" })).toBeVisible()
+  await expect(page.getByRole("region", { name: "个人信息" })).toBeVisible()
+  await page.getByRole("link", { name: "组织", exact: true }).click()
   await expect(
-    page.getByRole("tab", { name: "审批规则", exact: true }),
+    page.getByRole("link", { name: "审批规则", exact: true }),
   ).toHaveCount(0)
 })
 
@@ -93,7 +94,7 @@ test("profile preview shows the current approval rule and exempt changes publish
     "质量",
   )
   await open(page, "A", "/assistant")
-  await page.getByRole("link", { name: "我的画像", exact: true }).click()
+  await page.getByRole("link", { name: "组织", exact: true }).click()
   await page.getByRole("button", { name: "添加能力", exact: true }).click()
   const editor = page.getByRole("dialog")
   await editor.getByRole("button", { name: "合成交付", exact: true }).click()

@@ -38,7 +38,7 @@ for (const [status, reason] of [
       route.fulfill({ json: { data: [], count: 0 } }),
     )
     await logInUser(page, "employee.platform@demo.example.com", password)
-    await page.getByRole("link", { name: "我的画像", exact: true }).click()
+    await page.getByRole("link", { name: "组织", exact: true }).click()
     const explanation = page.getByRole("region", { name: "画像说明" })
     await expect(explanation).toContainText(reason)
     await expect(explanation).toContainText("添加能力")
@@ -76,10 +76,10 @@ test("team cards show initial and review statuses on a phone without horizontal 
   ).toBeVisible()
 })
 
-test("employee settings display the returned direct manager reference", async ({
+test("employee profile displays the returned direct manager reference", async ({
   page,
 }) => {
-  await page.route("**/api/v1/orgs/*/me/profile", async (route) => {
+  await page.route("**/api/v1/orgs/*/employees/*/profile", async (route) => {
     const response = await route.fetch()
     const profile = await response.json()
     await route.fulfill({
@@ -93,7 +93,7 @@ test("employee settings display the returned direct manager reference", async ({
     })
   })
   await logInUser(page, "employee.platform@demo.example.com", password)
-  await page.goto("/settings")
+  await page.getByRole("link", { name: "组织", exact: true }).click()
   await page.getByRole("tab", { name: "档案", exact: true }).click()
   const fields = page.getByRole("region", { name: "员工信息" })
   await expect(fields).toContainText("直属上级")

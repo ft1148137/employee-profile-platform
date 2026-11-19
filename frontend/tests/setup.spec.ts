@@ -202,9 +202,9 @@ test("skip model, stay in assistant and resume from setup todo", async ({
   await expect(page).toHaveURL(sessionUrl)
   await page.goto("/setup-wizard")
   await expect(page).toHaveURL("/admin/assistant")
-  await page.getByRole("button", { name: "更多", exact: true }).click()
+  await page.getByRole("link", { name: "设置", exact: true }).click()
   await expect(
-    page.getByRole("menuitem", { name: "首次设置", exact: false }),
+    page.getByRole("link", { name: "首次设置", exact: false }),
   ).toHaveCount(0)
 })
 

@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { AdminTabs, tabSearch } from "@/components/Admin/AdminTabs"
+import { AdminSection, tabSearch } from "@/components/Admin/AdminTabs"
 import { ApprovalPolicy } from "@/components/Admin/ApprovalPolicy"
 import { UpdateSettings } from "@/components/Admin/UpdateSettings"
 import { CapacitySettings } from "@/components/Capacity/CapacitySettings"
@@ -16,11 +16,11 @@ function Reminders() {
   return org && <UpdateSettings key={org.id} orgId={org.id} />
 }
 
-const tabs = [
-  { value: "dictionary", title: "能力词典", component: CapabilityDictionary },
+const sections = [
+  { value: "dictionary", component: CapabilityDictionary },
   { value: "approval", title: "审批规则", component: Approval },
   { value: "reminders", title: "定期提醒", component: Reminders },
-  { value: "capacity", title: "需求与容量", component: CapacitySettings },
+  { value: "capacity", title: "需求与容量规则", component: CapacitySettings },
 ]
 
 export const Route = createFileRoute("/_layout/admin/rules")({
@@ -42,20 +42,10 @@ export const Route = createFileRoute("/_layout/admin/rules")({
 function Rules() {
   const { roles } = useOrg()
   const { tab } = Route.useSearch()
-  const navigate = Route.useNavigate()
-  const admin = roles.includes("org_admin")
   return (
-    <AdminTabs
-      title="能力与规则"
-      description={
-        admin
-          ? "维护能力词典，设置审批要求和更新提醒。"
-          : "查看和导出企业能力词典。"
-      }
-      tabs={admin ? tabs : tabs.slice(0, 1)}
+    <AdminSection
+      sections={roles.includes("org_admin") ? sections : sections.slice(0, 1)}
       tab={tab}
-      adminOnly={false}
-      onTabChange={(tab) => navigate({ search: { tab } })}
     />
   )
 }

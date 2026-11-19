@@ -235,12 +235,13 @@ for (const width of [1440, 390]) {
       }),
     ).toBeVisible()
     await expectChineseCopy(page)
+    const canvasStart = width === 390 ? 64 : 64 + 256 + 320
     const bounds = await panel.boundingBox()
     expect(bounds!.width).toBeLessThanOrEqual(width)
-    expect(bounds!.width).toBe(width - 64 - (width === 390 ? 0 : 320))
+    expect(bounds!.width).toBe(width - canvasStart)
     await expect
       .poll(async () => Math.round((await panel.boundingBox())!.x))
-      .toBe(64 + (width === 390 ? 0 : 320))
+      .toBe(canvasStart)
     await page.screenshot({
       path: testInfo.outputPath(`bot-${width}.png`),
       animations: "disabled",

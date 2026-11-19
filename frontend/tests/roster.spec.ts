@@ -122,6 +122,7 @@ test("deployer can add their existing administrator account to the roster", asyn
   )
   await dialog.getByRole("button", { name: "确认新增员工" }).click()
   await expect(dialog).toBeHidden()
+  await page.getByRole("link", { name: "组织", exact: true }).click()
   await page.getByRole("link", { name: "我的画像", exact: true }).click()
   await expect(page).toHaveURL(/\/employees\/[0-9a-f-]+$/)
   await expect(
