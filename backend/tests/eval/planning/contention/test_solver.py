@@ -1,5 +1,6 @@
 import json
 import os
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
@@ -11,7 +12,7 @@ from sqlmodel import Session, select
 
 from app.domains.org.models import Organization
 from app.domains.planning.cpsat import CpSatSolver
-from app.domains.planning.solver import Role, RuleSolver, Solution
+from app.domains.planning.solver import Role, RuleSolver, Solution, full_plan
 from app.models import User
 from scripts.eval_solver import metrics
 from scripts.export_planning_case import anonymize, export_saved
@@ -66,6 +67,38 @@ def test_audit_detects_double_booking() -> None:
     )
 
 
+def test_replayed_commitment_blocks_late_optimization() -> None:
+    (initial,) = EVAL_CASES["replay-unavailability-01"]
+    rows = CpSatSolver().solve([initial]).filled[initial.key]
+    assert rows == [
+        {
+            "employee_id": "001",
+            "allocation_percent": 50,
+            "start_date": "2026-11-23",
+            "end_date": "2026-12-06",
+        }
+    ]
+    demand = initial.snapshot["demand"]
+    committed = replace(
+        initial,
+        snapshot={
+            **initial.snapshot,
+            "demand": {
+                **demand,
+                "change": True,
+                "committed_start_date": demand["window_start"],
+                "committed_end_date": demand["window_end"],
+            },
+        },
+    )
+    assert not full_plan(committed.snapshot, rows)
+    successor = replace(initial, key="2", predecessors=(committed.key,))
+    for solver in (RuleSolver(), CpSatSolver()):
+        assert solver.solve([committed, successor]) == Solution(
+            {}, (committed.key, successor.key)
+        )
+
+
 def test_extended_commitment_leaves_capacity_for_overlapping_role() -> None:
     original, _, _, overlap, *_ = EVAL_CASES["trap-primary"]
     demand = original.snapshot["demand"]
@@ -73,6 +106,12 @@ def test_extended_commitment_leaves_capacity_for_overlapping_role() -> None:
         original.key,
         {
             **original.snapshot,
+            # Capacity is known only up to the original end, so a later window
+            # matching the extended commitment is unavailable.
+            "candidates": [
+                {**person, "weeks": person["weeks"][:2]}
+                for person in original.snapshot["candidates"]
+            ],
             "demand": {
                 **demand,
                 "change": True,
@@ -83,6 +122,9 @@ def test_extended_commitment_leaves_capacity_for_overlapping_role() -> None:
     )
     roles = [change, overlap]
     for solver in (RuleSolver(), CpSatSolver()):
+        assert not full_plan(
+            change.snapshot, solver.solve([original]).filled[original.key]
+        )
         result = solver.solve(roles)
         expected = solver.solve([overlap])
         assert list(expected.filled) == [overlap.key]

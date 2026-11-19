@@ -164,19 +164,27 @@ def _view(
 
 
 def _optimized_option(data: dict[str, Any]) -> dict[str, Any] | None:
-    role = Role(data["demand"]["id"], data)
+    demand = data["demand"]
+    role = Role(demand["id"], data)
     solver: SolverPort = CpSatSolver()
     rows = solver.solve([role]).filled.get(role.key)
     if not rows or not full_plan(data, rows):
         return None
-    offset = delay(data, rows)
+    adjusted = shifted(data, delay(data, rows))
+    proposed = adjusted["demand"]
+    agreed_start = demand.get("committed_start_date") if demand.get("change") else None
+    agreed_end = demand.get("committed_end_date") if demand.get("change") else None
+    new_dates = (proposed["window_start"], proposed["window_end"]) != (
+        agreed_start or demand["window_start"],
+        agreed_end or demand["window_end"],
+    )
     option = simulator.validated_option(
         OptionKind.OPTIMIZED,
-        shifted(data, offset),
+        adjusted,
         {"assignees": rows},
-        "需求方要接受新日期" if offset else None,
+        "需求方要接受新日期" if new_dates else None,
     )
-    if offset:
+    if new_dates:
         option["summary"]["approvers"].append("需求方接受新日期")
     if any(finding["code"] == "phased" for finding in option["findings"]):
         option["summary"]["phased_origin"] = True

@@ -35,17 +35,12 @@ class SolverPort(Protocol):
 
 
 def shifted(data: Snapshot, weeks: int) -> Snapshot:
+    # The proposed window can move, but the validator must see the real commitment.
     demand = dict(data["demand"])
-    for key in (
-        "window_start",
-        "window_end",
-        "committed_start_date",
-        "committed_end_date",
-    ):
-        if demand.get(key):
-            demand[key] = (
-                date.fromisoformat(demand[key]) + timedelta(weeks=weeks)
-            ).isoformat()
+    for key in ("window_start", "window_end"):
+        demand[key] = (
+            date.fromisoformat(demand[key]) + timedelta(weeks=weeks)
+        ).isoformat()
     return {**data, "demand": demand}
 
 
