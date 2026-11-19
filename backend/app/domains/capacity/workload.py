@@ -15,6 +15,7 @@ from app.domains.base import utc_now
 from app.domains.capacity import calendar
 from app.domains.capacity.models import (
     AssignmentStatus,
+    CapacityApproval,
     CapacityAssignment,
     CapacityDemand,
     CapacityProject,
@@ -106,11 +107,35 @@ class WorkloadSegments:
     unavailabilities: list[WorkloadUnavailabilitySegment] = field(default_factory=list)
 
 
+def _can_view_borrow_segment(
+    principal: Principal,
+    subject: Employee,
+    lender_department_id: UUID,
+    requester_user_id: UUID,
+    requesting_department_id: UUID,
+    target_department_id: UUID,
+) -> bool:
+    managed = principal.managed_department_ids
+    return subject.id == principal.employee_id or (
+        lender_department_id in managed
+        and subject.department_id in managed
+        and principal.user_id != requester_user_id
+        and requesting_department_id not in managed
+        and target_department_id not in managed
+    )
+
+
 def workload_segments(
-    session: Session, org_id: UUID, ids: list[UUID], start: date, end: date
+    session: Session,
+    principal: Principal,
+    employees_by_id: dict[UUID, Employee],
+    start: date,
+    end: date,
 ) -> dict[UUID, WorkloadSegments]:
+    ids = list(employees_by_id)
     if not ids:
         return {}
+    org_id = principal.org_id
     labels = (
         select(
             CapacityDemand.id,
@@ -124,6 +149,11 @@ def workload_segments(
                 else_=col(CapacityDemand.capability_name),
             ).label("title"),
         )
+        .add_columns(
+            col(CapacityDemand.requester_user_id),
+            col(CapacityDemand.requesting_department_id),
+            col(CapacityDemand.target_department_id),
+        )
         .join(
             Department,
             (col(Department.org_id) == CapacityDemand.org_id)
@@ -134,14 +164,17 @@ def workload_segments(
             (col(CapacityProject.org_id) == CapacityDemand.org_id)
             & (col(CapacityProject.id) == CapacityDemand.project_id),
         )
-        .where(CapacityDemand.org_id == org_id)
+        .where(col(CapacityDemand.org_id) == org_id)
         .subquery()
     )
-    label_columns: Bundle[Row[tuple[str, str, str]]] = Bundle(
+    label_columns: Bundle[Row[tuple[str, str, str, UUID, UUID, UUID]]] = Bundle(
         "demand_labels",
         labels.c.capability_name,
         labels.c.department_name,
         labels.c.title,
+        labels.c.requester_user_id,
+        labels.c.requesting_department_id,
+        labels.c.target_department_id,
     )
     segments: dict[UUID, WorkloadSegments] = defaultdict(WorkloadSegments)
     assignments = session.exec(
@@ -168,6 +201,15 @@ def workload_segments(
         .order_by(col(CapacityAssignment.start_date), col(CapacityAssignment.id))
     )
     for row, lender_id, label in assignments:
+        if lender_id is not None and not _can_view_borrow_segment(
+            principal,
+            employees_by_id[row.employee_id],
+            lender_id,
+            label.requester_user_id,
+            label.requesting_department_id,
+            label.target_department_id,
+        ):
+            continue
         effective_start = row.start_date or calendar.week_start(row.created_at.date())
         if effective_start < end:
             segments[row.employee_id].assignments.append(
@@ -185,7 +227,9 @@ def workload_segments(
                 )
             )
     holds = session.exec(
-        select(CapacityProposalLine, CapacityProposal, label_columns)
+        select(
+            CapacityProposalLine, CapacityProposal, CapacityApproval.id, label_columns
+        )
         .select_from(CapacityProposalLine)
         .join(
             CapacityProposal,
@@ -193,6 +237,14 @@ def workload_segments(
             & (col(CapacityProposal.id) == CapacityProposalLine.proposal_id),
         )
         .join(labels, labels.c.id == CapacityProposal.demand_id)
+        .outerjoin(
+            CapacityApproval,
+            (col(CapacityApproval.org_id) == CapacityProposalLine.org_id)
+            & (col(CapacityApproval.proposal_id) == CapacityProposalLine.proposal_id)
+            & (col(CapacityApproval.line_id) == CapacityProposalLine.id)
+            & (col(CapacityApproval.party) == "employee")
+            & (col(CapacityApproval.decision) == "approved"),
+        )
         .where(
             col(CapacityProposalLine.org_id) == org_id,
             col(CapacityProposalLine.employee_id).in_(ids),
@@ -203,8 +255,20 @@ def workload_segments(
         )
         .order_by(col(CapacityProposalLine.start_date), col(CapacityProposalLine.id))
     )
-    for line, proposal, label in holds:
+    for line, proposal, approval_id, label in holds:
         assert line.employee_id is not None
+        if line.lender_department_id is not None and (
+            approval_id is None
+            or not _can_view_borrow_segment(
+                principal,
+                employees_by_id[line.employee_id],
+                line.lender_department_id,
+                label.requester_user_id,
+                label.requesting_department_id,
+                label.target_department_id,
+            )
+        ):
+            continue
         segments[line.employee_id].holds.append(
             WorkloadHoldSegment(
                 proposal_id=proposal.id,
@@ -252,7 +316,13 @@ def views(
     start = from_week or current
     weekly = calendar.loads(session, org_id, ids, start, weeks)
     segments = (
-        workload_segments(session, org_id, ids, start, start + timedelta(weeks=weeks))
+        workload_segments(
+            session,
+            principal,
+            {e.id: e for e in employees},
+            start,
+            start + timedelta(weeks=weeks),
+        )
         if include_segments
         else {}
     )

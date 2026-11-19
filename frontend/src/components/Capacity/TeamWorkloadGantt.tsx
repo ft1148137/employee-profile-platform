@@ -471,9 +471,8 @@ export function WorkloadDetails({
   selection: WorkloadSelection
   actions: ReactNode
 }) {
-  const segments = segmentsFor(row).filter((segment) =>
-    overlaps(segment, range),
-  )
+  const allSegments = segmentsFor(row)
+  const segments = allSegments.filter((segment) => overlaps(segment, range))
 
   return (
     <>
@@ -484,12 +483,34 @@ export function WorkloadDetails({
       <ul className="space-y-1 rounded-lg bg-muted/50 p-3 text-sm">
         {row.weeks
           .filter((week) => overlaps(weekRange(week.week_start), range))
-          .map((week) => (
-            <li key={week.week_start}>
-              {weekLabel(week.week_start)} · {otherWork(week)} ·{" "}
-              {weekLoadLabel(week)}
-            </li>
-          ))}
+          .map((week) => {
+            const dates = weekRange(week.week_start)
+            let visibleAssigned = 0
+            let visibleHeld = 0
+            for (const segment of allSegments) {
+              if (!overlaps(dates, segment)) continue
+              if (segment.kind === "hold") {
+                visibleHeld += segment.allocation_percent
+              } else if (segment.kind !== "unavailable") {
+                visibleAssigned += segment.allocation_percent
+              }
+            }
+            const held = week.hold_percent ?? 0
+            const hidden =
+              Math.max(0, week.platform_percent - held - visibleAssigned) +
+              Math.max(0, held - visibleHeld)
+            return (
+              <li key={week.week_start}>
+                {weekLabel(week.week_start)} · {otherWork(week)} ·{" "}
+                {weekLoadLabel(week)}
+                {hidden > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    含未展示明细的受保护/待确认负荷 {hidden}%
+                  </p>
+                )}
+              </li>
+            )
+          })}
       </ul>
       <div className="space-y-3 text-sm">
         {Object.entries(segmentKinds).map(([kind, { label }]) => {

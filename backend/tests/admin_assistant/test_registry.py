@@ -60,6 +60,8 @@ def test_web_parity(
         args = {"appeal_id": str(uuid4())}
     if name == "get_project":
         args = {"project_id": str(uuid4())}
+    if name == "get_demand":
+        args = {"demand_id": str(uuid4())}
     if name == "test_im_connection":
         args = {"platform": "feishu"}
     result = call(db, principal(db, shared_demo), name, args)
@@ -75,7 +77,7 @@ def test_web_parity(
         if response.status_code == 404:
             error = "找不到该记录"
             if (
-                name in ("list_projects", "get_project")
+                name in ("list_projects", "get_project", "list_demands", "get_demand")
                 and response.json()["detail"] == "需求与容量模块未开启"
             ):
                 error = "需求与容量功能已关闭，如需使用请先在能力与规则里开启"
@@ -107,11 +109,13 @@ def test_web_parity(
     assert result["data"] == web
 
 
-def test_project_reads_use_existing_admin_tool() -> None:
+def test_capacity_reads_use_existing_admin_tool() -> None:
     names = {tool.name for tool in tools.definitions()}
     assert len(names) == 7
     assert "admin_read" in names
-    assert names.isdisjoint({"list_projects", "get_project"})
+    assert names.isdisjoint(
+        {"list_projects", "get_project", "list_demands", "get_demand"}
+    )
 
 
 def test_boundaries(

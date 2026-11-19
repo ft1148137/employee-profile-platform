@@ -47,7 +47,12 @@ from app.domains.bot import settings as bot
 from app.domains.capability import department as department_capabilities
 from app.domains.capability import search
 from app.domains.capability.service import read_editor
-from app.domains.capacity.demand_schemas import ProjectIdInput
+from app.domains.capacity.demand import get_demand, list_demands
+from app.domains.capacity.demand_schemas import (
+    DemandIdInput,
+    DemandListInput,
+    ProjectIdInput,
+)
 from app.domains.capacity.project import get_project
 from app.domains.capacity.settings import CapacityNotFound
 from app.domains.capacity.settings import read_settings as read_capacity_settings
@@ -501,6 +506,24 @@ FUNCTIONS = {
             "GET /capacity/projects/{project_id}",
         ),
         _f(
+            "list_demands",
+            "more",
+            "查看部门需求列表和状态，可按收发方向和状态筛选",
+            DemandListInput,
+            lambda d, p, a: list_demands(p, d, **a.model_dump()),
+            "/capacity",
+            "GET /capacity/demands",
+        ),
+        _f(
+            "get_demand",
+            "more",
+            "查看部门需求详情、历史记录与处理状态",
+            DemandIdInput,
+            lambda d, p, a: get_demand(p, d, a.demand_id, include_previous=True),
+            "/capacity",
+            "GET /capacity/demands/{demand_id}",
+        ),
+        _f(
             "list_audit_events",
             "more",
             "查看操作审计记录",
@@ -792,7 +815,8 @@ async def admin_read(
         # Never echo arbitrary service details (including rejected input) to the model.
         if (
             isinstance(error, CapacityNotFound)
-            and function in ("list_projects", "get_project")
+            and function
+            in ("list_projects", "get_project", "list_demands", "get_demand")
             and not read_capacity_settings(principal, db).enabled
         ):
             return {
