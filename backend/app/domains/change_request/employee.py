@@ -66,6 +66,7 @@ from app.domains.profile.service import read_profile
 from app.domains.review.policy import read_policy, requires_manager
 
 EmployeeVia = Literal["web", "mcp", "import", "bot"]
+IMMEDIATE_RETRACTION_NOTICE = "提交后立即撤回，能力状态变为未知"
 
 
 class EmployeeRecordNotFound(HTTPException):
@@ -385,9 +386,20 @@ def save_draft(
     return _public(principal, session, request.id)
 
 
-def preview(principal: Principal, session: Session, request_id: UUID) -> RequestPreview:
+def preview(
+    principal: Principal,
+    session: Session,
+    request_id: UUID,
+    *,
+    for_submission: bool = False,
+) -> RequestPreview:
     _lock_organization(principal, session)
     request = _request(principal, session, request_id)
+    if for_submission and request.status not in (
+        RequestStatus.DRAFT,
+        RequestStatus.PENDING_OWNER,
+    ):
+        raise RequestConflict()
     public = _public(principal, session, request.id)
     profile = my_profile(principal, session)
     claims = {i.capability.key: i.claim for i in profile.items if i.claim}
@@ -430,7 +442,7 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
         else:
             auto_publish_count += 1
             submission_notice = (
-                "提交后立即撤回，能力状态变为未知"
+                IMMEDIATE_RETRACTION_NOTICE
                 if item.op == ChangeOp.RETRACT
                 else "本能力无需经理确认，提交后将直接发布为暂定"
             )

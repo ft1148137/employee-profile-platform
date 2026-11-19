@@ -135,6 +135,7 @@ class Questions(Projection):
 class RequestAction(SubmitInput):
     action: Literal["confirm_submit", "continue_editing", "withdraw"]
     request_id: UUID
+    preview_id: UUID | None = None
 
 
 class QuestionAction(ToolInput):

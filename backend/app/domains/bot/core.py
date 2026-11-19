@@ -373,16 +373,35 @@ def act(
         question = inbox.answer_question(p, db, action.question_id, action.answer)
         messages = [tools.question_card(s.Question.model_validate(question))]
     else:
-        preview = employee.preview(p, db, action.request_id)
+        confirming = action.action == "confirm_submit"
+        preview = employee.preview(p, db, action.request_id, for_submission=confirming)
         if preview.revision != action.revision:
             raise employee.RequestConflict("内容已变化，请重新预览")
-        if not any(
-            isinstance(c, (s.PreviewCard, s.StatusCard)) and action in c.actions
+        matching_cards = [
+            c
             for c in cards
-        ):
+            if isinstance(c, (s.PreviewCard, s.StatusCard)) and action in c.actions
+        ]
+        if not matching_cards:
             raise employee.RequestConflict("内容已变化，请重新预览")
+        immediate_retractions = {
+            i.after.capability.key
+            for i in preview.items
+            if confirming
+            and i.submission_notice == employee.IMMEDIATE_RETRACTION_NOTICE
+        }
         if action.action == "continue_editing":
             messages = [s.TextMessage(text="请告诉我需要修改的内容")]
+        elif immediate_retractions and not any(
+            immediate_retractions.issubset(
+                i.after.capability.key
+                for i in card.items
+                if i.submission_notice == employee.IMMEDIATE_RETRACTION_NOTICE
+            )
+            for card in matching_cards
+            if isinstance(card, s.PreviewCard)
+        ):
+            messages = [tools.preview_card(db, p, action.request_id)]
         else:
             try:
                 request = (
@@ -395,7 +414,7 @@ def act(
                         client_name,
                         base_revision=action.base_revision,
                     )
-                    if action.action == "confirm_submit"
+                    if confirming
                     else employee.withdraw(p, db, action.request_id)
                 )
                 messages = [
