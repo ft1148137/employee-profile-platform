@@ -15,14 +15,26 @@ esac
 
 steps=(同步检查 单一head pre-commit 数据库环境 pytest 手动提示)
 states=(跳过 跳过 跳过 跳过 跳过 跳过)
+elapsed=(0 0 0 0 0 0)
 current=0
+started=$SECONDS
+step_started=$started
 scratch=$(mktemp -d)
+next_step() {
+  elapsed[current]=$((SECONDS - step_started))
+  current=$1
+  step_started=$SECONDS
+}
 finish() {
   local code=$?
   trap - EXIT
   if [[ $code != 0 ]]; then states[current]=失败; fi
   printf '\n自检汇总（exit=%s）\n' "$code"
-  for i in "${!steps[@]}"; do printf '%s: %s\n' "${steps[$i]}" "${states[$i]}"; done
+  elapsed[current]=$((SECONDS - step_started))
+  for i in "${!steps[@]}"; do
+    printf '%s: %s (%ss)\n' "${steps[$i]}" "${states[$i]}" "${elapsed[$i]}"
+  done
+  printf '总耗时: %ss\n' "$((SECONDS - started))"
   rm -rf "$scratch"
   exit "$code"
 }
@@ -36,11 +48,22 @@ git rev-parse --verify origin/master >/dev/null
 git diff --name-only origin/master...HEAD > "$scratch/committed"
 git diff --name-only > "$scratch/dirty"
 git diff --cached --name-only >> "$scratch/dirty"
-git ls-files --others --exclude-standard >> "$scratch/dirty"
+git ls-files --others --exclude-standard > "$scratch/untracked"
+cat "$scratch/untracked" >> "$scratch/dirty"
 cat "$scratch/committed" "$scratch/dirty" | LC_ALL=C sort -u > "$scratch/changed"
-git diff -U3 origin/master...HEAD -- backend/app > "$scratch/app-diff"
-git diff -U3 -- backend/app >> "$scratch/app-diff"
-git diff --cached -U3 -- backend/app >> "$scratch/app-diff"
+app_diff() {
+  local context=$1 path=$2
+  git diff "$context" origin/master...HEAD -- "$path"
+  git diff "$context" -- "$path"
+  git diff --cached "$context" -- "$path"
+}
+app_diff -U3 backend/app > "$scratch/app-diff"
+while IFS= read -r path; do
+  case "$path" in
+    backend/app/*.py)
+      git diff --no-index -U0 -- /dev/null "$path" >> "$scratch/app-diff" || [[ $? == 1 ]] ;;
+  esac
+done < "$scratch/untracked"
 git diff --name-only --diff-filter=A origin/master...HEAD -- backend/app/alembic/versions > "$scratch/local-migrations"
 while IFS= read -r path; do
   case "$path" in
@@ -54,7 +77,8 @@ git diff --name-only --diff-filter=A HEAD...origin/master -- backend/app/alembic
 
 # All test selection rules live here. Paths are relative to backend for pytest.
 select_checks() {
-  local path module package stem relative domain candidate route token boundary revision
+  local path module package stem relative domain subpath candidate route token boundary revision shared
+  local test_globs outside_domain
   local import_space='([[:space:]]|#[^\n]*\n)*'
   : > "$scratch/targets"
   : > "$scratch/playwright"
@@ -63,6 +87,12 @@ select_checks() {
     case "$path" in
       backend/tests/test_*.py|backend/tests/*/test_*.py)
         [[ ! -f $path ]] || echo "${path#backend/}" >> "$scratch/targets" ;;
+      backend/tests/acceptance/*) echo tests/acceptance/ >> "$scratch/targets" ;;
+      backend/tests/eval/admin_assistant/*) ;; # Covered by the registry guard below.
+      backend/tests/eval/*/*)
+        subpath=${path#backend/tests/eval/}
+        echo "tests/eval/${subpath%%/*}/" >> "$scratch/targets" ;;
+      backend/tests/eval/*) echo tests/eval/ >> "$scratch/targets" ;;
     esac
     case "$path" in
       backend/app/*.py|backend/scripts/*.py)
@@ -73,26 +103,79 @@ select_checks() {
         package=${module%.*}
         boundary='([^[:alnum:]_]|$)'
         if [[ $stem == __init__ ]]; then boundary='([^[:alnum:]_.]|$)'; fi
+        test_globs=(--glob 'test_*.py' --glob '!**/acceptance/**')
+        case "$path" in
+          backend/app/domains/planning/solver.py|backend/app/domains/planning/simulator.py|backend/app/domains/planning/validator.py|backend/app/domains/planning/cpsat.py|backend/app/domains/planning/snapshot.py|backend/scripts/eval_planning.py|backend/scripts/eval_solver.py|backend/scripts/export_planning_case.py)
+            echo tests/eval/planning/ >> "$scratch/targets" ;;
+          backend/scripts/eval_coordination.py)
+            echo tests/eval/coordination/ >> "$scratch/targets" ;;
+          backend/scripts/eval_*.py) ;;
+          *) test_globs+=(--glob '!**/eval/**') ;;
+        esac
         # Match qualified references and package imports, including multiline lists.
         rg -l -U \
           -e "(^|[^[:alnum:]_])${module//./\\.}${boundary}" \
           -e "from[[:blank:]]+${package//./\\.}[[:blank:]]+import[[:blank:]]+(\\($import_space)?([[:alnum:]_]+([[:blank:]]+as[[:blank:]]+[[:alnum:]_]+)?[[:blank:]]*,$import_space)*${module##*.}([^[:alnum:]_]|$)" \
-          backend/tests --glob 'test_*.py' > "$scratch/importers" || [[ $? == 1 ]]
-        sed 's|^backend/||' "$scratch/importers" >> "$scratch/targets"
+          "${test_globs[@]}" backend/tests > "$scratch/importers" || [[ $? == 1 ]]
+        domain=
+        shared=false
+        if [[ $path == backend/app/domains/*/*.py ]]; then
+          subpath=${path#backend/app/domains/}
+          domain=${subpath%%/*}
+          case "$stem" in
+            models|*_models|schemas|*_schemas|contracts|*_contracts|types|*_types)
+              shared=true ;;
+          esac
+        fi
+        if $shared; then
+          echo "共享领域模块 ${path}：本地选择本域测试及引用变更类型的测试，全量回归交给 CI。"
+          # Git can put the preceding class in the header of an unrelated top-level change.
+          app_diff -U0 "$path" | awk '
+            /^diff --git / {header=""}
+            /^@@ / {header=$0}
+            /^[+-][^+-]/ {
+              print
+              if (header && /^[+-][[:blank:]]+[^[:blank:]]/) {
+                print header
+                header=""
+              }
+            }
+          ' | sed -nE \
+            -e 's/^(@@ .* @@ |[+-])(class|def|type) ([[:alnum:]_]+).*/\3/p' \
+            -e 's/^(@@ .* @@ |[+-])([A-Z][A-Z_0-9]+)[[:space:]]*[:=].*/\2/p' |
+            LC_ALL=C sort -u > "$scratch/symbols"
+          outside_domain=()
+          while IFS= read -r candidate; do
+            case "$candidate" in
+              backend/tests/test_m6_capacity_architecture.py|backend/tests/"$domain"/*|backend/tests/domains/"$domain"/*|*/test_"$domain".py|*/test_"$domain"_*.py|*/test_*_"$domain".py|*/test_*_"$domain"_*.py)
+                echo "${candidate#backend/}" >> "$scratch/targets" ;;
+              *) outside_domain+=("$candidate") ;;
+            esac
+          done < "$scratch/importers"
+          # A test can cover the changed contract even if its filename names a different domain.
+          if [[ -s $scratch/symbols && ${#outside_domain[@]} -gt 0 ]]; then
+            rg -l -F -w -f "$scratch/symbols" -- "${outside_domain[@]}" > "$scratch/affected-importers" || [[ $? == 1 ]]
+            sed 's|^backend/||' "$scratch/affected-importers" >> "$scratch/targets"
+          fi
+        else
+          sed 's|^backend/||' "$scratch/importers" >> "$scratch/targets"
+        fi
         relative=${relative#app/}
         for candidate in "backend/tests/${relative%/*}/test_$stem.py" "backend/tests/${relative%.py}/"; do
           [[ ! -e $candidate ]] || echo "${candidate#backend/}" >> "$scratch/targets"
         done
-        if [[ $path == backend/app/domains/* ]]; then
-          domain=${path#backend/app/domains/}; domain=${domain%%/*}
-          [[ ! -d backend/tests/$domain ]] || echo "tests/$domain/" >> "$scratch/targets"
-          rg --files backend/tests/domains -g "test_${domain}*.py" >> "$scratch/domain-tests" || [[ $? == 1 ]]
+        if [[ -n $domain ]]; then
+          relative=${relative#domains/}
+          for candidate in "backend/tests/${relative%/*}/test_$stem.py" "backend/tests/${relative%.py}/" "backend/tests/domains/test_${domain}_${stem}.py"; do
+            [[ ! -e $candidate ]] || echo "${candidate#backend/}" >> "$scratch/targets"
+          done
+          if $shared || [[ $stem == __init__ || $stem == service ]]; then
+            candidate="backend/tests/domains/test_$domain.py"
+            [[ ! -f $candidate ]] || echo "${candidate#backend/}" >> "$scratch/targets"
+          fi
         fi
         if [[ $path == backend/app/domains/__init__.py ]]; then
           echo tests/test_m6_capacity_architecture.py >> "$scratch/targets"
-        fi
-        if [[ -f $path ]] && rg -q 'audit|target_type' "$path"; then
-          echo tests/domains/test_audit_labels.py >> "$scratch/targets"
         fi
         case "$path" in
           backend/app/models.py|backend/app/core/*)
@@ -105,11 +188,15 @@ select_checks() {
         echo tests/domains/test_audit_labels.py >> "$scratch/targets" ;;
       backend/app/domains/admin_assistant/*change_set*|backend/app/domains/admin_assistant/*audit*|backend/app/domains/admin_assistant/registry.py|backend/scripts/eval_admin_assistant.py|backend/tests/eval/admin_assistant/*)
         # Evaluation patches the shared registry and can break change-set guards.
-        echo tests/admin_assistant/ >> "$scratch/targets" ;;
+        echo tests/admin_assistant/ >> "$scratch/targets"
+        if [[ $path == backend/app/domains/admin_assistant/registry.py ]]; then
+          # The turn integration tests exercise registry tools through the callback.
+          echo tests/domains/test_admin_assistant.py >> "$scratch/targets"
+        fi ;;
       backend/app/alembic/versions/*)
         if [[ $path == *.py ]]; then
           revision=${path##*/}; revision=${revision%%_*}
-          rg -l -F --glob 'test_*_migration.py' -- "$revision" backend/tests | sed 's|^backend/||' >> "$scratch/migration-tests" || [[ ${PIPESTATUS[0]} == 1 ]]
+          rg -l -F -w --glob 'test_*_migration.py' -- "$revision" backend/tests | sed 's|^backend/||' >> "$scratch/migration-tests" || [[ ${PIPESTATUS[0]} == 1 ]]
         fi ;;
     esac
     case "$path" in
@@ -133,12 +220,19 @@ select_checks() {
       */Dockerfile*) echo "$path（核对对应服务）" >> "$scratch/services" ;;
     esac
   done < "$scratch/changed"
-  if [[ -f $scratch/domain-tests ]]; then sed 's|^backend/||' "$scratch/domain-tests" >> "$scratch/targets"; fi
   if [[ -f $scratch/migration-tests ]]; then cat "$scratch/migration-tests" >> "$scratch/targets"; fi
   if rg -q '^backend/app/alembic/versions/[^/]+\.py$' "$scratch/changed" && ! rg -q '^tests/.*test_.*_migration\.py$' "$scratch/targets"; then
     rg --files backend/tests -g 'test_*_migration.py' | sed 's|^backend/||' >> "$scratch/targets"
   fi
-  if rg -q 'audit|target_type' "$scratch/app-diff"; then
+  # An audit label can change on the action line of an unchanged multiline call.
+  if awk '
+    /^(diff --git |@@ )/ {action=0; audit_context=0}
+    /^[+-][^+-]/ && /audit|target_type/ {found=1}
+    /^[+-][[:space:]]*action[[:space:]]*=/ {action=1}
+    /^ / && /audit\(|target_type[[:space:]]*=/ {audit_context=1}
+    action && audit_context {found=1}
+    END {exit !found}
+  ' "$scratch/app-diff"; then
     echo tests/domains/test_audit_labels.py >> "$scratch/targets"
   fi
   LC_ALL=C sort -u "$scratch/targets" > "$scratch/sorted"
@@ -162,13 +256,13 @@ if [[ -s $scratch/local-migrations && -s $scratch/upstream-migrations ]]; then
 fi
 if ! $list; then
   states[0]=通过
-  current=1
+  next_step 1
   heads=$(cd backend && uv run alembic heads)
   printf '%s\n' "$heads"
   count=$(printf '%s\n' "$heads" | awk 'NF {n++} END {print n+0}')
   [[ $count == 1 ]] || { echo "Alembic 必须只有一个 head，当前为 $count" >&2; exit 1; }
   states[1]=通过
-  current=2
+  next_step 2
   if [[ -s $scratch/dirty ]]; then
     files=()
     while IFS= read -r path; do [[ ! -f $path ]] || files+=("$path"); done < "$scratch/changed"
@@ -181,7 +275,7 @@ if ! $list; then
     uv run prek run --from-ref origin/master --to-ref HEAD
   fi
   states[2]=通过
-  current=3
+  next_step 3
   # Never echo the URL: it may contain credentials. No database connection here.
   uv run python - <<'PY'
 import os
@@ -204,7 +298,7 @@ if not valid:
     sys.exit("数据库环境失败：显式设置 DATABASE_URL 和 POSTGRES_PORT，端口须一致且不能为默认 5432。")
 PY
   states[3]=通过
-  current=4
+  next_step 4
   targets=()
   while IFS= read -r path; do targets+=("$path"); done < "$scratch/targets"
   if [[ ${#targets[@]} -gt 0 ]]; then
@@ -214,7 +308,7 @@ PY
     echo 'pytest: 跳过（无受影响目标）'
   fi
 fi
-current=5
+next_step 5
 echo '仅提示：可能受影响的 Playwright spec（请核对改动文案 / aria-label，按需手动跑）：'
 LC_ALL=C sort -u "$scratch/playwright"
 echo '仅提示：需要本地构建的服务（本脚本不执行构建）：'
