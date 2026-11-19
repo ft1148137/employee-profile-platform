@@ -8666,6 +8666,10 @@ export type app__domains__bot__schemas__PreviewItem = {
    * Warning
    */
   warning: string | null
+  /**
+   * Submission Notice
+   */
+  submission_notice?: string | null
 }
 
 /**
@@ -8732,6 +8736,10 @@ export type app__domains__bot__schemas__StatusCard = {
 export type app__domains__change_request__schemas__PreviewItem = {
   before: ClaimPublic | null
   after: ChangeItemPublic
+  /**
+   * Submission Notice
+   */
+  submission_notice: string
   /**
    * Warning
    */

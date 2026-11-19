@@ -339,12 +339,19 @@ export function ChangeRequestEditor({
               />
             )}
             {displayedPreview?.items.map(
-              ({ before, after, warning, current_changed_at }) => (
+              ({
+                before,
+                after,
+                warning,
+                current_changed_at,
+                submission_notice,
+              }) => (
                 <section
                   key={after.id}
                   className="space-y-3 rounded-lg border p-4"
                 >
                   <h3 className="font-semibold">{after.capability.name}</h3>
+                  <p>{submission_notice}</p>
                   {current_changed_at && (
                     <p role="status" className="text-sm text-muted-foreground">
                       经理或管理员已在{" "}

@@ -344,6 +344,7 @@ export function BotMessage({
             message.items.map((item, index) => (
               <div key={index} className="space-y-2 border-t pt-3">
                 <h4 className="font-medium">{item.after.capability.name}</h4>
+                {item.submission_notice && <p>{item.submission_notice}</p>}
                 <p>
                   修改前：{item.before?.statement ?? "暂无判断"} · 等级：
                   {displayLevel(item.before, item.after.capability.key)}

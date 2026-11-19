@@ -11,15 +11,11 @@ export function RequestReviewers({
   requiresManager?: boolean
   partialAutoPublish?: boolean
 }) {
-  if (preview && !requiresManager) {
-    return <p>本能力无需经理确认，提交后将直接发布为暂定</p>
-  }
+  if (preview && !requiresManager) return null
   const names = reviewers.map((r) => `${r.name}（${r.role}）`).join("、")
   return (
     <p>
-      {preview &&
-        partialAutoPublish &&
-        "部分能力无需经理确认（提交后将直接发布为暂定），其余"}
+      {preview && partialAutoPublish && "需经理确认的改动："}
       {names
         ? preview
           ? `提交后由 ${names}审批`

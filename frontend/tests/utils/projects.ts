@@ -1,7 +1,10 @@
 import { type APIRequestContext, expect, type Page } from "@playwright/test"
 import type { EmployeeAccount } from "../../src/client"
 
-export async function setupProjectManagers(request: APIRequestContext) {
+export async function setupProjectManagers(
+  request: APIRequestContext,
+  validationCategory = "工程",
+) {
   async function api(
     url: string,
     data?: object,
@@ -60,12 +63,12 @@ export async function setupProjectManagers(request: APIRequestContext) {
     {
       expected_version: 0,
       definitions: [
-        ["delivery", "合成交付"],
-        ["validation", "合成验证"],
-      ].map(([key, name]) => ({
+        ["delivery", "合成交付", "工程"],
+        ["validation", "合成验证", validationCategory],
+      ].map(([key, name, category]) => ({
         key,
         name,
-        category: "工程",
+        category,
         description: "合成能力",
         level_rubric: {
           levels: [

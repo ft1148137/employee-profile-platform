@@ -187,6 +187,7 @@ class SubmitInput(ToolInput):
 class PreviewItem(SQLModel):
     before: ClaimPublic | None
     after: ChangeItemPublic
+    submission_notice: str
     warning: str | None = None
     current_changed_at: datetime | None = None
 
