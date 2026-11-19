@@ -487,7 +487,11 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
     ).toBeTruthy()
     if (reviewer === "delegate") {
       await enter(await login(manager), "/settings")
-      await page.getByRole("link", { name: "偏好与代理", exact: true }).click()
+      await page.getByRole("button", { name: "打开空间导航" }).click()
+      await page
+        .getByRole("dialog", { name: "空间导航", exact: true })
+        .getByRole("link", { name: "偏好与代理", exact: true })
+        .click()
       await page.getByRole("button", { name: "撤销代理", exact: true }).click()
       await expect(page.getByLabel("代理记录")).toContainText("已撤销")
     }

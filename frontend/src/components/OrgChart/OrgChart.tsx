@@ -252,7 +252,7 @@ function Chart({ orgId, canEdit }: { orgId: string; canEdit: boolean }) {
         </header>
         <section
           aria-label="可滚动组织架构图"
-          className="max-h-[calc(100dvh-20rem)] min-h-80 overflow-auto p-6 focus-visible:outline-2 focus-visible:outline-primary"
+          className="max-h-[calc(100dvh-20rem)] min-h-80 overflow-auto px-4 py-6 focus-visible:outline-2 focus-visible:outline-primary"
         >
           {children.size ? (
             <ChartTree
