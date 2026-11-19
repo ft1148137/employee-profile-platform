@@ -2,6 +2,7 @@ from collections import defaultdict
 from collections.abc import Collection, Mapping, Sequence
 from datetime import date
 from graphlib import CycleError, TopologicalSorter
+from typing import NamedTuple
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -277,22 +278,38 @@ def list_projects(principal: Principal, session: Session) -> list[ProjectSummary
 
 def project_role_rows(
     session: Session, org_id: UUID, project_id: UUID
-) -> list[tuple[CapacityDemand, str]]:
-    return list(
-        session.exec(
-            select(CapacityDemand, Department.name)
-            .join(
-                Department,
-                (col(Department.org_id) == CapacityDemand.org_id)
-                & (col(Department.id) == CapacityDemand.target_department_id),
-            )
-            .where(
-                CapacityDemand.org_id == org_id,
-                CapacityDemand.project_id == project_id,
-            )
-            .order_by(col(CapacityDemand.created_at), col(CapacityDemand.id))
+) -> list[tuple[CapacityDemand, str, DemandOutcome | None]]:
+    # Read commitments and their latest replies from the same database snapshot.
+    rows = session.exec(
+        select(CapacityDemand, Department.name, CapacityDemandEvent.outcome)
+        .join(
+            Department,
+            (col(Department.org_id) == CapacityDemand.org_id)
+            & (col(Department.id) == CapacityDemand.target_department_id),
+        )
+        .outerjoin(
+            CapacityDemandEvent,
+            (col(CapacityDemandEvent.org_id) == CapacityDemand.org_id)
+            & (col(CapacityDemandEvent.demand_id) == CapacityDemand.id)
+            & (col(CapacityDemandEvent.kind) == DemandEventKind.REPLIED),
+        )
+        .where(
+            CapacityDemand.org_id == org_id,
+            CapacityDemand.project_id == project_id,
+        )
+        .distinct(col(CapacityDemand.id))
+        .order_by(
+            col(CapacityDemand.id),
+            col(CapacityDemandEvent.created_at).desc(),
+            col(CapacityDemandEvent.id).desc(),
         )
     )
+    return [
+        (row, name, DemandOutcome(outcome) if outcome is not None else None)
+        for row, name, outcome in sorted(
+            rows, key=lambda role: (role[0].created_at, role[0].id)
+        )
+    ]
 
 
 def project_dependencies(
@@ -309,18 +326,22 @@ def project_dependencies(
     return prerequisites
 
 
+class UnavailabilityImpact(NamedTuple):
+    shifted_roles: list[str]
+    unconfirmed_roles: list[str]
+    delay_days: int | None
+    has_downstream: bool
+
+
 def unavailability_impact(
     session: Session, affected: CapacityDemand, projected_end: date
-) -> tuple[list[str], int, bool]:
+) -> UnavailabilityImpact:
     assert affected.project_id is not None
-    roles = [
-        demand.project_role_summary(row, department)
-        for row, department in project_role_rows(
-            session, affected.org_id, affected.project_id
-        )
-    ]
+    rows = project_role_rows(session, affected.org_id, affected.project_id)
+    roles = [demand.project_role_summary(row, name) for row, name, _ in rows]
     dependencies = project_dependencies(session, affected.org_id, affected.project_id)
-    baseline = analyze_project(roles, dependencies, {})
+    outcomes = {row.id: outcome for row, _, outcome in rows}
+    baseline = analyze_project(roles, dependencies, outcomes)
     forecast = analyze_project(
         [
             role.model_copy(
@@ -335,22 +356,27 @@ def unavailability_impact(
             for role in roles
         ],
         dependencies,
-        {},
+        outcomes,
     )
     original = {
         item.role.id: item.forecast_end for stage in baseline.stages for item in stage
     }
-    assert forecast.delay_days is not None
-    return (
-        [
-            f"{item.role.role_name}（{item.role.target_department_name}）"
-            for stage in forecast.stages
-            for item in stage
-            if item.role.id != affected.id
-            and item.forecast_end != original[item.role.id]
-        ],
-        forecast.delay_days,
-        any(affected.id in parents for parents in dependencies.values()),
+    affected_path = {affected.id}
+    shifted = []
+    unconfirmed = []
+    for stage in forecast.stages:
+        for item in stage:
+            role_id = item.role.id
+            if affected_path.isdisjoint(dependencies.get(role_id, [])):
+                continue
+            affected_path.add(role_id)
+            label = f"{item.role.role_name}（{item.role.target_department_name}）"
+            if item.forecast_unconfirmed:
+                unconfirmed.append(label)
+            elif item.forecast_end != original[role_id]:
+                shifted.append(label)
+    return UnavailabilityImpact(
+        shifted, unconfirmed, forecast.delay_days, len(affected_path) > 1
     )
 
 
@@ -372,29 +398,18 @@ def get_project(
     rows = project_role_rows(session, principal.org_id, project.id)
     if not requester_view and not any(
         demand.represents_department(principal, row.target_department_id)
-        for row, _ in rows
+        for row, _, _ in rows
     ):
         raise CapacityNotFound(PROJECT_NOT_FOUND)
 
     prerequisites = project_dependencies(session, principal.org_id, project.id)
-    outcomes = {
-        demand_id: DemandOutcome(value) if value is not None else None
-        for demand_id, value in session.exec(
-            select(CapacityDemandEvent.demand_id, CapacityDemandEvent.outcome)
-            .where(
-                CapacityDemandEvent.org_id == principal.org_id,
-                col(CapacityDemandEvent.demand_id).in_([row.id for row, _ in rows]),
-                CapacityDemandEvent.kind == DemandEventKind.REPLIED,
-            )
-            .order_by(col(CapacityDemandEvent.created_at), col(CapacityDemandEvent.id))
-        )
-    }
-    roles = [demand.project_role_summary(row, name) for row, name in rows]
+    outcomes = {row.id: outcome for row, _, outcome in rows}
+    roles = [demand.project_role_summary(row, name) for row, name, _ in rows]
     demands = (
         {
             item.id: item
             for item in demand.demands_public(
-                principal, session, [row for row, _ in rows], requester_view=True
+                principal, session, [row for row, _, _ in rows], requester_view=True
             )
         }
         if requester_view

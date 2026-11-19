@@ -14,6 +14,7 @@ from sqlmodel import Session, create_engine
 from app.domains.bot import schemas as s
 from app.domains.im import actions, gateway
 from app.worker import monitor
+from app.worker.models import WorkerHeartbeat
 from tests.domains.test_im_conversation import setup
 from tests.domains.test_im_gateway import event
 
@@ -220,8 +221,11 @@ def test_maintenance_pool_wait_does_not_block_loop(
         elif path == "notify":
             operation = notifications.send_pending(small_pool, {})
         else:
-            # Exercise the database wait during startup without alerting other test tenants.
-            monkeypatch.setattr(monitor, "PROCESS_STARTED_AT", now)
+            # Keep any heartbeat left by a previous test fresh during the database wait.
+            heartbeat_row = db.get(WorkerHeartbeat, 1)
+            monitor_now = heartbeat_row.beat_at if heartbeat_row is not None else now
+            monkeypatch.setattr(gateway, "utc_now", lambda: monitor_now)
+            monkeypatch.setattr(monitor, "PROCESS_STARTED_AT", monitor_now)
             monkeypatch.setattr(g, "refresh", no_refresh)
             operation = g.run()
         held = small_pool.connect()

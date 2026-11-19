@@ -24,10 +24,12 @@ from app.domains.inbox.schemas import (
 )
 
 
-def add_item(session: Session, item: InboxItem) -> None:
+def add_item(
+    session: Session, item: InboxItem, *, borrow_assignment_id: UUID | None = None
+) -> None:
     session.add(item)
     session.flush()
-    enqueue(session, item)
+    enqueue(session, item, borrow_assignment_id=borrow_assignment_id)
 
 
 def notify(
