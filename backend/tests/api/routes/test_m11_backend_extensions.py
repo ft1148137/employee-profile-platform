@@ -1,9 +1,10 @@
 import json
 from collections.abc import Generator
 from datetime import UTC, datetime, time, timedelta
-from typing import Literal
-from uuid import uuid4
+from typing import Any, Literal
+from uuid import UUID, uuid4
 
+import jwt
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import JsonValue
@@ -12,7 +13,14 @@ from sqlmodel import Session, select
 
 from app.authz.deps import get_org_principal
 from app.authz.principal import Principal
+from app.domains.admin_assistant import tools as admin_tools
 from app.domains.admin_assistant.registry import TableCard
+from app.domains.admin_assistant.schemas import (
+    ChangeSetCard,
+    FileUploadCard,
+    LinkCard,
+    SecretInputCard,
+)
 from app.domains.base import utc_now
 from app.domains.bot import core, store, tools
 from app.domains.bot import schemas as bot_schemas
@@ -88,21 +96,12 @@ def test_admin_find_people_reads_only_published_matches(
     assert foreign["data"] == {"data": [], "count": 0}
 
 
-@pytest.mark.parametrize("channel", ["web", "feishu"])
-def test_project_reads_share_web_permissions_and_feature_gate(
-    project_data: tuple,
-    demo: tuple,
-    db: Session,
-    client: TestClient,
-    channel: Literal["web", "feishu"],
-) -> None:
-    base, auth, body, actors = project_data
-    _, employees, _ = demo
-    manager, requester = employees["E01"], employees["E02"]
+@pytest.fixture
+def replied_project(project_data: tuple, client: TestClient) -> dict[str, Any]:
+    base, auth, body, _ = project_data
     created = client.post(f"{base}/projects", headers=auth["employee"], json=body)
     assert created.status_code == 200, created.text
     summary = created.json()
-    args = {"project_id": summary["id"]}
     detail_url = f"{base}/projects/{summary['id']}"
     first_role = client.get(detail_url, headers=auth["employee"]).json()["roles"][0]
     reply = client.post(
@@ -117,6 +116,133 @@ def test_project_reads_share_web_permissions_and_feature_gate(
         },
     )
     assert reply.status_code == 200, reply.text
+    return summary
+
+
+def test_admin_project_reads(
+    replied_project: dict[str, Any],
+    project_data: tuple,
+    demo: tuple,
+    db: Session,
+    client: TestClient,
+) -> None:
+    base, auth, _, actors = project_data
+    admin = admin_principal(db, demo)
+    assert admin.is_org_admin and admin.employee_id is None
+    project_id = replied_project["id"]
+    args = {"project_id": project_id}
+    cards: list[
+        LinkCard | TableCard | ChangeSetCard | SecretInputCard | FileUploadCard
+    ] = []
+
+    def query(
+        principal: Principal, function: str, arguments: dict[str, JsonValue]
+    ) -> JsonValue:
+        return admin_tools.call(
+            db,
+            principal,
+            cards,
+            "admin_read",
+            {"function": function, "args": arguments},
+        )
+
+    listing_url = f"{base}/projects"
+    web_list = client.get(listing_url, headers=auth["admin"])
+    assert web_list.status_code == 200, web_list.text
+    assert web_list.json() == [replied_project]
+    assert query(admin, "list_projects", {}) == {
+        "data": {"data": [replied_project], "count": 1}
+    }
+    _, table = cards
+    assert isinstance(table, TableCard)
+    assert table.page == "/capacity" and table.total == 1
+    assert table.rows == [[replied_project[field] for field in table.columns]]
+
+    cards.clear()
+    web_detail = client.get(f"{listing_url}/{project_id}", headers=auth["admin"])
+    assert web_detail.status_code == 200, web_detail.text
+    detail = web_detail.json()
+    assert query(admin, "get_project", args) == {"data": detail}
+    assert detail["roles"][0]["outcome"] == "can_do"
+    assert detail["roles"][0]["demand"]["events"][-1]["responder_name"] is None
+    assert detail["schedule"]["delay_days"] > 0
+    assert detail["schedule"]["impacts"][0]["downstream"]
+    assert cards == [
+        LinkCard(
+            title="打开对应页面", page=f"/capacity?tab=projects&project={project_id}"
+        )
+    ]
+
+    foreign_user = db.get_one(
+        User,
+        UUID(
+            jwt.decode(
+                auth["foreign"]["Authorization"].split()[1],
+                options={"verify_signature": False},
+            )["sub"]
+        ),
+    )
+    foreign_org = db.exec(
+        select(OrgMembership.org_id).where(OrgMembership.user_id == foreign_user.id)
+    ).one()
+    grant_admin(db, get_org_principal(foreign_org, foreign_user, db))
+    db.add(
+        CapacitySetting(
+            org_id=foreign_org, enabled=True, updated_by_user_id=foreign_user.id
+        )
+    )
+    db.flush()
+    foreign_admin = get_org_principal(foreign_org, foreign_user, db)
+    assert foreign_admin.is_org_admin
+    cards.clear()
+    assert query(foreign_admin, "get_project", args) == {
+        "data": {"error": "找不到该记录"}
+    }
+    assert not cards
+    assert query(foreign_admin, "list_projects", {}) == {
+        "data": {"data": [], "count": 0}
+    }
+    db.rollback()
+
+    cards.clear()
+    employee = admin_principal(db, demo, "employee")
+    manager = get_org_principal(admin.org_id, db.get_one(User, actors[0]), db)
+    assert manager.managed_department_ids and not manager.is_org_admin
+    queries = (("list_projects", {}), ("get_project", args))
+    for function, arguments in queries:
+        for non_admin in (employee, manager):
+            assert query(non_admin, function, arguments) == {
+                "data": {"error": "需要企业管理员权限"}
+            }
+    assert not cards
+
+    setting = db.exec(
+        select(CapacitySetting).where(CapacitySetting.org_id == admin.org_id)
+    ).one()
+    setting.enabled = False
+    db.commit()
+    for function, arguments in queries:
+        assert query(admin, function, arguments) == {
+            "data": {"error": "需求与容量功能已关闭，如需使用请先在能力与规则里开启"}
+        }
+        assert not cards
+
+
+@pytest.mark.parametrize("channel", ["web", "feishu"])
+def test_project_reads_share_web_permissions_and_feature_gate(
+    replied_project: dict[str, Any],
+    project_data: tuple,
+    demo: tuple,
+    db: Session,
+    client: TestClient,
+    channel: Literal["web", "feishu"],
+) -> None:
+    base, auth, body, actors = project_data
+    _, employees, _ = demo
+    manager, requester = employees["E01"], employees["E02"]
+    summary = replied_project
+    args = {"project_id": summary["id"]}
+    detail_url = f"{base}/projects/{summary['id']}"
 
     b_manager, unrelated = [
         db.get_one(

@@ -66,6 +66,8 @@
 | IM 入口 | 保存飞书开关、邮箱绑定和凭据 | 数据与 AI / IM 入口 | `update_im_setting` |
 | IM 入口 | 测试已保存的连接、查看长连接心跳 | 数据与 AI / IM 入口 | `test_im_connection` |
 | IM 入口 | 企业微信、Telegram 设置 | 数据与 AI / IM 入口 | `update_im_setting` 仅支持飞书，其余平台按登记项说明给网页链接；当前只支持飞书联调 |
+| 需求与容量 | 查看本企业的多角色项目列表 | 规划（`/capacity`） | `list_projects` |
+| 需求与容量 | 查看项目详情、各角色承接状态与排程延期影响 | 项目详情（`/capacity?tab=projects&project={id}`） | `get_project` |
 | 审计日志 | 按时间、操作、操作者或对象查日志 | 更多 / 审计日志；各设置页修改记录 | `list_audit_events` |
 | 首次设置 | 查看设置进度 | 管理助手 / 首次设置引导 | `get_setup_status` |
 | 首次设置 | 修改企业名 | 管理助手 / 首次设置引导 | `update_org_profile` |

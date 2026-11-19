@@ -17,6 +17,7 @@ from sqlmodel import Session, select
 from app.authz.deps import get_org_admin, get_org_principal
 from app.authz.principal import Principal
 from app.domains.admin_assistant import registry as r
+from app.domains.admin_assistant import tools
 from app.domains.org.models import Organization
 from app.models import User
 
@@ -57,6 +58,8 @@ def test_web_parity(
         args = {"department_id": str(employees["E02"].department_id)}
     if name == "get_appeal":
         args = {"appeal_id": str(uuid4())}
+    if name == "get_project":
+        args = {"project_id": str(uuid4())}
     if name == "test_im_connection":
         args = {"platform": "feishu"}
     result = call(db, principal(db, shared_demo), name, args)
@@ -70,7 +73,13 @@ def test_web_parity(
             params=args if name == "find_people" else None,
         )
         if response.status_code == 404:
-            assert result == {"data": {"error": "找不到该记录"}}
+            error = "找不到该记录"
+            if (
+                name in ("list_projects", "get_project")
+                and response.json()["detail"] == "需求与容量模块未开启"
+            ):
+                error = "需求与容量功能已关闭，如需使用请先在能力与规则里开启"
+            assert result == {"data": {"error": error}}
             return
         assert response.status_code == 200, response.text
         expected.append(response.json())
@@ -81,6 +90,8 @@ def test_web_parity(
     web = expected[0]
     if name == "get_progress":
         web = {"sync_runs": expected[0], "drafting": expected[1]}
+    if name == "list_projects":
+        web = {"data": web, "count": len(web)}
     if name == "get_employee_profile":
         for item in web["items"]:
             for ref in (item["claim"] or {}).get("evidence", []):
@@ -94,6 +105,13 @@ def test_web_parity(
             for field in ("job_family", "work_location", "hire_date"):
                 row.pop(field)
     assert result["data"] == web
+
+
+def test_project_reads_use_existing_admin_tool() -> None:
+    names = {tool.name for tool in tools.definitions()}
+    assert len(names) == 7
+    assert "admin_read" in names
+    assert names.isdisjoint({"list_projects", "get_project"})
 
 
 def test_boundaries(
