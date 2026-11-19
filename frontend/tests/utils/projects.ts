@@ -88,19 +88,20 @@ export async function setupProjectManagers(
     await api(`${base}/accounts`, undefined, admin.access_token)
   ).data
   const tokens: Record<string, string> = { admin: admin.access_token }
-  for (const code of ["A", "B"]) {
+  for (const code of ["A", "B", "C"]) {
     const account = accounts.find((row) => row.employee_code === code)
     if (!account?.account || !account.department)
-      throw new Error("缺少合成经理账户")
-    await api(
-      `${base}/role-grants`,
-      {
-        user_id: account.account.user_id,
-        role: "dept_manager",
-        department_id: account.department.id,
-      },
-      admin.access_token,
-    )
+      throw new Error("缺少合成员工账户")
+    if (code !== "C")
+      await api(
+        `${base}/role-grants`,
+        {
+          user_id: account.account.user_id,
+          role: "dept_manager",
+          department_id: account.department.id,
+        },
+        admin.access_token,
+      )
     const reset = await api(
       `${base}/accounts/${account.account.user_id}/reset-password`,
       {},

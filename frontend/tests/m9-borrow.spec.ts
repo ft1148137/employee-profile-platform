@@ -1,3 +1,5 @@
+import { createServer } from "node:http"
+import { networkInterfaces } from "node:os"
 import {
   type APIRequestContext,
   expect,
@@ -202,13 +204,122 @@ async function setup(page: Page, request: APIRequestContext) {
   }
 }
 
+async function acceptInAssistant({
+  page,
+  baseURL,
+  setupResult: { a, admin, api, base, demand, open },
+}: {
+  page: Page
+  baseURL: string | undefined
+  setupResult: Awaited<ReturnType<typeof setup>>
+}) {
+  const path = `/capacity?tab=outgoing&demand=${demand.id}`
+  const pending = await api(
+    `${base}/capacity/demands/${demand.id}`,
+    undefined,
+    a,
+  )
+  const server = createServer(async (req, res) => {
+    let raw = ""
+    for await (const chunk of req) raw += chunk
+    const done = JSON.parse(raw).messages.at(-1).role === "tool"
+    const delta = done
+      ? { content: "请核对借调方案。https://example.invalid/" }
+      : {
+          tool_calls: [
+            {
+              index: 0,
+              id: "prepare-accept",
+              type: "function",
+              function: {
+                name: "prepare_demand_response",
+                arguments: JSON.stringify({
+                  action: "accept",
+                  demand_id: demand.id,
+                  revision: pending.revision,
+                }),
+              },
+            },
+          ],
+        }
+    res.writeHead(200, { "Content-Type": "text/event-stream" })
+    res.end(
+      `data: ${JSON.stringify({
+        id: "borrow-response",
+        object: "chat.completion.chunk",
+        choices: [
+          { index: 0, delta, finish_reason: done ? "stop" : "tool_calls" },
+        ],
+      })}\n\ndata: [DONE]\n\n`,
+    )
+  })
+  await new Promise<void>((resolve) => server.listen(0, "0.0.0.0", resolve))
+  try {
+    const address = server.address()
+    if (!address || typeof address === "string")
+      throw new Error("Missing model address")
+    const host =
+      process.env.MODEL_TEST_HOST ??
+      (baseURL?.includes("backend:")
+        ? Object.values(networkInterfaces())
+            .flat()
+            .find((network) => network?.family === "IPv4" && !network.internal)
+            ?.address
+        : "localhost")
+    await api(
+      `${base}/model-setting`,
+      {
+        enabled: true,
+        kind: "openai_compatible",
+        provider: "openai-compatible",
+        model: "synthetic",
+        base_url: `http://${host}:${address.port}/v1`,
+        api_key: "synthetic-key",
+      },
+      admin.access_token,
+      "PUT",
+    )
+    await open(a, "mode=personal", "/assistant")
+    const panel = page.getByRole("region", { name: "助手", exact: true })
+    await panel.getByLabel("发给机器人的消息").fill("请准备接受借调方案")
+    await panel.getByRole("button", { name: "发送", exact: true }).click()
+    const card = panel.getByRole("region", { name: "回应部门需求" })
+    await expect(card).toContainText("预占到期时间")
+    await expect(panel.getByText(/https:\/\/example\.invalid/)).toBeVisible()
+    await expect(
+      panel.getByRole("link", { name: /example\.invalid/ }),
+    ).toHaveCount(0)
+    await card.getByRole("link", { name: "查看需求详情" }).click()
+    await expect(page).toHaveURL(path)
+    await expect(page.getByRole("region", { name: "需求详情" })).toContainText(
+      "合成借调需求",
+    )
+    const timeline = page.getByRole("region", { name: "事件时间线" })
+    await expect(timeline).toContainText("答复人：对方部门经理")
+    await expect(timeline).toContainText("需要协调一人")
+    await expect(page.getByRole("main")).not.toContainText("合成借调员工")
+    await expect(page.getByRole("button", { name: "接受方案" })).toBeVisible()
+    await page.goBack()
+    await card.getByRole("button", { name: "确认", exact: true }).click()
+    await expect(card.last().getByRole("status")).toHaveText(
+      `需求回应已提交，编号：${demand.id}`,
+    )
+  } finally {
+    server.closeAllConnections()
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    )
+  }
+}
+
 for (const approve of [true, false]) {
   test(
     approve
       ? "借出经理在借调页跟踪任务，借入经理仅看匿名进度"
       : "本人不同意后仅本人看得到理由",
-    async ({ page, request }) => {
+    async ({ page, request, baseURL }) => {
       test.setTimeout(120000)
+      const setupResult = await setup(page, request)
       const {
         a,
         m,
@@ -222,7 +333,7 @@ for (const approve of [true, false]) {
         base,
         start,
         workerEmail,
-      } = await setup(page, request)
+      } = setupResult
       const incoming = `tab=incoming&demand=${demand.id}`
       const outgoing = `tab=outgoing&demand=${demand.id}`
       await open(m, `${incoming}&plans=1`)
@@ -234,9 +345,30 @@ for (const approve of [true, false]) {
       const proposal = page.getByRole("region", { name: "方案提议" })
       await expect(proposal).toContainText("原部门已同意 0/1")
 
+      await open(lender, "", "/inbox")
+      const lenderNotice = page.getByRole("listitem").filter({
+        has: page.getByText("借调请求", { exact: true }),
+      })
+      await expect(
+        lenderNotice.getByText("未读", { exact: true }),
+      ).toBeVisible()
+      await lenderNotice.getByRole("link", { name: "查看待审批" }).click()
+      await expect(page).toHaveURL("/reviews?type=borrow")
+      const selection = page
+        .getByRole("region", { name: "借调确认" })
+        .getByRole("article")
+        .filter({ hasText: "合成交付 · 待选人" })
+      await selection
+        .getByLabel("借调员工")
+        .selectOption({ label: "合成借调员工" })
+      await selection.getByRole("button", { name: "确认人选" }).click()
+      await expect(selection).toHaveCount(0)
+      await page.goBack()
+      await expect(lenderNotice).toBeVisible()
+      await expect(lenderNotice.getByText("未读", { exact: true })).toHaveCount(
+        0,
+      )
       await open(lender, "tab=borrows")
-      await page.getByLabel("借调员工").selectOption({ label: "合成借调员工" })
-      await page.getByRole("button", { name: "确认人选" }).click()
       await expect(page.getByText("已安排人员，等待本人同意")).toBeVisible()
 
       if (approve) {
@@ -271,13 +403,8 @@ for (const approve of [true, false]) {
         await expect(
           page.getByRole("region", { name: "借调请求", exact: true }),
         ).toContainText("等待承诺生效")
+        await acceptInAssistant({ page, baseURL, setupResult })
         await open(a, outgoing)
-        await page
-          .getByRole("button", { name: "接受方案", exact: true })
-          .click()
-        await page
-          .getByRole("button", { name: "确认接受", exact: true })
-          .click()
         await expect(proposal).toContainText("借调已生效")
 
         const taskKey = "SYN-BORROW-TRACK"
