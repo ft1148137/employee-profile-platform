@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { useRef, useState } from "react"
 import { CapacityService, type WorkloadPublic } from "@/client"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
@@ -21,38 +22,73 @@ import {
 } from "@/components/ui/select"
 import { useOrg } from "@/hooks/useOrg"
 import { Unavailability } from "./MyWorkload"
-import { addWeeks, weekLabel, weekLoadLabel } from "./shared"
+import { addWeeks, weekLabel } from "./shared"
+import {
+  TeamWorkloadGantt,
+  WorkloadDetails,
+  WorkloadLegend,
+  type WorkloadSelection,
+} from "./TeamWorkloadGantt"
+
+type WorkloadDialog =
+  | { mode: "details"; selection: WorkloadSelection }
+  | { mode: "edit" | "dates"; row: WorkloadPublic; week: string }
 
 export function TeamWorkload({ orgId }: { orgId: string }) {
   const client = useQueryClient()
-  const { employeeId, managedDepartmentIds } = useOrg()
+  const { employeeId, managedDepartmentIds, roles } = useOrg()
+  const isAdmin = roles.includes("org_admin")
   const [department, setDepartment] = useState("all")
-  const [editing, setEditing] = useState<WorkloadPublic | null>(null)
-  const [unavailable, setUnavailable] = useState<WorkloadPublic | null>(null)
-  const query = useQuery({
+  const [offset, setOffset] = useState(0)
+  const [dialog, setDialog] = useState<WorkloadDialog | null>(null)
+  const dialogOpener = useRef<HTMLElement | null>(null)
+  const list = async (from_week?: string) =>
+    (
+      await CapacityService.listWorkloads({
+        path: { org_id: orgId },
+        query: { from_week, weeks: 8 },
+      })
+    ).data.data
+  const current = useQuery({
     queryKey: ["capacity", orgId, "team"],
-    queryFn: async () =>
-      (await CapacityService.listWorkloads({ path: { org_id: orgId } })).data,
+    queryFn: () => list(),
   })
-  const eligible = (query.data?.data ?? []).filter(
-    (row) =>
-      row.employee_id !== employeeId &&
-      row.department_id &&
-      managedDepartmentIds.includes(row.department_id) &&
-      (department === "all" || row.department_id === department),
+  const currentWeek = current.data?.[0]?.weeks[0]?.week_start
+  const fromWeek =
+    currentWeek && offset ? addWeeks(currentWeek, offset) : undefined
+  const shifted = useQuery({
+    queryKey: ["capacity", orgId, "team", fromWeek],
+    queryFn: () => list(fromWeek),
+    enabled: !!fromWeek,
+  })
+  const visible = (row: WorkloadPublic) =>
+    department === "all" || row.department_id === department
+  const canEdit = (row: WorkloadPublic) =>
+    !isAdmin &&
+    row.employee_id !== employeeId &&
+    !!row.department_id &&
+    managedDepartmentIds.includes(row.department_id)
+  const eligible = (current.data ?? []).filter(
+    (row) => visible(row) && canEdit(row),
   )
-  const reusable = eligible.filter((row) => row.last_confirmed !== null)
+  const reusable = eligible.flatMap((row) =>
+    row.last_confirmed
+      ? [
+          {
+            employee_id: row.employee_id,
+            other_percent: row.last_confirmed.percent,
+          },
+        ]
+      : [],
+  )
   const confirm = useMutation({
     mutationFn: () =>
       CapacityService.setCapacityWeeks({
         path: { org_id: orgId },
         body: {
-          items: reusable.map((row) => ({
-            employee_id: row.employee_id,
-            other_percent: row.last_confirmed!.percent,
-          })),
-          start_week: reusable[0].weeks[0].week_start,
-          end_week: addWeeks(reusable[0].weeks[0].week_start, 3),
+          items: reusable,
+          start_week: currentWeek!,
+          end_week: addWeeks(currentWeek!, 3),
         },
       }),
     onSuccess: () => {
@@ -60,54 +96,130 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
       client.invalidateQueries({ queryKey: ["inbox", orgId] })
     },
   })
-  if (query.isPending) return <ProfileLoading />
-  if (query.isError) return <ProfileError retry={() => query.refetch()} />
+  if (current.isPending) return <ProfileLoading />
+  if (current.isError) return <ProfileError retry={() => current.refetch()} />
+  const chart = fromWeek ? shifted : current
   const departments = new Map(
-    query.data.data
-      .filter((row) => row.department_id)
-      .map((row) => [row.department_id!, row.department_name!]),
+    current.data.flatMap((row) =>
+      row.department_id && row.department_name
+        ? [[row.department_id, row.department_name] as const]
+        : [],
+    ),
+  )
+  const openDialog = (next: WorkloadDialog) => {
+    if (!dialog)
+      dialogOpener.current = document.activeElement as HTMLElement | null
+    setDialog(next)
+  }
+  const actions = (
+    row: WorkloadPublic,
+    week = row.weeks[0].week_start,
+    inDetails = false,
+  ) => (
+    <div className="flex flex-wrap gap-1.5 pt-1">
+      {canEdit(row) && (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => openDialog({ mode: "edit", row, week })}
+        >
+          {inDetails ? "设置周投入" : "设置"}
+        </Button>
+      )}
+      {(isAdmin || canEdit(row)) && (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => openDialog({ mode: "dates", row, week })}
+        >
+          {inDetails && canEdit(row) ? "登记不可用日期" : "不可用日期"}
+        </Button>
+      )}
+    </div>
   )
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-2 md:space-y-4">
       <p className="text-sm text-muted-foreground">
         这里按周显示本周和后面 7
         周经理确认的投入比例，只是参考，不是排班承诺；能否承接以部门经理的正式答复为准。
       </p>
-      {!managedDepartmentIds.length && (
+      {isAdmin && (
         <p className="text-sm text-muted-foreground">
           企业管理员可查看团队负荷，调整由管辖经理确认。
         </p>
       )}
-      <div className="max-w-xs space-y-2">
-        <Label htmlFor="capacity-department">部门筛选</Label>
-        <Select value={department} onValueChange={setDepartment}>
-          <SelectTrigger id="capacity-department">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部部门</SelectItem>
-            {Array.from(departments, ([id, name]) => (
-              <SelectItem key={id} value={id}>
-                {name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Label htmlFor="capacity-department">部门筛选</Label>
+          <Select value={department} onValueChange={setDepartment}>
+            <SelectTrigger id="capacity-department" className="max-w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部部门</SelectItem>
+              {Array.from(departments, ([id, name]) => (
+                <SelectItem key={id} value={id}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {currentWeek && (
+          <fieldset
+            className="flex min-w-0 flex-wrap items-center gap-1"
+            aria-label="时间窗口"
+          >
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setOffset((weeks) => weeks - 4)}
+            >
+              <ChevronLeft aria-hidden="true" />
+              上一期
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={!offset}
+              onClick={() => setOffset(0)}
+            >
+              回到本周
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setOffset((weeks) => weeks + 4)}
+            >
+              下一期
+              <ChevronRight aria-hidden="true" />
+            </Button>
+            <span
+              className="sr-only ml-1 text-xs text-muted-foreground sm:not-sr-only"
+              aria-live="polite"
+            >
+              {weekLabel(fromWeek ?? currentWeek)}起
+            </span>
+          </fieldset>
+        )}
       </div>
-      {!!managedDepartmentIds.length && (
-        <div className="space-y-2">
+      {!isAdmin && !!managedDepartmentIds.length && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <Button
+            size="sm"
             disabled={
-              !reusable.length || reusable.length > 200 || confirm.isPending
+              !currentWeek ||
+              !reusable.length ||
+              reusable.length > 200 ||
+              confirm.isPending
             }
             onClick={() => confirm.mutate()}
           >
             沿用上次确认值确认未来 4 周
           </Button>
-          <p className="text-sm text-muted-foreground">
-            为当前筛选范围内可设置的 {reusable.length} 人确认本周起 4 周；
-            {eligible.length - reusable.length}{" "}
-            人没有上次确认值，未选入，请先逐人设置。
+          <p className="text-xs text-muted-foreground">
+            从本周起确认 {reusable.length} 人；
+            {eligible.length - reusable.length} 人没有上次确认值，请先逐人设置。
           </p>
           {reusable.length > 200 && (
             <p className="text-sm text-muted-foreground">
@@ -117,173 +229,80 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
           <SetupError error={confirm.error} />
         </div>
       )}
-      <p className="text-sm text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         周格显示占用 / 可用；占用包含其他工作、平台分配和预占。
       </p>
-      <p className="text-sm text-muted-foreground md:hidden">
-        左右滑动查看各周和设置
-      </p>
-      <div className="overflow-x-auto rounded-xl border">
-        <table className="w-full text-left text-sm">
-          <caption className="sr-only">团队负荷，按部门、姓名排序</caption>
-          <thead className="bg-muted">
-            <tr>
-              <th className="sticky left-0 z-10 whitespace-nowrap border-r bg-muted p-3">
-                姓名
-              </th>
-              {[
-                "部门",
-                "Jira 参考值",
-                "上次确认",
-                ...(query.data.data[0]?.weeks.map((week) =>
-                  weekLabel(week.week_start),
-                ) ?? []),
-                "操作",
-              ].map((label) => (
-                <th key={label} className="whitespace-nowrap p-3">
-                  {label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {query.data.data
-              .filter(
-                (row) =>
-                  department === "all" || row.department_id === department,
-              )
-              .map((row) => (
-                <tr key={row.employee_id} className="border-t">
-                  <th
-                    scope="row"
-                    className="sticky left-0 z-10 whitespace-nowrap border-r bg-background p-3 font-medium"
-                  >
-                    {row.employee_name}
-                  </th>
-                  <td className="p-3">{row.department_name ?? "未分配部门"}</td>
-                  <td className="min-w-40 p-3">
-                    {row.jira_task_count === null
-                      ? "无，未接 Jira 或未关联 Jira 账号"
-                      : `${row.jira_task_count} 件未完成`}
-                  </td>
-                  <td className="whitespace-nowrap p-3 tabular-nums">
-                    {row.last_confirmed
-                      ? `${row.last_confirmed.percent}%（${weekLabel(row.last_confirmed.week_start)}）`
-                      : "暂无确认"}
-                  </td>
-                  {row.weeks.map((week) => (
-                    <td
-                      key={week.week_start}
-                      className="whitespace-nowrap p-3 tabular-nums"
-                    >
-                      <span
-                        className={
-                          week.status === "confirmed"
-                            ? "font-medium"
-                            : "text-muted-foreground"
-                        }
-                      >
-                        {weekLoadLabel(week)}
-                      </span>
-                      <p className="text-xs">
-                        分配 {week.platform_percent - (week.hold_percent ?? 0)}%
-                      </p>
-                      {week.holds?.map((hold, index) => (
-                        <p
-                          key={index}
-                          className="text-xs text-amber-700 dark:text-amber-400"
-                        >
-                          预占 {hold.allocation_percent}%，
-                          {new Date(hold.expires_at).toLocaleDateString(
-                            "zh-CN",
-                            { month: "long", day: "numeric" },
-                          )}
-                          前待对方确认
-                        </p>
-                      ))}
-                      {row.correction_pending[week.week_start] && (
-                        <p className="text-xs">修正待审</p>
-                      )}
-                      {week.capacity_percent < 100 && (
-                        <p className="text-xs">可用 {week.capacity_percent}%</p>
-                      )}
-                      {week.legacy_start && (
-                        <p className="text-xs text-muted-foreground">
-                          开始日期未确认
-                        </p>
-                      )}
-                    </td>
-                  ))}
-                  <td className="p-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => setUnavailable(row)}
-                    >
-                      不可用日期
-                    </Button>
-                    {row.employee_id !== employeeId &&
-                      row.department_id &&
-                      managedDepartmentIds.includes(row.department_id) && (
-                        <Button
-                          variant="outline"
-                          onClick={() => setEditing(row)}
-                        >
-                          设置
-                        </Button>
-                      )}
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-        {!query.data.count && (
-          <p className="p-4 text-muted-foreground">范围内暂无员工。</p>
-        )}
-      </div>
+      <WorkloadLegend />
+      {chart.isPending ? (
+        <ProfileLoading />
+      ) : chart.isError ? (
+        <ProfileError retry={() => chart.refetch()} />
+      ) : (
+        <TeamWorkloadGantt
+          rows={chart.data.filter(visible)}
+          current={currentWeek ?? ""}
+          actions={actions}
+          onSelect={(selection) => openDialog({ mode: "details", selection })}
+        />
+      )}
       <Dialog
-        open={!!unavailable}
+        open={!!dialog}
         onOpenChange={(open) => {
-          if (!open) setUnavailable(null)
+          if (!open) setDialog(null)
         }}
       >
-        <DialogContent>
-          <DialogTitle>不可用日期 · {unavailable?.employee_name}</DialogTitle>
-          <DialogDescription>
-            登记后会通知本人，不会自动调整已有分配。
-          </DialogDescription>
-          {unavailable && (
-            <Unavailability
-              key={unavailable.employee_id}
-              orgId={orgId}
-              employeeId={unavailable.employee_id}
-              startWeek={unavailable.weeks[0].week_start}
-              canWrite={
-                unavailable.employee_id === employeeId ||
-                (!!unavailable.department_id &&
-                  managedDepartmentIds.includes(unavailable.department_id))
-              }
+        <DialogContent
+          className="max-h-[calc(100dvh-2rem)] overflow-y-auto"
+          onCloseAutoFocus={(event) => {
+            if (dialogOpener.current?.isConnected) {
+              event.preventDefault()
+              dialogOpener.current.focus({ preventScroll: true })
+            }
+          }}
+        >
+          {dialog?.mode === "details" && (
+            <WorkloadDetails
+              selection={dialog.selection}
+              actions={actions(
+                dialog.selection.row,
+                dialog.selection.week,
+                true,
+              )}
             />
           )}
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={!!editing}
-        onOpenChange={(open) => {
-          if (!open) setEditing(null)
-        }}
-      >
-        <DialogContent>
-          <DialogTitle>设置周投入 · {editing?.employee_name}</DialogTitle>
-          <DialogDescription>
-            设置平台外其他工作占比，平台内分配另行计入。改后会通知本人。
-          </DialogDescription>
-          {editing && (
-            <Adjustment
-              key={editing.employee_id}
-              orgId={orgId}
-              workload={editing}
-              close={() => setEditing(null)}
-            />
+          {dialog?.mode === "dates" && (
+            <>
+              <DialogTitle className="pr-6">
+                不可用日期 · {dialog.row.employee_name}
+              </DialogTitle>
+              <DialogDescription>
+                {canEdit(dialog.row)
+                  ? "登记后会通知本人，不会自动调整已有分配。"
+                  : "此处展示员工已登记的不可用日期。"}
+              </DialogDescription>
+              <Unavailability
+                orgId={orgId}
+                employeeId={dialog.row.employee_id}
+                startWeek={dialog.week}
+                canWrite={canEdit(dialog.row)}
+              />
+            </>
+          )}
+          {dialog?.mode === "edit" && canEdit(dialog.row) && (
+            <>
+              <DialogTitle className="pr-6">
+                设置周投入 · {dialog.row.employee_name}
+              </DialogTitle>
+              <DialogDescription>
+                设置平台外其他工作占比，平台内分配另行计入。改后会通知本人。
+              </DialogDescription>
+              <Adjustment
+                orgId={orgId}
+                workload={dialog.row}
+                week={dialog.week}
+                close={() => setDialog(null)}
+              />
+            </>
           )}
         </DialogContent>
       </Dialog>
@@ -294,18 +313,20 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
 function Adjustment({
   orgId,
   workload,
+  week,
   close,
 }: {
   orgId: string
   workload: WorkloadPublic
+  week: string
   close: () => void
 }) {
   const client = useQueryClient()
   const [percent, setPercent] = useState(
     String(workload.last_confirmed?.percent ?? ""),
   )
-  const [start, setStart] = useState(workload.weeks[0].week_start)
-  const [end, setEnd] = useState(workload.weeks[0].week_start)
+  const [start, setStart] = useState(week)
+  const [end, setEnd] = useState(week)
   const save = useMutation({
     mutationFn: () =>
       CapacityService.setCapacityWeeks({
