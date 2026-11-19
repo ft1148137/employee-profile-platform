@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test"
 import { expectChineseCopy } from "./utils/copy"
+import { setupProjectManagers } from "./utils/projects"
 import { logInUser } from "./utils/user"
 
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -81,4 +82,50 @@ test("employee cannot see approval policy settings", async ({ page }) => {
   await expect(
     page.getByRole("tab", { name: "审批规则", exact: true }),
   ).toHaveCount(0)
+})
+
+test("profile preview shows the current approval rule and exempt changes publish as tentative", async ({
+  page,
+  request,
+}) => {
+  const { base, adminToken, open } = await setupProjectManagers(request)
+  await open(page, "A", "/assistant")
+  await page.getByRole("link", { name: "我的画像", exact: true }).click()
+  await page.getByRole("button", { name: "添加能力", exact: true }).click()
+  const editor = page.getByRole("dialog")
+  await editor.getByRole("button", { name: "合成交付", exact: true }).click()
+  await editor.getByRole("button", { name: "手动编辑", exact: true }).click()
+  const statement = "独立完成合成交付"
+  await editor
+    .getByRole("textbox", { name: "陈述", exact: true })
+    .fill(statement)
+  const preview = editor.getByRole("button", {
+    name: "预览并提交",
+    exact: true,
+  })
+  await preview.click()
+  await expect(editor.getByText(/^提交后由 .+审批$/)).toBeVisible()
+  await editor.getByRole("button", { name: "返回修改", exact: true }).click()
+
+  const policy = await request.put(`${base}/approval-policy`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    data: { category_overrides: { 工程: false } },
+  })
+  expect(policy.ok(), await policy.text()).toBeTruthy()
+  await preview.click()
+  await expect(
+    editor.getByText("本能力无需经理确认，提交后将直接发布为暂定", {
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(editor.getByText(/^提交后由 .+审批$/)).toHaveCount(0)
+  await editor.getByRole("button", { name: "确认提交", exact: true }).click()
+
+  await expect(editor).toBeHidden()
+  const capability = page.getByRole("article", {
+    name: "合成交付",
+    exact: true,
+  })
+  await expect(capability.getByText(statement, { exact: true })).toBeVisible()
+  await expect(capability.getByText("暂定", { exact: true })).toBeVisible()
 })

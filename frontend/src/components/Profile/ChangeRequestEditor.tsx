@@ -333,6 +333,8 @@ export function ChangeRequestEditor({
             {displayedPreview && (
               <RequestReviewers
                 reviewers={displayedPreview.reviewers}
+                requiresManager={displayedPreview.requires_manager}
+                partialAutoPublish={displayedPreview.partial_auto_publish}
                 preview
               />
             )}
