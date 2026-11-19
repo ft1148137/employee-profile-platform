@@ -8,10 +8,16 @@ from uuid import UUID, uuid4
 import pytest
 import yaml
 from fastapi.testclient import TestClient
+from ortools.sat.python import cp_model
 from sqlmodel import Session, select
 
 from app.domains.org.models import Organization
-from app.domains.planning.cpsat import CpSatSolver
+from app.domains.planning import cpsat
+from app.domains.planning.cpsat import (
+    SOLVE_TIMEOUT_SECONDS,
+    CpSatSolver,
+    SolverIncomplete,
+)
 from app.domains.planning.solver import Role, RuleSolver, Solution, full_plan
 from app.models import User
 from scripts.eval_solver import metrics
@@ -65,6 +71,30 @@ def test_audit_detects_double_booking() -> None:
     assert (
         metrics([early, later], Solution(independently_filled, ()))["violations"] == 2
     )
+
+
+def test_model_deadline_stops_on_first_candidate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    role = EVAL_CASES["trap-primary"][0]
+    # Expire on the first candidate check, after creating only the offset variable.
+    readings = iter((0.0, 0.0, 0.0, 0.0, float(SOLVE_TIMEOUT_SECONDS)))
+    monkeypatch.setattr(cpsat, "perf_counter", lambda: next(readings))
+    created: list[str] = []
+    new_bool_var = cp_model.CpModel.new_bool_var
+
+    def record(model: cp_model.CpModel, name: str) -> cp_model.IntVar:
+        created.append(name)
+        return new_bool_var(model, name)
+
+    def unexpected_solve(*_args: object) -> None:
+        pytest.fail("Expired model reached the solver")
+
+    monkeypatch.setattr(cp_model.CpModel, "new_bool_var", record)
+    monkeypatch.setattr(cp_model.CpSolver, "solve", unexpected_solve)
+    with pytest.raises(SolverIncomplete, match="time budget exhausted"):
+        CpSatSolver().solve([role])
+    assert created == [f"{role.key}:0"]
 
 
 def test_replayed_commitment_blocks_late_optimization() -> None:

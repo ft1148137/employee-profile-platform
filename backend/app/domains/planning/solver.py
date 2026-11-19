@@ -99,19 +99,25 @@ def full_plan(data: Snapshot, rows: Assignments) -> bool:
         ):
             return False
         people.add(person)
-    spans = sorted(periods)
-    if (
-        spans[0][0] != demand["window_start"]
-        or spans[-1][1] != demand["window_end"]
-        or len(spans) > 2
-        or any(len(people) != demand["headcount"] for people in periods.values())
-    ):
-        return False
-    if len(spans) == 2 and (
-        date.fromisoformat(spans[1][0])
-        != date.fromisoformat(spans[0][1]) + timedelta(days=1)
-        or date.fromisoformat(spans[1][0]).weekday() != 0
-    ):
+    window = (demand["window_start"], demand["window_end"])
+    continuous = periods.pop(window, set())
+    if periods:
+        spans = sorted(periods)
+        if (
+            len(spans) != 2
+            or spans[0][0] != window[0]
+            or spans[1][1] != window[1]
+            or date.fromisoformat(spans[1][0])
+            != date.fromisoformat(spans[0][1]) + timedelta(days=1)
+            or date.fromisoformat(spans[1][0]).weekday() != 0
+            or any(
+                not continuous.isdisjoint(people)
+                or len(continuous) + len(people) != demand["headcount"]
+                for people in periods.values()
+            )
+        ):
+            return False
+    elif len(continuous) != demand["headcount"]:
         return False
     return (
         validator.validate(adjusted, {"assignees": rows}, kind="phased").verdict
