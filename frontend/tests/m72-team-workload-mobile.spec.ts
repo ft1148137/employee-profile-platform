@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import type { EmployeeAccount } from "../src/client"
+import type { EmployeeAccount, WorkloadList } from "../src/client"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
@@ -91,30 +91,125 @@ test("团队负荷在手机横向滑动后仍显示姓名和设置", async ({ pa
     { token: (await changed.json()).access_token, orgId: admin.org_id },
   )
 
+  await page.route(`**${base}/capacity/workloads?**`, async (route) => {
+    const response = await route.fetch()
+    expect(response.ok()).toBeTruthy()
+    const workload: WorkloadList = await response.json()
+    const row = workload.data.find(
+      (item) => item.employee_name === "A合成员工",
+    )!
+    const date = (days: number) => {
+      const day = new Date(row.weeks[0].week_start)
+      day.setUTCDate(day.getUTCDate() + days)
+      return day.toISOString().slice(0, 10)
+    }
+    const common = {
+      demand_id: "synthetic-demand",
+      capability_name: "研发",
+      requesting_department_name: "合成部门",
+      allocation_percent: 25,
+    }
+    row.assignments = [
+      {
+        ...common,
+        id: "committed",
+        kind: "committed",
+        title: "合成已承诺需求",
+        start_date: date(-7),
+        due_date: date(9),
+      },
+      {
+        ...common,
+        id: "borrow",
+        kind: "borrow",
+        title: "合成借调需求",
+        start_date: date(3),
+        due_date: date(60),
+      },
+    ]
+    row.holds = [
+      {
+        ...common,
+        proposal_id: "synthetic-proposal",
+        is_borrow: false,
+        title: "合成方案",
+        start_date: date(4),
+        end_date: date(12),
+        expires_at: `${date(6)}T12:00:00Z`,
+      },
+    ]
+    row.unavailabilities = [
+      { id: "unavailable", start_date: date(3), end_date: date(4) },
+    ]
+    await route.fulfill({ response, json: workload })
+  })
+
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto("/capacity?tab=team")
-  const hint = page.getByText("左右滑动查看各周和设置", { exact: true })
+  const card = page.getByRole("article", { name: "A合成员工" })
+  const hint = card.getByText("左右滑动查看 8 周排期", { exact: true })
+  const name = card.getByText("A合成员工", { exact: true })
+  const setting = card.getByRole("button", { name: "设置", exact: true })
+  const dates = card.getByRole("button", { name: "不可用日期", exact: true })
   await expect(hint).toBeVisible()
-  const table = page.getByRole("table", { name: "团队负荷，按部门、姓名排序" })
-  await table.scrollIntoViewIfNeeded()
-  const firstRow = table.locator("tbody tr").first()
-  await expect(
-    firstRow.getByRole("rowheader", { name: "A合成员工" }),
-  ).toBeVisible()
-  const scroller = table.locator("..")
-  await scroller.evaluate((element) => {
-    element.scrollLeft = element.scrollWidth
-  })
-  await expect(
-    firstRow.getByRole("rowheader", { name: "A合成员工" }),
-  ).toBeInViewport()
-  const setting = firstRow.getByRole("button", { name: "设置", exact: true })
+  await expect(name).toBeInViewport()
   await expect(setting).toBeInViewport()
+  await expect(dates).toBeInViewport()
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(390)
+
+  const scroller = card.getByRole("region", { name: "A合成员工的 8 周排期" })
+  const committed = scroller.getByRole("button", {
+    name: /^已承诺分配：合成已承诺需求/,
+  })
+  const borrow = scroller.getByRole("button", {
+    name: /^跨部门借调：借调 · 合成借调需求/,
+  })
+  await expect(committed).toContainText("←")
+  await expect(borrow).toContainText("→")
+  await expect(
+    scroller.getByRole("button", { name: /^不可用：不可用日期/ }),
+  ).toBeVisible()
+  await scroller
+    .getByRole("button", { name: /^方案预占：预占 · 合成方案/ })
+    .click()
+  const dialog = page.getByRole("dialog")
+  await expect(dialog).toContainText("负荷明细 · A合成员工")
+  await expect(dialog).toContainText("其他工作占比")
+  await expect(
+    dialog.getByRole("region", { name: "已承诺分配" }),
+  ).toContainText("合成已承诺需求 · 25%")
+  await expect(
+    dialog.getByRole("region", { name: "跨部门借调" }),
+  ).toContainText("合成借调需求 · 25%")
+  await expect(dialog.getByRole("region", { name: "方案预占" })).toContainText(
+    "待确认，到期",
+  )
+  await expect(
+    dialog.getByRole("button", { name: "登记不可用日期" }),
+  ).toBeVisible()
+  await dialog.press("Escape")
+  await expect(dialog).toBeHidden()
+  expect(
+    await scroller.evaluate((element) => {
+      element.scrollLeft = element.scrollWidth
+      return element.scrollLeft
+    }),
+  ).toBeGreaterThan(0)
+  await expect(name).toBeInViewport()
+  await expect(setting).toBeInViewport()
+  await expect(dates).toBeInViewport()
   await setting.click()
-  await expect(page.getByRole("dialog")).toContainText("设置周投入 · A合成员工")
-  await page.getByRole("dialog").press("Escape")
-  await expect(page.getByRole("dialog")).toBeHidden()
+  await expect(dialog).toContainText("设置周投入 · A合成员工")
+  await dialog.press("Escape")
+  await expect(dialog).toBeHidden()
 
   await page.setViewportSize({ width: 1280, height: 900 })
   await expect(hint).toBeHidden()
+  const table = page.getByRole("table", { name: "团队负荷，按部门、姓名排序" })
+  await expect(table.getByText("本周", { exact: true })).toBeVisible()
+  await expect(
+    table.getByRole("button", { name: /^已承诺分配：合成已承诺需求/ }),
+  ).toBeVisible()
 })

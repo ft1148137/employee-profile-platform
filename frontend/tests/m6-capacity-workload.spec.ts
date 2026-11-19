@@ -107,9 +107,24 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   await page.getByRole("button", { name: "保存设置", exact: true }).click()
   await expect(page.getByRole("status")).toContainText("需求与容量设置已保存")
   await page.goto("/capacity?tab=team")
+  const chart = page.getByRole("table", { name: "团队负荷，按部门、姓名排序" })
+  await expect(chart).toBeVisible()
   await expect(
-    page.getByRole("button", { name: "设置", exact: true }),
+    chart.getByRole("button", { name: "设置", exact: true }),
   ).toHaveCount(0)
+  await chart
+    .getByRole("row")
+    .filter({ hasText: "合成员工" })
+    .getByRole("button", { name: "不可用日期" })
+    .click()
+  const readonlyDates = page.getByRole("dialog", {
+    name: "不可用日期 · 合成员工",
+  })
+  await expect(readonlyDates).toContainText("暂无不可用日期。")
+  await expect(
+    readonlyDates.getByRole("button", { name: "登记", exact: true }),
+  ).toHaveCount(0)
+  await readonlyDates.press("Escape")
   await open(tokens.get("E")!)
   await expect(
     page.getByRole("link", { name: "规划", exact: true }),
@@ -219,9 +234,19 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     .fill(nextWeek.toISOString().slice(0, 10))
   await page.getByLabel("其他工作占比（%）").fill("110")
   await page.getByRole("button", { name: "确认设置", exact: true }).click()
-  const row = page.getByRole("row").filter({ hasText: "合成员工" })
+  const row = chart.getByRole("row").filter({ hasText: "合成员工" })
   await expect(row).toContainText("110%")
   await expect(row.getByText("110% / 100%", { exact: true })).toHaveCount(2)
+  await row
+    .getByRole("button", { name: /110% \/ 100%，过载，查看负荷明细/ })
+    .first()
+    .click()
+  const details = page.getByRole("dialog", { name: "负荷明细 · 合成员工" })
+  await expect(details).toContainText("其他工作占比 110%")
+  await expect(
+    details.getByRole("button", { name: "设置周投入" }),
+  ).toBeVisible()
+  await details.press("Escape")
   await page.getByRole("combobox", { name: "部门筛选" }).click()
   await expect(
     page.getByRole("option", { name: "客户", exact: true }),
@@ -231,9 +256,12 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     path: test.info().outputPath("team.png"),
     fullPage: true,
   })
+  await page.getByRole("button", { name: "下一期" }).click()
+  await expect(row.getByText("未确认", { exact: true })).toHaveCount(8)
   await page
     .getByRole("button", { name: "沿用上次确认值确认未来 4 周" })
     .click()
+  await page.getByRole("button", { name: "回到本周" }).click()
   await expect(row.getByText("110% / 100%", { exact: true })).toHaveCount(4)
   await expect(row.getByText("未确认", { exact: true })).toHaveCount(4)
   const managerHeaders = { Authorization: `Bearer ${tokens.get("M")}` }

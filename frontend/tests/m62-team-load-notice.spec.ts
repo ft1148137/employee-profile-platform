@@ -104,4 +104,22 @@ test("经理在团队负荷页看到当前参考和正式答复的口径说明",
       { exact: true },
     ),
   ).toBeVisible()
+
+  const chart = page.getByRole("table", { name: "团队负荷，按部门、姓名排序" })
+  const dates = chart.locator("thead time")
+  await expect(dates).toHaveCount(8)
+  const current = (await dates.first().getAttribute("datetime"))!
+  const shift = (weeks: number) => {
+    const date = new Date(current)
+    date.setUTCDate(date.getUTCDate() + 7 * weeks)
+    return date.toISOString().slice(0, 10)
+  }
+  await page.getByRole("button", { name: "上一期" }).click()
+  await expect(dates.first()).toHaveAttribute("datetime", shift(-4))
+  await expect(chart.getByText("本周", { exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "回到本周" }).click()
+  await expect(dates.first()).toHaveAttribute("datetime", current)
+  await page.getByRole("button", { name: "下一期" }).click()
+  await expect(dates.first()).toHaveAttribute("datetime", shift(4))
+  await expect(chart.getByText("本周", { exact: true })).toHaveCount(0)
 })
