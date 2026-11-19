@@ -13,6 +13,7 @@ test("employees generate a code, see bindings and unbind from personal settings"
     "employee.platform@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
+  const bindings = page.getByRole("region", { name: "IM 绑定", exact: true })
   let rows: BindingPublic[] = []
   // Transport and binding are exercised against an HTTP fake in backend tests.
   await page.route("**/me/im-bindings", (route) =>
@@ -58,7 +59,7 @@ test("employees generate a code, see bindings and unbind from personal settings"
   await expect(notification).toBeChecked()
   await notification.click()
   await expect(notification).not.toBeChecked()
-  await expect(page.getByRole("status")).toHaveText("推送设置已保存")
+  await expect(bindings.getByRole("status")).toHaveText("推送设置已保存")
   await page.reload()
   await page.getByRole("link", { name: "连接与集成", exact: true }).click()
   await expect(notification).not.toBeChecked()
@@ -66,9 +67,20 @@ test("employees generate a code, see bindings and unbind from personal settings"
   await expect(notification).toBeChecked()
   rejectUpdate = true
   await notification.click()
-  await expect(page.getByRole("status")).toHaveText("保存失败，请重试")
+  await expect(bindings.getByRole("status")).toHaveText("保存失败，请重试")
   await expect(notification).toBeChecked()
-  await expectChineseCopy(page, ["Telegram"])
+  await expectChineseCopy(
+    page,
+    ["Telegram", "skill", "Cursor", "MCP"],
+    [
+      "demo-jira-02",
+      (await page.getByTestId("cursor-config").textContent()) ?? "",
+      ...(await page
+        .getByRole("region", { name: "我的令牌" })
+        .locator("code")
+        .allTextContents()),
+    ],
+  )
   await page.screenshot({
     path: "test-results/im-bindings.png",
     fullPage: true,
@@ -86,7 +98,7 @@ test("employees generate a code, see bindings and unbind from personal settings"
   })
   await page.getByRole("button", { name: "解绑 Telegram" }).click()
   expect((await removed).status()).toBe(204)
-  await expect(page.getByRole("status")).toContainText("已解绑")
+  await expect(bindings.getByRole("status")).toContainText("已解绑")
   await expect(page.getByText("还没有绑定聊天账号")).toBeVisible()
   await expect(page.getByTestId("im-bind-code")).toHaveCount(0)
   rows = [

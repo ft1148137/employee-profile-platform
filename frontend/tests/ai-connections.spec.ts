@@ -113,19 +113,27 @@ test("enterprise switch and personal token lifecycle", async ({
     await expect(employee.getByTestId("cursor-config")).not.toContainText(
       data.token,
     )
-    await expectChineseCopy(employee, [
-      "AI",
-      "Cursor",
-      "skill",
-      "MCP",
-      "mcpServers",
-      "employeeProfile",
-      "url",
-      "headers",
-      "Authorization",
-      "Bearer",
-      ...(await employee.getByRole("group").locator("code").allTextContents()),
-    ])
+    await expectChineseCopy(
+      employee,
+      [
+        "AI",
+        "Cursor",
+        "Telegram",
+        "skill",
+        "MCP",
+        "mcpServers",
+        "employeeProfile",
+        "url",
+        "headers",
+        "Authorization",
+        "Bearer",
+        ...(await employee
+          .getByRole("group")
+          .locator("code")
+          .allTextContents()),
+      ],
+      ["demo-jira-02"],
+    )
     await employee.reload()
     await employee.getByRole("link", { name: "连接与集成" }).click()
     await expect(employee.getByTestId("new-token")).toHaveCount(0)
