@@ -10,6 +10,7 @@ from app.domains.capacity.calendar import week_start
 from app.domains.planning.simulator import ranked_candidates
 from app.domains.planning.solver import (
     MAX_DELAY,
+    Assignments,
     Role,
     Schedule,
     Solution,
@@ -22,6 +23,16 @@ SOLVE_TIMEOUT_SECONDS = 10
 
 class SolverIncomplete(RuntimeError):
     """The solver could not prove optimality within its budget."""
+
+
+def _collapse_identical_phases(rows: Assignments, headcount: int) -> Assignments:
+    # Selected rows are ordered by phase and then by employee.
+    first, second = rows[:headcount], rows[headcount:]
+    if second and [(r["employee_id"], r["allocation_percent"]) for r in first] == [
+        (r["employee_id"], r["allocation_percent"]) for r in second
+    ]:
+        return [{**row, "end_date": second[0]["end_date"]} for row in first]
+    return rows
 
 
 class CpSatSolver:
@@ -42,6 +53,9 @@ class CpSatSolver:
         newcomer_roles: list[cp_model.IntVar] = []
 
         for role in roles:
+            demand = role.snapshot["demand"]
+            committed_start = demand.get("committed_start_date")
+            committed_end = demand.get("committed_end_date")
             newcomer_rows: list[cp_model.IntVar] = []
             for offset in range(MAX_DELAY + 1):
                 if perf_counter() >= deadline:
@@ -51,16 +65,16 @@ class CpSatSolver:
                 start, end = map(
                     date.fromisoformat, (d["window_start"], d["window_end"])
                 )
-                committed_end = date.fromisoformat(
-                    d.get("committed_end_date") or d["window_end"]
-                )
                 if (
                     week_start(start).isoformat() < data["rules"]["current_week"]
-                    or start.isoformat()
-                    < (d.get("committed_start_date") or d["window_start"])
-                    or end > committed_end
+                    or (committed_start and d["window_start"] < committed_start)
+                    or (committed_end and d["window_end"] > committed_end)
                     # An earlier finish on a change requires requester approval.
-                    or (d.get("change") and end < committed_end)
+                    or (
+                        committed_end
+                        and demand.get("change")
+                        and d["window_end"] < committed_end
+                    )
                 ):
                     continue
                 picked = model.new_bool_var(f"{role.key}:{offset}")
@@ -152,8 +166,12 @@ class CpSatSolver:
             if assigned := [
                 row for take, row in rows[role.key] if solver.boolean_value(take)
             ]:
-                filled[role.key] = sorted(
-                    assigned, key=lambda row: (row["start_date"], row["employee_id"])
+                filled[role.key] = _collapse_identical_phases(
+                    sorted(
+                        assigned,
+                        key=lambda row: (row["start_date"], row["employee_id"]),
+                    ),
+                    role.snapshot["demand"]["headcount"],
                 )
         if perf_counter() >= deadline:
             raise SolverIncomplete("CP-SAT time budget exhausted")

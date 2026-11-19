@@ -1,4 +1,5 @@
 from collections.abc import Generator, Sequence
+from datetime import timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -13,12 +14,15 @@ from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityProposal,
     CapacityProposalLine,
+    CapacityUnavailability,
 )
 from app.domains.org.models import Organization
 from app.domains.planning.cpsat import SOLVE_TIMEOUT_SECONDS, CpSatSolver
 from app.domains.planning.solver import Role, Solution
+from app.domains.planning.validator import PHASED_APPROVAL
 from app.models import User
 from scripts.eval_solver import metrics
+from tests.api.routes.test_m9_change import submit_change
 from tests.api.routes.test_m9_proposal import propose, respond, rows
 from tests.eval.planning.test_planning_eval import HERE, _cleanup, _setup
 
@@ -26,7 +30,11 @@ from tests.eval.planning.test_planning_eval import HERE, _cleanup, _setup
 @pytest.fixture
 def replay(db: Session, request: pytest.FixtureRequest) -> Generator[tuple]:
     name = getattr(request, "param", "multi-capability-01")
-    raw = yaml.safe_load((HERE / "cases" / f"{name}.yaml").read_text())
+    base = "unavailability-01" if name == "relay" else name
+    raw = yaml.safe_load((HERE / "cases" / f"{base}.yaml").read_text())
+    if name == "relay":
+        raw["people"].append({"code": "QG008", "level": "routine", "other": 10})
+        raw["unavailability"].append({"code": "QG008", "start_day": 7, "end_day": 11})
     users = set(db.exec(select(User.id)).all())
     org = Organization(slug=f"solver-api-{uuid4().hex}", name="Solver API test")
     db.add(org)
@@ -83,23 +91,49 @@ def test_optimized_option_matches_b1_replay(
     assert client.get(case_url, headers=auth["b"]).json() == created
     (option,) = [o for o in created["options"] if o["kind"] == "optimized"]
     assert option["kind_label"] == "优化方案"
-    assert option["verdict"] == "conditional"
-    assert "需求方同意分阶段交付" in option["summary"]["approvers"]
-    assert ("需求方接受新日期" in option["summary"]["approvers"]) == bool(delay_days)
+    assignees = option["params"]["assignees"]
+    if delay_days:
+        assert option["verdict"] == "conditional"
+        assert option["summary"]["conditions"] == ["需求方要接受新日期"]
+        assert option["summary"]["approvers"] == [
+            "本部门经理确认答复",
+            "需求方接受新日期",
+        ]
+        assert len(assignees) == 1
+    else:
+        assert "需求方接受新日期" not in option["summary"]["approvers"]
+        assert (PHASED_APPROVAL in option["summary"]["conditions"]) == (
+            len({row["employee_id"] for row in assignees}) > 1
+        )
     assert metrics(
         [Role("1", created["data"])],
         Solution({"1": option["params"]["assignees"]}, ()),
     ) == {"filled": 1, "delay": delay_days, "newcomer": 0, "violations": 0}
 
 
+@pytest.mark.parametrize("replay", ["unavailability-01"], indirect=True)
 def test_optimized_option_uses_m9_reply_and_accept(
     client: TestClient, db: Session, replay: tuple
 ) -> None:
-    _, _, _, demand = replay
+    url, people, auth, demand = replay
     created = create_case(client, replay)
     (option,) = [o for o in created["options"] if o["kind"] == "optimized"]
     assert not rows(db, CapacityProposal, demand)
     assert not rows(db, CapacityAssignment, demand)
+
+    start = demand.window_start + timedelta(weeks=1)
+    end = demand.window_end + timedelta(weeks=1)
+    phased = client.post(
+        f"{url}/planning/cases/{created['id']}/options/{option['id']}/revise",
+        headers=auth["b"],
+        json={
+            "change": "phased",
+            "split_date": (start + timedelta(weeks=1)).isoformat(),
+        },
+    )
+    assert phased.status_code == 200, phased.text
+    assert len(phased.json()["params"]["assignees"]) == 2
+    assert PHASED_APPROVAL in phased.json()["summary"]["conditions"]
 
     reply = propose(client, replay, option, outside_basis=False)
     assert reply.status_code == 200, reply.text
@@ -111,9 +145,98 @@ def test_optimized_option_uses_m9_reply_and_accept(
     accepted = respond(client, replay, reply.json()["revision"])
     assert accepted.status_code == 200, accepted.text
     assert accepted.json()["proposal"]["status"] == "committed"
-    assert len(rows(db, CapacityAssignment, demand)) == len(
-        option["params"]["assignees"]
+    (assignment,) = rows(db, CapacityAssignment, demand)
+    assert assignment.employee_id == people["QG007"].id
+    assert assignment.allocation_percent == 50
+    assert (assignment.start_date, assignment.due_date) == (start, end)
+
+    db.refresh(demand)
+    changed = create_case(client, replay)
+    assert changed["data"]["demand"]["change"] is True
+    (change_option,) = [o for o in changed["options"] if o["kind"] == "optimized"]
+    assert change_option["params"]["assignees"] == option["params"]["assignees"]
+    assert change_option["summary"]["conditions"] == []
+    change = submit_change(client, replay, change_option, outside_basis=False)
+    assert change.status_code == 200, change.text
+
+
+@pytest.mark.parametrize("replay", ["relay"], indirect=True)
+def test_optimized_option_preserves_real_handoff(
+    client: TestClient, replay: tuple
+) -> None:
+    _, people, _, demand = replay
+    created = create_case(client, replay)
+    (option,) = [o for o in created["options"] if o["kind"] == "optimized"]
+    middle = demand.window_start + timedelta(weeks=1)
+    assert option["params"]["assignees"] == [
+        {
+            "employee_id": str(people[code].id),
+            "allocation_percent": 50,
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+        }
+        for code, start, end in (
+            ("QG008", demand.window_start, middle - timedelta(days=1)),
+            ("QG007", middle, demand.window_end),
+        )
+    ]
+    assert option["verdict"] == "conditional"
+    assert option["summary"]["conditions"] == [PHASED_APPROVAL]
+    assert option["summary"]["phased_origin"] is True
+
+
+@pytest.mark.parametrize("replay", ["unavailability-01"], indirect=True)
+def test_optimized_option_rejects_work_after_commitment(
+    client: TestClient, db: Session, replay: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    url, _, auth, demand = replay
+    late = next(
+        o for o in create_case(client, replay)["options"] if o["kind"] == "optimized"
     )
+    (leave,) = rows(db, CapacityUnavailability, demand)
+    restored_leave = CapacityUnavailability.model_validate(
+        leave.model_dump(exclude={"id"})
+    )
+    db.delete(leave)
+    db.commit()
+    direct = next(
+        o for o in create_case(client, replay)["options"] if o["kind"] == "direct"
+    )
+    reply = propose(client, replay, direct, outside_basis=False)
+    assert reply.status_code == 200, reply.text
+    accepted = respond(client, replay, reply.json()["revision"])
+    assert accepted.status_code == 200, accepted.text
+    db.add(restored_leave)
+    db.commit()
+    db.refresh(demand)
+    assert demand.committed_end_date == demand.window_end
+
+    created = create_case(client, replay)
+    assert created["data"]["demand"]["change"] is True
+    assert all(o["kind"] != "optimized" for o in created["options"])
+
+    def late_solution(_solver: CpSatSolver, roles: Sequence[Role]) -> Solution:
+        return Solution({roles[0].key: late["params"]["assignees"]}, ())
+
+    monkeypatch.setattr(CpSatSolver, "solve", late_solution)
+    rechecked = create_case(client, replay)
+    assert all(o["kind"] != "optimized" for o in rechecked["options"])
+
+    db.delete(restored_leave)
+    db.commit()
+    available = create_case(client, replay)
+    (late_row,) = late["params"]["assignees"]
+    manual = client.post(
+        f"{url}/planning/cases/{available['id']}/options",
+        headers=auth["b"],
+        json={
+            "assignees": [{**late_row, "start_date": demand.window_start.isoformat()}]
+        },
+    )
+    assert manual.status_code == 200, manual.text
+    change = submit_change(client, replay, manual.json(), outside_basis=False)
+    assert change.status_code == 409, change.text
+    assert "推迟完成日期请走延期审批" in change.text
 
 
 @pytest.mark.parametrize("failure", ["timeout", "error", "invalid"])
