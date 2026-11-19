@@ -411,6 +411,8 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
         if initial
         else {}
     )
+    policy = read_policy(session, principal.org_id)
+    auto_publish_count = 0
     previews = []
     for item in public.items:
         current = claims.get(item.capability.key)
@@ -423,10 +425,20 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
             if item.op in (ChangeOp.ADD, ChangeOp.MODIFY):
                 item.op = ChangeOp.MODIFY if current else ChangeOp.ADD
             item.target_claim_id = current.id if current else None
+        if requires_manager(policy, item.capability.category):
+            submission_notice = "提交后需经理确认"
+        else:
+            auto_publish_count += 1
+            submission_notice = (
+                "提交后立即撤回，能力状态变为未知"
+                if item.op == ChangeOp.RETRACT
+                else "本能力无需经理确认，提交后将直接发布为暂定"
+            )
         previews.append(
             PreviewItem(
                 before=before,
                 after=item,
+                submission_notice=submission_notice,
                 current_changed_at=changed.get(current.id) if current else None,
                 warning="等级已调整，请重新选择或清空"
                 if item.after
@@ -440,11 +452,6 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
                 else None,
             )
         )
-    policy = read_policy(session, principal.org_id)
-    auto_publish_count = sum(
-        not requires_manager(policy, item.after.capability.category)
-        for item in previews
-    )
     return RequestPreview(
         request_id=request.id,
         revision=request.revision,

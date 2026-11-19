@@ -88,7 +88,10 @@ test("profile preview shows the current approval rule and exempt changes publish
   page,
   request,
 }) => {
-  const { base, adminToken, open } = await setupProjectManagers(request)
+  const { base, adminToken, managerToken, open } = await setupProjectManagers(
+    request,
+    "质量",
+  )
   await open(page, "A", "/assistant")
   await page.getByRole("link", { name: "我的画像", exact: true }).click()
   await page.getByRole("button", { name: "添加能力", exact: true }).click()
@@ -128,4 +131,47 @@ test("profile preview shows the current approval rule and exempt changes publish
   })
   await expect(capability.getByText(statement, { exact: true })).toBeVisible()
   await expect(capability.getByText("暂定", { exact: true })).toBeVisible()
+
+  const draft = await request.post(`${base}/me/requests`, {
+    headers: { Authorization: `Bearer ${managerToken}` },
+    data: {
+      items: [
+        { op: "retract", capability_key: "delivery", statement: "撤回判断" },
+        { op: "add", capability_key: "validation", statement: "补充验证能力" },
+      ],
+    },
+  })
+  expect(draft.ok(), await draft.text()).toBeTruthy()
+  await page.reload()
+  await page.getByRole("button", { name: "继续修改", exact: true }).click()
+  await preview.click()
+
+  const retractNotice = "提交后立即撤回，能力状态变为未知"
+  const delivery = editor.locator("section").filter({
+    has: page.getByRole("heading", { name: "合成交付", exact: true }),
+  })
+  const validation = editor.locator("section").filter({
+    has: page.getByRole("heading", { name: "合成验证", exact: true }),
+  })
+  await expect(delivery.getByText(retractNotice, { exact: true })).toBeVisible()
+  await expect(
+    validation.getByText("提交后需经理确认", { exact: true }),
+  ).toBeVisible()
+  await expect(
+    validation.getByText(retractNotice, { exact: true }),
+  ).toHaveCount(0)
+  await expect(editor.getByText(/直接发布为暂定/)).toHaveCount(0)
+
+  await editor.getByRole("button", { name: "返回修改", exact: true }).click()
+  const switched = await request.put(`${base}/approval-policy`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    data: { category_overrides: { 质量: false } },
+  })
+  expect(switched.ok(), await switched.text()).toBeTruthy()
+  await preview.click()
+  await expect(
+    delivery.getByText("提交后需经理确认", { exact: true }),
+  ).toBeVisible()
+  await expect(editor.getByText(retractNotice, { exact: true })).toHaveCount(0)
+  await expect(validation.getByText(/直接发布为暂定/)).toBeVisible()
 })

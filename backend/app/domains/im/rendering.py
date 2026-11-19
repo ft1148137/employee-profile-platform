@@ -166,14 +166,13 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
     if isinstance(message, s.PreviewCard):
         text = "改动预览\n" + "\n\n".join(
             f"{item.after.capability.name}\n修改前：{item.before.statement if item.before else '暂无判断'}；等级：{(item.before.level_name or '未定级') if item.before else '未定级'}\n修改后：{item_text(item.after)}"
+            + (f"\n{item.submission_notice}" if item.submission_notice else "")
             for item in message.items
         )
-        if not message.requires_manager:
-            text += "\n本能力无需经理确认，提交后将直接发布为暂定"
-        else:
+        if message.requires_manager:
             text += "\n"
             if message.partial_auto_publish:
-                text += "部分能力无需经理确认（提交后将直接发布为暂定），其余"
+                text += "需经理确认的改动："
             text += (
                 f"提交后由 {'、'.join(f'{r.name}（{r.role}）' for r in message.reviewers)}审批"
                 if message.reviewers

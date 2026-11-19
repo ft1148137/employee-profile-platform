@@ -107,6 +107,7 @@ class PreviewItem(Projection):
     before: Claim | None
     after: ChangeItem
     warning: str | None
+    submission_notice: str | None = None
 
 
 class Preview(Projection):
