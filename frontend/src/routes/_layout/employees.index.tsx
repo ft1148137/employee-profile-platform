@@ -14,6 +14,7 @@ import {
   type DataTableFeatures,
 } from "@/components/Common/DataTable"
 import { publishedLabel } from "@/components/Profile/EmployeeSummary"
+import { ExportProfilesButtons } from "@/components/Profile/ExportProfilesButtons"
 import { initialStatusLabel } from "@/components/Profile/initialStatus"
 import { OrgState } from "@/components/Profile/OrgState"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
@@ -151,14 +152,17 @@ function EmployeesList({ orgId }: { orgId: string }) {
     ) ?? []
   return (
     <div className="flex flex-col gap-6">
-      <div className="border-l-4 border-primary pl-4">
-        <p className="mb-1 text-xs tracking-widest text-muted-foreground">
-          组织 · 员工资源
-        </p>
-        <h1 className="text-3xl font-semibold tracking-tight">员工</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          了解工作经历与画像进度，让每项判断都有事实可循。
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4 border-l-4 border-primary pl-4">
+        <div>
+          <p className="mb-1 text-xs tracking-widest text-muted-foreground">
+            组织 · 员工资源
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">员工</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            了解工作经历与画像进度，让每项判断都有事实可循。
+          </p>
+        </div>
+        <ExportProfilesButtons orgId={orgId} />
       </div>
       <ProfileCoverage
         orgId={orgId}

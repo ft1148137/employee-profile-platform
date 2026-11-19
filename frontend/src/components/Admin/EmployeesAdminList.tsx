@@ -20,6 +20,7 @@ import { PersonnelDialog } from "@/components/Admin/PersonnelDialog"
 import { ResetPasswordDialog } from "@/components/Admin/ResetPasswordDialog"
 import { UnlinkedAccounts } from "@/components/Admin/UnlinkedAccounts"
 import { UnmatchedIdentities } from "@/components/Identities/UnmatchedIdentities"
+import { ExportProfilesButtons } from "@/components/Profile/ExportProfilesButtons"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileCoverage } from "@/components/Progress/ProfileCoverage"
 import { EmployeeFields } from "@/components/Roster/EmployeeFields"
@@ -134,23 +135,26 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
             查看画像进度，管理员工档案与登录账号。
           </p>
         </div>
-        {roles.includes("org_admin") && filter !== "account-only" && (
-          <IssueAccountsDialog
-            orgId={orgId}
-            employees={accounts.data?.data
-              .filter((e) => selected.includes(e.id))
-              .map((e) => ({
-                id: e.id,
-                employee_code: e.employee_code,
-                display_name: e.display_name,
-                status: e.account?.status ?? "none",
-              }))}
-            onIssued={() => {
-              setSelected([])
-              client.invalidateQueries({ queryKey: ["accounts", orgId] })
-            }}
-          />
-        )}
+        <div className="flex flex-wrap items-start gap-3">
+          <ExportProfilesButtons orgId={orgId} />
+          {roles.includes("org_admin") && filter !== "account-only" && (
+            <IssueAccountsDialog
+              orgId={orgId}
+              employees={accounts.data?.data
+                .filter((e) => selected.includes(e.id))
+                .map((e) => ({
+                  id: e.id,
+                  employee_code: e.employee_code,
+                  display_name: e.display_name,
+                  status: e.account?.status ?? "none",
+                }))}
+              onIssued={() => {
+                setSelected([])
+                client.invalidateQueries({ queryKey: ["accounts", orgId] })
+              }}
+            />
+          )}
+        </div>
       </div>
       <ProfileCoverage
         orgId={orgId}

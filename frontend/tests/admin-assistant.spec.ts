@@ -81,7 +81,7 @@ for (const width of [1440, 390]) {
       await openAdminAssistant(page)
       const dialog = page.getByRole("region", { name: "管理助手", exact: true })
       await expect(
-        dialog.getByRole("heading", { name: "管理助手" }),
+        page.getByRole("heading", { name: "管理助手", exact: true }),
       ).toBeVisible()
       await dialog
         .getByRole("textbox", { name: "发给管理助手的消息" })
@@ -157,7 +157,7 @@ for (const available of [true, false]) {
       "admin@demo.example.com",
       process.env.DEMO_USER_PASSWORD!,
     )
-    await expect(page).toHaveURL(/\/admin\/assistant$/)
+    await expect(page).toHaveURL(/\/assistant\?mode=admin$/)
     if (!available) {
       await expect(page.getByRole("log")).toContainText(
         "请先配置模型，可以继续使用手工页面。",

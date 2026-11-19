@@ -107,7 +107,9 @@ for (const size of [
     await sidebar
       .getByRole("link", { name: entries[1].preview, exact: true })
       .click()
-    await expect(page).toHaveURL(`/admin/assistant?session=${entries[1].id}`)
+    await expect(page).toHaveURL(
+      `/assistant?mode=admin&session=${entries[1].id}`,
+    )
     await expect(page.getByRole("log")).toContainText(entries[1].preview)
     await expect(
       sidebar.getByRole("link", { name: entries[1].preview, exact: true }),
@@ -149,7 +151,7 @@ for (const size of [
     await expect(
       page.getByRole("navigation", { name: "面包屑" }),
     ).toContainText("新对话")
-    await expect(page).toHaveURL("/admin/assistant")
+    await expect(page).toHaveURL("/assistant?mode=admin")
     await expect(page.getByRole("log")).not.toContainText(entries[0].preview)
     await sidebar
       .getByRole("link", { name: entries[0].preview, exact: true })
@@ -212,7 +214,7 @@ test("unconfigured model allows history and every manual menu", async ({
     "admin@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
-  await expect(page).toHaveURL("/admin/assistant")
+  await expect(page).toHaveURL("/assistant?mode=admin")
   await expect(
     page.getByRole("region", { name: "今天要处理的事" }),
   ).toBeVisible()
@@ -307,7 +309,7 @@ test("session switch cancels the turn and preserves both conversation histories"
   await expect(page.getByRole("log")).toContainText("第二段历史")
   await aborted
   finishTurn!()
-  await expect(page).toHaveURL(`/admin/assistant?session=${ids[1]}`)
+  await expect(page).toHaveURL(`/assistant?mode=admin&session=${ids[1]}`)
   await page.getByRole("link", { name: "会话0", exact: true }).click()
   await expect.poll(() => !!finishReload).toBe(true)
   try {
@@ -357,24 +359,26 @@ test("mobile conversation sheet switches sessions and starts a new task", async 
   await expect(page.getByRole("region", { name: "管理助手会话" })).toHaveCount(
     0,
   )
-  await page.getByRole("button", { name: "会话", exact: true }).click()
-  const sheet = page.getByRole("dialog", { name: "会话", exact: true })
+  await page.getByRole("button", { name: "打开空间导航", exact: true }).click()
+  const sheet = page.getByRole("dialog", { name: "空间导航", exact: true })
   await expect(sheet).toContainText("2 小时没有活动后清除")
   const row = sheet.getByRole("link", { name: "手机历史对话", exact: true })
   await expect(row).toContainText("1/2")
   await expect(row).toContainText("管理助手 · 3 轮")
   await row.click()
   await expect(sheet).toBeHidden()
-  await expect(page).toHaveURL(`/admin/assistant?session=${id}`)
+  await expect(page).toHaveURL(`/assistant?mode=admin&session=${id}`)
   await expect(page.getByRole("navigation", { name: "面包屑" })).toContainText(
     "手机历史对话",
   )
   await expect(page.getByRole("log")).toContainText("手机对话内容")
-  await page.getByRole("button", { name: "会话", exact: true }).click()
-  await expect(sheet.getByRole("link")).toHaveAttribute("aria-current", "page")
+  await page.getByRole("button", { name: "打开空间导航", exact: true }).click()
+  await expect(
+    sheet.getByRole("region", { name: "管理助手会话" }).getByRole("link"),
+  ).toHaveAttribute("aria-current", "page")
   await sheet.getByRole("button", { name: "新对话", exact: true }).click()
   await expect(sheet).toBeHidden()
-  await expect(page).toHaveURL("/admin/assistant")
+  await expect(page).toHaveURL("/assistant?mode=admin")
   await expect(page.getByRole("navigation", { name: "面包屑" })).toContainText(
     "新对话",
   )

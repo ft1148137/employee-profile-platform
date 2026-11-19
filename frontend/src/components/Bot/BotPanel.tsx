@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { AxiosError } from "axios"
-import { Bot, LoaderCircle } from "lucide-react"
+import { LoaderCircle } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import {
   type AttachmentPublic,
@@ -11,66 +11,38 @@ import {
   type TurnInput,
   type TurnResponse,
 } from "@/client"
-import { AssistantLayout } from "@/components/Chat/AssistantLayout"
 import { ChatComposer, readChatDraft } from "@/components/Chat/ChatComposer"
 import { ChatMessages } from "@/components/Chat/ChatMessages"
 import { useStreamingTurn } from "@/components/Chat/useStreamingTurn"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
-import useAuth from "@/hooks/useAuth"
-import {
-  rememberConversation,
-  useCurrentConversation,
-} from "@/hooks/useCurrentConversation"
+import type { AssistantMode } from "@/hooks/useAssistantWorkspace"
+import { rememberConversation } from "@/hooks/useCurrentConversation"
 import { useOrg } from "@/hooks/useOrg"
 import { type BotAction, BotMessage } from "./BotMessage"
-import { SessionHistory, useBotConversations } from "./SessionHistory"
-
-export function BotPanel() {
-  const { org, employeeId } = useOrg()
-  const { user } = useAuth()
-  if (!org || !employeeId || !user) return null
-  return (
-    <BotConversation
-      key={`${user.id}:${org.id}:${employeeId}`}
-      orgId={org.id}
-      employeeId={employeeId}
-      storageKey={`bot-session:${user.id}:${org.id}:${employeeId}`}
-    />
-  )
-}
 
 export function BotConversation({
   orgId,
   employeeId,
   storageKey,
-  fullPage = false,
   selectedSession,
+  restart,
+  mode,
   prompt,
 }: {
   orgId: string
   employeeId: string
   storageKey: string
-  fullPage?: boolean
   selectedSession?: string
+  restart?: number
+  mode?: AssistantMode
   prompt?: string
 }) {
   const { managedDepartmentIds } = useOrg()
   const description = `${managedDepartmentIds.length ? "可以操作你本人和你管辖部门员工的画像" : "只操作你本人的画像"}。画像不用于绩效、薪酬和晋升。聊天原文默认不保存；未开启保留时，会话闲置两小时后清除。`
-  const [open, setOpen] = useState(false)
   const client = useQueryClient()
   const navigate = useNavigate()
-  const history = useBotConversations(fullPage ? orgId : undefined)
   const [sessionId, setSessionId] = useState("")
-  const remembered = useCurrentConversation(storageKey)
   const [messages, setMessages] = useState<
     (Pick<SessionMessage, "role" | "payload"> &
       Partial<Pick<SessionMessage, "created_at">>)[]
@@ -80,8 +52,9 @@ export function BotConversation({
   const replacementSession = useRef("")
   const [conflict, setConflict] = useState(false)
   const bottom = useRef<HTMLDivElement>(null)
-  const selection = useRef(selectedSession)
-  selection.current = selectedSession
+  const navigation = `${selectedSession ?? ""}:${restart ?? ""}`
+  const selection = useRef(navigation)
+  selection.current = navigation
   const initialization = useRef(0)
   const preserveText = useRef(false)
   const query = { org_id: orgId }
@@ -89,16 +62,12 @@ export function BotConversation({
     queryKey: ["my-capabilities", orgId],
     queryFn: async () =>
       (await EmployeeRequestsService.readMyCapabilities({ path: query })).data,
-    enabled: fullPage || open,
   })
   const initialize = useMutation({
     onMutate: () => ++initialization.current,
     mutationFn: async (selection?: string) => {
       let expired = false
-      let id =
-        selection === "new"
-          ? null
-          : (selection ?? localStorage.getItem(storageKey))
+      let id = selection ?? localStorage.getItem(storageKey)
       if (id) {
         try {
           const messages = (
@@ -108,7 +77,7 @@ export function BotConversation({
         } catch (error) {
           if (!(error instanceof AxiosError) || error.response?.status !== 404)
             throw error
-          expired = !!selection
+          expired = true
         }
       }
       id = (await BotService.createSession({ query })).data.session_id
@@ -120,10 +89,10 @@ export function BotConversation({
       rememberConversation(storageKey, data.id)
       if (data.expired) replacementSession.current = data.id
       setExpired(data.expired || replacementSession.current === data.id)
-      if (fullPage && data.expired)
+      if (data.expired)
         navigate({
           to: "/assistant",
-          search: { session: data.id, prompt },
+          search: (previous) => ({ ...previous, session: data.id }),
           replace: true,
         })
       if (data.expired)
@@ -141,7 +110,7 @@ export function BotConversation({
     `/api/v1/bot/sessions/${sessionId}/turns?org_id=${orgId}`,
   )
   const send = useMutation({
-    onMutate: () => selectedSession,
+    onMutate: () => navigation,
     mutationFn: async (input: TurnInput | BotAction) => {
       const options = { query, path: { session_id: sessionId } }
       return "text" in input
@@ -181,45 +150,34 @@ export function BotConversation({
   })
   useEffect(() => {
     const follow = (event: StorageEvent) => {
-      if (fullPage && event.key === storageKey && event.newValue) {
+      if (event.key === storageKey && event.newValue) {
         preserveText.current = true
         navigate({
           to: "/assistant",
-          search: { session: event.newValue || undefined },
+          search: { mode, session: event.newValue || undefined },
           replace: true,
         })
       }
     }
     window.addEventListener("storage", follow)
     return () => window.removeEventListener("storage", follow)
-  }, [fullPage, storageKey, navigate])
+  }, [mode, storageKey, navigate])
   useEffect(() => {
-    if (!fullPage) return
     stream.stop()
+    if (restart) replacementSession.current = ""
     setSessionId("")
     setMessages([])
     if (!preserveText.current) setText(prompt ?? "")
     initialize.mutate(selectedSession)
-  }, [fullPage, initialize.mutate, selectedSession, prompt, stream.stop])
+    return () => {
+      initialization.current++
+    }
+  }, [initialize.mutate, selectedSession, restart, prompt, stream.stop])
   const busy = initialize.isPending || send.isPending
   useEffect(() => {
-    if (
-      !fullPage &&
-      open &&
-      sessionId &&
-      remembered &&
-      remembered !== sessionId &&
-      !busy
-    )
-      initialize.mutate()
-  }, [fullPage, open, sessionId, remembered, busy, initialize.mutate])
-  useEffect(() => {
-    if (
-      (fullPage || open) &&
-      (messages.length || stream.text || stream.tools.length)
-    )
+    if (messages.length || stream.text || stream.tools.length)
       bottom.current?.scrollIntoView({ block: "end" })
-  }, [fullPage, open, messages, stream.text, stream.tools])
+  }, [messages, stream.text, stream.tools])
   async function sendText(value: string, attachments: AttachmentPublic[] = []) {
     setMessages((previous) => [
       ...previous,
@@ -236,58 +194,28 @@ export function BotConversation({
     })
     return !!result
   }
-  const conversations = (close?: () => void) => (
-    <SessionHistory
-      orgId={orgId}
-      currentId={sessionId}
-      disabled={busy}
-      sidebar={fullPage}
-      onNew={() => {
-        if (fullPage) {
-          rememberConversation(storageKey, "")
-          setText("")
-          if (selectedSession || prompt)
-            navigate({ to: "/assistant", search: {} })
-          else initialize.mutate("new")
-        } else {
-          setText("")
-          initialize.mutate("new")
-        }
-        close?.()
-      }}
-      onSelect={(id) => {
-        if (fullPage) navigate({ to: "/assistant", search: { session: id } })
-        else {
-          setText("")
-          initialize.mutate(id)
-        }
-        close?.()
-      }}
-    />
-  )
   const latestProjectDraft = messages
     .flatMap(({ payload }) => ("messages" in payload ? payload.messages : []))
     .reverse()
     .find((message) => message.type === "project_draft_card")
-  const content = (
+  return (
     <>
-      {!fullPage && conversations()}
       <div
         className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 text-sm"
         role="log"
         aria-label="机器人对话"
         aria-busy={busy}
       >
-        {(!fullPage || messages.length === 0) && (
+        {messages.length === 0 && (
           <p className="mx-auto max-w-3xl text-muted-foreground leading-relaxed">
-            {fullPage && description}
+            {description}
             可以请我查看画像、过目初始画像、补充经历、查进度或回答问题。提交前请核对预览卡片。没有启用模型时，请到
             <Link
               className="underline"
               to="/employees/$employeeId"
               params={{ employeeId }}
             >
-              {fullPage ? "打开画像页" : "我的画像"}
+              打开画像页
             </Link>
             直接修改。
           </p>
@@ -383,40 +311,5 @@ export function BotConversation({
         确认过的陈述作为受限自述证据保存。
       </p>
     </>
-  )
-  if (!fullPage)
-    return (
-      <Sheet
-        open={open}
-        onOpenChange={(value) => {
-          setOpen(value)
-          if (value && !sessionId && !initialize.isPending) initialize.mutate()
-        }}
-      >
-        <SheetTrigger asChild>
-          <Button
-            className="fixed bottom-5 right-5 z-20 rounded-full shadow-lg"
-            aria-label="打开画像机器人"
-          >
-            <Bot aria-hidden="true" />
-            画像机器人
-          </Button>
-        </SheetTrigger>
-        <SheetContent className="inset-0 h-dvh w-full gap-0 sm:inset-auto sm:bottom-5 sm:right-5 sm:h-[min(740px,calc(100dvh-40px))] sm:w-[440px] sm:max-w-[440px] sm:rounded-2xl sm:border">
-          <SheetHeader className="shrink-0 border-b pr-12">
-            <SheetTitle>我的画像机器人</SheetTitle>
-            <SheetDescription>{description}</SheetDescription>
-          </SheetHeader>
-          {content}
-        </SheetContent>
-      </Sheet>
-    )
-  const title =
-    history.data?.data.find((entry) => entry.id === sessionId)?.preview ||
-    "新对话"
-  return (
-    <AssistantLayout label="助手" title={title} conversations={conversations}>
-      <div className="flex h-full min-h-0 flex-col">{content}</div>
-    </AssistantLayout>
   )
 }

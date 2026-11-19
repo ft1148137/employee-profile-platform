@@ -40,6 +40,39 @@ const statuses: Record<string, string> = {
   rejected: "已拒绝",
 }
 
+function assistantText(text: string) {
+  const detailLinks =
+    /(?:\[([^\]\n]+)\]\()?((?<![\w:/=&.-])\/(employees\/|capacity\?tab=projects&project=)([\da-fA-F]{8}(?:-[\da-fA-F]{4}){3}-[\da-fA-F]{12}))(?![\w/-])\)?/g
+  let cursor = 0
+  const parts = Array.from(text.matchAll(detailLinks)).flatMap((match) => {
+    const [whole, label, path, prefix, id] = match
+    const before = text.slice(cursor, match.index)
+    cursor = match.index + (label ? whole.length : path.length)
+    const link =
+      prefix === "employees/" ? (
+        <Link
+          key={match.index}
+          to="/employees/$employeeId"
+          params={{ employeeId: id }}
+          className="underline"
+        >
+          {label ?? path}
+        </Link>
+      ) : (
+        <Link
+          key={match.index}
+          to="/capacity"
+          search={{ tab: "projects", project: id }}
+          className="underline"
+        >
+          {label ?? path}
+        </Link>
+      )
+    return [before, link]
+  })
+  return parts.concat(text.slice(cursor))
+}
+
 export function BotMessage({
   message,
   dictionary,
@@ -144,7 +177,7 @@ export function BotMessage({
     return (
       <div className="space-y-2">
         <p className="whitespace-pre-wrap break-words leading-7">
-          {message.text}
+          {assistantText(message.text)}
         </p>
         {message.review_link && (
           <Link to="/reviews" className="underline">

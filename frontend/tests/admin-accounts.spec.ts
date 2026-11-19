@@ -14,7 +14,9 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
     "admin@demo.example.com",
     process.env.DEMO_USER_PASSWORD!,
   )
-  await expect(page).toHaveURL(/\/admin\/assistant(?:\?session=[0-9a-f-]+)?$/)
+  await expect(page).toHaveURL(
+    /\/assistant\?mode=admin(?:&session=[0-9a-f-]+)?$/,
+  )
   await page.getByRole("link", { name: "组织", exact: true }).click()
   await page.getByRole("link", { name: "员工", exact: true }).click()
   const rows = page.getByRole("row")

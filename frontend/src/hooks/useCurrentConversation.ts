@@ -5,8 +5,10 @@ function subscribe(callback: () => void) {
   return () => window.removeEventListener("storage", callback)
 }
 
-export function useCurrentConversation(key: string) {
-  return useSyncExternalStore(subscribe, () => localStorage.getItem(key))
+export function useCurrentConversation(key: string | undefined) {
+  return useSyncExternalStore(subscribe, () =>
+    key ? localStorage.getItem(key) : null,
+  )
 }
 
 export function rememberConversation(key: string, id: string) {

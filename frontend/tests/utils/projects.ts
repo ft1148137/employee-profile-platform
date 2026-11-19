@@ -87,7 +87,7 @@ export async function setupProjectManagers(
   const accounts: EmployeeAccount[] = (
     await api(`${base}/accounts`, undefined, admin.access_token)
   ).data
-  const tokens: Record<string, string> = {}
+  const tokens: Record<string, string> = { admin: admin.access_token }
   for (const code of ["A", "B"]) {
     const account = accounts.find((row) => row.employee_code === code)
     if (!account?.account || !account.department)

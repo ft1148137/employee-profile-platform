@@ -71,7 +71,9 @@ test("draft roster from materials, restore and confirm without offboarding omitt
   ).toBeTruthy()
   await logInUser(page, email, password)
   await page.goto("/admin/roster")
-  await expect(page).toHaveURL(/\/admin\/assistant(?:\?session=[0-9a-f-]+)?$/)
+  await expect(page).toHaveURL(
+    /\/assistant\?mode=admin(?:&session=[0-9a-f-]+)?$/,
+  )
   await page.setViewportSize({ width: 390, height: 844 })
   const picker = page.getByLabel("选择对话附件")
   await expect(picker).toBeEnabled()

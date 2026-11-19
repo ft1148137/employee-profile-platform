@@ -183,9 +183,9 @@ test("assistant shows status and appeal todo through resubmission", async ({
     ).ok(),
   ).toBeTruthy()
   await enter(admin.access_token, "/admin")
-  await expect(page).toHaveURL("/admin/assistant")
+  await expect(page).toHaveURL("/assistant?mode=admin")
   await page.goto("/admin/progress")
-  await expect(page).toHaveURL("/admin/assistant")
+  await expect(page).toHaveURL("/assistant?mode=admin")
   await expect(page.getByLabel("发给管理助手的消息")).toBeDisabled()
   const today = page.getByRole("region", { name: "今天要处理的事" })
   for (const step of ["sources", "identities"]) {

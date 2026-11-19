@@ -22,10 +22,8 @@ export function authReturnPath(
   pathname: string,
   search: string,
 ): string | undefined {
-  if (
-    pathname === "/oauth/consent" ||
-    (pathname === "/assistant" && new URLSearchParams(search).has("draft"))
-  )
+  const assistant = pathname === "/assistant" || pathname === "/admin/assistant"
+  if (pathname === "/oauth/consent" || (assistant && search))
     return pathname + search
 }
 
