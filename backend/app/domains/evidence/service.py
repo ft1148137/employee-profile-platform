@@ -29,7 +29,7 @@ from app.domains.evidence.schemas import (
     TaskPublic,
     WorkEventPublic,
 )
-from app.domains.org.models import Employee
+from app.domains.org.models import Employee, EmploymentStatus
 from app.domains.org.service import visible_employee
 from app.domains.profile.models import ClaimEvidence, EvidenceRelation, ProfileClaim
 from app.domains.work.models import Task, WorkEvent
@@ -51,10 +51,16 @@ def restricted_title(kind: EvidenceKind) -> str:
     }[kind]
 
 
-def _feedback_requester(principal: Principal, evidence: Evidence) -> bool:
+def _feedback_requester(
+    principal: Principal, evidence: Evidence, subject_employee: Employee
+) -> bool:
     return (
         evidence.source == ASSIGNMENT_FEEDBACK_SOURCE
         and principal.employee_id != evidence.subject_employee_id
+        and not (
+            subject_employee.employment_status == EmploymentStatus.ACTIVE
+            and subject_employee.department_id in principal.managed_department_ids
+        )
         and (
             evidence.provenance.get("requester_user_id") == str(principal.user_id)
             or any(
@@ -130,7 +136,7 @@ def evidence_access(
         if e.source == ASSIGNMENT_FEEDBACK_SOURCE:
             access[e.id] = (
                 e,
-                not _feedback_requester(principal, e)
+                not _feedback_requester(principal, e, employee)
                 and can_view_evidence_content(
                     principal, subject_employee=employee, visibility=e.visibility
                 ),
@@ -185,7 +191,7 @@ def list_evidence(
         data=[
             evidence_summary(
                 e,
-                not _feedback_requester(principal, e)
+                not _feedback_requester(principal, e, employee)
                 and can_view_evidence_content(
                     principal, subject_employee=employee, visibility=e.visibility
                 ),
@@ -241,15 +247,23 @@ def read_evidence(
         {evidence_id},
         review_permissions=permissions,
     )
-    if evidence_id not in access or _feedback_requester(
-        principal, access[evidence_id][0]
-    ):
+    if evidence_id not in access:
         raise EvidenceNotFound()
+    evidence, readable = access[evidence_id]
+    if evidence.source == ASSIGNMENT_FEEDBACK_SOURCE and not readable:
+        employee = session.exec(
+            select(Employee).where(
+                Employee.org_id == principal.org_id,
+                Employee.id == evidence.subject_employee_id,
+            )
+        ).one()
+        if _feedback_requester(principal, evidence, employee):
+            raise EvidenceNotFound()
     return evidence_details(
         session,
         principal,
         access,
-        review_subject_id=access[evidence_id][0].subject_employee_id
+        review_subject_id=evidence.subject_employee_id
         if any(permissions.values())
         else None,
     )[evidence_id]

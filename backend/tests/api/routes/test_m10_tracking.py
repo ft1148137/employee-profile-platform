@@ -15,8 +15,10 @@ from app.domains.capacity.models import (
     CapacityAssignmentTask,
     CapacityProposal,
     CapacityProposalLine,
+    CapacityUnavailability,
 )
 from app.domains.im.models import ImBinding, ImNotification
+from app.domains.im.notifications import tracking_notice
 from app.domains.inbox.models import InboxItem
 from app.domains.org.models import (
     Department,
@@ -32,6 +34,7 @@ from app.worker import tasks as worker_tasks
 from app.worker.tasks import sync_run
 from tests.api.routes.test_m6_capacity_assignment import case as case
 from tests.api.routes.test_sources import BODY
+from tests.domains.test_im_gateway import principal
 
 
 class Tracked(NamedTuple):
@@ -96,6 +99,15 @@ def test_permissions_and_requester_projection(
     row = db.get(CapacityAssignment, tracked.assignment)
     task = db.get(Task, tracked.task)
     assert row and task
+    for state, summary in (
+        (None, "尚未关联任务"),
+        ("on_track", "执行正常"),
+        ("tasks_done", "关联任务已全部完成，待承接部门确认结束"),
+        ("status_unknown", "有关联任务状态待确认"),
+    ):
+        row.tracking_state = state
+        db.commit()
+        assert api(risk, "a") == {"message": f"该角色执行跟踪：{summary}"}
     row.due_date = row.start_date = date(2020, 1, 1)
     task.attributes = {"status_category": "indeterminate"}
     tracking.recompute(db, tracked.org)
@@ -104,19 +116,23 @@ def test_permissions_and_requester_projection(
     assert api(risk, "am") == {"message": "该角色有延期风险"}
     assert people["w"].display_name not in str(api(risk, "a"))
     assert task.external_key not in str(api(risk, "a"))
+    assert str(people["w"].id) not in str(api(risk, "a"))
+    assert task.title not in str(api(risk, "a"))
+    api(tracked.path, "bm", {"status": "done"}, method="PATCH")
+    assert api(risk, "a") == {"message": "该角色执行跟踪：已完成"}
 
 
 @pytest.mark.parametrize(
     ("source", "status", "category", "late", "owner", "expected"),
     [
-        ("jira", "Done", None, True, None, "on_track"),
-        ("jira", "Done", "other", True, None, "on_track"),
+        ("jira", "Done", None, True, None, "status_unknown"),
+        ("jira", "Done", "other", True, None, "status_unknown"),
         ("jira", "客户已验收", "done", True, None, "tasks_done"),
         ("jira", "Done", "new", True, None, "overdue"),
         ("jira", "处理中", "indeterminate", False, "replacement", "handed_over"),
         ("csv:synthetic", "已完成", None, False, None, "tasks_done"),
         ("csv:synthetic", "进行中", None, True, None, "overdue"),
-        ("csv:synthetic", "", None, True, None, "on_track"),
+        ("csv:synthetic", "", None, True, None, "status_unknown"),
     ],
 )
 def test_tracking_status(
@@ -157,6 +173,15 @@ def test_tracking_status(
     result = api(tracked.path + "/tasks", "w", {"task_id": str(tracked.task)})
     assert result["tracking_state"] == expected
     assert result["tracking_changed_at"]
+    if late and expected == "status_unknown":
+        known = Task(
+            org_id=row.org_id,
+            source="jira",
+            external_key="OPEN",
+            title="合成待办",
+            attributes={"status_category": "new"},
+        )
+        assert tracking.tracking_state(db, row, [task, known], now) == "overdue"
 
 
 def test_borrowed_tasks_visible_to_owner_and_lender(
@@ -215,20 +240,73 @@ def test_borrowed_tasks_visible_to_owner_and_lender(
         api(active_borrows, "foreign", status=404)
         assert (
             api(tasks, "cm", {"task_id": str(tracked.task)})["tracking_state"]
-            == "on_track"
+            == "status_unknown"
         )
         assert api(tracking_path, "w")["tasks"][0]["external_key"] == "PRIVATE-123"
         api(tracking_path, "bm", status=404)
         api(tasks, "bm", {"task_id": str(tracked.task)}, status=404)
         listing = api(f"/demands/{demand.id}/assignments", "bm")["data"]
         assert (
-            listing[0]["headcount"] == 1 and listing[0]["tracking_state"] == "on_track"
+            listing[0]["headcount"] == 1
+            and listing[0]["tracking_state"] == "status_unknown"
         )
         assert {"id", "employee_id", "employee_name", "tasks"}.isdisjoint(listing[0])
+        inbox = select(InboxItem).where(
+            InboxItem.org_id == tracked.org,
+            InboxItem.message.startswith(tracking.TRACKING_NOTICE),
+        )
+        assert db.exec(inbox).all() == []  # First evaluation is silent.
+        api(tasks + f"/{tracked.task}", "cm", method="DELETE")
+        assert [item.recipient_user_id for item in db.exec(inbox)] == [users["bm"].id]
+        api(tasks, "w", {"task_id": str(tracked.task)})
+        notices = list(db.exec(inbox))
+        assert len(notices) == 3
+        absence = CapacityUnavailability(
+            org_id=tracked.org,
+            employee_id=row.employee_id,
+            start_date=row.due_date,
+            end_date=row.due_date,
+            created_by_user_id=users["w"].id,
+        )
+        tracking.notify_unavailability(db, absence)
+        db.commit()
+        notices += db.exec(
+            select(InboxItem).where(
+                InboxItem.org_id == tracked.org,
+                InboxItem.message.startswith(tracking.UNAVAILABILITY_NOTICE),
+            )
+        ).all()
+        assert len(notices) == 5
+        assert sum(item.recipient_user_id == users["bm"].id for item in notices) == 3
+        borrow_notices = [
+            item for item in notices if item.recipient_user_id == users["cm"].id
+        ]
+        assert len(borrow_notices) == 2
+        for item in notices:
+            assert (
+                f"分配 #{row.id.hex[-8:]}（{row.start_date} 至 {row.due_date}，{row.allocation_percent}%）"
+                in item.message
+            )
+            assert people["w"].display_name not in item.message
+            assert str(row.employee_id) not in item.message
+        for item in borrow_notices:
+            assert item.message.endswith("/capacity?tab=borrows")
+            assert tracking_notice(
+                db, item, principal(db, tracked.org, people["cm"].id)
+            )
+            assert (
+                tracking_notice(db, item, principal(db, tracked.org, people["am"].id))
+                is None
+            )
 
         subject = people["w"]
         subject.department_id = demand.target_department_id
         db.commit()
+        assert all(
+            tracking_notice(db, item, principal(db, tracked.org, people["cm"].id))
+            is None
+            for item in borrow_notices
+        )
         assert api(active_borrows, "cm") == []
         api(tracking_path, "cm", status=404)
         assert api(active_borrows, "bm") == [visible]
@@ -298,7 +376,7 @@ def test_jira_sync_upgrades_legacy_state_and_notifies_once(
         api(tracked.path + "/tasks", "w", {"task_id": str(tracked.task)})[
             "tracking_state"
         ]
-        == "on_track"
+        == "status_unknown"
     )
 
     def jira_response(_request: httpx.Request) -> httpx.Response:
@@ -351,7 +429,7 @@ def test_jira_sync_upgrades_legacy_state_and_notifies_once(
             "jira_client_for",
             lambda _: adapter(config, "synthetic", http),
         )
-        assert run() == "on_track"
+        assert run() == "status_unknown"
         current_status["statusCategory"] = {"key": "done"}
         assert run() == "tasks_done"
         first = api(tracked.path + "/tracking", "w")
@@ -406,10 +484,11 @@ def test_first_recompute_is_silent_and_link_changes_notify(
 
     tasks = tracked.path + "/tasks"
     assert (
-        api(tasks, "w", {"task_id": str(tracked.task)})["tracking_state"] == "on_track"
+        api(tasks, "w", {"task_id": str(tracked.task)})["tracking_state"]
+        == "status_unknown"
     )
     linked = [item for item in db.exec(inbox) if item.id not in before]
-    assert len(linked) == 1 and "任务进展正常" in linked[0].message
+    assert len(linked) == 1 and "有关联任务状态待确认" in linked[0].message
     assert len(set(db.exec(im)) - im_before) == 1
 
     result = api(tasks + f"/{tracked.task}", "w", method="DELETE")
@@ -419,6 +498,10 @@ def test_first_recompute_is_silent_and_link_changes_notify(
     ]
     assert len(unlinked) == 1 and "尚未关联任务" in unlinked[0].message
     assert len(set(db.exec(im)) - im_before) == 2
+    after = {item.id for item in db.exec(inbox)}
+    api(tasks, "bm", {"task_id": str(tracked.task)})
+    api(tasks + f"/{tracked.task}", "bm", method="DELETE")
+    assert {item.id for item in db.exec(inbox)} == after
 
 
 def test_jira_sync_keeps_import_when_tracking_refresh_fails(

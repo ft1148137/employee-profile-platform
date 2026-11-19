@@ -333,8 +333,9 @@ def test_feedback_publication_and_search(
     assert api(main_search, "bm")["data"] == baseline
 
 
+@pytest.mark.parametrize("dual_manager", [False, True])
 def test_borrowed_feedback_scope(
-    case: tuple, org_api: Callable[..., Any], db: Session
+    case: tuple, org_api: Callable[..., Any], db: Session, dual_manager: bool
 ) -> None:
     api = org_api
     _, _, demand, people, users, org = case
@@ -383,30 +384,36 @@ def test_borrowed_feedback_scope(
         for role in ("bm", "a", "am"):
             assert api(LIST, role) == []
             api(path, role, BODY, status=404)
-        request_id = api(path, "cm", BODY, status=201)
-        evidence_id = owner_request(api, request_id)["items"][0]["evidence"][0][
-            "evidence_id"
-        ]
-        for role in ("a", "am", "bm"):
-            api(f"/evidence/{evidence_id}", role, status=404)
         membership = db.exec(
             select(OrgMembership).where(
                 OrgMembership.org_id == org.id,
                 OrgMembership.user_id == users["am"].id,
             )
         ).one()
-        db.add(
-            RoleGrant(
-                org_id=org.id,
-                membership_id=membership.id,
-                role="dept_manager",
-                department_id=lender.id,
-            )
+        grant = RoleGrant(
+            org_id=org.id,
+            membership_id=membership.id,
+            role="dept_manager",
+            department_id=lender.id,
         )
+        if dual_manager:
+            db.add(grant)
+            db.commit()
+            assert api(LIST, "am")[0]["employee_name"] == people["w"].display_name
+        request_id = api(path, "am" if dual_manager else "cm", BODY, status=201)
+        evidence_id = owner_request(api, request_id)["items"][0]["evidence"][0][
+            "evidence_id"
+        ]
+        for role in ("a", "bm") if dual_manager else ("a", "am", "bm"):
+            api(f"/evidence/{evidence_id}", role, status=404)
+        if not dual_manager:
+            db.add(grant)
         db.commit()
-        assert api(f"/employees/{people['w'].id}/evidence", "am")["data"][0]["redacted"]
-        api(f"/evidence/{evidence_id}", "am", status=404)
-        api(path, "am", BODY, status=404)
+        assert not api(f"/employees/{people['w'].id}/evidence", "am")["data"][0][
+            "redacted"
+        ]
+        assert FEEDBACK in str(api(f"/evidence/{evidence_id}", "am"))
+        api(path, "am", BODY, status=409)
         assert (
             api(f"/capacity/demands/{demand.id}/assignments", "bm")["data"][0][
                 "headcount"
@@ -436,6 +443,33 @@ def test_borrowed_feedback_scope(
         db.delete(proposal)
         db.delete(project)
         db.commit()
+
+
+def test_requester_managing_parent_department_can_write_feedback(
+    case: tuple, org_api: Callable[..., Any], db: Session
+) -> None:
+    _, _, demand, people, users, _ = case
+    assignment_id = complete(case)
+    row = db.get(CapacityAssignment, UUID(assignment_id))
+    assert row
+    demand.requester_user_id = users["bm"].id
+    demand.requesting_department_id = people["bm"].department_id
+    demand.target_department_id = people["w"].department_id
+    path = f"/capacity/assignments/{assignment_id}/feedback"
+    row.employee_id = people["bm"].id
+    db.commit()
+    org_api(path, "bm", BODY, status=404)
+    row.employee_id = people["w"].id
+    db.commit()
+    org_api(path, "am", BODY, status=404)
+    assert org_api(f"{LIST}?demand_id={demand.id}", "bm")[0]["id"] == assignment_id
+    request_id = org_api(path, "bm", BODY, status=201)
+    evidence_id = owner_request(org_api, request_id)["items"][0]["evidence"][0][
+        "evidence_id"
+    ]
+    assert FEEDBACK in str(org_api(f"/evidence/{evidence_id}", "bm"))
+    org_api(f"/evidence/{evidence_id}", "am", status=404)
+    org_api(f"/evidence/{evidence_id}", "foreign", status=404)
 
 
 def test_feedback_migration(migration_engine: Engine) -> None:

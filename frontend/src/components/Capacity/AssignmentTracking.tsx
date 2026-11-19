@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { CapacityError, useCapacityRefresh } from "./AssignmentFields"
 
 export const trackingLabels: Record<TrackingState, string> = {
+  status_unknown: "有关联任务状态待确认",
   no_tasks: "未关联任务",
   on_track: "任务进展正常",
   tasks_done: "关联任务已全部完成，可以结束分配",

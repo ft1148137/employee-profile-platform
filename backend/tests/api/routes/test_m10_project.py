@@ -338,7 +338,7 @@ def test_project_views_keep_department_boundaries(
 @pytest.mark.parametrize(
     ("outcome", "dates", "reason", "earliest", "finish", "delay"),
     [
-        ("not_now", {}, "not_now", "2026-12-04", "2026-12-09", 6),
+        ("not_now", {}, "not_now", None, None, None),
         (
             "can_do",
             {"start_date": "2026-12-01", "end_date": "2026-12-05"},
@@ -363,9 +363,9 @@ def test_project_schedule_and_downstream_impacts(
     outcome: str,
     dates: dict[str, str],
     reason: str,
-    earliest: str,
-    finish: str,
-    delay: int,
+    earliest: str | None,
+    finish: str | None,
+    delay: int | None,
 ) -> None:
     base, auth, body, _ = project_data
     body["roles"][1]["depends_on"] = []
@@ -395,7 +395,9 @@ def test_project_schedule_and_downstream_impacts(
         ["合成角色3"],
     ]
     assert stages[1][0]["earliest_start"] == earliest
-    assert stages[2][0]["earliest_start"] == "2026-12-04"
+    unconfirmed = outcome == "not_now"
+    assert schedule["forecast_unconfirmed"] is unconfirmed
+    assert stages[2][0]["earliest_start"] == (None if unconfirmed else "2026-12-04")
     assert stages[2][0]["forecast_end"] == finish
     impact = schedule["impacts"][0]
     assert impact["reasons"] == [reason]
@@ -406,6 +408,42 @@ def test_project_schedule_and_downstream_impacts(
         ("合成角色3", "合成目标部门0"),
     ]
     assert schedule["delay_days"] == delay
+    if unconfirmed:
+        assert schedule["forecast_end"] is None
+        for part in (stages[0][0], stages[1][0], stages[2][0]):
+            assert part["forecast_unconfirmed"]
+            assert part["planned_start"] and part["planned_end"]
+            assert part["forecast_start"] is part["forecast_end"] is None
+        assert stages[0][1]["forecast_end"] == "2026-12-03"
+        demand_url = f"{base}/demands/{roles[0]['id']}"
+        follow_up = client.post(
+            f"{demand_url}/respond",
+            headers=auth["manager"],
+            json={
+                "action": "follow_up",
+                "revision": response.json()["revision"],
+                "text": "请重新确认日期",
+            },
+        )
+        assert follow_up.status_code == 200, follow_up.text
+        assert client.get(url, headers=auth["manager"]).json()["schedule"][
+            "forecast_unconfirmed"
+        ]
+        reply = client.post(
+            f"{demand_url}/reply",
+            headers=auth["b0"],
+            json={
+                "revision": follow_up.json()["revision"],
+                "outcome": "can_do",
+                "text": "可以承接",
+                "start_date": "2026-12-01",
+                "end_date": "2026-12-05",
+            },
+        )
+        assert reply.status_code == 200, reply.text
+        restored = client.get(url, headers=auth["manager"]).json()["schedule"]
+        assert not restored["forecast_unconfirmed"]
+        assert (restored["forecast_end"], restored["delay_days"]) == ("2026-12-11", 8)
 
 
 def test_project_analysis_rejects_external_and_cyclic_graphs() -> None:

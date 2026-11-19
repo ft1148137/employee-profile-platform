@@ -254,7 +254,11 @@ def represents_department(principal: Principal, target_department_id: UUID) -> b
 
 
 def responder_user_ids(
-    session: Session, org_id: UUID, target_department_id: UUID
+    session: Session,
+    org_id: UUID,
+    target_department_id: UUID,
+    *,
+    fallback_to_admin: bool = True,
 ) -> set[UUID]:
     rows = session.exec(
         select(OrgMembership.user_id, RoleGrant.role, RoleGrant.department_id)
@@ -290,7 +294,9 @@ def responder_user_ids(
         if managers:
             return managers
         current = department(session, org_id, current).parent_department_id
-    return {user for user, role, _ in rows if role == Role.ORG_ADMIN}
+    return {
+        user for user, role, _ in rows if fallback_to_admin and role == Role.ORG_ADMIN
+    }
 
 
 def demand_public(

@@ -44,12 +44,14 @@ from app.domains.work.models import Task
 
 TRACKING_NOTICE = "分配任务跟踪"
 UNAVAILABILITY_NOTICE = "人员不可用影响"
+BORROW_TRACKING_URL = "/capacity?tab=borrows"
 STATE_LABELS = {
     TrackingState.NO_TASKS: "尚未关联任务",
     TrackingState.ON_TRACK: "任务进展正常",
     TrackingState.TASKS_DONE: "关联任务已全部完成，可以结束分配",
     TrackingState.OVERDUE: "分配有延期风险",
     TrackingState.HANDED_OVER: "关联任务已交接，请核对分配",
+    TrackingState.STATUS_UNKNOWN: "有关联任务状态待确认",
 }
 CSV_DONE = {"done", "completed", "closed", "完成", "已完成", "已关闭"}
 
@@ -132,15 +134,18 @@ def feedback_targets(
             principal.actor_type == ActorKind.USER,
             Employee.employment_status == EmploymentStatus.ACTIVE,
             col(Employee.id).is_distinct_from(principal.employee_id),
-            CapacityDemand.requester_user_id != principal.user_id,
-            ~(
-                col(CapacityDemand.requesting_department_id).in_(
-                    principal.managed_department_ids
-                )
-                & (
-                    col(CapacityDemand.requesting_department_id)
-                    != CapacityDemand.target_department_id
-                )
+            or_(
+                col(Employee.department_id).in_(principal.managed_department_ids),
+                (col(CapacityDemand.requester_user_id) != principal.user_id)
+                & ~(
+                    col(CapacityDemand.requesting_department_id).in_(
+                        principal.managed_department_ids
+                    )
+                    & (
+                        col(CapacityDemand.requesting_department_id)
+                        != CapacityDemand.target_department_id
+                    )
+                ),
             ),
         )
     )
@@ -384,7 +389,9 @@ def set_task_link(
     if not link and existing is not None:
         session.delete(existing)
     session.flush()
-    refresh_assignment(session, row, today(session, row.org_id))
+    refresh_assignment(
+        session, row, today(session, row.org_id), exclude_user_id=principal.user_id
+    )
     return public_tracking(session, row)
 
 
@@ -445,6 +452,8 @@ def tracking_state(
         return TrackingState.HANDED_OVER
     if current > row.due_date and False in done:
         return TrackingState.OVERDUE
+    if None in done:
+        return TrackingState.STATUS_UNKNOWN
     return TrackingState.ON_TRACK
 
 
@@ -455,7 +464,11 @@ def today(session: Session, org_id: UUID) -> date:
 
 
 def refresh_assignment(
-    session: Session, row: CapacityAssignment, current: date
+    session: Session,
+    row: CapacityAssignment,
+    current: date,
+    *,
+    exclude_user_id: UUID | None = None,
 ) -> None:
     previous_state = row.tracking_state
     state = tracking_state(session, row, assignment_tasks(session, row), current)
@@ -470,7 +483,13 @@ def refresh_assignment(
             CapacityDemand.org_id == row.org_id, CapacityDemand.id == row.demand_id
         )
     ).one()
-    notify_managers(session, demand, f"{TRACKING_NOTICE}：{STATE_LABELS[state]}。")
+    notify_managers(
+        session,
+        demand,
+        row,
+        f"{TRACKING_NOTICE}：{STATE_LABELS[state]}。",
+        exclude_user_id=exclude_user_id,
+    )
 
 
 def recompute(session: Session, org_id: UUID) -> None:
@@ -498,33 +517,73 @@ def demand_tracking_risk(
     principal: Principal, session: Session, demand_id: UUID
 ) -> DemandTrackingRisk:
     demand = demand_row(principal, session, demand_id)
-    risk = session.exec(
-        select(CapacityAssignment.id)
-        .where(
+    rows = session.exec(
+        select(CapacityAssignment.status, CapacityAssignment.tracking_state).where(
             CapacityAssignment.org_id == demand.org_id,
             CapacityAssignment.demand_id == demand.id,
-            CapacityAssignment.status == AssignmentStatus.ACTIVE,
-            col(CapacityAssignment.tracking_state).in_(
-                (TrackingState.OVERDUE, TrackingState.HANDED_OVER)
+            col(CapacityAssignment.status).in_(
+                (AssignmentStatus.ACTIVE, AssignmentStatus.DONE)
             ),
         )
-        .limit(1)
-    ).first()
-    return DemandTrackingRisk(message="该角色有延期风险" if risk else None)
+    ).all()
+    active = {state for status, state in rows if status == AssignmentStatus.ACTIVE}
+    if not rows:
+        return DemandTrackingRisk(message=None)
+    if active & {TrackingState.OVERDUE, TrackingState.HANDED_OVER}:
+        return DemandTrackingRisk(message="该角色有延期风险")
+    if TrackingState.STATUS_UNKNOWN in active:
+        summary = STATE_LABELS[TrackingState.STATUS_UNKNOWN]
+    elif active == {TrackingState.TASKS_DONE}:
+        summary = "关联任务已全部完成，待承接部门确认结束"
+    elif active & {TrackingState.ON_TRACK, TrackingState.TASKS_DONE}:
+        summary = "执行正常"
+    elif active:
+        summary = STATE_LABELS[TrackingState.NO_TASKS]
+    else:
+        summary = "已完成"
+    return DemandTrackingRisk(message=f"该角色执行跟踪：{summary}")
 
 
-def notify_managers(session: Session, demand: CapacityDemand, message: str) -> None:
+def notify_managers(
+    session: Session,
+    demand: CapacityDemand,
+    row: CapacityAssignment,
+    message: str,
+    *,
+    exclude_user_id: UUID | None = None,
+) -> None:
     label = demand.role_name or demand.capability_name
-    for user_id in sorted(
-        responder_user_ids(session, demand.org_id, demand.target_department_id)
-    ):
+    start = row.start_date or demand.committed_start_date or demand.window_start
+    assignment = f"分配 #{row.id.hex[-8:]}（{start} 至 {row.due_date}，{row.allocation_percent}%）"
+    title, _, detail = message.partition("：")
+    incoming_url = f"/capacity?tab=incoming&demand={demand.id}&plans=1"
+    recipients = dict.fromkeys(
+        responder_user_ids(session, demand.org_id, demand.target_department_id),
+        incoming_url,
+    )
+    if assignment_lender(session, row) is not None:
+        employee_department = session.exec(
+            select(Employee.department_id).where(
+                Employee.org_id == row.org_id,
+                Employee.id == row.employee_id,
+                Employee.employment_status == EmploymentStatus.ACTIVE,
+            )
+        ).one_or_none()
+        if employee_department is not None:
+            for user_id in responder_user_ids(
+                session, row.org_id, employee_department, fallback_to_admin=False
+            ):
+                recipients.setdefault(user_id, BORROW_TRACKING_URL)
+    for user_id in sorted(recipients):
+        if user_id == exclude_user_id:
+            continue
         add_item(
             session,
             InboxItem(
                 org_id=demand.org_id,
                 recipient_user_id=user_id,
                 kind=InboxKind.CAPACITY,
-                message=f"{message} 需求：{label}\n/capacity?tab=incoming&demand={demand.id}&plans=1",
+                message=f"{title}：{assignment}。{detail} 需求：{label}\n{recipients[user_id]}",
             ),
         )
 
@@ -563,8 +622,12 @@ def notify_unavailability(session: Session, absence: CapacityUnavailability) -> 
             projected_end = date.fromordinal(
                 min(date.max.toordinal(), row.due_date.toordinal() + days)
             )
-            downstream, delay = unavailability_impact(session, demand, projected_end)
+            downstream, delay, has_downstream = unavailability_impact(
+                session, demand, projected_end
+            )
             if downstream:
                 message += f"受影响的下游角色：{'、'.join(downstream)}。"
+            elif has_downstream:
+                message += "下游角色日期暂不受影响。"
             message += f"项目预计比原窗口推迟 {delay} 天。"
-        notify_managers(session, demand, message + "可重新模拟或发起变更提议。")
+        notify_managers(session, demand, row, message + "可重新模拟或发起变更提议。")

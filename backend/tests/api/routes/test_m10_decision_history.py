@@ -1,7 +1,9 @@
+from typing import Any
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 from sqlmodel import Session
 
 from app.domains.capacity.demand_schemas import ChangeProposalParticipant
@@ -18,6 +20,23 @@ def test_history_keeps_superseded_decisions_and_respects_scope(
     url, people, auth, demand = case
     path = f"{url}/capacity/demands/{demand.id}/history"
     private_condition = "资源部门内部答复条件"
+    statements: list[str] = []
+
+    def record_query(*args: Any) -> None:
+        statements.append(args[2])
+
+    def read_history() -> Any:
+        bind = db.get_bind()
+        statements.clear()
+        event.listen(bind, "before_cursor_execute", record_query)
+        try:
+            result = client.get(path, headers=auth["a"])
+        finally:
+            event.remove(bind, "before_cursor_execute", record_query)
+        for table in ("capacity_proposal_line", "capacity_approval"):
+            assert sum(f"FROM {table} " in sql for sql in statements) == 1
+        return result
+
     offer = propose(client, case, text=private_condition)
     assert offer.status_code == 200, offer.text
     rejection = respond(
@@ -29,6 +48,7 @@ def test_history_keeps_superseded_decisions_and_respects_scope(
         text="请调整交付时间",
     )
     assert rejection.status_code == 200, rejection.text
+    assert len(read_history().json()["proposals"]) == 1
     db.refresh(demand)
     later = propose(client, case)
     assert later.status_code == 200, later.text
@@ -39,7 +59,7 @@ def test_history_keeps_superseded_decisions_and_respects_scope(
     db.add(declined)
     db.commit()
 
-    outgoing = client.get(path, headers=auth["a"])
+    outgoing = read_history()
     assert outgoing.status_code == 200
     body = outgoing.json()
     assert body["snapshots"] == []

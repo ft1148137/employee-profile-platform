@@ -452,6 +452,7 @@ class ScheduledProjectRole(BaseModel):
     earliest_start: date | None
     forecast_start: date | None
     forecast_end: date | None
+    forecast_unconfirmed: bool = False
 
 
 type ProjectImpactReason = Literal[
@@ -470,7 +471,8 @@ class ProjectSchedule(BaseModel):
     impacts: list[ProjectImpact]
     window_end: date
     forecast_end: date | None
-    delay_days: int
+    delay_days: int | None
+    forecast_unconfirmed: bool = False
 
 
 class ProjectDetail(ProjectSummary):

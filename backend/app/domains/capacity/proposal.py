@@ -536,6 +536,30 @@ def decision_history(
         )
         .order_by(col(CapacityProposal.created_at), col(CapacityProposal.id))
     ).all()
+    if not rows:
+        return []
+    ids = [row.id for row in rows]
+    borrowed = set(
+        session.exec(
+            select(CapacityProposalLine.proposal_id)
+            .where(
+                CapacityProposalLine.org_id == principal.org_id,
+                col(CapacityProposalLine.proposal_id).in_(ids),
+                col(CapacityProposalLine.lender_department_id).is_not(None),
+            )
+            .distinct()
+        ).all()
+    )
+    approvals: dict[UUID, list[CapacityApproval]] = defaultdict(list)
+    for approval in session.exec(
+        select(CapacityApproval)
+        .where(
+            CapacityApproval.org_id == principal.org_id,
+            col(CapacityApproval.proposal_id).in_(ids),
+        )
+        .order_by(col(CapacityApproval.created_at), col(CapacityApproval.id))
+    ):
+        approvals[approval.proposal_id].append(approval)
     return [
         ProposalDecision(
             id=row.id,
@@ -543,16 +567,12 @@ def decision_history(
             status=row.status,
             fail_reason=(
                 "borrow_unsuccessful"
-                if row.fail_reason
-                and any(
-                    line.lender_department_id is not None
-                    for line in lines_for(session, row)
-                )
+                if row.fail_reason and row.id in borrowed
                 else row.fail_reason
             ),
             created_at=row.created_at,
             approvals=_public_approvals(
-                principal, approvals_for(session, row), detailed=detailed
+                principal, approvals.get(row.id, []), detailed=detailed
             ),
         )
         for row in rows
