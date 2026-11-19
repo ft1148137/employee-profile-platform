@@ -211,7 +211,7 @@ test("从网页助手核对项目草稿并创建项目需求", async ({ page, re
       "href",
       expectedLink!,
     )
-    const org = base.split("/").at(-1)!
+    const org = base.split("/").pop()!
     const draftToken = "synthetic-feishu-draft"
     await page.route("**/bot/sessions/project-drafts/feishu?*", (route) => {
       const query = new URL(route.request().url()).searchParams
