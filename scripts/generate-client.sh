@@ -3,14 +3,12 @@
 set -e
 set -x
 
-cd backend
-FASTAPI_ENV=development uv run python -c "import app.main; import json; print(json.dumps(app.main.app.openapi()))" > ../openapi.json
-cd ..
-mv openapi.json frontend/
+formatted=$(mktemp -d)
+trap 'rm -rf "$formatted"' EXIT
+(cd backend && FASTAPI_ENV=development uv run python -c "import app.main; import json; print(json.dumps(app.main.app.openapi()))") > "$formatted/openapi.json"
+mv "$formatted/openapi.json" frontend/
 bun run --filter frontend generate-client
-# Format via stdin because the frontend config excludes generated files from lint.
-for file in frontend/src/client/*.ts; do
-  (cd frontend && bunx biome format --stdin-file-path=generated.ts) < "$file" > "$file.formatted"
-  mv "$file.formatted" "$file"
-done
-bun run lint
+# Stage the files outside src/client so Biome can format them with the frontend config.
+cp frontend/src/client/*.ts "$formatted/"
+(cd frontend && bunx biome format --write openapi.json "$formatted"/*.ts)
+mv "$formatted"/*.ts frontend/src/client/

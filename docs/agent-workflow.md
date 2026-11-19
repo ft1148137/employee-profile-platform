@@ -6,7 +6,9 @@ NERE-272 试行此流程，NERE-277 明确沿用；Mika 更新「全栈开发」
 
 每次 push 前运行 `bash scripts/preflight.sh`：检查远端新增迁移、单一 Alembic head、pre-commit、独立数据库端口及受影响的 pytest / 守卫测试，并提示相关 Playwright spec 和镜像构建服务；`--list` 只列计划，不 fetch 或执行检查。
 
-preflight 的 pytest 默认使用 `-n 2 --dist loadgroup`，可用 `PREFLIGHT_PYTEST_WORKERS` 调整；几个任务同时在本机运行，不要自行加大 `-n`（包括通过 `PYTEST_ADDOPTS` 设置）。
+preflight 的 pytest 默认使用 `-n 4 --dist loadgroup`，可用 `PREFLIGHT_PYTEST_WORKERS` 调整并发。自检汇总会列出各步骤及总耗时。
+
+本地优先运行改动的测试、对应模块的测试、直接引用者和守卫测试。共享领域模型和契约按本域及变更类型收窄引用者。评测和验收用例分别在直接改动评测或求解相关文件、直接改动验收文件时选中。全量回归由 CI 执行。
 
 每个 PR 必跑后端 ruff、mypy、ty，前端 biome、类型检查、build，以及改动涉及的 pytest 文件或目录。沿用仓库的 uv、Bun 和现有脚本：
 
