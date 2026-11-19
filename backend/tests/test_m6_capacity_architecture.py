@@ -57,6 +57,10 @@ def violations(root: Path) -> list[str]:
                     in {
                         "app.domains.capacity.tools.list_projects",
                         "app.domains.capacity.project.get_project",
+                        "app.domains.capacity.demand.list_demands",
+                        "app.domains.capacity.demand.get_demand",
+                        "app.domains.capacity.demand_schemas.DemandListInput",
+                        "app.domains.capacity.demand_schemas.DemandIdInput",
                         "app.domains.capacity.demand_schemas.ProjectIdInput",
                         "app.domains.capacity.settings.CapacityNotFound",
                         "app.domains.capacity.settings.read_settings",
@@ -152,6 +156,22 @@ def test_capacity_import_boundaries() -> None:
             "domains/admin_assistant/tools.py",
             "from app.domains.capacity.project import get_project",
         ),
+        (
+            "domains/admin_assistant/registry.py",
+            "from app.domains.capacity import demand",
+        ),
+        (
+            "domains/admin_assistant/registry.py",
+            "from app.domains.capacity.demand import submit_demand",
+        ),
+        (
+            "domains/admin_assistant/registry.py",
+            "from app.domains.capacity.demand import reply_demand",
+        ),
+        (
+            "domains/admin_assistant/tools.py",
+            "from app.domains.capacity.demand import get_demand",
+        ),
         ("domains/capacity/bad.py", "from app.domains.review import publish"),
         ("domains/capacity/bad.py", "from ..profile.models import ProfileVersion"),
         (
@@ -190,12 +210,14 @@ def test_import_counterexamples(tmp_path: Path, relative: str, source: str) -> N
     assert violations(tmp_path)
 
 
-def test_admin_assistant_project_read_entrypoint(tmp_path: Path) -> None:
+def test_admin_assistant_capacity_read_entrypoint(tmp_path: Path) -> None:
     path = tmp_path / "domains/admin_assistant/registry.py"
     path.parent.mkdir(parents=True)
     path.write_text(
         "from app.domains.capacity.tools import list_projects\n"
         "from app.domains.capacity.project import get_project\n"
+        "from app.domains.capacity.demand import get_demand, list_demands\n"
+        "from app.domains.capacity.demand_schemas import DemandIdInput, DemandListInput\n"
         "from app.domains.capacity.demand_schemas import ProjectIdInput\n"
         "from app.domains.capacity.settings import CapacityNotFound\n"
         "from app.domains.capacity.settings import read_settings as read_capacity_settings\n"

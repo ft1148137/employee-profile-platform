@@ -152,6 +152,9 @@ def call(
                 page = entry.page
                 if body.function == "get_project" and (project_id := data.get("id")):
                     page = f"/capacity?tab=projects&project={project_id}"
+                if body.function == "get_demand" and (demand_id := data.get("id")):
+                    tab = "incoming" if data.get("can_reply") else "outgoing"
+                    page = f"/capacity?tab={tab}&demand={demand_id}"
                 cards.append(LinkCard(title="打开对应页面", page=page))
                 cards.extend(
                     registry.TableCard.model_validate(c) for c in result["cards"]

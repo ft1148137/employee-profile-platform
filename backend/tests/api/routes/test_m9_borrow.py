@@ -345,6 +345,87 @@ def test_borrow_consent_order_and_projections(
     assert mine_for_b.json()["data"] == []
 
 
+def test_borrow_workload_segments_require_consent_and_lender_scope(
+    case: tuple, offered: tuple, client: TestClient, db: Session
+) -> None:
+    url, employees, auth, demand = case
+    reply, line, worker = offered
+    employee_id = str(worker.id)
+    lender_department = worker.department_id
+    assert lender_department is not None
+    for member in db.exec(
+        select(OrgMembership).where(
+            OrgMembership.org_id == demand.org_id,
+            (OrgMembership.user_id == demand.requester_user_id)
+            | (OrgMembership.employee_id == employees["E05"].id),
+        )
+    ).all():
+        db.add_all(
+            [
+                RoleGrant(
+                    org_id=demand.org_id, membership_id=member.id, role="org_admin"
+                ),
+                RoleGrant(
+                    org_id=demand.org_id,
+                    membership_id=member.id,
+                    department_id=lender_department,
+                    role="dept_manager",
+                ),
+            ]
+        )
+    db.commit()
+
+    selected = decide(
+        client, case, line, "lender", action="select", employee_id=employee_id
+    )
+    assert selected.status_code in (200, 204), selected.text
+    demand_id = str(demand.id)
+
+    def check_workloads(*, consented: bool, committed: bool) -> None:
+        for role in ("a", "b", "admin", "lender", "worker"):
+            base = f"{url}/capacity/workloads"
+            response = client.get(
+                f"{base}/me" if role == "worker" else base,
+                headers=auth[role],
+                params={"from_week": demand.window_start.isoformat(), "weeks": 1},
+            )
+            assert response.status_code == 200, response.text
+            data = response.json()
+            row = (
+                data
+                if role == "worker"
+                else next(
+                    item for item in data["data"] if item["employee_id"] == employee_id
+                )
+            )
+            week = row["weeks"][0]
+            assert week["platform_percent"] == 50
+            assert week["hold_percent"] == (0 if committed else 50)
+            if committed:
+                assert week["holds"] == []
+            else:
+                (hold,) = week["holds"]
+                assert set(hold) == {"allocation_percent", "expires_at"}
+                assert hold["allocation_percent"] == 50
+            visible = consented and role in ("lender", "worker")
+            assert [segment["demand_id"] for segment in row["holds"]] == (
+                [demand_id] if visible and not committed else []
+            )
+            assert [segment["demand_id"] for segment in row["assignments"]] == (
+                [demand_id] if visible and committed else []
+            )
+            if not visible:
+                assert demand_id not in response.text
+
+    check_workloads(consented=False, committed=False)
+    accepted = decide(client, case, line, "worker", action="accept")
+    assert accepted.status_code in (200, 204), accepted.text
+    check_workloads(consented=True, committed=False)
+    committed = respond(client, case, reply["revision"])
+    assert committed.status_code in (200, 204), committed.text
+    check_workloads(consented=True, committed=True)
+
+
 @pytest.mark.parametrize("role", ["lender", "worker"])
 def test_borrow_party_cannot_also_reject_as_requesting_manager(
     case: tuple, offered: tuple, client: TestClient, db: Session, role: str

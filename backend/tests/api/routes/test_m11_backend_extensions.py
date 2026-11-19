@@ -27,6 +27,7 @@ from app.domains.bot import schemas as bot_schemas
 from app.domains.bot.models import BotSession
 from app.domains.capacity import calendar
 from app.domains.capacity.models import (
+    CapacityApproval,
     CapacityAssignment,
     CapacityDemand,
     CapacityProject,
@@ -44,6 +45,7 @@ from tests.admin_assistant.test_registry import call as admin_call
 from tests.admin_assistant.test_registry import principal as admin_principal
 from tests.api.routes.test_m5_people_search_tools import grant_admin
 from tests.api.routes.test_m5_people_search_tools import people as people
+from tests.api.routes.test_m6_capacity_demand import demand as demand
 from tests.api.routes.test_m6_capacity_mcp import denied, listing, use
 from tests.api.routes.test_m6_capacity_workload import enable, user_id
 from tests.api.routes.test_m10_project import project_data as project_data
@@ -119,6 +121,31 @@ def replied_project(project_data: tuple, client: TestClient) -> dict[str, Any]:
     return summary
 
 
+def foreign_capacity_admin(db: Session, auth: dict[str, dict[str, str]]) -> Principal:
+    foreign_user = db.get_one(
+        User,
+        UUID(
+            jwt.decode(
+                auth["foreign"]["Authorization"].split()[1],
+                options={"verify_signature": False},
+            )["sub"]
+        ),
+    )
+    foreign_org = db.exec(
+        select(OrgMembership.org_id).where(OrgMembership.user_id == foreign_user.id)
+    ).one()
+    grant_admin(db, get_org_principal(foreign_org, foreign_user, db))
+    db.add(
+        CapacitySetting(
+            org_id=foreign_org, enabled=True, updated_by_user_id=foreign_user.id
+        )
+    )
+    db.flush()
+    foreign_admin = get_org_principal(foreign_org, foreign_user, db)
+    assert foreign_admin.is_org_admin
+    return foreign_admin
+
+
 def test_admin_project_reads(
     replied_project: dict[str, Any],
     project_data: tuple,
@@ -173,27 +200,7 @@ def test_admin_project_reads(
         )
     ]
 
-    foreign_user = db.get_one(
-        User,
-        UUID(
-            jwt.decode(
-                auth["foreign"]["Authorization"].split()[1],
-                options={"verify_signature": False},
-            )["sub"]
-        ),
-    )
-    foreign_org = db.exec(
-        select(OrgMembership.org_id).where(OrgMembership.user_id == foreign_user.id)
-    ).one()
-    grant_admin(db, get_org_principal(foreign_org, foreign_user, db))
-    db.add(
-        CapacitySetting(
-            org_id=foreign_org, enabled=True, updated_by_user_id=foreign_user.id
-        )
-    )
-    db.flush()
-    foreign_admin = get_org_principal(foreign_org, foreign_user, db)
-    assert foreign_admin.is_org_admin
+    foreign_admin = foreign_capacity_admin(db, auth)
     cards.clear()
     assert query(foreign_admin, "get_project", args) == {
         "data": {"error": "找不到该记录"}
@@ -222,6 +229,100 @@ def test_admin_project_reads(
     setting.enabled = False
     db.commit()
     for function, arguments in queries:
+        assert query(admin, function, arguments) == {
+            "data": {"error": "需求与容量功能已关闭，如需使用请先在能力与规则里开启"}
+        }
+        assert not cards
+
+
+def test_admin_demand_reads(demand: tuple, db: Session, client: TestClient) -> None:
+    url, employees, auth, body, manager_user_id = demand
+    admin = admin_principal(db, (url, employees, auth))
+    assert admin.is_org_admin and admin.employee_id is None
+    base = f"{url}/capacity/demands"
+    start = calendar.this_week(db, admin.org_id)
+    body = {
+        **body,
+        "window_start": start.isoformat(),
+        "window_end": (start + timedelta(days=6)).isoformat(),
+    }
+    created = client.post(base, headers=auth["employee"], json=body)
+    assert created.status_code == 200, created.text
+    demand_id = created.json()["id"]
+    path = f"{base}/{demand_id}"
+    args = {"demand_id": demand_id}
+    cards: list[
+        LinkCard | TableCard | ChangeSetCard | SecretInputCard | FileUploadCard
+    ] = []
+
+    def query(
+        principal: Principal, function: str, arguments: dict[str, JsonValue]
+    ) -> JsonValue:
+        cards.clear()
+        return admin_tools.call(
+            db,
+            principal,
+            cards,
+            "admin_read",
+            {"function": function, "args": arguments},
+        )
+
+    for status, side, tab in (
+        ("submitted", "incoming", "incoming"),
+        ("replied", "outgoing", "outgoing"),
+    ):
+        if status == "replied":
+            reply = client.post(
+                f"{path}/reply",
+                headers=auth["b"],
+                json={
+                    "revision": 1,
+                    "outcome": "can_do",
+                    "start_date": body["window_start"],
+                    "end_date": body["window_end"],
+                    "text": "可以承接合成需求",
+                },
+            )
+            assert reply.status_code == 200, reply.text
+        listing = {"side": side, "status": status}
+        assert query(admin, "list_demands", listing) == {
+            "data": client.get(base, headers=auth["admin"], params=listing).json()
+        }
+        table = next(card for card in cards if isinstance(card, TableCard))
+        assert table.total == 1 and table.page == "/capacity"
+        assert query(admin, "list_demands", {"side": side, "status": "withdrawn"}) == {
+            "data": {"data": [], "count": 0}
+        }
+        detail = client.get(path, headers=auth["admin"]).json()
+        assert detail["project"] is None and detail["status"] == status
+        assert [event["kind"] for event in detail["events"]] == (
+            ["submitted"] if status == "submitted" else ["submitted", "replied"]
+        )
+        assert query(admin, "get_demand", args) == {"data": detail}
+        assert cards == [
+            LinkCard(
+                title="打开对应页面", page=f"/capacity?tab={tab}&demand={demand_id}"
+            )
+        ]
+
+    foreign = foreign_capacity_admin(db, auth)
+    assert query(foreign, "get_demand", args) == {"data": {"error": "找不到该记录"}}
+    assert not cards
+    assert query(foreign, "list_demands", {}) == {"data": {"data": [], "count": 0}}
+    db.rollback()
+
+    manager = get_org_principal(admin.org_id, db.get_one(User, manager_user_id), db)
+    for function, arguments in (("list_demands", {}), ("get_demand", args)):
+        assert query(manager, function, arguments) == {
+            "data": {"error": "需要企业管理员权限"}
+        }
+        assert not cards
+
+    disabled = client.put(
+        f"{url}/capacity-settings", headers=auth["admin"], json={"enabled": False}
+    )
+    assert disabled.status_code == 200, disabled.text
+    for function, arguments in (("list_demands", {}), ("get_demand", args)):
         assert query(admin, function, arguments) == {
             "data": {"error": "需求与容量功能已关闭，如需使用请先在能力与规则里开启"}
         }
@@ -434,6 +535,7 @@ def workload_demo(demo: tuple, db: Session, client: TestClient) -> Generator[tup
     org_id = demo[1]["E01"].org_id
     for model in (
         CapacityAssignment,
+        CapacityApproval,
         CapacityProposalLine,
         CapacityProposal,
         CapacityDemand,
@@ -453,6 +555,7 @@ def test_workload_segments_window_scope_and_weekly_totals(
     manager, employee, outside = (employees[code] for code in ("E01", "E02", "E04"))
     org_id = manager.org_id
     actor = user_id(db, manager)
+    requester = user_id(db, employees["E05"])
     dept = db.get_one(Department, manager.department_id)
     child = Department(org_id=org_id, name="合成下级部门", parent_department_id=dept.id)
     db.add(child)
@@ -463,8 +566,8 @@ def test_workload_segments_window_scope_and_weekly_totals(
     end = start + timedelta(weeks=1)
     project = CapacityProject(
         org_id=org_id,
-        requesting_department_id=dept.id,
-        requester_user_id=actor,
+        requesting_department_id=outside.department_id,
+        requester_user_id=requester,
         title="合成项目",
         description="PRIVATE_PROJECT",
     )
@@ -473,9 +576,9 @@ def test_workload_segments_window_scope_and_weekly_totals(
     demands = [
         CapacityDemand(
             org_id=org_id,
-            requesting_department_id=dept.id,
-            target_department_id=outside.department_id,
-            requester_user_id=actor,
+            requesting_department_id=outside.department_id if i in (1, 2) else dept.id,
+            target_department_id=employees["E07"].department_id,
+            requester_user_id=requester if i in (1, 2) else actor,
             capability_key="synthetic",
             capability_name="合成能力",
             headcount=1,
@@ -522,6 +625,18 @@ def test_workload_segments_window_scope_and_weekly_totals(
         db.add(line)
         lines.append(line)
     db.flush()
+    for line in lines[:2]:
+        db.add(
+            CapacityApproval(
+                org_id=org_id,
+                proposal_id=line.proposal_id,
+                line_id=line.id,
+                party="employee",
+                decision="approved",
+                user_id=user_id(db, employee),
+                via="web",
+            )
+        )
     assignments = [
         CapacityAssignment(
             org_id=org_id,
@@ -607,7 +722,9 @@ def test_workload_segments_window_scope_and_weekly_totals(
             "demand_id": str(demands[2].id),
             "title": "合成能力",
             "capability_name": "合成能力",
-            "requesting_department_name": dept.name,
+            "requesting_department_name": db.get_one(
+                Department, outside.department_id
+            ).name,
             "is_borrow": True,
             "allocation_percent": 20,
             "start_date": start.isoformat(),
@@ -628,6 +745,15 @@ def test_workload_segments_window_scope_and_weekly_totals(
         key: row["weeks"][0][key]
         for key in ("capacity_percent", "platform_percent", "hold_percent")
     } == {"capacity_percent": 80, "platform_percent": 60, "hold_percent": 20}
+    admin = client.get(base, headers=auth["admin"], params=params)
+    assert admin.status_code == 200, admin.text
+    admin_row = next(
+        r for r in admin.json()["data"] if r["employee_id"] == str(employee.id)
+    )
+    assert admin_row["assignments"] == [committed] and admin_row["holds"] == []
+    assert admin_row["weeks"] == row["weeks"]
+    for hidden in (project.title, "合成角色", str(demands[1].id), str(demands[2].id)):
+        assert hidden not in admin.text
     mine = client.get(f"{base}/me", headers=auth["employee"], params=params)
     assert mine.status_code == 200, mine.text
     assert {key: mine.json()[key] for key in row} == row

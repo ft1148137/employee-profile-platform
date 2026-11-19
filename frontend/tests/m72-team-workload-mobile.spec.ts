@@ -138,6 +138,19 @@ test("团队负荷在手机横向滑动后仍显示姓名和设置", async ({ pa
         expires_at: `${date(6)}T12:00:00Z`,
       },
     ]
+    const expires_at = row.holds[0].expires_at
+    for (const [index, week] of row.weeks.entries()) {
+      const hasVisibleHold = index < 2
+      week.holds = hasVisibleHold
+        ? [{ allocation_percent: 25, expires_at }]
+        : []
+      if (index === 0) week.holds.push({ allocation_percent: 20, expires_at })
+      week.hold_percent = week.holds.reduce(
+        (total, hold) => total + hold.allocation_percent,
+        0,
+      )
+      week.platform_percent = (hasVisibleHold ? 50 : 25) + week.hold_percent
+    }
     row.unavailabilities = [
       { id: "unavailable", start_date: date(3), end_date: date(4) },
     ]
@@ -177,6 +190,12 @@ test("团队负荷在手机横向滑动后仍显示姓名和设置", async ({ pa
   const dialog = page.getByRole("dialog")
   await expect(dialog).toContainText("负荷明细 · A合成员工")
   await expect(dialog).toContainText("其他工作占比")
+  await expect(
+    dialog.getByText("含未展示明细的受保护/待确认负荷 20%", { exact: true }),
+  ).toBeVisible()
+  await expect(dialog.getByText("含未展示明细的受保护/待确认负荷")).toHaveCount(
+    1,
+  )
   await expect(
     dialog.getByRole("region", { name: "已承诺分配" }),
   ).toContainText("合成已承诺需求 · 25%")
