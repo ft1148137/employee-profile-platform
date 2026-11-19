@@ -173,6 +173,7 @@ def test_preview_policy_matches_bot_and_im(
     [
         ("web", "legacy"),
         ("telegram", "legacy"),
+        ("web", "ambiguous"),
         ("web", "already_notified"),
         ("web", "current"),
     ],
@@ -220,13 +221,20 @@ def test_assistant_confirms_immediate_retraction_after_notice(
     legacy = {**payload, "items": [dict(item) for item in payload["items"]]}
     for item in legacy["items"]:
         item.pop("submission_notice")
-    store.append_message(db, session, "assistant", {"messages": [legacy], "steps": []})
-    if version == "already_notified":
+    if version != "already_notified":
+        store.append_message(
+            db, session, "assistant", {"messages": [legacy], "steps": []}
+        )
+    if version in ("ambiguous", "already_notified"):
         # PR #405 displayed the notice with the same action payload as a legacy card.
         store.append_message(
             db, session, "assistant", {"messages": [payload], "steps": []}
         )
-        card = bot.PreviewCard.model_validate(payload)
+        if version == "ambiguous":
+            card = bot.PreviewCard.model_validate(legacy)
+            assert card.actions == bot.PreviewCard.model_validate(payload).actions
+        else:
+            card = bot.PreviewCard.model_validate(payload)
     elif version == "current":
         store.append_message(
             db,
@@ -278,8 +286,18 @@ def test_assistant_confirms_immediate_retraction_after_notice(
         return reply.response
 
     notice = "提交后立即撤回，能力状态变为未知"
+
+    def assert_draft_unchanged() -> None:
+        db.expire_all()
+        unchanged = db.get(ProfileChangeRequest, request_id)
+        assert unchanged and unchanged.status == "draft"
+        assert unchanged.submitted_at is None
+        current = current_claims(db, org_id, owner.employee_id)[backend.key]
+        assert current.id == original.id
+        assert current.level is not None
+
     response = confirm(card)
-    if version == "legacy":
+    if version in ("legacy", "ambiguous"):
         (fresh,) = response.messages
         assert isinstance(fresh, bot.PreviewCard)
         assert fresh.request_id == card.request_id
@@ -289,21 +307,28 @@ def test_assistant_confirms_immediate_retraction_after_notice(
         assert [item.submission_notice for item in fresh.items] == (
             [notice, "提交后需经理确认"] if mixed else [notice]
         )
+        assert_draft_unchanged()
         if channel == "web":
-            assert isinstance(confirm(card).messages[0], bot.PreviewCard)
+            (retry,) = confirm(card).messages
+            assert isinstance(retry, bot.PreviewCard)
+            assert retry.actions[0].preview_id is not None
+            assert retry.actions[0].preview_id != fresh.actions[0].preview_id
+            assert [item.submission_notice for item in retry.items] == [notice]
+            assert_draft_unchanged()
             history = client.get(
                 url + "/messages", params=query, headers=auth["employee"]
             )
             assert history.status_code == 200, history.text
             assert history.json()[0]["payload"]["messages"][0] == legacy
-        db.expire_all()
-        unchanged = db.get(ProfileChangeRequest, request_id)
-        assert unchanged and unchanged.status == "draft"
-        assert unchanged.submitted_at is None
-        assert (
-            current_claims(db, org_id, owner.employee_id)[backend.key].id == original.id
-        )
         response = confirm(fresh)
+        if version == "ambiguous":
+            replay = client.post(
+                url + "/actions",
+                params=query,
+                headers=auth["employee"],
+                json=fresh.actions[0].model_dump(mode="json"),
+            )
+            assert replay.status_code == 409, replay.text
         if mixed:
             first, second = rendered[-1].split("\n\n")
             assert (
