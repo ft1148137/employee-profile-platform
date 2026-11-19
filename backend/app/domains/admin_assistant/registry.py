@@ -47,6 +47,11 @@ from app.domains.bot import settings as bot
 from app.domains.capability import department as department_capabilities
 from app.domains.capability import search
 from app.domains.capability.service import read_editor
+from app.domains.capacity import project
+from app.domains.capacity.demand_schemas import ProjectIdInput
+from app.domains.capacity.settings import CapacityNotFound
+from app.domains.capacity.settings import read_settings as read_capacity_settings
+from app.domains.capacity.tools import list_projects
 from app.domains.drafting import settings as drafting
 from app.domains.drafting import update_settings as updates
 from app.domains.drafting.note import read_note
@@ -478,6 +483,24 @@ FUNCTIONS = {
             "POST /im-settings/{platform}/test",
         ),
         _f(
+            "list_projects",
+            "more",
+            "查看多角色项目列表",
+            NoArgs,
+            lambda d, p, a: list_projects(p, d),
+            "/capacity",
+            "GET /capacity/projects",
+        ),
+        _f(
+            "get_project",
+            "more",
+            "查看多角色项目详情、角色承接状态与排程延期影响",
+            ProjectIdInput,
+            lambda d, p, a: project.get_project(p, d, a.project_id),
+            "/capacity",
+            "GET /capacity/projects/{project_id}",
+        ),
+        _f(
             "list_audit_events",
             "more",
             "查看操作审计记录",
@@ -767,6 +790,16 @@ async def admin_read(
         return {"data": {"error": "参数不正确，请按功能说明填写，不能指定身份或企业"}}
     except HTTPException as error:
         # Never echo arbitrary service details (including rejected input) to the model.
+        if (
+            isinstance(error, CapacityNotFound)
+            and function in ("list_projects", "get_project")
+            and not read_capacity_settings(principal, db).enabled
+        ):
+            return {
+                "data": {
+                    "error": "需求与容量功能已关闭，如需使用请先在能力与规则里开启"
+                }
+            }
         message = (
             "找不到该记录"
             if error.status_code == 404

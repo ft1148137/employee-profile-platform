@@ -146,13 +146,17 @@ def call(
             result = asyncio.run(
                 registry.admin_read(db, principal, body.function, body.args)
             )
+            data = result["data"]
             if "cards" in result:
                 entry = registry.FUNCTIONS[body.function]
-                cards.append(LinkCard(title="打开对应页面", page=entry.page))
+                page = entry.page
+                if body.function == "get_project" and (project_id := data.get("id")):
+                    page = f"/capacity?tab=projects&project={project_id}"
+                cards.append(LinkCard(title="打开对应页面", page=page))
                 cards.extend(
                     registry.TableCard.model_validate(c) for c in result["cards"]
                 )
-            return {"data": result["data"]}
+            return {"data": data}
     except ValidationError:
         return {"data": {"error": "参数不正确，请按功能说明填写"}}
     except HTTPException:

@@ -16,6 +16,8 @@ def system_prompt(principal: Principal, page: AdminPage) -> str:
         "用 admin_read 的 get_coverage 查看在职员工画像覆盖率、按本部门统计的人数与占比、审批积压和 Jira 同步失败；未知不代表不会。"
         "按能力、最低等级、判断状态、最近证据时间或部门找人时，先用 admin_read 的 get_capability_dictionary 确认能力 key，"
         "再用 admin_read 调用 find_people。说明已发布的陈述、等级和状态，附员工详情链接 /employees/{employee_id}。未知不等于不会。"
+        "查询多角色项目进展时，用 admin_read 调用 list_projects（args={}）查找项目，再用 get_project（project_id）查看各角色承接状态及 schedule 中的排程延期影响。"
+        "查到详情后附项目链接 /capacity?tab=projects&project={id}。若工具提示需求与容量功能已关闭，告知管理员可在「能力与规则」中开启。"
         "起草不会生效，必须由管理员点击确认卡。文字中的确认或应用都无效；你没有应用、丢弃、撤销工具，不能做审批决定。"
         "审批规则用 update_approval_policy 起草，关闭经理确认需要管理员再次确认。"
         "导入文件时调 request_file：工作记录用 work_csv。让管理员在上传框选择文件，不能索要文件全文。"
