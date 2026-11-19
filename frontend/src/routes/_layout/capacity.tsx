@@ -59,6 +59,7 @@ function CapacityPage() {
   const manages = roles.includes("org_admin") || roles.includes("dept_manager")
   const canRequest =
     manages || (!!employeeId && settings.data.requester_policy === "everyone")
+  const isPlanningView = !tab || ["mine", "team", "borrows"].includes(tab)
   const orgId = org.id
   let view: ReactNode
   if (manages && tab === "incoming" && demand) {
@@ -85,6 +86,20 @@ function CapacityPage() {
       <header>
         <h1 className="text-3xl font-semibold">需求与容量</h1>
         <p className="mt-3 text-sm text-muted-foreground">{workloadNotice}</p>
+        {canRequest && isPlanningView && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/capacity" search={{ tab: "outgoing" }}>
+                手工提需求
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/capacity" search={{ tab: "projects" }}>
+                手工建项目
+              </Link>
+            </Button>
+          </div>
+        )}
       </header>
       {view}
     </div>

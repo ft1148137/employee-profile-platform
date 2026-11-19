@@ -47,7 +47,7 @@ function capacityDestination(message: string) {
       search: { tab: "borrows" },
       label: "打开借调页",
     } as const
-  if (message === "借调请求待你确认")
+  if (["借调请求", "借调请求待你确认"].includes(message))
     return {
       to: "/reviews",
       search: { type: "borrow" },

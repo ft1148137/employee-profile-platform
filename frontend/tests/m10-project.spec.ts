@@ -9,7 +9,33 @@ test("需求方创建多角色项目并看到承接方答复和排程影响", as
 }) => {
   test.setTimeout(90_000)
   const { open } = await setupProjectManagers(request)
-  await open(page, "A", "/capacity?tab=projects")
+  const planning = page
+    .getByRole("navigation", { name: "主导航" })
+    .getByRole("link", { name: "规划", exact: true })
+  const canvas = page.getByRole("main")
+  const manualDemand = canvas.getByRole("link", { name: "手工提需求" })
+  const manualProject = canvas.getByRole("link", { name: "手工建项目" })
+
+  await open(page, "C", "/inbox")
+  await planning.click()
+  await expect(
+    canvas.getByRole("heading", { name: "需求与容量" }),
+  ).toBeVisible()
+  await expect(manualDemand).toHaveCount(0)
+  await expect(manualProject).toHaveCount(0)
+
+  await open(page, "A", "/inbox")
+  await planning.click()
+  await expect(
+    page.getByRole("navigation", { name: "空间导航" }).getByRole("link"),
+  ).toHaveText(["我的负荷", "团队负荷", "借调请求"])
+  await manualDemand.click()
+  await page.getByRole("button", { name: "手工提需求" }).click()
+  await expect(
+    page.getByRole("heading", { name: "问一问 / 提需求" }),
+  ).toBeVisible()
+  await planning.click()
+  await manualProject.click()
   await page.getByRole("button", { name: "手工建项目" }).click()
   await page.getByLabel("项目名称").fill("合成跨部门交付")
   await page.getByLabel("需求方部门").selectOption({ label: "客户" })

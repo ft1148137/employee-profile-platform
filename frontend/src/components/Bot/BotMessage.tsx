@@ -3,6 +3,7 @@ import { useState } from "react"
 import type {
   CapabilitiesPublic,
   CapacityAction,
+  CapacityCard,
   Claim,
   PlanCard,
   ProfileEditAction,
@@ -73,6 +74,29 @@ function assistantText(text: string) {
   return parts.concat(text.slice(cursor))
 }
 
+function capacityCardText(card: CapacityCard) {
+  if (card.kind !== "demand_response") return card.content
+  // The proposal footer is appended after the user-supplied text.
+  const detail = card.content.match(
+    /\n\/capacity\?tab=outgoing&demand=([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})(?=\n预占到期时间：[^\n]+\n确认后[^\n]+$)/,
+  )
+  if (detail?.index === undefined || detail[1] !== card.arguments.demand_id)
+    return card.content
+  return (
+    <>
+      {card.content.slice(0, detail.index + 1)}
+      <Link
+        to="/capacity"
+        search={{ tab: "outgoing", demand: detail[1] }}
+        className="underline"
+      >
+        查看需求详情
+      </Link>
+      {card.content.slice(detail.index + detail[0].length)}
+    </>
+  )
+}
+
 export function BotMessage({
   message,
   dictionary,
@@ -141,7 +165,7 @@ export function BotMessage({
           </>
         ) : (
           <p className="whitespace-pre-wrap break-words leading-7">
-            {message.content}
+            {capacityCardText(message)}
           </p>
         )}
         {message.result && <p role="status">{message.result}</p>}
