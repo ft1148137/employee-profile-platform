@@ -457,11 +457,14 @@ def today(session: Session, org_id: UUID) -> date:
 def refresh_assignment(
     session: Session, row: CapacityAssignment, current: date
 ) -> None:
+    previous_state = row.tracking_state
     state = tracking_state(session, row, assignment_tasks(session, row), current)
-    if state == row.tracking_state:
+    if state == previous_state:
         return
     row.tracking_state = state
     row.tracking_changed_at = utc_now()
+    if previous_state is None:
+        return
     demand = session.exec(
         select(CapacityDemand).where(
             CapacityDemand.org_id == row.org_id, CapacityDemand.id == row.demand_id

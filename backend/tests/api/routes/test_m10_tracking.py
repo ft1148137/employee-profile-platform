@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import NamedTuple
 from uuid import UUID, uuid4
 
@@ -18,11 +18,17 @@ from app.domains.capacity.models import (
 )
 from app.domains.im.models import ImBinding, ImNotification
 from app.domains.inbox.models import InboxItem
-from app.domains.org.models import Department, ExternalIdentity, OrgMembership
+from app.domains.org.models import (
+    Department,
+    ExternalIdentity,
+    Organization,
+    OrgMembership,
+)
 from app.domains.source import sync
 from app.domains.source.models import SourceConnection, SyncRun
 from app.domains.source.schemas import JiraConfig
 from app.domains.work.models import Task
+from app.worker import tasks as worker_tasks
 from app.worker.tasks import sync_run
 from tests.api.routes.test_m6_capacity_assignment import case as case
 from tests.api.routes.test_sources import BODY
@@ -367,3 +373,165 @@ def test_jira_sync_upgrades_legacy_state_and_notifies_once(
         )
     ).all()
     assert sum("关联任务已全部完成" in item.message for item, _ in notices) == 1
+
+
+def test_first_recompute_is_silent_and_link_changes_notify(
+    case: tuple, db: Session, tracked: Tracked
+) -> None:
+    api, _, _, people, _, _ = case
+    db.add(
+        ImBinding(
+            org_id=tracked.org,
+            employee_id=people["bm"].id,
+            platform="feishu",
+            external_user_id="synthetic-manager",
+            external_chat_id="chat",
+            bot_identity="app",
+        )
+    )
+    db.commit()
+    row = db.get(CapacityAssignment, tracked.assignment)
+    assert row and row.tracking_state is None and row.tracking_changed_at is None
+
+    inbox = select(InboxItem).where(InboxItem.org_id == tracked.org)
+    im = select(ImNotification.id).where(ImNotification.org_id == tracked.org)
+    before = {item.id for item in db.exec(inbox)}
+    im_before = set(db.exec(im))
+
+    tracking.recompute(db, tracked.org)
+    db.commit()
+    assert row.tracking_state == "no_tasks" and row.tracking_changed_at is not None
+    assert {item.id for item in db.exec(inbox)} == before
+    assert set(db.exec(im)) == im_before
+
+    tasks = tracked.path + "/tasks"
+    assert (
+        api(tasks, "w", {"task_id": str(tracked.task)})["tracking_state"] == "on_track"
+    )
+    linked = [item for item in db.exec(inbox) if item.id not in before]
+    assert len(linked) == 1 and "任务进展正常" in linked[0].message
+    assert len(set(db.exec(im)) - im_before) == 1
+
+    result = api(tasks + f"/{tracked.task}", "w", method="DELETE")
+    assert result["tracking_state"] == "no_tasks"
+    unlinked = [
+        item for item in db.exec(inbox) if item.id not in before | {linked[0].id}
+    ]
+    assert len(unlinked) == 1 and "尚未关联任务" in unlinked[0].message
+    assert len(set(db.exec(im)) - im_before) == 2
+
+
+def test_jira_sync_keeps_import_when_tracking_refresh_fails(
+    case: tuple,
+    db: Session,
+    tracked: Tracked,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    _, _, _, people, users, _ = case
+    config = JiraConfig.model_validate({**BODY, "start_date": "2000-01-01"})
+    connection = SourceConnection(
+        org_id=tracked.org,
+        kind="jira",
+        config=config.model_dump(mode="json"),
+        updated_by_user_id=users["admin"].id,
+    )
+    db.add(connection)
+    db.flush()
+    run = SyncRun(
+        org_id=tracked.org,
+        connection_id=connection.id,
+        requested_by_user_id=users["admin"].id,
+        input={"project_keys": []},
+        counts={"records": 0},
+    )
+    db.add(run)
+    db.commit()
+    run_id = run.id
+    titles = {"JIRA-1": "合成导入任务甲", "JIRA-2": "合成导入任务乙"}
+    name, email = people["w"].display_name, users["w"].email
+
+    def jira_response(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "isLast": True,
+                "issues": [
+                    {
+                        "key": key,
+                        "fields": {
+                            "summary": title,
+                            "created": "2026-03-01T10:00:00Z",
+                            "updated": "2026-03-02T10:00:00Z",
+                        },
+                    }
+                    for key, title in titles.items()
+                ],
+            },
+        )
+
+    def fail_after_refresh(session: Session, org_id: UUID) -> None:
+        tracking.recompute(session, org_id)
+        session.flush()
+        raise RuntimeError(f"{name} {email} {list(titles.values())}")
+
+    monkeypatch.setattr(worker_tasks, "recompute", fail_after_refresh)
+    with httpx.Client(transport=httpx.MockTransport(jira_response)) as http:
+        monkeypatch.setattr(
+            sync,
+            "jira_client_for",
+            lambda _: CloudJiraClient(config, "synthetic", http),
+        )
+        sync_run(str(tracked.org), str(run_id))
+
+    db.expire_all()
+    imported = db.exec(
+        select(Task.external_key, Task.title).where(
+            Task.org_id == tracked.org, Task.source == "jira"
+        )
+    ).all()
+    assert dict(imported) == {**titles, "PRIVATE-123": "合成标题"}
+    assert run.status == "succeeded" and run.error is None
+    assert run.counts["records"] == 2
+    assert connection.synced_until == datetime(2026, 3, 2, 10, tzinfo=UTC)
+    row = db.get(CapacityAssignment, tracked.assignment)
+    assert row and row.tracking_state is None and row.tracking_changed_at is None
+    assert "Tracking refresh failed after sync" in caplog.text
+    assert all(value not in caplog.text for value in (name, email, *titles.values()))
+
+
+def test_daily_tracking_refresh_continues_after_one_org_fails(
+    case: tuple,
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    _, _, _, _, users, org = case
+    foreign_org_id = db.exec(
+        select(OrgMembership.org_id).where(OrgMembership.user_id == users["foreign"].id)
+    ).one()
+    org_ids = {org.id, foreign_org_id}
+    attempted: list[UUID] = []
+    marker = "合成重算标记"
+
+    def refresh(session: Session, org_id: UUID) -> None:
+        if org_id not in org_ids:
+            return
+        attempted.append(org_id)
+        organization = session.get(Organization, org_id)
+        assert organization
+        organization.name = marker
+        session.flush()
+        if len(attempted) == 1:
+            raise RuntimeError(marker)
+
+    monkeypatch.setattr(worker_tasks, "recompute", refresh)
+    worker_tasks.refresh_tracking(0)
+
+    assert len(attempted) == 2 and set(attempted) == org_ids
+    db.expire_all()
+    first, second = [db.get(Organization, org_id) for org_id in attempted]
+    assert first and first.name != marker
+    assert second and second.name == marker
+    assert f"Daily tracking refresh failed for org {first.id}" in caplog.text
+    assert marker not in caplog.text

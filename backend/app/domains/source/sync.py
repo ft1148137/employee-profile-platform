@@ -1,5 +1,6 @@
 """Transactional queueing and resumable, serialized source ingestion."""
 
+import logging
 from collections.abc import Callable
 from datetime import UTC, datetime, time, timedelta
 from uuid import UUID
@@ -36,6 +37,8 @@ from app.domains.work.ingest import (
 from app.domains.work.records import WorkRecordRow
 from app.worker.app import app
 from app.worker.health import write_heartbeat
+
+logger = logging.getLogger(__name__)
 
 
 class SyncError(Exception):
@@ -422,7 +425,15 @@ def execute_sync(
             try:
                 _ingest(session, run, connection, page_size)
                 if after_ingest is not None:
-                    after_ingest(session, run.org_id)
+                    try:
+                        with session.begin_nested():
+                            after_ingest(session, run.org_id)
+                    except Exception as exc:
+                        logger.warning(
+                            "Tracking refresh failed after sync for org %s (%s)",
+                            principal.org_id,
+                            type(exc).__name__,
+                        )
                 _finish(session, run, "succeeded")
             except Exception as error:
                 session.rollback()
