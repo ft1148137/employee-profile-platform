@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlmodel import Session
 
 from app.authz.principal import Principal
-from app.domains.capacity import demand, proposal
+from app.domains.capacity import demand, project, proposal
 from app.domains.capacity.assignment import list_my_assignments
 from app.domains.capacity.demand import (
     capacity_reference,
@@ -20,6 +20,8 @@ from app.domains.capacity.demand_schemas import (
     DemandInput,
     DemandListInput,
     DemandPublic,
+    ProjectIdInput,
+    ProjectList,
     ReferenceInput,
     ReplyDemandInput,
     RespondDemandInput,
@@ -41,6 +43,11 @@ class McpProposalAcceptanceForbidden(CapacityForbidden):
     def __init__(self) -> None:
         super().__init__()
         self.detail = "接受方案会锁定对方资源，请在网页或助手的确认卡里操作"
+
+
+def list_projects(principal: Principal, session: Session) -> ProjectList:
+    rows = project.list_projects(principal, session)
+    return ProjectList(data=rows, count=len(rows))
 
 
 def respond_demand(
@@ -101,6 +108,18 @@ CAPACITY_TOOLS = (
         "list_demands", "查看我方发出或收到的需求", DemandListInput, list_demands
     ),
     EmployeeTool("get_demand", "查看需求详情和事件时间线", DemandIdInput, get_demand),
+    EmployeeTool(
+        "list_projects",
+        "查看我发起或本部门作为需求方的多角色项目需求列表",
+        CapacityInput,
+        list_projects,
+    ),
+    EmployeeTool(
+        "get_project",
+        "查看多角色项目详情、各角色进展与排程延期影响分析",
+        ProjectIdInput,
+        project.get_project,
+    ),
     EmployeeTool(
         "get_demand_basis",
         "查看本部门需求依据和个人负荷，仅限答复方",

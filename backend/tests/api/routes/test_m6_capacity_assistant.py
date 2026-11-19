@@ -19,6 +19,7 @@ from app.domains.capacity import assistant, demand
 from app.domains.capacity.models import (
     CapacityDemand,
     CapacityDemandEvent,
+    CapacityProject,
     CapacitySetting,
 )
 from app.domains.im import binding, gateway
@@ -114,7 +115,12 @@ def case(demo: tuple, db: Session, client: TestClient) -> Generator[tuple]:
     }
     yield a, b, args, setting
     db.rollback()
-    for model in (CapacityDemandEvent, CapacityDemand, CapacitySetting):
+    for model in (
+        CapacityDemandEvent,
+        CapacityDemand,
+        CapacityProject,
+        CapacitySetting,
+    ):
         db.exec(delete(model).where(model.org_id == a.org_id))
     db.commit()
 
@@ -228,6 +234,31 @@ def test_read_results_scope_and_definitions(
     session, card = prepare(db, a, args)
     core.act(db, a, session.id, card.actions[0])
     row = db.exec(select(CapacityDemand).where(CapacityDemand.org_id == a.org_id)).one()
+    project = CapacityProject(
+        org_id=a.org_id,
+        requesting_department_id=row.requesting_department_id,
+        requester_user_id=row.requester_user_id,
+        title="合成项目",
+        description="合成项目说明",
+    )
+    db.add(project)
+    db.flush()
+    row.project_id, row.role_name = project.id, "合成角色"
+    db.add(row)
+    db.commit()
+
+    def read(name: str, body: dict[str, Any]) -> Any:
+        if name in ("list_projects", "get_project"):
+            return tools.call(
+                db,
+                a,
+                session,
+                [],
+                "coordination",
+                {"function": name, "arguments": body},
+            )
+        return tools.call(db, a, session, [], name, body)
+
     for name in assistant.READS:
         body = (
             {"demand_id": str(row.id)}
@@ -237,9 +268,11 @@ def test_read_results_scope_and_definitions(
                 for k in ("target_department_id", "capability_key", "minimum_level")
             }
             if name == "capacity_reference"
+            else {"project_id": str(project.id)}
+            if name == "get_project"
             else {}
         )
-        result = tools.call(db, a, session, [], name, body)
+        result = read(name, body)
         assert_private_absent(result, demo)
         assert (isinstance(result, dict) and "error" in result) == (
             name == "get_demand_basis"
@@ -270,7 +303,9 @@ def test_read_results_scope_and_definitions(
     assert not (set(assistant.TITLES) & names(b))
     for name in (*assistant.TITLES, *assistant.WRITES):
         assert tools.call(db, b, session, [], name, {}) == {
-            "error": "需求与容量模块未开启"
+            "error": "请通过 coordination 调用此工具"
+            if name in ("list_projects", "get_project")
+            else "需求与容量模块未开启"
         }
 
 

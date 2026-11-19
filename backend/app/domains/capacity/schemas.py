@@ -126,6 +126,38 @@ class WorkloadRequestPublic(BaseModel):
     decided_at: datetime | None
 
 
+class WorkloadAssignmentSegment(BaseModel):
+    id: UUID
+    demand_id: UUID
+    title: str
+    capability_name: str
+    requesting_department_name: str
+    kind: Literal["committed", "borrow"]
+    allocation_percent: int
+    start_date: date
+    due_date: date
+    legacy_start: bool = False
+
+
+class WorkloadHoldSegment(BaseModel):
+    proposal_id: UUID
+    demand_id: UUID
+    title: str
+    capability_name: str
+    requesting_department_name: str
+    is_borrow: bool
+    allocation_percent: int
+    start_date: date
+    end_date: date
+    expires_at: datetime
+
+
+class WorkloadUnavailabilitySegment(BaseModel):
+    id: UUID
+    start_date: date
+    end_date: date
+
+
 class WorkloadPublic(BaseModel):
     employee_id: UUID
     employee_name: str
@@ -140,6 +172,9 @@ class WorkloadPublic(BaseModel):
     weeks: list[WeekLoad]
     correction_pending: dict[date, bool]
     last_confirmed: LastConfirmed | None
+    assignments: list[WorkloadAssignmentSegment] = Field(default_factory=list)
+    holds: list[WorkloadHoldSegment] = Field(default_factory=list)
+    unavailabilities: list[WorkloadUnavailabilitySegment] = Field(default_factory=list)
 
 
 class MyWorkload(WorkloadPublic):

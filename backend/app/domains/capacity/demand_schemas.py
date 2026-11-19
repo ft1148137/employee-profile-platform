@@ -440,6 +440,15 @@ class ProjectSummary(BaseModel):
     created_at: datetime
 
 
+class ProjectIdInput(CapacityInput):
+    project_id: UUID
+
+
+class ProjectList(BaseModel):
+    data: list[ProjectSummary]
+    count: int
+
+
 class ProjectRole(ProjectRoleSummary):
     outcome: DemandOutcome | None = None
     demand: DemandPublic | None = None

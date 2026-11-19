@@ -53,6 +53,9 @@ from app.domains.review import direct
 
 TOOLS = {t.name: t for t in EMPLOYEE_TOOLS if t.bot_allowed}
 COORDINATION = {t.name: t for t in COORDINATION_TOOLS}
+PROJECT_READS = {
+    name: capacity.READS[name] for name in ("list_projects", "get_project")
+}
 TITLES = {t.name: t.description for t in TOOLS.values()} | {
     "read_attachment": "读取会话附件",
     "suggest_capability": "建议新增能力",
@@ -103,6 +106,8 @@ class CoordinationInput(BaseModel):
         "get_approval_status",
         "prepare_project_draft",
         "get_named_workload",
+        "list_projects",
+        "get_project",
     ]
     arguments: dict[str, JsonValue]
 
@@ -124,6 +129,13 @@ BOT_COORDINATION_FUNCTIONS = {
     "get_named_workload": {
         "description": "按完整姓名查询管辖内员工的周负荷，部门可选；普通员工仅可查自己。不需要需求编号。",
         "parameters": team_workload.NamedWorkloadQuery.model_json_schema(),
+    },
+    **{
+        name: {
+            "description": tool.description,
+            "parameters": tool.input_model.model_json_schema(),
+        }
+        for name, tool in PROJECT_READS.items()
     },
 }
 
@@ -336,8 +348,11 @@ def definitions(
             [
                 tool
                 for tool in capacity.definitions(db, p)
-                if not coordination_enabled
-                or tool.name not in {"get_demand", "get_demand_basis"}
+                if tool.name not in PROJECT_READS
+                and (
+                    not coordination_enabled
+                    or tool.name not in {"get_demand", "get_demand_basis"}
+                )
             ]
             if db is not None and p and channel in ("web", "feishu")
             else []
@@ -351,7 +366,7 @@ def definitions(
                         "按当前用户权限调查、模拟和比较部门方案；方案不是承诺。"
                         "simulate_plan 首次模拟只传 demand_id，生成快照和候选方案；"
                         "已有首次模拟后，传 demand_id 和 assignees 校验自定方案。"
-                        "项目草稿和姓名查负荷的 function 及 arguments JSON Schema：\n"
+                        "项目草稿、项目查询和姓名查负荷的 function 及 arguments JSON Schema：\n"
                         + json.dumps(BOT_COORDINATION_FUNCTIONS, ensure_ascii=False)
                         + "\n"
                         "各 function 的说明及 arguments JSON Schema 如下（required 为必填字段）：\n"
@@ -765,6 +780,16 @@ def call(
                     project_input = ProjectInput.model_validate(coord_request.arguments)
                     project_drafts.prepare(db, p, session, cards, project_input)
                     return {"message": "项目草稿已生成，请在网页核对并点击确认创建项目"}
+                if coord_request.function in PROJECT_READS:
+                    return redact(
+                        capacity.call(
+                            db,
+                            p,
+                            cards,
+                            coord_request.function,
+                            coord_request.arguments,
+                        )
+                    )
                 coord_tool = COORDINATION[coord_request.function]
                 input_body = coord_tool.input_model.model_validate(
                     coord_request.arguments
@@ -912,6 +937,8 @@ def call(
             raise ModelUnavailable(code="coordination_tool") from None
         except Exception:
             raise ModelUnavailable(code="coordination_tool") from None
+    if name in PROJECT_READS:
+        return {"error": "请通过 coordination 调用此工具"}
     if name in capacity.TITLES or name in capacity.WRITES:
         if session.channel not in ("web", "feishu"):
             return {"error": "不允许调用此工具"}
