@@ -605,6 +605,8 @@ def test_tools_use_shared_services() -> None:
         ("submit_demand", True),
         ("list_demands", False),
         ("get_demand", False),
+        ("list_projects", False),
+        ("get_project", False),
         ("get_demand_basis", False),
         ("reply_demand", True),
         ("respond_demand", True),

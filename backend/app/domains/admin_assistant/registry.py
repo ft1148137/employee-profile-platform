@@ -45,6 +45,7 @@ from app.domains.audit import service as audit
 from app.domains.base import utc_now
 from app.domains.bot import settings as bot
 from app.domains.capability import department as department_capabilities
+from app.domains.capability import search
 from app.domains.capability.service import read_editor
 from app.domains.drafting import settings as drafting
 from app.domains.drafting import update_settings as updates
@@ -340,6 +341,15 @@ FUNCTIONS = {
             _profile,
             "/employees",
             "GET /employees/{employee_id}/profile",
+        ),
+        _f(
+            "find_people",
+            "people",
+            "按能力、等级、判断状态、最近证据时间和部门查找在职员工",
+            search.PeopleSearchInput,
+            lambda d, p, a: search.find_people(d, p, a),
+            "/employees",
+            "GET /people-search",
         ),
         _f(
             "get_capability_dictionary",

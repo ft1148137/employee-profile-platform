@@ -4974,6 +4974,18 @@ export type MyWorkload = {
   }
   last_confirmed: LastConfirmed | null
   /**
+   * Assignments
+   */
+  assignments?: Array<WorkloadAssignmentSegment>
+  /**
+   * Holds
+   */
+  holds?: Array<WorkloadHoldSegment>
+  /**
+   * Unavailabilities
+   */
+  unavailabilities?: Array<WorkloadUnavailabilitySegment>
+  /**
    * Requests
    */
   requests: Array<WorkloadRequestPublic>
@@ -8342,6 +8354,52 @@ export type WorkRecordIssue = {
 }
 
 /**
+ * WorkloadAssignmentSegment
+ */
+export type WorkloadAssignmentSegment = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Demand Id
+   */
+  demand_id: string
+  /**
+   * Title
+   */
+  title: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  /**
+   * Requesting Department Name
+   */
+  requesting_department_name: string
+  /**
+   * Kind
+   */
+  kind: "committed" | "borrow"
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Start Date
+   */
+  start_date: string
+  /**
+   * Due Date
+   */
+  due_date: string
+  /**
+   * Legacy Start
+   */
+  legacy_start?: boolean
+}
+
+/**
  * WorkloadDecisionInput
  */
 export type WorkloadDecisionInput = {
@@ -8353,6 +8411,52 @@ export type WorkloadDecisionInput = {
    * Note
    */
   note?: string | null
+}
+
+/**
+ * WorkloadHoldSegment
+ */
+export type WorkloadHoldSegment = {
+  /**
+   * Proposal Id
+   */
+  proposal_id: string
+  /**
+   * Demand Id
+   */
+  demand_id: string
+  /**
+   * Title
+   */
+  title: string
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  /**
+   * Requesting Department Name
+   */
+  requesting_department_name: string
+  /**
+   * Is Borrow
+   */
+  is_borrow: boolean
+  /**
+   * Allocation Percent
+   */
+  allocation_percent: number
+  /**
+   * Start Date
+   */
+  start_date: string
+  /**
+   * End Date
+   */
+  end_date: string
+  /**
+   * Expires At
+   */
+  expires_at: string
 }
 
 /**
@@ -8420,6 +8524,18 @@ export type WorkloadPublic = {
     [key: string]: boolean
   }
   last_confirmed: LastConfirmed | null
+  /**
+   * Assignments
+   */
+  assignments?: Array<WorkloadAssignmentSegment>
+  /**
+   * Holds
+   */
+  holds?: Array<WorkloadHoldSegment>
+  /**
+   * Unavailabilities
+   */
+  unavailabilities?: Array<WorkloadUnavailabilitySegment>
 }
 
 /**
@@ -8519,6 +8635,24 @@ export type WorkloadRequestPublic = {
    * Decided At
    */
   decided_at: string | null
+}
+
+/**
+ * WorkloadUnavailabilitySegment
+ */
+export type WorkloadUnavailabilitySegment = {
+  /**
+   * Id
+   */
+  id: string
+  /**
+   * Start Date
+   */
+  start_date: string
+  /**
+   * End Date
+   */
+  end_date: string
 }
 
 /**
