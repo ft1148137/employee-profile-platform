@@ -392,14 +392,15 @@ def act(
         }
         if action.action == "continue_editing":
             messages = [s.TextMessage(text="请告诉我需要修改的内容")]
-        elif immediate_retractions and not any(
-            immediate_retractions.issubset(
+        # Legacy previews can share the same confirmation action.
+        elif immediate_retractions and not all(
+            isinstance(card, s.PreviewCard)
+            and immediate_retractions.issubset(
                 i.after.capability.key
                 for i in card.items
                 if i.submission_notice == employee.IMMEDIATE_RETRACTION_NOTICE
             )
             for card in matching_cards
-            if isinstance(card, s.PreviewCard)
         ):
             messages = [tools.preview_card(db, p, action.request_id)]
         else:
