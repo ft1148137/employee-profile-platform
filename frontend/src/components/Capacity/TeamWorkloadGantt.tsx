@@ -226,6 +226,19 @@ function Timeline({
               <span className="block text-muted-foreground">
                 分配 {allocation}%
               </span>
+              {week.holds?.map((hold, index) => (
+                <span
+                  key={index}
+                  className="block text-amber-800 dark:text-amber-300"
+                >
+                  预占 {hold.allocation_percent}%，
+                  {new Date(hold.expires_at).toLocaleDateString("zh-CN", {
+                    month: "long",
+                    day: "numeric",
+                  })}
+                  前待对方确认
+                </span>
+              ))}
               {week.capacity_percent < 100 && (
                 <span className="block">可用 {week.capacity_percent}%</span>
               )}
