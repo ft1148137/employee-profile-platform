@@ -188,7 +188,11 @@ select_checks() {
         echo tests/domains/test_audit_labels.py >> "$scratch/targets" ;;
       backend/app/domains/admin_assistant/*change_set*|backend/app/domains/admin_assistant/*audit*|backend/app/domains/admin_assistant/registry.py|backend/scripts/eval_admin_assistant.py|backend/tests/eval/admin_assistant/*)
         # Evaluation patches the shared registry and can break change-set guards.
-        echo tests/admin_assistant/ >> "$scratch/targets" ;;
+        echo tests/admin_assistant/ >> "$scratch/targets"
+        if [[ $path == backend/app/domains/admin_assistant/registry.py ]]; then
+          # The turn integration tests exercise registry tools through the callback.
+          echo tests/domains/test_admin_assistant.py >> "$scratch/targets"
+        fi ;;
       backend/app/alembic/versions/*)
         if [[ $path == *.py ]]; then
           revision=${path##*/}; revision=${revision%%_*}

@@ -12,7 +12,7 @@ git config user.email 'preflight@example.com'
 git config commit.gpgsign false
 git remote add origin .
 git config remote.origin.fetch '+refs/heads/main:refs/remotes/origin/master'
-mkdir -p scripts backend/app/domains/{sample,planning} backend/app/alembic/versions backend/tests/{sample,domains,admin_assistant,api/routes,eval/planning,eval/coordination,acceptance} frontend/{src/routes,tests} .github
+mkdir -p scripts backend/app/domains/{sample,planning,admin_assistant} backend/app/alembic/versions backend/tests/{sample,domains,admin_assistant,api/routes,eval/planning,eval/coordination,acceptance} frontend/{src/routes,tests} .github
 cp "$source_script" scripts/preflight.sh
 touch frontend/tests/.gitkeep
 touch backend/tests/sample/test_feature.py backend/tests/domains/test_audit_labels.py backend/tests/test_ci_workflows.py backend/tests/test_sample_migration.py backend/tests/admin_assistant/test_change_set.py
@@ -22,6 +22,7 @@ echo 'from app.domains.sample import feature' > backend/tests/acceptance/test_ac
 echo 'from app.domains import planning' > backend/tests/eval/coordination/test_coordination.py
 echo 'from app.domains.planning import solver' >> backend/tests/eval/coordination/test_coordination.py
 touch backend/tests/domains/test_sample_unrelated.py
+touch backend/tests/domains/test_admin_assistant.py backend/app/domains/admin_assistant/registry.py
 for module in models schemas demand_schemas; do
   printf 'class OldContract:\n    pass\n\nclass ChangedContract:\n    value: str\n' > "backend/app/domains/sample/$module.py"
   echo "from app.domains.sample.$module import OldContract" >> backend/tests/sample/test_shared.py
@@ -72,13 +73,14 @@ echo 'changed' > .github/check.yml
 echo 'new' > backend/app/alembic/versions/new.py
 mkdir -p backend/scripts
 echo 'changed' > backend/scripts/eval_admin_assistant.py
+echo 'changed' > backend/app/domains/admin_assistant/registry.py
 echo 'export const page = createFileRoute("/settings")({})' > frontend/src/routes/preferences.tsx
 echo 'page.goto("/settings")' > frontend/tests/settings.spec.ts
 mkdir -p pi
 echo 'changed' > pi/index.ts
 bash scripts/preflight.sh --list > "$scratch/list"
 [[ ! -s $PREFLIGHT_CALLS ]]
-for target in tests/sample/test_feature.py tests/domains/test_importer.py tests/domains/test_deleted.py tests/domains/test_audit_labels.py tests/test_ci_workflows.py tests/test_sample_migration.py tests/admin_assistant/ frontend/tests/settings.spec.ts; do
+for target in tests/sample/test_feature.py tests/domains/test_importer.py tests/domains/test_deleted.py tests/domains/test_audit_labels.py tests/test_ci_workflows.py tests/test_sample_migration.py tests/admin_assistant/ tests/domains/test_admin_assistant.py frontend/tests/settings.spec.ts; do
   rg -q -F -x "$target" "$scratch/list"
 done
 rg -q '^pi$' "$scratch/list"
