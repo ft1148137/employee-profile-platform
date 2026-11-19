@@ -20,6 +20,8 @@
 
 网页和飞书用登记表增加 `coordination(function, arguments)` 与 `prepare_plan_proposal(case_id, option_id, text)` 两个 Pi 定义。协调启用时，`get_demand`、`get_demand_basis` 的模型定义由 `coordination` 承接，旧调用路径仍能处理旧会话；最多 29 个定义。MCP 直接登记六个协调工具，不提供提案卡。MCP 原有的 `reply_demand` 直接提交契约不变。
 
+NERE-895 将项目查询登记到同一个 `coordination` 入口。网页和飞书通过 `function` 选择 `list_projects` 或 `get_project`，MCP 分别暴露两个独立只读工具。两种入口都使用当前调用者的 `Principal` 和原有的项目可见范围。
+
 `prepare_plan_proposal` 只接受 B 方可见的最新方案。方案结论映射到答复结论，起止日期从方案取；正文先拒绝快照候选人姓名，再复用 `capacity/assistant.py` 的 E32 校验和 `demand_reply` 确认卡。确认动作仍由 Capacity 服务执行。助手和 MCP 均没有创建分配、修改完成或开始日期、批准延期或负荷调整的工具。
 
 `get_approval_status` 只返回需求状态和需求事件。负荷调整不属于某条需求；待审延期由经理在「需求与容量 → 待我审批」处理，批准且改变承诺日期的延期会出现在 `commitment_changed` 事件中。Planning 不导入 `assignment`、`workload` 或 `extension`。

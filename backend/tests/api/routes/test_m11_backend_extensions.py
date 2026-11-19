@@ -1,17 +1,21 @@
 import json
 from collections.abc import Generator
 from datetime import UTC, datetime, time, timedelta
+from typing import Literal
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import JsonValue
 from sqlalchemy import delete
 from sqlmodel import Session, select
 
 from app.authz.deps import get_org_principal
+from app.authz.principal import Principal
 from app.domains.admin_assistant.registry import TableCard
 from app.domains.base import utc_now
-from app.domains.bot import tools
+from app.domains.bot import core, store, tools
+from app.domains.bot import schemas as bot_schemas
 from app.domains.bot.models import BotSession
 from app.domains.capacity import calendar
 from app.domains.capacity.models import (
@@ -30,12 +34,15 @@ from app.domains.org.models import Department, Employee, OrgMembership
 from app.models import User
 from tests.admin_assistant.test_registry import call as admin_call
 from tests.admin_assistant.test_registry import principal as admin_principal
+from tests.api.routes.test_m5_people_search_tools import grant_admin
 from tests.api.routes.test_m5_people_search_tools import people as people
 from tests.api.routes.test_m6_capacity_mcp import denied, listing, use
 from tests.api.routes.test_m6_capacity_workload import enable, user_id
 from tests.api.routes.test_m10_project import project_data as project_data
 from tests.api.routes.test_mcp import call as mcp_call
 from tests.api.routes.test_mcp import initialize, token_for
+from tests.domains.test_bot_core import enable as enable_bot
+from tests.utils.pi import PiHarness
 
 
 def test_admin_find_people_reads_only_published_matches(
@@ -81,8 +88,13 @@ def test_admin_find_people_reads_only_published_matches(
     assert foreign["data"] == {"data": [], "count": 0}
 
 
+@pytest.mark.parametrize("channel", ["web", "feishu"])
 def test_project_reads_share_web_permissions_and_feature_gate(
-    project_data: tuple, demo: tuple, db: Session, client: TestClient
+    project_data: tuple,
+    demo: tuple,
+    db: Session,
+    client: TestClient,
+    channel: Literal["web", "feishu"],
 ) -> None:
     base, auth, body, actors = project_data
     _, employees, _ = demo
@@ -118,6 +130,23 @@ def test_project_reads_share_web_permissions_and_feature_gate(
     expected_list = {"data": [summary], "count": 1}
     empty_list = {"data": [], "count": 0}
     names = {"list_projects", "get_project"}
+    cards: list[bot_schemas.Message] = []
+
+    def query(
+        principal: Principal,
+        session: BotSession,
+        name: str,
+        arguments: dict[str, JsonValue],
+    ) -> JsonValue:
+        return tools.call(
+            db,
+            principal,
+            session,
+            cards,
+            "coordination",
+            {"function": name, "arguments": arguments},
+        )
+
     for employee, role, expected in (
         (unrelated, "b3", empty_list),
         (b_manager, "b0", empty_list),
@@ -127,15 +156,23 @@ def test_project_reads_share_web_permissions_and_feature_gate(
         principal = get_org_principal(
             employee.org_id, db.get_one(User, user_id(db, employee)), db
         )
-        session = BotSession(org_id=principal.org_id, employee_id=employee.id)
+        session = BotSession(
+            org_id=principal.org_id, employee_id=employee.id, channel=channel
+        )
         mcp = initialize(client, token_for(db, employee)[0])
-        assert names <= {
-            definition.name for definition in tools.definitions(principal, db=db)
+        bot_names = {
+            t.name for t in tools.definitions(principal, db=db, channel=channel)
         }
+        assert "coordination" in bot_names and names.isdisjoint(bot_names)
         assert names <= listing(client, mcp).keys()
-        assert tools.call(db, principal, session, [], "list_projects", {}) == expected
+        assert query(principal, session, "list_projects", {}) == expected
         assert use(client, mcp, "list_projects", {}) == expected
-        bot_detail = tools.call(db, principal, session, [], "get_project", args)
+        bot_detail = query(principal, session, "get_project", args)
+        assert not cards
+        for name, arguments in (("list_projects", {}), ("get_project", args)):
+            assert tools.call(db, principal, session, cards, name, arguments) == {
+                "error": "请通过 coordination 调用此工具"
+            }
         web = client.get(detail_url, headers=auth[role])
         if role == "b3":
             assert web.status_code == 404
@@ -166,15 +203,101 @@ def test_project_reads_share_web_permissions_and_feature_gate(
     setting.enabled = False
     db.add(setting)
     db.commit()
-    assert names.isdisjoint(
-        definition.name for definition in tools.definitions(principal, db=db)
+    assert (names | {"coordination"}).isdisjoint(
+        t.name for t in tools.definitions(principal, db=db, channel=channel)
     )
     assert names.isdisjoint(listing(client, mcp))
     for name, arguments in (("list_projects", {}), ("get_project", args)):
-        assert tools.call(db, principal, session, [], name, arguments) == {
-            "error": "需求与容量模块未开启"
+        assert query(principal, session, name, arguments) == {
+            "error": "不允许调用此工具"
         }
         denied(mcp_call(client, mcp, name, arguments), 404)
+
+
+@pytest.mark.parametrize("channel", ["web", "feishu"])
+def test_pi_admin_manager_project_queries_and_confirmation(
+    project_data: tuple,
+    demo: tuple,
+    db: Session,
+    client: TestClient,
+    pi_service: PiHarness,
+    monkeypatch: pytest.MonkeyPatch,
+    channel: Literal["web", "feishu"],
+) -> None:
+    base, auth, body, _ = project_data
+    manager = demo[1]["E01"]
+    org_id = manager.org_id
+    user = db.get_one(User, user_id(db, manager))
+    grant_admin(db, get_org_principal(org_id, user, db))
+    principal = get_org_principal(org_id, user, db)
+    assert principal.is_org_admin and principal.managed_department_ids
+    created = client.post(f"{base}/projects", headers=auth["manager"], json=body)
+    assert created.status_code == 200, created.text
+    project_id = created.json()["id"]
+
+    enable_bot(db, org_id)
+    monkeypatch.setattr(core, "model_config", lambda _: pi_service.config)
+    session = store.create_session(db, principal, channel)
+    demand_args = {
+        key: value
+        for key, value in body["roles"][1].items()
+        if key not in {"role_name", "depends_on"}
+    } | {"requesting_department_id": body["requesting_department_id"]}
+    pi_service.replies = [
+        {
+            "calls": [
+                {
+                    "name": "coordination",
+                    "arguments": {
+                        "function": "list_projects",
+                        "arguments": {},
+                    },
+                }
+            ]
+        },
+        {
+            "calls": [
+                {
+                    "name": "coordination",
+                    "arguments": {
+                        "function": "get_project",
+                        "arguments": {"project_id": project_id},
+                    },
+                }
+            ]
+        },
+        {"calls": [{"name": "prepare_demand", "arguments": demand_args}]},
+        "请核对并确认需求",
+    ]
+    turn = core.turn(db, principal, session.id, "查看项目进度，再起草一条需求")
+    assert len(turn.steps) == 3 and all(step.ok for step in turn.steps)
+    card = next(m for m in turn.messages if isinstance(m, bot_schemas.CapacityCard))
+    assert card.status == "pending"
+
+    request = pi_service.requests[0]["body"]
+    definitions = {t["function"]["name"]: t["function"] for t in request["tools"]}
+    assert len(definitions) == len(request["tools"]) == 29
+    assert {"list_projects", "get_project"}.isdisjoint(definitions)
+    coordination = definitions["coordination"]
+    assert {"list_projects", "get_project"} <= set(
+        coordination["parameters"]["properties"]["function"]["enum"]
+    )
+    contracts = json.loads(coordination["description"].splitlines()[1])
+    assert contracts["list_projects"]["parameters"]["properties"] == {}
+    assert contracts["list_projects"]["parameters"]["additionalProperties"] is False
+    detail_schema = contracts["get_project"]["parameters"]
+    assert detail_schema["required"] == ["project_id"]
+    assert detail_schema["properties"]["project_id"]["format"] == "uuid"
+    assert "/capacity?tab=projects&project={id}" in str(
+        request["messages"][0]["content"]
+    )
+
+    for index in (1, 2):
+        result = pi_service.requests[index]["body"]["messages"][-1]
+        assert result["role"] == "tool" and project_id in result["content"]
+    confirmed = core.act(db, principal, session.id, card.actions[0])
+    assert isinstance(confirmed.messages[0], bot_schemas.CapacityCard)
+    assert confirmed.messages[0].status == "confirmed"
 
 
 @pytest.fixture
