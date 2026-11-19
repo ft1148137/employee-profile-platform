@@ -63,6 +63,7 @@ from app.domains.org.timezone import read_timezone
 from app.domains.profile.models import AssessmentStatus, EvidenceRelation, ProfileClaim
 from app.domains.profile.schemas import ClaimPublic, ProfileView
 from app.domains.profile.service import read_profile
+from app.domains.review.policy import read_policy, requires_manager
 
 EmployeeVia = Literal["web", "mcp", "import", "bot"]
 
@@ -439,6 +440,11 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
                 else None,
             )
         )
+    policy = read_policy(session, principal.org_id)
+    auto_publish_count = sum(
+        not requires_manager(policy, item.after.capability.category)
+        for item in previews
+    )
     return RequestPreview(
         request_id=request.id,
         revision=request.revision,
@@ -447,6 +453,8 @@ def preview(principal: Principal, session: Session, request_id: UUID) -> Request
         else None,
         reviewers=request_reviewers(session, principal.org_id, employee_id(principal)),
         items=previews,
+        requires_manager=not previews or auto_publish_count < len(previews),
+        partial_auto_publish=0 < auto_publish_count < len(previews),
     )
 
 

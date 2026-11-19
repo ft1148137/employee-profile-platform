@@ -5523,6 +5523,14 @@ export type PreviewCard = {
    */
   reviewers?: Array<RequestReviewer>
   /**
+   * Requires Manager
+   */
+  requires_manager?: boolean
+  /**
+   * Partial Auto Publish
+   */
+  partial_auto_publish?: boolean
+  /**
    * Type
    */
   type?: "preview_card"
@@ -6617,6 +6625,14 @@ export type RequestPreview = {
    * Reviewers
    */
   reviewers?: Array<RequestReviewer>
+  /**
+   * Requires Manager
+   */
+  requires_manager?: boolean
+  /**
+   * Partial Auto Publish
+   */
+  partial_auto_publish?: boolean
 }
 
 /**

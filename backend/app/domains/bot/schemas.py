@@ -115,6 +115,8 @@ class Preview(Projection):
     base_revision: int | None = None
     items: list[PreviewItem]
     reviewers: list[RequestReviewer] = Field(default_factory=list)
+    requires_manager: bool = True
+    partial_auto_publish: bool = False
 
 
 class Question(Projection):

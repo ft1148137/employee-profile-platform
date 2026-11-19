@@ -330,13 +330,16 @@ export function BotMessage({
               ? "提交前预览"
               : (statuses[message.status] ?? "请求状态已更新")}
           </h3>
-          {(message.type === "preview_card" ||
-            message.status === "pending_review") && (
+          {message.type === "preview_card" ? (
             <RequestReviewers
               reviewers={message.reviewers}
-              preview={message.type === "preview_card"}
+              requiresManager={message.requires_manager}
+              partialAutoPublish={message.partial_auto_publish}
+              preview
             />
-          )}
+          ) : message.status === "pending_review" ? (
+            <RequestReviewers reviewers={message.reviewers} />
+          ) : null}
           {message.type === "preview_card" ? (
             message.items.map((item, index) => (
               <div key={index} className="space-y-2 border-t pt-3">
