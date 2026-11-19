@@ -47,8 +47,8 @@ from app.domains.bot import settings as bot
 from app.domains.capability import department as department_capabilities
 from app.domains.capability import search
 from app.domains.capability.service import read_editor
-from app.domains.capacity import project
 from app.domains.capacity.demand_schemas import ProjectIdInput
+from app.domains.capacity.project import get_project
 from app.domains.capacity.settings import CapacityNotFound
 from app.domains.capacity.settings import read_settings as read_capacity_settings
 from app.domains.capacity.tools import list_projects
@@ -496,7 +496,7 @@ FUNCTIONS = {
             "more",
             "查看多角色项目详情、角色承接状态与排程延期影响",
             ProjectIdInput,
-            lambda d, p, a: project.get_project(p, d, a.project_id),
+            lambda d, p, a: get_project(p, d, a.project_id),
             "/capacity",
             "GET /capacity/projects/{project_id}",
         ),

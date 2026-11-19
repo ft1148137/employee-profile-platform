@@ -52,6 +52,17 @@ def violations(root: Path) -> list[str]:
                 not inside
                 and not entrypoint
                 and not (
+                    relative == "domains/admin_assistant/registry.py"
+                    and module
+                    in {
+                        "app.domains.capacity.tools.list_projects",
+                        "app.domains.capacity.project.get_project",
+                        "app.domains.capacity.demand_schemas.ProjectIdInput",
+                        "app.domains.capacity.settings.CapacityNotFound",
+                        "app.domains.capacity.settings.read_settings",
+                    }
+                )
+                and not (
                     relative == "worker/tasks.py"
                     and module
                     in {
@@ -129,6 +140,18 @@ def test_capacity_import_boundaries() -> None:
     [
         ("domains/profile/bad.py", "from app.domains import capacity"),
         ("domains/profile/bad.py", "import app.domains.capacity.workload as workload"),
+        (
+            "domains/admin_assistant/registry.py",
+            "from app.domains.capacity import project",
+        ),
+        (
+            "domains/admin_assistant/registry.py",
+            "from app.domains.capacity.project import submit_project",
+        ),
+        (
+            "domains/admin_assistant/tools.py",
+            "from app.domains.capacity.project import get_project",
+        ),
         ("domains/capacity/bad.py", "from app.domains.review import publish"),
         ("domains/capacity/bad.py", "from ..profile.models import ProfileVersion"),
         (
@@ -165,6 +188,19 @@ def test_import_counterexamples(tmp_path: Path, relative: str, source: str) -> N
     path.parent.mkdir(parents=True)
     path.write_text(source)
     assert violations(tmp_path)
+
+
+def test_admin_assistant_project_read_entrypoint(tmp_path: Path) -> None:
+    path = tmp_path / "domains/admin_assistant/registry.py"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "from app.domains.capacity.tools import list_projects\n"
+        "from app.domains.capacity.project import get_project\n"
+        "from app.domains.capacity.demand_schemas import ProjectIdInput\n"
+        "from app.domains.capacity.settings import CapacityNotFound\n"
+        "from app.domains.capacity.settings import read_settings as read_capacity_settings\n"
+    )
+    assert violations(tmp_path) == []
 
 
 def test_worker_expiration_entrypoint(tmp_path: Path) -> None:
