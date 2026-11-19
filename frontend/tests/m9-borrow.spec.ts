@@ -300,8 +300,34 @@ for (const approve of [true, false]) {
           )
           .toBe("succeeded")
 
-        await open(lender, "")
-        await page.getByRole("tab", { name: "借调请求" }).click()
+        await open(employee, "tab=assignments")
+        const personal = page.getByRole("region", {
+          name: "我的分配",
+          exact: true,
+        })
+        await personal.getByLabel("任务编号或标题").fill(taskKey)
+        await personal.getByRole("button", { name: "搜索任务" }).click()
+        await personal
+          .getByRole("button", { name: "关联任务", exact: true })
+          .click()
+        const personalTasks = personal.getByRole("list", {
+          name: "已关联任务",
+        })
+        await expect(personalTasks).toContainText(taskKey)
+        await personal.getByRole("button", { name: "取消关联" }).click()
+        await expect(personalTasks).toHaveCount(0)
+
+        await open(lender, "", "/inbox")
+        const trackingNotice = page
+          .getByRole("listitem")
+          .filter({ hasText: /分配任务跟踪.*尚未关联任务/ })
+        await expect(trackingNotice).toContainText(/分配 #[0-9a-f]{8}（/)
+        await expect(trackingNotice).not.toContainText("/capacity?tab=borrows")
+        await trackingNotice.getByRole("link", { name: "打开借调页" }).click()
+        await expect(page).toHaveURL(/\/capacity\?tab=borrows$/)
+        await expect(
+          page.getByRole("tab", { name: "借调请求", selected: true }),
+        ).toBeVisible()
         const active = page.getByRole("region", { name: "进行中的借调分配" })
         const assignment = active
           .getByRole("article")
@@ -315,7 +341,9 @@ for (const approve of [true, false]) {
         const linked = assignment.getByRole("list", { name: "已关联任务" })
         await expect(linked).toContainText(`${taskKey} · ${taskTitle}`)
 
-        await open(m, incoming)
+        await open(m, "", "/inbox")
+        await trackingNotice.getByRole("link", { name: "打开方案页" }).click()
+        await expect(page).toHaveURL(`/capacity?${incoming}&plans=1`)
         const assignments = page.getByRole("region", { name: "部门内分配" })
         await expect(assignments).toContainText("借调 1 人")
         await expect(assignments).toContainText(
