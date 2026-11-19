@@ -1,5 +1,6 @@
 """Deterministic planning options from a saved snapshot."""
 
+from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Any
 
@@ -18,12 +19,27 @@ def _weeks(start: date, end: date, current: date) -> list[date]:
 def ranked_candidates(
     data: dict[str, Any], start: date, end: date
 ) -> list[tuple[dict[str, Any], int]]:
+    return [
+        (person, available)
+        for person, available, _ in ranked_candidates_with_matches(data, start, end)
+    ]
+
+
+def ranked_candidates_with_matches(
+    data: dict[str, Any],
+    start: date,
+    end: date,
+    *,
+    check_deadline: Callable[[], None] | None = None,
+) -> list[tuple[dict[str, Any], int, int]]:
     demand = data["demand"]
     levels = data["rules"]["levels"]
     minimum = demand["minimum_level"]
     weeks = _weeks(start, end, date.fromisoformat(data["rules"]["current_week"]))
     ranked: list[tuple[dict[str, Any], int, int]] = []
     for person in data["candidates"]:
+        if check_deadline is not None:
+            check_deadline()
         level = person["level"]
         if (
             not person["in_basis"]
@@ -64,7 +80,7 @@ def ranked_candidates(
         )
         ranked.append((person, available, optional_matches))
     ranked.sort(key=lambda item: (-item[1], -item[2], item[0]["employee_id"]))
-    return [(person, available) for person, available, _ in ranked]
+    return ranked
 
 
 def _params(

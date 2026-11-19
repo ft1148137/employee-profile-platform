@@ -18,7 +18,7 @@ from app.domains.capacity.models import (
 )
 from app.domains.org.models import Organization
 from app.domains.planning.cpsat import SOLVE_TIMEOUT_SECONDS, CpSatSolver
-from app.domains.planning.solver import Role, Solution
+from app.domains.planning.solver import Role, Solution, full_plan
 from app.domains.planning.validator import PHASED_APPROVAL
 from app.models import User
 from scripts.eval_solver import metrics
@@ -30,11 +30,34 @@ from tests.eval.planning.test_planning_eval import HERE, _cleanup, _setup
 @pytest.fixture
 def replay(db: Session, request: pytest.FixtureRequest) -> Generator[tuple]:
     name = getattr(request, "param", "multi-capability-01")
-    base = "unavailability-01" if name == "relay" else name
+    base = {
+        "continuous": "unavailability-01",
+        "continuity-before-capacity": "unavailability-01",
+        "optional": "multi-capability-01",
+        "relay": "unavailability-01",
+        "mixed-relay": "unavailability-01",
+    }.get(name, name)
     raw = yaml.safe_load((HERE / "cases" / f"{base}.yaml").read_text())
-    if name == "relay":
+    if name in {"continuous", "continuity-before-capacity"}:
+        raw["people"] = [
+            {"code": code, "level": "routine", "other": 20}
+            for code in ("QG007", "QG008")
+        ]
+        raw["unavailability"] = []
+        if name == "continuity-before-capacity":
+            raw["people"][0]["weekly_other"] = [20, 40] + [20] * 8
+            raw["people"][1]["weekly_other"] = [40, 20] + [20] * 8
+    elif name == "optional":
+        raw["people"] = [
+            person for person in raw["people"] if person["code"] in {"QG008", "QG009"}
+        ]
+        raw["demand"] = {"weeks": 1}
+    elif name in {"relay", "mixed-relay"}:
         raw["people"].append({"code": "QG008", "level": "routine", "other": 10})
         raw["unavailability"].append({"code": "QG008", "start_day": 7, "end_day": 11})
+        if name == "mixed-relay":
+            raw["people"].append({"code": "QG009", "level": "routine", "other": 20})
+            raw["demand"] = {"headcount": 2}
     users = set(db.exec(select(User.id)).all())
     org = Organization(slug=f"solver-api-{uuid4().hex}", name="Solver API test")
     db.add(org)
@@ -183,6 +206,70 @@ def test_optimized_option_preserves_real_handoff(
     assert option["verdict"] == "conditional"
     assert option["summary"]["conditions"] == [PHASED_APPROVAL]
     assert option["summary"]["phased_origin"] is True
+
+
+@pytest.mark.parametrize(
+    ("replay", "expected_codes"),
+    [
+        ("continuous", ("QG007", "QG008")),
+        ("continuity-before-capacity", ("QG007", "QG008")),
+        ("optional", ("QG009",)),
+    ],
+    indirect=["replay"],
+)
+def test_optimized_option_prefers_continuity_and_optional_capability(
+    client: TestClient, replay: tuple, expected_codes: tuple[str, ...]
+) -> None:
+    _, people, _, demand = replay
+    created = create_case(client, replay)
+    (option,) = [o for o in created["options"] if o["kind"] == "optimized"]
+    (assignee,) = option["params"]["assignees"]
+    assert assignee["employee_id"] in {str(people[code].id) for code in expected_codes}
+    assert assignee["start_date"] == demand.window_start.isoformat()
+    assert assignee["end_date"] == demand.window_end.isoformat()
+    assert option["verdict"] == "feasible"
+    assert PHASED_APPROVAL not in option["summary"]["conditions"]
+
+
+@pytest.mark.parametrize("replay", ["mixed-relay"], indirect=True)
+def test_optimized_option_commits_continuous_staff_once_during_handoff(
+    client: TestClient, db: Session, replay: tuple
+) -> None:
+    _, people, _, demand = replay
+    created = create_case(client, replay)
+    (option,) = [o for o in created["options"] if o["kind"] == "optimized"]
+    assignees = option["params"]["assignees"]
+    middle = demand.window_start + timedelta(weeks=1)
+    expected = {
+        people["QG008"].id: (demand.window_start, middle - timedelta(days=1)),
+        people["QG009"].id: (demand.window_start, demand.window_end),
+        people["QG007"].id: (middle, demand.window_end),
+    }
+    assert len(assignees) == 3
+    assert assignees == sorted(
+        assignees, key=lambda row: (row["start_date"], row["employee_id"])
+    )
+    assert {
+        row["employee_id"]: (row["start_date"], row["end_date"]) for row in assignees
+    } == {
+        str(employee): (start.isoformat(), end.isoformat())
+        for employee, (start, end) in expected.items()
+    }
+    assert full_plan(created["data"], assignees)
+    assert option["verdict"] == "conditional"
+    assert option["summary"]["conditions"] == [PHASED_APPROVAL]
+    assert option["summary"]["phased_origin"] is True
+
+    reply = propose(client, replay, option, outside_basis=False)
+    assert reply.status_code == 200, reply.text
+    accepted = respond(client, replay, reply.json()["revision"])
+    assert accepted.status_code == 200, accepted.text
+    assignments = rows(db, CapacityAssignment, demand)
+    assert len(assignments) == 3
+    assert {
+        row.employee_id: (row.start_date, row.due_date) for row in assignments
+    } == expected
+    assert all(row.allocation_percent == 50 for row in assignments)
 
 
 @pytest.mark.parametrize("replay", ["unavailability-01"], indirect=True)
