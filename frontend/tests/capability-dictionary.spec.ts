@@ -51,11 +51,15 @@ test("admin exports a dictionary and opens material import in the assistant", as
   })
   expect(response.ok()).toBeTruthy()
   await page.reload()
-  await expect(page.getByText("当前第 1 版 · 1 项能力")).toBeVisible()
+  const topbar = page.locator("#workspace-topbar-actions")
+  await expect(topbar.getByText("当前第 1 版 · 1 项能力")).toBeVisible()
+  await page.getByRole("button", { name: "变更历史" }).click()
+  await expect(page.getByRole("dialog", { name: "变更历史" })).toBeVisible()
+  await page.keyboard.press("Escape")
   const exported = page.waitForEvent("download")
-  await page.getByRole("button", { name: "导出当前词典" }).click()
+  await topbar.getByRole("button", { name: "导出当前词典" }).click()
   expect((await exported).suggestedFilename()).toBe("本企业能力词典.yaml")
-  await page.getByRole("link", { name: "用助手导入" }).click()
+  await topbar.getByRole("link", { name: "用助手导入" }).click()
   await expect(page).toHaveURL(/\/assistant\?mode=admin/)
   await expect(
     page.getByRole("textbox", { name: "发给管理助手的消息" }),
@@ -206,7 +210,9 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
     page.getByRole("status").filter({ hasText: "新词典已启用" }),
   ).toBeVisible()
   await page.reload()
-  await expect(page.getByText("当前第 2 版 · 2 项能力")).toBeVisible()
+  const topbar = page.locator("#workspace-topbar-actions")
+  await expect(topbar.getByText("第 2 版", { exact: true })).toBeVisible()
+  await expect(topbar.getByText("2 项", { exact: true })).toBeVisible()
   await page.getByRole("button", { name: "编辑词典", exact: true }).click()
   await expect(retained.getByLabel("等级描述")).toHaveValue(
     "可以独立完成合成任务",
@@ -253,7 +259,7 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
 
 test("admin browses categories, levels, published counts and searches", async ({
   page,
-}) => {
+}, testInfo) => {
   await logInUser(
     page,
     "admin@demo.example.com",
@@ -262,32 +268,49 @@ test("admin browses categories, levels, published counts and searches", async ({
   await page.goto("/admin/rules?tab=dictionary")
   await page.getByRole("link", { name: "能力词典", exact: true }).click()
   const browser = page.getByRole("region", { name: "浏览能力词典" })
-  const first = browser.getByRole("article").first()
+  const rows = browser
+    .getByRole("row")
+    .filter({ has: page.getByRole("button") })
+  const first = rows.first()
+  const trigger = first.getByRole("button")
+  await expect(first.getByRole("img")).toBeVisible()
+  const name = (await trigger.textContent())?.trim() ?? ""
+  expect(name).not.toBe("")
+  await first.click()
+  const drawer = page.getByRole("dialog", { name, exact: true })
   await expect(
-    first.getByRole("region", { name: "已发布判断统计" }),
+    drawer.getByRole("region", { name: "已发布判断统计" }),
   ).toBeVisible()
-  await expect(first.getByRole("list", { name: "等级说明" })).toBeVisible()
-  await expect(first.getByRole("list", { name: "等级分布" })).toContainText(
+  await expect(drawer.getByRole("list", { name: "等级说明" })).toBeVisible()
+  await expect(drawer.getByRole("list", { name: "等级分布" })).toContainText(
     "未定级",
   )
-  await expect(first.getByRole("list", { name: "判断状态分布" })).toContainText(
-    "存在争议",
-  )
-  const name = (await first.getByRole("heading").textContent())?.trim() ?? ""
-  expect(name).not.toBe("")
+  await expect(
+    drawer.getByRole("list", { name: "判断状态分布" }),
+  ).toContainText("存在争议")
+  await page.keyboard.press("Escape")
+  await expect(trigger).toBeFocused()
+  const navigation = browser.getByRole("navigation", { name: "能力分类" })
+  const initialCount = await rows.count()
+  const category = navigation.getByRole("button").nth(1)
+  await category.click()
+  await expect(category).toHaveAttribute("aria-pressed", "true")
+  expect(await rows.count()).toBeLessThan(initialCount)
+  await navigation.getByRole("button", { name: /^全部/ }).click()
+  await expect(rows).toHaveCount(initialCount)
   await browser.getByLabel("搜索能力").fill(name)
-  await expect(browser.getByRole("article")).toHaveCount(1)
-  const category = browser.locator("summary").first()
-  await category.click()
-  await expect(first).toBeHidden()
-  await category.click()
+  await expect(rows).toHaveCount(1)
   await browser.getByLabel("搜索能力").fill("不存在的合成能力")
-  await expect(browser.getByRole("article")).toHaveCount(0)
+  await expect(rows).toHaveCount(0)
   await expect(browser.getByRole("status")).toContainText("没有匹配的能力")
   await browser.getByLabel("搜索能力").fill("")
+  await page.setViewportSize({ width: 375, height: 812 })
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(375)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.screenshot({
-    path: "../docs/screenshots/m4.2/capability-browser-admin.png",
+    path: testInfo.outputPath("capability-browser-admin.png"),
     fullPage: true,
   })
 })
@@ -308,21 +331,31 @@ test("employee browses and searches without requesting statistics", async ({
   await page.goto("/admin/rules?tab=dictionary")
   await page.getByRole("link", { name: "能力词典", exact: true }).click()
   const browser = page.getByRole("region", { name: "浏览能力词典" })
-  const card = browser.getByRole("article").first()
+  const rows = browser
+    .getByRole("row")
+    .filter({ has: page.getByRole("button") })
+  const card = rows.first()
   await expect(card).toBeVisible()
-  const description = (await card.locator("header p").textContent()) ?? ""
+  const description = (await card.locator("p").textContent()) ?? ""
   expect(description).not.toBe("")
   await browser.getByLabel("搜索能力").fill(description)
-  await expect(browser.getByRole("article")).toHaveCount(1)
+  await expect(rows).toHaveCount(1)
   await expect(
-    browser.getByRole("region", { name: "已发布判断统计" }),
+    browser.getByRole("columnheader", { name: "覆盖人数" }),
   ).toHaveCount(0)
+  await card.getByRole("button").click()
+  const drawer = page.getByRole("dialog")
+  await expect(drawer.getByRole("list", { name: "等级说明" })).toBeVisible()
+  await expect(
+    drawer.getByRole("region", { name: "已发布判断统计" }),
+  ).toHaveCount(0)
+  await page.keyboard.press("Escape")
   await expect(
     page.getByRole("button", { name: "编辑词典", exact: true }),
   ).toHaveCount(0)
   expect(statsRequests).toEqual([])
   await page.goto("/admin/rules?tab=dictionary#dictionary-editor")
-  await expect(browser.getByRole("article").first()).toBeVisible()
+  await expect(rows.first()).toBeVisible()
 })
 
 test("draft proposals enter the dictionary through preview and save", async ({

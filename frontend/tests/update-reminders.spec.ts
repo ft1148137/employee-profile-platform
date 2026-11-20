@@ -25,12 +25,17 @@ test("reminder settings persist and stale badges follow profile data", async ({
     await request.get(timezoneUrl, { headers })
   ).json()
   try {
+    await page.setViewportSize({ width: 375, height: 812 })
     await page.goto("/admin/rules?tab=reminders")
     const section = page.getByRole("region", { name: "定期更新提醒" })
     await page
       .getByRole("combobox", { name: "企业时区", exact: true })
       .waitFor()
+    const summary = page.getByRole("region", { name: "当前生效摘要" })
     await expect(section.getByRole("combobox")).toHaveCount(1)
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(375)
     for (const label of ["每年", "关闭", "每季度"]) {
       await section.getByRole("combobox", { name: "提醒周期" }).click()
       await page.getByRole("option", { name: label, exact: true }).click()
@@ -42,6 +47,8 @@ test("reminder settings persist and stale badges follow profile data", async ({
         section.getByRole("combobox", { name: "提醒周期" }),
       ).toHaveText(label)
       await expect(section.getByLabel("证据过期提醒（月）")).toHaveValue("36")
+      await expect(summary).toContainText(label)
+      await expect(summary).toContainText("36 个月")
     }
     const timezoneSection = page.getByRole("region", { name: "企业时区设置" })
     await timezoneSection
@@ -56,7 +63,10 @@ test("reminder settings persist and stale badges follow profile data", async ({
     await expect(
       timezoneSection.getByRole("combobox", { name: "企业时区", exact: true }),
     ).toHaveText("东京时间")
+    await expect(summary).toContainText("东京时间")
+    await expect(page.getByRole("region", { name: "修改记录" })).toBeVisible()
     await expectChineseCopy(page)
+    await page.setViewportSize({ width: 1280, height: 720 })
     await page.route("**/employees/*/profile", async (route) => {
       const response = await route.fetch()
       const data = await response.json()
@@ -67,7 +77,7 @@ test("reminder settings persist and stale badges follow profile data", async ({
     await page.goto("/employees")
     await page.getByRole("combobox", { name: "部门筛选" }).click()
     await page.getByRole("option", { name: "平台研发部", exact: true }).click()
-    await page.getByRole("row").filter({ hasText: "张伟" }).click()
+    await page.getByRole("link", { name: "张伟", exact: true }).click()
     const confirmed = page.getByRole("article", {
       name: "后端 API 开发",
       exact: true,

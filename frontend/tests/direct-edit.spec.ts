@@ -171,7 +171,7 @@ isolated(
   async ({ page, company }) => {
     await logInUser(page, company.manager.account!.username, password)
     await page.goto("/employees")
-    await page.getByRole("row").filter({ hasText: "合成员工" }).click()
+    await page.getByRole("link", { name: "合成员工", exact: true }).click()
     await page.getByRole("button", { name: "谁能看到", exact: true }).hover()
     await expect(page.getByRole("tooltip")).toContainText(
       "查看不通知本人、不留记录",

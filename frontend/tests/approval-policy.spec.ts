@@ -26,12 +26,25 @@ test("admin saves approval policy versions and category overrides", async ({
     await page.getByRole("link", { name: "审批规则", exact: true }).click()
     const form = page.getByRole("form", { name: "审批规则", exact: true })
     await expect(form.getByLabel("默认需要经理审批")).toBeVisible()
+    const summary = page.getByRole("region", { name: "当前生效摘要" })
+    const [formBox, summaryBox] = await Promise.all([
+      form.boundingBox(),
+      summary.boundingBox(),
+    ])
+    expect(summaryBox!.x).toBeGreaterThan(formBox!.x + formBox!.width)
     await expectChineseCopy(page)
     await form.getByLabel("默认需要经理审批").uncheck()
     await form.getByLabel(original.categories[0], { exact: true }).click()
-    await page.getByRole("option", { name: "需要", exact: true }).click()
+    await page.getByRole("option", { name: "经理审批", exact: true }).click()
     await form.getByLabel("员工确认期限（天）").fill("7")
+    await expect(summary).toContainText(
+      `${original.current.owner_review_days} 天`,
+    )
     await form.getByRole("button", { name: "保存审批规则" }).click()
+    await expect(summary).toContainText("7 天")
+    await expect(page.getByRole("region", { name: "修改记录" })).toContainText(
+      "保存审批规则",
+    )
     await expect(form.getByRole("status")).toHaveText("审批规则已保存")
     const saved = await (await request.get(url, { headers })).json()
     expect(saved.current.version).toBe(original.current.version + 1)
@@ -39,6 +52,7 @@ test("admin saves approval policy versions and category overrides", async ({
     expect(saved.current.category_overrides[original.categories[0]]).toBe(true)
     expect(saved.current.owner_review_days).toBe(7)
     const history = page.getByRole("region", { name: "审批规则历史" })
+    await history.getByText("历史版本", { exact: true }).click()
     await expect(history).toContainText(`第 ${saved.current.version} 版`)
     await expect(history).toContainText("员工确认期限：7 天")
     await form.getByLabel(original.categories[0], { exact: true }).click()

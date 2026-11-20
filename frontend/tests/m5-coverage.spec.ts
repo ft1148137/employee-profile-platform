@@ -45,8 +45,18 @@ for (const role of [
         coverage.getByText(status, { exact: true }).first(),
       ).toBeVisible()
     }
+    const pending = coverage.getByRole("button", { name: /^待本人确认/ })
+    const activeRow = page
+      .getByRole("row")
+      .filter({ hasText: "平台研发部" })
+      .filter({ hasText: "张伟" })
+    await pending.click()
+    await expect(pending).toHaveAttribute("aria-pressed", "true")
+    await expect(activeRow.locator("[data-coverage-match]")).toHaveCount(1)
+    await pending.click()
+    await expect(activeRow.locator("[data-coverage-match]")).toHaveCount(0)
+    await coverage.getByRole("button", { name: "按部门分布" }).click()
     await expect(coverage.getByText(/等待审批超过 7 天/)).toBeVisible()
-    await coverage.locator("summary").click()
     const response = page.waitForResponse(
       (r) =>
         r.url().includes(`/${role.endpoint}?`) &&

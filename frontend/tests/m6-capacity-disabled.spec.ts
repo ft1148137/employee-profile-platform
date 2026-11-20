@@ -80,8 +80,34 @@ for (const trigger of ["focus", "operation", "query"] as const) {
       })
       expect(response.ok(), await response.text()).toBeTruthy()
     }
-    await setEnabled(true)
-    await page.goto("/login")
+    if (trigger === "focus") {
+      await setEnabled(false)
+      await page.goto("/login")
+      await page.evaluate(
+        ({ token, orgId }) => {
+          localStorage.setItem("access_token", token)
+          localStorage.setItem("current_org_id", orgId)
+        },
+        { token: admin.access_token, orgId: admin.org_id },
+      )
+      await page.setViewportSize({ width: 375, height: 812 })
+      await page.goto("/admin/rules?tab=capacity")
+      const form = page.getByRole("form", { name: "负荷与需求规则" })
+      const summary = page.getByRole("region", { name: "当前生效摘要" })
+      await expect(summary).toContainText("已关闭")
+      await expect(page.getByRole("region", { name: "影响范围" })).toBeVisible()
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBeLessThanOrEqual(375)
+      await form.getByRole("checkbox", { name: "启用规划与负荷功能" }).check()
+      await expect(summary).toContainText("已关闭")
+      await form.getByRole("button", { name: "保存设置" }).click()
+      await expect(summary).toContainText("已启用")
+      await page.setViewportSize({ width: 1280, height: 720 })
+    } else {
+      await setEnabled(true)
+      await page.goto("/login")
+    }
     await page.evaluate(
       ({ token, orgId }) => {
         localStorage.setItem("access_token", token)

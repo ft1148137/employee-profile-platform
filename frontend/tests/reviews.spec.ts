@@ -379,7 +379,7 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       await page.setViewportSize({ width: 1280, height: 900 })
       await page.getByRole("link", { name: "组织", exact: true }).click()
       await page.getByRole("link", { name: "员工", exact: true }).click()
-      await page.getByRole("row").filter({ hasText: "合成员工" }).click()
+      await page.getByRole("link", { name: "合成员工", exact: true }).click()
       await page.getByRole("tab", { name: "证据与历史", exact: true }).click()
       await page.getByRole("button", { name: "来源请求", exact: true }).click()
       await expect(page).toHaveURL(/tab=capabilities$/)

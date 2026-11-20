@@ -60,19 +60,19 @@ export function DepartmentCapabilities({
   return (
     <section
       aria-label="部门常用能力"
-      className="space-y-4 rounded-xl border bg-card p-5"
+      className="space-y-3 border-surface-border border-t pt-3"
     >
       <div>
         <h2 className="font-semibold">部门常用能力</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground">
           子部门将自动继承上级能力，员工画像默认展示这些能力项。
         </p>
       </div>
-      <div className="grid gap-5 sm:grid-cols-2">
-        <div className="space-y-2">
+      <div className="space-y-3">
+        <div className="space-y-1">
           <h3 className="text-sm font-medium">继承的能力（只读）</h3>
           {inherited.map((key) => (
-            <p key={key} className="text-sm">
+            <p key={key} className="text-sm wrap-anywhere">
               {name(key)} · 继承自上级部门
             </p>
           ))}
@@ -80,14 +80,14 @@ export function DepartmentCapabilities({
             <p className="text-sm text-muted-foreground">暂无继承能力</p>
           )}
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1">
           <h3 className="text-sm font-medium">本部门新增</h3>
           {own.map((key) => (
             <div
               key={key}
               className="flex items-center justify-between gap-3 text-sm"
             >
-              <span>{name(key)}</span>
+              <span className="min-w-0 wrap-anywhere">{name(key)}</span>
               {canEdit && (
                 <Button
                   variant="ghost"
@@ -111,20 +111,22 @@ export function DepartmentCapabilities({
       </div>
       <SetupError error={save.error} />
       {saved && (
-        <p role="status" className="text-sm">
+        <p role="status" className="text-sm wrap-anywhere">
           部门常用能力已保存
         </p>
       )}
       {canEdit && (
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
+            size="sm"
             disabled={save.isPending}
             onClick={() => setPicking(true)}
           >
             添加能力
           </Button>
           <Button
+            size="sm"
             disabled={draft === null || save.isPending}
             onClick={() => save.mutate()}
           >
