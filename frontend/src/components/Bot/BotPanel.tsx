@@ -39,7 +39,7 @@ export function BotConversation({
   prompt?: string
 }) {
   const { managedDepartmentIds } = useOrg()
-  const description = `${managedDepartmentIds.length ? "可以操作你本人和你管辖部门员工的画像" : "只操作你本人的画像"}。画像不用于绩效、薪酬和晋升。聊天原文默认不保存；未开启保留时，会话闲置两小时后清除。`
+  const description = `${managedDepartmentIds.length ? "可以操作你本人和你管辖部门员工的画像" : "只操作你本人的画像"}。画像不用于绩效、薪酬和晋升。聊天原文默认不保存；未开启保留时，会话闲置 2 小时后清除。`
   const client = useQueryClient()
   const navigate = useNavigate()
   const [sessionId, setSessionId] = useState("")
@@ -203,21 +203,25 @@ export function BotConversation({
       <div
         className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 text-sm"
         role="log"
-        aria-label="机器人对话"
+        aria-label="工作助手对话"
         aria-busy={busy}
       >
         {messages.length === 0 && (
           <p className="mx-auto max-w-3xl text-muted-foreground leading-relaxed">
+            你好，我可以帮你查看或更新画像、核对初始草稿、补充经历，也可以查询申请进度。
+            {managedDepartmentIds.length > 0 &&
+              "也支持查看团队画像与处理审批。"}
+            <br />
             {description}
-            可以请我查看画像、过目初始画像、补充经历、查进度或回答问题。提交前请核对预览卡片。没有启用模型时，请到
+            提交前请核对预览卡片。未开启 AI 模型时，可直接前往
             <Link
               className="underline"
               to="/employees/$employeeId"
               params={{ employeeId }}
             >
-              打开画像页
+              「我的画像」
             </Link>
-            直接修改。
+            编辑。
           </p>
         )}
         <ChatMessages
@@ -260,24 +264,24 @@ export function BotConversation({
             className="flex items-center gap-2 text-muted-foreground"
           >
             <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-            {initialize.isPending ? "正在恢复对话…" : "正在处理，请稍候…"}
+            {initialize.isPending ? "加载对话中…" : "正在思考…"}
           </p>
         )}
         <SetupError error={initialize.error ?? send.error} />
-        {expired && <p role="status">这段对话已过期被清除，已为你新开对话</p>}
+        {expired && <p role="status">原对话已过期，已为你开启新对话</p>}
         {initialize.isError && (
           <Button variant="outline" onClick={() => initialize.mutate()}>
-            重试加载对话
+            重试
           </Button>
         )}
         {conflict && (
           <div role="alert" className="space-y-2">
-            <p>内容已变化，请重新预览后再确认。</p>
+            <p>内容已更新，请重新预览后再确认</p>
             <Button
               disabled={busy}
               onClick={() => sendText("请重新预览最新的画像请求")}
             >
-              重新预览最新内容
+              重新预览
             </Button>
           </div>
         )}
@@ -287,8 +291,8 @@ export function BotConversation({
         key={sessionId}
         draftKey={sessionId ? `${storageKey}:${sessionId}` : undefined}
         id="bot-input"
-        label="发给机器人的消息"
-        placeholder="给画像机器人发消息…"
+        label="发给助手的消息"
+        placeholder="说说你的经历，或想查询什么…"
         text={text}
         onChange={setText}
         onSend={(attachments) =>

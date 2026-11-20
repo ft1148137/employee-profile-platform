@@ -16,7 +16,6 @@ const fileKinds = {
     accept: ".csv,.xlsx",
     limit: 5,
     format: "Excel、CSV",
-    result: "导入工作记录",
   },
 } as const
 
@@ -70,8 +69,7 @@ export function FileUploadCard({
         选择{kind.title}
       </label>
       <p className="text-sm text-muted-foreground">
-        支持{kind.format}，最多 {kind.limit} MB。上传后先核对预览，点击确认才会
-        {kind.result}。
+        支持 {kind.format}，不超过 {kind.limit} MB；上传后可先预览再确认导入。
       </p>
       <Input
         id={id}

@@ -22,15 +22,15 @@ const labels: Record<string, string> = {
   enabled: "启用状态",
   kind: "模型类型",
   provider: "模型服务商",
-  model: "模型名",
-  reasoning_effort: "推理强度",
+  model: "模型名称",
+  reasoning_effort: "思考深度",
   question_guide: "提问指南",
   retention_days: "聊天原文保留天数",
   reminder_schedule: "提醒周期",
-  stale_after_months: "证据较旧期限",
+  stale_after_months: "证据过期提醒（月）",
   require_manager: "需要经理确认",
   category_overrides: "各类能力的确认规则",
-  owner_review_days: "本人过目期限（天）",
+  owner_review_days: "员工确认期限（天）",
   deployment: "Jira 类型",
   base_url: "站点地址",
   auth_type: "认证方式",
@@ -105,7 +105,7 @@ const statuses = {
   draft: "待确认",
   applied: "已应用",
   discarded: "已放弃",
-  stale: "内容已变化，请重新预览",
+  stale: "内容已更新，请重新预览",
   undone: "已撤销",
 }
 
@@ -250,7 +250,7 @@ export function ChangeSetCard({
     >
       <div className="flex items-center justify-between gap-3 border-b pb-3">
         <h3 className="font-semibold">
-          {current.undo_of_id ? "撤销前请确认" : "请核对改动"}
+          {current.undo_of_id ? "撤销前请确认" : "确认变更"}
         </h3>
         <span role="status" className="text-xs text-muted-foreground">
           {confirmAgain ? "请再次确认" : statuses[current.status]}
@@ -355,7 +355,7 @@ export function ChangeSetCard({
           className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm"
         >
           <p className="font-semibold">
-            请核对影响范围，再次确认后生效。超过五分钟需重新确认。
+            请确认影响范围后再次点击生效（5 分钟内有效）。
           </p>
           {current.items
             .filter((item) => item.risk === "high")
@@ -369,7 +369,7 @@ export function ChangeSetCard({
       )}
       {oneTime.map((output, i) => (
         <div key={i} className="space-y-2 rounded-lg border p-3 text-sm">
-          <p>初始密码和账号表只显示这一次，请妥善保管。</p>
+          <p>初始密码和账号表仅显示一次，请及时保存。</p>
           {output.type === "initial_password" ? (
             <>
               <p>
@@ -426,7 +426,7 @@ export function ChangeSetCard({
       {current.status === "draft" && (
         <div className="flex gap-2">
           <Button disabled={busy} onClick={() => action.mutate("apply")}>
-            {confirmAgain ? "再次确认" : "确认应用"}
+            {confirmAgain ? "再次确认" : "确认生效"}
           </Button>
           <Button
             variant="outline"

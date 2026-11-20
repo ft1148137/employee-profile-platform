@@ -19,7 +19,7 @@ const filters = {
   all: "全部",
   profile: "画像变更",
   workload: "负荷与延期",
-  demand: "收到需求",
+  demand: "协作需求",
   borrow: "借调确认",
 }
 
@@ -129,7 +129,7 @@ function ReviewsPage() {
           queries.every((query) => query.isSuccess),
         ) && (
           <p role="status" className="text-muted-foreground">
-            目前没有待审批事项
+            暂无待审批事项
           </p>
         )}
       {sections
@@ -164,7 +164,7 @@ function ReviewsPage() {
                 section.content
               ) : (
                 <p role="status" className="text-muted-foreground">
-                  目前没有待处理事项
+                  暂无待审批事项
                 </p>
               )}
             </section>
@@ -197,7 +197,7 @@ function DemandReviews({
     <>
       {(count > PENDING_DEMAND_PAGE_SIZE || skip > 0) && (
         <nav
-          aria-label="收到需求分页"
+          aria-label="协作需求分页"
           className="flex items-center justify-between gap-2"
         >
           <Button
@@ -258,7 +258,7 @@ function DemandReviews({
                       prompt: `请模拟并帮我答复部门需求 ${row.id}（${row.capability_name}，${row.headcount} 人，每人投入 ${row.allocation_percent}%，${row.window_start} 至 ${row.window_end}）。`,
                     }}
                   >
-                    在 AI 助手中模拟并答复
+                    用助手拟定方案
                   </Link>
                 </Button>
               )}
@@ -267,7 +267,7 @@ function DemandReviews({
         ))
       ) : (
         <p role="status" className="text-muted-foreground">
-          本页没有待答复需求
+          暂无待答复需求
         </p>
       )}
     </>
@@ -277,7 +277,7 @@ function DemandReviews({
 function ProfileReviews({ data }: { data?: PendingReviews }) {
   return (
     <>
-      <p role="status">{data?.count ?? 0} 个请求待处理</p>
+      <p role="status">{data?.count ?? 0} 条待审批</p>
       <ul className="space-y-4">
         {(data?.data ?? []).map((request) => (
           <li key={request.id} className="rounded-xl border p-5 space-y-3">
@@ -296,7 +296,7 @@ function ProfileReviews({ data }: { data?: PendingReviews }) {
               {request.client_name && ` · ${request.client_name}`}
             </p>
             {!request.owner_reviewed && (
-              <p className="text-sm text-amber-700">员工未过目</p>
+              <p className="text-sm text-amber-700">员工未确认</p>
             )}
             {request.can_decide ? (
               <Link

@@ -4,7 +4,7 @@ export function FileSummaryPreview({ preview }: { preview: FileSummary }) {
   const errors = preview.errors ?? []
   return (
     <section aria-label="文件预览" className="space-y-3">
-      <h3 className="font-semibold">请核对导入预览</h3>
+      <h3 className="font-semibold">导入预览</h3>
       <dl className="flex flex-wrap gap-3">
         {Object.entries(preview.counts).map(([label, count]) => (
           <div key={label} className="rounded-lg bg-muted px-3 py-2">
@@ -16,8 +16,8 @@ export function FileSummaryPreview({ preview }: { preview: FileSummary }) {
       {!!preview.warnings?.length && (
         <div role="alert" className="space-y-1 text-sm">
           <p>
-            共有 {preview.counts.警告 ?? preview.warnings.length}{" "}
-            条警告，请核对后再确认。
+            有 {preview.counts.警告 ?? preview.warnings.length}{" "}
+            条提醒，请核对后再确认。
           </p>
           {preview.warnings.map((warning, index) => (
             <p key={index}>
@@ -36,7 +36,7 @@ export function FileSummaryPreview({ preview }: { preview: FileSummary }) {
           ))}
         </div>
       )}
-      {errors.length ? (
+      {errors.length > 0 && (
         <div role="alert" className="overflow-x-auto text-destructive">
           <p>文件有错误，请修改后重新上传。</p>
           <table className="w-full text-left">
@@ -58,10 +58,6 @@ export function FileSummaryPreview({ preview }: { preview: FileSummary }) {
             </tbody>
           </table>
         </div>
-      ) : (
-        <p className="text-muted-foreground">
-          请核对以上统计，导入状态显示在下方确认卡中。
-        </p>
       )}
     </section>
   )

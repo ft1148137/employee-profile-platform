@@ -17,8 +17,8 @@ export function PageDraft({
       {draft && (
         <div className="space-y-3">
           <p className="text-sm">
-            表单正在显示助手草稿，请核对后确认或放弃。确认会应用这份草稿中的全部{" "}
-            {draft.items.length} 项改动。
+            当前显示助手起草的内容（共 {draft.items.length}{" "}
+            项改动），核对后可确认生效或放弃。
           </p>
           <ChangeSetCard
             key={draft.id}

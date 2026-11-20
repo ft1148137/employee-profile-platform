@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, useState } from "react"
 import type { AttachmentPublic } from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
+import { attachmentSizeLabel } from "./ChatAttachment"
 
 const drafts = new Map<string, string>()
 
@@ -70,7 +71,7 @@ export function ChatComposer({
         file.size >
           (/^(png|jpe?g|webp|gif)$/.test(extension) ? 5 : 10) * 1024 * 1024
       )
-        problem = "附件不能为空，图片最多 5 MiB，文件最多 10 MiB"
+        problem = "附件不能为空，图片不超过 5 MB，文件不超过 10 MB"
     }
     setError(problem)
     if (problem) return
@@ -156,7 +157,7 @@ export function ChatComposer({
             className="relative max-w-full space-y-1 rounded-lg border bg-muted/50 py-2 pl-3 pr-9 break-words"
           >
             <p>
-              {item.file.name} · {item.file.size.toLocaleString("zh-CN")} 字节
+              {item.file.name} · {attachmentSizeLabel(item.file.size)}
             </p>
             {!item.attachment && !item.error && <p role="status">上传中…</p>}
             {item.attachment && (

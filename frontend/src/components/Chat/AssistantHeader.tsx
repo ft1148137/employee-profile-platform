@@ -35,7 +35,9 @@ export function AssistantHeader() {
         aria-label="面包屑"
         className="flex min-w-0 flex-1 items-center gap-2 text-sm"
       >
-        <h1 className="shrink-0 font-medium">{admin ? "管理助手" : "助手"}</h1>
+        <h1 className="shrink-0 font-medium">
+          {admin ? "管理助手" : "工作助手"}
+        </h1>
         {storageKey && (
           <>
             <ChevronRight

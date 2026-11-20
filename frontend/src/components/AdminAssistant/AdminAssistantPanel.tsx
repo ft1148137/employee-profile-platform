@@ -95,7 +95,7 @@ const labels: Record<string, string> = {
   applied: "已导入",
   active: "正常",
   inactive: "已离职",
-  none: "未生成",
+  none: "未创建",
   pending_first_login: "待首次登录",
   disabled: "已停用",
   org_admin: "企业管理员",
@@ -507,7 +507,7 @@ export function AdminAssistantPanel({
       >
         {!available && (
           <p role="status" className="rounded-lg border bg-muted/40 p-4">
-            {availability.data?.reason || "正在检查管理助手…"}
+            {availability.data?.reason || "正在检查服务状态…"}
             {availability.data?.reason?.includes("模型") && (
               <span className="mt-2 block">
                 模型未配置或不可用。
@@ -527,15 +527,13 @@ export function AdminAssistantPanel({
           <>
             <div className="space-y-8 py-6">
               <div className="space-y-3 text-center">
-                <h2 className="text-2xl font-semibold">
-                  你好，今天有什么要处理的？
-                </h2>
+                <h2 className="text-2xl font-semibold">有什么可以帮你处理？</h2>
                 <p className="text-muted-foreground">
-                  试着问「今天有什么要处理的」。我会结合当前状态，帮你找到对应页面。
+                  可以查询状态、排查同步问题，或让我起草设置变更。
                 </p>
               </div>
-              <section className="space-y-3" aria-label="可以这样问">
-                <h2 className="font-semibold">可以这样问</h2>
+              <section className="space-y-3" aria-label="常用操作">
+                <h2 className="font-semibold">常用操作</h2>
                 <div className="flex flex-wrap gap-2">
                   {[
                     "查看同步与起草进度",
@@ -557,7 +555,7 @@ export function AdminAssistantPanel({
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  可以查看信息、起草提醒设置改动，点确认卡后才会生效。备份恢复、升级、重置请联系部署人员；不做绩效和薪酬判断。
+                  所有修改均需你点击确认卡后生效；备份与升级请联系运维/部署人员。
                 </p>
               </section>
             </div>
@@ -679,15 +677,15 @@ export function AdminAssistantPanel({
                 send.mutate(body)
               }}
             >
-              继续，让助手带我完成剩下的设置
+              继续完成首次设置
             </Button>
           )}
         <div ref={bottom} />
-        {busy && <p role="status">正在处理，请稍候…</p>}
+        {busy && <p role="status">正在思考…</p>}
         <SetupError error={(!expired ? history.error : null) ?? send.error} />
-        {expired && <p role="status">这段对话已过期被清除，已为你新开对话</p>}
+        {expired && <p role="status">原对话已过期，已为你开启新对话</p>}
         {history.isError && (
-          <Button onClick={() => history.refetch()}>重试加载对话</Button>
+          <Button onClick={() => history.refetch()}>重试</Button>
         )}
       </div>
       <ChatComposer
@@ -695,7 +693,7 @@ export function AdminAssistantPanel({
         draftKey={`${storageKey}:${sessionId ?? "new"}`}
         id="admin-assistant-input"
         label="发给管理助手的消息"
-        placeholder="给管理助手发消息…"
+        placeholder="输入要查询或处理的事项…"
         text={text}
         onChange={setText}
         onUpload={async (file) => {

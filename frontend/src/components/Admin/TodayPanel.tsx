@@ -38,15 +38,15 @@ export function TodayPanel({
     )
   }
   return (
-    <section className="space-y-4" aria-label="今天要处理的事">
-      <h2 className="text-2xl font-semibold">今天要处理的事</h2>
+    <section className="space-y-4" aria-label="待办事项">
+      <h2 className="text-2xl font-semibold">待办事项</h2>
       <SetupError error={overview.error} />
       {overview.isError && (
         <Button variant="outline" onClick={() => overview.refetch()}>
-          重新读取
+          刷新
         </Button>
       )}
-      {overview.isPending && <p role="status">正在读取今天的状态…</p>}
+      {overview.isPending && <p role="status">加载中…</p>}
       {overview.data && (
         <>
           <div className="grid items-start gap-3 lg:grid-cols-2">
@@ -81,7 +81,7 @@ export function TodayPanel({
             ))}
           </div>
           {overview.data.todos.length === 0 && (
-            <p className="py-4 text-muted-foreground">今天没有要处理的事</p>
+            <p className="py-4 text-muted-foreground">暂无待办事项</p>
           )}
           <ul className="divide-y rounded-md border px-4">
             {overview.data.todos.map((todo) => (

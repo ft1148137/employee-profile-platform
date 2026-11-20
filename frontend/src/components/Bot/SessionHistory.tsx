@@ -55,17 +55,17 @@ export function SessionHistory({
         >
           <span className="block truncate">{entry.preview || "对话"}</span>
           <span className="block text-xs text-muted-foreground">
-            最近活动：{new Date(entry.last_activity_at).toLocaleString("zh-CN")}
+            {new Date(entry.last_activity_at).toLocaleString("zh-CN")}
           </span>
         </button>
       ))}
       {history.data?.data.length === 0 && (
-        <p className="px-2 py-2 text-muted-foreground">还没有历史对话</p>
+        <p className="px-2 py-2 text-muted-foreground">暂无历史对话</p>
       )}
       {history.data && (
         <p className="px-2 py-3 text-xs text-muted-foreground">
           {history.data.retention_days === 0
-            ? "对话在 2 小时没有活动后会被清除，管理员可以在内置机器人设置里改保留天数"
+            ? "闲置 2 小时后自动清除"
             : `保留 ${history.data.retention_days} 天`}
         </p>
       )}
