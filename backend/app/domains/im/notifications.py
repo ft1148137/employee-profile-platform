@@ -21,9 +21,9 @@ from app.worker.health import WORKER_ALERT_NOTIFICATION, WORKER_ALERT_PREFIX
 
 # Most kinds use fixed copy because inbox messages may contain private data.
 REMINDERS = {
-    InboxKind.CAPACITY: "你有需求或负荷事项需要处理",
-    InboxKind.INITIAL_REVIEW: "你有新的画像请求待过目",
-    InboxKind.PROFILE_EDITED: "你的画像已被直接修改",
+    InboxKind.CAPACITY: "你有新的协作或负荷事项待处理",
+    InboxKind.INITIAL_REVIEW: "你有新的初始画像待确认",
+    InboxKind.PROFILE_EDITED: "你的画像已由经理或管理员更新",
     InboxKind.SUBMITTED: "你的画像请求已提交",
     InboxKind.STATUS_CHANGED: "你的画像请求状态已更新",
     InboxKind.QUESTION: "你有待确认问题或定期提醒",
@@ -252,11 +252,11 @@ def claim(
             WORKER_ALERT_NOTIFICATION
             if item.kind == InboxKind.ADMIN_TODOS
             and item.message.startswith(WORKER_ALERT_PREFIX)
-            else f"你有 {item.admin_todo_count} 条管理员待办，请在网页首页处理。"
+            else f"你有 {item.admin_todo_count} 条管理员待办，请前往网页「协同 → AI 助手（企业管理）」处理。"
             if item.kind == InboxKind.ADMIN_TODOS
             else item.message
             if item.kind == InboxKind.PROFILE_EDITED and row.platform == "feishu"
-            else f"{REMINDERS[item.kind]}，在网页处理：{settings.FRONTEND_HOST.rstrip('/')}/capacity?tab=approvals"
+            else f"{REMINDERS[item.kind]}，在网页处理：{settings.FRONTEND_HOST.rstrip('/')}/reviews?type=workload"
             if item.kind == InboxKind.CAPACITY
             and item.message in (WORKLOAD_REVIEW_NOTICE, EXTENSION_REVIEW_NOTICE)
             else custom_text or REMINDERS[item.kind] + "，在网页或私聊我查看。",

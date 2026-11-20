@@ -210,7 +210,7 @@ def test_stale_confirmation(db: Session, demo: tuple, client: TestClient) -> Non
         headers=demo[2]["admin"],
         json={"capability_keys": [keys[1]]},
     )
-    with pytest.raises(c.ChangeSetError, match="内容已变化"):
+    with pytest.raises(c.ChangeSetError, match="内容已更新"):
         c.apply(db, p, row.id, row.revision)
 
 

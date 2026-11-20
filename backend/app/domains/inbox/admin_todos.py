@@ -74,7 +74,7 @@ def dispatch_admin_todos(db: Session, now: datetime) -> None:
                             kind=InboxKind.ADMIN_TODOS,
                             admin_todo_date=day,
                             admin_todo_count=count,
-                            message=f"你有 {count} 条管理员待办，请在网页首页处理。",
+                            message=f"你有 {count} 条管理员待办，请前往网页「协同 → AI 助手（企业管理）」处理。",
                         ),
                     )
             db.commit()

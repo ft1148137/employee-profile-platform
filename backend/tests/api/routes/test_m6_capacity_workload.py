@@ -126,7 +126,7 @@ def test_default_disabled_and_settings_permissions(
             **({"json": body} if body else {}),
         )
         assert response.status_code == 404
-        assert response.json()["detail"] == "需求与容量模块未开启"
+        assert response.json()["detail"] == "规划与负荷功能未开启"
     assert (
         client.get(f"{url}/capacity-settings", headers=auth["foreign"]).status_code
         == 404

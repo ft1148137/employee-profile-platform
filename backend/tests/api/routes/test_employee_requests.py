@@ -111,7 +111,7 @@ def test_draft_preview_submit_and_withdraw(
         f"{base}/submit", headers=headers, json={"revision": before["revision"]}
     )
     assert (
-        stale.status_code == 409 and stale.json()["detail"] == "内容已变化，请重新预览"
+        stale.status_code == 409 and stale.json()["detail"] == "内容已更新，请重新预览"
     )
     preview = client.get(f"{base}/preview", headers=headers).json()
     submitted = client.post(

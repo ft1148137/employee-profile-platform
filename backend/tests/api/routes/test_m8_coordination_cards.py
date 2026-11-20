@@ -136,12 +136,12 @@ def test_feishu_renders_card_fields_and_plan_link() -> None:
     plan = s.PlanCard(
         title="直接安排方案",
         fields=[s.CardField(label="缺口", value="1 人周")],
-        changes="这次改了什么：交付日期提前",
+        changes="本次调整：交付日期提前",
         link="/capacity?tab=incoming&demand=123&plans=1",
     )
     plan_text, actions = render(plan)
     assert "缺口：1 人周" in plan_text
-    assert "这次改了什么：交付日期提前" in plan_text
+    assert "本次调整：交付日期提前" in plan_text
     assert "/capacity?tab=incoming&demand=123&plans=1" in plan_text
     assert actions == []
 
@@ -204,7 +204,7 @@ def test_compare_revised_option_shows_server_diff(
     assert compared["options"][0]["id"] == revised.json()["id"]
     assert len(cards) == 1 and isinstance(cards[0], s.PlanCard)
     assert "投入" in cards[0].changes
-    assert "这次改了什么" in render(cards[0])[0]
+    assert "本次调整" in render(cards[0])[0]
 
 
 def test_model_failure_shows_role_specific_manual_links(
@@ -216,12 +216,15 @@ def test_model_failure_shows_role_specific_manual_links(
         raise ModelUnavailable()
 
     monkeypatch.setattr(core.pi_client, "run_turn", unavailable)
-    for viewer, expected in ((a, "我提的需求"), (b, "收到的需求")):
+    for viewer, expected, href in (
+        (a, "我提的需求", "/capacity?tab=outgoing"),
+        (b, "待审批", "/reviews?type=demand"),
+    ):
         session = store.create_session(db, viewer)
         response = core.turn(db, viewer, session.id, "帮我提需求")
         text = response.messages[0].text
         assert expected in text
-        assert "/capacity?tab=" in text
+        assert href in text
 
 
 def test_busy_turn_does_not_offer_manual_capacity_fallback(
@@ -237,7 +240,7 @@ def test_busy_turn_does_not_offer_manual_capacity_fallback(
 
     monkeypatch.setattr(core, "begin_turn", busy)
     response = core.turn(db, a, session.id, "帮我提需求")
-    assert response.messages[0].text == "忙，请稍后再试"
+    assert response.messages[0].text == "当前请求较多，请稍后再试"
     assert response.messages[0].capacity_links == []
 
 

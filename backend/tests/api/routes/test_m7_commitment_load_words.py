@@ -75,7 +75,8 @@ def test_assignment_commitment_rejects_load_words_without_writes(
         method="PATCH",
     )
     assert (
-        result["detail"] == "答复会发给对方部门，不写负荷说法，只写能否承接、时间和条件"
+        result["detail"]
+        == "回复将发送给对方部门，请勿填写负荷描述，仅说明能否承接、时间及条件"
     )
     assert state(db, org.id) == before
     api(
@@ -109,7 +110,8 @@ def test_extension_commitment_rejects_load_words_without_writes(
         commitment_note="近期空闲，可调整",
     )
     assert (
-        result["detail"] == "答复会发给对方部门，不写负荷说法，只写能否承接、时间和条件"
+        result["detail"]
+        == "回复将发送给对方部门，请勿填写负荷描述，仅说明能否承接、时间及条件"
     )
     assert state(db, org.id) == before
     decide(

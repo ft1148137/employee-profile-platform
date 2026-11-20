@@ -271,7 +271,7 @@ def test_foreign_request_and_disabled_mcp(
             },
         )
         assert response.status_code == 403
-        assert response.json()["detail"] == "企业已关闭外部 AI 助手"
+        assert response.json()["detail"] == "企业已关闭外部 AI 工具"
 
 
 def test_inputs_are_strict_and_bot_has_no_manager_tools(

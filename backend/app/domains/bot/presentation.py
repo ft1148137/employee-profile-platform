@@ -29,12 +29,13 @@ def capacity_failure(db: Session, principal: Principal, message: str) -> s.TextM
     else:
         links.append(s.CardLink(label="我提的需求", href="/capacity?tab=outgoing"))
     if principal.is_org_admin or principal.managed_department_ids:
-        links.append(s.CardLink(label="收到的需求", href="/capacity?tab=incoming"))
+        links.append(s.CardLink(label="待审批", href="/reviews?type=demand"))
     lines = [
         message,
         *(
-            f"可以在「需求与容量 → {link.label}」里手工"
-            f"{'提交需求' if link.label == '我提的需求' else '生成方案和答复'}：{link.href}"
+            f"可以在「规划 → {link.label}」新建需求：{link.href}"
+            if link.label == "我提的需求"
+            else f"可以在「协同 → 待审批」生成方案和答复：{link.href}"
             for link in links
         ),
     ]

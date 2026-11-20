@@ -987,7 +987,7 @@ def call(
         if notice and not remaining:
             return redact(notice)
         kwargs["items"] = remaining
-        kwargs.update(via="bot", client_name="内置机器人")
+        kwargs.update(via="bot", client_name="内置助手")
     try:
         result = PROJECTIONS[name].model_validate(tool.handler(p, db, **kwargs))
     except employee.InvalidItems as exc:

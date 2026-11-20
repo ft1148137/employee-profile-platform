@@ -267,7 +267,7 @@ def test_pending_card_uses_existing_confirmation_check_after_shrink(
     result = core.act(db, p, row.id, action)
     assert isinstance(result.messages[0], s.CapacityCard)
     assert result.messages[0].status == "failed"
-    assert result.messages[0].result == "需求与容量模块未开启"
+    assert result.messages[0].result == "规划与负荷功能未开启"
 
 
 def test_org_admin_revocation_also_hides_prior_reply(

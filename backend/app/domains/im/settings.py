@@ -3,6 +3,7 @@ import json
 import re
 from datetime import timedelta
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlmodel import Session, select
 
@@ -23,6 +24,7 @@ from app.domains.im.schemas import (
     Platform,
 )
 from app.domains.org.models import Organization
+from app.domains.org.timezone import read_timezone
 
 REQUIRED: dict[Platform, set[str]] = {
     "feishu": {"app_id", "app_secret"},
@@ -99,7 +101,7 @@ def save_setting(
         if platform == "telegram" and not re.fullmatch(
             r"[0-9]+:[A-Za-z0-9_-]+", credentials["bot_token"]
         ):
-            raise InvalidImSetting("机器人令牌格式不正确")
+            raise InvalidImSetting("应用令牌格式不正确")
         if updates and credentials != previous:
             cancel_pending(db, principal.org_id, platform)
             row.credentials = encrypt_secret(json.dumps(credentials))
@@ -142,18 +144,23 @@ async def test_connection(
     if not row or not row.credentials:
         return ImConnectionTest(ok=False, message="请先保存应用凭据")
     if platform == "wecom" and row.enabled:
+        timezone = ZoneInfo(read_timezone(db, org_id).timezone)
         healthy = bool(
             row.connection_checked_at
             and row.connection_checked_at > utc_now() - timedelta(seconds=150)
         )
+        heartbeat = (
+            f"最近心跳：{row.connection_checked_at.astimezone(timezone):%Y-%m-%d %H:%M}"
+            if row.connection_checked_at
+            else "尚未收到有效心跳"
+        )
         return ImConnectionTest(
             ok=healthy,
             message=(
-                f"长连接最近心跳时间：{row.connection_checked_at.isoformat()}"
-                if row.connection_checked_at
-                else "尚未收到有效心跳"
-            )
-            + ("" if healthy else "，请检查机器人进程及凭据"),
+                f"长连接正常（{heartbeat}）"
+                if healthy
+                else f"{heartbeat}，请检查应用进程及凭据"
+            ),
         )
     try:
         credentials = json.loads(decrypt_secret(row.credentials))
@@ -180,7 +187,7 @@ async def test_credentials(
                 )
             ).first()
         ):
-            return ImConnectionTest(ok=False, message="该机器人已被其他企业使用")
+            return ImConnectionTest(ok=False, message="该应用已被其他企业使用")
         adapter = (
             Wecom
             if platform == "wecom"

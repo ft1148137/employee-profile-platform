@@ -248,7 +248,7 @@ def test_stream_failure_keeps_original_fallback_and_safe_progress(
     result = final_response(response)
     assert (
         result["messages"][0]["text"]
-        == "模型暂时不可用，请稍后重试，也可以继续使用手工页面。"
+        == "模型暂时不可用，请稍后重试，你也可以直接在对应页面操作。"
     )
     events = [json.loads(line) for line in response.text.splitlines()]
     assert events[2] == {

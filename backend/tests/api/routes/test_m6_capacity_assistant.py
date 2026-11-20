@@ -305,7 +305,7 @@ def test_read_results_scope_and_definitions(
         assert tools.call(db, b, session, [], name, {}) == {
             "error": "请通过 coordination 调用此工具"
             if name in ("list_projects", "get_project")
-            else "需求与容量模块未开启"
+            else "规划与负荷功能未开启"
         }
 
 

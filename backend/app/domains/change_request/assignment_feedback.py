@@ -162,6 +162,6 @@ def create_feedback(
             )
         )
     notify(
-        session, request, InboxKind.INITIAL_REVIEW, "你收到一条工作反馈，请过目后提交"
+        session, request, InboxKind.INITIAL_REVIEW, "你收到一条工作反馈，请确认后提交"
     )
     return request.id

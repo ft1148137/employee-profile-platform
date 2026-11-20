@@ -23,7 +23,7 @@ from app.domains.org.service import visible_employee
 
 class McpDisabled(HTTPException):
     def __init__(self) -> None:
-        super().__init__(403, "企业已关闭外部 AI 助手")
+        super().__init__(403, "企业已关闭外部 AI 工具")
 
 
 class TokenNotFound(HTTPException):

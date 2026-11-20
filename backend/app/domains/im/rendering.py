@@ -15,7 +15,7 @@ LABELS = {
     "withdraw": "撤回",
     "answer_question": "回答",
     "draft": "草稿",
-    "pending_owner": "待本人过目",
+    "pending_owner": "待本人确认",
     "pending_review": "待经理审批",
     "withdrawn": "已撤回",
     "approved": "已批准",
@@ -36,7 +36,7 @@ LABELS = {
 
 def claim_text(claim: s.Claim | None) -> str:
     if claim is None:
-        return "暂无判断"
+        return "暂无记录"
     return f"{claim.statement}；等级：{claim.level_name or '未定级'}；状态：{LABELS.get(claim.assessment_status, claim.assessment_status)}"
 
 
@@ -60,7 +60,7 @@ def plan_links(message: s.Message) -> list[tuple[str, str]]:
         return []
     links = [("在方案页修改", plan_url(plan))]
     if plan.rule_fallback is not None:
-        links.append(("查看规则引擎方案", plan_url(plan.rule_fallback)))
+        links.append(("查看备选方案", plan_url(plan.rule_fallback)))
     return links
 
 
@@ -112,26 +112,26 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
                 [
                     message.title,
                     fields,
-                    f"这次改了什么：{message.changes}" if message.changes else "",
+                    f"本次调整：{message.changes}" if message.changes else "",
                     f"在方案页修改：{plan_url(message)}",
                 ],
             )
         )
         if message.rule_fallback is not None:
             fallback = message.rule_fallback
-            text += "\n规则引擎方案\n" + "\n".join(
+            text += "\n备选方案\n" + "\n".join(
                 f"{field.label}：{field.value}" for field in fallback.fields
             )
-            text += "\n与推荐方案的差别（推荐 → 规则引擎）\n" + "\n".join(
+            text += "\n与推荐方案对比\n" + "\n".join(
                 f"{field.label}：{field.value}" for field in fallback.differences
             )
-            text += f"\n查看规则引擎方案：{plan_url(fallback)}"
+            text += f"\n查看备选方案：{plan_url(fallback)}"
         return text, []
     if isinstance(message, s.ProfileEditCard):
         text = (
             f"直接修改画像：{message.employee_name}\n"
             + "\n\n".join(
-                f"{item.capability_name}\n修改前：{claim_text(s.Claim.model_validate(item.before)) if item.before else '暂无判断'}"
+                f"{item.capability_name}\n修改前：{claim_text(s.Claim.model_validate(item.before)) if item.before else '暂无记录'}"
                 f"\n修改后：{claim_text(s.Claim.model_validate(item.after))}"
                 for item in message.items
             )
@@ -143,13 +143,13 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
     if isinstance(message, s.ReviewCard):
         decisions = {d.item_id: d for d in message.decisions}
         text = (
-            f"审批决定复述（修订 {message.revision}）\n"
+            f"审批决定确认（第 {message.revision} 版）\n"
             + "\n\n".join(
                 f"第 {index + 1} 项：{item.after.capability.name}\n"
                 f"修改前：{claim_text(item.before)}\n修改后：{claim_text(item.after.after)}\n"
-                f"依据标题：{'、'.join(e.title for e in item.evidence) or '暂无'}\n"
-                + ("仅 Jira 来源（最多暂定）\n" if item.jira_only else "")
-                + f"决定：{LABELS[decisions[item.after.id].decision]}\n原因：{decisions[item.after.id].reason or '未填写'}"
+                f"相关记录：{'、'.join(e.title for e in item.evidence) or '暂无'}\n"
+                + ("仅来自 Jira，批准后为「暂定」\n" if item.jira_only else "")
+                + f"审批决定：{LABELS[decisions[item.after.id].decision]}\n说明：{decisions[item.after.id].reason or '未填写'}"
                 for index, item in enumerate(message.items)
             )
             + f"\n详情在网页审批页查看：{settings.FRONTEND_HOST.rstrip('/')}/reviews/{message.id}"
@@ -159,7 +159,7 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
         return text, [a.model_dump(mode="json") for a in message.actions]
     if isinstance(message, s.QuestionCard):
         return (
-            f"{'待确认问题' if message.status == 'open' else '问题已处理'}：{message.question}\n原因：{message.reason}",
+            f"{'待确认问题' if message.status == 'open' else '已回答'}：{message.question}\n原因：{message.reason}",
             [
                 {"action": a, "question_id": str(message.id)}
                 for a in message.actions[:3]
@@ -167,7 +167,7 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
         )
     if isinstance(message, s.PreviewCard):
         text = "改动预览\n" + "\n\n".join(
-            f"{item.after.capability.name}\n修改前：{item.before.statement if item.before else '暂无判断'}；等级：{(item.before.level_name or '未定级') if item.before else '未定级'}\n修改后：{item_text(item.after)}"
+            f"{item.after.capability.name}\n修改前：{item.before.statement if item.before else '暂无记录'}；等级：{(item.before.level_name or '未定级') if item.before else '未定级'}\n修改后：{item_text(item.after)}"
             + (f"\n{item.submission_notice}" if item.submission_notice else "")
             for item in message.items
         )
@@ -178,7 +178,7 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
             text += (
                 f"提交后由 {'、'.join(f'{r.name}（{r.role}）' for r in message.reviewers)}审批"
                 if message.reviewers
-                else "暂时没有可用的审批人，企业管理员会处理"
+                else "暂未配置部门审批人，将由企业管理员处理"
             )
         if len(text) > 12000:
             return "预览内容较长，请在网页查看完整内容并确认提交。", []
@@ -191,6 +191,6 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
             text += "\n" + (
                 f"待经理审批：{'、'.join(f'{r.name}（{r.role}）' for r in message.reviewers)}"
                 if message.reviewers
-                else "暂时没有可用的审批人，企业管理员会处理"
+                else "暂未配置部门审批人，将由企业管理员处理"
             )
     return text, [a.model_dump(mode="json") for a in message.actions[:3]]

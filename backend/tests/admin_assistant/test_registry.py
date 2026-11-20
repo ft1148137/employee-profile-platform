@@ -78,9 +78,9 @@ def test_web_parity(
             error = "找不到该记录"
             if (
                 name in ("list_projects", "get_project", "list_demands", "get_demand")
-                and response.json()["detail"] == "需求与容量模块未开启"
+                and response.json()["detail"] == "规划与负荷功能未开启"
             ):
-                error = "需求与容量功能已关闭，如需使用请先在能力与规则里开启"
+                error = "规划与负荷功能未开启，如需使用请先在负荷与需求规则中开启"
             assert result == {"data": {"error": error}}
             return
         assert response.status_code == 200, response.text

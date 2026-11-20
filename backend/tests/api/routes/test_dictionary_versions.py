@@ -172,7 +172,7 @@ def test_versions_preserve_records_remap_requests_and_block_stale_levels(
             json={"revision": current["revision"]},
         )
         assert invalid.status_code == 422
-        assert "等级 key" in invalid.json()["detail"][0]["message"]
+        assert "等级编码" in invalid.json()["detail"][0]["message"]
         changed = client.put(
             f"{base}/items",
             headers=auth["employee"],

@@ -21,8 +21,8 @@ from app.domains.model.models import ModelSetting
 from tests.domains.test_bot_core import enable as enable_model
 from tests.domains.test_im_gateway import principal
 
-ACK = "收到，正在处理，请稍等"
-WAIT = "还在处理，请再等一会儿"
+ACK = "收到，正在处理…"
+WAIT = "上一条消息还在处理中，请稍候。"
 
 
 @pytest.fixture(params=["feishu", "wecom"])

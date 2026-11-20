@@ -244,7 +244,7 @@ def test_feishu_fallback_plan_and_capacity_cards_keep_both_clickable_links(
             },
             {
                 "tag": "button",
-                "text": {"tag": "plain_text", "content": "查看规则引擎方案"},
+                "text": {"tag": "plain_text", "content": "查看备选方案"},
                 "url": f"https://profiles.example{plan_card.rule_fallback.link}",
             },
         ],

@@ -198,7 +198,7 @@ def test_classified_failure_path(
                 "result": {
                     "error": "工具参数不正确"
                     if failure == "parameters"
-                    else "未找到这条需求，或你没有权限查看。需求只有提出人、需求方部门经理和目标部门经理能查看，可以联系他们了解进度。"
+                    else "未找到该需求，或你无权查看（仅发起人及双方部门经理可见）。"
                 },
                 "is_error": False,
             }

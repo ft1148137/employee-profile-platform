@@ -31,10 +31,7 @@ from tests.domains.test_bot_core import enable
 from tests.domains.test_im_gateway import principal
 
 NOTICE = "确认后把答复发给需求方，不分配人员，不改其他承诺。"
-NOT_FOUND = (
-    "未找到这条需求，或你没有权限查看。"
-    "需求只有提出人、需求方部门经理和目标部门经理能查看，可以联系他们了解进度。"
-)
+NOT_FOUND = "未找到该需求，或你无权查看（仅发起人及双方部门经理可见）。"
 
 
 @pytest.fixture
@@ -366,5 +363,5 @@ def test_assignment_status_requires_current_formal_records(
             "read_coordination_context、get_approval_status、get_demand 不含正式分配名单"
             in prompt
         )
-        assert "未核实，请在网页「需求与容量」的「部门内分配」查看" in prompt
+        assert "未核实，请在网页的需求详情页查看「部门内分配」" in prompt
         assert "不要要求用户反复提供编号或链接" in prompt

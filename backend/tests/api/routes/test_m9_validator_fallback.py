@@ -131,7 +131,7 @@ def test_worse_recommendation_keeps_both_choices(
     assert fallback.link == f"{link}#case={case.id}&option={best.id}"
     assert comparison.link != fallback.link
     text, actions = render(comparison)
-    assert "规则引擎方案" in text and "不可行 → 可行" in text
+    assert "备选方案" in text and "不可行 → 可行" in text
     assert text.count(link) == 2
     assert f"#case={case.id}&option={option.id}" in text
     assert f"#case={case.id}&option={best.id}" in text
@@ -206,7 +206,7 @@ def test_equal_or_better_conclusion_has_no_fallback(
     )
     assert isinstance(cards[0], s.CapacityCard)
     assert cards[0].plan is None
-    assert "规则引擎方案" not in render(cards[0])[0]
+    assert "备选方案" not in render(cards[0])[0]
     assert tools.plan_card(option, case).rule_fallback is None
 
 

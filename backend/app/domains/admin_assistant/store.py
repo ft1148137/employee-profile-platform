@@ -79,7 +79,7 @@ def ensure_setup_session(db: Session, principal: Principal) -> None:
             AdminTurnResponse(
                 messages=[
                     TextMessage(
-                        text="欢迎！我会带你完成企业信息、名单、能力词典、员工账号、数据来源、账号匹配、模型、审批规则和初始画像设置。企业信息与模型是必做项，模型可以暂不配置。模型可用之前，先用下面的安全表单完成这两步；凭据不会发给模型。"
+                        text="欢迎使用。接下来我将带你一步步完成企业初始化，请先在下方填写企业名称并配置 AI 模型（模型可稍后再配，密钥加密直传不经过 AI）。"
                     ),
                     SetupChecklistCard(),
                     SetupFormCard(step="org_profile"),

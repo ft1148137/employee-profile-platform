@@ -175,7 +175,7 @@ def turn(
                                     None,
                                     [
                                         notice,
-                                        "机器人需要先配置模型，你也可以在画像页直接修改",
+                                        "工作助手需要先配置模型，你也可以在「我的画像」直接修改",
                                     ],
                                 )
                             ),
@@ -223,7 +223,7 @@ def turn(
     except pi_client.TurnCancelled:
         return s.TurnResponse(messages=[])
     except BotBusy:
-        message = "忙，请稍后再试"
+        message = "当前请求较多，请稍后再试"
     except BotDraftingPriority:
         message = "正在起草画像，请稍后再试"
     except BotRateLimited as error:
@@ -275,7 +275,7 @@ def act(
     session_id: UUID,
     action: s.Action,
     *,
-    client_name: str = "内置机器人",
+    client_name: str = "内置助手",
     commit: bool = True,
     web_project_confirmation: bool = False,
 ) -> s.TurnResponse:
@@ -293,7 +293,7 @@ def act(
         p = get_org_principal(p.org_id, user, db)
     session = store.get_session(db, p, session_id, lock=True)
     if session.lease_until and session.lease_until > utc_now():
-        return s.TurnResponse(messages=[s.TextMessage(text="忙，请稍后再试")])
+        return s.TurnResponse(messages=[s.TextMessage(text="当前请求较多，请稍后再试")])
     cards = [
         card
         for message in store.messages_for(db, session)
@@ -344,7 +344,7 @@ def act(
         if action.action == "continue_review":
             review = manager_tools.get_review(p, db, action.request_id)
             if review.revision != action.revision:
-                raise employee.RequestConflict("内容已变化，请重新查看")
+                raise employee.RequestConflict("内容已更新，请刷新查看")
             messages = [s.TextMessage(text="请告诉我需要修改的决定或原因")]
         else:
             manager_tools.decide_review_items(
@@ -376,14 +376,14 @@ def act(
         confirming = action.action == "confirm_submit"
         preview = employee.preview(p, db, action.request_id, for_submission=confirming)
         if preview.revision != action.revision:
-            raise employee.RequestConflict("内容已变化，请重新预览")
+            raise employee.RequestConflict("内容已更新，请重新预览")
         matching_cards = [
             c
             for c in cards
             if isinstance(c, (s.PreviewCard, s.StatusCard)) and action in c.actions
         ]
         if not matching_cards:
-            raise employee.RequestConflict("内容已变化，请重新预览")
+            raise employee.RequestConflict("内容已更新，请重新预览")
         immediate_retractions = {
             i.after.capability.key
             for i in preview.items

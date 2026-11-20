@@ -88,21 +88,18 @@ LOAD_WORDS = (
     "闲置",
     "余量",
 )
-DEMAND_NOT_FOUND = (
-    "未找到这条需求，或你没有权限查看。"
-    "需求只有提出人、需求方部门经理和目标部门经理能查看，可以联系他们了解进度。"
-)
+DEMAND_NOT_FOUND = "未找到该需求，或你无权查看（仅发起人及双方部门经理可见）。"
 
 
 class DemandReplyInvalid(HTTPException):
     def __init__(self) -> None:
-        super().__init__(422, "答复会发给对方部门，请不要写本部门员工的姓名")
+        super().__init__(422, "回复将发送给对方部门，请勿填写本部门员工姓名")
 
 
 class DemandReplyLoadInvalid(HTTPException):
     def __init__(self) -> None:
         super().__init__(
-            422, "答复会发给对方部门，不写负荷说法，只写能否承接、时间和条件"
+            422, "回复将发送给对方部门，请勿填写负荷描述，仅说明能否承接、时间及条件"
         )
 
 

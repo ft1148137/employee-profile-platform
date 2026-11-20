@@ -394,7 +394,7 @@ def test_download_is_bounded_and_closed(service: dict, case: str) -> None:
             assert incoming.attachment_error == (
                 "无法读取文件，请稍后重试"
                 if case == "network"
-                else "文件太大，图片最多 5 MiB，文件最多 10 MiB"
+                else "文件超出限制：图片不超过 5 MB，文件不超过 10 MB"
             )
             assert resource.reads == (
                 0 if case == "header" else 1 if case == "network" else 2
@@ -477,7 +477,7 @@ def test_email_binding(demo: tuple, db: Session, service: dict, case: str) -> No
             assert bool(rows) == (case == "match")
             body = json.loads(service["requests"][-1][1]["content"])["text"]
             assert body == (
-                "已按企业邮箱绑定，可以在网页的个人设置中解绑。请继续发送消息。"
+                "已自动绑定你的企业账号（可在网页「设置 → 连接与集成」解绑），请直接发消息即可。"
                 if case == "match"
                 else binding.GUIDE
             )
@@ -570,7 +570,7 @@ def test_turn_submit_withdraw(
             request = db.get(ProfileChangeRequest, row.action["request_id"])
             assert (request.status, request.client_name) == (
                 "pending_review",
-                "内置机器人（飞书）",
+                "内置助手（飞书）",
             )
             await pump(click(row))
             withdraw = next(
@@ -665,7 +665,7 @@ def test_review_card_confirmation(demo: tuple, db: Session, service: dict) -> No
                 adapter,
             )
             wire = json.dumps(service["requests"], ensure_ascii=False)
-            assert "审批决定复述" in wire and "确认决定" in wire and "继续修改" in wire
+            assert "审批决定确认" in wire and "确认决定" in wire and "继续修改" in wire
             assert "详情在网页审批页查看" in wire and "本人陈述" not in wire
             assert not db.exec(
                 select(ReviewDecision).where(ReviewDecision.org_id == p.org_id)

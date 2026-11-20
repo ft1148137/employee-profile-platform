@@ -63,7 +63,7 @@ def test_request_reviewers(
     if reviewers:
         assert all(row["name"] in text for row in reviewers)
     else:
-        assert "暂时没有可用的审批人，企业管理员会处理" in text
+        assert "暂未配置部门审批人，将由企业管理员处理" in text
     # The employee API and the shared profile API must agree on the projection.
     listed = employee.my_requests(owner, db).data
     assert (

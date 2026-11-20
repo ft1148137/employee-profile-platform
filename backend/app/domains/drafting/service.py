@@ -110,12 +110,12 @@ def postprocess(
             for source in stats.sources
         )
         latest = (
-            f"最近一次是 {stats.latest_evidence_at.astimezone(ZoneInfo('Asia/Shanghai')).date()}"
+            f"最近更新于 {stats.latest_evidence_at.astimezone(ZoneInfo('Asia/Shanghai')).date()}"
             if stats.latest_evidence_at
-            else "最近一次的时间未知"
+            else "最近更新时间未知"
         )
         item.explanation = (
-            f"依据 {stats.evidence_count} 项工作经历（同一项目在多个来源出现时合并计算），来自 {stats.source_count} 个来源（{names}），{latest}。"
+            f"依据 {stats.evidence_count} 项工作经历（来自 {stats.source_count} 个来源：{names}，{latest}）。"
             + item.explanation
         )
         result.append(item)
@@ -210,7 +210,7 @@ def write_initial_request(
         session.add(request)
         session.flush()
         notify(
-            session, request, InboxKind.INITIAL_REVIEW, "初始画像已起草，请过目后提交"
+            session, request, InboxKind.INITIAL_REVIEW, "初始画像已起草，请确认后提交"
         )
     else:
         request.revision += 1

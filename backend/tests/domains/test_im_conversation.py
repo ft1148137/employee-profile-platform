@@ -204,7 +204,7 @@ def test_telegram_turn_submit_withdraw(
             assert (request.status, request.submitted_via, request.client_name) == (
                 "pending_review",
                 "bot",
-                "内置机器人（Telegram）",
+                "内置助手（Telegram）",
             )
             db.refresh(row)
             assert row.consumed_at

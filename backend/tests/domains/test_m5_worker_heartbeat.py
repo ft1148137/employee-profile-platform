@@ -436,7 +436,8 @@ def test_gateway_delivers_alert_and_preserves_digest_copy(
     db.commit()
     asyncio.run(notifications.send_pending(engine, adapters))
     assert (
-        adapter.send_text.call_args.args[1] == "你有 3 条管理员待办，请在网页首页处理。"
+        adapter.send_text.call_args.args[1]
+        == "你有 3 条管理员待办，请前往网页「协同 → AI 助手（企业管理）」处理。"
     )
     # Queue another outage and revoke the role before delivery.
     db.add(WorkerHeartbeat(beat_at=utc_now() - timedelta(minutes=6)))

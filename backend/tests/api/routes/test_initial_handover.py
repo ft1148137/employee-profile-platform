@@ -87,7 +87,7 @@ def test_handover_eligibility(
     if expected:
         assert row.submitted_via == "admin_handover" and row.submitted_at
         assert audit[0].details == {"via": "admin_handover", "owner_reviewed": False}
-        assert "员工未过目" in inbox[0].message
+        assert "员工未确认" in inbox[0].message
         assert client.post(base, headers=auth["admin"]).json() == {"count": 0}
         result = client.post(
             f"{url}/me/requests/{row.id}/withdraw", headers=auth["employee"]

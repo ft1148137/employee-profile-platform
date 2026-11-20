@@ -22,7 +22,7 @@ def test_departed_create_is_actionable_only_for_target_manager(
         detail = (
             "未找到该企业或你没有权限访问"
             if role == "foreign"
-            else "未找到这条需求，或你没有权限查看。需求只有提出人、需求方部门经理和目标部门经理能查看，可以联系他们了解进度。"
+            else "未找到该需求，或你无权查看（仅发起人及双方部门经理可见）。"
             if role in ("w2", "cm")
             else "未找到该员工或申请"
         )
@@ -89,7 +89,7 @@ def test_departed_create_is_actionable_only_for_target_manager(
     db.commit()
     disabled_response = create(status=None)
     assert disabled_response.status_code == 404
-    assert disabled_response.json() == {"detail": "需求与容量模块未开启"}
+    assert disabled_response.json() == {"detail": "规划与负荷功能未开启"}
 
 
 def test_departed_outside_target_subtree_stays_hidden(case: tuple, db: Session) -> None:

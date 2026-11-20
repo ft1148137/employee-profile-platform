@@ -250,13 +250,13 @@ def _validate(
             if message:
                 messages.append(message)
         if capability is None:
-            messages.append("能力 key 不在当前启用的词典中")
+            messages.append("能力编码不在当前启用的词典中")
         elif item.level is not None:
             levels = (capability.level_rubric or {}).get("levels", [])
             if not isinstance(levels, list) or item.level not in {
                 v.get("key") for v in levels if isinstance(v, dict)
             }:
-                messages.append("等级 key 不在该能力的等级中")
+                messages.append("等级编码不在该能力的等级中")
         if item.capability_key in seen:
             messages.append("同一能力不能重复修改")
         seen.add(item.capability_key)
@@ -497,7 +497,7 @@ def submit(
         .with_for_update()
     ).one()
     if request.revision != revision:
-        raise RequestConflict("内容已变化，请重新预览")
+        raise RequestConflict("内容已更新，请重新预览")
     if request.status not in (RequestStatus.DRAFT, RequestStatus.PENDING_OWNER):
         raise RequestConflict()
     if request.origin == RequestOrigin.INITIAL_SYNC:

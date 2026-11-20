@@ -450,7 +450,7 @@ def test_offboard_stale_and_rollback(
     org.roster_revision += 1
     db.add(org)
     db.commit()
-    with pytest.raises(c.ChangeSetError, match="已变化"):
+    with pytest.raises(c.ChangeSetError, match="已更新"):
         c.apply(db, p, row.id, row.revision)
     row = propose(db, tenant, values)
     assert c.apply(db, p, row.id, row.revision).status == "draft"

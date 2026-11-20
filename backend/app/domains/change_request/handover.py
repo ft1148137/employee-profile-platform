@@ -72,7 +72,7 @@ def hand_over(
                 session,
                 request,
                 InboxKind.SUBMITTED,
-                f"初始画像满 {owner_review_days} 天未处理，管理员已送交经理审批（员工未过目），批准前你可以撤回",
+                f"初始画像超 {owner_review_days} 天未确认，管理员已送交经理审批（员工未确认），批准前你可以撤回",
             )
         if commit:
             session.commit()

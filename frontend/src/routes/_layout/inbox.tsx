@@ -17,15 +17,15 @@ export const Route = createFileRoute("/_layout/inbox")({
 })
 
 const kindLabels: Record<InboxKind, string> = {
-  capacity: "需求与容量",
-  profile_edited: "画像被直接修改",
-  initial_review: "初始画像待过目",
+  capacity: "协作与负荷",
+  profile_edited: "画像已更新",
+  initial_review: "初始画像待确认",
   question: "待确认问题",
-  submitted: "提交通知",
-  status_changed: "请求状态变化",
+  submitted: "画像申请已提交",
+  status_changed: "申请状态更新",
   admin_todos: "管理员待办",
   dictionary_changed: "能力词典已更新",
-  review_requested: "画像请求待审批",
+  review_requested: "画像待审批",
   decided: "画像审批结果",
 }
 
@@ -59,7 +59,7 @@ function capacityDestination(message: string) {
       search: { type: "workload" },
       label: "查看待审批",
     } as const
-  return { to: "/capacity", search: {}, label: "查看需求与容量" } as const
+  return { to: "/capacity", search: {}, label: "查看详情" } as const
 }
 
 function CapacityNoticeLink({
@@ -160,7 +160,7 @@ function QuestionAnswer({
         </p>
       )}
       <Button type="submit" disabled={!answer.trim() || mutation.isPending}>
-        {mutation.isPending ? "正在保存…" : "确认回答"}
+        {mutation.isPending ? "正在保存…" : "提交回答"}
       </Button>
     </form>
   )
@@ -207,9 +207,6 @@ function InboxContent({
         <Inbox className="mt-1 size-7 text-primary" aria-hidden="true" />
         <div>
           <h1 className="text-2xl font-semibold">收件箱</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            过目初始画像，补充本人经历，查看请求进展。
-          </p>
         </div>
       </header>
       {error && (
@@ -228,7 +225,7 @@ function InboxContent({
           </p>
           {!query.data.data.length && (
             <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
-              收件箱暂时没有消息。
+              暂无消息
             </p>
           )}
           <ul className="space-y-4">
@@ -250,7 +247,12 @@ function InboxContent({
                     ? item.message
                         .replace(trackingLink, "")
                         .replace(borrowLink, "")
-                    : item.message}
+                    : item.kind === "admin_todos"
+                      ? item.message.replace(
+                          /^(你有 \d+ 条管理员待办，)请在网页首页处理。$/,
+                          "$1请前往网页「协同 → AI 助手（企业管理）」处理。",
+                        )
+                      : item.message}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {item.question_id && (
@@ -264,7 +266,7 @@ function InboxContent({
                       {selected === item.id
                         ? "收起问题"
                         : item.done_at
-                          ? "查看回答状态"
+                          ? "查看回答"
                           : "回答问题"}
                     </Button>
                   )}
@@ -294,7 +296,7 @@ function InboxContent({
                             if (!item.read_at) read.mutate(item.id)
                           }}
                         >
-                          查看画像请求
+                          查看详情
                         </Link>
                       </Button>
                     )}

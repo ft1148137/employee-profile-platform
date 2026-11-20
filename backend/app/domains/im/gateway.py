@@ -227,7 +227,7 @@ class Gateway:
                 if bound:
                     await adapter.send_text(
                         event.external_chat_id,
-                        "已按企业邮箱绑定，可以在网页的个人设置中解绑。请继续发送消息。",
+                        "已自动绑定你的企业账号（可在网页「设置 → 连接与集成」解绑），请直接发消息即可。",
                     )
                     return
         loop = asyncio.get_running_loop()
@@ -241,7 +241,7 @@ class Gateway:
                     partial(self.enabled, event.org_id, event.platform, credentials)
                 ):
                     await adapter.send_text(
-                        event.external_chat_id, "还在处理，请再等一会儿"
+                        event.external_chat_id, "上一条消息还在处理中，请稍候。"
                     )
             except Exception:
                 logger.warning("IM processing reminder failed")
@@ -256,7 +256,7 @@ class Gateway:
             if finished or not enabled:
                 return
             reminder = asyncio.create_task(remind())
-            await adapter.send_text(event.external_chat_id, "收到，正在处理，请稍等")
+            await adapter.send_text(event.external_chat_id, "收到，正在处理…")
 
         def on_started() -> None:
             asyncio.run_coroutine_threadsafe(acknowledge(), loop).result()

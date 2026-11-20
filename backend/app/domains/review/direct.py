@@ -138,9 +138,9 @@ def _prepare(
             if message:
                 messages.append(message)
         if capability is None:
-            messages.append("能力 key 不在当前启用的词典中")
+            messages.append("能力编码不在当前启用的词典中")
         elif not level_exists(capability.level_rubric, item.level):
-            messages.append("等级 key 不在该能力的等级中")
+            messages.append("等级编码不在该能力的等级中")
         if item.capability_key in seen:
             messages.append("同一能力不能重复修改")
         seen.add(item.capability_key)

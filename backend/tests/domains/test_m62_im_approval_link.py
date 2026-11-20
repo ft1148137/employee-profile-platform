@@ -78,7 +78,7 @@ def test_capacity_approval_links_are_fixed_and_private(
     texts = [call.args[1] for call in adapter.send_text.await_args_list]
     approval_text = (
         notifications.REMINDERS[InboxKind.CAPACITY]
-        + "，在网页处理：https://example.com/capacity?tab=approvals"
+        + "，在网页处理：https://example.com/reviews?type=workload"
     )
     assert texts == [
         approval_text,

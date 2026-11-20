@@ -229,18 +229,14 @@ def _entry(
             message = validation_message(error)
             if message != "工具参数无效，请核对字段和格式":
                 raise ChangeSetError(message, 422) from None
-        if name in (
-            "draft_profiles_from_material",
-            "draft_roster_from_material",
-            "draft_dictionary_from_material",
-        ) and isinstance(error, ValidationError):
-            raise ChangeSetError(
-                "；".join(
-                    f"{'.'.join(map(str, e['loc']))}：{e['msg'] if name == 'draft_dictionary_from_material' else e['type']}（请按功能参数说明修改）"
-                    for e in error.errors()
-                ),
-                422,
-            ) from None
+            if name == "draft_dictionary_from_material":
+                errors = error.errors()
+                if any("等级编码重复" in issue["msg"] for issue in errors):
+                    raise ChangeSetError("等级编码重复", 422) from None
+                if any(issue["type"] == "string_pattern_mismatch" for issue in errors):
+                    raise ChangeSetError(
+                        "能力或等级编码格式有误，请使用小写字母、数字和下划线", 422
+                    ) from None
         raise ChangeSetError("参数不正确，请按功能说明填写", 422) from None
 
 
@@ -388,7 +384,7 @@ def _stale(db: Session, row: AdminChangeSet) -> None:
     row.updated_at = utc_now()
     db.add(row)
     db.commit()
-    raise ChangeSetError("内容已变化，请重新预览")
+    raise ChangeSetError("内容已更新，请重新预览")
 
 
 def apply(

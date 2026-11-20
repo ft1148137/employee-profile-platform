@@ -218,7 +218,7 @@ def test_upload_confirm_web_review_and_feishu_review(
             ImAction.action["action"].astext == "confirm_review",
         )
     ).one()
-    assert "审批决定复述" in "".join(adapter.sent)
+    assert "审批决定确认" in "".join(adapter.sent)
     assert f"/reviews/{request.id}" in "".join(adapter.sent)
     assert db.get(ProfileChangeRequest, request.id).status == "pending_review"
     asyncio.run(g.handle(button(incoming, row), "12345", setting.credentials, adapter))

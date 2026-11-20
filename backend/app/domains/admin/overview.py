@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 from sqlalchemy import func
@@ -15,6 +16,7 @@ from app.domains.drafting.service import read_progress
 from app.domains.drafting.settings import read_settings
 from app.domains.im.models import ImNotification, ImSetting
 from app.domains.model.models import ModelSetting
+from app.domains.org.timezone import read_timezone
 from app.domains.review.appeal import list_disputes
 from app.domains.setup.wizard import read_setup
 from app.domains.source.identities import list_identities
@@ -70,6 +72,7 @@ class AdminOverviewPublic(BaseModel):
 
 def build_overview(session: Session, principal: Principal) -> AdminOverviewPublic:
     org_id, now = principal.org_id, utc_now()
+    timezone = ZoneInfo(read_timezone(session, org_id).timezone)
     feishu = StatusCard(
         level="ok",
         fix_steps=[],
@@ -97,7 +100,7 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
             "warn",
             f"最近 24 小时有 {failed_notifications} 条通知发送失败",
         )
-        feishu.fix_steps = ["打开飞书设置，检查连接和机器人权限，再测试连接。"]
+        feishu.fix_steps = ["打开飞书设置，检查连接和应用权限，再测试连接。"]
 
     model = StatusCard(
         level="ok",
@@ -111,11 +114,11 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
     setting = session.get(ModelSetting, org_id)
     # shortcut: 模型测试结果没有保存，模型配错要等起草失败才在「自动起草」卡显示；需要时在测试接口记审计后再接上
     if setting is None or not setting.enabled:
-        model.level, model.summary = "error", "尚未启用模型，起草和机器人暂不可用"
+        model.level, model.summary = "error", "尚未启用模型，自动起草与 AI 助手暂不可用"
         model.fix_steps = ["打开模型设置，填写并启用模型，再测试连接。"]
     elif setting.paused_until and setting.paused_until > now:
         model.level = "warn"
-        model.summary = f"已暂停：{setting.pause_reason or '额度暂不可用'}；恢复时间：{setting.paused_until.isoformat()}"
+        model.summary = f"已暂停：{setting.pause_reason or '额度暂不可用'}；预计 {setting.paused_until.astimezone(timezone):%Y-%m-%d %H:%M} 恢复"
         model.fix_steps = ["检查模型额度，或等到恢复时间后再试。"]
 
     sync = StatusCard(
@@ -151,7 +154,9 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
         elif latest.status in ("queued", "running"):
             sync.summary = "正在同步"
         elif latest.finished_at:
-            sync.summary = f"同步已完成：{latest.finished_at.isoformat()}"
+            sync.summary = (
+                f"最近同步：{latest.finished_at.astimezone(timezone):%Y-%m-%d %H:%M}"
+            )
 
     progress = read_progress(session, org_id)
     drafting = StatusCard(
@@ -172,7 +177,7 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
     elif progress.paused_until and progress.paused_until > now:
         drafting.level, drafting.summary = (
             "warn",
-            f"起草已暂停，恢复时间：{progress.paused_until.isoformat()}",
+            f"起草已暂停，预计 {progress.paused_until.astimezone(timezone):%Y-%m-%d %H:%M} 恢复",
         )
         drafting.fix_steps = ["检查模型设置和额度，恢复后再起草。"]
     elif progress.failed:
@@ -215,9 +220,9 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
     add(
         "capability_proposals",
         proposal_count,
-        f"{proposal_count} 个新增能力的提议",
+        f"{proposal_count} 条新增能力建议",
         "/admin/rules?tab=dictionary#dictionary-editor",
-        "帮我查看新增能力的提议",
+        "帮我查看新增能力建议",
     )
     disputes = list_disputes(principal, session)
     add(
@@ -232,9 +237,9 @@ def build_overview(session: Session, principal: Principal) -> AdminOverviewPubli
     add(
         "initial_overdue",
         overdue,
-        f"{overdue} 人的初始画像超期未过目",
+        f"{overdue} 人的初始画像超期未确认",
         drafting.page,
-        "帮我处理超期未过目的初始画像",
+        "帮我处理超期未确认的初始画像",
     )
     backlog, oldest = session.exec(
         select(func.count(), func.min(ProfileChangeRequest.submitted_at)).where(

@@ -221,7 +221,7 @@ STEPS = [
     SetupStep(
         "initial_profiles",
         "生成初始画像",
-        "为员工生成待本人过目的初始画像",
+        "为员工生成待本人确认的初始画像",
         90,
         False,
         False,

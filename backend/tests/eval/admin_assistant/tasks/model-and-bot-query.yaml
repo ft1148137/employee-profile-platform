@@ -2,7 +2,7 @@ id: model-and-bot-query
 menu: data_ai
 steps:
   - type: say
-    text: 查询现在用什么模型、推理强度，以及内置机器人聊天保存多少天，只查询
+    text: 查询现在用什么模型、推理强度，以及内置助手聊天保存多少天，只查询
     expect: {reply_contains: [gpt-6.1-sol]}
 expect:
   unchanged: true

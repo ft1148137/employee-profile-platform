@@ -17,7 +17,7 @@ from tests.domains.test_im_gateway import principal
 from tests.utils.bot import final_response
 from tests.utils.pi import PiHarness
 
-DISABLED = "需求与容量功能已关闭，如需使用请联系企业管理员"
+DISABLED = "规划与负荷功能未开启，如需使用请联系企业管理员。"
 
 
 @pytest.mark.parametrize("channel", ["web", "feishu"])
@@ -93,12 +93,12 @@ def test_capacity_switch_updates_next_turn_prompt(
             messages = pi_service.requests[-1]["body"]["messages"]
             prompt = next(m["content"] for m in messages if m["role"] == "system")
             if enabled:
-                assert "需求与容量模块只使用当前可用的容量工具" in prompt
-                assert "请到网页「需求与容量」操作。" in prompt
+                assert "规划与负荷功能只使用当前可用的容量工具" in prompt
+                assert "请到网页「协作需求」详情操作。" in prompt
                 assert DISABLED not in prompt
             else:
                 assert DISABLED in prompt
-                assert "网页「需求与容量」" not in prompt
+                assert "请到网页「协作需求」详情操作。" not in prompt
                 assert "/capacity" not in prompt
                 assert "prepare_workload_request" not in prompt
     finally:

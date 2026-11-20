@@ -206,7 +206,7 @@ def answer_question(
         kind=EvidenceKind.SELF_REPORT,
         source="self_report:question",
         source_ref=str(question.id),
-        title="待确认问题的本人回答",
+        title="员工补充回答",
         content={"question": question.question, "text": answer},
         visibility=Visibility.RESTRICTED,
         provenance={"question_id": str(question.id), "user_id": str(principal.user_id)},

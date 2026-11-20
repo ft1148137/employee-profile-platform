@@ -95,25 +95,25 @@ def import_profiles(
     }
     seen: set[str] = set()
     for index, person in enumerate(people, 1):
-        prefix = f"第 {index} 个人"
+        prefix = f"第 {index} 人"
         email = person.employee_email.casefold()
         if email in seen:
-            errors.append(f"{prefix} employee_email：同一批里邮箱不能重复")
+            errors.append(f"{prefix}（邮箱）：同一批里邮箱不能重复")
         seen.add(email)
         if email not in subjects:
-            errors.append(f"{prefix} employee_email：不是本企业在职员工")
+            errors.append(f"{prefix}（邮箱）：不是本企业在职员工")
         elif subjects[email].id == principal.employee_id:
-            errors.append(f"{prefix} employee_email：不能直接修改自己的画像")
+            errors.append(f"{prefix}（邮箱）：不能直接修改自己的画像")
         keys: set[str] = set()
         for index, item in enumerate(person.items, 1):
             capability = capabilities.get(item.capability_key)
             label = f"{prefix} 第 {index} 项"
             if capability is None:
-                errors.append(f"{label} capability_key：能力 key 不在当前启用的词典中")
+                errors.append(f"{label} 能力编码不在当前词典中")
             elif not level_exists(capability.level_rubric, item.level):
-                errors.append(f"{label} level：等级 key 不在该能力的等级中")
+                errors.append(f"{label} 等级编码无效")
             if item.capability_key in keys:
-                errors.append(f"{label} capability_key：同一能力不能重复修改")
+                errors.append(f"{label} 能力编码：同一能力不能重复修改")
             keys.add(item.capability_key)
     if errors:
         raise InvalidImport(errors)

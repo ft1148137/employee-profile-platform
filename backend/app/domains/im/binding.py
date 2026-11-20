@@ -27,7 +27,7 @@ from app.domains.org.models import (
 )
 from app.domains.org.service import EmployeeNotFound, visible_employee
 
-GUIDE = "请在网页的个人设置中生成绑定码，再私聊发送「绑定 123456」。"
+GUIDE = "请在网页「设置 → 连接与集成」生成绑定码，再私聊发送「绑定 123456」。"
 
 
 def _lock(db: Session, org_id: UUID) -> None:

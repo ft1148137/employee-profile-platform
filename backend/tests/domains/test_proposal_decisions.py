@@ -270,7 +270,7 @@ def test_assistant_dismiss_undo_and_stale(db: Session, demo: tuple) -> None:
         ],
     )
     dismiss_proposal(db, p, row.id)
-    with pytest.raises(c.ChangeSetError, match="内容已变化"):
+    with pytest.raises(c.ChangeSetError, match="内容已更新"):
         c.apply(db, p, stale.id, stale.revision)
 
 

@@ -88,7 +88,7 @@ class DictionaryRubric(BaseModel):
     @model_validator(mode="after")
     def unique_levels(self) -> DictionaryRubric:
         if len({v.key for v in self.levels}) != len(self.levels):
-            raise ValueError("等级 key 重复")
+            raise ValueError("等级编码重复")
         return self
 
 
@@ -110,7 +110,7 @@ class SaveDictionary(BaseModel):
     @model_validator(mode="after")
     def unique_keys(self) -> SaveDictionary:
         if len({v.key for v in self.definitions}) != len(self.definitions):
-            raise ValueError("能力 key 重复")
+            raise ValueError("能力编码重复")
         return self
 
 

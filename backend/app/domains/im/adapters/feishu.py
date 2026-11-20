@@ -201,13 +201,13 @@ class Feishu:
                         raise AttachmentError("无法读取文件，请稍后重试")
                     if int(response.headers.get("content-length", "0")) > limit:
                         raise AttachmentError(
-                            "文件太大，图片最多 5 MiB，文件最多 10 MiB"
+                            "文件超出限制：图片不超过 5 MB，文件不超过 10 MB"
                         )
                     data = bytearray()
                     async for chunk in response.aiter_bytes(64 * 1024):
                         if len(data) + len(chunk) > limit:
                             raise AttachmentError(
-                                "文件太大，图片最多 5 MiB，文件最多 10 MiB"
+                                "文件超出限制：图片不超过 5 MB，文件不超过 10 MB"
                             )
                         data.extend(chunk)
         except httpx.HTTPError, ValueError:

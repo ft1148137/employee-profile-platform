@@ -149,7 +149,7 @@ def draft_impact(db: Session, p: Principal, args: Any) -> BaseModel:
                     pending_owner_only=redraft,
                 )
             ),
-            "text": "起草期间管理助手暂时不能用，可以先用手工页面",
+            "text": "起草期间管理助手暂时不能用，你也可以直接在对应页面操作",
         }
     )
 
@@ -291,7 +291,7 @@ def register_rules(functions: dict[str, AdminFunction]) -> None:
             "home",
             "change",
             "normal",
-            "将超期未过目的初始画像送交经理审批，不能撤销",
+            "将超期未确认的初始画像送交经理审批，不能撤销",
             NoArgs,
             handover,
             "/admin/data-ai?tab=model",
