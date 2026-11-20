@@ -99,10 +99,9 @@ test("经理在团队负荷页看到当前参考和正式答复的口径说明",
   await page.goto("/capacity")
   await page.getByRole("link", { name: "团队负荷", exact: true }).click()
   await expect(
-    page.getByText(
-      "这里按周显示本周和后面 7 周经理确认的投入比例，只是参考，不是排班承诺；能否承接以部门经理的正式答复为准。",
-      { exact: true },
-    ),
+    page.getByText("展示未来 8 周的投入参考，实际承接以部门经理答复为准。", {
+      exact: true,
+    }),
   ).toBeVisible()
 
   const chart = page.getByRole("table", { name: "团队负荷，按部门、姓名排序" })

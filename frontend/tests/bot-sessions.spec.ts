@@ -22,7 +22,7 @@ test("employee resumes either conversation after reload and in a new tab", async
   await expect(dialog.getByText("暂无历史对话")).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath("empty-history.png") })
   await expect(
-    dialog.getByText("对话在 2 小时没有活动后会被清除", { exact: false }),
+    dialog.getByText("闲置 2 小时后自动清除", { exact: false }),
   ).toBeVisible()
   const send = async (text: string) => {
     await dialog.getByLabel("发给助手的消息").fill(text)
@@ -282,7 +282,7 @@ async function checkSwitching(
     })
     .click()
   await expect(
-    dialog.getByRole("status").filter({ hasText: "这段对话已过期被清除" }),
+    dialog.getByRole("status").filter({ hasText: "原对话已过期" }),
   ).toHaveText("原对话已过期，已为你开启新对话")
   await expect(input).toBeEnabled()
   await expect(input).toHaveValue("")

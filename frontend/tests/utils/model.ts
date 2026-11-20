@@ -425,7 +425,7 @@ export const test = base.extend<{ modelUrl: string }>({
 export async function configureModel(page: Page, modelUrl: string) {
   await page.getByLabel("模型类型").selectOption("openai_compatible")
   await page.getByLabel("启用模型").check()
-  await page.getByLabel("模型名", { exact: true }).fill("synthetic")
+  await page.getByLabel("模型名称", { exact: true }).fill("synthetic")
   await page.getByLabel(/base URL/).fill(modelUrl)
   await page.getByLabel("密钥", { exact: false }).first().fill("synthetic-key")
   await page.getByRole("button", { name: "保存", exact: true }).click()

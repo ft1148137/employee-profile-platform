@@ -197,7 +197,9 @@ test("confirm candidates in bulk, select employee, unlink and save optional setu
   ).toContainText(first.candidate!.display_name)
   const firstRow = page.getByRole("row").filter({ hasText: first.external_id })
   await firstRow.getByRole("button", { name: "解除关联" }).click()
-  await expect(dialog).toContainText("并留下记录。可以重新关联。")
+  await expect(dialog).toContainText(
+    "产生的记录将从该员工画像中移除（可随时重新关联）",
+  )
   await dialog.getByRole("button", { name: "取消", exact: true }).click()
   await expect(firstRow).toBeVisible()
   await firstRow.getByRole("button", { name: "解除关联" }).click()

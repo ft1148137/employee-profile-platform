@@ -246,7 +246,7 @@ test("需求理解卡、经理方案卡和模型失败后的手工答复", async
     await panel.getByRole("button", { name: "发送", exact: true }).click()
     const demandCard = panel.getByRole("region", { name: "提交部门需求" })
     await expect(demandCard).toContainText("人数是否确定？")
-    await expect(demandCard).toContainText("人数：1请确认")
+    await expect(demandCard).toContainText("人数：1待确认")
     await demandCard.getByRole("button", { name: "确认", exact: true }).click()
     await expect(demandCard.last().getByRole("status")).toContainText(
       "需求已提交",

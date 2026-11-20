@@ -34,7 +34,9 @@ test("administrator reads capability, Jira evidence and earlier published snapsh
   await expect(api.getByText("已确认", { exact: true })).toBeVisible()
   await expect(api.getByText("审批状态", { exact: true })).toHaveCount(0)
   await expect(
-    page.getByRole("article").filter({ hasText: "未知：暂无足够证据" }),
+    page
+      .getByRole("article")
+      .filter({ hasText: "暂无记录（不代表不具备该能力）" }),
   ).toHaveCount(2)
   await expect(page.getByText("证据质量", { exact: true })).toHaveCount(0)
   await expect(page.getByText("本部门暂未配置常用能力")).toBeVisible()
@@ -45,7 +47,9 @@ test("administrator reads capability, Jira evidence and earlier published snapsh
     api.getByText("能独立完成复杂任务", { exact: true }),
   ).toBeVisible()
   await api.locator('[data-slot="tooltip-trigger"]').hover()
-  await expect(page.getByRole("tooltip")).toContainText("不是经过校准的概率")
+  await expect(page.getByRole("tooltip")).toContainText(
+    "参考把握度，并非精确概率",
+  )
   await page.keyboard.press("Escape")
   await expect(page.getByRole("tooltip")).toHaveCount(0)
   await page.screenshot({

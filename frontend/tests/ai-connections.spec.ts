@@ -5,7 +5,7 @@ import { logInUser } from "./utils/user"
 test.use({ storageState: { cookies: [], origins: [] } })
 
 const httpNotice =
-  "你现在是用 HTTP 地址打开的，只适合在部署平台的这台电脑上测试；外部 AI 客户端需要 HTTPS 地址，请向部署平台的人要正式网址。"
+  "当前为 HTTP 地址，外部工具连接需使用 HTTPS 正式地址，请联系部署人员获取。"
 
 test("HTTPS connection examples do not show the local HTTP notice", async ({
   page,

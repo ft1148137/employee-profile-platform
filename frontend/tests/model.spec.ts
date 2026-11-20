@@ -140,10 +140,10 @@ test("ChatGPT authorization callback, connection and disconnect", async ({
   await page.goto("/admin/model")
   await page.getByLabel("模型类型").selectOption("chatgpt_subscription")
   for (const text of [
-    "官方计划",
-    "每周两种用量上限",
+    "通过 ChatGPT 订阅账号接入",
+    "5 小时及每周用量限制",
     "数据控制",
-    "建议用 Business/Enterprise",
+    "建议使用 Business/Enterprise",
   ])
     await expect(page.getByText(text, { exact: false })).toBeVisible()
   await page.getByRole("button", { name: "连接 ChatGPT", exact: true }).click()

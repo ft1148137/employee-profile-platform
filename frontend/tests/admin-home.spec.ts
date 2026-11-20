@@ -242,7 +242,7 @@ test("assistant shows status and appeal todo through resubmission", async ({
   await expect(page.locator("tbody tr")).toHaveCount(1)
   await page.goto(`/employees/${subject.id}?tab=appeals`)
   await expect(
-    page.getByRole("heading", { name: "争议", exact: true }),
+    page.getByRole("heading", { name: "申诉与争议", exact: true }),
   ).toBeVisible()
   await expect(
     page.getByText("申诉原因：本人希望补充独立完成的合成依据"),

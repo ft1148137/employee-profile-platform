@@ -141,7 +141,7 @@ test("old initial draft previews the current value and submits an edited proposa
   const dialog = page.getByRole("dialog")
   await expect(dialog).toContainText("经理已发布的当前判断")
   await expect(dialog).toContainText(
-    "经理或管理员已在 2026/11/14 16:00:00（北京时间）修改过这项",
+    "该项已于 2026/11/14 16:00:00 被更新，本次提交将基于最新内容送审。",
   )
   await dialog.getByRole("button", { name: "返回修改" }).click()
   await dialog

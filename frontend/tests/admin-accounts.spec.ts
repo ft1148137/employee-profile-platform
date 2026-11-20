@@ -83,7 +83,7 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
   expect(download.suggestedFilename()).toMatch(/^账号-.*\.xlsx$/)
   expect(await download.failure()).toBeNull()
   await expect(dialog).toContainText("已生成 2 个账号。")
-  await expect(dialog).toContainText("账号文件只能下载这一次")
+  await expect(dialog).toContainText("账号表仅支持下载一次")
   await expectChineseCopy(page)
   await page.screenshot({
     path: "test-results/admin-accounts-issued.png",
@@ -120,9 +120,7 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
   await page.getByRole("checkbox", { name: "选择 E04", exact: true }).check()
   await page.getByRole("button", { name: "发放账号（已选 1 人）" }).click()
   await dialog.getByRole("button", { name: "确认生成并下载" }).click()
-  await expect(dialog.getByRole("alert")).toContainText(
-    "有冲突时这一批都没有生成",
-  )
+  await expect(dialog.getByRole("alert")).toContainText("本次未发放任何账号")
   await expect(
     dialog.getByRole("row").filter({ hasText: "邮箱已被占用" }),
   ).toContainText("E04")

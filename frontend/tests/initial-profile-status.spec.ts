@@ -6,7 +6,7 @@ test.use({ storageState: { cookies: [], origins: [] } })
 
 for (const [status, reason] of [
   ["no_records", "还没有你的工作记录"],
-  ["no_judgment", "起草时定不了等级"],
+  ["no_judgment", "现有记录暂不足以评估等级"],
 ] as const) {
   test(`empty profile explains ${status} and guides the employee`, async ({
     page,
@@ -46,7 +46,9 @@ for (const [status, reason] of [
       page.getByRole("button", { name: "添加能力", exact: true }),
     ).toBeVisible()
     await expect(page.getByText("已生成")).toHaveCount(0)
-    await explanation.getByRole("link", { name: "去助手", exact: true }).click()
+    await explanation
+      .getByRole("link", { name: "「AI 助手」", exact: true })
+      .click()
     await expect(page).toHaveURL(/\/assistant/)
   })
 }

@@ -228,7 +228,7 @@ test("小样本隐藏及零依据时选择本部门其他员工", async ({ page,
   await open(m, `incoming&demand=${demand.id}`)
   const assignment = page.getByRole("region", { name: "部门内分配" })
   await expect(assignment).toContainText(
-    "依据中达到要求的有 0 人，需要 2 人。可以从本部门其他在职员工中选择；选择不会改变画像，也不会改变依据人数，需求方看到的内容不变。",
+    "符合画像条件的有 0 人（需 2 人），也可按实际需要选择部门内其他员工，不影响画像数据。",
   )
   const group = assignment.locator('optgroup[label="本部门其他员工"]')
   await expect(group.locator("option")).toHaveCount(3)

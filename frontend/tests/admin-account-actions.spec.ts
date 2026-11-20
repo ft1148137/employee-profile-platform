@@ -114,7 +114,7 @@ test("reset password once, disable and enable employee accounts", async ({
     const secret = (await reset.json()).initial_password
     await row("E09").getByRole("button", { name: "更多", exact: true }).click()
     await page.getByRole("menuitem", { name: "停用", exact: true }).click()
-    await expect(dialog).toContainText("停用后这名员工不能登录，画像和证据保留")
+    await expect(dialog).toContainText("将无法登录，已有画像和记录会保留")
     await expectChineseCopy(page)
     await page.screenshot({
       path: "test-results/admin-disable-account.png",

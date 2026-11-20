@@ -403,7 +403,9 @@ for (const role of ["manager", "admin"] as const) {
         .getByRole("combobox", { name: /^等级/ })
         .selectOption("advanced")
       await dialog.getByRole("button", { name: "预览修改" }).click()
-      await expect(dialog).toContainText("直接发布，不需要本人同意，会通知本人")
+      await expect(dialog).toContainText(
+        "提交后直接生效并通知本人，无需本人确认。",
+      )
       await expect(
         dialog.getByRole("region", { name: "修改前" }),
       ).toContainText("独立完成")

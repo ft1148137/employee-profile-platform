@@ -163,7 +163,7 @@ test("preview work records in chat, repair errors and confirm", async ({
   await page.getByRole("button", { name: "上传并预览" }).click()
   const preview = page.getByRole("region", { name: "文件预览" }).last()
   await expect(preview).toContainText("记录条数")
-  await expect(preview).toContainText("导入状态")
+  await expect(preview.getByRole("heading", { name: "导入预览" })).toBeVisible()
   const card = page.getByRole("region", { name: "设置改动确认卡" })
   await expect(card.getByRole("status")).toHaveText("待确认")
   await page.reload()

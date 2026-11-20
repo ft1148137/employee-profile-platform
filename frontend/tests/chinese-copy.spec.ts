@@ -11,11 +11,13 @@ test("copy checker rejects English and ignores hidden content and allowed terms"
   page,
 }) => {
   await page.setContent(
-    "<p>中文 Excel CSV HTTPS Jira PDF xlsx</p><p hidden>Hidden</p>",
+    "<p>中文 Excel CSV HTTPS Jira PDF xlsx</p><button>导出画像（JSON）</button><p hidden>Hidden</p>",
   )
   await expectChineseCopy(page)
-  await page.setContent("<p>Unexpected English</p>")
-  await expect(expectChineseCopy(page)).rejects.toThrow(/Unexpected.*English/)
+  await page.setContent("<p>Unexpected English JSON</p>")
+  await expect(expectChineseCopy(page)).rejects.toThrow(
+    /Unexpected.*English.*JSON/,
+  )
 })
 
 test("login and not-found copy is Chinese", async ({ page }) => {

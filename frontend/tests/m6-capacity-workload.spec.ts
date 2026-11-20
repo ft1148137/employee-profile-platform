@@ -161,7 +161,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     await page.getByLabel("申请负荷（%）").fill(percent)
     await page.getByLabel("申请原因").fill(reason)
     await page.getByRole("button", { name: "提交申请", exact: true }).click()
-    await expect(page.getByRole("status")).toContainText("已有申请待处理")
+    await expect(page.getByRole("status")).toContainText("当前有申请正在审批中")
     await expect(
       page
         .getByRole("region", { name: "每周投入" })
@@ -225,7 +225,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     .filter({ hasText: "合成员工" })
     .getByRole("button", { name: "设置", exact: true })
     .click()
-  await expect(page.getByRole("dialog")).toContainText("改后会通知本人")
+  await expect(page.getByRole("dialog")).toContainText("保存后通知本人")
   await expect(page.getByLabel("调整说明（选填）")).toHaveCount(0)
   const firstWeek = await page
     .getByLabel("开始周", { exact: true })
@@ -351,7 +351,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     .fill(friday.toISOString().slice(0, 10))
   await dates.getByRole("button", { name: "登记", exact: true }).click()
   await expect(dates.getByRole("status")).toContainText(
-    "这几周已有分配超出可用，请和部门经理沟通",
+    "以下周次已有任务超出可用负荷，请与部门经理协调",
   )
   await dates.getByRole("button", { name: "删除", exact: true }).click()
   await expect(

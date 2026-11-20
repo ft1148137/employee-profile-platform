@@ -77,7 +77,7 @@ test("reminder settings persist and stale badges follow profile data", async ({
     await expect(
       page
         .getByRole("article")
-        .filter({ hasText: "未知：暂无足够证据" })
+        .filter({ hasText: "暂无记录（不代表不具备该能力）" })
         .getByText("证据较旧"),
     ).toHaveCount(0)
     await expectChineseCopy(page)

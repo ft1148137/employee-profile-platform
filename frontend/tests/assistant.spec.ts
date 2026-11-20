@@ -318,5 +318,5 @@ test("manager without employee identity keeps the team landing and cannot start 
       .getByRole("link", { name: "AI 助手", exact: true }),
   ).toHaveCount(0)
   await page.goto("/assistant")
-  await expect(page.getByRole("alert")).toContainText("没有员工身份")
+  await expect(page.getByRole("alert")).toContainText("当前账号未绑定员工身份")
 })

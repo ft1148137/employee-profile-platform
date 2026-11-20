@@ -229,7 +229,9 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
     "达到要求的有 4 人；各人负荷只有对方部门经理能看到",
   )
   await expect(reference).not.toContainText(/有余量|基本满|超负荷|未确认/)
-  await expect(reference).toContainText("这只是参考，不是承诺")
+  await expect(reference).toContainText(
+    "仅供参考，能否承接以目标部门经理正式答复为准。",
+  )
   await page.getByLabel("最低等级").selectOption("advanced")
   await expect(reference).toContainText("达到要求的有 0 人")
   await page.getByLabel("最低等级").selectOption("routine")
@@ -288,7 +290,7 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
       await page.getByLabel("答复说明").fill(`由${privateNames[0]}完成`)
       await page.getByRole("button", { name: "确认发送答复" }).click()
       await expect(page.getByRole("alert")).toContainText(
-        "请不要写本部门员工的姓名",
+        "请勿填写本部门员工姓名",
       )
     }
     await page

@@ -288,7 +288,7 @@ async function acceptInAssistant({
     await panel.getByLabel("发给助手的消息").fill("请准备接受借调方案")
     await panel.getByRole("button", { name: "发送", exact: true }).click()
     const card = panel.getByRole("region", { name: "回应部门需求" })
-    await expect(card).toContainText("预占到期时间")
+    await expect(card).toContainText("暂留截止")
     await expect(panel.getByText(/https:\/\/example\.invalid/)).toBeVisible()
     await expect(
       panel.getByRole("link", { name: /example\.invalid/ }),
@@ -452,11 +452,11 @@ for (const approve of [true, false]) {
       ).toBeVisible()
       if (approve) {
         await card.getByRole("button", { name: "同意", exact: true }).click()
-        await expect(card).not.toContainText("等待你确认")
+        await expect(card).not.toContainText("待你确认")
         await open(employee, "tab=mine")
         await expect(
           page.getByRole("region", { name: "借调请求", exact: true }),
-        ).toContainText("等待承诺生效")
+        ).toContainText("等待生效")
         await acceptInAssistant({ page, baseURL, setupResult })
         await open(a, outgoing)
         await expect(proposal).toContainText("借调已生效")

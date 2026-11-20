@@ -294,7 +294,7 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
   )
   await page.getByLabel("给对方部门的说明").fill("合成研发甲需要更多时间")
   await page.getByRole("button", { name: "同意延期", exact: true }).click()
-  await expect(page.getByRole("alert")).toContainText("请不要写本部门员工")
+  await expect(page.getByRole("alert")).toContainText("请勿填写本部门员工姓名")
   await page.getByLabel("给对方部门的说明").fill("接口变更，需要延后交付")
   await page.getByRole("button", { name: "同意延期", exact: true }).click()
   await expect(page.getByRole("region", { name: "延期审批" })).toContainText(

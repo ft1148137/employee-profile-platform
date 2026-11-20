@@ -101,7 +101,7 @@ test("值班经理在设置页看到实际审批人，授权为审批人后不�
   await expect(panel).toContainText("合成直属下属（工号：REPORT）")
   await expect(panel).toContainText("由 合成部门经理（部门经理）审批")
   await expect(panel).toContainText(
-    "你没有团队查看和审批权限，需要的话请找企业管理员",
+    "如需开通团队管理与审批权限，请联系企业管理员。",
   )
   expect(
     (

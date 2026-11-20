@@ -171,7 +171,7 @@ test("missing and invalid initialization links and uninitialized login hint", as
     route.fulfill({ json: { initialized: false } }),
   )
   await page.goto("/login")
-  await expect(page.getByRole("status")).toContainText("系统还没有初始化")
+  await expect(page.getByRole("status")).toContainText("系统尚未初始化")
   await expectChineseCopy(page)
 })
 

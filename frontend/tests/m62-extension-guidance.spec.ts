@@ -172,11 +172,11 @@ test("延期显示审批人、受阻指引和代理标示，代理给目标经�
   })
   await open(tokens.get("C")!, "/capacity?tab=approvals")
   const extension = page.getByRole("form", { name: "合成员工的延期申请" })
-  await expect(extension).toContainText("需要 合成目标经理 确认")
+  await expect(extension).toContainText("需由 合成目标经理 确认")
   await expect(extension).toContainText(
-    "在「设置 → 代理审批」把审批代理给 合成目标经理",
+    "在「设置 → 偏好与代理」中授权其代理审批",
   )
-  await expect(extension).toContainText("2026-12-31 或之前再申请")
+  await expect(extension).toContainText("2026-12-31 及之前")
   const delegate = async (code: string) => {
     await page.goto("/settings")
     await page.getByRole("link", { name: "偏好与代理", exact: true }).click()

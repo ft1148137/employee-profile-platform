@@ -207,7 +207,7 @@ for (const admin of [false, true]) {
       ).toBeVisible()
     } else {
       await expect(otherDepartment).toHaveCount(0)
-      await expect(results).toContainText("未知不等于不会")
+      await expect(results).toContainText("未显示不代表不具备该能力")
     }
 
     await ability.selectOption({ label: "后端 API 开发" })
@@ -256,7 +256,7 @@ test("manager without an employee account can still open the read-only search", 
     page.getByRole("form", { name: "按能力找人（只读筛选）" }),
   ).toBeVisible()
   await expect(
-    page.getByRole("alert").filter({ hasText: "当前账号没有员工身份" }),
+    page.getByRole("alert").filter({ hasText: "当前账号未绑定员工身份" }),
   ).toBeVisible()
 })
 

@@ -376,7 +376,9 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     await other.close()
     await editor.getByRole("button", { name: "确认提交", exact: true }).click()
     await expect(editor).toContainText("内容已更新，请重新预览")
-    await editor.getByRole("button", { name: "重新预览", exact: true }).click()
+    await editor
+      .getByRole("button", { name: "重新预览最新内容", exact: true })
+      .click()
     await expect(editor).toContainText("另一标签页补充的最新经历")
     await editor.getByRole("button", { name: "确认提交", exact: true }).click()
     await expect(editor).toHaveCount(0)
@@ -582,9 +584,7 @@ for (const username of [
       page.getByRole("region", { name: "初始画像起草进度", exact: true }),
     ).toHaveCount(0)
     await page.goto("/admin/data-ai?tab=sources")
-    await expect(page.getByRole("alert")).toContainText(
-      "只有企业管理员可以操作",
-    )
+    await expect(page.getByRole("alert")).toHaveText("需要企业管理员权限")
     await expect(
       page.getByRole("region", { name: "同步记录", exact: true }),
     ).toHaveCount(0)
