@@ -27,6 +27,7 @@ const filters = [
 export function CapabilityList({
   items,
   onEvidence,
+  onViewVersions,
   pendingCapabilityIds,
   onEdit,
   departmentConfigured,
@@ -39,6 +40,7 @@ export function CapabilityList({
   compact?: boolean
   items: ProfileItem[]
   onEvidence: (id: string) => void
+  onViewVersions?: () => void
   pendingCapabilityIds?: Set<string>
   onEdit?: (item: ProfileItem, retract?: boolean) => void
   departmentConfigured?: boolean
@@ -169,6 +171,7 @@ export function CapabilityList({
                         directEdit={directEdit}
                         onEdit={onEdit}
                         onEvidence={onEvidence}
+                        onViewVersions={onViewVersions}
                         appeals={appeals}
                       />
                     </h3>

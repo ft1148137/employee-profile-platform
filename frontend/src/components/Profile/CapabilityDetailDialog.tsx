@@ -26,6 +26,7 @@ export function CapabilityDetailDialog({
   directEdit,
   onEdit,
   onEvidence,
+  onViewVersions,
   appeals,
 }: {
   item: ProfileItem
@@ -33,6 +34,7 @@ export function CapabilityDetailDialog({
   directEdit: boolean
   onEdit?: (item: ProfileItem, retract?: boolean) => void
   onEvidence: (id: string) => void
+  onViewVersions?: () => void
   appeals?: { orgId: string; requests: ChangeRequestPublic[] }
 }) {
   const [open, setOpen] = useState(false)
@@ -136,6 +138,20 @@ export function CapabilityDetailDialog({
               />
             </div>
           </section>
+        )}
+        {onViewVersions && (
+          <Button
+            type="button"
+            size="sm"
+            variant="link"
+            className="self-start px-0"
+            onClick={() => {
+              setOpen(false)
+              onViewVersions()
+            }}
+          >
+            查看版本历史
+          </Button>
         )}
         {open &&
           appeals?.requests.flatMap((request) =>
