@@ -5,6 +5,7 @@ import secrets
 from dataclasses import replace
 from datetime import timedelta
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
@@ -394,8 +395,17 @@ def test_human_confirms_proposal_then_acceptance(
         assert person.display_name not in raw and str(person.id) not in raw
     assert any(isinstance(m, s.CapacityCard) for m in turn.messages), turn
     card = next(m for m in turn.messages if isinstance(m, s.CapacityCard))
-    for label in ("人数", "投入", "开始", "结束", "条件", "到期", "锁定并生成分配"):
+    for label in (
+        "人数",
+        "投入",
+        "开始",
+        "结束",
+        "完整条件请前往需求详情查看",
+        "锁定并生成分配",
+    ):
         assert label in card.content
+    cutoff = pending.proposal.hold_expires_at.astimezone(ZoneInfo("Asia/Shanghai"))
+    assert f"暂留截止：{cutoff:%Y-%m-%d %H:%M}" in card.content
     href = f"/capacity?tab=outgoing&demand={row.id}"
     assert card.detail_link == s.CardLink(label="查看需求详情", href=href)
     assert href not in card.content
