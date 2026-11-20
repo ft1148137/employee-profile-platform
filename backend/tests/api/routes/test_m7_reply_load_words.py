@@ -60,9 +60,9 @@ REPLY = {
 
 @pytest.fixture
 def case(
-    demo: tuple, db: Session, client: TestClient, match_count: int
+    minimal_demo: tuple, db: Session, client: TestClient, match_count: int
 ) -> Generator[tuple]:
-    url, people, auth = demo
+    url, people, auth = minimal_demo
     org_id = people["E01"].org_id
     target = Department(org_id=org_id, name="合成承接部门")
     db.add(target)

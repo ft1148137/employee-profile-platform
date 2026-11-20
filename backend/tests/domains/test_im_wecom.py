@@ -34,6 +34,8 @@ from tests.domains.test_im_gateway import principal
 from tests.utils.migrations import migrate
 from tests.utils.pi import PiHarness
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 CREDS = {
     "bot_id": "synthetic-bot",
     "secret": "private-secret",

@@ -33,6 +33,8 @@ from tests.domains.test_im_conversation import button
 from tests.domains.test_im_gateway import TOKEN, enable, event
 from tests.utils.pi import PiHarness
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 
 def prepared(db: Session, demo: tuple) -> tuple:
     owner, request = pending(db, demo)

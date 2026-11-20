@@ -89,11 +89,15 @@ def test_table_time_and_plain_text_prompts(db: Session, shared_demo: tuple) -> N
 
 
 @pytest.mark.parametrize("missing", ["app_id", "app_secret"])
-def test_feishu_names_missing_field(db: Session, demo: tuple, missing: str) -> None:
+def test_feishu_names_missing_field(
+    db: Session, shared_demo: tuple, missing: str
+) -> None:
     values = {"app_id": "synthetic-id", "app_secret": "synthetic-key"}
     del values[missing]
     result = asyncio.run(
-        connections.test_im(db, principal(db, demo), connections.FeishuArgs(**values))
+        connections.test_im(
+            db, principal(db, shared_demo), connections.FeishuArgs(**values)
+        )
     )
     assert not result.ok
     assert ("App ID" if missing == "app_id" else "App Secret") in result.message

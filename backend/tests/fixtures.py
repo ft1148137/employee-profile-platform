@@ -25,7 +25,7 @@ from app.domains.org.models import Employee, Organization, OrgMembership
 from app.main import app
 from app.models import User
 from app.seed.loader import load_demo
-from app.seed.schema import read_bundle
+from tests.utils.demo import DemoSeed
 from tests.utils.drafting import mock_drafting  # noqa: F401
 from tests.utils.im import telegram_server  # noqa: F401
 from tests.utils.migrations import MIGRATION_TEMPLATE, isolated_database
@@ -56,7 +56,7 @@ def _fast_password_hash() -> Generator[None]:
         security.password_hash = _PRODUCTION_PASSWORD_HASH
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def reset_login_attempts(db: Session) -> Generator[None]:
     db.execute(delete(LoginAttempt))
     db.commit()
@@ -84,12 +84,17 @@ def migration_engine(migration_template: str) -> Generator[Engine]:
         yield isolated
 
 
-@pytest.fixture(scope="session", autouse=True)
-def db(_fast_password_hash: None) -> Generator[Session]:
+@pytest.fixture(scope="session")
+def _demo_seed(_fast_password_hash: None) -> DemoSeed:
     with Session(engine) as initial:
         init_db(initial)
     with Session(engine) as seed:
         load_demo(seed, settings.DEMO_DATA_DIR)
+        return DemoSeed.capture(seed)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def db(_demo_seed: DemoSeed) -> Generator[Session]:
     with Session(engine) as session:
         existing_user_ids = set(session.exec(select(User.id)).all())
         yield session
@@ -143,46 +148,74 @@ def seed_path(tmp_path: Path) -> Generator[Path]:
 
 @contextmanager
 def _demo(
-    db: Session, seed_path: Path, *, token_minutes: int
-) -> Generator[tuple[tuple, UUID]]:
-    with Session(engine) as session:
-        load_demo(session, seed_path)
-    org = db.exec(
-        select(Organization).where(Organization.slug == read_bundle(seed_path).org.slug)
-    ).one()
-    employees = {
-        e.employee_code: e
-        for e in db.exec(select(Employee).where(Employee.org_id == org.id)).all()
-    }
+    db: Session,
+    seed: DemoSeed,
+    *,
+    token_minutes: int = 5,
+    minimal: bool = False,
+    local_accounts: bool = False,
+) -> Generator[tuple[tuple, list[UUID], list[UUID]]]:
     foreign = Organization(slug=str(uuid4()), name="Synthetic foreign tenant")
-    user = User(
+    foreign_user = User(
         username=str(uuid4()), email=f"{uuid4()}@example.com", hashed_password="unused"
     )
-    db.add_all([foreign, user])
-    db.flush()
-    db.add(OrgMembership(org_id=foreign.id, user_id=user.id))
-    db.commit()
-    auth = {}
-    for role, email in {
-        "admin": "admin@demo.example.com",
-        "manager": "manager.platform@demo.example.com",
-        "employee": "employee.platform@demo.example.com",
-        "foreign": user.email,
-    }.items():
-        account = db.exec(select(User).where(User.email == email)).one()
-        auth[role] = {
-            "Authorization": f"Bearer {create_access_token(account.id, expires_delta=timedelta(minutes=token_minutes))}"
-        }
+    foreign_id = foreign.id
+    with Session(engine) as setup:
+        org_id, accounts = seed.clone(
+            setup, minimal=minimal, local_accounts=local_accounts
+        )
+        setup.add_all([foreign, foreign_user])
+        setup.flush()
+        setup.add(OrgMembership(org_id=foreign_id, user_id=foreign_user.id))
+        foreign_user_id = foreign_user.id
+        setup.commit()
+    org_ids = [org_id, foreign_id]
     try:
-        yield (f"/api/v1/orgs/{org.id}", employees, auth), foreign.id
+        employees = {
+            e.employee_code: e
+            for e in db.exec(select(Employee).where(Employee.org_id == org_id)).all()
+        }
+        auth = {
+            role: {
+                "Authorization": f"Bearer {create_access_token(user_id, expires_delta=timedelta(minutes=token_minutes))}"
+            }
+            for role, user_id in {
+                "admin": accounts["admin@demo.example.com"],
+                "manager": accounts["manager.platform@demo.example.com"],
+                "employee": accounts["employee.platform@demo.example.com"],
+                "foreign": foreign_user_id,
+            }.items()
+        }
+        user_ids = [
+            uid
+            for username, uid in accounts.items()
+            if username.endswith("@demo.example.com")
+        ]
+        yield (
+            (f"/api/v1/orgs/{org_id}", employees, auth),
+            org_ids,
+            [*user_ids, foreign_user_id],
+        )
     finally:
         db.rollback()
-        delete_test_organization(db, foreign.id)
+        delete_test_organization(db, *org_ids)
 
 
 @pytest.fixture
-def demo(db: Session, seed_path: Path) -> Generator[tuple]:
-    with _demo(db, seed_path, token_minutes=5) as (data, _foreign_org_id):
+def demo(db: Session, _demo_seed: DemoSeed) -> Generator[tuple]:
+    with _demo(db, _demo_seed) as (data, _, _):
+        yield data
+
+
+@pytest.fixture
+def minimal_demo(db: Session, _demo_seed: DemoSeed) -> Generator[tuple]:
+    with _demo(db, _demo_seed, minimal=True) as (data, _, _):
+        yield data
+
+
+@pytest.fixture
+def isolated_demo(db: Session, _demo_seed: DemoSeed) -> Generator[tuple]:
+    with _demo(db, _demo_seed, token_minutes=10, local_accounts=True) as (data, _, _):
         yield data
 
 
@@ -221,37 +254,14 @@ def _demo_snapshot(
 
 
 @pytest.fixture(scope="session")
-def shared_demo(
-    db: Session, tmp_path_factory: pytest.TempPathFactory
-) -> Generator[tuple]:
-    path = _copy_seed(tmp_path_factory.mktemp("shared-demo"))
-    org_id = None
-    try:
-        with _demo(db, path, token_minutes=60) as (data, foreign_org_id):
-            org_id = next(iter(data[1].values())).org_id
-            org_ids = [org_id, foreign_org_id]
-            user_ids = list(
-                db.exec(
-                    select(User.id).where(
-                        User.email.in_(
-                            [
-                                account.email
-                                for account in read_bundle(path).org.accounts
-                            ]
-                        )
-                    )
-                ).all()
-            )
-            before = _demo_snapshot(db, org_ids, user_ids)
-            try:
-                yield data
-            finally:
-                db.rollback()
-                after = _demo_snapshot(db, org_ids, user_ids)
-                changed = [name for name in before if before[name] != after[name]]
-                if changed:
-                    pytest.fail(f"shared_demo was modified: {', '.join(changed)}")
-    finally:
-        db.rollback()
-        if org_id is not None:
-            delete_test_organization(db, org_id)
+def shared_demo(db: Session, _demo_seed: DemoSeed) -> Generator[tuple]:
+    with _demo(db, _demo_seed, token_minutes=60) as (data, org_ids, user_ids):
+        before = _demo_snapshot(db, org_ids, user_ids)
+        try:
+            yield data
+        finally:
+            db.rollback()
+            after = _demo_snapshot(db, org_ids, user_ids)
+            changed = [name for name in before if before[name] != after[name]]
+            if changed:
+                pytest.fail(f"shared_demo was modified: {', '.join(changed)}")

@@ -39,6 +39,8 @@ from app.mcp.server import endpoint, lifespan
 from tests.api.routes.test_mcp import call, initialize, token_for
 from tests.api.routes.test_reviews import manager, pending
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 
 def test_sdk_manager_flow(demo: tuple, db: Session) -> None:
     _, request = pending(db, demo)

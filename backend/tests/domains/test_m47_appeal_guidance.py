@@ -8,8 +8,8 @@ from tests.admin_assistant.test_registry import principal
 
 
 @pytest.mark.parametrize("entry", ["admin", "web", "feishu"])
-def test_appeal_guidance(db: Session, demo: tuple, entry: str) -> None:
-    p = principal(db, demo, "admin" if entry == "admin" else "employee")
+def test_appeal_guidance(db: Session, shared_demo: tuple, entry: str) -> None:
+    p = principal(db, shared_demo, "admin" if entry == "admin" else "employee")
     prompt = (
         admin_prompts.system_prompt(p, "/admin/assistant")
         if entry == "admin"

@@ -30,6 +30,8 @@ from app.domains.org.models import Organization, OrgMembership
 from app.models import User
 from tests.utils.migrations import migrate
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 TOKEN = "12345:synthetic-token"
 
 

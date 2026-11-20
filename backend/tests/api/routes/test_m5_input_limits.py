@@ -25,8 +25,8 @@ from tests.api.routes.test_profile_import import example
 from tests.api.routes.test_reviews import actor
 
 
-def test_reject_long_statement(demo: tuple, client: TestClient) -> None:
-    base, _, auth = demo
+def test_reject_long_statement(shared_demo: tuple, client: TestClient) -> None:
+    base, _, auth = shared_demo
     response = client.post(
         f"{base}/me/requests",
         headers=auth["employee"],

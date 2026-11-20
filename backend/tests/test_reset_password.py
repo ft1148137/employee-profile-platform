@@ -16,6 +16,8 @@ from app.domains.org.models import OrgMembership
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
 from tests.utils.migrations import migrate
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 
 @pytest.mark.parametrize("memberships", [0, 1, 2])
 def test_reset_password(

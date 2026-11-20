@@ -16,6 +16,8 @@ from app.domains.audit.models import AuditEvent
 from app.domains.org.models import Organization, OrgMembership
 from tests.utils.migrations import migrate
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 
 def test_lifecycle_secrets_and_closed_switch(
     demo: tuple, client: TestClient, db: Session, caplog: pytest.LogCaptureFixture

@@ -41,6 +41,8 @@ from tests.api.routes.test_mcp import call, initialize
 from tests.api.routes.test_reviews import pending
 from tests.utils.migrations import migrate
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 VERIFIER = "a" * 43
 CHALLENGE = (
     base64.urlsafe_b64encode(bytes.fromhex(digest(VERIFIER))).decode().rstrip("=")

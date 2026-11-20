@@ -39,7 +39,10 @@ from app.models import User
 from tests.api.routes.test_initial_profiles import work_queue
 from tests.utils.pi import PiHarness
 
-pytestmark = pytest.mark.xdist_group("model")
+pytestmark = [
+    pytest.mark.xdist_group("model"),
+    pytest.mark.usefixtures("reset_login_attempts"),
+]
 
 ROOT = Path(__file__).resolve().parents[3]
 evaluation = runpy.run_path(str(ROOT / "examples/test-enterprises/evaluate_drafts.py"))

@@ -45,6 +45,8 @@ from app.models import User
 from tests.api.routes.test_mcp import call, initialize, token_for
 from tests.utils.org import delete_test_organization
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 
 @pytest.fixture
 def company(db: Session) -> Generator[tuple]:

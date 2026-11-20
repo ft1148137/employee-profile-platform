@@ -19,7 +19,7 @@ from app.domains.capacity.models import (
     CapacityUnavailability,
     CapacityWeek,
 )
-from app.domains.org.models import OrgMembership, RoleGrant
+from app.domains.org.models import Employee, OrgMembership, RoleGrant
 from app.domains.planning.models import PlanningCase, PlanningOption, PlanningSnapshot
 from app.domains.planning.snapshot import current_fingerprint
 from app.domains.planning.validator import validate
@@ -183,8 +183,10 @@ def test_future_capacity_still_requires_confirmation() -> None:
 
 
 @pytest.fixture
-def planning_setup(demo: tuple, db: Session, client: TestClient) -> Generator[tuple]:
-    url, employees, auth = demo
+def planning_setup(
+    minimal_demo: tuple, db: Session, client: TestClient
+) -> Generator[tuple]:
+    url, employees, auth = minimal_demo
     org_id = employees["E01"].org_id
     members = {
         m.employee_id: m
@@ -258,10 +260,14 @@ def planning_setup(demo: tuple, db: Session, client: TestClient) -> Generator[tu
 
 @pytest.fixture
 def planning_case(planning_setup: tuple, client: TestClient) -> tuple:
-    url, employees, auth, demand = planning_setup
+    return *planning_setup, _create_case(planning_setup, client)
+
+
+def _create_case(planning_setup: tuple, client: TestClient) -> dict:
+    url, _, auth, demand = planning_setup
     result = client.post(f"{url}/planning/demands/{demand.id}/cases", headers=auth["b"])
     assert result.status_code == 200, result.text
-    return url, employees, auth, demand, result.json()
+    return result.json()
 
 
 def test_snapshot_starts_at_current_week_and_week_rollover_stales_case(
@@ -409,12 +415,15 @@ def test_case_options_and_privacy(
     ],
 )
 def test_stale_inputs_reject_option(
-    planning_case: tuple, db: Session, client: TestClient, change: str
+    planning_setup: tuple, db: Session, client: TestClient, change: str
 ) -> None:
-    from app.domains.capacity.models import CapacityAssignment, CapacityUnavailability
-
-    url, employees, auth, demand, case = planning_case
+    url, employees, auth, demand = planning_setup
     person = employees["E04"]
+    if change == "profile_version":
+        _publish_initial_profile(
+            client, url, auth["admin"], person, demand.capability_key
+        )
+    case = _create_case(planning_setup, client)
     if change in {"week", "confirmation"}:
         week = db.exec(
             select(CapacityWeek).where(
@@ -560,17 +569,42 @@ def test_expired_week_confirmation_stales_case(
     )
 
 
+def _publish_initial_profile(
+    client: TestClient,
+    url: str,
+    headers: dict[str, str],
+    employee: Employee,
+    capability_key: str,
+) -> None:
+    response = client.post(
+        f"{url}/employees/{employee.id}/profile/direct-edits",
+        headers=headers,
+        json={
+            "base_revision": None,
+            "items": [
+                {
+                    "op": "add",
+                    "capability_key": capability_key,
+                    "statement": "合成能力画像",
+                    "level": "routine",
+                }
+            ],
+        },
+    )
+    assert response.status_code == 200, response.text
+
+
 def test_external_department_count_stales_borrow_case(
     planning_setup: tuple, db: Session, client: TestClient
 ) -> None:
     url, employees, auth, demand = planning_setup
     demand.capability_key = "backend_api"
     db.commit()
-    created = client.post(
-        f"{url}/planning/demands/{demand.id}/cases", headers=auth["b"]
-    )
-    assert created.status_code == 200, created.text
-    case = created.json()
+    for code in ("E01", "E02"):
+        _publish_initial_profile(
+            client, url, auth["admin"], employees[code], demand.capability_key
+        )
+    case = _create_case(planning_setup, client)
     assert any(option["kind"] == "borrow" for option in case["options"])
     assert case["stale"] is False
     source = db.exec(

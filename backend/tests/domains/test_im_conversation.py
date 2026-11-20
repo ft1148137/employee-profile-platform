@@ -29,6 +29,8 @@ from tests.domains.test_im_gateway import TOKEN, enable, event, principal
 from tests.utils.migrations import migrate
 from tests.utils.pi import PiHarness
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 
 def setup(db: Session, demo: tuple) -> tuple:
     p = principal(db, demo[1]["E02"].org_id, demo[1]["E02"].id)

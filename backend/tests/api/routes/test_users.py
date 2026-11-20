@@ -9,6 +9,8 @@ from app.core.security import verify_password
 from app.models import User
 from tests.utils.utils import random_lower_string
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 
 def test_get_users_superuser_me(
     client: TestClient, superuser_token_headers: dict[str, str]

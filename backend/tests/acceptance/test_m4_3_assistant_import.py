@@ -22,6 +22,8 @@ from tests.domains.test_im_conversation import button
 from tests.domains.test_im_gateway import enable
 from tests.utils.bot import final_response
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 
 class FakeFeishu:
     def __init__(self) -> None:
