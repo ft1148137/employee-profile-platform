@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { queryOptions, useQuery } from "@tanstack/react-query"
 import { CapacityService } from "@/client"
 import {
   useExtensions,
@@ -27,6 +27,36 @@ export function useBorrowRequests(
   })
 }
 
+export const PENDING_DEMAND_PAGE_SIZE = 100
+
+export function pendingDemandPageOptions(orgId: string, skip = 0) {
+  return queryOptions({
+    queryKey: [
+      "capacity",
+      orgId,
+      "demands",
+      "incoming",
+      "submitted",
+      "actionable",
+      skip,
+    ],
+    queryFn: async ({ signal }) =>
+      (
+        await CapacityService.listDemands({
+          path: { org_id: orgId },
+          query: {
+            side: "incoming",
+            status: "submitted",
+            actionable_only: true,
+            limit: PENDING_DEMAND_PAGE_SIZE,
+            skip: skip || undefined,
+          },
+          signal,
+        })
+      ).data,
+  })
+}
+
 export function usePendingApprovals() {
   const { org, roles, employeeId } = useOrg()
   const orgId = org?.id ?? ""
@@ -48,28 +78,8 @@ export function usePendingApprovals() {
   const extensions = useExtensions(orgId, enabled)
   const own = useMyAssignments(orgId, enabled && !!employeeId)
   const incoming = useQuery({
-    queryKey: [
-      "capacity",
-      orgId,
-      "demands",
-      "incoming",
-      "submitted",
-      "actionable",
-    ],
+    ...pendingDemandPageOptions(orgId),
     enabled: enabled && manages,
-    queryFn: async ({ signal }) =>
-      (
-        await CapacityService.listDemands({
-          path: { org_id: orgId },
-          query: {
-            side: "incoming",
-            status: "submitted",
-            actionable_only: true,
-            limit: 100,
-          },
-          signal,
-        })
-      ).data,
   })
   const selection = useBorrowRequests(orgId, false, enabled && manages)
   const consent = useBorrowRequests(orgId, true, enabled && !!employeeId)

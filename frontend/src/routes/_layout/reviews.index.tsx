@@ -1,5 +1,7 @@
+import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import type { PendingReviews } from "@/client"
+import { useState } from "react"
+import type { DemandPublic, PendingReviews } from "@/client"
 import { Approvals } from "@/components/Capacity/Approvals"
 import { BorrowRequestCard } from "@/components/Capacity/BorrowRequests"
 import { OrgState } from "@/components/Profile/OrgState"
@@ -7,7 +9,11 @@ import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { viaLabels } from "@/components/Profile/RequestTimeline"
 import { Button } from "@/components/ui/button"
 import { useOrg } from "@/hooks/useOrg"
-import { usePendingApprovals } from "@/hooks/usePendingApprovals"
+import {
+  PENDING_DEMAND_PAGE_SIZE,
+  pendingDemandPageOptions,
+  usePendingApprovals,
+} from "@/hooks/usePendingApprovals"
 
 const filters = {
   all: "全部",
@@ -62,41 +68,15 @@ function ReviewsPage() {
       type: "demand",
       queries: pending.demandQueries,
       count: counts.demand,
-      content: pending.demands.map((row) => (
-        <article key={row.id} className="space-y-2 rounded-xl border p-5">
-          <h3 className="font-semibold">{row.capability_name} · 待答复</h3>
-          {row.project && (
-            <p className="break-words text-sm">
-              项目：{row.project.title} · 角色：{row.project.role_name}
-            </p>
-          )}
-          <p className="whitespace-pre-wrap break-words">{row.description}</p>
-          <p className="text-sm text-muted-foreground">
-            {row.headcount} 人 · 每人 {row.allocation_percent}% ·{" "}
-            {row.window_start} 至 {row.window_end}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" asChild>
-              <Link to="/capacity" search={{ tab: "incoming", demand: row.id }}>
-                查看详情
-              </Link>
-            </Button>
-            {employeeId && (
-              <Button variant="outline" asChild>
-                <Link
-                  to="/assistant"
-                  search={{
-                    mode: "personal",
-                    prompt: `请模拟并帮我答复部门需求 ${row.id}（${row.capability_name}，${row.headcount} 人，每人投入 ${row.allocation_percent}%，${row.window_start} 至 ${row.window_end}）。`,
-                  }}
-                >
-                  在 AI 助手中模拟并答复
-                </Link>
-              </Button>
-            )}
-          </div>
-        </article>
-      )),
+      content: (
+        <DemandReviews
+          key={org.id}
+          orgId={org.id}
+          employeeId={employeeId}
+          firstPage={pending.demands}
+          count={counts.demand}
+        />
+      ),
     },
     {
       type: "borrow",
@@ -191,6 +171,106 @@ function ReviewsPage() {
           )
         })}
     </div>
+  )
+}
+
+function DemandReviews({
+  orgId,
+  employeeId,
+  firstPage,
+  count,
+}: {
+  orgId: string
+  employeeId?: string | null
+  firstPage: DemandPublic[]
+  count: number
+}) {
+  const [skip, setSkip] = useState(0)
+  const laterPage = useQuery({
+    ...pendingDemandPageOptions(orgId, skip),
+    enabled: skip > 0,
+  })
+  const rows = skip
+    ? (laterPage.data?.data.filter((row) => row.can_reply === true) ?? [])
+    : firstPage
+  return (
+    <>
+      {(count > PENDING_DEMAND_PAGE_SIZE || skip > 0) && (
+        <nav
+          aria-label="收到需求分页"
+          className="flex items-center justify-between gap-2"
+        >
+          <Button
+            variant="outline"
+            disabled={skip === 0}
+            onClick={() => setSkip(skip - PENDING_DEMAND_PAGE_SIZE)}
+          >
+            上一页
+          </Button>
+          <span role="status" className="text-sm">
+            第 {skip / PENDING_DEMAND_PAGE_SIZE + 1} 页 · 共 {count} 条
+          </span>
+          <Button
+            variant="outline"
+            disabled={
+              skip + PENDING_DEMAND_PAGE_SIZE >= count ||
+              (skip > 0 && !laterPage.isSuccess)
+            }
+            onClick={() => setSkip(skip + PENDING_DEMAND_PAGE_SIZE)}
+          >
+            下一页
+          </Button>
+        </nav>
+      )}
+      {skip > 0 && laterPage.isPending ? (
+        <ProfileLoading />
+      ) : skip > 0 && laterPage.isError ? (
+        <ProfileError retry={() => laterPage.refetch()} />
+      ) : rows.length ? (
+        rows.map((row) => (
+          <article key={row.id} className="space-y-2 rounded-xl border p-5">
+            <h3 className="font-semibold">{row.capability_name} · 待答复</h3>
+            {row.project && (
+              <p className="break-words text-sm">
+                项目：{row.project.title} · 角色：{row.project.role_name}
+              </p>
+            )}
+            <p className="whitespace-pre-wrap break-words">{row.description}</p>
+            <p className="text-sm text-muted-foreground">
+              {row.headcount} 人 · 每人 {row.allocation_percent}% ·{" "}
+              {row.window_start} 至 {row.window_end}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" asChild>
+                <Link
+                  to="/capacity"
+                  search={{ tab: "incoming", demand: row.id }}
+                >
+                  查看详情
+                </Link>
+              </Button>
+              {employeeId && (
+                <Button variant="outline" asChild>
+                  <Link
+                    to="/assistant"
+                    search={{
+                      mode: "personal",
+                      prompt: `请模拟并帮我答复部门需求 ${row.id}（${row.capability_name}，${row.headcount} 人，每人投入 ${row.allocation_percent}%，${row.window_start} 至 ${row.window_end}）。`,
+                    }}
+                  >
+                    在 AI 助手中模拟并答复
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </article>
+        ))
+      ) : (
+        <p role="status" className="text-muted-foreground">
+          本页没有待答复需求
+        </p>
+      )}
+    </>
   )
 }
 
