@@ -46,7 +46,7 @@ export function AppSidebar({
             }}
           >
             <SelectTrigger
-              aria-label="当前组织"
+              aria-label="切换企业"
               title={org?.name}
               className="size-10 border-0 p-0 shadow-none [&>svg]:hidden"
             >

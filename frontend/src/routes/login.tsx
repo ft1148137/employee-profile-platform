@@ -87,12 +87,12 @@ function Login() {
     <AuthLayout>
       {loggedOut && (
         <p role="status" className="mb-6 rounded-lg border p-4 text-sm">
-          已退出登录。在公用电脑上用完，请关闭浏览器。
+          已退出登录。如使用公用电脑，请关闭浏览器。
         </p>
       )}
       {status.data?.initialized === false && (
         <p role="status" className="mb-6 rounded-lg border p-4 text-sm">
-          系统还没有初始化。请使用部署时打印的初始化链接完成设置。
+          系统尚未初始化，请使用部署时生成的初始化链接完成设置。
         </p>
       )}
       <Form {...form}>
@@ -114,7 +114,7 @@ function Login() {
                   <FormControl>
                     <Input
                       data-testid="email-input"
-                      placeholder="请输入邮箱"
+                      placeholder="name@company.com"
                       type="text"
                       {...field}
                     />
@@ -133,11 +133,7 @@ function Login() {
                     <FormLabel>密码</FormLabel>
                   </div>
                   <FormControl>
-                    <PasswordInput
-                      data-testid="password-input"
-                      placeholder="请输入密码"
-                      {...field}
-                    />
+                    <PasswordInput data-testid="password-input" {...field} />
                   </FormControl>
                   <FormMessage className="text-xs" />
                 </FormItem>
@@ -150,7 +146,7 @@ function Login() {
           </div>
 
           <p className="text-center text-sm text-muted-foreground">
-            忘记密码请联系企业管理员重置
+            忘记密码？请联系企业管理员重置
           </p>
         </form>
       </Form>

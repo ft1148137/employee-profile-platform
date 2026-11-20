@@ -146,7 +146,7 @@ export function DataTable<TData extends RowData>({
                 colSpan={columns.length}
                 className="h-32 text-center text-muted-foreground"
               >
-                暂无数据。
+                暂无数据
               </TableCell>
             </TableRow>
           )}
@@ -157,11 +157,11 @@ export function DataTable<TData extends RowData>({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border-t bg-muted/20">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="text-sm text-muted-foreground">
-              显示第{" "}
+              第
               {table.state.pagination.pageIndex *
                 table.state.pagination.pageSize +
-                1}{" "}
-              至{" "}
+                1}
+              –
               {Math.min(
                 (table.state.pagination.pageIndex + 1) *
                   table.state.pagination.pageSize,

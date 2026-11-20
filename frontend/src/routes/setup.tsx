@@ -14,8 +14,7 @@ import { Label } from "@/components/ui/label"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { PasswordInput } from "@/components/ui/password-input"
 
-const invalidLink =
-  "初始化链接无效或已过期，请联系部署人员重新运行安装脚本获取新链接"
+const invalidLink = "初始化链接无效或已过期，请联系部署人员重新获取。"
 
 export const Route = createFileRoute("/setup")({
   component: Initialize,
@@ -70,9 +69,9 @@ function Initialize() {
         "初始化链接无效或已过期，请联系部署人员重新获取")
   return (
     <AuthLayout>
-      <h1 className="mb-2 text-2xl font-bold">欢迎设置你的企业</h1>
+      <h1 className="mb-2 text-2xl font-bold">初始化企业</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        先建立企业和管理员账号，再逐步完成首次设置。
+        先创建企业和首个管理员账号。
       </p>
       {invalid ? (
         <p role="alert">{invalidLink}</p>
@@ -108,7 +107,7 @@ function Initialize() {
               aria-describedby="admin-hint"
             />
             <p id="admin-hint" className="text-xs text-muted-foreground">
-              邮箱就是登录名；管理员可以不在员工名单中。
+              该邮箱将作为登录账号，管理员无需在员工名单中。
             </p>
           </div>
           <div className="space-y-2">

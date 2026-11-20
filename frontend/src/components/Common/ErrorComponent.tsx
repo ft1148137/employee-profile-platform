@@ -18,7 +18,7 @@ const ErrorComponent = () => {
       </div>
 
       <p className="text-lg text-muted-foreground mb-4 text-center z-10">
-        发生了一点问题，请稍后重试。
+        页面加载出错，请刷新重试。
       </p>
       <Link to="/">
         <Button>返回首页</Button>

@@ -62,7 +62,6 @@ export function useWorkspaceNavigation() {
   const groups: Record<Space, Group[]> = {
     collab: [
       {
-        title: "处理中心",
         items: [
           ...(isAdmin || employeeId
             ? [{ title: "AI 助手", to: assistant, search: assistantSearch }]
@@ -95,7 +94,7 @@ export function useWorkspaceNavigation() {
             ? [
                 tabItem("/admin/rules", "approval", "审批规则"),
                 tabItem("/admin/rules", "reminders", "定期提醒"),
-                tabItem("/admin/rules", "capacity", "需求与容量规则"),
+                tabItem("/admin/rules", "capacity", "负荷与需求规则"),
               ]
             : []),
         ],
@@ -141,9 +140,9 @@ export function useWorkspaceNavigation() {
               items: [
                 tabItem("/admin/data-ai", "sources", "数据来源"),
                 tabItem("/admin/data-ai", "model", "模型"),
-                tabItem("/admin/data-ai", "bot", "内置机器人"),
+                tabItem("/admin/data-ai", "bot", "内置助手"),
                 tabItem("/admin/data-ai", "im", "IM 入口"),
-                tabItem("/admin/data-ai", "mcp", "外部 AI 助手"),
+                tabItem("/admin/data-ai", "mcp", "外部 AI 工具"),
                 { title: "审计日志", to: "/admin/audit" },
               ],
             },
@@ -198,7 +197,7 @@ export function useWorkspaceNavigation() {
     (path.startsWith("/employees/")
       ? "员工详情"
       : path === "/capacity"
-        ? "需求与容量"
+        ? "协作与负荷"
         : path === "/find-people"
           ? "找人"
           : path === "/oauth/consent"
@@ -313,7 +312,7 @@ export function SpacePanel({
       {showHistory && (
         <>
           <h2 className="mb-1 px-2 text-xs font-medium text-muted-foreground">
-            最近会话
+            最近对话
           </h2>
           {mode === "admin" ? (
             <AdminConversations
