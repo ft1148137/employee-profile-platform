@@ -17,7 +17,7 @@ test("organization navigation wins while the post-login assistant is still loadi
     unblock = resolve
   })
   await page.route(
-    /\/(?:assets\/assistant-[^/]+\.js|src\/routes\/_layout\/assistant\.tsx)(?:\?|$)/,
+    /\/(?:assets\/assistant-[^/]+\.js(?:\?|$)|src\/routes\/_layout\/assistant\.tsx\?tsr-split=component(?:&|$))/,
     async (route) => {
       markRequested()
       await pending

@@ -167,7 +167,7 @@ function Workspace() {
               </nav>
               <div
                 id={TOPBAR_ACTIONS_ID}
-                className="ml-auto flex min-w-0 max-w-[75%] items-center gap-2 empty:hidden"
+                className="ml-auto flex min-w-0 shrink-0 items-center gap-1 empty:hidden md:max-w-[75%] md:shrink md:gap-2"
               />
             </>
           )}
