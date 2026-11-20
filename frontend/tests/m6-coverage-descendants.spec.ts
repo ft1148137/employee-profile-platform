@@ -113,7 +113,7 @@ for (const role of [
     await expect(
       coverage.getByText(`范围内在职员工 ${role.total} 人`),
     ).toBeVisible()
-    await coverage.locator("summary").click()
+    await coverage.getByRole("button", { name: "按部门分布" }).click()
     if (role.descendants) {
       await expect(
         coverage.getByText(

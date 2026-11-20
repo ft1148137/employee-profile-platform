@@ -34,9 +34,16 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
   })
   await row("E03").getByRole("button", { name: "更多", exact: true }).click()
   await page.getByRole("menuitem", { name: "发放账号", exact: true }).click()
-  await expect(
-    page.getByRole("dialog").getByRole("row").filter({ hasText: "E03" }),
-  ).toBeVisible()
+  const singleIssue = page.getByRole("dialog", { name: "发放账号" })
+  const selectedEmployee = singleIssue
+    .getByRole("row")
+    .filter({ hasText: "E03" })
+  await expect(selectedEmployee).toBeVisible()
+  await selectedEmployee.getByRole("cell", { name: "E03", exact: true }).click()
+  await expect(singleIssue).toBeVisible()
+  await expect(page.getByRole("dialog", { name: "员工快速预览" })).toHaveCount(
+    0,
+  )
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "取消", exact: true })
@@ -54,7 +61,10 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
   await expect(row("E02")).toBeVisible()
   await expect(row("E06")).toHaveCount(0)
   await filter("部门筛选", "全部部门")
-  await page.getByRole("button", { name: "发放账号", exact: true }).click()
+  await page
+    .locator("header")
+    .getByRole("button", { name: "发放账号", exact: true })
+    .click()
   const dialog = page.getByRole("dialog")
   await expect(
     dialog.getByText(/将为 \d+ 名未开通账号的在职员工发放账号/),
