@@ -21,7 +21,7 @@ const groups = [
       ["dictionary", "能力词典"],
       ["approval", "审批规则"],
       ["reminders", "定期提醒"],
-      ["capacity", "需求与容量规则"],
+      ["capacity", "负荷与需求规则"],
     ],
   },
   {
@@ -30,9 +30,9 @@ const groups = [
     tabs: [
       ["sources", "数据来源"],
       ["model", "模型"],
-      ["bot", "内置机器人"],
+      ["bot", "内置助手"],
       ["im", "IM 入口"],
-      ["mcp", "外部 AI 助手"],
+      ["mcp", "外部 AI 工具"],
     ],
   },
 ]
@@ -68,7 +68,7 @@ test("management sections and audit open from the space navigation", async ({
         await expect(main.getByRole("form", { name: "审批规则" })).toBeVisible()
       else if (tab === "reminders")
         await expect(
-          main.getByRole("region", { name: "持续更新提醒" }),
+          main.getByRole("region", { name: "定期更新提醒" }),
         ).toBeVisible()
       else
         await expect(
@@ -108,7 +108,7 @@ test("direct section links survive reload and history, invalid values use the fi
   await expect(drawer).toBeHidden()
   await expect(page.getByRole("form", { name: "审批规则" })).toBeVisible()
   await page.goBack()
-  await expect(page.getByRole("region", { name: "持续更新提醒" })).toBeVisible()
+  await expect(page.getByRole("region", { name: "定期更新提醒" })).toBeVisible()
   await open.click()
   await expect(active()).toHaveText("定期提醒")
   await page.keyboard.press("Escape")

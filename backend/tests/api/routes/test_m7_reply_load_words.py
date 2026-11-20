@@ -24,7 +24,7 @@ from app.domains.profile.models import ProfileVersion
 from app.models import User
 from tests.api.routes.test_mcp import call, initialize, token_for
 
-MESSAGE = "答复会发给对方部门，不写负荷说法，只写能否承接、时间和条件"
+MESSAGE = "回复将发送给对方部门，请勿填写负荷描述，仅说明能否承接、时间及条件"
 LOAD_TEXTS = (
     "目前超负荷",
     "目前基本满",

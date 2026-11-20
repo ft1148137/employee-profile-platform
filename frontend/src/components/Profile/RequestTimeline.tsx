@@ -7,15 +7,21 @@ export const viaLabels: Record<string, string> = {
   web: "网页",
   mcp: "MCP",
   import: "导入",
-  bot: "机器人",
+  bot: "AI 助手",
   admin_handover: "管理员送审",
   im: "IM",
-  policy: "审批规则自动发布",
-  sync: "增量同步自动补充证据",
+  policy: "按规则自动生效",
+  sync: "同步自动补充",
 }
+export function requestClientName(name: string, via?: string | null) {
+  return via === "bot" || via === "im"
+    ? name.replace(/^内置机器人(?=（|$)/, "内置助手")
+    : name
+}
+
 export const decisionLabels = {
   approved: "批准",
-  changes_requested: "退回修改",
+  changes_requested: "退回",
   rejected: "拒绝",
 }
 const actions: Record<string, string> = {
@@ -70,7 +76,8 @@ export function RequestTimeline({
                 {event.version && ` · r${event.version}`}
                 {event.reviewer && ` · ${event.reviewer}`}
                 {event.via && ` · ${viaLabels[event.via] ?? "其他入口"}`}
-                {event.client_name && ` · ${event.client_name}`}
+                {event.client_name &&
+                  ` · ${requestClientName(event.client_name, event.via)}`}
               </p>
               <time className="text-xs text-muted-foreground">
                 {new Date(event.at).toLocaleString("zh-CN")}

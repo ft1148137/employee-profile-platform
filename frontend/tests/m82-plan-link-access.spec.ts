@@ -269,7 +269,7 @@ test("下级经理直开方案只见权限说明和返回入口，不显示需�
   expect((await response).status()).toBe(404)
   await expect(
     page.getByText(
-      "未找到这条需求，或你没有权限查看。需求只有提出人、需求方部门经理和目标部门经理能查看，可以联系他们了解进度。",
+      "未找到该需求，或你无权查看（仅发起人及双方部门经理可见）。",
     ),
   ).toBeVisible()
   await expect(page.getByText("出错了")).toHaveCount(0)
@@ -281,7 +281,7 @@ test("下级经理直开方案只见权限说明和返回入口，不显示需�
   ).toHaveCount(0)
   await page.getByRole("button", { name: "返回待审批" }).click()
   await expect(
-    page.getByRole("region", { name: "收到需求", exact: true }),
+    page.getByRole("region", { name: "协作需求", exact: true }),
   ).toBeVisible()
   await expect(page).toHaveURL("/reviews?type=demand")
 })
@@ -295,9 +295,9 @@ test("目标部门经理直开方案仍可查看方案、依据和分配", async
   await expect(
     page.getByRole("article", { name: "直接安排方案" }),
   ).toBeVisible()
-  await expect(page.getByRole("region", { name: "本部门依据" })).toContainText(
-    "合成研发员工",
-  )
+  await expect(
+    page.getByRole("region", { name: "本部门匹配人员" }),
+  ).toContainText("合成研发员工")
   await expect(page.getByRole("region", { name: "部门内分配" })).toContainText(
     "合成研发员工",
   )
@@ -320,7 +320,9 @@ for (const status of [403, 404, 500]) {
     await open(page, data, "M")
     if (status === 500) {
       await expect(
-        page.getByRole("region", { name: "本部门依据" }).getByText("出错了"),
+        page
+          .getByRole("region", { name: "本部门匹配人员" })
+          .getByText("出错了"),
       ).toBeVisible({ timeout: 15000 })
       await expect(
         page.getByRole("region", { name: "部门内分配" }).getByText("出错了"),
@@ -329,7 +331,7 @@ for (const status of [403, 404, 500]) {
         page.getByRole("region", { name: "协调方案" }),
       ).toContainText("合成接口错误")
     } else {
-      for (const name of ["本部门依据", "协调方案", "部门内分配"]) {
+      for (const name of ["本部门匹配人员", "协调方案", "部门内分配"]) {
         await expect(
           page
             .getByRole("region", { name })

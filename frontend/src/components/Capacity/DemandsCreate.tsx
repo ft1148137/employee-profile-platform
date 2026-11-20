@@ -60,7 +60,7 @@ export function DemandsCreate({
       <Button variant="outline" onClick={back} disabled={submit.isPending}>
         返回需求入口
       </Button>
-      <h2 className="text-xl font-semibold">问一问 / 提需求</h2>
+      <h2 className="text-xl font-semibold">新建协作需求</h2>
       <form
         className="space-y-4 rounded-xl border p-5"
         onSubmit={(event) => {
@@ -157,7 +157,7 @@ export function DemandsCreate({
             <DemandsReference reference={reference.data} />
           )}
           <p className="text-sm text-muted-foreground">
-            这只是参考，不是承诺，正式答复以 B 部门经理为准
+            仅供参考，能否承接以目标部门经理正式答复为准。
           </p>
         </section>
       )}

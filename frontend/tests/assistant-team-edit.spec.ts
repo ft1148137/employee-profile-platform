@@ -180,7 +180,7 @@ test("manager views and directly edits a team profile", async ({
     await expect(panel).toContainText("可以操作你本人和你管辖部门员工的画像")
     await expect(panel).not.toContainText("只操作你本人的画像")
     await panel
-      .getByLabel("发给机器人的消息")
+      .getByLabel("发给助手的消息")
       .fill("查看合成员工的画像，改为独立完成")
     await panel.getByRole("button", { name: "发送", exact: true }).click()
     const card = panel.getByRole("region", { name: "画像修改确认" })

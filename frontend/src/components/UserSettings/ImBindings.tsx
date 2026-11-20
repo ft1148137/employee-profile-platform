@@ -76,7 +76,7 @@ function Bindings({ orgId }: { orgId: string }) {
       <header className="space-y-2">
         <h2 className="text-xl font-semibold">绑定聊天账号</h2>
         <p className="text-sm text-muted-foreground">
-          请先让管理员开启入口，再将一次性绑定码私聊发给企业机器人。请勿把绑定码交给他人。
+          将下方一次性绑定码私聊发给企业助手即可完成绑定，请勿泄露给他人。
         </p>
       </header>
       <div className="space-y-4 rounded-xl border bg-muted/20 p-5">
@@ -109,7 +109,7 @@ function Bindings({ orgId }: { orgId: string }) {
       <section className="space-y-3" aria-label="已绑定的账号">
         <h3 className="font-semibold">已绑定的账号</h3>
         {bindings.data.length === 0 && (
-          <p className="text-sm text-muted-foreground">还没有绑定聊天账号</p>
+          <p className="text-sm text-muted-foreground">暂未绑定聊天账号</p>
         )}
         {bindings.data.map((row) => (
           <div
@@ -154,8 +154,8 @@ function Bindings({ orgId }: { orgId: string }) {
         ))}
       </section>
       <p className="text-sm text-muted-foreground">
-        改密码或更换企业机器人后需重新绑定。消息会存在对应平台服务器上，Telegram
-        的服务器在境外。
+        修改密码或更换企业应用后需重新绑定。聊天消息将留存于对应平台服务器（Telegram
+        服务器位于境外）。
       </p>
       {message && <p role="status">{message}</p>}
     </section>

@@ -62,7 +62,7 @@ test("bot streams, folds tool progress, stops and sends again", async ({
   })
   await logInUser(page, email, password)
   const panel = page.getByRole("region", { name: "助手", exact: true })
-  const input = panel.getByLabel("发给机器人的消息")
+  const input = panel.getByLabel("发给助手的消息")
   await expect(input).toBeEnabled()
   await input.fill("合成问题")
   await input.press("Shift+Enter")
@@ -87,7 +87,7 @@ test("bot streams, folds tool progress, stops and sends again", async ({
     })
   })
   await expect(
-    panel.getByText("正在执行：查看我的正式画像", { exact: true }),
+    panel.getByText("正在查看我的正式画像…", { exact: true }),
   ).toBeVisible()
   await page.evaluate(() => {
     window.reply.emit({
@@ -111,7 +111,7 @@ test("bot streams, folds tool progress, stops and sends again", async ({
     window.reply.emit({ type: "text", text: "第二段" })
   })
   await expect(panel.getByText("第一段第二段", { exact: true })).toBeVisible()
-  const toggle = panel.getByText("2 步", { exact: true })
+  const toggle = panel.getByText("已完成 2 步操作", { exact: true })
   await expect(
     panel.getByText("查看我的正式画像：成功", { exact: true }),
   ).toBeHidden()
@@ -146,7 +146,7 @@ test("bot streams, folds tool progress, stops and sends again", async ({
   const assistantBox = await assistantMessage.boundingBox()
   expect(userBox!.x).toBeGreaterThan(assistantBox!.x)
   expect(userBox!.width).toBeLessThanOrEqual(assistantBox!.width * 0.7 + 1)
-  await expect(assistantMessage).toContainText("秒内回复")
+  await expect(assistantMessage).toContainText("耗时")
   await assistantMessage
     .getByRole("button", { name: "复制", exact: true })
     .click()
@@ -224,12 +224,14 @@ test("bot steps remain after leaving the assistant and reloading", async ({
   await logInUser(page, email, password)
   await page.waitForURL(/\/assistant$/)
   const panel = page.getByRole("region", { name: "助手", exact: true })
-  await panel.getByLabel("发给机器人的消息").fill("查看进度")
-  await panel.getByLabel("发给机器人的消息").press("Enter")
+  await panel.getByLabel("发给助手的消息").fill("查看进度")
+  await panel.getByLabel("发给助手的消息").press("Enter")
   await expect(panel.getByText("合成历史步骤", { exact: true })).toBeVisible()
-  await expect(panel.getByLabel("发给机器人的消息")).toBeEnabled()
-  await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
-  await panel.getByText("2 步", { exact: true }).click()
+  await expect(panel.getByLabel("发给助手的消息")).toBeEnabled()
+  await expect(
+    panel.getByText("已完成 2 步操作", { exact: true }),
+  ).toBeVisible()
+  await panel.getByText("已完成 2 步操作", { exact: true }).click()
   await expect(
     panel.getByText("查看我的正式画像：成功", { exact: true }),
   ).toBeVisible()
@@ -238,10 +240,14 @@ test("bot steps remain after leaving the assistant and reloading", async ({
   ).toBeVisible()
   await page.getByRole("link", { name: "组织", exact: true }).click()
   await page.getByRole("link", { name: /^协同/ }).click()
-  await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
+  await expect(
+    panel.getByText("已完成 2 步操作", { exact: true }),
+  ).toBeVisible()
   await page.reload()
-  await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
-  await panel.getByText("2 步", { exact: true }).click()
+  await expect(
+    panel.getByText("已完成 2 步操作", { exact: true }),
+  ).toBeVisible()
+  await panel.getByText("已完成 2 步操作", { exact: true }).click()
   await expect(
     panel.getByText("查看请求进度：失败", { exact: true }),
   ).toBeVisible()

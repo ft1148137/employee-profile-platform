@@ -133,7 +133,7 @@ test("onboard and transfer on the web, then offboard through the assistant", asy
     (await (await request.get(`${base}/accounts`, { headers })).json()).data[0]
       .employment_status,
   ).toBe("active")
-  await card.getByRole("button", { name: "确认应用" }).click()
+  await card.getByRole("button", { name: "确认生效" }).click()
   await expect(card.getByRole("status")).toHaveText("已应用")
   await expect(
     card.getByRole("button", { name: "撤销", exact: true }),

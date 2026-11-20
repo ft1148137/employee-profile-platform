@@ -26,7 +26,7 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
     await page.getByRole("combobox", { name }).click()
     await page.getByRole("option", { name: option, exact: true }).click()
   }
-  await expect(row("E03")).toContainText("还没有账号")
+  await expect(row("E03")).toContainText("未开通")
   await expectChineseCopy(page)
   await page.screenshot({
     path: "test-results/admin-accounts-list.png",
@@ -41,7 +41,7 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
     .getByRole("dialog")
     .getByRole("button", { name: "取消", exact: true })
     .click()
-  await filter("账号状态筛选", "还没有账号")
+  await filter("账号状态筛选", "未开通")
   await expect(row("E03")).toBeVisible()
   await expect(row("E02")).toHaveCount(0)
   await filter("账号状态筛选", "全部账号状态")
@@ -54,10 +54,10 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
   await expect(row("E02")).toBeVisible()
   await expect(row("E06")).toHaveCount(0)
   await filter("部门筛选", "全部部门")
-  await page.getByRole("button", { name: "生成账号", exact: true }).click()
+  await page.getByRole("button", { name: "发放账号", exact: true }).click()
   const dialog = page.getByRole("dialog")
   await expect(
-    dialog.getByText(/将为 \d+ 名还没有账号的在职员工生成账号/),
+    dialog.getByText(/将为 \d+ 名未开通账号的在职员工发放账号/),
   ).toBeVisible()
   await expectChineseCopy(page)
   await page.screenshot({
@@ -69,7 +69,7 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
     await page
       .getByRole("checkbox", { name: `选择 ${code}`, exact: true })
       .check()
-  await page.getByRole("button", { name: "生成账号（已选 2 人）" }).click()
+  await page.getByRole("button", { name: "发放账号（已选 2 人）" }).click()
   const regenerate = dialog.getByRole("checkbox")
   if (await regenerate.count()) {
     await expect(
@@ -83,7 +83,7 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
   expect(download.suggestedFilename()).toMatch(/^账号-.*\.xlsx$/)
   expect(await download.failure()).toBeNull()
   await expect(dialog).toContainText("已生成 2 个账号。")
-  await expect(dialog).toContainText("账号文件只能下载这一次")
+  await expect(dialog).toContainText("账号表仅支持下载一次")
   await expectChineseCopy(page)
   await page.screenshot({
     path: "test-results/admin-accounts-issued.png",
@@ -96,7 +96,7 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
   for (const code of ["E06", "E07"])
     await expect(row(code)).toContainText("待首次登录")
   await page.getByRole("checkbox", { name: "选择 E06", exact: true }).check()
-  await page.getByRole("button", { name: "生成账号（已选 1 人）" }).click()
+  await page.getByRole("button", { name: "发放账号（已选 1 人）" }).click()
   await expect(
     dialog.getByRole("button", { name: "确认生成并下载" }),
   ).toBeDisabled()
@@ -118,11 +118,9 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
     expect(created.ok()).toBeTruthy()
   }
   await page.getByRole("checkbox", { name: "选择 E04", exact: true }).check()
-  await page.getByRole("button", { name: "生成账号（已选 1 人）" }).click()
+  await page.getByRole("button", { name: "发放账号（已选 1 人）" }).click()
   await dialog.getByRole("button", { name: "确认生成并下载" }).click()
-  await expect(dialog.getByRole("alert")).toContainText(
-    "有冲突时这一批都没有生成",
-  )
+  await expect(dialog.getByRole("alert")).toContainText("本次未发放任何账号")
   await expect(
     dialog.getByRole("row").filter({ hasText: "邮箱已被占用" }),
   ).toContainText("E04")
@@ -132,7 +130,7 @@ test("account filtering, issuance, regeneration guard and atomic conflict", asyn
     fullPage: true,
   })
   await dialog.getByRole("button", { name: "取消", exact: true }).click()
-  await expect(row("E04")).toContainText("还没有账号")
+  await expect(row("E04")).toContainText("未开通")
 })
 
 test("employee legacy access returns to their allowed landing page", async ({

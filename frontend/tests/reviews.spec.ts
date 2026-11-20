@@ -196,18 +196,18 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
     )
     await expect(pendingCard).toContainText("合成陈述1")
     await expect(pendingCard).toContainText("独立完成")
-    await pendingCard.getByRole("button", { name: "展开陈述" }).first().click()
+    await pendingCard.getByRole("button", { name: "展开全文" }).first().click()
     await expect(
-      pendingCard.getByRole("button", { name: "收起陈述" }),
+      pendingCard.getByRole("button", { name: "收起" }),
     ).toBeVisible()
     await enter(ownerToken, `/reviews/${draft.id}`)
     await expect(page.getByRole("alert")).toContainText(
-      "这条请求已经处理完、已撤回，或者你没有审批权限",
+      "该申请已处理、已撤回，或你没有审批权限",
     )
     await expect(page.getByRole("link", { name: /^待审批/ })).toHaveCount(0)
     await enter(reviewerToken, "/inbox")
     await page.getByRole("link", { name: "查看并审批", exact: true }).click()
-    await expect(page.getByRole("heading", { name: "逐项审批" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "画像审批" })).toBeVisible()
     if (reviewer === "delegate")
       await expect(
         page.getByText("代合成经理审批", { exact: true }),
@@ -264,11 +264,13 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
     await page.locator(`a[href="/reviews/${draft.id}"]`).click()
     await page.setViewportSize({ width: 390, height: 844 })
     const choose = async () => {
-      await page.getByLabel("合成能力1的决定").selectOption("approved")
-      await page.getByLabel("合成能力2的决定").selectOption("changes_requested")
-      await page.getByLabel("合成能力3的决定").selectOption("rejected")
+      await page.getByLabel("合成能力1的审批意见").selectOption("approved")
+      await page
+        .getByLabel("合成能力2的审批意见")
+        .selectOption("changes_requested")
+      await page.getByLabel("合成能力3的审批意见").selectOption("rejected")
       await expect(
-        page.getByRole("button", { name: "核对并提交" }),
+        page.getByRole("button", { name: "提交审批" }),
       ).toBeDisabled()
       await page.getByLabel("合成能力2的原因").fill("请补充独立完成的依据")
       await page.getByLabel("合成能力3的原因").fill("依据与陈述不符")
@@ -286,11 +288,13 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       })
       await page.reload()
       await expect(
-        page.getByText("只有 Jira 来源，批准后仍为暂定"),
+        page.getByText("仅来自 Jira，批准后为「暂定」"),
       ).toBeVisible()
-      await expect(page.getByText("员工未过目", { exact: true })).toBeVisible()
+      await expect(page.getByText("员工未确认", { exact: true })).toBeVisible()
       await expect(
-        page.getByLabel("合成能力2的决定").locator('option[value="approved"]'),
+        page
+          .getByLabel("合成能力2的审批意见")
+          .locator('option[value="approved"]'),
       ).toHaveAttribute("disabled", "")
       await expectChineseCopy(page)
       await page.unroute(pattern)
@@ -313,7 +317,7 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
         (route) =>
           route.fulfill({
             status: 409,
-            json: { detail: "内容已变化，请重新查看" },
+            json: { detail: "内容已更新，请刷新查看" },
           }),
         { times: 1 },
       )
@@ -323,18 +327,18 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
           route.fulfill({ status: 403, json: { detail: "你不是当前审批人" } }),
         { times: 1 },
       )
-      await page.getByRole("button", { name: "核对并提交" }).click()
-      await page.getByRole("button", { name: "确认提交决定" }).click()
+      await page.getByRole("button", { name: "提交审批" }).click()
+      await page.getByRole("button", { name: "确认提交" }).click()
       await expect(page.getByRole("alert")).toContainText(
-        "内容已变化，请重新查看",
+        "内容已更新，请刷新查看",
       )
-      await expect(page.getByLabel("合成能力1的决定")).toHaveCount(0)
+      await expect(page.getByLabel("合成能力1的审批意见")).toHaveCount(0)
       await page.reload()
-      await expect(page.getByLabel("合成能力1的决定")).toHaveValue("")
+      await expect(page.getByLabel("合成能力1的审批意见")).toHaveValue("")
       await choose()
     }
-    await page.getByRole("button", { name: "核对并提交" }).click()
-    await expect(page.getByRole("dialog")).toContainText("合成能力2：退回修改")
+    await page.getByRole("button", { name: "提交审批" }).click()
+    await expect(page.getByRole("dialog")).toContainText("合成能力2：退回")
     await expect(page.getByRole("dialog")).toContainText("请补充独立完成的依据")
     let releaseList = () => {}
     const listGate = new Promise<void>((resolve) => {
@@ -347,7 +351,7 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
         await listGate
         await route.fulfill({ response })
       })
-    await page.getByRole("button", { name: "确认提交决定" }).click()
+    await page.getByRole("button", { name: "确认提交" }).click()
     await expect(page.getByRole("status")).toContainText("审批已提交")
     if (nextId) {
       try {
@@ -360,7 +364,7 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
         ).toHaveCount(0, { timeout: 1000 })
         await page.locator(`a[href="/reviews/${nextId}"]`).click()
         await expect(
-          page.getByRole("heading", { name: "逐项审批" }),
+          page.getByRole("heading", { name: "画像审批" }),
         ).toBeVisible()
         await expect(
           page.getByText("下一条合成陈述", { exact: true }),
@@ -418,7 +422,7 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
     await enter(ownerToken, `/employees/${subject.id}`)
     const card = page.locator(`[id="request-${draft.id}"]`)
     await expect(card).toContainText("合成能力1：批准")
-    await expect(card).toContainText("合成能力2：退回修改")
+    await expect(card).toContainText("合成能力2：退回")
     await expect(card.getByText("原因：依据与陈述不符")).toHaveCount(0)
     await expect(card.getByText("请求时间线", { exact: true })).toHaveCount(0)
     const timeline = await request.get(
@@ -460,7 +464,7 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
     await page.getByRole("button", { name: "继续修改" }).click()
     const editor = page.getByRole("dialog")
     await editor
-      .getByRole("textbox", { name: "依据说明", exact: true })
+      .getByRole("textbox", { name: "补充说明", exact: true })
       .fill("本人补充了独立完成的合成依据")
     await editor
       .getByRole("button", { name: "预览并提交", exact: true })

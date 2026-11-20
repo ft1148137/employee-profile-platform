@@ -110,7 +110,7 @@ def call(
     projected = name_levels(db, p, s.Review.model_validate(detail))
     if isinstance(body, PrepareInput):
         if body.revision != detail.revision:
-            raise RequestConflict("内容已变化，请重新查看")
+            raise RequestConflict("内容已更新，请刷新查看")
         service.validate_decisions(detail, body.decisions)
         card = s.ReviewCard(**projected.model_dump(), decisions=body.decisions)
         card.actions = [

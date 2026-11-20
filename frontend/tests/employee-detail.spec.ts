@@ -51,10 +51,10 @@ test("admin manages account, roles and history from the unified employee detail"
     "E12",
   )
   await expect(
-    page.getByRole("heading", { name: "Jira 账号匹配" }),
+    page.getByRole("heading", { name: "关联 Jira 账号" }),
   ).toBeVisible()
   const history = page.getByRole("region", { name: "修改记录" })
-  await expect(history).toContainText("生成账号")
+  await expect(history).toContainText("发放账号")
   await page.getByRole("button", { name: "重置密码", exact: true }).click()
   const dialog = page.getByRole("dialog")
   await dialog.getByRole("button", { name: "确认重置密码" }).click()
@@ -165,7 +165,7 @@ for (const username of ["manager.platform", "employee.platform"]) {
       0,
     )
     await expect(
-      page.getByRole("region", { name: "Jira 账号匹配" }),
+      page.getByRole("region", { name: "关联 Jira 账号" }),
     ).toHaveCount(0)
     await page.goto(`/employees/${subject.id}?tab=fields`)
     await page.reload()

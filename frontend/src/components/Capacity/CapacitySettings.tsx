@@ -38,16 +38,15 @@ function SettingsForm({ orgId }: { orgId: string }) {
   const current = changes ?? settings.data
   return (
     <form
-      aria-label="需求与容量设置"
+      aria-label="负荷与需求规则"
       className="max-w-xl space-y-5 rounded-xl border p-6"
       onSubmit={(event) => {
         event.preventDefault()
         save.mutate(current)
       }}
     >
-      <h2 className="text-xl font-semibold">需求与容量</h2>
       <p className="text-sm text-muted-foreground">
-        关闭后菜单和助手工具不再出现，画像功能不受影响，已有记录保留。
+        关闭后隐藏「规划」入口与相关助手能力，已有记录保留，不影响画像。
       </p>
       <fieldset disabled={save.isPending} className="space-y-5">
         <label className="flex items-center gap-3">
@@ -58,7 +57,7 @@ function SettingsForm({ orgId }: { orgId: string }) {
               setChanges({ ...current, enabled: event.target.checked })
             }
           />
-          开启需求与容量
+          启用规划与负荷功能
         </label>
         <div className="space-y-2">
           <Label htmlFor="requester-policy">谁可以提需求</Label>
@@ -87,7 +86,7 @@ function SettingsForm({ orgId }: { orgId: string }) {
         </Button>
       </fieldset>
       {save.isSuccess && !changes && (
-        <p role="status">需求与容量设置已保存。</p>
+        <p role="status">负荷与需求规则已保存。</p>
       )}
     </form>
   )

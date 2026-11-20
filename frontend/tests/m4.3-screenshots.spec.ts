@@ -256,10 +256,10 @@ test("M4.3 screenshots: file preview, web approval, profiles, settings and direc
       "已上传",
     )
     await page
-      .getByLabel("发给机器人的消息")
+      .getByLabel("发给助手的消息")
       .fill("请根据工作总结整理我的画像更新")
     await page.getByRole("button", { name: "发送", exact: true }).click()
-    const preview = page.getByRole("region", { name: "提交前预览" })
+    const preview = page.getByRole("region", { name: "变更预览" })
     await expect(preview).toContainText("独立完成订单接口设计与联调")
     await expect(
       preview.getByRole("button", { name: "确认提交", exact: true }),
@@ -270,7 +270,7 @@ test("M4.3 screenshots: file preview, web approval, profiles, settings and direc
     await screenshot("employee-assistant")
     await preview.getByRole("button", { name: "确认提交", exact: true }).click()
     await expect(
-      page.getByText("已提交给经理审批，审批前可以撤回。", { exact: true }),
+      page.getByText("已提交审批，经理审批前可撤回。", { exact: true }),
     ).toBeVisible()
     const unpublished = await (
       await request.get(`${base}/employees/${subject.id}/profile`, { headers })
@@ -286,9 +286,9 @@ test("M4.3 screenshots: file preview, web approval, profiles, settings and direc
         .getByRole("link", { name: "我的团队", exact: true }),
     ).toBeVisible()
     await page.getByRole("link", { name: /^协同/ }).click()
-    await page.getByLabel("发给机器人的消息").fill("列出待审批，批准这条请求")
+    await page.getByLabel("发给助手的消息").fill("列出待审批，批准这条请求")
     await page.getByRole("button", { name: "发送", exact: true }).click()
-    const review = page.getByRole("region", { name: "审批决定复述" })
+    const review = page.getByRole("region", { name: "审批决定确认" })
     await expect(review).toContainText("决定：已批准")
     await expect(review).toContainText("等级：独立完成")
     await expect(
@@ -354,10 +354,12 @@ test("M4.3 screenshots: file preview, web approval, profiles, settings and direc
       .click()
     const dialog = page.getByRole("dialog")
     await dialog
-      .getByRole("textbox", { name: "陈述", exact: true })
+      .getByRole("textbox", { name: "能力说明", exact: true })
       .fill("独立完成订单及支付接口设计与联调")
     await dialog.getByRole("button", { name: "预览修改", exact: true }).click()
-    await expect(dialog).toContainText("直接发布，不需要本人同意，会通知本人")
+    await expect(dialog).toContainText(
+      "提交后直接生效并通知本人，无需本人确认。",
+    )
     await expect(
       dialog.getByRole("button", { name: "确认直接发布", exact: true }),
     ).toBeEnabled()

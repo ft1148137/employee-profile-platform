@@ -193,7 +193,7 @@ def get_review(
         before = current.get(item.capability.key)
         definition = definitions.get(item.capability.key)
         reason = (
-            "能力 key 不在当前启用的词典中"
+            "能力编码不在当前启用的词典中"
             if definition is None
             else "目标判断已被其他请求取代"
             if (before.id if before else None) != item.target_claim_id
@@ -286,7 +286,7 @@ def decide(
     ):
         raise ReviewForbidden()
     if request.revision != revision or request.status != RequestStatus.PENDING_REVIEW:
-        raise RequestConflict("内容已变化，请重新查看")
+        raise RequestConflict("内容已更新，请刷新查看")
     session.exec(
         select(Employee)
         .where(

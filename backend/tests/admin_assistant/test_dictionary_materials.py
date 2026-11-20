@@ -212,7 +212,9 @@ def test_invalid_values_are_reported_without_writes(
         },
         session_id=store.create_session(db, p).id,
     )
-    assert ("pattern" if failure == "key" else "等级 key 重复") in result["error"]
+    assert ("能力或等级编码格式有误" if failure == "key" else "等级编码重复") in result[
+        "error"
+    ]
     assert read_editor(db, p) == before
 
 
@@ -265,7 +267,7 @@ def test_stale_card_and_attachment_boundaries(
             definitions=editor.definitions, expected_version=editor.expected_version
         ),
     )
-    with pytest.raises(c.ChangeSetError, match="已变化"):
+    with pytest.raises(c.ChangeSetError, match="已更新"):
         c.apply(db, p, row.id, row.revision)
     assert read_editor(db, p).definitions == editor.definitions
 

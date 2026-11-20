@@ -38,7 +38,7 @@ test("model kinds, saved secret, destination changes and disabling preserve conf
   await page.getByLabel("提供方", { exact: true }).selectOption("openai")
   await expect(page.getByLabel(/base URL/)).toHaveCount(0)
   await page.getByLabel("模型类型").selectOption("openai_compatible")
-  await page.getByLabel("模型名", { exact: true }).fill("synthetic")
+  await page.getByLabel("模型名称", { exact: true }).fill("synthetic")
   await page
     .getByLabel("密钥（可选）", { exact: true })
     .fill("synthetic-model-key")
@@ -81,21 +81,21 @@ test("model kinds, saved secret, destination changes and disabling preserve conf
   await page.getByLabel("模型类型").selectOption("openai_compatible")
   await expect(page.getByLabel("base URL（填到 /v1）")).toBeVisible()
   await page.getByLabel("模型类型").selectOption("chatgpt_subscription")
-  await expect(page.getByLabel("模型名", { exact: true })).toHaveValue(
+  await expect(page.getByLabel("模型名称", { exact: true })).toHaveValue(
     "chatgpt/gpt-6.1-sol",
   )
-  await expect(page.getByLabel("推理强度")).toHaveValue("high")
+  await expect(page.getByLabel("思考深度")).toHaveValue("high")
   await expect(page.getByLabel(/密钥/)).toHaveCount(0)
   await page
-    .getByLabel("模型名", { exact: true })
+    .getByLabel("模型名称", { exact: true })
     .fill("chatgpt/gpt-6.1-sol-custom")
   await page.getByRole("button", { name: "保存", exact: true }).click()
   await expect(page.getByText("模型设置已保存。")).toBeVisible()
   await page.reload()
-  await expect(page.getByLabel("模型名", { exact: true })).toHaveValue(
+  await expect(page.getByLabel("模型名称", { exact: true })).toHaveValue(
     "chatgpt/gpt-6.1-sol-custom",
   )
-  await expect(page.getByLabel("推理强度")).toHaveValue("high")
+  await expect(page.getByLabel("思考深度")).toHaveValue("high")
 })
 
 test("ChatGPT authorization callback, connection and disconnect", async ({
@@ -140,10 +140,10 @@ test("ChatGPT authorization callback, connection and disconnect", async ({
   await page.goto("/admin/model")
   await page.getByLabel("模型类型").selectOption("chatgpt_subscription")
   for (const text of [
-    "官方计划",
-    "每周两种用量上限",
+    "通过 ChatGPT 订阅账号接入",
+    "5 小时及每周用量限制",
     "数据控制",
-    "建议用 Business/Enterprise",
+    "建议使用 Business/Enterprise",
   ])
     await expect(page.getByText(text, { exact: false })).toBeVisible()
   await page.getByRole("button", { name: "连接 ChatGPT", exact: true }).click()

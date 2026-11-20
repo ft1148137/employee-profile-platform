@@ -169,7 +169,7 @@ def test_cloud_address_is_fixed(url: str) -> None:
     ],
 )
 def test_custom_metadata_url_is_rejected(url: str) -> None:
-    with pytest.raises(ValidationError, match="元数据"):
+    with pytest.raises(ValidationError, match="模型服务地址不能使用内网保留或受限地址"):
         ModelSettingUpdate(
             enabled=True,
             kind="openai_compatible",

@@ -143,7 +143,7 @@ def callback(db: Session, p: Principal, event: Event, identity: str) -> Reply | 
     ):
         return "按钮无效或已过期，请重新查看。"
     if session.lease_until and session.lease_until > utc_now():
-        return "忙，请稍后再试"
+        return "当前请求较多，请稍后再试"
     if session.last_activity_at <= utc_now() - timedelta(hours=2):
         return "会话已过期，请重新开始对话。"
     if row.action["action"] == "answer_question":
@@ -172,7 +172,7 @@ def callback(db: Session, p: Principal, event: Event, identity: str) -> Reply | 
             p,
             session.id,
             TypeAdapter(s.Action).validate_python(row.action),
-            client_name=f"内置机器人（{ {'telegram': 'Telegram', 'feishu': '飞书', 'wecom': '企业微信'}[event.platform] }）",
+            client_name=f"内置助手（{ {'telegram': 'Telegram', 'feishu': '飞书', 'wecom': '企业微信'}[event.platform] }）",
             commit=False,
         )
     # Commit consumption with the core's business writes, never before them.

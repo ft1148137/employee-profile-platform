@@ -57,7 +57,7 @@ function Delegations({ orgId, manager }: { orgId: string; manager: boolean }) {
       <header className="space-y-2">
         <h2 className="text-xl font-semibold">代理审批</h2>
         <p className="text-sm text-muted-foreground">
-          代理期间，你仍可审批。代理人只能处理原本交给你的请求，不能审批自己的请求，也不能再转交他人。
+          代理期间你本人仍可审批；代理人仅可代审你的待办，不可自审或转交。
         </p>
       </header>
       {manager ? (
@@ -120,7 +120,7 @@ function Delegations({ orgId, manager }: { orgId: string; manager: boolean }) {
       <SetupError error={create.error || revoke.error} />
       <section className="space-y-3" aria-label="代理记录">
         {query.data.data.length === 0 && (
-          <p className="text-sm text-muted-foreground">尚未设置代理</p>
+          <p className="text-sm text-muted-foreground">暂无代理记录</p>
         )}
         {query.data.data.map((row) => (
           <div

@@ -25,13 +25,13 @@ const platforms = {
   wecom: {
     name: "企业微信",
     fields: {
-      bot_id: "机器人标识",
-      secret: "机器人密钥",
+      bot_id: "应用标识",
+      secret: "应用密钥",
       corp_id: "企业标识（选填）",
       contact_secret: "通讯录密钥（选填）",
     },
   },
-  telegram: { name: "Telegram", fields: { bot_token: "机器人令牌" } },
+  telegram: { name: "Telegram", fields: { bot_token: "应用令牌" } },
 }
 
 export function ImPage() {
@@ -57,7 +57,6 @@ function Settings({ orgId }: { orgId: string }) {
   return (
     <div className="max-w-3xl space-y-6">
       <header className="border-l-4 border-primary pl-4">
-        <p className="text-xs text-muted-foreground">管理 · 员工沟通渠道</p>
         <h1 className="mt-2 text-3xl font-semibold">IM 入口</h1>
         <p className="mt-3 text-sm text-muted-foreground">
           分别管理各平台的入口与应用凭据。凭据加密保存，保存后不再显示；留空表示不改。
@@ -174,7 +173,7 @@ function PlatformSetting({
             </DraftField>
           </div>
           <p className="text-sm text-muted-foreground">
-            打开入口后，员工可在对应聊天工具里绑定账号并使用机器人，消息会经过该平台。
+            开启后，员工可在对应平台绑定账号并使用 AI 助手。
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             {Object.entries(platform.fields).map(([field, label]) => (
@@ -202,7 +201,7 @@ function PlatformSetting({
                   id={`${setting.platform}-${field}-help`}
                   className="text-xs text-muted-foreground"
                 >
-                  从聊天工具的应用管理页面取得，用于连接企业自己的机器人；加密保存，留空表示不修改。
+                  从聊天工具的应用管理页面取得，用于连接企业内置助手；加密保存，留空表示不修改。
                 </p>
               </div>
             ))}
@@ -233,7 +232,7 @@ function PlatformSetting({
           )}
           {setting.platform === "wecom" && (
             <p className="text-sm text-muted-foreground">
-              请使用智能机器人的长连接模式，无需公网回调地址。同一机器人只允许一个服务实例。
+              请使用企业微信的长连接模式，无需公网回调地址。同一应用只允许一个服务实例。
               无法读取企业邮箱时，请使用网页个人设置中的绑定码；新建应用通常无法读取邮箱。
               已启用时，连接测试读取最近心跳，不会另建连接。
             </p>
@@ -243,7 +242,7 @@ function PlatformSetting({
               <p className="font-medium">数据外发提示</p>
               <p>IM 里的消息会存在该平台的服务器上</p>
               {setting.platform === "telegram" && (
-                <p>服务器在境外，中国大陆通常连不上</p>
+                <p>服务器位于境外，境内网络可能无法直连。</p>
               )}
               <label
                 className="flex items-center gap-2"

@@ -3,7 +3,7 @@ import type { AccountPublic, EmploymentStatus, Role } from "@/client"
 export type AccountStatus = AccountPublic["status"]
 
 export const accountLabels: Record<AccountStatus, string> = {
-  none: "还没有账号",
+  none: "未开通",
   pending_first_login: "待首次登录",
   active: "正常",
   disabled: "已停用",

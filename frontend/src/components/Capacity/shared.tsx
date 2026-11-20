@@ -26,7 +26,7 @@ export function isCapacityDisabled(error: unknown, orgId: string) {
   return (
     error instanceof AxiosError &&
     error.response?.status === 404 &&
-    error.response.data?.detail === "需求与容量模块未开启" &&
+    error.response.data?.detail === "规划与负荷功能未开启" &&
     !!error.config?.url &&
     new URL(error.config.url, window.location.origin).pathname.startsWith(
       `/api/v1/orgs/${orgId}/capacity/`,
@@ -95,7 +95,7 @@ export function WorkloadNumbers({ workload }: { workload: WorkloadPublic }) {
         <p className="text-sm text-muted-foreground">Jira 参考值</p>
         <p className="mt-2 font-medium">
           {workload.jira_task_count === null
-            ? "无，未接 Jira 或未关联 Jira 账号"
+            ? "暂无（未关联 Jira）"
             : `${workload.jira_task_count} 件未完成`}
         </p>
       </div>
@@ -112,8 +112,7 @@ export function WorkloadNumbers({ workload }: { workload: WorkloadPublic }) {
   )
 }
 
-export const workloadNotice =
-  "Jira 参考值只是参考，不代表实际工作量；负荷不是绩效，不打分、不排名。"
+export const workloadNotice = "负荷数据仅供参考，不用于绩效考核或排名。"
 
 export function weekLabel(start: string) {
   return `${start.slice(5).replace("-", "/")} 周`

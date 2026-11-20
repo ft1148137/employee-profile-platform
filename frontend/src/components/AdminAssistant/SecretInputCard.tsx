@@ -43,7 +43,7 @@ export function SecretInputCard({
           body: { value },
         })
       } catch {
-        throw new Error("填写失败，请重新填写；若改动已结束，请重新起草。")
+        throw new Error("提交失败，请重试；若确认卡已过期，请重新起草。")
       }
     },
   })
@@ -60,7 +60,7 @@ export function SecretInputCard({
         {titles[card.field] ?? card.title}
       </label>
       <p className="text-sm text-muted-foreground">
-        仅用于这份改动，不会发送给助手，也不会写入聊天记录。
+        加密直传，不会发给 AI，也不写入对话记录。
       </p>
       <Input
         ref={input}

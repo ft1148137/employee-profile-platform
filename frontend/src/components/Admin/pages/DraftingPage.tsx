@@ -78,7 +78,7 @@ export function DraftingPage({ orgId }: { orgId: string }) {
         </DraftField>
       </div>
       <p className="text-sm text-muted-foreground">
-        打开后，同步工作记录后会自动为所有员工起草或更新画像请求，会消耗模型额度
+        开启后，每次同步工作记录将自动起草或更新画像（会消耗模型额度）。
       </p>
       {!model.data?.enabled && (
         <p role="status">模型未启用，请先在下方配置并启用模型。</p>
@@ -98,7 +98,11 @@ export function DraftingPage({ orgId }: { orgId: string }) {
             suggestion.blocked
           }
           onClick={() => {
-            if (window.confirm("只覆盖员工还没过目的草稿，确定重新起草全部？"))
+            if (
+              window.confirm(
+                "将仅覆盖员工尚未确认的草稿，已发布内容不受影响。确认重新起草吗？",
+              )
+            )
               start.mutate()
           }}
         >

@@ -35,7 +35,7 @@ export function AutoDraftSetting({ orgId }: { orgId: string }) {
     >
       <div className="flex items-center justify-between gap-4">
         <span id="auto-draft-label" className="font-medium">
-          让系统根据工作记录自动起草我的画像
+          根据工作记录自动起草画像
         </span>
         <Button
           role="switch"
@@ -49,10 +49,10 @@ export function AutoDraftSetting({ orgId }: { orgId: string }) {
         </Button>
       </div>
       <p className="text-sm text-muted-foreground">
-        关闭后，系统不再为你自动起草画像建议。已有的证据和判断不受影响，你可以随时打开。
+        关闭后不再为你自动生成草稿，已有画像不受影响，可随时重新开启。
       </p>
       {query.data.org_disabled && (
-        <p className="text-sm">企业目前没有打开自动起草。</p>
+        <p className="text-sm">企业暂未开启自动起草功能。</p>
       )}
       {save.isError && <p role="alert">保存失败，请重试。</p>}
     </section>

@@ -18,7 +18,7 @@ const NotFound = () => {
       </div>
 
       <p className="text-lg text-muted-foreground mb-4 text-center z-10">
-        找不到你要访问的页面。
+        该页面不存在或链接已失效。
       </p>
       <div className="z-10">
         <Link to="/">

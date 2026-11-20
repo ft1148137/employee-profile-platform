@@ -99,13 +99,13 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   }
   await open(admin.access_token, "/admin/rules?tab=capacity")
   await expect(
-    page.getByRole("checkbox", { name: "开启需求与容量" }),
+    page.getByRole("checkbox", { name: "启用规划与负荷功能" }),
   ).not.toBeChecked()
-  await page.getByRole("checkbox", { name: "开启需求与容量" }).check()
+  await page.getByRole("checkbox", { name: "启用规划与负荷功能" }).check()
   await page.getByRole("combobox", { name: "谁可以提需求" }).click()
   await page.getByRole("option", { name: "只有部门经理", exact: true }).click()
   await page.getByRole("button", { name: "保存设置", exact: true }).click()
-  await expect(page.getByRole("status")).toContainText("需求与容量设置已保存")
+  await expect(page.getByRole("status")).toContainText("负荷与需求规则已保存")
   await page.goto("/capacity?tab=team")
   const plan = page.getByRole("navigation", { name: "空间导航" })
   await expect(plan.getByRole("link")).toHaveText(["团队负荷", "借调请求"])
@@ -140,7 +140,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     page.getByRole("link", { name: "我的负荷", exact: true }),
   ).toHaveAttribute("aria-current", "page")
   await expect(
-    page.getByText("无，未接 Jira 或未关联 Jira 账号", { exact: true }),
+    page.getByText("暂无（未关联 Jira）", { exact: true }),
   ).toBeVisible()
   await expect(
     page
@@ -161,11 +161,11 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     await page.getByLabel("申请负荷（%）").fill(percent)
     await page.getByLabel("申请原因").fill(reason)
     await page.getByRole("button", { name: "提交申请", exact: true }).click()
-    await expect(page.getByRole("status")).toContainText("已有申请待处理")
+    await expect(page.getByRole("status")).toContainText("当前有申请正在审批中")
     await expect(
       page
         .getByRole("region", { name: "每周投入" })
-        .getByText("修正待审", { exact: true }),
+        .getByText("调整审批中", { exact: true }),
     ).toHaveCount(2)
     await open(tokens.get("M")!, "/capacity?tab=approvals")
     await expect(
@@ -206,7 +206,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   ).toBeVisible()
   await page.goto("/inbox")
   await page
-    .getByRole("link", { name: "查看需求与容量", exact: true })
+    .getByRole("link", { name: "查看详情", exact: true })
     .first()
     .click()
   await expect(page).toHaveURL("/capacity")
@@ -225,7 +225,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     .filter({ hasText: "合成员工" })
     .getByRole("button", { name: "设置", exact: true })
     .click()
-  await expect(page.getByRole("dialog")).toContainText("改后会通知本人")
+  await expect(page.getByRole("dialog")).toContainText("保存后通知本人")
   await expect(page.getByLabel("调整说明（选填）")).toHaveCount(0)
   const firstWeek = await page
     .getByLabel("开始周", { exact: true })
@@ -241,7 +241,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   await expect(row).toContainText("110%")
   await expect(row.getByText("110% / 100%", { exact: true })).toHaveCount(2)
   await row
-    .getByRole("button", { name: /110% \/ 100%，过载，查看负荷明细/ })
+    .getByRole("button", { name: /110% \/ 100%，超负荷，查看负荷明细/ })
     .first()
     .click()
   const details = page.getByRole("dialog", { name: "负荷明细 · 合成员工" })
@@ -261,9 +261,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   })
   await page.getByRole("button", { name: "下一期" }).click()
   await expect(row.getByText("未确认", { exact: true })).toHaveCount(8)
-  await page
-    .getByRole("button", { name: "沿用上次确认值确认未来 4 周" })
-    .click()
+  await page.getByRole("button", { name: "按上次设置确认未来 4 周" }).click()
   await page.getByRole("button", { name: "回到本周" }).click()
   await expect(row.getByText("110% / 100%", { exact: true })).toHaveCount(4)
   await expect(row.getByText("未确认", { exact: true })).toHaveCount(4)
@@ -353,16 +351,16 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     .fill(friday.toISOString().slice(0, 10))
   await dates.getByRole("button", { name: "登记", exact: true }).click()
   await expect(dates.getByRole("status")).toContainText(
-    "这几周已有分配超出可用，请和部门经理沟通",
+    "以下周次已有任务超出可用负荷，请与部门经理协调",
   )
   await dates.getByRole("button", { name: "删除", exact: true }).click()
   await expect(
     dates.getByRole("button", { name: "删除", exact: true }),
   ).toHaveCount(0)
   await open(admin.access_token, "/admin/rules?tab=capacity")
-  await page.getByRole("checkbox", { name: "开启需求与容量" }).uncheck()
+  await page.getByRole("checkbox", { name: "启用规划与负荷功能" }).uncheck()
   await page.getByRole("button", { name: "保存设置", exact: true }).click()
-  await expect(page.getByRole("status")).toContainText("需求与容量设置已保存")
+  await expect(page.getByRole("status")).toContainText("负荷与需求规则已保存")
   for (const token of [
     admin.access_token,
     tokens.get("M")!,
@@ -370,7 +368,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   ]) {
     await open(token)
     await expect(
-      page.getByText("需求与容量功能已关闭，如需使用请联系企业管理员", {
+      page.getByText("规划与负荷功能未开启，如需使用请联系企业管理员。", {
         exact: true,
       }),
     ).toBeVisible()

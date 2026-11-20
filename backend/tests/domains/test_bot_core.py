@@ -268,7 +268,7 @@ def test_real_pi_preview_confirm_withdraw_and_projection(
     status = response.json()["messages"][0]
     assert status["status"] == "pending_review"
     db.refresh(request)
-    assert request.submitted_via == "bot" and request.client_name == "内置机器人"
+    assert request.submitted_via == "bot" and request.client_name == "内置助手"
     response = client.post(
         url + "/actions",
         params=query,
@@ -299,7 +299,7 @@ def test_actions_scope_revision_and_questions(demo: tuple, db: Session) -> None:
         p, db, request.id, [ItemInput(**payload(statement="新版"))], "web"
     )
     db.commit()
-    with pytest.raises(employee.RequestConflict, match="内容已变化"):
+    with pytest.raises(employee.RequestConflict, match="内容已更新"):
         core.act(db, p, session.id, action)
     other = replace(p, employee_id=people["E01"].id)
     other_session = store.create_session(db, other)
@@ -389,7 +389,7 @@ def test_model_cannot_submit(
 @pytest.mark.parametrize(
     "error,expected",
     [
-        (BotBusy(), "忙，请稍后再试"),
+        (BotBusy(), "当前请求较多，请稍后再试"),
         (BotDraftingPriority(), "正在起草画像，请稍后再试"),
         (BotRateLimited(utc_now()), "每小时 30 轮已用完"),
         (BotQuotaPaused(utc_now(), False), "模型额度暂时用完，预计"),
@@ -475,7 +475,7 @@ def test_no_model_and_http_scope(
     )
     url = f"/api/v1/bot/sessions/{session.id}"
     assert (
-        "机器人需要先配置模型"
+        "工作助手需要先配置模型"
         in core.turn(db, p, session.id, "合成输入").messages[0].text
     )
     for suffix, body in (

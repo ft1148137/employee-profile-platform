@@ -329,7 +329,7 @@ def draft_employee(session: Session, org_id: UUID, employee_id: UUID) -> None:
                 session,
                 pending,
                 InboxKind.INITIAL_REVIEW,
-                "增量画像已起草，请过目后提交",
+                "增量画像已起草，请确认后提交",
             )
         else:
             pending.revision += 1

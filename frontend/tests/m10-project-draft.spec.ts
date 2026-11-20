@@ -129,7 +129,7 @@ test("从网页助手核对项目草稿并创建项目需求", async ({ page, re
     await open(page, "A", "/assistant")
     const assistant = page.getByRole("region", { name: "助手", exact: true })
     await assistant
-      .getByLabel("发给机器人的消息")
+      .getByLabel("发给助手的消息")
       .fill(
         "起草一个客户报表项目。研发先做接口，12 月 1–2 日一人投入 50%，测试接着验证，12 月 3–4 日一人投入 30%。",
       )
@@ -148,7 +148,7 @@ test("从网页助手核对项目草稿并创建项目需求", async ({ page, re
 
     const askProgress = async (admin: boolean) => {
       const input = page.getByLabel(
-        admin ? "发给管理助手的消息" : "发给机器人的消息",
+        admin ? "发给管理助手的消息" : "发给助手的消息",
       )
       await input.fill("查询多角色项目进展")
       await page.getByRole("button", { name: "发送", exact: true }).click()

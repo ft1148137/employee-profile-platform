@@ -65,7 +65,7 @@ test("audit records show account and revoked role labels with filters", async ({
     .filter({ hasText: "（employee11@demo.example.com）" })
   await expect(rows.nth(5)).toBeVisible()
   for (const action of [
-    "生成账号",
+    "发放账号",
     "重置密码",
     "停用账号",
     "启用账号",

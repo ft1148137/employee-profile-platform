@@ -34,10 +34,8 @@ export function Disputes({
   if (query.isError) return <ProfileError retry={() => query.refetch()} />
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <h1 className="text-2xl font-semibold">争议</h1>
-      <p>
-        处理申诉不会直接批准改动。允许重新提交时，员工修改草稿后照常提交审批。
-      </p>
+      <h1 className="text-2xl font-semibold">申诉与争议</h1>
+      <p>处理申诉不直接修改画像；若允许重提，员工修改后仍需正常送审。</p>
       <p role="status">{query.data.length} 项待处理申诉</p>
       {query.data.map((appeal) => (
         <Resolve

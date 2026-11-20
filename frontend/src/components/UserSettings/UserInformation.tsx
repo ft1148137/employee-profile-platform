@@ -26,8 +26,7 @@ const UserInformation = () => {
       <dl className="space-y-4">
         {[
           ["姓名", user?.full_name],
-          ["登录名", user?.username],
-          ["邮箱", user?.email],
+          ["登录邮箱", user?.email],
         ].map(([label, value]) => (
           <div key={label}>
             <dt className="text-sm text-muted-foreground">{label}</dt>
@@ -45,11 +44,11 @@ const UserInformation = () => {
           >
             你的直属下属 {report.employee_name}
             {report.employee_code && `（工号：${report.employee_code}）`}{" "}
-            的画像请求
+            的画像更新
             {report.reviewers.length
               ? `由 ${report.reviewers.map((reviewer) => `${reviewer.name}（${reviewer.role}）`).join("、")}审批。`
               : "暂时没有可用的审批人。"}
-            你没有团队查看和审批权限，需要的话请找企业管理员。
+            如需开通团队管理与审批权限，请联系企业管理员。
           </p>
         ))}
     </section>

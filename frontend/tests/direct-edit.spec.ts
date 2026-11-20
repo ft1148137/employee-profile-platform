@@ -184,7 +184,7 @@ isolated(
       await expect(detail).not.toContainText(hidden)
     await detail.getByRole("button", { name: "直接修改", exact: true }).click()
     await expect(
-      page.getByRole("textbox", { name: "陈述", exact: true }),
+      page.getByRole("textbox", { name: "能力说明", exact: true }),
     ).toBeVisible()
     await page
       .getByRole("dialog")
@@ -197,7 +197,7 @@ isolated(
       .click()
     await card.getByRole("button", { name: "直接修改", exact: true }).click()
     await expect(
-      page.getByRole("textbox", { name: "陈述", exact: true }),
+      page.getByRole("textbox", { name: "能力说明", exact: true }),
     ).toBeVisible()
   },
 )
@@ -215,12 +215,12 @@ isolated(
     await page.getByRole("button", { name: "修改", exact: true }).last().click()
     await page.getByRole("button", { name: "手动编辑", exact: true }).click()
     const dialog = page.getByRole("dialog")
-    const input = dialog.getByRole("textbox", { name: "陈述", exact: true })
+    const input = dialog.getByRole("textbox", { name: "能力说明", exact: true })
     await dialog.getByText("谁能看到", { exact: true }).click()
     await expect(dialog).toContainText("依据说明和受限自述本人和管辖经理可见")
     await input.fill("尚未保存的合成陈述")
     await dialog.getByRole("button", { name: "关闭", exact: true }).click()
-    await expect(dialog).toContainText("有没保存的内容，确定放弃吗？")
+    await expect(dialog).toContainText("修改尚未保存，确定放弃吗？")
     await dialog.getByRole("button", { name: "继续编辑", exact: true }).click()
     await expect(input).toHaveValue("尚未保存的合成陈述")
     await page.evaluate(() =>
@@ -228,7 +228,7 @@ isolated(
         .querySelector<HTMLAnchorElement>('a[href="/assistant"]')
         ?.click(),
     )
-    await expect(dialog).toContainText("有没保存的内容，确定放弃吗？")
+    await expect(dialog).toContainText("修改尚未保存，确定放弃吗？")
     await dialog.getByRole("button", { name: "继续编辑", exact: true }).click()
     await expect(input).toHaveValue("尚未保存的合成陈述")
     await page.keyboard.press("Escape")
@@ -265,7 +265,7 @@ isolated(
     await page.getByRole("button", { name: "手动编辑", exact: true }).click()
     const dialog = page.getByRole("dialog")
     await dialog
-      .getByRole("textbox", { name: "陈述", exact: true })
+      .getByRole("textbox", { name: "能力说明", exact: true })
       .fill(statement)
     const created = page.waitForResponse(
       (response) =>
@@ -332,7 +332,7 @@ isolated(
     await page.getByRole("button", { name: "手动编辑", exact: true }).click()
     const dialog = page.getByRole("dialog")
     await dialog
-      .getByRole("textbox", { name: "陈述", exact: true })
+      .getByRole("textbox", { name: "能力说明", exact: true })
       .fill("本人补充的合成陈述")
     await dialog
       .getByRole("combobox", { name: /^等级/ })
@@ -364,9 +364,11 @@ isolated(
           sends++
       }
       page.on("request", countSend)
-      await page.getByRole("link", { name: "让助手改", exact: true }).click()
+      await page.getByRole("link", { name: "用助手整理", exact: true }).click()
       await expect(page).toHaveURL(/\/assistant\?prompt=/)
-      await expect(page.getByPlaceholder("给画像机器人发消息…")).toHaveValue(
+      await expect(
+        page.getByPlaceholder("说说你的经历，或想查询什么…"),
+      ).toHaveValue(
         `我想修改「合成能力${adding ? 2 : 1}」这项能力，现在的等级是${adding ? "未填写" : "独立完成"}：`,
       )
       await expect(
@@ -395,13 +397,15 @@ for (const role of ["manager", "admin"] as const) {
       await card.getByRole("button", { name: "直接修改", exact: true }).click()
       const dialog = page.getByRole("dialog")
       await dialog
-        .getByRole("textbox", { name: "陈述", exact: true })
+        .getByRole("textbox", { name: "能力说明", exact: true })
         .fill("直接更新的合成陈述")
       await dialog
         .getByRole("combobox", { name: /^等级/ })
         .selectOption("advanced")
       await dialog.getByRole("button", { name: "预览修改" }).click()
-      await expect(dialog).toContainText("直接发布，不需要本人同意，会通知本人")
+      await expect(dialog).toContainText(
+        "提交后直接生效并通知本人，无需本人确认。",
+      )
       await expect(
         dialog.getByRole("region", { name: "修改前" }),
       ).toContainText("独立完成")
@@ -414,7 +418,7 @@ for (const role of ["manager", "admin"] as const) {
       await expect(card).toContainText("已确认")
       await chooseAddition(page)
       await dialog
-        .getByRole("textbox", { name: "陈述", exact: true })
+        .getByRole("textbox", { name: "能力说明", exact: true })
         .fill("新增的合成陈述")
       await dialog
         .getByRole("combobox", { name: /^等级/ })
@@ -428,7 +432,7 @@ for (const role of ["manager", "admin"] as const) {
       })
       await expect(added).toContainText("已确认")
       await added.getByRole("button", { name: "直接修改", exact: true }).click()
-      await dialog.getByLabel("撤回这条判断", { exact: true }).check()
+      await dialog.getByLabel("移除此项", { exact: true }).check()
       await dialog.getByRole("button", { name: "预览修改" }).click()
       await expect(
         dialog.getByRole("region", { name: "修改后" }),
@@ -455,9 +459,7 @@ for (const role of ["manager", "admin"] as const) {
       await logOutUser(page)
       await logInUser(page, company.employee.account!.username, password)
       await page.goto("/inbox")
-      await expect(
-        page.getByText("画像被直接修改", { exact: true }),
-      ).toHaveCount(4)
+      await expect(page.getByText("画像已更新", { exact: true })).toHaveCount(4)
       await expect(
         page.getByText(/直接修改了你的画像：合成能力1/).first(),
       ).toContainText(role === "manager" ? "合成经理" : "合成管理员")
@@ -489,7 +491,7 @@ isolated(
       if (stage === "publish")
         await dialog.getByRole("button", { name: "确认直接发布" }).click()
       await expect(dialog.getByRole("alert")).toHaveText(
-        "画像已变化，请刷新后再改",
+        "画像已更新，请刷新后再修改",
       )
       await expect(
         dialog.getByRole("button", { name: "确认直接发布" }),

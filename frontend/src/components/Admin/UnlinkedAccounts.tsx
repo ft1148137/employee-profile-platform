@@ -39,7 +39,7 @@ export function UnlinkedAccounts({ orgId }: { orgId: string }) {
   })
   return (
     <div className="space-y-4">
-      <p>这些账号没有员工身份，角色仅供查看。</p>
+      <p>以下账号未绑定员工档案，仅支持查看角色。</p>
       {query.isPending ? (
         <p role="status">正在加载账号…</p>
       ) : query.isError ? (

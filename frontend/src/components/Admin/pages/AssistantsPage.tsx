@@ -75,10 +75,7 @@ function Settings({ orgId }: { orgId: string }) {
   return (
     <div className="max-w-3xl space-y-6">
       <header className="border-l-4 border-primary pl-4">
-        <h1 className="text-3xl font-semibold">外部 AI 助手</h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          由员工授权外部助手查看本人的资料、提交画像请求。
-        </p>
+        <h1 className="text-3xl font-semibold">外部 AI 工具</h1>
       </header>
       <p className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-5">
         打开后，员工的画像、证据和自述会发给外部助手的厂商。请先确认企业允许这些数据外发。
@@ -104,12 +101,11 @@ function Settings({ orgId }: { orgId: string }) {
               onCheckedChange={(value) => setEnabled(value === true)}
               disabled={save.isPending || suggestion.blocked}
             />
-            允许外部 AI 助手
+            允许接入外部 AI 工具
           </label>
         </DraftField>
         <p className="text-sm text-muted-foreground">
-          打开后，员工可授权自己的 AI
-          助手访问平台；助手的权限始终不超过授权员工本人。
+          开启后员工可授权外部工具访问本人数据，权限不超过员工本人。
         </p>
         <DraftField changed={suggestion.changed("allowed_clients")}>
           <label htmlFor="mcp-clients" className="block space-y-2">

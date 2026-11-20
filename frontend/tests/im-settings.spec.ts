@@ -37,14 +37,14 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
       name: "企业微信",
       platform: "wecom",
       fields: {
-        机器人标识: "synthetic-bot",
-        机器人密钥: "synthetic-wecom-secret",
+        应用标识: "synthetic-bot",
+        应用密钥: "synthetic-wecom-secret",
       },
     },
     {
       name: "Telegram",
       platform: "telegram",
-      fields: { 机器人令牌: "12345:synthetic-token" },
+      fields: { 应用令牌: "12345:synthetic-token" },
     },
   ]
   try {
@@ -67,7 +67,7 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
       ).toBeVisible()
       if (row.platform === "telegram")
         await expect(
-          form.getByText("服务器在境外，中国大陆通常连不上"),
+          form.getByText("服务器位于境外，境内网络可能无法直连。"),
         ).toBeVisible()
       const save = form.getByRole("button", { name: "保存", exact: true })
       await expect(save).toBeDisabled()
@@ -105,7 +105,7 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
     await expect(telegram.getByRole("alert")).toHaveText("连接超时，请检查网络")
     const wecom = page.getByRole("form", { name: "企业微信", exact: true })
     await expect(wecom).toContainText("无法读取企业邮箱时")
-    await expect(wecom).toContainText("同一机器人只允许一个服务实例")
+    await expect(wecom).toContainText("同一应用只允许一个服务实例")
     await page.route("**/im-settings/wecom/test", (route) =>
       route.fulfill({
         json: { ok: true, message: "长连接最近心跳时间：合成时间" },
@@ -150,7 +150,7 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
 })
 
 for (const [tab, message] of [
-  ["sources", "你没有权限管理数据来源，只有企业管理员可以操作。"],
+  ["sources", "需要企业管理员权限"],
   ["model", "需要企业管理员权限"],
   ["bot", "需要企业管理员权限"],
   ["im", "需要企业管理员权限"],

@@ -38,7 +38,7 @@ from app.domains.model import pi_client
 from app.domains.model.client import ModelUnavailable
 from app.domains.model.service import model_config, read_setting, supports_images
 
-DRAFTING_REASON = "正在起草画像，期间管理助手暂停，可以继续使用手工页面。"
+DRAFTING_REASON = "正在起草画像，期间管理助手暂停，你也可以直接在对应页面操作。"
 logger = logging.getLogger(__name__)
 
 
@@ -56,9 +56,9 @@ def availability(db: Session, principal: Principal) -> Availability:
     setting = read_setting(db, principal.org_id)
     reason = ""
     if setting is None or not setting.model:
-        reason = "请先在模型设置里配置模型，也可以继续使用手工页面。"
+        reason = "请先在模型设置里配置模型，你也可以直接在对应页面操作。"
     elif not setting.enabled:
-        reason = "模型尚未启用，请在模型设置里启用，也可以继续使用手工页面。"
+        reason = "模型尚未启用，请在模型设置里启用，你也可以直接在对应页面操作。"
     elif setting.paused_until and setting.paused_until > utc_now():
         reason = f"模型额度暂时用完，请在 {retry_time(setting.paused_until)} 后重试。"
     elif (
@@ -177,7 +177,7 @@ def turn(
     except BotDraftingPriority:
         text = DRAFTING_REASON
     except BotBusy:
-        text = "系统正忙，请稍后重试，也可以继续使用手工页面。"
+        text = "系统正忙，请稍后重试，你也可以直接在对应页面操作。"
     except (BotRateLimited, BotQuotaPaused) as error:
         text = f"暂时无法对话，请在 {retry_time(error.retry_at)} 后重试。"
     except pi_client.PiSessionInvalid:
@@ -194,7 +194,7 @@ def turn(
         text = (
             DEADLINE_MESSAGE
             if error.code == "deadline"
-            else "模型暂时不可用，请稍后重试，也可以继续使用手工页面。"
+            else "模型暂时不可用，请稍后重试，你也可以直接在对应页面操作。"
         )
     page: str = body.page
     for card in cards:
@@ -237,6 +237,6 @@ def _fallback(text: str, page: str) -> AdminTurnResponse:
     return AdminTurnResponse(
         messages=[
             TextMessage(text=text),
-            LinkCard(title="切换到手工页面", page=page),
+            LinkCard(title="前往对应页面", page=page),
         ]
     )

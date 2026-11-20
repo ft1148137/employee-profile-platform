@@ -384,7 +384,10 @@ def test_model_material_confirmation(
             "名单里没有工号 missing",
         ),
         ([{"action": "update", "employee_code": "B"}] * 2, "工号重复"),
-        ([{"action": "update", "employee_code": "B", "department": ""}], "参数说明"),
+        (
+            [{"action": "update", "employee_code": "B", "department": ""}],
+            "参数不正确，请按功能说明填写",
+        ),
         ([{"action": "update", "employee_code": "B", "job_family": "技术"}], "未开启"),
         (
             [{"action": "update", "employee_code": "B", "email": "bad"}],
@@ -450,7 +453,7 @@ def test_offboard_stale_and_rollback(
     org.roster_revision += 1
     db.add(org)
     db.commit()
-    with pytest.raises(c.ChangeSetError, match="已变化"):
+    with pytest.raises(c.ChangeSetError, match="已更新"):
         c.apply(db, p, row.id, row.revision)
     row = propose(db, tenant, values)
     assert c.apply(db, p, row.id, row.revision).status == "draft"

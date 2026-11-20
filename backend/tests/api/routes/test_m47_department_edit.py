@@ -284,7 +284,7 @@ def test_assistant_rename_delete_and_stale(db: Session, demo: tuple) -> None:
     employee.department_id = row.id
     db.add(employee)
     db.commit()
-    with pytest.raises(c.ChangeSetError, match="内容已变化"):
+    with pytest.raises(c.ChangeSetError, match="内容已更新"):
         c.apply(db, p, move.id, move.revision)
     employee.department_id = None
     db.add(employee)

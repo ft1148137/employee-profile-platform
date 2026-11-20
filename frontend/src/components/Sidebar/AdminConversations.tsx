@@ -101,15 +101,13 @@ export function AdminConversations({
         )
       })}
       {history.data && entries.length === 0 && (
-        <p className="p-3 text-sm text-muted-foreground">
-          还没有对话，开始一个新任务吧。
-        </p>
+        <p className="p-3 text-sm text-muted-foreground">暂无历史对话</p>
       )}
       {history.data && (
         <p className="px-3 py-4 text-xs text-muted-foreground">
           {history.data.retention_days
             ? `保留 ${history.data.retention_days} 天`
-            : "2 小时没有活动后清除"}
+            : "闲置 2 小时后自动清除"}
         </p>
       )}
     </section>

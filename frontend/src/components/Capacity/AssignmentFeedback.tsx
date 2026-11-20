@@ -88,7 +88,7 @@ export function AssignmentFeedback({
         <CapacityError error={dictionary.error || submit.error} />
         <div className="flex gap-2">
           <Button type="submit" disabled={!dictionary.isSuccess}>
-            发送给员工过目
+            发送给员工确认
           </Button>
           <Button
             type="button"

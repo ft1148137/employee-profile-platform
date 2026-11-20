@@ -40,7 +40,7 @@ export function EmployeeSummaryContent({
           (kind, i) => (
             <div key={kind}>
               <dt className="mb-2 text-sm text-muted-foreground">
-                {["填写进度", "初始画像", "审核状态"][i]}
+                {["填写进度", "初始画像", "审批状态"][i]}
               </dt>
               <dd>
                 {kind === "inference_status" ? (
@@ -69,7 +69,7 @@ export function EmployeeSummaryContent({
           <dd>{publishedLabel(employee.latest_published)}</dd>
         </div>
         <div>
-          <dt className="mb-2 text-sm text-muted-foreground">任职状态</dt>
+          <dt className="mb-2 text-sm text-muted-foreground">在职状态</dt>
           <dd>{employee.employment_status === "active" ? "在职" : "已离职"}</dd>
         </div>
       </dl>

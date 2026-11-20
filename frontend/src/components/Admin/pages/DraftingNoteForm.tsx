@@ -42,7 +42,7 @@ export function DraftingNoteForm({ orgId }: { orgId: string }) {
     <div className="space-y-3 border-t pt-5">
       <Label htmlFor="drafting-note">起草补充说明</Label>
       <p className="text-sm text-muted-foreground">
-        说明本企业工单和能力的业务含义，不能改变工具、权限、输出格式或起草规则。清空后保存即可停用。
+        可补充本企业工单与业务背景说明（不影响权限和起草规则；清空保存即停用）。
       </p>
       <DraftField changed={suggestion.changed("text")}>
         <textarea

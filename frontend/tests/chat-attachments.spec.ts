@@ -79,10 +79,10 @@ async function openChat(page: Page, bot = false) {
     await page.getByRole("button", { name: "新对话", exact: true }).click()
     await expect(page).toHaveURL(/\/assistant\?mode=admin$/)
     await expect(
-      page.getByRole("heading", { name: "今天要处理的事", exact: true }),
+      page.getByRole("heading", { name: "待办事项", exact: true }),
     ).toBeVisible()
   }
-  const input = page.getByLabel(bot ? "发给机器人的消息" : "发给管理助手的消息")
+  const input = page.getByLabel(bot ? "发给助手的消息" : "发给管理助手的消息")
   await expect(input).toBeEnabled()
   return { input, uploads, turns }
 }
@@ -225,7 +225,7 @@ test("invalid counts, types and sizes stay unsent; extraction failures block sen
   ]) {
     await picker.setInputFiles(oversize)
     await expect(page.getByRole("alert")).toContainText(
-      "附件不能为空，图片最多 5 MiB，文件最多 10 MiB",
+      "附件不能为空，图片不超过 5 MB，文件不超过 10 MB",
     )
   }
   expect(requests).toBe(0)
@@ -324,7 +324,7 @@ test("new conversations do not reuse unsent uploads", async ({ page }) => {
   await page.getByRole("button", { name: "新对话", exact: true }).click()
   await expect(page).toHaveURL(/\/assistant\?mode=admin$/)
   await expect(
-    page.getByRole("heading", { name: "今天要处理的事", exact: true }),
+    page.getByRole("heading", { name: "待办事项", exact: true }),
   ).toBeVisible()
   await expect(
     page.getByRole("list", { name: "待发送附件" }).getByRole("listitem"),
@@ -347,7 +347,7 @@ test("cached history downloads images from the selected session", async ({
   await page.getByRole("button", { name: "新对话", exact: true }).click()
   await expect(page).toHaveURL(/\/assistant\?mode=admin$/)
   await expect(
-    page.getByRole("heading", { name: "今天要处理的事", exact: true }),
+    page.getByRole("heading", { name: "待办事项", exact: true }),
   ).toBeVisible()
   await upload(page, image)
   await input.fill("合成对话二")

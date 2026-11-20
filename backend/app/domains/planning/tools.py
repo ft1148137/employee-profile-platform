@@ -138,16 +138,12 @@ def _demand_view(p: Principal, db: Session, row: CapacityDemand) -> dict[str, An
                 DemandEventKind.COMMITMENT_CHANGED,
             }:
                 if event.get("text"):
-                    detail["reply_notice"] = (
-                        "没有读取对方答复正文里的条件，请到需求详情查看"
-                    )
+                    detail["reply_notice"] = "完整条件请前往需求详情查看"
                     detail["demand_url"] = f"/capacity?tab=outgoing&demand={row.id}"
                 event.pop("text", None)
         if proposal:
             if proposal.pop("conditions", None):
-                detail["reply_notice"] = (
-                    "没有读取对方答复正文里的条件，请到需求详情查看"
-                )
+                detail["reply_notice"] = "完整条件请前往需求详情查看"
                 detail["demand_url"] = f"/capacity?tab=outgoing&demand={row.id}"
     for event in detail["events"]:
         event["kind"] = EVENT_LABELS[event["kind"]]

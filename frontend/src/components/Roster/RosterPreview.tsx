@@ -44,7 +44,7 @@ export function RosterPreview({ preview }: { preview: RosterImportPreview }) {
           role="alert"
           className="rounded-lg border border-destructive p-4 text-destructive"
         >
-          <h4 className="font-semibold">名单有错误，请改好后重新上传</h4>
+          <h4 className="font-semibold">名单存在错误，请修正后重新上传</h4>
           <DataTable
             data={errors}
             columns={[

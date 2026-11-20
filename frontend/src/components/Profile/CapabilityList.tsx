@@ -53,7 +53,7 @@ export function CapabilityList({
   const groups = new Map<string, ProfileItem[]>()
   for (const item of visible) {
     const category = item.retired
-      ? "已不在当前词典中的能力"
+      ? "历史能力（已移出词典）"
       : (item.capability.category ?? "其他能力")
     groups.set(category, [...(groups.get(category) ?? []), item])
   }
@@ -62,7 +62,7 @@ export function CapabilityList({
       <ProfileVisibility />
       {departmentConfigured === false && (
         <p className="rounded-lg border bg-muted/20 p-4 text-sm">
-          本部门还没有设置对应能力
+          本部门暂未配置常用能力
           {canConfigureDepartment && (
             <Link to="/org-chart" className="ml-3 text-primary underline">
               去组织架构设置
@@ -203,11 +203,11 @@ function ClaimCard({
             </button>
           </h3>
           {pending && (
-            <p className="mt-1 text-xs text-muted-foreground">有待处理的改动</p>
+            <p className="mt-1 text-xs text-muted-foreground">有待处理更新</p>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {otherDepartment && <Badge variant="outline">其他部门能力</Badge>}
+          {otherDepartment && <Badge variant="outline">其他能力</Badge>}
           {!compact && evidence_stale && (
             <Badge variant="outline">证据较旧</Badge>
           )}
@@ -226,7 +226,7 @@ function ClaimCard({
               ? levelLabel(capability.level_rubric, claim.level)
               : claim
                 ? "未定级"
-                : "未给等级"}
+                : "未定级"}
           </p>
           {claim && !claim.level && (
             <p className="mt-2 break-words text-sm">
@@ -255,24 +255,22 @@ function ClaimCard({
               </div>
             )}
             <div>
-              <dt className="mb-1 text-muted-foreground">信心</dt>
+              <dt className="mb-1 text-muted-foreground">把握度</dt>
               <dd>
                 <Tooltip>
                   <TooltipTrigger className="cursor-help rounded focus-visible:outline-ring">
                     <StatusBadge kind="confidence" value={claim.confidence} />
                   </TooltipTrigger>
-                  <TooltipContent>
-                    粗粒度信心标签，不是经过校准的概率
-                  </TooltipContent>
+                  <TooltipContent>参考把握度，并非精确概率</TooltipContent>
                 </Tooltip>
               </dd>
             </div>
           </dl>
           <p className="rounded-md bg-muted/30 p-3 text-sm leading-relaxed text-muted-foreground">
-            {claim.explanation ?? "暂无解释"}
+            {claim.explanation ?? "暂无说明"}
           </p>
           <p className="my-3 text-xs text-muted-foreground">
-            生成来源：{source}
+            来源：{source}
             {claim.created_at && ` · ${dateLabel(claim.created_at)}`}
           </p>
           <details className="border-t pt-3">
@@ -290,7 +288,7 @@ function ClaimCard({
         </>
       ) : (
         <p className="text-sm leading-relaxed text-muted-foreground">
-          未知：暂无足够证据，不代表不具备这项能力
+          暂无记录（不代表不具备该能力）
         </p>
       )}
       {onEdit && (
@@ -306,7 +304,7 @@ function ClaimCard({
               variant="ghost"
               onClick={() => onEdit({ capability, status, claim }, true)}
             >
-              撤回这条判断
+              移除此项
             </Button>
           )}
         </div>

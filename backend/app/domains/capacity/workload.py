@@ -72,7 +72,7 @@ from app.domains.work.models import Task
 from app.models import User
 
 AVAILABLE_BELOW = 80
-NOTICE = "你有需求或负荷事项需要处理"
+NOTICE = "你有新的协作或负荷事项待处理"
 WORKLOAD_REVIEW_NOTICE = "有负荷调整申请等你审批"
 EXTENSION_REVIEW_NOTICE = "有延期申请等你审批"
 

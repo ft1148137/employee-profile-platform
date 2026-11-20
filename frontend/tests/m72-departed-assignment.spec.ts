@@ -197,12 +197,14 @@ test("旧分配表单收到离职冲突后提示并刷新候选人", async ({ pa
   )
   await page.goto(`/capacity?tab=incoming&demand=${demand.id}`)
   const assignment = page.getByRole("region", { name: "部门内分配" })
-  await assignment.getByLabel("从依据中选择员工").selectOption(person("B").id)
+  await assignment.getByLabel("选择员工").selectOption(person("B").id)
   await assignment.getByLabel("开始日期", { exact: true }).fill(startWeek)
   await assignment
     .getByLabel("预计完成日期", { exact: true })
     .fill("2026-12-20")
-  await assignment.getByRole("checkbox", { name: /该员工不在依据中/ }).check()
+  await assignment
+    .getByRole("checkbox", { name: /该员工未满足画像条件/ })
+    .check()
   const readsBefore = basisReads
   await assignment.getByRole("button", { name: "确认分配" }).click()
   await expect(assignment.getByRole("alert")).toContainText(
@@ -214,7 +216,7 @@ test("旧分配表单收到离职冲突后提示并刷新候选人", async ({ pa
   await expect.poll(() => basisReads).toBeGreaterThan(readsBefore)
   await expect(
     assignment
-      .getByLabel("从依据中选择员工")
+      .getByLabel("选择员工")
       .locator(`option[value="${person("B").id}"]`),
   ).toHaveCount(0)
 })

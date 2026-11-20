@@ -15,14 +15,14 @@ const timelineWidth = "min-w-[56rem]"
 const stripes =
   "bg-[repeating-linear-gradient(135deg,transparent_0_5px,var(--border)_5px_7px)]"
 const weekColors = {
-  正常: "border-teal-600/25 bg-teal-500/5",
-  饱满: "border-amber-600/30 bg-amber-500/10",
-  过载: "border-destructive/40 bg-destructive/10",
+  有余量: "border-teal-600/25 bg-teal-500/5",
+  基本满: "border-amber-600/30 bg-amber-500/10",
+  超负荷: "border-destructive/40 bg-destructive/10",
   未确认: "border-dashed bg-muted/50",
 }
 const segmentKinds = {
   committed: {
-    label: "已承诺分配",
+    label: "已分配任务",
     color:
       "border-blue-300 bg-blue-100 text-blue-950 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100",
   },
@@ -32,7 +32,7 @@ const segmentKinds = {
       "border-violet-300 bg-violet-100 text-violet-950 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-100",
   },
   hold: {
-    label: "方案预占",
+    label: "方案暂留",
     color:
       "border-dashed border-amber-600 bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-100",
   },
@@ -52,7 +52,7 @@ function segmentsFor(row: WorkloadPublic) {
       ...item,
       id: `hold-${item.proposal_id}-${index}`,
       kind: "hold" as const,
-      label: `预占 · ${item.title} · ${item.allocation_percent}%`,
+      label: `暂留 · ${item.title} · ${item.allocation_percent}%`,
       note: `待确认，到期：${new Date(item.expires_at).toLocaleString("zh-CN")}`,
     })),
     ...(row.unavailabilities ?? []).map((item) => ({
@@ -86,8 +86,8 @@ function overlaps(a: DateRange, b: DateRange) {
 function weekState(week: WeekLoad): keyof typeof weekColors {
   if (week.status !== "confirmed") return "未确认"
   const total = (week.other_percent ?? 0) + week.platform_percent
-  if (total > week.capacity_percent) return "过载"
-  return total < Math.floor(week.capacity_percent * 0.8) ? "正常" : "饱满"
+  if (total > week.capacity_percent) return "超负荷"
+  return total < Math.floor(week.capacity_percent * 0.8) ? "有余量" : "基本满"
 }
 
 function otherWork(week: WeekLoad) {
@@ -98,7 +98,7 @@ export function WorkloadLegend() {
   const entries = [
     ...Object.entries(weekColors),
     ...Object.values(segmentKinds).map(({ label, color }) => [label, color]),
-    ["其他工作基线", `border-transparent ${baseline}`],
+    ["其他工作", `border-transparent ${baseline}`],
   ]
   return (
     <ul
@@ -111,7 +111,7 @@ export function WorkloadLegend() {
             aria-hidden="true"
             className={cn("h-2.5 w-3.5 rounded-xs border", color)}
           />
-          {label === "过载" ? "过载（>100% 或超可用）" : label}
+          {label === "超负荷" ? "超负荷（>100% 或超可用）" : label}
         </li>
       ))}
     </ul>
@@ -244,7 +244,7 @@ function Timeline({
               )}
               {row.correction_pending[week.week_start] && (
                 <span className="block text-amber-700 dark:text-amber-300">
-                  修正待审
+                  调整审批中
                 </span>
               )}
               {week.legacy_start && (
@@ -355,7 +355,7 @@ export function TeamWorkloadGantt({
       <p className="text-xs text-muted-foreground">
         Jira 参考值：
         {row.jira_task_count === null
-          ? "无，未接 Jira 或未关联 Jira 账号"
+          ? "暂无（未关联 Jira）"
           : `${row.jira_task_count} 件未完成`}
       </p>
       <p className="text-xs text-muted-foreground">
@@ -505,7 +505,7 @@ export function WorkloadDetails({
                 {weekLoadLabel(week)}
                 {hidden > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    含未展示明细的受保护/待确认负荷 {hidden}%
+                    另有未展开或待确认负荷 {hidden}%
                   </p>
                 )}
               </li>

@@ -26,7 +26,7 @@ test("reminder settings persist and stale badges follow profile data", async ({
   ).json()
   try {
     await page.goto("/admin/rules?tab=reminders")
-    const section = page.getByRole("region", { name: "持续更新提醒" })
+    const section = page.getByRole("region", { name: "定期更新提醒" })
     await page
       .getByRole("combobox", { name: "企业时区", exact: true })
       .waitFor()
@@ -34,14 +34,14 @@ test("reminder settings persist and stale badges follow profile data", async ({
     for (const label of ["每年", "关闭", "每季度"]) {
       await section.getByRole("combobox", { name: "提醒周期" }).click()
       await page.getByRole("option", { name: label, exact: true }).click()
-      await section.getByLabel("证据较旧期限（月）").fill("36")
+      await section.getByLabel("证据过期提醒（月）").fill("36")
       await section.getByRole("button", { name: "保存提醒设置" }).click()
       await expect(section.getByRole("status")).toContainText("已保存")
       await page.reload()
       await expect(
         section.getByRole("combobox", { name: "提醒周期" }),
       ).toHaveText(label)
-      await expect(section.getByLabel("证据较旧期限（月）")).toHaveValue("36")
+      await expect(section.getByLabel("证据过期提醒（月）")).toHaveValue("36")
     }
     const timezoneSection = page.getByRole("region", { name: "企业时区设置" })
     await timezoneSection
@@ -77,7 +77,7 @@ test("reminder settings persist and stale badges follow profile data", async ({
     await expect(
       page
         .getByRole("article")
-        .filter({ hasText: "未知：暂无足够证据" })
+        .filter({ hasText: "暂无记录（不代表不具备该能力）" })
         .getByText("证据较旧"),
     ).toHaveCount(0)
     await expectChineseCopy(page)

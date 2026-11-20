@@ -281,7 +281,7 @@ def test_undo_and_stale(db: Session, demo: tuple, name: str) -> None:
         assert restored == before
     stale = proposal(db, demo, items=[{"function": name, "args": args}])
     entry.handler(db, p, entry.input_model.model_validate(args))
-    with pytest.raises(c.ChangeSetError, match="内容已变化"):
+    with pytest.raises(c.ChangeSetError, match="内容已更新"):
         c.apply(db, p, stale.id, stale.revision)
     assert c.get(db, p, stale.id).status == "stale"
 
@@ -290,7 +290,7 @@ def test_disabled_drafting_rejected_before_confirmation(
     db: Session, demo: tuple
 ) -> None:
     p = principal(db, demo)
-    with pytest.raises(registry.drafting.AutoDraftDisabled, match="自动起草未打开"):
+    with pytest.raises(registry.drafting.AutoDraftDisabled, match="自动起草未开启"):
         proposal(
             db,
             demo,
@@ -307,7 +307,7 @@ def test_disabled_drafting_rejected_before_confirmation(
         {"items": [{"function": "start_initial_drafting", "args": {"scope": "all"}}]},
         session_id=store.create_session(db, p).id,
     )
-    assert result == {"error": "自动起草未打开，请先在「数据与 AI → 模型」里打开"}
+    assert result == {"error": "自动起草未开启，请先在「设置 → 模型」中开启"}
     assert not cards
     assert "update_drafting_settings" not in registry.FUNCTIONS
     assert registry.FUNCTIONS["get_drafting_settings"].handler(

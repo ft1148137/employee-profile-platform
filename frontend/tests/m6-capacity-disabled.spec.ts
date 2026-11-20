@@ -126,7 +126,7 @@ for (const trigger of ["focus", "operation", "query"] as const) {
     }
     if (trigger === "focus") await expect(menu).toHaveCount(0)
     await expect(page.getByRole("status")).toHaveText(
-      "需求与容量功能已关闭，如需使用请联系企业管理员",
+      "规划与负荷功能未开启，如需使用请联系企业管理员。",
     )
     await expect(menu).toHaveCount(0)
     await expect(page.getByRole("alert")).toHaveCount(0)

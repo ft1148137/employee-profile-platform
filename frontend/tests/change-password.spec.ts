@@ -20,9 +20,7 @@ test("首次登录先改密，保存新令牌后进入首页", async ({ page }, 
   await page.getByTestId("password-input").fill(password)
   await page.getByRole("button", { name: "登录", exact: true }).click()
   await expect(page).toHaveURL("/change-password")
-  await expect(
-    page.getByRole("heading", { name: "请设置新密码" }),
-  ).toBeVisible()
+  await expect(page.getByRole("heading", { name: "设置新密码" })).toBeVisible()
   await page.screenshot({
     path: testInfo.outputPath("change-password.png"),
     fullPage: true,
@@ -118,9 +116,7 @@ test("布局收到改密错误时通过路由跳转并保留令牌", async ({ pa
   })
   await page.goto("/settings")
   await page.waitForURL("/change-password")
-  await expect(
-    page.getByRole("heading", { name: "请设置新密码" }),
-  ).toBeVisible()
+  await expect(page.getByRole("heading", { name: "设置新密码" })).toBeVisible()
   expect(documents).toEqual(["/settings"])
   expect(await page.evaluate(() => localStorage.getItem("access_token"))).toBe(
     token,

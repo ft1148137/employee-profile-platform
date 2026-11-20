@@ -47,7 +47,7 @@ from app.domains.change_request.employee import (
     RequestConflict,
 )
 from app.domains.change_request.import_json import InvalidImport
-from app.domains.change_request.schemas import validation_message
+from app.domains.change_request.schemas import limit_validation_message
 from app.domains.im.settings import InvalidImSetting
 from app.domains.model.service import InvalidModelSetting
 from app.domains.org.models import Organization
@@ -226,21 +226,51 @@ def _entry(
         )
     except ValueError as error:
         if isinstance(error, ValidationError):
-            message = validation_message(error)
-            if message != "工具参数无效，请核对字段和格式":
-                raise ChangeSetError(message, 422) from None
-        if name in (
-            "draft_profiles_from_material",
-            "draft_roster_from_material",
-            "draft_dictionary_from_material",
-        ) and isinstance(error, ValidationError):
-            raise ChangeSetError(
-                "；".join(
-                    f"{'.'.join(map(str, e['loc']))}：{e['msg'] if name == 'draft_dictionary_from_material' else e['type']}（请按功能参数说明修改）"
-                    for e in error.errors()
-                ),
-                422,
-            ) from None
+            messages: list[str] = []
+            for issue in error.errors():
+                location = issue["loc"]
+                field = str(location[-1]) if location else ""
+                limit = limit_validation_message(issue)
+                if limit:
+                    message = limit.split("：", 1)[-1]
+                    label = {
+                        "basis": "补充说明",
+                        "uncertainty": "待核实点",
+                    }.get(field)
+                    if label:
+                        message = label + message.removeprefix("说明")
+                elif name == "draft_profiles_from_material" and field == "level":
+                    index = location[-2] if len(location) > 1 else None
+                    message = (
+                        f"第 {index + 1} 项请选择等级"
+                        if isinstance(index, int)
+                        else "请选择等级"
+                    )
+                elif field == "people" and issue["type"] == "too_long":
+                    message = (
+                        f"一次最多整理 {issue.get('ctx', {}).get('max_length', 50)} 人"
+                    )
+                elif (
+                    name == "draft_dictionary_from_material"
+                    and "等级编码重复" in issue["msg"]
+                ):
+                    message = "等级编码重复"
+                elif (
+                    name == "draft_dictionary_from_material"
+                    and issue["type"] == "string_pattern_mismatch"
+                ):
+                    message = "能力或等级编码格式有误，请使用小写字母、数字和下划线"
+                else:
+                    continue
+                if (
+                    location[:1] == ("people",)
+                    and len(location) > 1
+                    and isinstance(location[1], int)
+                ):
+                    message = f"第 {location[1] + 1} 人：{message}"
+                messages.append(message)
+            if messages:
+                raise ChangeSetError("；".join(dict.fromkeys(messages)), 422) from None
         raise ChangeSetError("参数不正确，请按功能说明填写", 422) from None
 
 
@@ -388,7 +418,7 @@ def _stale(db: Session, row: AdminChangeSet) -> None:
     row.updated_at = utc_now()
     db.add(row)
     db.commit()
-    raise ChangeSetError("内容已变化，请重新预览")
+    raise ChangeSetError("内容已更新，请重新预览")
 
 
 def apply(

@@ -119,7 +119,7 @@ for (const action of ["允许", "拒绝", "企业关闭"] as const) {
     await page.getByRole("button", { name: "保存密码", exact: true }).click()
     await expect(page).toHaveURL(/\/oauth\/consent\?request=/)
     await expect(
-      page.getByText("名称由客户端自己填写", { exact: true }),
+      page.getByText("应用名称由对方自行提供，请核实来源。", { exact: true }),
     ).toBeVisible()
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
       "合成测试助手",
@@ -187,7 +187,7 @@ for (const action of ["允许", "拒绝", "企业关闭"] as const) {
     ).toBeTruthy()
     await page.goto("/settings")
     await page.getByRole("link", { name: "连接与集成" }).click()
-    const grants = page.getByRole("region", { name: "已授权的客户端" })
+    const grants = page.getByRole("region", { name: "已授权应用" })
     await expect(
       grants.getByText("合成测试助手", { exact: true }),
     ).toBeVisible()

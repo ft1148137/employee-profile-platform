@@ -1,6 +1,7 @@
 from dataclasses import replace
 from datetime import timedelta
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
@@ -188,7 +189,11 @@ def test_model_and_drafting(
         assert drafting["assistant_prompt"] == "帮我打开自动起草"
 
     if state == "paused":
-        assert "本月额度已用完" in model["summary"] and "恢复时间" in model["summary"]
+        assert (
+            "本月额度已用完" in model["summary"]
+            and "预计 " in model["summary"]
+            and model["summary"].endswith(" 恢复")
+        )
     if state == "failed":
         assert "1 人" in drafting["summary"]
     assert "SYNTHETIC_SECRET" not in str(data)
@@ -265,6 +270,7 @@ def test_sync(
     db: Session, client: TestClient, demo: tuple, state: str, level: str, failed: bool
 ) -> None:
     principal = actor(db, demo[1]["E02"].org_id, "admin@demo.example.com")
+    finished_at = utc_now()
     if state != "missing":
         connection = SourceConnection(
             org_id=principal.org_id, kind="jira", updated_by_user_id=principal.user_id
@@ -288,7 +294,9 @@ def test_sync(
                     connection_id=connection.id,
                     requested_by_user_id=principal.user_id,
                     status=state,
-                    finished_at=utc_now() if state in ("failed", "succeeded") else None,
+                    finished_at=finished_at
+                    if state in ("failed", "succeeded")
+                    else None,
                     error="SYNTHETIC_SECRET",
                 )
             )
@@ -303,7 +311,10 @@ def test_sync(
     if state in ("queued", "running"):
         assert data["status_cards"][2]["summary"] == "正在同步"
     if state == "succeeded":
-        assert "同步已完成：" in data["status_cards"][2]["summary"]
+        assert (
+            data["status_cards"][2]["summary"]
+            == f"最近同步：{finished_at.astimezone(ZoneInfo('Asia/Shanghai')):%Y-%m-%d %H:%M}"
+        )
     assert "SYNTHETIC_SECRET" not in str(data)
 
 

@@ -214,8 +214,16 @@ def test_types_and_extraction(demo: tuple, db: Session, ext: str) -> None:
         ("x.png", b"fake", "不支持"),
         ("x.gif", b"\x89PNG\r\n\x1a\n", "不支持"),
         ("x.txt", b"", "不能为空"),
-        ("x.txt", b"x" * (10 * 1024 * 1024 + 1), "最多"),
-        ("x.png", b"x" * (5 * 1024 * 1024 + 1), "最多"),
+        (
+            "x.txt",
+            b"x" * (10 * 1024 * 1024 + 1),
+            "文件超出限制：图片不超过 5 MB，文件不超过 10 MB",
+        ),
+        (
+            "x.png",
+            b"x" * (5 * 1024 * 1024 + 1),
+            "文件超出限制：图片不超过 5 MB，文件不超过 10 MB",
+        ),
         ("x.docx", b"corrupt", "无法读取"),
         ("x.pdf", b"corrupt", "无法读取"),
         ("x.xlsx", b"corrupt", "无法读取"),

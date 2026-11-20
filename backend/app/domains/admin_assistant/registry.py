@@ -436,7 +436,7 @@ FUNCTIONS = {
         _f(
             "get_bot_settings",
             "data_ai",
-            "查看内置机器人设置",
+            "查看内置助手设置",
             NoArgs,
             lambda d, p, a: bot.read_settings(d, p.org_id),
             "/admin/data-ai?tab=bot",
@@ -454,7 +454,7 @@ FUNCTIONS = {
         _f(
             "get_mcp_setting",
             "connections",
-            "查看外部 AI 助手开关",
+            "查看外部 AI 工具开关",
             NoArgs,
             lambda d, p, a: access.get_setting(d, p),
             "/admin/data-ai?tab=mcp",
@@ -717,7 +717,7 @@ FUNCTIONS["update_bot_settings"] = AdminFunction(
     area="data_ai",
     kind="change",
     risk="normal",
-    description="修改内置机器人的提问指南和聊天原文保留天数",
+    description="修改内置助手的提问指南和聊天原文保留天数",
     input_model=bot.BotSettings,
     handler=bot.save_settings,
     page="/admin/data-ai?tab=bot",
@@ -833,7 +833,7 @@ async def admin_read(
         ):
             return {
                 "data": {
-                    "error": "需求与容量功能已关闭，如需使用请先在能力与规则里开启"
+                    "error": "规划与负荷功能未开启，如需使用请先在负荷与需求规则中开启"
                 }
             }
         message = (

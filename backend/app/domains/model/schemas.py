@@ -122,7 +122,7 @@ class ModelSettingUpdate(BaseModel):
             if address:
                 address = getattr(address, "ipv4_mapped", None) or address
                 if address.is_link_local or str(address) == "fd00:ec2::254":
-                    raise ValueError("模型服务地址不能使用链路本地或云元数据地址")
+                    raise ValueError("模型服务地址不能使用内网保留或受限地址")
             if url.username is not None or url.password is not None:
                 raise ValueError("模型服务地址不能带用户名密码")
         return self

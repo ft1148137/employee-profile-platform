@@ -56,9 +56,7 @@ export function CsvImportCard({ orgId }: { orgId: string }) {
     >
       <h3 className="text-lg font-semibold">上传 CSV / Excel 工作记录</h3>
       <p className="text-sm text-muted-foreground">
-        没有
-        Jira，或工作记录在其他系统（PLM、Git、排班系统等）时，可以上传文件。支持
-        CSV、Excel，文件不超过 5 MB。
+        支持从其他系统导出后上传（CSV / Excel，不超过 5 MB）。
       </p>
       <p className="text-sm">
         必填列：记录编号、来源、发生时间、执行人账号、标题。

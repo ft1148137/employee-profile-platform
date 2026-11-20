@@ -39,7 +39,7 @@ class OrganizationTimezone(BaseModel):
         try:
             ZoneInfo(value)
         except ZoneInfoNotFoundError, ValueError:
-            raise ValueError("请选择有效的 IANA 时区名称") from None
+            raise ValueError("请选择有效的时区") from None
         return value
 
 

@@ -71,7 +71,7 @@ test("admin accepts suggestions without entering identifiers or level descriptio
   const editor = page.getByRole("region", { name: "网页编辑能力词典" })
   await editor.getByRole("button", { name: "新增能力", exact: true }).click()
   const manual = editor.getByRole("article", { name: "新增能力", exact: true })
-  await expect(manual.getByLabel("能力标识")).toHaveValue("capability_2")
+  await expect(manual.getByLabel("能力编码")).toHaveValue("capability_2")
   await manual.getByLabel("等级描述").fill("在指导下完成")
   await manual.getByLabel("能力名称").fill("手工新增合成能力")
   for (const name of ["新合成能力", "另一项合成能力"]) {
@@ -80,7 +80,7 @@ test("admin accepts suggestions without entering identifiers or level descriptio
       .getByRole("button", { name: "加入词典", exact: true })
       .click()
     const added = editor.getByRole("article", { name, exact: true })
-    await expect(added.getByLabel("能力标识")).toHaveCount(0)
+    await expect(added.getByLabel("能力编码")).toHaveCount(0)
     await expect(added.getByLabel("能力说明")).toHaveValue("合成能力说明")
     await expect(added.getByLabel("等级描述")).toHaveCount(3)
     for (const [index, level] of levels.entries()) {

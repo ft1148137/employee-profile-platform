@@ -159,7 +159,7 @@ test("administrator grant applies after two confirmations in the assistant", asy
       (await roles()).some(
         (role) => role.user_id === target.user_id && role.role === "org_admin",
       )
-    await card.getByRole("button", { name: "确认应用", exact: true }).click()
+    await card.getByRole("button", { name: "确认生效", exact: true }).click()
     await expect(card.getByRole("status")).toHaveText("请再次确认")
     expect(await granted()).toBe(false)
     await card.getByRole("button", { name: "再次确认", exact: true }).click()
@@ -226,7 +226,7 @@ test("administrator grant applies after two confirmations in the assistant", asy
     await expect(departmentCard).not.toContainText("old_skill")
     await expect(departmentCard).not.toContainText("运营部")
     await departmentCard
-      .getByRole("button", { name: "确认应用", exact: true })
+      .getByRole("button", { name: "确认生效", exact: true })
       .click()
     await expect(departmentCard.getByRole("status")).toHaveText("已应用")
     expect(

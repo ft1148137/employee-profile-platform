@@ -95,7 +95,7 @@ export function FeishuProjectDraft({
   const card = result?.type === "project_draft_card" ? result : preview.data
   return (
     <main className="mx-auto w-full max-w-3xl space-y-4 p-4">
-      {preview.isPending && <p role="status">正在读取项目草稿…</p>}
+      {preview.isPending && <p role="status">正在加载项目草稿…</p>}
       {card && (
         <ProjectDraftMessage
           card={card}

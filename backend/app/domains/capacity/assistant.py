@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, JsonValue, ValidationError
@@ -41,6 +42,7 @@ from app.domains.capacity.workload import employee, get_my_workload
 from app.domains.change_request.schemas import validation_message
 from app.domains.model.pi_client import ToolDefinition
 from app.domains.org.models import Department
+from app.domains.org.timezone import read_timezone
 
 
 class ChangeOnWeb(CapacityConflict):
@@ -247,12 +249,13 @@ def check_demand_response(
         detail_link = s.CardLink(
             label="查看需求详情", href=f"/capacity?tab=outgoing&demand={row.id}"
         )
+        timezone = ZoneInfo(read_timezone(db, p.org_id).timezone)
         proposal_text = (
             f"\n方案人数：{pending.headcount}\n投入："
             + "、".join(f"{percent}%" for percent in pending.allocation_percents)
             + f"\n开始日期：{pending.start_date}\n结束日期：{pending.end_date}"
-            + "\n条件：没有读取对方答复正文里的条件，请到需求详情查看"
-            + f"\n预占到期时间：{pending.hold_expires_at.isoformat()}"
+            + "\n完整条件请前往需求详情查看"
+            + f"\n暂留截止：{pending.hold_expires_at.astimezone(timezone):%Y-%m-%d %H:%M}"
             + (
                 "\n确认后记录需求方接受，原部门经理和员工本人也同意后才生成分配"
                 if body.action == "accept" and pending.borrow_progress

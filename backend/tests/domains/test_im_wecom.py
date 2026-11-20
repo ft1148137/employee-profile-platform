@@ -249,7 +249,7 @@ def test_conversation(
                 )
                 assert (request.status, request.client_name) == (
                     "pending_review",
-                    "内置机器人（企业微信）",
+                    "内置助手（企业微信）",
                 )
                 withdraw = db.exec(
                     select(ImAction).where(
@@ -312,7 +312,9 @@ def test_connection_and_privacy(
             assert fake["requests"] == []
             setting.connection_checked_at = utc_now()
             db.commit()
-            assert (await settings.test_connection(db, p.org_id, "wecom")).ok
+            result = await settings.test_connection(db, p.org_id, "wecom")
+            assert result.ok and result.message.startswith("长连接正常（最近心跳：")
+            assert setting.connection_checked_at.isoformat() not in result.message
             assert fake["requests"] == []
             setting.connection_checked_at -= timedelta(minutes=3)
             db.commit()
@@ -568,7 +570,7 @@ def test_review_card_over_wecom(
                 )
                 outgoing = json.dumps(fake["requests"], ensure_ascii=False)
                 assert (
-                    "审批决定复述" in outgoing
+                    "审批决定确认" in outgoing
                     and "确认决定" in outgoing
                     and "详情在网页审批页查看" in outgoing
                 )

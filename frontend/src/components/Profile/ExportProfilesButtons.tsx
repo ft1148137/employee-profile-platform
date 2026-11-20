@@ -31,12 +31,12 @@ export function ExportProfilesButtons({ orgId }: { orgId: string }) {
             disabled={download.isPending}
             onClick={() => download.mutate(format)}
           >
-            导出已发布画像（{format === "csv" ? "CSV" : "结构化数据"}）
+            导出画像（{format.toUpperCase()}）
           </Button>
         ))}
       </div>
       <p className="text-sm text-muted-foreground">
-        导出本人可见的全部已发布判断，不受页面筛选影响。
+        导出可见范围内的全部已发布画像，不受筛选条件影响。
       </p>
       <SetupError error={download.error} />
     </section>

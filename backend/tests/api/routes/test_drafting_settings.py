@@ -143,7 +143,7 @@ def test_disabled_triggers_do_not_queue(
 ) -> None:
     url, people, auth = demo
     org = people["E02"].org_id
-    message = "自动起草未打开，请先在「数据与 AI → 模型」里打开"
+    message = "自动起草未开启，请先在「设置 → 模型」中开启"
 
     def jobs() -> int:
         return db.execute(

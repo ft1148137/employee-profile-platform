@@ -299,7 +299,7 @@ def test_policy_does_not_change_pending_or_admin_handover(
             InboxItem.kind == "submitted",
         )
     ).one()
-    assert "满 2 天" in notice.message
+    assert "初始画像超 2 天未确认" in notice.message
 
 
 def test_policy_publication_rolls_back_on_failure(

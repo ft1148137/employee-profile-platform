@@ -66,15 +66,11 @@ function Settings({ orgId }: { orgId: string }) {
   return (
     <div className="max-w-3xl space-y-6">
       <header className="border-l-4 border-primary pl-4">
-        <p className="text-xs text-muted-foreground">管理</p>
-        <h1 className="mt-2 text-3xl font-semibold">内置机器人</h1>
-        <p className="mt-3 text-muted-foreground">
-          帮助员工讲清经历，提交前由本人确认。
-        </p>
+        <h1 className="mt-2 text-3xl font-semibold">内置助手</h1>
       </header>
       <section
         className="space-y-3 rounded-xl border bg-muted/20 p-5"
-        aria-label="机器人模型"
+        aria-label="助手模型"
       >
         <h2 className="font-semibold">当前模型</h2>
         <p>
@@ -83,13 +79,10 @@ function Settings({ orgId }: { orgId: string }) {
             : "尚未启用模型，员工仍可在画像页直接修改。"}
         </p>
         {model.data.kind === "chatgpt_subscription" && (
-          <p>
-            全企业员工共用这一个 ChatGPT
-            订阅账号的五小时和每周额度。起草任务优先，额度用完后请稍后再试。
-          </p>
+          <p>全企业共用该 ChatGPT 订阅的 5 小时及每周额度（起草任务优先）。</p>
         )}
         <p className="text-sm text-muted-foreground">
-          每名员工每小时最多三十轮对话。
+          每名员工每小时上限 30 轮对话。
         </p>
         <Link className="underline" to="/admin/model">
           前往模型设置
@@ -158,14 +151,15 @@ function Settings({ orgId }: { orgId: string }) {
               </label>
             </DraftField>
             <p className="text-sm text-muted-foreground">
-              默认零天：会话闲置两小时后清除聊天原文，仅保留会话元数据。可设置一至三十天；消息加密保存，员工确认过的自述证据不受聊天清理影响。
+              默认 0 天（闲置 2 小时清除记录），可设 1–30
+              天；消息加密存储，清理不影响员工已确认提交的内容。
             </p>
           </details>
           <SetupError error={save.error} />
           <Button disabled={save.isPending}>
             {save.isPending ? "正在保存…" : "保存"}
           </Button>
-          {save.isSuccess && <p role="status">机器人设置已保存</p>}
+          {save.isSuccess && <p role="status">助手设置已保存</p>}
         </fieldset>
       </form>
       <ChangeHistory targetType="bot_setting" />

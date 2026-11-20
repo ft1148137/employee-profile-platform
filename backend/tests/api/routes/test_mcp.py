@@ -245,7 +245,7 @@ def test_every_request_rechecks_token(
                 )
                 assert response.status_code == (403 if invalid == "disabled" else 401)
                 if invalid == "disabled":
-                    assert response.json()["detail"] == "企业已关闭外部 AI 助手"
+                    assert response.json()["detail"] == "企业已关闭外部 AI 工具"
         if invalid != "disabled":
             assert client.post("/mcp", headers=active, json={}).status_code == 429
     finally:

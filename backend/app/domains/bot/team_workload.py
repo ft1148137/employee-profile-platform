@@ -9,7 +9,7 @@ from app.domains.capacity.schemas import WorkloadListQuery
 from app.domains.capacity.settings import CapacityNotFound, require_enabled
 
 NOT_FOUND = "不在你的管辖范围或没有找到这个人"
-DISABLED = "需求与容量功能已关闭，如需使用请联系企业管理员。"
+DISABLED = "规划与负荷功能未开启，如需使用请联系企业管理员。"
 
 
 class NamedWorkloadQuery(WorkloadListQuery):

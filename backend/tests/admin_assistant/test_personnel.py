@@ -381,7 +381,7 @@ def test_stale(
     db.add(org)
     db.commit()
     if row:
-        with pytest.raises(c.ChangeSetError, match="内容已变化"):
+        with pytest.raises(c.ChangeSetError, match="内容已更新"):
             c.apply(db, principal(db, tenant), row.id, row.revision)
         assert c.get(db, principal(db, tenant), row.id).status == "stale"
     else:

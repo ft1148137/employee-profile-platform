@@ -97,7 +97,7 @@ export function SetupCard({
                   search={{ tab: "model" }}
                   className="underline"
                 >
-                  数据与 AI → 模型
+                  设置 → 模型
                 </Link>
               </p>
             )}

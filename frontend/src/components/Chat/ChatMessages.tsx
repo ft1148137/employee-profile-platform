@@ -116,7 +116,7 @@ function Reply({
       <div ref={body}>{children}</div>
       {assistant && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {seconds !== undefined && <span>{seconds} 秒内回复</span>}
+          {seconds !== undefined && <span>耗时 {seconds} 秒</span>}
           <Button
             type="button"
             variant="ghost"
@@ -149,7 +149,7 @@ function ToolCalls({ steps }: { steps: (ToolStep & { running?: boolean })[] }) {
   return (
     <details className="text-sm text-muted-foreground">
       <summary className="w-fit cursor-pointer py-1">
-        {running ? `正在执行：${running.name}` : `${steps.length} 步`}
+        {running ? `正在${running.name}…` : `已完成 ${steps.length} 步操作`}
       </summary>
       <ul className="space-y-2 border-l pl-4 pt-2">
         {steps.map((step, index) => {

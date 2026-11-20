@@ -60,7 +60,7 @@ export function ChatAttachment({
         {attachment.filename}
       </p>
       <p className="text-xs text-muted-foreground">
-        {attachment.size.toLocaleString("zh-CN")} 字节
+        {attachmentSizeLabel(attachment.size)}
       </p>
       {attachment.notice && <p>{attachment.notice}</p>}
       {cleaned ? (
@@ -94,4 +94,13 @@ export function ChatAttachment({
       )}
     </section>
   )
+}
+
+export function attachmentSizeLabel(bytes: number) {
+  const kb = bytes / 1024
+  if (kb < 1) return "<1 KB"
+  if (kb < 1024)
+    return `${kb.toLocaleString("zh-CN", { maximumFractionDigits: 1 })} KB`
+  const mb = kb / 1024
+  return `${mb.toLocaleString("zh-CN", { maximumFractionDigits: 1 })} MB`
 }

@@ -19,7 +19,7 @@ function Home() {
   if (!org) return <OrgState />
   if (roles.includes("org_admin")) {
     if (setup.isPending || history.isPending)
-      return <p role="status">正在加载对话…</p>
+      return <p role="status">加载中…</p>
     if (setup.isError || history.isError)
       return <SetupError error={setup.error ?? history.error} />
     const session = !setup.data.completed
@@ -32,5 +32,5 @@ function Home() {
   if (employeeId) return <Navigate to="/assistant" replace />
   if (roles.includes("dept_manager"))
     return <Navigate to="/employees" replace />
-  return <p>当前组织尚未为你分配员工身份或管理角色，请联系管理员。</p>
+  return <p>你的账号尚未绑定员工身份或管理权限，请联系企业管理员处理。</p>
 }

@@ -387,7 +387,7 @@ def load_demo(
                         "kind": InboxKind.INITIAL_REVIEW,
                     },
                     recipient_employee_id=request.subject_employee_id,
-                    message="初始画像已起草，请过目后提交",
+                    message="初始画像已起草，请确认后提交",
                 )
             for position, item_row in enumerate(request_row.items):
                 item = ensure(

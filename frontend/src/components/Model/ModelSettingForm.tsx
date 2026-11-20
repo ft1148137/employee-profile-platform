@@ -123,7 +123,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
             </label>
           </DraftField>
           <p className="text-sm text-muted-foreground">
-            启用后模型可供自动起草和内置机器人使用；是否自动起草由企业总开关控制。关闭模型后仍可在网页上填写或导入画像文件。
+            启用后可供自动起草与 AI 助手使用；关闭后仍可手动维护画像。
           </p>
           {saved.kind &&
             saved.kind !== "chatgpt_subscription" &&
@@ -167,13 +167,13 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
             </label>
           </DraftField>
           <p className="text-sm text-muted-foreground">
-            选择企业使用的模型服务；云端服务按厂商规则计费，订阅方式共用所连接账号的额度。
+            云端服务按厂商规则计费；订阅模式共用所连账号额度。
           </p>
           {current.kind && (
             <>
               <DraftField changed={pageDraft.changed("model")}>
                 <label htmlFor="model-name" className="block space-y-2">
-                  <span>模型名</span>
+                  <span>模型名称</span>
                   <Input
                     id="model-name"
                     required={current.enabled}
@@ -186,7 +186,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                 </label>
               </DraftField>
               <p className="text-sm text-muted-foreground">
-                填写模型服务中实际可用的名称，保存后可用「测试连接」确认。
+                保存后可点击「测试连接」验证。
               </p>
               {chatgpt && (
                 <p className="text-sm text-muted-foreground">
@@ -200,7 +200,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                 </summary>
                 <DraftField changed={pageDraft.changed("reasoning_effort")}>
                   <label className="block space-y-2">
-                    <span>推理强度</span>
+                    <span>思考深度</span>
                     <select
                       className={selectClass}
                       value={current.reasoning_effort ?? "off"}
@@ -229,7 +229,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                   </label>
                 </DraftField>
                 <p className="text-sm text-muted-foreground">
-                  思考越深通常等待越久、消耗额度越多；保留默认值即可，不同模型支持的深度可能不同。
+                  越深耗时越长、消耗越多，通常保持默认即可。
                 </p>
               </details>
               {!chatgpt && (
@@ -265,7 +265,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                         </label>
                       </DraftField>
                       <p className="text-sm text-muted-foreground">
-                        选择实际提供模型服务的厂商，密钥也必须由同一厂商提供。
+                        密钥需与所选厂商一致。
                       </p>
                       <p className="text-sm">
                         Claude 需要 Anthropic API
@@ -317,8 +317,8 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                   )}
                   {current.kind !== "cloud_api" && (
                     <p className="text-sm text-muted-foreground">
-                      base URL
-                      是模型服务的连接地址，请向服务提供方索取；它不是聊天网页的网址。
+                      base URL 接口地址（API Base
+                      URL），请向服务商获取，并非聊天网页地址。
                     </p>
                   )}
                   <label htmlFor="model-key" className="block space-y-2">
@@ -349,7 +349,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                     />
                   </label>
                   <p className="text-sm text-muted-foreground">
-                    密钥用于连接模型服务，加密保存；已保存时留空即可保留。
+                    加密保存，留空则保持原有密钥不变。
                   </p>
                   {changedDestination && <p role="status">需要重新填写密钥</p>}
                   {saved.has_api_key && (
@@ -372,7 +372,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
             </>
           )}
           <p className="text-sm text-muted-foreground">
-            发给模型的内容：能力词典，以及工作记录的标题、类型、状态、标签、项目、日期和说明；不发姓名、工号、邮箱和外部账号。
+            隐私说明：仅发送能力词典与去标识化的工作记录，不包含员工姓名、工号或邮箱。
           </p>
           <SetupError error={save.error ?? test.error} />
           {save.isSuccess && <p role="status">模型设置已保存。</p>}

@@ -61,10 +61,10 @@ export function UpdateSettings({ orgId }: { orgId: string }) {
         aria-labelledby="updates-title"
       >
         <h2 id="updates-title" className="text-lg font-semibold">
-          持续更新提醒
+          定期更新提醒
         </h2>
         <p className="text-sm text-muted-foreground">
-          到期时在员工收件箱中询问一两个问题；回答只保存为本人自述。证据较旧只作提醒，判断状态保持不变。
+          按周期在收件箱提醒员工核对近况；超期证据仅作提示，不改变现有等级。
         </p>
         <PageDraft
           orgId={orgId}
@@ -104,12 +104,9 @@ export function UpdateSettings({ orgId }: { orgId: string }) {
                   <SelectItem value="off">关闭</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                选择周期后，员工会定期收到更新画像的提醒；关闭后不再定期提醒。
-              </p>
             </DraftField>
             <DraftField changed={suggestion.changed("stale_after_months")}>
-              <Label htmlFor="stale-months">证据较旧期限（月）</Label>
+              <Label htmlFor="stale-months">证据过期提醒（月）</Label>
               <Input
                 id="stale-months"
                 type="number"
@@ -127,8 +124,7 @@ export function UpdateSettings({ orgId }: { orgId: string }) {
                 }}
               />
               <p className="text-xs text-muted-foreground">
-                6–120 个月，默认 24
-                个月。超过期限的证据会标为较旧，提醒核对，不会自动降低能力等级。
+                6–120 个月（默认 24 个月），超期后仅提示核对，不会自动降级。
               </p>
             </DraftField>
           </div>

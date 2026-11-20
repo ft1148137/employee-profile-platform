@@ -138,8 +138,8 @@ test("B 方经理无需模型查看方案，A 方经理看不到入口", async (
     exact: true,
   })
   await expect(insufficientCard).toContainText("数据不足")
-  await expect(insufficientCard).toContainText("需求与容量 → 团队负荷")
-  await expect(insufficientCard).toContainText("有管辖权的经理")
+  await expect(insufficientCard).toContainText("规划 → 团队负荷")
+  await expect(insufficientCard).toContainText("确认相关人员对应周次的负荷")
   await insufficientCard
     .getByRole("link", { name: "去确认团队负荷", exact: true })
     .click()

@@ -4,7 +4,6 @@ import { type EvidenceDetail, EvidenceService } from "@/client"
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
@@ -115,10 +114,12 @@ export function EvidenceSheet({
         if (!open) onClose()
       }}
     >
-      <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+      <SheetContent
+        aria-describedby={undefined}
+        className="w-full overflow-y-auto sm:max-w-xl"
+      >
         <SheetHeader>
           <SheetTitle>{evidence?.title ?? "证据详情"}</SheetTitle>
-          <SheetDescription>查看事实来源与能力判断的引用关系</SheetDescription>
         </SheetHeader>
         <div className="space-y-6 px-6 pb-8">
           {query.isPending ? (
@@ -143,7 +144,7 @@ export function EvidenceSheet({
                 </div>
                 <EvidenceContent evidence={evidence} />
                 <section className="space-y-3 border-t pt-5">
-                  <h3 className="font-semibold">来源与导入信息</h3>
+                  <h3 className="font-semibold">来源信息</h3>
                   <p className="break-words text-sm">
                     {evidence.source} · {evidence.source_ref}
                   </p>
@@ -152,7 +153,7 @@ export function EvidenceSheet({
                   </pre>
                 </section>
                 <section className="space-y-3 border-t pt-5">
-                  <h3 className="font-semibold">引用这条证据的能力判断</h3>
+                  <h3 className="font-semibold">关联的能力项</h3>
                   {evidence.claims.length ? (
                     <ul className="space-y-2 text-sm">
                       {evidence.claims.map((claim) => (

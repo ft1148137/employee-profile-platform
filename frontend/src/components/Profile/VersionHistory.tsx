@@ -83,9 +83,12 @@ export function VersionHistory({
           ))}
       </ul>
       {revision !== null && (
-        <section aria-label={`r${revision} 只读快照`} className="space-y-4">
+        <section
+          aria-label={`第 ${revision} 版（历史版本）`}
+          className="space-y-4"
+        >
           <h2 className="text-lg font-semibold">
-            r{revision} · 已发布快照（只读）
+            第 {revision} 版（历史版本）
           </h2>
           {snapshot.isPending ? (
             <ProfileLoading />

@@ -27,7 +27,7 @@ test("employee answers a real question on mobile and updates unread count", asyn
   await logInUser(page, "employee.platform@demo.example.com", password)
   await expect(page).toHaveURL("/assistant")
   await page.goto("/inbox")
-  await expect(page.getByText("初始画像待过目", { exact: true })).toBeVisible()
+  await expect(page.getByText("初始画像待确认", { exact: true })).toBeVisible()
   await logOutUser(page)
   await logInUser(page, username, password)
   await expect(page).toHaveURL("/assistant")
@@ -44,7 +44,7 @@ test("employee answers a real question on mobile and updates unread count", asyn
   await row
     .getByLabel("你的回答")
     .fill("我完成了合成案例中的排查，并用回归测试验证结果。")
-  await row.getByRole("button", { name: "确认回答", exact: true }).click()
+  await row.getByRole("button", { name: "提交回答", exact: true }).click()
   await expect(row.getByRole("status")).toContainText(
     "已回答，已保存为受限自述证据",
   )
@@ -96,7 +96,7 @@ test("without todos home opens assistant; empty inbox and errors are readable", 
   await logInUser(page, username, password)
   await expect(page).toHaveURL("/assistant")
   await page.getByRole("link", { name: "收件箱", exact: true }).click()
-  await expect(page.getByText("收件箱暂时没有消息。")).toBeVisible()
+  await expect(page.getByText("暂无消息")).toBeVisible()
   await page.route("**/me/inbox?*", (route) =>
     route.fulfill({ status: 500, json: { detail: "合成故障" } }),
   )

@@ -50,7 +50,7 @@ export function DictionaryPreviewPanel({
         </p>
       ))}
       <p className="text-sm text-muted-foreground">
-        删除的能力会移至画像的「已不在当前词典中的能力」。未提交请求会更新，被删除的项会移除；等级失效时员工需重新选择或清空。
+        被删除的能力将归入画像中的「历史能力」；未提交的草稿会自动同步，等级失效项需员工重选。
       </p>
       <label className="flex items-start gap-3" htmlFor="dictionary-redraft">
         <Checkbox
@@ -59,7 +59,7 @@ export function DictionaryPreviewPanel({
           disabled={busy}
           onCheckedChange={(value) => onRedraft(value === true)}
         />
-        <span>按新词典重新起草还没过目的初始画像</span>
+        <span>按新词典重新起草未确认的初始画像</span>
       </label>
       <Button
         disabled={

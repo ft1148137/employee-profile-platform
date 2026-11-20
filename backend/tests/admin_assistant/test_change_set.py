@@ -190,7 +190,7 @@ def test_stale_and_discard(db: Session, demo: tuple, revision_changed: bool) -> 
     row = proposal(db, demo)
     if not revision_changed:
         save_update_settings(db, p, UpdateSettingsInput(reminder_schedule="off"))
-    with pytest.raises(c.ChangeSetError, match="内容已变化"):
+    with pytest.raises(c.ChangeSetError, match="内容已更新"):
         c.apply(db, p, row.id, row.revision + int(revision_changed))
     assert c.get(db, p, row.id).status == "stale"
     assert read_update_settings(db, p.org_id).reminder_schedule != "yearly"

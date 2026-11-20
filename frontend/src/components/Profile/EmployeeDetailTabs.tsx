@@ -162,7 +162,8 @@ export function EmployeeDetailTabs({
             <p>直属上级未设置</p>
             {!previousManager.data.is_active ? (
               <p>
-                原上级 {previousManager.data.display_name} 已离职，请重新设置
+                原直属上级 {previousManager.data.display_name}{" "}
+                已离职，请重新指定。
               </p>
             ) : previousManager.data.can_restore &&
               employee &&
@@ -332,9 +333,9 @@ export function EmployeeDetailTabs({
               )}
               <section
                 className="rounded-xl border p-5"
-                aria-label="Jira 账号匹配"
+                aria-label="关联 Jira 账号"
               >
-                <h2 className="mb-4 text-lg font-semibold">Jira 账号匹配</h2>
+                <h2 className="mb-4 text-lg font-semibold">关联 Jira 账号</h2>
                 <p className="mb-4 text-sm text-muted-foreground">
                   解除后不会再次自动关联，仍可手动选择账号。
                 </p>

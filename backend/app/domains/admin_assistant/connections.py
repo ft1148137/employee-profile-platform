@@ -122,7 +122,7 @@ def register_connections(functions: dict[str, AdminFunction]) -> None:
         impact=lambda d, p, a: RootModel(
             {
                 "count": len(active_employees(d, p.org_id)),
-                "text": "打开入口后，员工可绑定账号并使用机器人，消息会经过飞书。IM 里的消息会存在该平台的服务器上；再次确认即表示已知晓数据外发提示。撤销只恢复开关和邮箱自动绑定，凭据不回滚",
+                "text": "打开入口后，员工可绑定账号并使用 AI 助手，消息会经过飞书。IM 里的消息会存在该平台的服务器上；再次确认即表示已知晓数据外发提示。撤销只恢复开关和邮箱自动绑定，凭据不回滚",
             }
         ),
     )
@@ -134,7 +134,7 @@ def register_connections(functions: dict[str, AdminFunction]) -> None:
         preview_risk=lambda d, p, a: (
             "high" if a.enabled and not mcp.get_setting(d, p).enabled else "normal"
         ),
-        description="修改外部 AI 助手开关和允许的客户端；开启需再次确认数据外发",
+        description="修改外部 AI 工具开关和允许的客户端；开启需再次确认数据外发",
         input_model=McpSettingUpdate,
         merge_settings=True,
         handler=mcp.save_setting,

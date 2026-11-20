@@ -13,7 +13,7 @@ test("personal information is read-only and account deletion is unavailable", as
     "page",
   )
   const info = page.getByRole("region", { name: "个人信息" })
-  await expect(info).toContainText("登录名")
+  await expect(info).toContainText("登录邮箱")
   await expect(info).toContainText(firstSuperuser)
   await expect(info.locator("input, button")).toHaveCount(0)
   await expect(page.getByRole("button", { name: "删除账号" })).toHaveCount(0)
@@ -174,16 +174,18 @@ test.describe("employee settings", () => {
       await page.getByRole("link", { name: "偏好与代理", exact: true }).click()
       await expect(
         page.getByRole("switch", {
-          name: "让系统根据工作记录自动起草我的画像",
+          name: "根据工作记录自动起草画像",
         }),
       ).toBeVisible()
       await page.getByRole("link", { name: "连接与集成", exact: true }).click()
       await expect(
-        page.getByText("外部 AI 按指南生成的文件，请在助手对话里上传"),
+        page.getByText(
+          "使用外部 AI 生成画像文件后，可在「AI 助手」对话中上传导入。",
+        ),
       ).toBeVisible()
       const downloaded = page.waitForEvent("download")
       await page
-        .getByRole("link", { name: "下载生成指南（skill）", exact: true })
+        .getByRole("link", { name: "下载画像整理指南", exact: true })
         .click()
       expect((await downloaded).suggestedFilename()).toBe("SKILL.md")
     })

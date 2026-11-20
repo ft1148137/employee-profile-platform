@@ -98,8 +98,8 @@ export function DemandAssignments({
           <p>本部门没有可分配的在职员工，请联系企业管理员核对部门人员</p>
         ) : basis.data.count < demand.headcount ? (
           <p>
-            依据中达到要求的有 {basis.data.count} 人，需要 {demand.headcount}{" "}
-            人。可以从本部门其他在职员工中选择；选择不会改变画像，也不会改变依据人数，需求方看到的内容不变。
+            符合画像条件的有 {basis.data.count} 人（需 {demand.headcount}{" "}
+            人），也可按实际需要选择部门内其他员工，不影响画像数据。
           </p>
         ) : null)}
       {demand.proposal?.status !== "committed" &&
@@ -126,7 +126,7 @@ export function DemandAssignments({
               className="grid gap-3 sm:grid-cols-3"
             >
               <label className="space-y-2 text-sm">
-                <span>从依据中选择员工</span>
+                <span>选择员工</span>
                 <select
                   name="employee_id"
                   required
@@ -138,9 +138,9 @@ export function DemandAssignments({
                     请选择
                   </option>
                   {[
-                    { label: "依据中的员工", people: basis.data?.data },
+                    { label: "符合条件的员工", people: basis.data?.data },
                     {
-                      label: "本部门其他在职员工（不在依据中）",
+                      label: "本部门其他员工",
                       people: basis.data?.others,
                     },
                   ].map(({ label, people }) => (
@@ -205,7 +205,7 @@ export function DemandAssignments({
                     required
                     className="size-4"
                   />
-                  该员工不在依据中，我确认按自己的判断安排
+                  该员工未满足画像条件，我确认按实际需要安排
                 </label>
               )}
               <Button type="submit">确认分配</Button>

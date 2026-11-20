@@ -167,7 +167,7 @@ test("employee confirms a capacity request in the assistant", async ({
     )
     await page.goto("/assistant")
     const panel = page.getByRole("region", { name: "助手", exact: true })
-    await panel.getByLabel("发给机器人的消息").fill("请申请调整负荷到 80%")
+    await panel.getByLabel("发给助手的消息").fill("请申请调整负荷到 80%")
     await panel.getByRole("button", { name: "发送", exact: true }).click()
     const card = panel.getByRole("region", {
       name: "申请调整负荷",

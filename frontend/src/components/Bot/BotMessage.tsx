@@ -33,7 +33,7 @@ const actionLabels = {
 }
 const statuses: Record<string, string> = {
   draft: "草稿",
-  pending_owner: "待本人过目",
+  pending_owner: "待本人确认",
   pending_review: "待经理审批",
   withdrawn: "已撤回",
   approved: "已批准",
@@ -103,7 +103,7 @@ export function BotMessage({
               ?.level_rubric,
             claim.level,
           )
-        : "等级暂不可用"
+        : "等级已调整"
       : "未定级")
   if (message.type === "capacity_card") {
     const link = message.detail_link
@@ -115,7 +115,7 @@ export function BotMessage({
         <h3 className="font-semibold">{message.title}</h3>
         {!!message.questions?.length && (
           <div className="rounded-md bg-amber-50 p-3 text-amber-950">
-            <p className="font-medium">请先确认</p>
+            <p className="font-medium">确认操作</p>
             {message.questions?.map((question) => (
               <p key={question}>{question}</p>
             ))}
@@ -133,7 +133,7 @@ export function BotMessage({
                   <dd className="inline break-words">{field.value}</dd>
                   {field.unclear && (
                     <span className="ml-2 font-medium text-amber-900">
-                      请确认
+                      待确认
                     </span>
                   )}
                 </div>
@@ -219,7 +219,7 @@ export function BotMessage({
                 { label: "修改后", claim: item.after },
               ].map(({ label, claim }) => (
                 <p key={label}>
-                  {label}：{claim?.statement ?? "暂无判断"} · 等级：
+                  {label}：{claim?.statement ?? "暂无记录"} · 等级：
                   {displayLevel(claim, item.capability_key)}
                   {claim && (
                     <StatusBadge
@@ -232,7 +232,7 @@ export function BotMessage({
             </div>
           )
         })}
-        <p>确认后立即发布并通知员工。</p>
+        <p>确认后将直接生效并通知本人。</p>
         <div className="flex flex-wrap gap-2">
           {(message.actions ?? []).map((action) => (
             <Button
@@ -255,10 +255,10 @@ export function BotMessage({
     return (
       <section
         className="space-y-4 rounded-xl border bg-background p-4"
-        aria-label="审批决定复述"
+        aria-label="审批决定确认"
       >
         <h3 className="font-semibold">
-          审批决定复述（修订 {message.revision}）
+          审批决定确认（第 {message.revision} 版）
         </h3>
         {message.items.map((item) => {
           const decision = message.decisions.find(
@@ -268,7 +268,7 @@ export function BotMessage({
             <div key={item.after.id} className="space-y-2 border-t pt-3">
               <h4 className="font-medium">{item.after.capability.name}</h4>
               <p>
-                修改前：{item.before?.statement ?? "暂无判断"} · 等级：
+                修改前：{item.before?.statement ?? "暂无记录"} · 等级：
                 {displayLevel(item.before, item.after.capability.key)}
                 {item.before && (
                   <StatusBadge
@@ -278,7 +278,7 @@ export function BotMessage({
                 )}
               </p>
               <p>
-                修改后：{item.after.after?.statement ?? "撤回此判断"} · 等级：
+                修改后：{item.after.after?.statement ?? "移除此项"} · 等级：
                 {displayLevel(item.after.after, item.after.capability.key)}
                 {item.after.after && (
                   <StatusBadge
@@ -288,12 +288,14 @@ export function BotMessage({
                 )}
               </p>
               <p>
-                依据标题：
+                相关记录：
                 {item.evidence.map((e) => e.title).join("、") || "暂无"}
               </p>
-              {item.jira_only && <p>仅 Jira 来源（最多暂定）</p>}
-              <p>决定：{decision ? statuses[decision.decision] : "未填写"}</p>
-              <p>原因：{decision?.reason || "未填写"}</p>
+              {item.jira_only && <p>仅来自 Jira，批准后为「暂定」</p>}
+              <p>
+                审批决定：{decision ? statuses[decision.decision] : "未填写"}
+              </p>
+              <p>说明：{decision?.reason || "未填写"}</p>
             </div>
           )
         })}
@@ -325,7 +327,7 @@ export function BotMessage({
       className="space-y-4 rounded-xl border bg-background p-4"
       aria-label={
         message.type === "preview_card"
-          ? "提交前预览"
+          ? "变更预览"
           : message.type === "status_card"
             ? "请求进度"
             : "待确认问题"
@@ -348,9 +350,9 @@ export function BotMessage({
               }}
             >
               <label className="block space-y-2">
-                确认后的回答
+                你的回答
                 <textarea
-                  aria-label="确认后的回答"
+                  aria-label="你的回答"
                   className="min-h-24 w-full rounded-md border bg-background p-3"
                   value={answer}
                   onChange={(event) => setAnswer(event.target.value)}
@@ -362,17 +364,17 @@ export function BotMessage({
               <p className="text-muted-foreground">
                 确认后将作为受限自述证据保存。
               </p>
-              <Button disabled={disabled || !answer.trim()}>确认回答</Button>
+              <Button disabled={disabled || !answer.trim()}>提交回答</Button>
             </form>
           ) : (
-            <p>问题已处理</p>
+            <p>已回答</p>
           )}
         </>
       ) : (
         <>
           <h3 className="font-semibold">
             {message.type === "preview_card"
-              ? "提交前预览"
+              ? "变更预览"
               : (statuses[message.status] ?? "请求状态已更新")}
           </h3>
           {message.type === "preview_card" ? (
@@ -391,11 +393,11 @@ export function BotMessage({
                 <h4 className="font-medium">{item.after.capability.name}</h4>
                 {item.submission_notice && <p>{item.submission_notice}</p>}
                 <p>
-                  修改前：{item.before?.statement ?? "暂无判断"} · 等级：
+                  修改前：{item.before?.statement ?? "暂无记录"} · 等级：
                   {displayLevel(item.before, item.after.capability.key)}
                 </p>
                 <p>
-                  修改后：{item.after.after?.statement ?? "撤回此判断"} · 等级：
+                  修改后：{item.after.after?.statement ?? "移除此项"} · 等级：
                   {displayLevel(item.after.after, item.after.capability.key)}
                 </p>
               </div>
@@ -403,12 +405,12 @@ export function BotMessage({
           ) : (
             <>
               {message.status === "pending_review" && (
-                <p>已提交给经理审批，审批前可以撤回。</p>
+                <p>已提交审批，经理审批前可撤回。</p>
               )}
               {message.items.map((item, index) => (
                 <p key={index}>
-                  {item.capability.name}：
-                  {item.after?.statement ?? "撤回此判断"} · 等级：
+                  {item.capability.name}：{item.after?.statement ?? "移除此项"}{" "}
+                  · 等级：
                   {displayLevel(item.after, item.capability.key)}
                 </p>
               ))}
@@ -446,13 +448,13 @@ function PlanDetails({ plan }: { plan: PlanCard }) {
           </div>
         ))}
       </dl>
-      {plan.changes && <p>这次改了什么：{plan.changes}</p>}
+      {plan.changes && <p>本次调整：{plan.changes}</p>}
       <a href={plan.link} className="underline">
         在方案页修改
       </a>
       {plan.rule_fallback && (
         <div className="space-y-3 border-t pt-3">
-          <h4 className="font-semibold">规则引擎方案</h4>
+          <h4 className="font-semibold">备选方案</h4>
           <dl className="space-y-2">
             {plan.rule_fallback.fields.map((field) => (
               <div key={field.label}>
@@ -461,14 +463,14 @@ function PlanDetails({ plan }: { plan: PlanCard }) {
               </div>
             ))}
           </dl>
-          <p className="font-medium">与推荐方案的差别（推荐 → 规则引擎）</p>
+          <p className="font-medium">与推荐方案对比</p>
           {plan.rule_fallback.differences.map((field) => (
             <p key={field.label}>
               {field.label}：{field.value}
             </p>
           ))}
           <a href={plan.rule_fallback.link} className="underline">
-            查看规则引擎方案
+            查看备选方案
           </a>
         </div>
       )}

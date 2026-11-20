@@ -132,10 +132,10 @@ test("drafting settings and personal choice persist with role boundaries", async
       .getByRole("link", { name: "偏好与代理", exact: true })
       .click()
     await expect(
-      employeePage.getByText("企业目前没有打开自动起草。"),
+      employeePage.getByText("企业暂未开启自动起草功能。"),
     ).toBeVisible()
     const toggle = employeePage.getByRole("switch", {
-      name: "让系统根据工作记录自动起草我的画像",
+      name: "根据工作记录自动起草画像",
     })
     if (own.enabled) await toggle.click()
     await expect(toggle).not.toBeChecked()

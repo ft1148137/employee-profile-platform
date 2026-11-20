@@ -142,11 +142,11 @@ def test_preview_policy_matches_bot_and_im(
         assert text.splitlines()[-1] == f"{prefix}提交后由 {reviewers}审批"
     else:
         assert f"提交后由 {reviewers}审批" not in text
-        assert "没有可用的审批人" not in text
+        assert "暂未配置部门审批人，将由企业管理员处理" not in text
     if scenario == "mixed":
         assert (
             render(card.model_copy(update={"reviewers": []}))[0].splitlines()[-1]
-            == f"{prefix}暂时没有可用的审批人，企业管理员会处理"
+            == f"{prefix}暂未配置部门审批人，将由企业管理员处理"
         )
         db.commit()
         submitted = client.post(

@@ -26,6 +26,7 @@ export async function expectChineseCopy(
     .reduce((copy, value) => copy.split(value).join(" "), visibleText)
     .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, "")
     .replace(/https?:\/\/\S+/gi, "")
+    .replaceAll("导出画像（JSON）", "导出画像")
   const allowed = new Set(
     [...allowedWords, ...extraAllowedWords].flatMap(
       (word) => word.toLowerCase().match(/[a-z]{3,}/g) ?? [],

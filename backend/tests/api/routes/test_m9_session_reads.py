@@ -347,7 +347,7 @@ def test_a_side_gets_hidden_reply_notice_and_details_link(
     db.commit()
     result = invoke(tool, a, db, demand_id=demand.id)
     detail = result["demand"] if tool == "read_coordination_context" else result
-    assert detail["reply_notice"] == "没有读取对方答复正文里的条件，请到需求详情查看"
+    assert detail["reply_notice"] == "完整条件请前往需求详情查看"
     assert detail["demand_url"] == f"/capacity?tab=outgoing&demand={demand.id}"
     assert private not in str(result)
     assert_no_b_people(result, people)

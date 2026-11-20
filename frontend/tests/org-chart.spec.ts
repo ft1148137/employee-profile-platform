@@ -238,7 +238,7 @@ test("manager chart excludes other departments", async ({ page }, testInfo) => {
     page.getByRole("region", { name: "部门汇报关系" }),
   ).toContainText("共 3 人")
   const capabilities = page.getByRole("region", {
-    name: "对应能力",
+    name: "部门常用能力",
     exact: true,
   })
   await expect(capabilities).toBeVisible()
@@ -314,15 +314,18 @@ test("administrator saves department capabilities and the profile follows the se
   try {
     await page.goto("/org-chart")
     await page.getByRole("button", { name: "查看平台研发部人员" }).click()
-    const panel = page.getByRole("region", { name: "对应能力", exact: true })
+    const panel = page.getByRole("region", {
+      name: "部门常用能力",
+      exact: true,
+    })
     for (const name of ["前端交互实现", "模型训练与评估"]) {
       await panel.getByRole("button", { name: "添加能力", exact: true }).click()
       const picker = page.getByRole("dialog", { name: "添加能力" })
       await picker.getByLabel("搜索能力").fill(name)
       await picker.getByRole("button", { name, exact: true }).click()
     }
-    await panel.getByRole("button", { name: "保存对应能力" }).click()
-    await expect(panel.getByRole("status")).toHaveText("对应能力已保存")
+    await panel.getByRole("button", { name: "保存", exact: true }).click()
+    await expect(panel.getByRole("status")).toHaveText("部门常用能力已保存")
     await page.screenshot({
       path: "../docs/screenshots/m4.2/org-chart-department-capabilities.png",
       fullPage: true,
@@ -343,12 +346,12 @@ test("administrator saves department capabilities and the profile follows the se
       ).toBeVisible()
     await expect(
       page.getByRole("article", { name: "后端 API 开发", exact: true }),
-    ).toContainText("其他部门能力")
+    ).toContainText("其他能力")
     await page.goto("/org-chart")
     await page.getByRole("button", { name: "查看平台研发部人员" }).click()
     await panel.getByRole("button", { name: "移除前端交互实现" }).click()
-    await panel.getByRole("button", { name: "保存对应能力" }).click()
-    await expect(panel.getByRole("status")).toHaveText("对应能力已保存")
+    await panel.getByRole("button", { name: "保存", exact: true }).click()
+    await expect(panel.getByRole("status")).toHaveText("部门常用能力已保存")
     await page.goto(`/employees/${employee.id}`)
     await expect(
       page.getByRole("article", { name: "前端交互实现", exact: true }),
@@ -392,10 +395,10 @@ test("inherited capabilities stay read only when an administrator removes a loca
   )
   await page.goto("/org-chart")
   await page.getByRole("button", { name: "查看平台部人员" }).click()
-  const panel = page.getByRole("region", { name: "对应能力", exact: true })
+  const panel = page.getByRole("region", { name: "部门常用能力", exact: true })
   await expect(panel).toContainText("后端 API 开发 · 继承自上级部门")
   await panel.getByRole("button", { name: "移除后端 API 开发" }).click()
-  await expect(panel).toContainText("暂无本部门设置")
+  await expect(panel).toContainText("暂无本部门新增")
   await expect(panel).toContainText("后端 API 开发 · 继承自上级部门")
   await expect(
     panel.getByRole("button", { name: "移除后端 API 开发" }),

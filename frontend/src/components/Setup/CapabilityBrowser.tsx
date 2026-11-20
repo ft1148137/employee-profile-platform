@@ -60,7 +60,7 @@ export function CapabilityBrowser({
       />
       {showStats && (
         <p className="text-sm text-muted-foreground">
-          统计范围内在职员工最新发布的判断；未发布判断不计入人数。
+          仅统计在职员工的已发布画像。
         </p>
       )}
       {showStats && stats.isPending && <p role="status">正在加载人数统计…</p>}
@@ -112,7 +112,7 @@ function CapabilityCard({
     ...Object.keys(stats?.levels ?? {})
       .filter((key) => key !== "_none" && !levels.some((l) => l.key === key))
       .map((key) => ({ key, label: "历史等级" })),
-    { key: "_none", label: "未定等级" },
+    { key: "_none", label: "未定级" },
   ]
   return (
     <article
@@ -144,7 +144,7 @@ function CapabilityCard({
           className="space-y-3 border-t pt-4"
         >
           <p className="text-sm">
-            已发布人数{" "}
+            已覆盖人数{" "}
             <strong className="ml-2 text-xl tabular-nums">
               {stats.employee_count}
             </strong>

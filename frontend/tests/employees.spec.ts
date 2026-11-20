@@ -54,7 +54,7 @@ test("demo admin sees all employees, filters, searches and paginates", async ({
   await page.getByRole("option", { name: "5", exact: true }).click()
   await expect(page.locator("tbody tr")).toHaveCount(5)
   await page.getByRole("button", { name: "下一页", exact: true }).click()
-  await expect(page.getByText("显示第 6 至 10 条，共 12 条")).toBeVisible()
+  await expect(page.getByText("第 6–10 条，共 12 条")).toBeVisible()
   await page.getByRole("combobox", { name: "部门筛选" }).click()
   await page.getByRole("option", { name: "平台研发部", exact: true }).click()
   await expect(page.getByText("共 3 名员工")).toBeVisible()
@@ -128,7 +128,7 @@ test("user without memberships sees the empty organization state", async ({
   await createUser({ email, password: userPassword })
   await logInUser(page, email, userPassword)
   await expect(
-    page.getByText("你还没有加入任何组织，请联系管理员"),
+    page.getByText("你的账号尚未加入任何企业，请联系企业管理员。"),
   ).toBeVisible()
   await page.screenshot({ path: "test-results/empty-org.png", fullPage: true })
 })
@@ -182,7 +182,7 @@ test("organization switch updates navigation and scopes requests", async ({
   await logInUser(page, "admin@demo.example.com", password)
   await page.goto("/employees")
   await expect(page.getByText("共 0 名员工")).toBeVisible()
-  await page.getByRole("combobox", { name: "当前组织" }).click()
+  await page.getByRole("combobox", { name: "切换企业" }).click()
   await page.getByRole("option", { name: "测试组织 2" }).click()
   await expect(page).toHaveURL("/assistant")
   await page.getByRole("link", { name: "组织", exact: true }).click()
@@ -193,7 +193,7 @@ test("organization switch updates navigation and scopes requests", async ({
   ).toHaveCount(0)
   await page.reload()
   await expect(
-    page.getByRole("combobox", { name: "当前组织" }),
+    page.getByRole("combobox", { name: "切换企业" }),
   ).toHaveAttribute("title", "测试组织 2")
 })
 
@@ -212,7 +212,7 @@ test("employee list handles failure, retry and empty search", async ({
   await page.getByRole("button", { name: "重试" }).click()
   await expect(page.getByText("共 3 名员工")).toBeVisible()
   await page.getByRole("textbox", { name: "搜索姓名" }).fill("不存在的姓名")
-  await expect(page.getByText("暂无数据。")).toBeVisible()
+  await expect(page.getByText("暂无数据")).toBeVisible()
 })
 
 test("setup administrator appears only in account-only mode without a detail link", async ({
@@ -249,7 +249,9 @@ test("setup administrator appears only in account-only mode without a detail lin
   await row.getByRole("cell").first().click()
   await expect(page).toHaveURL("/employees?filter=account-only")
   await row.getByRole("button", { name: "更多", exact: true }).click()
-  await expect(page.getByRole("menu")).toContainText("请在设置页修改自己的密码")
+  await expect(page.getByRole("menu")).toContainText(
+    "请在「设置 → 账号与安全」修改本人密码",
+  )
   await expect(
     page.getByRole("menu").getByRole("menuitem", { name: "发放账号" }),
   ).toHaveCount(0)

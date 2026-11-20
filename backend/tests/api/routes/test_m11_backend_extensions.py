@@ -230,7 +230,9 @@ def test_admin_project_reads(
     db.commit()
     for function, arguments in queries:
         assert query(admin, function, arguments) == {
-            "data": {"error": "需求与容量功能已关闭，如需使用请先在能力与规则里开启"}
+            "data": {
+                "error": "规划与负荷功能未开启，如需使用请先在负荷与需求规则中开启"
+            }
         }
         assert not cards
 
@@ -338,7 +340,9 @@ def test_admin_demand_reads(demand: tuple, db: Session, client: TestClient) -> N
     assert disabled.status_code == 200, disabled.text
     for function, arguments in (("list_demands", {}), ("get_demand", args)):
         assert query(admin, function, arguments) == {
-            "data": {"error": "需求与容量功能已关闭，如需使用请先在能力与规则里开启"}
+            "data": {
+                "error": "规划与负荷功能未开启，如需使用请先在负荷与需求规则中开启"
+            }
         }
         assert not cards
 

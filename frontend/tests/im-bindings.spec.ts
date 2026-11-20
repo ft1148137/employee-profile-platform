@@ -21,7 +21,7 @@ test("employees generate a code, see bindings and unbind from personal settings"
   )
   await page.goto("/settings")
   await page.getByRole("link", { name: "连接与集成", exact: true }).click()
-  await expect(page.getByText("还没有绑定聊天账号")).toBeVisible()
+  await expect(page.getByText("暂未绑定聊天账号")).toBeVisible()
   const generated = page.waitForResponse(
     (response) =>
       response.url().endsWith("/me/im-bind-code") &&
@@ -99,7 +99,7 @@ test("employees generate a code, see bindings and unbind from personal settings"
   await page.getByRole("button", { name: "解绑 Telegram" }).click()
   expect((await removed).status()).toBe(204)
   await expect(bindings.getByRole("status")).toContainText("已解绑")
-  await expect(page.getByText("还没有绑定聊天账号")).toBeVisible()
+  await expect(page.getByText("暂未绑定聊天账号")).toBeVisible()
   await expect(page.getByTestId("im-bind-code")).toHaveCount(0)
   rows = [
     {

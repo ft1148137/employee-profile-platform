@@ -4,8 +4,7 @@ import { configureModel, expect, test } from "./utils/model"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 test.describe.configure({ mode: "serial" })
-const invalidLink =
-  "初始化链接无效或已过期，请联系部署人员重新运行安装脚本获取新链接"
+const invalidLink = "初始化链接无效或已过期，请联系部署人员重新获取。"
 
 async function fillSetup(page: Page) {
   await page.getByLabel("企业名称", { exact: true }).fill("合成测试医院")
@@ -99,7 +98,7 @@ test("initialize, configure model and start assistant setup guide", async ({
   await expect(steps).toBeVisible()
   await page
     .getByRole("button", {
-      name: "继续，让助手带我完成剩下的设置",
+      name: "继续完成首次设置",
       exact: true,
     })
     .click()
@@ -111,7 +110,7 @@ test("initialize, configure model and start assistant setup guide", async ({
   await page.goto("/admin/assistant")
   await expect(page.getByRole("list", { name: "设置步骤" })).toHaveCount(0)
   await expect(
-    page.getByRole("heading", { name: "你好，今天有什么要处理的？" }),
+    page.getByRole("heading", { name: "有什么可以帮你处理？" }),
   ).toBeVisible()
 })
 
@@ -172,7 +171,7 @@ test("missing and invalid initialization links and uninitialized login hint", as
     route.fulfill({ json: { initialized: false } }),
   )
   await page.goto("/login")
-  await expect(page.getByRole("status")).toContainText("系统还没有初始化")
+  await expect(page.getByRole("status")).toContainText("系统尚未初始化")
   await expectChineseCopy(page)
 })
 
@@ -186,7 +185,7 @@ test("skip model, stay in assistant and resume from setup todo", async ({
     page.getByText("模型未配置，配置后回到这条对话继续。"),
   ).toBeVisible()
   await expect(
-    page.getByRole("link", { name: "数据与 AI → 模型", exact: true }),
+    page.getByRole("link", { name: "设置 → 模型", exact: true }),
   ).toHaveAttribute("href", "/admin/data-ai?tab=model")
   await page.reload()
   await expect(page).toHaveURL(sessionUrl)

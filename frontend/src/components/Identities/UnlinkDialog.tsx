@@ -31,8 +31,8 @@ export function UnlinkDialog({
       <DialogContent showCloseButton={!pending}>
         <DialogTitle>解除关联</DialogTitle>
         <DialogDescription>
-          解除账号「{account}
-          」的关联？解除后，由这个账号得来的工作记录会从这名员工的证据里撤销，并留下记录。可以重新关联。
+          解除后，账号「{account}
+          」产生的记录将从该员工画像中移除（可随时重新关联）。确认解除吗？
         </DialogDescription>
         <SetupError error={error} />
         <DialogFooter>

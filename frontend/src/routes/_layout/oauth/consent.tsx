@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_layout/oauth/consent")({
     request: typeof search.request === "string" ? search.request : "",
   }),
   component: ConsentPage,
-  head: () => ({ meta: [{ title: "授权 AI 助手 - 员工画像平台" }] }),
+  head: () => ({ meta: [{ title: "应用授权 - 员工画像平台" }] }),
 })
 
 function ConsentPage() {
@@ -44,41 +44,39 @@ function Consent({ orgId, request }: { orgId: string; request: string }) {
   })
   if (info.isPending) return <ProfileLoading />
   if (info.isError)
-    return (
-      <p role="alert">
-        授权请求无效、已过期或暂时无法读取，请从客户端重新连接。
-      </p>
-    )
+    return <p role="alert">授权链接无效或已过期，请从外部工具重新发起连接。</p>
   return (
     <section className="mx-auto max-w-xl space-y-6 rounded-2xl border bg-card p-6 md:p-10">
       <ShieldCheck className="size-10 text-primary" aria-hidden="true" />
       <header className="space-y-2">
-        <p className="text-sm text-muted-foreground">连接 AI 助手 · 授权确认</p>
+        <p className="text-sm text-muted-foreground">外部工具授权</p>
         <h1 className="break-words text-2xl font-semibold">
-          {info.data.client_name} 想以你的身份查看和更新你的画像
+          {info.data.client_name} 申请访问你的账号
         </h1>
-        <p className="text-xs text-muted-foreground">名称由客户端自己填写</p>
+        <p className="text-xs text-muted-foreground">
+          应用名称由对方自行提供，请核实来源。
+        </p>
       </header>
       <div className="space-y-2 border-y py-4 text-sm">
         <p>
-          将以 <strong>{info.data.org_name}</strong> 的员工身份授权
+          当前企业：<strong>{info.data.org_name}</strong>
         </p>
         <p className="text-muted-foreground">
-          如需使用其他企业，请先通过侧栏切换企业。
+          如需授权其他企业，请先在左侧切换企业。
         </p>
-        <p className="break-all">授权后返回：{info.data.callback_host}</p>
+        <p className="break-all">授权后跳转至：{info.data.callback_host}</p>
       </div>
       <div>
-        <h2 className="mb-3 font-medium">这个助手将能</h2>
+        <h2 className="mb-3 font-medium">授权后，该工具可以：</h2>
         <ul className="list-disc space-y-2 pl-5 text-sm">
-          <li>查看你的画像、证据、能力词典和请求进度</li>
-          <li>起草、提交和撤回你的画像变更请求</li>
-          <li>回答待确认问题</li>
+          <li>查看你的画像、相关记录、能力词典和申请进度</li>
+          <li>起草、提交或撤回画像更新申请</li>
+          <li>代你提交待确认问题的回答</li>
         </ul>
       </div>
       <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-        画像和证据内容会发给这个客户端和它背后的 AI
-        服务。助手能直接提交请求，经理批准前你可以撤回。
+        你的画像及相关记录将发送给该工具及其 AI
+        服务商；它提交的更新申请，在经理审批前你都可以撤回。
       </p>
       {info.data.reason && <p role="alert">{info.data.reason}</p>}
       {message && <p role="alert">{message}</p>}
@@ -102,7 +100,7 @@ function Consent({ orgId, request }: { orgId: string; request: string }) {
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        你可以随时在「个人设置 → 连接 AI 助手」中撤销授权。
+        可随时在「设置 → 连接与集成」中撤销授权。
       </p>
     </section>
   )

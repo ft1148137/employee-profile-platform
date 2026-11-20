@@ -43,7 +43,7 @@ def require_enabled(principal: Principal, session: Session) -> None:
         .execution_options(populate_existing=True)
     ).one_or_none()
     if row is None or not row.enabled:
-        raise CapacityNotFound("需求与容量模块未开启")
+        raise CapacityNotFound("规划与负荷功能未开启")
 
 
 def audit(

@@ -46,7 +46,7 @@ for (const assistant of ["bot", "admin-assistant"] as const) {
       exact: true,
     })
     const input = panel.getByLabel(
-      assistant === "bot" ? "发给机器人的消息" : "发给管理助手的消息",
+      assistant === "bot" ? "发给助手的消息" : "发给管理助手的消息",
     )
     for (const message of [
       "模型服务暂时不可用，请稍后重试",

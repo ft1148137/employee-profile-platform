@@ -1,11 +1,6 @@
 import type { ProfileItem } from "@/client"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { levelLabel } from "./fields"
 import { StatusBadge } from "./StatusBadge"
 
@@ -23,9 +18,11 @@ export function CapabilityDetailDialog({
   const { capability, claim, status } = item
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto">
+      <DialogContent
+        aria-describedby={undefined}
+        className="max-h-[90dvh] overflow-y-auto"
+      >
         <DialogTitle>{capability.name}</DialogTitle>
-        <DialogDescription>能力详情（只读）</DialogDescription>
         <p>
           等级：
           {claim?.level
@@ -37,7 +34,7 @@ export function CapabilityDetailDialog({
           <StatusBadge kind="assessment_status" value={status} />
         </p>
         <p className="whitespace-pre-wrap break-words">
-          {claim?.statement ?? "暂无判断，未知不代表不具备这项能力"}
+          {claim?.statement ?? "暂无记录，未评估不代表不具备该能力。"}
         </p>
         <p className="text-sm text-muted-foreground">
           最近更新时间：

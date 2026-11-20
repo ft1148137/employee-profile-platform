@@ -89,7 +89,7 @@ def test_issue_all_snapshot_is_compact_and_candidates_stale(
         assert e.work_email not in json.dumps(result, ensure_ascii=False)
     accounts.issue_accounts(db, p, IssueAccounts(employee_ids=[employees[0].id]))
     db.commit()
-    with pytest.raises(c.ChangeSetError, match="内容已变化"):
+    with pytest.raises(c.ChangeSetError, match="内容已更新"):
         c.apply(db, p, row.id, row.revision)
     assert c.get(db, p, row.id).status == "stale"
 
@@ -470,7 +470,7 @@ def test_state_changes_stale(db: Session, demo: tuple, kind: str) -> None:
             {"appeal_id": str(row.id), "status": "reopened", "reason": "合成处理"},
         )
         assert c.apply(db, p, change.id, change.revision).status == "applied"
-        with pytest.raises(c.ChangeSetError, match="内容已变化"):
+        with pytest.raises(c.ChangeSetError, match="内容已更新"):
             c.apply(db, p, other.id, other.revision)
         with pytest.raises(c.ChangeSetError, match="不能撤销"):
             c.undo(db, p, change.id)
@@ -484,6 +484,6 @@ def test_state_changes_stale(db: Session, demo: tuple, kind: str) -> None:
             RoleGrant(org_id=p.org_id, membership_id=membership.id, role=Role.ORG_ADMIN)
         )
         db.commit()
-    with pytest.raises(c.ChangeSetError, match="内容已变化"):
+    with pytest.raises(c.ChangeSetError, match="内容已更新"):
         c.apply(db, p, change.id, change.revision)
     assert c.get(db, p, change.id).status == "stale"

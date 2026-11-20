@@ -5,7 +5,7 @@ import { logInUser } from "./utils/user"
 test.use({ storageState: { cookies: [], origins: [] } })
 
 const httpNotice =
-  "你现在是用 HTTP 地址打开的，只适合在部署平台的这台电脑上测试；外部 AI 客户端需要 HTTPS 地址，请向部署平台的人要正式网址。"
+  "当前为 HTTP 地址，外部工具连接需使用 HTTPS 正式地址，请联系部署人员获取。"
 
 test("HTTPS connection examples do not show the local HTTP notice", async ({
   page,
@@ -64,7 +64,7 @@ test("enterprise switch and personal token lifecycle", async ({
   let employeeHeaders = {}
   try {
     await page.getByRole("link", { name: "设置", exact: true }).click()
-    await page.getByRole("link", { name: "外部 AI 助手", exact: true }).click()
+    await page.getByRole("link", { name: "外部 AI 工具", exact: true }).click()
     await expect(
       page.getByText(
         "打开后，员工的画像、证据和自述会发给外部助手的厂商。请先确认企业允许这些数据外发。",
@@ -73,7 +73,7 @@ test("enterprise switch and personal token lifecycle", async ({
     await expect(
       page.getByText("按客户端自报的名称识别，不是安全边界，名称可以伪造。"),
     ).toBeVisible()
-    await page.getByRole("checkbox", { name: "允许外部 AI 助手" }).check()
+    await page.getByRole("checkbox", { name: "允许接入外部 AI 工具" }).check()
     await page.getByLabel("允许的客户端", { exact: true }).fill("Cursor")
     await page.getByRole("button", { name: "保存", exact: true }).click()
     await expect(page.getByRole("status")).toHaveText("已保存")
@@ -138,14 +138,14 @@ test("enterprise switch and personal token lifecycle", async ({
     await employee.getByRole("link", { name: "连接与集成" }).click()
     await expect(employee.getByTestId("new-token")).toHaveCount(0)
     await expect(employee.getByText(name, { exact: true })).toBeVisible()
-    await page.getByRole("checkbox", { name: "允许外部 AI 助手" }).uncheck()
+    await page.getByRole("checkbox", { name: "允许接入外部 AI 工具" }).uncheck()
     await page.getByRole("button", { name: "保存", exact: true }).click()
     await expect(page.getByRole("status")).toHaveText("已保存")
     await employee.reload()
     await employee.getByRole("link", { name: "连接与集成" }).click()
     await expect(
       employee.getByText(
-        "企业管理员关闭了这个功能。需要使用的话，请联系企业管理员在「数据与 AI → 外部 AI 助手」开启。",
+        "企业未开启此功能，请联系管理员在「设置 → 外部 AI 工具」中开启（已有令牌仍可查看或吊销）。",
       ),
     ).toBeVisible()
     await expect(

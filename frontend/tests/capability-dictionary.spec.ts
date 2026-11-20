@@ -55,7 +55,7 @@ test("admin exports a dictionary and opens material import in the assistant", as
   const exported = page.waitForEvent("download")
   await page.getByRole("button", { name: "导出当前词典" }).click()
   expect((await exported).suggestedFilename()).toBe("本企业能力词典.yaml")
-  await page.getByRole("link", { name: "在管理助手中导入词典" }).click()
+  await page.getByRole("link", { name: "用助手导入" }).click()
   await expect(page).toHaveURL(/\/assistant\?mode=admin/)
   await expect(
     page.getByRole("textbox", { name: "发给管理助手的消息" }),
@@ -161,7 +161,7 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
     name: "保留的能力",
     exact: true,
   })
-  await expect(retained.getByLabel("能力标识")).toBeDisabled()
+  await expect(retained.getByLabel("能力编码")).toBeDisabled()
   await retained.getByLabel("等级描述").fill("可以独立完成合成任务")
   await editor
     .getByRole("article", { name: "将删除的能力" })
@@ -223,7 +223,7 @@ test("web editor saves additions, levels and removals in a new enterprise at 375
     page.getByRole("switch", { name: "自动起草", exact: true }),
   ).toBeVisible()
   await page.goto(`/employees/${employeeId}`)
-  await expect(page.getByText("本部门还没有设置对应能力")).toBeVisible()
+  await expect(page.getByText("本部门暂未配置常用能力")).toBeVisible()
   await expect(
     page.getByRole("article", { name: "新合成能力", exact: true }),
   ).toHaveCount(0)
@@ -268,7 +268,7 @@ test("admin browses categories, levels, published counts and searches", async ({
   ).toBeVisible()
   await expect(first.getByRole("list", { name: "等级说明" })).toBeVisible()
   await expect(first.getByRole("list", { name: "等级分布" })).toContainText(
-    "未定等级",
+    "未定级",
   )
   await expect(first.getByRole("list", { name: "判断状态分布" })).toContainText(
     "存在争议",
@@ -386,7 +386,7 @@ test("draft proposals enter the dictionary through preview and save", async ({
   await page.goto("/admin")
   await page
     .getByRole("listitem")
-    .filter({ hasText: "2 个新增能力的提议" })
+    .filter({ hasText: "2 条新增能力建议" })
     .getByRole("link", { name: "去处理", exact: true })
     .click()
   const panel = page.getByRole("region", { name: "建议新增的能力" })
@@ -401,10 +401,10 @@ test("draft proposals enter the dictionary through preview and save", async ({
   await panel.getByRole("button", { name: "加入词典", exact: true }).click()
   const editor = page.getByRole("region", { name: "网页编辑能力词典" })
   const added = editor.getByRole("article", { name: "新合成能力", exact: true })
-  await expect(added.getByLabel("能力标识")).toHaveCount(0)
+  await expect(added.getByLabel("能力编码")).toHaveCount(0)
   await expect(added.getByLabel("分类", { exact: true })).toHaveValue("工程")
   await expect(added.getByLabel("能力说明")).toHaveValue("合成能力说明")
-  await expect(added.getByLabel("等级标识")).toHaveValue("routine")
+  await expect(added.getByLabel("等级编码")).toHaveValue("routine")
   await expect(added.getByLabel("等级描述")).toHaveValue("旧等级说明")
   await added.getByLabel("等级描述").fill("能独立完成合成任务")
   await editor.getByRole("button", { name: "预览改动", exact: true }).click()
@@ -549,7 +549,7 @@ test("employee suggests a missing capability and can add it after admin acceptan
       name: "研发费用归集",
       exact: true,
     })
-    await expect(added.getByLabel("能力标识")).toHaveCount(0)
+    await expect(added.getByLabel("能力编码")).toHaveCount(0)
     await expect(added.getByLabel("等级描述")).toHaveValue("能在指导下完成")
     await editor.getByRole("button", { name: "预览改动" }).click()
     await editor.getByRole("button", { name: "确认保存新版本" }).click()
@@ -568,7 +568,7 @@ test("employee suggests a missing capability and can add it after admin acceptan
       .getByRole("button", { name: "手动编辑", exact: true })
       .click()
     await expect(
-      page.getByRole("dialog").getByLabel("陈述", { exact: true }),
+      page.getByRole("dialog").getByLabel("能力说明", { exact: true }),
     ).toBeVisible()
   } finally {
     await adminContext.close()

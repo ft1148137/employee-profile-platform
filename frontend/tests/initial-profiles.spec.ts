@@ -271,7 +271,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
   await expect(page).toHaveURL("/assistant")
   await page.getByRole("link", { name: "组织", exact: true }).click()
   await expect(
-    page.getByRole("heading", { name: "待你过目：系统起草的初始画像" }),
+    page.getByRole("heading", { name: "待你确认：初始画像草稿" }),
   ).toBeVisible()
   const draftItem = page.getByRole("region", { name: /^草稿改动：/ }).first()
   await expect(draftItem).toBeVisible()
@@ -280,7 +280,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     await page.setViewportSize({ width, height: 900 })
     await page.getByRole("button", { name: "直接提交", exact: true }).click()
     await expect(
-      page.getByRole("dialog").getByRole("heading", { name: "提交前预览" }),
+      page.getByRole("dialog").getByRole("heading", { name: "变更预览" }),
     ).toBeVisible()
     await expect(
       page
@@ -334,23 +334,23 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     if (initial)
       await editor.getByLabel("新增能力").selectOption(newCapability.key)
     await editor
-      .getByRole("textbox", { name: "陈述", exact: true })
+      .getByRole("textbox", { name: "能力说明", exact: true })
       .last()
       .fill("我补充了一段合成项目经历")
-    await editor.getByLabel("依据说明").last().fill("本人完成了合成项目的验证")
+    await editor.getByLabel("补充说明").last().fill("本人完成了合成项目的验证")
     await editor.getByRole("button", { name: "保存草稿", exact: true }).click()
     await expect(editor.getByRole("status")).toHaveText("草稿已保存")
     await editor.getByRole("button", { name: "关闭", exact: true }).click()
     await page.getByRole("button", { name: "继续修改", exact: true }).click()
     editor = page.getByRole("dialog")
     await expect(
-      editor.getByRole("textbox", { name: "陈述", exact: true }).last(),
+      editor.getByRole("textbox", { name: "能力说明", exact: true }).last(),
     ).toHaveValue("我补充了一段合成项目经历")
     await editor
       .getByRole("button", { name: "预览并提交", exact: true })
       .click()
     await expect(
-      editor.getByRole("heading", { name: "提交前预览" }),
+      editor.getByRole("heading", { name: "变更预览" }),
     ).toBeVisible()
     await expect(editor).toContainText("本人完成了合成项目的验证")
     await page.screenshot({
@@ -368,14 +368,14 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     await other.getByRole("button", { name: "继续修改", exact: true }).click()
     await other
       .getByRole("dialog")
-      .getByRole("textbox", { name: "陈述", exact: true })
+      .getByRole("textbox", { name: "能力说明", exact: true })
       .last()
       .fill("另一标签页补充的最新经历")
     await other.getByRole("button", { name: "保存草稿", exact: true }).click()
     await expect(other.getByRole("status")).toHaveText("草稿已保存")
     await other.close()
     await editor.getByRole("button", { name: "确认提交", exact: true }).click()
-    await expect(editor).toContainText("内容已变化，请重新预览")
+    await expect(editor).toContainText("内容已更新，请重新预览")
     await editor
       .getByRole("button", { name: "重新预览最新内容", exact: true })
       .click()
@@ -545,10 +545,10 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
     route.fulfill({ status: 202, json: { queued: 1 } }),
   )
   const retry = page.waitForRequest("**/initial-profiles/draft")
-  await page.getByRole("button", { name: "重试失败的", exact: true }).click()
+  await page.getByRole("button", { name: "重试失败项", exact: true }).click()
   expect((await retry).postDataJSON()).toEqual({ scope: "failed" })
   page.once("dialog", async (dialog) => {
-    expect(dialog.message()).toContain("只覆盖员工还没过目的草稿")
+    expect(dialog.message()).toContain("将仅覆盖员工尚未确认的草稿")
     await dialog.accept()
   })
   const all = page.waitForRequest("**/initial-profiles/draft")
@@ -584,9 +584,7 @@ for (const username of [
       page.getByRole("region", { name: "初始画像起草进度", exact: true }),
     ).toHaveCount(0)
     await page.goto("/admin/data-ai?tab=sources")
-    await expect(page.getByRole("alert")).toContainText(
-      "只有企业管理员可以操作",
-    )
+    await expect(page.getByRole("alert")).toHaveText("需要企业管理员权限")
     await expect(
       page.getByRole("region", { name: "同步记录", exact: true }),
     ).toHaveCount(0)
@@ -614,7 +612,7 @@ test("no model shows configuration guidance and disables drafting", async ({
   await page.goto("/admin/data-ai?tab=model")
   const progress = page.getByRole("region", { name: "初始画像起草进度" })
   await expect(progress.getByRole("alert")).toContainText(
-    "还没有配置模型，请先在设置页配置模型，或者让员工用 JSON 导入画像",
+    "尚未配置 AI 模型，请先前往「设置 → 模型」配置，或由员工手动/导入维护画像。",
   )
   await expect(
     progress.getByRole("link", { name: "去配置模型" }),
@@ -623,7 +621,7 @@ test("no model shows configuration guidance and disables drafting", async ({
     progress.getByRole("button", { name: "重新起草全部" }),
   ).toBeDisabled()
   await expect(
-    progress.getByRole("button", { name: "重试失败的" }),
+    progress.getByRole("button", { name: "重试失败项" }),
   ).toBeDisabled()
   await expectChineseCopy(progress, ["JSON"])
 })

@@ -346,7 +346,7 @@ def test_model_failure_logs_only_metadata(
     assert response.messages[0].text == (
         DEADLINE_MESSAGE
         if code == "deadline"
-        else "模型暂时不可用，请稍后重试，也可以继续使用手工页面。"
+        else "模型暂时不可用，请稍后重试，你也可以直接在对应页面操作。"
     )
     records = [r for r in caplog.records if r.name == core.__name__]
     assert len(records) == 1

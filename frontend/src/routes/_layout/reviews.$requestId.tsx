@@ -99,7 +99,7 @@ function ReviewForm({
     return (
       <div role="status" className="space-y-4">
         <h1 className="text-2xl font-semibold">审批已提交</h1>
-        <p>员工可以查看逐项结果和原因。</p>
+        <p>审批结果已通知员工。</p>
         <Link className="text-primary underline" to="/reviews">
           返回待审批
         </Link>
@@ -115,8 +115,8 @@ function ReviewForm({
         <div role="alert" className="space-y-4">
           <p>
             {stale
-              ? "内容已变化，请重新查看"
-              : "这条请求已经处理完、已撤回，或者你没有审批权限"}
+              ? "内容已更新，请刷新查看"
+              : "该申请已处理、已撤回，或你没有审批权限"}
           </p>
           <Link className="text-primary underline" to="/reviews">
             返回待审批
@@ -143,7 +143,7 @@ function ReviewForm({
         <Link className="text-primary underline" to="/reviews">
           返回待审批
         </Link>
-        <h1 className="text-2xl font-semibold">逐项审批</h1>
+        <h1 className="text-2xl font-semibold">画像审批</h1>
         {query.data.acting_for_name && (
           <p className="font-medium text-primary">
             代{query.data.acting_for_name}审批
@@ -160,13 +160,13 @@ function ReviewForm({
           </p>
         )}
         <p className="text-muted-foreground">
-          依据事实核对改动。意见会存为经理评价，员工本人能看到。
+          请结合工作事实逐项核对，审批意见员工本人可见。
         </p>
       </header>
       {!query.data.owner_reviewed && (
-        <p className="text-amber-700">员工未过目</p>
+        <p className="text-amber-700">员工未确认</p>
       )}
-      {stale && <p role="alert">内容已变化，请重新查看</p>}
+      {stale && <p role="alert">内容已更新，请刷新查看</p>}
       {!stale && <SetupError error={mutation.error} />}
       <form
         className="space-y-6"
@@ -198,7 +198,7 @@ function ReviewForm({
               </h2>
               {jira_only && (
                 <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
-                  只有 Jira 来源，批准后仍为暂定
+                  仅来自 Jira，批准后为「暂定」
                 </p>
               )}
               <div className="grid gap-4 sm:grid-cols-2">
@@ -214,10 +214,10 @@ function ReviewForm({
                     <p className="whitespace-pre-wrap break-words">
                       {claim?.statement ??
                         (title === "改动前"
-                          ? "尚无判断"
+                          ? "暂无记录"
                           : after.op === "retract"
-                            ? "撤回判断"
-                            : "保留原判断，补充证据")}
+                            ? "移除此项"
+                            : "仅补充证据")}
                     </p>
                     {claim && (
                       <>
@@ -225,7 +225,7 @@ function ReviewForm({
                           等级：
                           {levelLabel(
                             after.capability.level_rubric,
-                            claim.level ?? "未给等级",
+                            claim.level ?? "未定级",
                           )}
                         </p>
                         <StatusBadge
@@ -238,13 +238,13 @@ function ReviewForm({
                 ))}
               </div>
               <p className="text-sm">
-                系统解释：{after.explanation ?? "暂无说明"}
+                起草说明：{after.explanation ?? "暂无说明"}
               </p>
               <p className="text-sm">
-                不确定之处：{after.uncertainty ?? "暂无说明"}
+                待核实点：{after.uncertainty ?? "暂无说明"}
               </p>
               <p className="text-sm">
-                员工依据：{after.owner_statement ?? "暂无说明"}
+                员工补充：{after.owner_statement ?? "暂无说明"}
               </p>
               <p className="text-sm">员工异议：{after.objection ?? "无"}</p>
               <div className="flex flex-wrap gap-2">
@@ -266,9 +266,9 @@ function ReviewForm({
                 </p>
               )}
               <label className="block space-y-2">
-                <span>决定</span>
+                <span>审批意见</span>
                 <select
-                  aria-label={`${after.capability.name}的决定`}
+                  aria-label={`${after.capability.name}的审批意见`}
                   required
                   className="w-full rounded-md border bg-background p-2"
                   value={decisions[after.id]?.decision ?? ""}
@@ -286,7 +286,7 @@ function ReviewForm({
                   }}
                 >
                   <option value="" disabled>
-                    请选择决定
+                    请选择
                   </option>
                   {Object.entries(decisionLabels).map(([value, label]) => (
                     <option
@@ -300,7 +300,7 @@ function ReviewForm({
                 </select>
               </label>
               <label className="block space-y-2">
-                <span>原因（退回和拒绝必填）</span>
+                <span>说明（退回或拒绝时必填）</span>
                 <textarea
                   aria-label={`${after.capability.name}的原因`}
                   className="min-h-20 w-full rounded-md border bg-background p-3"
@@ -336,7 +336,7 @@ function ReviewForm({
           disabled={!valid || mutation.isPending || query.isFetching}
           type="submit"
         >
-          核对并提交
+          提交审批
         </Button>
       </form>
       <Dialog
@@ -347,9 +347,9 @@ function ReviewForm({
       >
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>确认逐项决定</DialogTitle>
+            <DialogTitle>确认提交审批</DialogTitle>
             <DialogDescription>
-              提交后批准的项立即发布，退回的项生成新草稿。
+              批准项将立即生效，退回项将返回给员工修改。
             </DialogDescription>
           </DialogHeader>
           <ul className="space-y-3">
@@ -371,7 +371,7 @@ function ReviewForm({
             disabled={mutation.isPending || !valid || query.isFetching}
             onClick={() => mutation.mutate()}
           >
-            {mutation.isPending ? "正在提交…" : "确认提交决定"}
+            {mutation.isPending ? "正在提交…" : "确认提交"}
           </Button>
         </DialogContent>
       </Dialog>

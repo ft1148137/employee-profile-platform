@@ -27,17 +27,17 @@ export function AuthorizedClients({ orgId }: { orgId: string }) {
     onError: handleError.bind(setMessage),
   })
   return (
-    <section className="space-y-3" aria-label="已授权的客户端">
-      <h3 className="font-semibold">已授权的客户端</h3>
+    <section className="space-y-3" aria-label="已授权应用">
+      <h3 className="font-semibold">已授权应用</h3>
       <p className="text-sm text-muted-foreground">
-        名称由客户端自己填写。撤销后，该客户端需要重新获得你的授权。
+        撤销后该应用将无法继续访问，需重新授权。
       </p>
       {grants.isPending ? (
         <ProfileLoading />
       ) : grants.isError ? (
         <ProfileError retry={() => grants.refetch()} />
       ) : grants.data.length === 0 ? (
-        <p>还没有授权客户端</p>
+        <p>暂无已授权应用</p>
       ) : (
         grants.data.map((grant) => (
           <fieldset

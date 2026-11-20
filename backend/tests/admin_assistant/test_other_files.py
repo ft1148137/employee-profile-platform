@@ -245,7 +245,7 @@ def test_file_fields_and_lifecycle(
     if action == "discard":
         c.discard(db, p, row.id)
     elif action == "stale":
-        with pytest.raises(c.ChangeSetError, match="内容已变化"):
+        with pytest.raises(c.ChangeSetError, match="内容已更新"):
             c.apply(db, p, row.id, row.revision + 1)
     elif action == "repropose":
         c.propose(

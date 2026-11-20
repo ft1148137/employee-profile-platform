@@ -59,13 +59,13 @@ export function DepartmentCapabilities({
     key
   return (
     <section
-      aria-label="对应能力"
+      aria-label="部门常用能力"
       className="space-y-4 rounded-xl border bg-card p-5"
     >
       <div>
-        <h2 className="font-semibold">对应能力</h2>
+        <h2 className="font-semibold">部门常用能力</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          子部门自动继承上级能力，员工画像默认显示本部门对应的能力。
+          子部门将自动继承上级能力，员工画像默认展示这些能力项。
         </p>
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
@@ -81,7 +81,7 @@ export function DepartmentCapabilities({
           )}
         </div>
         <div className="space-y-2">
-          <h3 className="text-sm font-medium">本部门设置</h3>
+          <h3 className="text-sm font-medium">本部门新增</h3>
           {own.map((key) => (
             <div
               key={key}
@@ -105,14 +105,14 @@ export function DepartmentCapabilities({
             </div>
           ))}
           {!own.length && (
-            <p className="text-sm text-muted-foreground">暂无本部门设置</p>
+            <p className="text-sm text-muted-foreground">暂无本部门新增</p>
           )}
         </div>
       </div>
       <SetupError error={save.error} />
       {saved && (
         <p role="status" className="text-sm">
-          对应能力已保存
+          部门常用能力已保存
         </p>
       )}
       {canEdit && (
@@ -128,7 +128,7 @@ export function DepartmentCapabilities({
             disabled={draft === null || save.isPending}
             onClick={() => save.mutate()}
           >
-            保存对应能力
+            保存
           </Button>
         </div>
       )}

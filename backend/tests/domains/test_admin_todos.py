@@ -76,7 +76,10 @@ def test_daily_counts_are_private_and_feishu_only(db: Session, demo: tuple) -> N
     assert len(items) == 1
     item = items[0]
     assert item.recipient_user_id == p.user_id and item.admin_todo_count == expected
-    assert item.message == f"你有 {expected} 条管理员待办，请在网页首页处理。"
+    assert (
+        item.message
+        == f"你有 {expected} 条管理员待办，请前往网页「协同 → AI 助手（企业管理）」处理。"
+    )
     rows = db.exec(
         select(ImNotification).where(ImNotification.org_id == p.org_id)
     ).all()
@@ -92,7 +95,8 @@ def test_daily_counts_are_private_and_feishu_only(db: Session, demo: tuple) -> N
         )
     )
     adapter.send_text.assert_awaited_once_with(
-        "synthetic-chat", f"你有 {expected} 条管理员待办，请在网页首页处理。"
+        "synthetic-chat",
+        f"你有 {expected} 条管理员待办，请前往网页「协同 → AI 助手（企业管理）」处理。",
     )
     admin_todos.dispatch_admin_todos(db, now + timedelta(days=1))
     assert (

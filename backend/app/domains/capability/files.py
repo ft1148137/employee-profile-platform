@@ -87,10 +87,10 @@ def parse_dictionary(
                     rows.append((number, group))
                 elif any(group[k] != v for k, v in raw.items()):
                     errors.append(
-                        f"第 {number} 行：同一能力 key 的名称、分类或说明不一致"
+                        f"第 {number} 行：同一能力编码的名称、分类或说明不一致"
                     )
                 if any(v["key"] == level for v in group["level_rubric"]["levels"]):
-                    errors.append(f"第 {number} 行：等级 key 重复")
+                    errors.append(f"第 {number} 行：等级编码重复")
                 group["level_rubric"]["levels"].append(
                     {"key": level, "label": label, "description": detail}
                 )
@@ -106,15 +106,15 @@ def parse_dictionary(
                     warnings = ["AI 起草列已不再使用，已忽略"]
                 definition = DictionaryDefinition.model_validate(row)
                 if definition.key in seen:
-                    errors.append(f"第 {number} 行：能力 key 重复：{definition.key}")
+                    errors.append(f"第 {number} 行：能力编码重复：{definition.key}")
                 seen.add(definition.key)
                 definitions.append(definition)
             except ValidationError as error:
                 for issue in error.errors():
                     field = " / ".join(str(v) for v in issue["loc"])
                     message = (
-                        "等级 key 重复"
-                        if "等级 key 重复" in issue["msg"]
+                        "等级编码重复"
+                        if "等级编码重复" in issue["msg"]
                         else "缺少必填值或格式不正确"
                     )
                     errors.append(f"第 {number} 行「{field}」：{message}")

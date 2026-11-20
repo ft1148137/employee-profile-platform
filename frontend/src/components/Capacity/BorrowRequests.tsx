@@ -19,9 +19,9 @@ import { AssignmentTracking } from "./AssignmentTracking"
 
 const statuses: Record<string, string> = {
   pending_selection: "待选人",
-  selected: "已安排人员，等待本人同意",
-  pending_consent: "原部门经理已同意，等待你确认",
-  waiting_commitment: "你已同意，等待承诺生效",
+  selected: "待员工确认",
+  pending_consent: "待你确认",
+  waiting_commitment: "等待生效",
   failed: "借调未达成",
 }
 

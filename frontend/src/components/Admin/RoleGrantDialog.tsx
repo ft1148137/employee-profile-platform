@@ -98,7 +98,7 @@ export function RoleGrantDialog({
         <DialogHeader>
           <DialogTitle>授予角色</DialogTitle>
           <DialogDescription>
-            为在职且已启用账号的员工授予管理角色。
+            仅支持为在职且账号正常的员工授权。
           </DialogDescription>
         </DialogHeader>
         <Input
@@ -131,7 +131,7 @@ export function RoleGrantDialog({
           }
         />
         {accounts.data && accounts.data.count > 100 && (
-          <p>仅显示前一百名员工，请输入姓名或工号缩小范围。</p>
+          <p>仅显示前 100 名员工，可输入姓名或工号搜索。</p>
         )}
         <RoleSelect
           label="角色"

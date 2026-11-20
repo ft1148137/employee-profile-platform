@@ -33,7 +33,7 @@ class AutoDraftPublic(AutoDraftUpdate):
 
 class AutoDraftDisabled(HTTPException):
     def __init__(self) -> None:
-        super().__init__(422, "自动起草未打开，请先在「数据与 AI → 模型」里打开")
+        super().__init__(422, "自动起草未开启，请先在「设置 → 模型」中开启")
 
 
 @dataclass(frozen=True)
