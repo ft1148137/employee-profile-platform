@@ -253,6 +253,15 @@ for (const status of ["submitted", "accepted"] as const) {
       await expect(
         page.getByRole("region", { name: "事件时间线" }),
       ).toContainText("可以承接")
+    await page.getByRole("button", { name: "返回需求入口" }).click()
+    await expect(
+      page.getByRole("region", { name: "已发出的需求" }),
+    ).toContainText("研发")
+    await page.goBack()
+    await page.goBack()
+    await expect(
+      page.getByRole("region", { name: "方案查看范围" }),
+    ).toContainText("这条需求由 研发 答复和安排人员")
     expect(privateRequests).toEqual([])
   })
 }

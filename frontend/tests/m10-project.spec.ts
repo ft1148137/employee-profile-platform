@@ -14,8 +14,8 @@ test("需求方创建多角色项目并看到承接方答复和排程影响", as
     .getByRole("link", { name: "规划", exact: true })
   const canvas = page.getByRole("main")
   const topbar = page.getByRole("banner")
-  const manualDemand = topbar.getByRole("link", { name: "新建需求" })
-  const manualProject = topbar.getByRole("link", { name: "新建项目" })
+  const manualDemand = topbar.getByRole("button", { name: "新建需求" })
+  const manualProject = topbar.getByRole("button", { name: "新建项目" })
 
   await open(page, "C", "/inbox")
   await planning.click()
@@ -31,13 +31,13 @@ test("需求方创建多角色项目并看到承接方答复和排程影响", as
     page.getByRole("navigation", { name: "空间导航" }).getByRole("link"),
   ).toHaveText(["我的负荷", "团队负荷", "借调请求"])
   await manualDemand.click()
-  await page.getByRole("button", { name: "新建需求" }).click()
-  await expect(
-    page.getByRole("heading", { name: "新建协作需求" }),
-  ).toBeVisible()
-  await planning.click()
+  const demandDrawer = page.getByRole("dialog", { name: "新建协作需求" })
+  await expect(demandDrawer.getByLabel("目标部门")).toBeVisible()
+  await page.keyboard.press("Escape")
+  await expect(demandDrawer).toHaveCount(0)
+  await expect(manualDemand).toBeFocused()
   await manualProject.click()
-  await page.getByRole("button", { name: "新建项目" }).click()
+  await expect(page.getByRole("dialog", { name: "新建项目需求" })).toBeVisible()
   await page.getByLabel("项目名称").fill("合成跨部门交付")
   await page.getByLabel("需求方部门").selectOption({ label: "客户" })
   const addRole = page.getByRole("button", { name: "添加角色", exact: true })
@@ -75,6 +75,14 @@ test("需求方创建多角色项目并看到承接方答复和排程影响", as
   await expect(
     page.getByRole("heading", { name: "合成跨部门交付" }),
   ).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(
+    page.getByRole("complementary", { name: "项目属性" }),
+  ).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    390,
+  )
+  await page.setViewportSize({ width: 1280, height: 720 })
   const projectPath = new URL(page.url()).pathname + new URL(page.url()).search
   await expect(page.getByRole("table", { name: "第 3 阶段" })).toContainText(
     "2026-12-05 至 2026-12-06",
@@ -117,7 +125,10 @@ test("需求方创建多角色项目并看到承接方答复和排程影响", as
   await open(page, "A", projectPath)
   const details = page.getByRole("region", { name: "项目详情" })
   await expect(
-    details.getByRole("listitem").filter({ hasText: "接口开发" }),
+    details
+      .getByRole("list", { name: "角色需求" })
+      .getByRole("listitem")
+      .filter({ hasText: "接口开发" }),
   ).toContainText("已答复 · 能做")
   await expect(details).not.toContainText("合成研发经理")
   await expect(page.getByRole("table", { name: "第 3 阶段" })).toContainText(
@@ -144,7 +155,7 @@ test("需求方创建多角色项目并看到承接方答复和排程影响", as
   )
   await open(page, "A", projectPath)
   await expect(
-    page.getByRole("region", { name: "分阶段时间表" }),
+    page.getByRole("complementary", { name: "项目属性" }),
   ).toContainText("预计完成 待确认")
   const thirdStage = page.getByRole("table", { name: "第 3 阶段" })
   await expect(thirdStage).toContainText("2026-12-05 至 2026-12-06")

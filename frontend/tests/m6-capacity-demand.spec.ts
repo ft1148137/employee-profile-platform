@@ -258,7 +258,27 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
   expect(demandId).toBeTruthy()
   await page.getByRole("button", { name: "返回需求入口" }).click()
   await expect(page.getByRole("link", { name: "去 AI 助手" })).toBeVisible()
-  await open(tokens.get("A")!, `outgoing&demand=${demandId}`)
+  const boardItem = page
+    .getByRole("region", { name: "待答复", exact: true })
+    .getByRole("article")
+    .filter({ hasText: "合成需求：接口联调" })
+  const requestNumber = Number.parseInt(demandId!.slice(-8), 16)
+    .toString()
+    .padStart(10, "0")
+  await expect(
+    boardItem.getByText(requestNumber, { exact: true }),
+  ).toBeVisible()
+  await expect(boardItem).toContainText("2 人 · 50%")
+  const listView = page.getByRole("button", { name: "紧凑列表" })
+  await listView.click()
+  await expect(listView).toHaveAttribute("aria-pressed", "true")
+  await expect(boardItem).toHaveCount(0)
+  await page
+    .getByRole("article")
+    .filter({ hasText: "合成需求：接口联调" })
+    .getByRole("link", { name: "查看详情" })
+    .click()
+  await expect(page).toHaveURL(`/capacity?tab=outgoing&demand=${demandId}`)
   await expect(detail).toContainText("合成需求：接口联调")
   await privatePage()
   for (const [index, conclusion] of ["暂时不能", "能做一部分"].entries()) {

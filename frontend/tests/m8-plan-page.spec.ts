@@ -52,6 +52,17 @@ test("B 方经理无需模型查看方案，A 方经理看不到入口", async (
   await expect(card).toContainText(start)
   await expect(card).toContainText(later(13))
   await expect(card).toContainText("本部门经理确认答复")
+  await expect(page.getByRole("table", { name: "方案对比" })).toContainText(
+    direct.verdict_label,
+  )
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(
+    page.getByRole("complementary", { name: "需求属性与操作" }),
+  ).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    390,
+  )
+  await page.setViewportSize({ width: 1280, height: 720 })
   await expectChineseCopy(page)
   expect(await page.locator("body").textContent()).not.toMatch(
     /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i,

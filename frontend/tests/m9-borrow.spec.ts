@@ -399,6 +399,14 @@ for (const approve of [true, false]) {
       const proposal = page.getByRole("region", { name: "方案提议" })
       await expect(proposal).toContainText("原部门已同意 0/1")
 
+      await open(lender, "tab=borrows")
+      const ready = page.getByRole("region", { name: "待选人", exact: true })
+      await ready.getByRole("button", { name: "选择人选" }).click()
+      const selectionDrawer = page.getByRole("dialog", { name: "合成交付" })
+      await expect(selectionDrawer.getByLabel("借调员工")).toBeVisible()
+      await page.keyboard.press("Escape")
+      await expect(selectionDrawer).toHaveCount(0)
+
       await open(lender, "", "/inbox")
       const lenderNotice = page.getByRole("listitem").filter({
         has: page.getByText("借调请求", { exact: true }),
@@ -426,6 +434,13 @@ for (const approve of [true, false]) {
         0,
       )
       await open(lender, "tab=borrows")
+      const confirmation = page.getByRole("region", {
+        name: "待确认",
+        exact: true,
+      })
+      await expect(confirmation.getByText("待员工确认")).toBeVisible()
+      await page.getByRole("button", { name: "紧凑列表" }).click()
+      await expect(confirmation).toHaveCount(0)
       await expect(page.getByText("待员工确认")).toBeVisible()
 
       if (approve) {
@@ -585,9 +600,9 @@ for (const approve of [true, false]) {
           "合成测试：暂时无法结束分配",
         )
         await expect(assignment).toBeVisible()
-        await expect(completed).toHaveCount(0)
+        await expect(completed.getByRole("article")).toHaveCount(0)
         await complete.click()
-        await expect(active).toHaveCount(0)
+        await expect(active.getByRole("article")).toHaveCount(0)
         await expect(completed).toContainText("合成借调员工")
         await completed.getByRole("button", { name: "写反馈" }).click()
         await expect(

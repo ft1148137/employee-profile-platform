@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router"
 import { AxiosError } from "axios"
 import { useEffect, useState } from "react"
 import {
+  CapabilitiesService,
   CapacityService,
   type CommitmentArrangement,
   type DemandOutcome,
@@ -11,9 +12,12 @@ import {
   type ProposalLinePublic,
   type RespondInput,
 } from "@/client"
+import { SectionCard } from "@/components/Common/WorkbenchPrimitives"
 import { dateLabel } from "@/components/Profile/fields"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
+import { StatusBadge } from "@/components/Profile/StatusBadge"
 import { SetupError } from "@/components/Setup/SetupError"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -28,9 +32,20 @@ import {
   rejectionReasonLabel,
 } from "./BorrowRequests"
 import { DemandAssignments } from "./DemandAssignments"
+import { capabilityLevels } from "./DemandFields"
 import { DemandsReference } from "./DemandsReference"
+import {
+  detailAside,
+  detailColumns,
+  shortRequestNumber,
+} from "./PlanningWorkbench"
 import { Plans, type SelectedPlanReply } from "./Plans"
-import { isCapacityAccessDenied, WorkloadBand } from "./shared"
+import {
+  addWeeks,
+  isCapacityAccessDenied,
+  WorkloadBand,
+  weekLoadLabel,
+} from "./shared"
 
 export const demandStatuses = {
   submitted: "待答复",
@@ -58,12 +73,14 @@ export function DemandsDetail({
   side,
   back,
   plansOpen = false,
+  riskMessage,
 }: {
   orgId: string
   demandId: string
   side: "outgoing" | "incoming"
   back: () => void
   plansOpen?: boolean
+  riskMessage?: string | null
 }) {
   const navigate = useNavigate()
   const [selected, setSelected] = useState<SelectedPlanReply | null>(null)
@@ -77,6 +94,19 @@ export function DemandsDetail({
         })
       ).data,
   })
+  const catalog = useQuery({
+    queryKey: ["capabilities", orgId],
+    enabled: !!query.data?.minimum_level && !query.isError,
+    queryFn: async () =>
+      (await CapabilitiesService.readCapabilities({ path: { org_id: orgId } }))
+        .data,
+  })
+  const capability = catalog.data?.data.find(
+    (item) => item.key === query.data?.capability_key,
+  )
+  const level = capabilityLevels(capability?.level_rubric).find(
+    (level) => level.key === query.data?.minimum_level,
+  )?.label
   const prerequisites = query.data?.project?.prerequisites ?? []
   const change =
     side === "incoming" &&
@@ -100,121 +130,52 @@ export function DemandsDetail({
           <ProfileError retry={() => query.refetch()} />
         )
       ) : (
-        <>
-          <section
-            aria-label="需求详情"
-            className="space-y-3 rounded-xl border p-5"
-          >
-            <h2 className="text-xl font-semibold">
-              {query.data.capability_name} · {demandStatuses[query.data.status]}
-            </h2>
-            {query.data.project && (
-              <div className="space-y-2 rounded-lg bg-muted/40 p-3 text-sm">
-                <p>
-                  所属项目 ·{" "}
-                  <Link
-                    className="font-medium underline underline-offset-4"
-                    to="/capacity"
-                    search={{ tab: "projects", project: query.data.project.id }}
-                  >
-                    {query.data.project.title}
-                  </Link>
-                </p>
-                <p>角色 · {query.data.project.role_name}</p>
-                {prerequisites.length > 0 && (
-                  <ul aria-label="前置角色" className="space-y-1">
-                    {prerequisites.map((role) => (
-                      <li key={role.id}>
-                        前置角色 · {role.role_name}（
-                        {role.target_department_name}） ·{" "}
-                        {demandStatuses[role.status]} ·{" "}
-                        {role.committed_start_date ?? role.window_start} 至{" "}
-                        {role.committed_end_date ?? role.window_end}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-            <p>
-              {query.data.headcount} 人 · 每人 {query.data.allocation_percent}%
-              · {query.data.window_start} 至 {query.data.window_end}
-            </p>
-            <p className="whitespace-pre-wrap break-words">
-              {query.data.description}
-            </p>
-            {query.data.committed_end_date && (
-              <p>当前承诺完成：{query.data.committed_end_date}</p>
-            )}
-          </section>
-          <section aria-label="事件时间线" className="space-y-3">
-            <h3 className="font-semibold">事件时间线</h3>
-            {(query.data.events ?? []).map((event, index) => (
-              <article key={index} className="space-y-2 border-l-2 pl-4">
-                <p className="font-medium">
-                  {event.kind === "commitment_changed" && event.start_date
-                    ? "安排变更"
-                    : events[event.kind]}{" "}
-                  · {dateLabel(event.created_at)}
-                  {event.kind === "replied" &&
-                    ` · 答复人：${side === "outgoing" ? "对方部门经理" : (event.responder_name ?? "对方部门经理")}`}
-                </p>
-                {event.outcome && <p>结论：{demandOutcomes[event.outcome]}</p>}
-                {event.kind === "commitment_changed" &&
-                event.previous_end_date !== event.end_date ? (
-                  <p>
-                    承诺日期由 {event.previous_end_date} 改为 {event.end_date}
-                  </p>
-                ) : (
-                  (event.start_date || event.end_date) && (
-                    <p>
-                      最早开始：{event.start_date ?? "未定"} · 承诺完成：
-                      {event.end_date ?? "未定"}
-                    </p>
-                  )
-                )}
-                <p className="whitespace-pre-wrap break-words">{event.text}</p>
-                {event.basis && (
-                  <div className="rounded-lg bg-muted/30 p-3">
-                    <p className="text-sm font-medium">答复时人员概况</p>
-                    <DemandsReference reference={event.basis} />
-                  </div>
-                )}
-              </article>
-            ))}
-          </section>
-          {side === "incoming" && !query.data.basis_url && (
-            <DemandPlanAccess orgId={orgId} demand={query.data} />
-          )}
-          {side === "incoming" && query.data.basis_url && (
-            <DemandsBasis orgId={orgId} demandId={demandId} />
-          )}
-          {side === "incoming" && query.data.basis_url && (
-            <section
-              id="capacity-plans"
-              aria-label="协调方案"
-              className="scroll-mt-20 space-y-3"
-            >
+        <section aria-label="需求详情" className={detailColumns}>
+          <div className="min-w-0 space-y-3">
+            <SectionCard className="space-y-2">
+              <p
+                className="font-mono text-xs text-muted-foreground"
+                title={demandId}
+              >
+                {shortRequestNumber(demandId)}
+              </p>
+              <h2 className="break-words text-lg font-semibold">
+                {query.data.capability_name}
+              </h2>
+              <p className="whitespace-pre-wrap break-words text-sm">
+                {query.data.description}
+              </p>
               <Button
-                variant="outline"
+                size="sm"
+                variant="link"
+                className="px-0 xl:hidden"
                 onClick={() =>
-                  navigate({
-                    to: "/capacity",
-                    search: {
-                      tab: "incoming",
-                      demand: demandId,
-                      plans: plansOpen ? undefined : 1,
-                    },
-                  })
+                  document.getElementById("demand-properties")?.scrollIntoView()
                 }
               >
-                {plansOpen
-                  ? "关闭方案"
-                  : change
-                    ? "发起变更"
-                    : "生成方案 / 查看方案"}
+                查看需求属性与操作
               </Button>
-              {plansOpen && (
+            </SectionCard>
+            {riskMessage && (
+              <p
+                role="status"
+                className="wrap-anywhere rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm"
+              >
+                {riskMessage}
+              </p>
+            )}
+            {side === "incoming" && !query.data.basis_url && (
+              <DemandPlanAccess orgId={orgId} demand={query.data} />
+            )}
+            {side === "incoming" && query.data.basis_url && (
+              <DemandsBasis orgId={orgId} demand={query.data} />
+            )}
+            {side === "incoming" && query.data.basis_url && plansOpen && (
+              <SectionCard
+                id="capacity-plans"
+                aria-label="协调方案"
+                className="scroll-mt-20 space-y-3"
+              >
                 <Plans
                   change={change}
                   orgId={orgId}
@@ -232,45 +193,203 @@ export function DemandsDetail({
                       : undefined
                   }
                 />
+              </SectionCard>
+            )}
+            {side === "incoming" &&
+              query.data.basis_url &&
+              query.data.status === "accepted" && (
+                <DemandAssignments
+                  orgId={orgId}
+                  demand={query.data}
+                  canProposeChange={change}
+                />
               )}
-            </section>
-          )}
-          {query.data.proposal && (
-            <ProposalPanel
-              orgId={orgId}
-              demand={query.data}
-              side={side}
-              replan={() => {
-                setSelected(null)
-                void navigate({
-                  to: "/capacity",
-                  search: { tab: "incoming", demand: demandId, plans: 1 },
-                })
-              }}
-            />
-          )}
-          {side === "incoming" &&
-            query.data.basis_url &&
-            query.data.status === "accepted" && (
-              <DemandAssignments
+            <SectionCard aria-label="事件时间线" className="space-y-3 text-sm">
+              <h3 className="font-semibold">事件时间线</h3>
+              {(query.data.events ?? []).map((event, index) => (
+                <article
+                  key={index}
+                  className="space-y-1 border-surface-border border-l-2 pl-3"
+                >
+                  <p className="font-medium">
+                    {event.kind === "commitment_changed" && event.start_date
+                      ? "安排变更"
+                      : events[event.kind]}{" "}
+                    · {dateLabel(event.created_at)}
+                    {event.kind === "replied" &&
+                      ` · 答复人：${side === "outgoing" ? "对方部门经理" : (event.responder_name ?? "对方部门经理")}`}
+                  </p>
+                  {event.outcome && (
+                    <p>结论：{demandOutcomes[event.outcome]}</p>
+                  )}
+                  {event.kind === "commitment_changed" &&
+                  event.previous_end_date !== event.end_date ? (
+                    <p>
+                      承诺日期由 {event.previous_end_date} 改为 {event.end_date}
+                    </p>
+                  ) : (
+                    (event.start_date || event.end_date) && (
+                      <p>
+                        最早开始：{event.start_date ?? "未定"} · 承诺完成：
+                        {event.end_date ?? "未定"}
+                      </p>
+                    )
+                  )}
+                  <p className="whitespace-pre-wrap break-words">
+                    {event.text}
+                  </p>
+                  {event.basis && (
+                    <div className="rounded-lg bg-muted/30 p-3">
+                      <p className="text-sm font-medium">答复时人员概况</p>
+                      <DemandsReference reference={event.basis} />
+                    </div>
+                  )}
+                </article>
+              ))}
+            </SectionCard>
+            <DecisionHistory orgId={orgId} demandId={demandId} />
+          </div>
+          <aside
+            aria-label="需求属性与操作"
+            id="demand-properties"
+            className={`${detailAside} scroll-mt-16`}
+          >
+            <SectionCard className="space-y-3 break-words text-sm">
+              <h3 className="font-semibold">需求属性与操作</h3>
+              <dl className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <dt className="text-muted-foreground">当前状态</dt>
+                  <dd>
+                    <Badge variant="secondary">
+                      {demandStatuses[query.data.status]}
+                    </Badge>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">起止周期</dt>
+                  <dd>
+                    {query.data.window_start} 至 {query.data.window_end}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">人数 / 投入</dt>
+                  <dd>
+                    {query.data.headcount} 人 · 每人{" "}
+                    {query.data.allocation_percent}%
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">能力要求</dt>
+                  <dd>
+                    {query.data.capability_name}
+                    {typeof level === "string" && ` · ${level}`}
+                  </dd>
+                </div>
+              </dl>
+              {query.data.project && (
+                <div className="space-y-2 border-surface-border border-y py-2">
+                  <p>
+                    所属项目 ·{" "}
+                    <Link
+                      className="font-medium underline underline-offset-4"
+                      to="/capacity"
+                      search={{
+                        tab: "projects",
+                        project: query.data.project.id,
+                      }}
+                    >
+                      {query.data.project.title}
+                    </Link>
+                  </p>
+                  <p>角色 · {query.data.project.role_name}</p>
+                  {prerequisites.length > 0 && (
+                    <ul aria-label="前置角色" className="space-y-1">
+                      {prerequisites.map((role) => (
+                        <li key={role.id}>
+                          前置角色 · {role.role_name}（
+                          {role.target_department_name}） ·{" "}
+                          {demandStatuses[role.status]} ·{" "}
+                          {role.committed_start_date ?? role.window_start} 至{" "}
+                          {role.committed_end_date ?? role.window_end}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              {query.data.committed_end_date && (
+                <p>当前承诺完成：{query.data.committed_end_date}</p>
+              )}
+              {side === "incoming" && query.data.basis_url && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    await navigate({
+                      to: "/capacity",
+                      resetScroll: false,
+                      search: {
+                        tab: "incoming",
+                        demand: demandId,
+                        plans: plansOpen ? undefined : 1,
+                      },
+                    })
+                    if (!plansOpen)
+                      document
+                        .getElementById("capacity-plans")
+                        ?.scrollIntoView()
+                  }}
+                >
+                  {plansOpen
+                    ? "关闭方案"
+                    : change
+                      ? "发起变更"
+                      : "生成方案 / 查看方案"}
+                </Button>
+              )}
+              {side === "incoming" &&
+                query.data.basis_url &&
+                query.data.status === "accepted" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      document
+                        .getElementById("demand-assignments")
+                        ?.scrollIntoView()
+                    }
+                  >
+                    查看分配与反馈
+                  </Button>
+                )}
+            </SectionCard>
+            {query.data.proposal && (
+              <ProposalPanel
                 orgId={orgId}
                 demand={query.data}
-                canProposeChange={change}
+                side={side}
+                replan={() => {
+                  setSelected(null)
+                  void navigate({
+                    to: "/capacity",
+                    search: { tab: "incoming", demand: demandId, plans: 1 },
+                  })
+                }}
               />
             )}
-          {(side === "outgoing" || query.data.basis_url) && (
-            <DemandsAction
-              key={`${query.data.revision}:${selected?.option_id ?? ""}`}
-              orgId={orgId}
-              demand={query.data}
-              side={side}
-              selected={selected}
-              change={change}
-              clearSelection={() => setSelected(null)}
-            />
-          )}
-          <DecisionHistory orgId={orgId} demandId={demandId} />
-        </>
+            {(side === "outgoing" || query.data.basis_url) && (
+              <DemandsAction
+                key={`${query.data.revision}:${selected?.option_id ?? ""}`}
+                orgId={orgId}
+                demand={query.data}
+                side={side}
+                selected={selected}
+                change={change}
+                clearSelection={() => setSelected(null)}
+              />
+            )}
+          </aside>
+        </section>
       )}
     </div>
   )
@@ -423,22 +542,22 @@ function DemandPlanAccess({
 
 function DemandsBasis({
   orgId,
-  demandId,
+  demand,
 }: {
   orgId: string
-  demandId: string
+  demand: DemandPublic
 }) {
   const query = useQuery({
-    queryKey: ["capacity", orgId, "demand-basis", demandId],
+    queryKey: ["capacity", orgId, "demand-basis", demand.id],
     queryFn: async () =>
       (
         await CapacityService.getDemandBasis({
-          path: { org_id: orgId, demand_id: demandId },
+          path: { org_id: orgId, demand_id: demand.id },
         })
       ).data,
   })
   return (
-    <section aria-label="本部门匹配人员" className="space-y-3">
+    <SectionCard aria-label="本部门匹配人员" className="space-y-3">
       <h3 className="font-semibold">本部门匹配人员</h3>
       {query.isPending ? (
         <ProfileLoading />
@@ -451,49 +570,87 @@ function DemandsBasis({
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            共 {query.data.count} 名符合条件的员工
+            共 {query.data.count} 名符合条件的员工 · 需求投入{" "}
+            {demand.allocation_percent}% / 人
           </p>
           <div className="overflow-x-auto rounded-xl border">
             <table className="w-full text-left text-sm">
               <thead className="bg-muted/30">
                 <tr>
-                  {["姓名", "等级", "Jira 参考值", "经理确认", "负荷状态"].map(
-                    (label) => (
-                      <th key={label} className="whitespace-nowrap p-3">
-                        {label}
-                      </th>
-                    ),
-                  )}
+                  {[
+                    "候选人",
+                    "能力核验",
+                    "Jira 参考值",
+                    "已确认投入",
+                    "需求周期内的周负荷",
+                  ].map((label) => (
+                    <th key={label} className="whitespace-nowrap px-3 py-2">
+                      {label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {query.data.data.map((person) => (
-                  <tr key={person.employee_id} className="border-t">
-                    <th scope="row" className="whitespace-nowrap p-3">
-                      {person.display_name}
-                    </th>
-                    <td className="p-3">{person.level_name ?? "未定级"}</td>
-                    <td className="p-3">
-                      {person.workload.jira_task_count === null
-                        ? "暂无"
-                        : `${person.workload.jira_task_count} 件未完成`}
-                    </td>
-                    <td className="p-3">
-                      {person.workload.confirmed_percent === null
-                        ? "未确认"
-                        : `${person.workload.confirmed_percent}%`}
-                    </td>
-                    <td className="p-3">
-                      <WorkloadBand band={person.workload.band} />
-                    </td>
-                  </tr>
-                ))}
+                {query.data.data.map((person) => {
+                  const weeks = person.workload.weeks.filter(
+                    ({ week_start }) =>
+                      week_start <= demand.window_end &&
+                      addWeeks(week_start, 1) > demand.window_start,
+                  )
+                  return (
+                    <tr key={person.employee_id} className="border-t">
+                      <th scope="row" className="whitespace-nowrap px-3 py-2">
+                        {person.display_name}
+                      </th>
+                      <td className="px-3 py-2">
+                        {person.level_name ?? "未定级"} ·{" "}
+                        {person.evidence_count} 条证据
+                        <StatusBadge
+                          kind="assessment_status"
+                          value={person.status}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        {person.workload.jira_task_count === null
+                          ? "暂无"
+                          : `${person.workload.jira_task_count} 件未完成`}
+                      </td>
+                      <td className="px-3 py-2">
+                        {person.workload.confirmed_percent === null
+                          ? "未确认"
+                          : `${person.workload.confirmed_percent}%`}
+                        <WorkloadBand band={person.workload.band} />
+                      </td>
+                      <td className="px-3 py-2">
+                        {weeks.length ? (
+                          <details>
+                            <summary className="cursor-pointer whitespace-nowrap">
+                              {weeks.length} 周 · 投入 / 容量
+                            </summary>
+                            {weeks.map((week) => (
+                              <p
+                                key={week.week_start}
+                                className="whitespace-nowrap"
+                              >
+                                {week.week_start} · {weekLoadLabel(week)}
+                              </p>
+                            ))}
+                          </details>
+                        ) : (
+                          <span className="whitespace-nowrap text-muted-foreground">
+                            暂无周期内数据
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         </>
       )}
-    </section>
+    </SectionCard>
   )
 }
 
@@ -573,7 +730,7 @@ function DemandsAction({
       <form
         id="demand-reply"
         aria-label="发起安排变更"
-        className="max-w-3xl space-y-4 rounded-xl border p-5"
+        className="min-w-0 scroll-mt-16 space-y-3 rounded-lg border border-surface-border bg-surface p-3"
         onSubmit={(event) => {
           event.preventDefault()
           propose.mutate({
@@ -624,7 +781,7 @@ function DemandsAction({
     <form
       id="demand-reply"
       aria-label={side === "incoming" ? "答复需求" : "回应答复"}
-      className="max-w-3xl space-y-4 rounded-xl border p-5"
+      className="min-w-0 scroll-mt-16 space-y-3 rounded-lg border border-surface-border bg-surface p-3"
       onSubmit={(event) => {
         event.preventDefault()
         const data = new FormData(event.currentTarget)
@@ -678,7 +835,7 @@ function DemandsAction({
                 onChange={setReasonCode}
               />
             )}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2 2xl:grid-cols-2">
               {[
                 ["start", "最早开始日期"],
                 ["end", "承诺完成日期"],
@@ -920,7 +1077,7 @@ function ProposalPanel({
   return (
     <section
       aria-label={change ? "安排变更提议" : "方案提议"}
-      className="space-y-4 rounded-xl border p-5"
+      className="space-y-3 rounded-lg border border-surface-border bg-surface p-3 text-sm"
     >
       <h3 className="text-lg font-semibold">
         {change ? "安排变更提议" : "方案提议"} · {label}
