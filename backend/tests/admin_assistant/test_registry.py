@@ -159,6 +159,45 @@ def test_table_limit() -> None:
     assert r._table(r.FUNCTIONS["list_roles"], []).total == 0
 
 
+def test_demand_table_columns() -> None:
+    row = {
+        "events": [{"kind": "submitted"}],
+        "proposal": None,
+        "project": None,
+        "basis_url": None,
+        "created_at": "2026-11-01T00:00:00Z",
+        "status": "submitted",
+        "window_end": "2026-12-31",
+        "window_start": "2026-12-01",
+        "allocation_percent": 50,
+        "headcount": 2,
+        "capability_name": "接口开发",
+        "can_reply": True,
+        "id": str(uuid4()),
+    }
+    columns = [
+        "id",
+        "can_reply",
+        "capability_name",
+        "headcount",
+        "allocation_percent",
+        "window_start",
+        "window_end",
+        "status",
+        "created_at",
+    ]
+    function = r.FUNCTIONS["list_demands"]
+    card = r._table(function, {"data": [row] * 25, "count": 40})
+    assert card is not None
+    assert card.columns == columns
+    assert card.rows == [[row[column] for column in columns]] * 20
+    assert card.total == 40 and card.page == "/capacity"
+
+    empty = r._table(function, {"data": [], "count": 0})
+    assert empty is not None
+    assert empty.columns == empty.rows == []
+
+
 def test_capability_template_discovery(db: Session, shared_demo: tuple) -> None:
     from app.core.config import settings
     from app.domains.capability.templates import load_catalog

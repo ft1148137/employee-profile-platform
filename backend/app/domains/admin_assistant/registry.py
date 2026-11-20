@@ -776,6 +776,18 @@ def _table(function: AdminFunction, data: Any) -> TableCard | None:
     if not isinstance(rows, list):
         return None
     columns = list(rows[0]) if rows else []
+    if rows and function.name == "list_demands":
+        columns = [
+            "id",
+            "can_reply",
+            "capability_name",
+            "headcount",
+            "allocation_percent",
+            "window_start",
+            "window_end",
+            "status",
+            "created_at",
+        ]
     return TableCard(
         queried_at=utc_now(),
         title=function.description,
