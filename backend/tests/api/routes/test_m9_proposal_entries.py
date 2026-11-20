@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from app.authz.principal import Principal
+from app.core.config import settings
 from app.core.db import engine
 from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
@@ -395,7 +396,21 @@ def test_human_confirms_proposal_then_acceptance(
     card = next(m for m in turn.messages if isinstance(m, s.CapacityCard))
     for label in ("人数", "投入", "开始", "结束", "条件", "到期", "锁定并生成分配"):
         assert label in card.content
-    assert card.content in render(card)[0]
+    href = f"/capacity?tab=outgoing&demand={row.id}"
+    assert card.detail_link == s.CardLink(label="查看需求详情", href=href)
+    assert href not in card.content
+    text, _ = render(card)
+    assert card.content in text
+    assert f"查看需求详情：{settings.FRONTEND_HOST.rstrip('/')}{href}" in text
+
+    legacy = s.TurnResponse.model_validate(
+        {"messages": [card.model_dump(mode="json", exclude={"detail_link"})]}
+    ).messages[0]
+    assert isinstance(legacy, s.CapacityCard)
+    assert legacy.detail_link is None
+    assert "detail_link" not in legacy.model_dump(mode="json")
+    assert legacy.content in render(legacy)[0]
+
     result = click(db, a, a_session, card, client)
     assert result.status == "confirmed", result
     assert proposal_row(db, row).status == "committed"

@@ -101,6 +101,8 @@ def render(message: s.Message) -> tuple[str, list[dict[str, JsonValue]]]:
         )
         if message.plan is not None:
             text += "\n" + render(message.plan)[0]
+        if message.detail_link is not None:
+            text += f"\n{message.detail_link.label}：{settings.FRONTEND_HOST.rstrip('/')}{message.detail_link.href}"
         return text, [a.model_dump(mode="json") for a in message.actions]
     if isinstance(message, s.PlanCard):
         fields = "\n".join(f"{field.label}：{field.value}" for field in message.fields)
