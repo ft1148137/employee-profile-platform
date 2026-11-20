@@ -198,7 +198,7 @@ test("manager views and directly edits a team profile", async ({
     await expect(
       page
         .getByRole("article", { name: "合成能力1" })
-        .getByText("等级：独立完成", { exact: true }),
+        .getByText("独立完成", { exact: true }),
     ).toBeVisible()
     const profile = await (
       await request.get(`${base}/employees/${subject.id}/profile`, {
