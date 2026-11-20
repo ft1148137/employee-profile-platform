@@ -23,6 +23,7 @@ from app.domains.capacity.models import (
     CapacityDemandEvent,
     CapacityProposalLine,
     CapacityWeek,
+    DemandEventKind,
 )
 from app.domains.change_request.models import ProfileChangeRequest
 from app.domains.evidence.models import Evidence
@@ -343,6 +344,81 @@ def test_borrow_consent_order_and_projections(
     )
     mine_for_b = client.get(f"{url}/capacity/assignments/me", headers=auth["b"])
     assert mine_for_b.json()["data"] == []
+
+
+@pytest.mark.parametrize("responder_withdraws", [True, False])
+def test_requester_withdraws_demand_after_borrow_consent(
+    case: tuple,
+    offered: tuple,
+    client: TestClient,
+    db: Session,
+    responder_withdraws: bool,
+) -> None:
+    url, _, auth, demand = case
+    _, line, worker = offered
+    selected = decide(
+        client, case, line, "lender", action="select", employee_id=str(worker.id)
+    )
+    assert selected.status_code == 204, selected.text
+    consent = decide(client, case, line, "worker", action="accept")
+    assert consent.status_code == 204, consent.text
+
+    def held_percent() -> int:
+        db.expire_all()
+        return loads(db, demand.org_id, [worker.id], demand.window_start, 1)[worker.id][
+            0
+        ].hold_percent
+
+    assert held_percent() == 50
+    previous = proposal_row(db, demand)
+    proposal_revision = previous.revision
+    if responder_withdraws:
+        ended = client.post(
+            f"{url}/capacity/proposals/{previous.id}/withdraw",
+            headers=auth["b"],
+            json={"revision": proposal_revision},
+        )
+        assert ended.status_code == 200, ended.text
+        assert held_percent() == 0
+
+    detail = client.get(f"{url}/capacity/demands/{demand.id}", headers=auth["a"])
+    assert detail.status_code == 200, detail.text
+    current = detail.json()
+    assert current["status"] == ("submitted" if responder_withdraws else "replied")
+    assert current["proposal"]["status"] == (
+        "withdrawn" if responder_withdraws else "pending"
+    )
+    before = proposal_row(db, demand).model_dump()
+    event_ids = {event.id for event in rows(db, CapacityDemandEvent, demand)}
+    revision = current["revision"]
+    stale = respond(client, case, revision - 1, "withdraw")
+    assert stale.status_code == 409
+    assert stale.json()["detail"]["code"] == "proposal_decided"
+    for role in ("b", "foreign"):
+        assert respond(client, case, revision, "withdraw", role=role).status_code == 404
+
+    result = respond(client, case, revision, "withdraw")
+    assert result.status_code == 200, result.text
+    assert result.json()["status"] == "withdrawn"
+    assert result.json()["revision"] == revision + 1
+    for replay_revision in (revision, revision + 1):
+        assert respond(client, case, replay_revision, "withdraw").status_code == 409
+
+    after = proposal_row(db, demand)
+    assert after.status == "withdrawn"
+    if responder_withdraws:
+        assert after.model_dump() == before
+    else:
+        assert after.revision == proposal_revision + 1
+    assert held_percent() == 0
+    assert not rows(db, CapacityAssignment, demand)
+    (event,) = [
+        event
+        for event in rows(db, CapacityDemandEvent, demand)
+        if event.id not in event_ids
+    ]
+    assert event.kind == DemandEventKind.WITHDRAWN
+    assert event.actor_user_id == demand.requester_user_id
 
 
 def test_borrow_workload_segments_require_consent_and_lender_scope(
