@@ -43,6 +43,10 @@ const labels: Record<string, string> = {
   department_name: "部门",
   requesting_department_name: "发起部门",
   capability_name: "能力",
+  headcount: "人数",
+  allocation_percent: "投入占比",
+  window_start: "开始日期",
+  window_end: "结束日期",
   statement: "能力判断",
   level_name: "等级",
   evidence_count: "证据数",
@@ -83,6 +87,10 @@ const labels: Record<string, string> = {
   tentative: "暂定",
   disputed: "存在争议",
   reopened: "允许重新提交",
+  submitted: "待答复",
+  replied: "已答复",
+  accepted: "已接受",
+  withdrawn: "已撤回",
   preview: "待确认",
   applied: "已导入",
   active: "正常",
@@ -107,6 +115,8 @@ const labels: Record<string, string> = {
 
 function cellText(value: unknown, field = ""): string {
   if (value == null) return "—"
+  if (field === "allocation_percent" && typeof value === "number")
+    return `${value}%`
   if (typeof value === "boolean") return value ? "是" : "否"
   if (Array.isArray(value))
     return value.map((entry) => cellText(entry, field)).join("、")
@@ -149,12 +159,19 @@ function ReadTable({ table }: { table: TableCard }) {
     table.page === "/capacity" && columns.includes("requesting_department_name")
       ? columns.indexOf("id")
       : -1
+  const demandIdIndex =
+    table.page === "/capacity" && columns.includes("capability_name")
+      ? columns.indexOf("id")
+      : -1
+  const canReplyIndex = columns.indexOf("can_reply")
   const shown = columns
     .map((column, index) => ({ column, index }))
     .filter(
       ({ column, index }) =>
         index !== personId &&
         index !== projectId &&
+        index !== demandIdIndex &&
+        !(demandIdIndex >= 0 && index === canReplyIndex) &&
         !(personId >= 0 && ["capability_key", "level"].includes(column)),
     )
 
@@ -192,6 +209,7 @@ function ReadTable({ table }: { table: TableCard }) {
                 const text = cellText(row[index], column)
                 const employeeId = row[personId]
                 const project = row[projectId]
+                const demandId = row[demandIdIndex]
                 return (
                   <td
                     key={column}
@@ -210,6 +228,21 @@ function ReadTable({ table }: { table: TableCard }) {
                       <Link
                         to="/capacity"
                         search={{ tab: "projects", project }}
+                        className="underline"
+                      >
+                        {text}
+                      </Link>
+                    ) : column === "capability_name" &&
+                      typeof demandId === "string" ? (
+                      <Link
+                        to="/capacity"
+                        search={{
+                          tab:
+                            row[canReplyIndex] === true
+                              ? "incoming"
+                              : "outgoing",
+                          demand: demandId,
+                        }}
                         className="underline"
                       >
                         {text}

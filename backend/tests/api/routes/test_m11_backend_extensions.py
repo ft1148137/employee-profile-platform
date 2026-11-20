@@ -285,11 +285,25 @@ def test_admin_demand_reads(demand: tuple, db: Session, client: TestClient) -> N
             )
             assert reply.status_code == 200, reply.text
         listing = {"side": side, "status": status}
-        assert query(admin, "list_demands", listing) == {
-            "data": client.get(base, headers=auth["admin"], params=listing).json()
-        }
+        web = client.get(base, headers=auth["admin"], params=listing)
+        assert web.status_code == 200, web.text
+        web_data = web.json()
+        assert query(admin, "list_demands", listing) == {"data": web_data}
         table = next(card for card in cards if isinstance(card, TableCard))
         assert table.total == 1 and table.page == "/capacity"
+        assert table.rows == [
+            [
+                demand_id,
+                tab == "incoming",
+                web_data["data"][0]["capability_name"],
+                body["headcount"],
+                body["allocation_percent"],
+                body["window_start"],
+                body["window_end"],
+                status,
+                created.json()["created_at"],
+            ]
+        ]
         assert query(admin, "list_demands", {"side": side, "status": "withdrawn"}) == {
             "data": {"data": [], "count": 0}
         }

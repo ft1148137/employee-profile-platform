@@ -251,6 +251,102 @@ for (const available of [true, false]) {
   })
 }
 
+test("demand table shows Chinese labels and opens demand details", async ({
+  page,
+}) => {
+  const demands = [
+    { status: "submitted", label: "待答复", tab: "incoming" },
+    { status: "replied", label: "已答复", tab: "outgoing" },
+    { status: "accepted", label: "已接受", tab: "outgoing" },
+    { status: "withdrawn", label: "已撤回", tab: "outgoing" },
+  ].map((demand, index) => ({
+    ...demand,
+    id: crypto.randomUUID(),
+    capability: `合成能力 ${index + 1}`,
+  }))
+  await page.route("**/admin-assistant/availability?*", (route) =>
+    route.fulfill({ json: { available: true, reason: "" } }),
+  )
+  await logInUser(
+    page,
+    "admin@demo.example.com",
+    process.env.DEMO_USER_PASSWORD!,
+  )
+  const saveReply = await mockAdminMessages(page)
+  await page.route("**/admin-assistant/sessions/*/turns?*", (route) => {
+    const reply = {
+      messages: [
+        {
+          type: "table",
+          title: "部门需求列表",
+          page: "/capacity",
+          total: demands.length,
+          columns: [
+            "id",
+            "can_reply",
+            "capability_name",
+            "headcount",
+            "allocation_percent",
+            "window_start",
+            "window_end",
+            "status",
+            "created_at",
+          ],
+          rows: demands.map(({ id, tab, capability, status }) => [
+            id,
+            tab === "incoming",
+            capability,
+            2,
+            50,
+            "2026-12-01",
+            "2026-12-31",
+            status,
+            "2026-11-20T00:00:00Z",
+          ]),
+        },
+      ],
+    }
+    saveReply(route.request().url(), reply)
+    return route.fulfill({
+      contentType: "application/x-ndjson",
+      body: `${JSON.stringify({ type: "final", response: reply })}\n`,
+    })
+  })
+  await page.goto("/admin/assistant?prompt=查看部门需求")
+  await page.getByRole("button", { name: "发送", exact: true }).click()
+  const table = page.getByRole("table")
+  await expect(table.getByRole("columnheader")).toHaveText([
+    "能力",
+    "人数",
+    "投入占比",
+    "开始日期",
+    "结束日期",
+    "状态",
+    "创建时间",
+  ])
+  for (const { capability, id, label, tab } of demands) {
+    const row = table.getByRole("row").filter({ hasText: capability })
+    await expect(row.getByRole("cell")).toHaveText([
+      capability,
+      "2",
+      "50%",
+      "2026-12-01",
+      "2026-12-31",
+      label,
+      "2026-11-20T00:00:00Z",
+    ])
+    await expect(row.getByRole("link", { name: capability })).toHaveAttribute(
+      "href",
+      `/capacity?tab=${tab}&demand=${id}`,
+    )
+  }
+  for (const { capability, id, tab } of demands.slice(0, 2)) {
+    await table.getByRole("link", { name: capability }).click()
+    await expect(page).toHaveURL(`/capacity?tab=${tab}&demand=${id}`)
+    await page.goBack()
+  }
+})
+
 test("manager with employee identity lands on assistant", async ({ page }) => {
   await logInUser(
     page,
