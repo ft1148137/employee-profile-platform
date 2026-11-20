@@ -39,29 +39,31 @@ export function DraftingNoteForm({ orgId }: { orgId: string }) {
   const text = suggestion.values({ text: edited ?? note.data.text }).text
   const count = Array.from(text).length
   return (
-    <div className="space-y-3 border-t pt-5">
+    <div className="min-w-0 space-y-2 border-t border-surface-border pt-3">
       <Label htmlFor="drafting-note">起草补充说明</Label>
       <p className="text-sm text-muted-foreground">
         可补充本企业工单与业务背景说明（不影响权限和起草规则；清空保存即停用）。
       </p>
       <DraftField changed={suggestion.changed("text")}>
         <textarea
-          className="min-h-32 w-full rounded-md border bg-background p-3 text-sm"
+          className="min-h-20 w-full rounded-md border bg-background p-2 text-sm"
           id="drafting-note"
-          rows={5}
+          rows={3}
           value={text}
           disabled={save.isPending || suggestion.blocked}
           onChange={(event) => setEdited(event.target.value)}
         />
       </DraftField>
-      <p role="status" className="text-sm text-muted-foreground">
-        {count} / 2000 字
-      </p>
-      <p className="text-sm text-muted-foreground">
-        {note.data.version == null
-          ? "尚未保存补充说明"
-          : `当前版本：${note.data.version} · 最近修改：${note.data.created_by} · ${new Date(note.data.created_at ?? "").toLocaleString("zh-CN")}`}
-      </p>
+      <div className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <p className="min-w-0 break-words">
+          {note.data.version == null
+            ? "尚未保存补充说明"
+            : `当前版本：${note.data.version} · 最近修改：${note.data.created_by} · ${new Date(note.data.created_at ?? "").toLocaleString("zh-CN")}`}
+        </p>
+        <p role="status" className="tabular-nums">
+          {count} / 2000 字
+        </p>
+      </div>
       <PageDraft
         orgId={orgId}
         draft={suggestion.draft}
@@ -69,6 +71,7 @@ export function DraftingNoteForm({ orgId }: { orgId: string }) {
       />
       <SetupError error={save.error} />
       <Button
+        size="sm"
         disabled={
           save.isPending ||
           suggestion.blocked ||

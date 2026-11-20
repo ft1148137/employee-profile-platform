@@ -52,6 +52,20 @@ test("model kinds, saved secret, destination changes and disabling preserve conf
   expect(body).not.toContain("ciphertext")
   await page.reload()
   await expect(page.getByPlaceholder("已保存，留空表示不修改")).toBeVisible()
+  const status = page.getByRole("region", { name: "运行状态" })
+  await expect(status).toContainText("synthetic")
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(375)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  const configuration = page.getByRole("region", {
+    name: "模型配置",
+    exact: true,
+  })
+  const left = (await configuration.boundingBox())!
+  const right = (await status.boundingBox())!
+  expect(right.x).toBeGreaterThan(left.x + left.width)
+  expect(left.width / (left.width + right.width)).toBeCloseTo(0.65, 2)
   await page.screenshot({
     path: "test-results/model-setting.png",
     fullPage: true,

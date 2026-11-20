@@ -80,6 +80,19 @@ test("drafting settings and personal choice persist with role boundaries", async
     await note.fill("标签说明工单主题，不单独证明能力。")
     await saveNote.click()
     await expect(card).toContainText("补充说明已保存")
+    const historyCard = page.getByRole("region", { name: "配置变更记录" })
+    await historyCard
+      .getByRole("region", { name: "起草补充说明历史", exact: true })
+      .getByRole("button", { name: "变更历史" })
+      .click()
+    const history = page.getByRole("dialog", { name: "变更历史" })
+    await expect(history.getByText("修改起草补充说明").first()).toBeVisible()
+    await history.getByRole("button", { name: "关闭" }).click()
+    await expect(history).toBeHidden()
+    await page.getByRole("link", { name: "查看起草进度" }).click()
+    await expect(
+      page.getByRole("progressbar", { name: "当前起草覆盖" }),
+    ).toBeVisible()
     await page.reload()
     await expect(note).toHaveValue("标签说明工单主题，不单独证明能力。")
     await expect(saveNote).toBeDisabled()

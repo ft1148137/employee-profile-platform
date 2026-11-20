@@ -5,6 +5,7 @@ import {
   DraftingSettingsService,
   InitialProfilesService,
 } from "@/client"
+import { SectionCard } from "@/components/Common/WorkbenchPrimitives"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 
@@ -69,45 +70,17 @@ export function DraftProgress({
   })
   const data = progress.data
   const counts = data?.counts ?? {}
+  const eligible =
+    Object.values(counts).reduce((total, count) => total + count, 0) -
+    (counts.excluded ?? 0)
+  const covered = counts.generated ?? 0
   const busy = !!(counts.pending || counts.running)
   const generated =
     (data?.requests.pending_owner ?? 0) + (data?.requests.handed_over ?? 0)
   return (
-    <section className="space-y-5" aria-label="初始画像起草进度">
-      <h2 className="text-xl font-semibold">初始画像</h2>
+    <SectionCard className="space-y-3 text-sm" aria-label="初始画像起草进度">
+      <h2 className="text-sm font-semibold">初始画像起草进度</h2>
       <SetupError error={progress.error ?? draft.error} />
-      {!wizard && (
-        <div className="space-y-3 rounded-lg border p-4">
-          <p>
-            满 {policy.data?.current.owner_review_days ?? "—"}{" "}
-            天未处理、可批量送审：{handover.data?.count ?? "—"} 人
-          </p>
-          <p className="text-sm text-muted-foreground">
-            送审后标为「员工未确认」，通知本人，批准前本人可以撤回。
-          </p>
-          <SetupError error={handover.error ?? send.error} />
-          <Button
-            variant="outline"
-            disabled={send.isPending || !handover.data?.count}
-            onClick={async () => {
-              const latest = await handover.refetch()
-              if (
-                latest.isSuccess &&
-                latest.data.count > 0 &&
-                window.confirm(
-                  `确认将 ${latest.data.count} 名员工的初始画像批量送审？这些员工尚未确认。`,
-                )
-              )
-                send.mutate()
-            }}
-          >
-            批量送审
-          </Button>
-          {send.isSuccess && (
-            <p role="status">已送审 {send.data.data.count} 人</p>
-          )}
-        </div>
-      )}
       {progress.isPending && <p role="status">正在读取起草进度…</p>}
       {progress.isError && (
         <Button onClick={() => progress.refetch()}>重新读取</Button>
@@ -118,7 +91,7 @@ export function DraftProgress({
             <p>自动起草未开启，请先前往「设置 → 模型」开启。</p>
           )}
           {data.mode === "none" && (
-            <div role="alert" className="rounded-lg border p-4">
+            <div role="alert" className="rounded-lg border p-2">
               <p>
                 尚未配置 AI 模型，请先前往「设置 →
                 模型」配置，或由员工手动/导入维护画像。
@@ -131,7 +104,7 @@ export function DraftProgress({
           {data.paused_until && (
             <div
               role="alert"
-              className="rounded-lg border border-amber-500 bg-amber-50 p-4 text-amber-950"
+              className="rounded-lg border border-amber-500 bg-amber-500/10 p-2 text-amber-900 dark:text-amber-200"
             >
               <p>{data.pause_reason ?? "起草暂时暂停"}</p>
               <p>
@@ -140,13 +113,27 @@ export function DraftProgress({
               </p>
             </div>
           )}
-          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap justify-between gap-x-2">
+              <span className="text-muted-foreground">当前起草覆盖</span>
+              <span className="font-medium tabular-nums">
+                {covered} / {eligible} 人
+              </span>
+            </div>
+            <progress
+              aria-label="当前起草覆盖"
+              value={covered}
+              max={eligible || 1}
+              className="block h-1.5 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
+            />
+          </div>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
             {Object.entries(counts).map(([key, count]) => (
-              <div key={key} className="rounded-lg border p-4">
+              <div key={key} className="flex justify-between gap-2">
                 <dt className="text-sm text-muted-foreground">
                   {labels[key] ?? "其他"}
                 </dt>
-                <dd className="mt-2 text-3xl tabular-nums">{count}</dd>
+                <dd className="font-medium tabular-nums">{count}</dd>
               </div>
             ))}
           </dl>
@@ -176,8 +163,9 @@ export function DraftProgress({
           )}
         </>
       )}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-2">
         <Button
+          size="sm"
           disabled={
             draft.isPending ||
             !data ||
@@ -197,6 +185,7 @@ export function DraftProgress({
           {wizard ? "生成初始画像" : "重新起草全部"}
         </Button>
         <Button
+          size="sm"
           variant="outline"
           disabled={
             draft.isPending ||
@@ -209,6 +198,39 @@ export function DraftProgress({
           重试失败项
         </Button>
       </div>
-    </section>
+      {!wizard && (
+        <div className="space-y-2 border-t border-surface-border pt-3">
+          <p>
+            满 {policy.data?.current.owner_review_days ?? "—"}{" "}
+            天未处理、可批量送审：{handover.data?.count ?? "—"} 人
+          </p>
+          <p className="text-sm text-muted-foreground">
+            送审后标为「员工未确认」，通知本人，批准前本人可以撤回。
+          </p>
+          <SetupError error={handover.error ?? send.error} />
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={send.isPending || !handover.data?.count}
+            onClick={async () => {
+              const latest = await handover.refetch()
+              if (
+                latest.isSuccess &&
+                latest.data.count > 0 &&
+                window.confirm(
+                  `确认将 ${latest.data.count} 名员工的初始画像批量送审？这些员工尚未确认。`,
+                )
+              )
+                send.mutate()
+            }}
+          >
+            批量送审
+          </Button>
+          {send.isSuccess && (
+            <p role="status">已送审 {send.data.data.count} 人</p>
+          )}
+        </div>
+      )}
+    </SectionCard>
   )
 }
