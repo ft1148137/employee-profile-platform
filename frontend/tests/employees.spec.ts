@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import type { ProfileItem, ProfileView } from "../src/client"
 import { createUser } from "./utils/privateApi"
 import { randomEmail, randomPassword } from "./utils/random"
 import { logInUser } from "./utils/user"
@@ -116,12 +117,79 @@ test("platform manager sees only their department", async ({ page }) => {
   const profilePath = `${await detailLink.getAttribute("href")}/profile`
   const subjectRequests = () =>
     profileRequests.filter((path) => path.endsWith(profilePath))
+  await page.route(
+    `**${profilePath}`,
+    async (route) => {
+      const response = await route.fetch()
+      const profile: ProfileView = await response.json()
+      const published = profile.items.find(
+        ({ capability }) => capability.name === "后端 API 开发",
+      )
+      if (!published?.claim) throw new Error("Expected the demo backend claim")
+      const current: ProfileItem = {
+        ...published,
+        capability: {
+          ...published.capability,
+          level_rubric: { levels: [{ key: "L2", label: "可独立完成" }] },
+        },
+        status: "confirmed",
+        claim: { ...published.claim, level: "L2" },
+      }
+      const items: ProfileItem[] = [
+        {
+          ...current,
+          capability: {
+            ...current.capability,
+            id: "retired",
+            name: "历史能力",
+          },
+          retired: true,
+        },
+        {
+          ...current,
+          claim: { ...published.claim, level: "L3" },
+          level_adjusted: true,
+        },
+        {
+          ...current,
+          capability: {
+            ...current.capability,
+            id: "ungraded",
+            name: "测试设计",
+          },
+          claim: { ...published.claim, level: null },
+        },
+        {
+          ...current,
+          capability: {
+            ...current.capability,
+            id: "disputed",
+            name: "故障排查",
+          },
+          status: "disputed",
+        },
+      ]
+      await route.fulfill({ response, json: { ...profile, items } })
+    },
+    { times: 1 },
+  )
   expect(subjectRequests()).toHaveLength(0)
   await row.focus()
   await row.press("Enter")
   const preview = page.getByRole("dialog", { name: "员工快速预览" })
   await expect(preview).toContainText("张伟")
-  await expect(preview).toContainText("后端 API 开发")
+  const capabilities = preview.getByRole("listitem")
+  const adjusted = capabilities.filter({ hasText: "后端 API 开发" })
+  await expect(adjusted).toContainText("等级已调整")
+  await expect(adjusted.getByText("L3", { exact: true })).toHaveCount(0)
+  const ungraded = capabilities.filter({ hasText: "测试设计" })
+  await expect(ungraded).toContainText("未定级")
+  await expect(ungraded.getByText("已确认", { exact: true })).toHaveCount(0)
+  const disputed = capabilities.filter({ hasText: "故障排查" })
+  await expect(disputed).toContainText("可独立完成")
+  await expect(disputed).toContainText("存在争议")
+  await expect(capabilities).toHaveCount(3)
+  await expect(preview.getByText("历史能力", { exact: true })).toHaveCount(0)
   expect(subjectRequests()).toHaveLength(1)
   await page.screenshot({
     path: test.info().outputPath("employee-quick-peek.png"),
@@ -134,23 +202,25 @@ test("platform manager sees only their department", async ({ page }) => {
   await expect(page).toHaveURL(/\/employees\/[^/]+$/)
 })
 
-test("quick preview handles a denied profile without showing capabilities", async ({
-  page,
-}) => {
-  await logInUser(page, "manager.platform@demo.example.com", password)
-  await page.route("**/employees/*/profile", (route) =>
-    route.fulfill({ status: 403, json: { detail: "无权查看" } }),
-  )
-  await page.goto("/employees")
-  await page.getByRole("cell", { name: "E02", exact: true }).click()
-  const preview = page.getByRole("dialog", { name: "员工快速预览" })
-  await expect(preview).toContainText("张伟")
-  await expect(preview.getByRole("alert")).toContainText("没有权限查看画像")
-  await expect(preview.getByText("后端 API 开发")).toHaveCount(0)
-  await expect(preview.getByRole("link", { name: "进入完整画像" })).toHaveCount(
-    0,
-  )
-})
+for (const status of [403, 404]) {
+  test(`quick preview handles profile response ${status} without showing capabilities`, async ({
+    page,
+  }) => {
+    await logInUser(page, "manager.platform@demo.example.com", password)
+    await page.route("**/employees/*/profile", (route) =>
+      route.fulfill({ status, json: { detail: "无法查看" } }),
+    )
+    await page.goto("/employees")
+    await page.getByRole("cell", { name: "E02", exact: true }).click()
+    const preview = page.getByRole("dialog", { name: "员工快速预览" })
+    await expect(preview).toContainText("张伟")
+    await expect(preview.getByRole("alert")).toContainText("没有权限查看画像")
+    await expect(preview.getByText("后端 API 开发")).toHaveCount(0)
+    await expect(
+      preview.getByRole("link", { name: "进入完整画像" }),
+    ).toHaveCount(0)
+  })
+}
 
 for (const [email, cardsLabel] of [
   ["admin@demo.example.com", "员工卡片"],

@@ -56,7 +56,7 @@ export function EmployeeQuickPeekDrawer({
       ? employee.progress
       : undefined
   const claims = profile.isSuccess
-    ? profile.data.items.filter((item) => item.claim)
+    ? profile.data.items.filter((item) => item.claim && !item.retired)
     : []
 
   return (
@@ -143,20 +143,30 @@ export function EmployeeQuickPeekDrawer({
               </div>
             ) : claims.length ? (
               <ul className="space-y-1.5">
-                {claims.slice(0, 3).map(({ capability, claim, status }) => (
-                  <li
-                    key={capability.id}
-                    className="flex flex-wrap items-center gap-1.5 text-sm"
-                  >
-                    <span className="wrap-anywhere">{capability.name}</span>
-                    {claim?.level && (
-                      <Badge variant="secondary">
-                        {levelLabel(capability.level_rubric, claim.level)}
+                {claims.slice(0, 3).map((item) => {
+                  const { capability, claim, status } = item
+                  const level = claim?.level
+                  const ungraded = status === "confirmed" && !level
+                  const label = level
+                    ? item.level_adjusted
+                      ? "等级已调整"
+                      : levelLabel(capability.level_rubric, level)
+                    : "未定级"
+                  return (
+                    <li
+                      key={capability.id}
+                      className="flex flex-wrap items-center gap-1.5 text-sm"
+                    >
+                      <span className="wrap-anywhere">{capability.name}</span>
+                      <Badge variant={ungraded ? "outline" : "secondary"}>
+                        {label}
                       </Badge>
-                    )}
-                    <StatusBadge kind="assessment_status" value={status} />
-                  </li>
-                ))}
+                      {!ungraded && (
+                        <StatusBadge kind="assessment_status" value={status} />
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
             ) : (
               <p className="text-muted-foreground text-sm">暂无已发布能力。</p>
