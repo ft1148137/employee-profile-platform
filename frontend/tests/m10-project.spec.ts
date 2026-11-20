@@ -13,8 +13,9 @@ test("需求方创建多角色项目并看到承接方答复和排程影响", as
     .getByRole("navigation", { name: "主导航" })
     .getByRole("link", { name: "规划", exact: true })
   const canvas = page.getByRole("main")
-  const manualDemand = canvas.getByRole("link", { name: "新建需求" })
-  const manualProject = canvas.getByRole("link", { name: "新建项目" })
+  const topbar = page.getByRole("banner")
+  const manualDemand = topbar.getByRole("link", { name: "新建需求" })
+  const manualProject = topbar.getByRole("link", { name: "新建项目" })
 
   await open(page, "C", "/inbox")
   await planning.click()

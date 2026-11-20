@@ -2,15 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useRef, useState } from "react"
 import { CapacityService, type WorkloadPublic } from "@/client"
+import { HelpTip, SideDrawer } from "@/components/Common/WorkbenchPrimitives"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -21,8 +16,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useOrg } from "@/hooks/useOrg"
+import { cn } from "@/lib/utils"
 import { Unavailability } from "./MyWorkload"
-import { addWeeks, weekLabel } from "./shared"
+import { addWeeks, weekLabel, workloadNotice } from "./shared"
 import {
   TeamWorkloadGantt,
   WorkloadDetails,
@@ -106,9 +102,16 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
         : [],
     ),
   )
-  const openDialog = (next: WorkloadDialog) => {
-    if (!dialog)
-      dialogOpener.current = document.activeElement as HTMLElement | null
+  const selected = dialog?.mode === "details" ? dialog.selection : dialog
+  const selectedRow = chart.data?.find(
+    (row) => row.employee_id === selected?.row.employee_id && visible(row),
+  )
+  const changeWindow = (weeks: number) => {
+    setDialog(null)
+    setOffset(weeks)
+  }
+  const openDialog = (next: WorkloadDialog, opener?: HTMLElement) => {
+    if (opener) dialogOpener.current = opener
     setDialog(next)
   }
   const actions = (
@@ -121,7 +124,13 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
         <Button
           size="sm"
           variant="outline"
-          onClick={() => openDialog({ mode: "edit", row, week })}
+          className="px-2"
+          onClick={(event) =>
+            openDialog(
+              { mode: "edit", row, week },
+              inDetails ? undefined : event.currentTarget,
+            )
+          }
         >
           {inDetails ? "设置周投入" : "设置"}
         </Button>
@@ -130,7 +139,13 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
         <Button
           size="sm"
           variant="outline"
-          onClick={() => openDialog({ mode: "dates", row, week })}
+          className="px-2"
+          onClick={(event) =>
+            openDialog(
+              { mode: "dates", row, week },
+              inDetails ? undefined : event.currentTarget,
+            )
+          }
         >
           {inDetails && canEdit(row) ? "登记不可用日期" : "不可用日期"}
         </Button>
@@ -138,20 +153,20 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
     </div>
   )
   return (
-    <div className="min-w-0 space-y-2 md:space-y-4">
-      <p className="text-sm text-muted-foreground">
-        展示未来 8 周的投入参考，实际承接以部门经理答复为准。
-      </p>
-      {isAdmin && (
-        <p className="text-sm text-muted-foreground">
-          管理员仅可查看，调整需由对应部门经理操作。
-        </p>
-      )}
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="min-w-0">
+      <div className="flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1 border-surface-border border-b bg-surface px-3 py-1 lg:h-11 lg:flex-nowrap">
         <div className="flex items-center gap-2">
-          <Label htmlFor="capacity-department">部门筛选</Label>
-          <Select value={department} onValueChange={setDepartment}>
-            <SelectTrigger id="capacity-department" className="max-w-48">
+          <Label htmlFor="capacity-department" className="sr-only">
+            部门筛选
+          </Label>
+          <Select
+            value={department}
+            onValueChange={(value) => {
+              setDepartment(value)
+              setDialog(null)
+            }}
+          >
+            <SelectTrigger id="capacity-department" className="max-w-36">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -172,139 +187,163 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setOffset((weeks) => weeks - 4)}
+              onClick={() => changeWindow(offset - 4)}
+              aria-label="上一期"
             >
               <ChevronLeft aria-hidden="true" />
-              上一期
+              <span className="hidden xl:inline">上一期</span>
             </Button>
             <Button
               size="sm"
               variant="ghost"
               disabled={!offset}
-              onClick={() => setOffset(0)}
+              onClick={() => changeWindow(0)}
             >
               回到本周
             </Button>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setOffset((weeks) => weeks + 4)}
+              onClick={() => changeWindow(offset + 4)}
+              aria-label="下一期"
             >
-              下一期
+              <span className="hidden xl:inline">下一期</span>
               <ChevronRight aria-hidden="true" />
             </Button>
             <span
-              className="sr-only ml-1 text-xs text-muted-foreground sm:not-sr-only"
+              className="sr-only ml-1 text-xs text-muted-foreground xl:not-sr-only"
               aria-live="polite"
             >
               {weekLabel(fromWeek ?? currentWeek)}起
             </span>
           </fieldset>
         )}
+        <HelpTip
+          label="团队负荷说明和图例"
+          content={
+            <div className="space-y-2">
+              <p>{workloadNotice}</p>
+              <p>展示未来 8 周的投入参考，实际承接以部门经理答复为准。</p>
+              {isAdmin && <p>管理员仅可查看，调整需由对应部门经理操作。</p>}
+              <p>格子数值为「已占用 / 可用」（含其他工作、已分配及暂留）。</p>
+              <WorkloadLegend />
+            </div>
+          }
+        />
+        {!isAdmin && !!managedDepartmentIds.length && (
+          <div className="ml-auto flex items-center gap-2">
+            <HelpTip
+              label="批量确认说明"
+              content={
+                reusable.length > 200
+                  ? "每次最多确认 200 人，请先按部门筛选。"
+                  : `将批量确认 ${reusable.length} 人（另有 ${eligible.length - reusable.length} 人尚无历史记录，需单独设置）。`
+              }
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              aria-label="按上次设置确认未来 4 周"
+              disabled={
+                !currentWeek ||
+                !reusable.length ||
+                reusable.length > 200 ||
+                confirm.isPending
+              }
+              onClick={() => confirm.mutate()}
+            >
+              沿用上次设置
+            </Button>
+          </div>
+        )}
       </div>
-      {!isAdmin && !!managedDepartmentIds.length && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <Button
-            size="sm"
-            disabled={
-              !currentWeek ||
-              !reusable.length ||
-              reusable.length > 200 ||
-              confirm.isPending
-            }
-            onClick={() => confirm.mutate()}
-          >
-            按上次设置确认未来 4 周
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            将批量确认 {reusable.length} 人（另有{" "}
-            {eligible.length - reusable.length} 人尚无历史记录，需单独设置）。
-          </p>
-          {reusable.length > 200 && (
-            <p className="text-sm text-muted-foreground">
-              每次最多确认 200 人，请先按部门筛选。
-            </p>
-          )}
+      {confirm.isError && (
+        <div className="px-3 py-2">
           <SetupError error={confirm.error} />
         </div>
       )}
-      <p className="text-xs text-muted-foreground">
-        格子数值为「已占用 / 可用」（含其他工作、已分配及暂留）。
-      </p>
-      <WorkloadLegend />
-      {chart.isPending ? (
-        <ProfileLoading />
-      ) : chart.isError ? (
-        <ProfileError retry={() => chart.refetch()} />
-      ) : (
-        <TeamWorkloadGantt
-          rows={chart.data.filter(visible)}
-          current={currentWeek ?? ""}
-          actions={actions}
-          onSelect={(selection) => openDialog({ mode: "details", selection })}
-        />
-      )}
-      <Dialog
-        open={!!dialog}
-        onOpenChange={(open) => {
-          if (!open) setDialog(null)
-        }}
-      >
-        <DialogContent
-          className="max-h-[calc(100dvh-2rem)] overflow-y-auto"
-          onCloseAutoFocus={(event) => {
-            if (dialogOpener.current?.isConnected) {
-              event.preventDefault()
-              dialogOpener.current.focus({ preventScroll: true })
+      <div className={cn("min-w-0", selectedRow && "md:pr-[min(380px,38vw)]")}>
+        {chart.isPending ? (
+          <ProfileLoading />
+        ) : chart.isError ? (
+          <ProfileError retry={() => chart.refetch()} />
+        ) : (
+          <TeamWorkloadGantt
+            rows={chart.data.filter(visible)}
+            current={currentWeek ?? ""}
+            actions={actions}
+            activeEmployee={selectedRow?.employee_id}
+            activeWeek={selected?.week}
+            onSelect={(selection, opener) =>
+              openDialog({ mode: "details", selection }, opener)
             }
-          }}
-        >
-          {dialog?.mode === "details" && (
-            <WorkloadDetails
-              selection={dialog.selection}
-              actions={actions(
-                dialog.selection.row,
-                dialog.selection.week,
-                true,
-              )}
-            />
-          )}
-          {dialog?.mode === "dates" && (
-            <>
-              <DialogTitle className="pr-6">
-                不可用日期 · {dialog.row.employee_name}
-              </DialogTitle>
-              {canEdit(dialog.row) && (
-                <DialogDescription>
-                  保存后将通知本人，不会自动调整已有任务。
-                </DialogDescription>
-              )}
-              <Unavailability
-                orgId={orgId}
-                employeeId={dialog.row.employee_id}
-                startWeek={dialog.week}
-                canWrite={canEdit(dialog.row)}
-              />
-            </>
-          )}
-          {dialog?.mode === "edit" && canEdit(dialog.row) && (
-            <>
-              <DialogTitle className="pr-6">
-                设置周投入 · {dialog.row.employee_name}
-              </DialogTitle>
-              <DialogDescription>
-                填写平台外工作占比，平台内任务会自动累加，保存后通知本人。
-              </DialogDescription>
-              <Adjustment
-                orgId={orgId}
-                workload={dialog.row}
-                week={dialog.week}
-                close={() => setDialog(null)}
-              />
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+          />
+        )}
+      </div>
+      <SideDrawer
+        open={!!selectedRow}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDialog(null)
+            dialogOpener.current?.focus({ preventScroll: true })
+          }
+        }}
+        modal={false}
+        showOverlay={false}
+        className="max-md:inset-x-0 max-md:top-auto max-md:bottom-0 max-md:h-[55dvh] max-md:w-full max-md:max-w-none md:w-[min(380px,38vw)] md:max-w-none"
+        title={
+          selectedRow &&
+          `${dialog?.mode === "dates" ? "不可用日期" : dialog?.mode === "edit" ? "设置周投入" : "负荷明细"} · ${selectedRow.employee_name}`
+        }
+      >
+        {selectedRow && dialog && (
+          <div
+            key={`${selectedRow.employee_id}:${selected?.week}:${dialog.mode}`}
+            className="space-y-3"
+          >
+            {dialog.mode === "details" && (
+              <>
+                <WorkloadDetails
+                  selection={{ ...dialog.selection, row: selectedRow }}
+                />
+                {actions(selectedRow, dialog.selection.week, true)}
+              </>
+            )}
+            {dialog.mode === "dates" && (
+              <>
+                {canEdit(selectedRow) && (
+                  <p className="text-sm text-muted-foreground">
+                    保存后将通知本人，不会自动调整已有任务。
+                  </p>
+                )}
+                <Unavailability
+                  orgId={orgId}
+                  employeeId={selectedRow.employee_id}
+                  startWeek={dialog.week}
+                  canWrite={canEdit(selectedRow)}
+                />
+              </>
+            )}
+            {dialog.mode === "edit" && canEdit(selectedRow) && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  填写平台外工作占比，平台内任务会自动累加，保存后通知本人。
+                </p>
+                <Adjustment
+                  orgId={orgId}
+                  workload={selectedRow}
+                  week={dialog.week}
+                  close={() =>
+                    setDialog((current) =>
+                      current === dialog ? null : current,
+                    )
+                  }
+                />
+              </>
+            )}
+          </div>
+        )}
+      </SideDrawer>
     </div>
   )
 }
@@ -322,7 +361,11 @@ function Adjustment({
 }) {
   const client = useQueryClient()
   const [percent, setPercent] = useState(
-    String(workload.last_confirmed?.percent ?? ""),
+    String(
+      workload.weeks.find((item) => item.week_start === week)?.other_percent ??
+        workload.last_confirmed?.percent ??
+        "",
+    ),
   )
   const [start, setStart] = useState(week)
   const [end, setEnd] = useState(week)
@@ -356,7 +399,7 @@ function Adjustment({
       }}
     >
       <fieldset disabled={save.isPending} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 min-[420px]:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="start-week">开始周</Label>
             <Input

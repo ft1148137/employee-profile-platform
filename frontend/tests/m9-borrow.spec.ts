@@ -498,6 +498,7 @@ for (const approve of [true, false]) {
           name: "我的分配",
           exact: true,
         })
+        await personal.getByText("任务明细", { exact: true }).click()
         await personal.getByLabel("任务编号或标题").fill(taskKey)
         await personal.getByRole("button", { name: "搜索任务" }).click()
         await personal

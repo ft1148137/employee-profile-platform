@@ -118,7 +118,14 @@ for (const trigger of ["focus", "operation", "query"] as const) {
     await page.goto("/capacity")
     const menu = page.getByRole("link", { name: "规划", exact: true })
     await expect(menu).toBeVisible()
-    await expect(page.getByLabel("申请负荷（%）")).toBeVisible()
+    const adjustment = page.getByRole("dialog", { name: "申请调整" })
+    const openAdjustment = async () => {
+      await page.getByRole("button", { name: "申请调整", exact: true }).click()
+      await expect(adjustment.getByLabel("申请负荷（%）")).toBeVisible()
+    }
+    await openAdjustment()
+    if (trigger === "query")
+      await adjustment.getByRole("button", { name: "关闭" }).click()
     if (trigger === "operation") {
       const endpoint = `${base}/capacity/workloads/me/requests`
       await page.route(`**${endpoint}`, (route) =>
@@ -127,12 +134,18 @@ for (const trigger of ["focus", "operation", "query"] as const) {
           json: { detail: "未找到该员工或申请" },
         }),
       )
-      await page.getByLabel("申请负荷（%）").fill("60")
-      await page.getByLabel("申请原因").fill("合成普通错误")
-      await page.getByRole("button", { name: "提交申请", exact: true }).click()
-      await expect(page.getByRole("alert")).toContainText("未找到该员工或申请")
+      await adjustment.getByLabel("申请负荷（%）").fill("60")
+      await adjustment.getByLabel("申请原因").fill("合成普通错误")
+      await adjustment
+        .getByRole("button", { name: "提交申请", exact: true })
+        .click()
+      await expect(adjustment.getByRole("alert")).toContainText(
+        "未找到该员工或申请",
+      )
+      await adjustment.getByRole("button", { name: "关闭" }).click()
       await expect(menu).toBeVisible()
       await page.unroute(`**${endpoint}`)
+      await openAdjustment()
     }
     if (trigger === "query")
       await page.getByRole("link", { name: "设置", exact: true }).click()
@@ -144,12 +157,15 @@ for (const trigger of ["focus", "operation", "query"] as const) {
         ),
       )
     } else if (trigger === "operation") {
-      await page.getByLabel("申请负荷（%）").fill("60")
-      await page.getByLabel("申请原因").fill("合成关闭后操作")
-      await page.getByRole("button", { name: "提交申请", exact: true }).click()
+      await adjustment.getByLabel("申请负荷（%）").fill("60")
+      await adjustment.getByLabel("申请原因").fill("合成关闭后操作")
+      await adjustment
+        .getByRole("button", { name: "提交申请", exact: true })
+        .click()
     } else {
       await menu.click()
     }
+    await expect(adjustment).toHaveCount(0)
     if (trigger === "focus") await expect(menu).toHaveCount(0)
     await expect(page.getByRole("status")).toHaveText(
       "规划与负荷功能未开启，如需使用请联系企业管理员。",
@@ -162,6 +178,6 @@ for (const trigger of ["focus", "operation", "query"] as const) {
     )
     await expect(menu).toBeVisible()
     await page.getByRole("link", { name: "我的负荷", exact: true }).click()
-    await expect(page.getByLabel("申请负荷（%）")).toBeVisible()
+    await openAdjustment()
   })
 }

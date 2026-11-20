@@ -210,6 +210,7 @@ test("员工关联已完成的任务，经理看到可以结束分配", async ({
   }
   await open(worker, "tab=assignments")
   const personal = page.getByRole("region", { name: "我的分配", exact: true })
+  await personal.getByText("任务明细", { exact: true }).click()
   await personal.getByLabel("任务编号或标题").fill("SYN-UNKNOWN")
   await personal.getByRole("button", { name: "搜索任务" }).click()
   await personal.getByRole("button", { name: "关联任务", exact: true }).click()

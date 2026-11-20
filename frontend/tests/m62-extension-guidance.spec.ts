@@ -154,6 +154,7 @@ test("延期显示审批人、受阻指引和代理标示，代理给目标经�
     },
   )
   await open(tokens.get("E")!, "/capacity?tab=assignments")
+  await page.getByText("申请延期", { exact: true }).click()
   const form = page.getByRole("form", { name: "申请延期", exact: true })
   await expect(form).toContainText("将交给 合成原审批人 审批")
   await form.getByLabel("申请完成日期").fill("2027-01-05")

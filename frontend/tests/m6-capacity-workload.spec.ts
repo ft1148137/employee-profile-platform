@@ -147,11 +147,14 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
       .getByRole("region", { name: "每周投入" })
       .getByText("未确认", { exact: true }),
   ).toHaveCount(8)
-  await expect(page.getByText("有余量", { exact: true })).toHaveCount(0)
+  await expect(page.getByTitle("有余量")).toHaveCount(0)
   for (const [percent, reason] of [
     ["85", "合成项目占用"],
     ["60", "合成申请待核对"],
   ]) {
+    await page.getByRole("button", { name: "申请调整", exact: true }).click()
+    const adjustment = page.getByRole("dialog", { name: "申请调整" })
+    await expect(adjustment).toBeVisible()
     const start = await page.getByLabel("开始周", { exact: true }).inputValue()
     const end = new Date(`${start}T00:00:00Z`)
     end.setUTCDate(end.getUTCDate() + 7)
@@ -161,7 +164,10 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     await page.getByLabel("申请负荷（%）").fill(percent)
     await page.getByLabel("申请原因").fill(reason)
     await page.getByRole("button", { name: "提交申请", exact: true }).click()
-    await expect(page.getByRole("status")).toContainText("当前有申请正在审批中")
+    await expect(adjustment).toBeHidden()
+    await expect(
+      page.getByRole("region", { name: "调整申请记录" }).getByRole("status"),
+    ).toContainText("当前有申请正在审批中")
     await expect(
       page
         .getByRole("region", { name: "每周投入" })
@@ -199,8 +205,9 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     await expect(application).toHaveCount(0)
     await expect(row).toHaveCount(0)
     await open(tokens.get("E")!)
-    await expect(page.getByText("85%", { exact: true })).toBeVisible()
-    await expect(page.getByText("基本满", { exact: true })).toBeVisible()
+    await expect(
+      page.getByTitle("基本满").filter({ hasText: "85%" }),
+    ).toHaveCount(2)
   }
   await expect(
     page.getByText("处理说明：请补充项目范围", { exact: true }),
@@ -250,7 +257,29 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   await expect(
     details.getByRole("button", { name: "设置周投入" }),
   ).toBeVisible()
-  await details.press("Escape")
+  const nextCell = row
+    .getByRole("button", { name: /110% \/ 100%，超负荷，查看负荷明细/ })
+    .nth(1)
+  await details.getByRole("button", { name: "设置周投入" }).click()
+  await page.getByLabel("其他工作占比（%）").fill("30")
+  await nextCell.click()
+  await expect(details).toContainText(nextWeek.toISOString().slice(0, 10))
+  await expect(nextCell).toHaveAttribute("aria-pressed", "true")
+  await details.getByRole("button", { name: "设置周投入" }).click()
+  await expect(page.getByLabel("其他工作占比（%）")).toHaveValue("110")
+  const selfCell = chart
+    .getByRole("row")
+    .filter({ hasText: "合成经理" })
+    .getByRole("button", { name: /查看负荷明细/ })
+    .first()
+  await selfCell.click()
+  const selfDetails = page.getByRole("dialog", { name: "负荷明细 · 合成经理" })
+  await expect(selfDetails).toBeVisible()
+  await expect(
+    selfDetails.getByRole("button", { name: "设置周投入" }),
+  ).toHaveCount(0)
+  await selfDetails.press("Escape")
+  await expect(selfCell).toBeFocused()
   await page.getByRole("combobox", { name: "部门筛选" }).click()
   await expect(
     page.getByRole("option", { name: "客户", exact: true }),
@@ -308,7 +337,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   })
   expect(adjusted.ok()).toBeTruthy()
   await open(tokens.get("E")!)
-  await expect(page.getByText("有余量", { exact: true })).toBeVisible()
+  await expect(page.getByTitle("有余量").first()).toBeVisible()
   await page.setViewportSize({ width: 390, height: 844 })
   await page.screenshot({
     path: test.info().outputPath("mine-mobile.png"),

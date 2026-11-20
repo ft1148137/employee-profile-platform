@@ -98,12 +98,12 @@ test("经理在团队负荷页看到当前参考和正式答复的口径说明",
   )
   await page.goto("/capacity")
   await page.getByRole("link", { name: "团队负荷", exact: true }).click()
-  await expect(
-    page.getByText("展示未来 8 周的投入参考，实际承接以部门经理答复为准。", {
-      exact: true,
-    }),
-  ).toBeVisible()
-
+  const help = page.getByRole("button", { name: "团队负荷说明和图例" })
+  await help.click()
+  await expect(page.getByRole("tooltip")).toContainText(
+    "展示未来 8 周的投入参考，实际承接以部门经理答复为准。",
+  )
+  await help.press("Escape")
   const chart = page.getByRole("table", { name: "团队负荷，按部门、姓名排序" })
   const dates = chart.locator("thead time")
   await expect(dates).toHaveCount(8)

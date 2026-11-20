@@ -1,7 +1,6 @@
 import type { ComponentProps, ReactNode } from "react"
 import type { WeekLoad, WorkloadPublic } from "@/client"
 import { Badge } from "@/components/ui/badge"
-import { DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import {
   Tooltip,
   TooltipContent,
@@ -9,17 +8,18 @@ import {
 } from "@/components/ui/tooltip"
 import { useIsMobile } from "@/hooks/useMobile"
 import { cn } from "@/lib/utils"
-import { addWeeks, weekLabel, weekLoadLabel } from "./shared"
+import {
+  addWeeks,
+  loadBandLabel,
+  loadColors,
+  UtilizationBadge,
+  unavailableStripes,
+  weekBand,
+  weekLabel,
+  weekLoadLabel,
+} from "./shared"
 
-const timelineWidth = "min-w-[56rem]"
-const stripes =
-  "bg-[repeating-linear-gradient(135deg,transparent_0_5px,var(--border)_5px_7px)]"
-const weekColors = {
-  有余量: "border-teal-600/25 bg-teal-500/5",
-  基本满: "border-amber-600/30 bg-amber-500/10",
-  超负荷: "border-destructive/40 bg-destructive/10",
-  未确认: "border-dashed bg-muted/50",
-}
+const timelineWidth = "min-w-[52rem]"
 const segmentKinds = {
   committed: {
     label: "已分配任务",
@@ -36,7 +36,7 @@ const segmentKinds = {
     color:
       "border-dashed border-amber-600 bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-100",
   },
-  unavailable: { label: "不可用", color: stripes },
+  unavailable: { label: "不可用", color: unavailableStripes },
 }
 const baseline = "bg-teal-500 dark:bg-teal-400"
 
@@ -83,27 +83,23 @@ function overlaps(a: DateRange, b: DateRange) {
   return a.start_date <= b.end_date && b.start_date <= a.end_date
 }
 
-function weekState(week: WeekLoad): keyof typeof weekColors {
-  if (week.status !== "confirmed") return "未确认"
-  const total = (week.other_percent ?? 0) + week.platform_percent
-  if (total > week.capacity_percent) return "超负荷"
-  return total < Math.floor(week.capacity_percent * 0.8) ? "有余量" : "基本满"
-}
-
 function otherWork(week: WeekLoad) {
   return `其他工作占比 ${week.other_percent === null ? "未确认" : `${week.other_percent}%`}`
 }
 
 export function WorkloadLegend() {
   const entries = [
-    ...Object.entries(weekColors),
+    ...Object.entries(loadColors).map(([band, color]) => [
+      loadBandLabel(band as WorkloadPublic["band"]),
+      color.bar,
+    ]),
     ...Object.values(segmentKinds).map(({ label, color }) => [label, color]),
     ["其他工作", `border-transparent ${baseline}`],
   ]
   return (
     <ul
       aria-label="甘特图图例"
-      className="flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-muted-foreground"
+      className="flex flex-wrap gap-x-3 gap-y-1.5 text-xs"
     >
       {entries.map(([label, color]) => (
         <li key={label} className="flex items-center gap-1.5">
@@ -180,10 +176,12 @@ function TimelineButton({
 
 function Timeline({
   row,
+  activeWeek,
   onSelect,
 }: {
   row: WorkloadPublic
-  onSelect: (selection: WorkloadSelection) => void
+  activeWeek?: string
+  onSelect: (selection: WorkloadSelection, opener: HTMLButtonElement) => void
 }) {
   const weeks = row.weeks
   const first = weeks[0].week_start
@@ -198,7 +196,8 @@ function Timeline({
         {weeks.map((week) => {
           const range = weekRange(week.week_start)
           const label = weekLoadLabel(week)
-          const state = weekState(week)
+          const band = weekBand(week)
+          const state = loadBandLabel(band)
           const unavailable =
             week.capacity_percent < 100 ||
             (row.unavailabilities ?? []).some((item) => overlaps(range, item))
@@ -206,23 +205,36 @@ function Timeline({
           return (
             <TimelineButton
               key={week.week_start}
+              aria-pressed={week.week_start === activeWeek}
               tooltip={`${otherWork(week)} · 分配 ${allocation}% · 预占 ${week.hold_percent ?? 0}%`}
               aria-label={`${weekLabel(week.week_start)}，${label}，${state}${unavailable ? "，有不可用日期" : ""}，查看负荷明细`}
               className={cn(
                 "m-0.5 min-w-0 cursor-pointer rounded-md border px-2 py-1.5 text-left text-xs outline-offset-2 hover:border-primary focus-visible:outline-2 focus-visible:outline-primary",
-                weekColors[state],
-                unavailable && stripes,
+                loadColors[band].surface,
+                unavailable && unavailableStripes,
+                week.week_start === activeWeek &&
+                  "ring-2 ring-primary ring-inset",
               )}
-              onClick={() =>
-                onSelect({
-                  row,
-                  range,
-                  title: weekLabel(week.week_start),
-                  week: week.week_start,
-                })
+              onClick={(event) =>
+                onSelect(
+                  {
+                    row,
+                    range,
+                    title: weekLabel(week.week_start),
+                    week: week.week_start,
+                  },
+                  event.currentTarget,
+                )
               }
             >
-              <span className="block font-semibold tabular-nums">{label}</span>
+              <span
+                className={cn(
+                  "block font-semibold tabular-nums",
+                  band === "overloaded" && "text-red-700 dark:text-red-300",
+                )}
+              >
+                {label}
+              </span>
               <span className="block text-muted-foreground">
                 分配 {allocation}%
               </span>
@@ -292,13 +304,16 @@ function Timeline({
                   gridColumn: `${startDay + 1} / ${endDay + 1}`,
                   gridRow: index + 1,
                 }}
-                onClick={() =>
-                  onSelect({
-                    row,
-                    range: segment,
-                    title,
-                    week: weeks[Math.floor(startDay / 7)].week_start,
-                  })
+                onClick={(event) =>
+                  onSelect(
+                    {
+                      row,
+                      range: segment,
+                      title,
+                      week: weeks[Math.floor(startDay / 7)].week_start,
+                    },
+                    event.currentTarget,
+                  )
                 }
               >
                 {segment.start_date < first && (
@@ -323,12 +338,16 @@ export function TeamWorkloadGantt({
   rows,
   current,
   actions,
+  activeEmployee,
+  activeWeek,
   onSelect,
 }: {
   rows: WorkloadPublic[]
   current: string
   actions: (row: WorkloadPublic) => ReactNode
-  onSelect: (selection: WorkloadSelection) => void
+  activeEmployee?: string
+  activeWeek?: string
+  onSelect: (selection: WorkloadSelection, opener: HTMLButtonElement) => void
 }) {
   const mobile = useIsMobile()
   const groups = new Map<string | null, WorkloadPublic[]>()
@@ -346,39 +365,32 @@ export function TeamWorkloadGantt({
 
   const identity = (row: WorkloadPublic) => (
     <div className="space-y-1">
-      <p className="break-words text-sm font-semibold">{row.employee_name}</p>
+      <div className="flex items-center justify-between gap-1.5">
+        <p className="min-w-0 break-words text-sm font-semibold">
+          {row.employee_name}
+        </p>
+        <UtilizationBadge band={row.band} percent={row.confirmed_percent} />
+      </div>
       {mobile && (
         <p className="text-xs text-muted-foreground">
           {row.department_name ?? "未分配部门"}
         </p>
       )}
-      <p className="text-xs text-muted-foreground">
-        Jira 参考值：
-        {row.jira_task_count === null
-          ? "暂无（未关联 Jira）"
-          : `${row.jira_task_count} 件未完成`}
-      </p>
-      <p className="text-xs text-muted-foreground">
-        上次确认：
-        {row.last_confirmed
-          ? `${row.last_confirmed.percent}%（${weekLabel(row.last_confirmed.week_start)}）`
-          : "暂无确认"}
-      </p>
       {actions(row)}
     </div>
   )
 
   return !mobile ? (
-    <div className="overflow-x-auto rounded-xl border">
+    <div className="overflow-x-auto border-surface-border border-b bg-surface">
       <table className="w-full text-left">
         <caption className="sr-only">团队负荷，按部门、姓名排序</caption>
         <thead>
           <tr>
             <th
               scope="col"
-              className="sticky left-0 z-20 min-w-48 border-r border-b bg-muted px-3 text-sm"
+              className="sticky left-0 z-20 w-44 min-w-44 border-r border-b bg-muted px-3 text-sm"
             >
-              员工
+              成员与本周利用率
             </th>
             <th scope="col" className={cn(timelineWidth, "relative p-0")}>
               <CurrentWeekLine weeks={rows[0].weeks} current={current} />
@@ -403,13 +415,21 @@ export function TeamWorkloadGantt({
               <tr key={row.employee_id} className="border-t align-top">
                 <th
                   scope="row"
-                  className="sticky left-0 z-20 w-48 border-r bg-background p-3 font-normal"
+                  className="sticky left-0 z-20 w-44 border-r bg-surface p-2.5 font-normal"
                 >
                   {identity(row)}
                 </th>
                 <td className="relative p-0">
                   <CurrentWeekLine weeks={row.weeks} current={current} />
-                  <Timeline row={row} onSelect={onSelect} />
+                  <Timeline
+                    row={row}
+                    activeWeek={
+                      row.employee_id === activeEmployee
+                        ? activeWeek
+                        : undefined
+                    }
+                    onSelect={onSelect}
+                  />
                 </td>
               </tr>
             ))}
@@ -418,7 +438,7 @@ export function TeamWorkloadGantt({
       </table>
     </div>
   ) : (
-    <div className="space-y-4">
+    <div className="space-y-4 p-3">
       {Array.from(groups, ([id, group]) => (
         <section
           key={id ?? ""}
@@ -432,7 +452,7 @@ export function TeamWorkloadGantt({
             <article
               key={row.employee_id}
               aria-label={row.employee_name}
-              className="overflow-hidden rounded-xl border"
+              className="overflow-hidden rounded-lg border bg-surface"
             >
               <div className="space-y-2 p-3">
                 {identity(row)}
@@ -448,7 +468,15 @@ export function TeamWorkloadGantt({
                   <div className={cn(timelineWidth, "relative")}>
                     <CurrentWeekLine weeks={row.weeks} current={current} />
                     <WeekHeader weeks={row.weeks} current={current} />
-                    <Timeline row={row} onSelect={onSelect} />
+                    <Timeline
+                      row={row}
+                      activeWeek={
+                        row.employee_id === activeEmployee
+                          ? activeWeek
+                          : undefined
+                      }
+                      onSelect={onSelect}
+                    />
                   </div>
                 </section>
                 <span
@@ -466,20 +494,30 @@ export function TeamWorkloadGantt({
 
 export function WorkloadDetails({
   selection: { row, range, title },
-  actions,
 }: {
   selection: WorkloadSelection
-  actions: ReactNode
 }) {
   const allSegments = segmentsFor(row)
   const segments = allSegments.filter((segment) => overlaps(segment, range))
 
   return (
     <>
-      <DialogTitle className="pr-6">负荷明细 · {row.employee_name}</DialogTitle>
-      <DialogDescription className="break-words">
+      <p className="break-words text-sm text-muted-foreground">
         {title} · {range.start_date} 至 {range.end_date}
-      </DialogDescription>
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Jira 参考值：
+        {row.jira_task_count === null
+          ? "暂无（未关联 Jira）"
+          : `${row.jira_task_count} 件未完成`}
+      </p>
+      <p className="text-xs text-muted-foreground">
+        上次确认：
+        {row.last_confirmed
+          ? `${row.last_confirmed.percent}%（${weekLabel(row.last_confirmed.week_start)}）`
+          : "暂无确认"}
+      </p>
+
       <ul className="space-y-1 rounded-lg bg-muted/50 p-3 text-sm">
         {row.weeks
           .filter((week) => overlaps(weekRange(week.week_start), range))
@@ -515,32 +553,25 @@ export function WorkloadDetails({
       <div className="space-y-3 text-sm">
         {Object.entries(segmentKinds).map(([kind, { label }]) => {
           const matching = segments.filter((segment) => segment.kind === kind)
+          if (!matching.length) return null
           return (
             <section key={kind} aria-label={label} className="space-y-1.5">
               <Badge variant="outline">{label}</Badge>
-              {matching.length ? (
-                <ul className="space-y-1.5">
-                  {matching.map((segment) => (
-                    <li
-                      key={segment.id}
-                      className="break-words border-l-2 pl-2"
-                    >
-                      <p className="font-medium">{segment.label}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {segment.start_date} 至 {segment.end_date}
-                        {segment.note && ` · ${segment.note}`}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-xs text-muted-foreground">无</p>
-              )}
+              <ul className="space-y-1.5">
+                {matching.map((segment) => (
+                  <li key={segment.id} className="break-words border-l-2 pl-2">
+                    <p className="font-medium">{segment.label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {segment.start_date} 至 {segment.end_date}
+                      {segment.note && ` · ${segment.note}`}
+                    </p>
+                  </li>
+                ))}
+              </ul>
             </section>
           )
         })}
       </div>
-      {actions}
     </>
   )
 }

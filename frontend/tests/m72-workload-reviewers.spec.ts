@@ -93,10 +93,15 @@ test("员工提交负荷申请前后看到审批人", async ({ page, request }) 
     { token, orgId: admin.org_id },
   )
   await page.goto("/capacity")
-  const form = page.getByRole("form", { name: "申请调整" })
+  await page.getByRole("button", { name: "申请调整", exact: true }).click()
+  const drawer = page.getByRole("dialog", { name: "申请调整" })
+  const form = drawer.getByRole("form", { name: "申请调整" })
   await expect(form).toContainText("将交给 合成审批经理 审批")
   await form.getByLabel("申请负荷（%）").fill("50")
   await form.getByLabel("申请原因").fill("合成调整原因")
   await form.getByRole("button", { name: "提交申请" }).click()
-  await expect(form).toContainText("已交给 合成审批经理 审批")
+  await expect(drawer).toBeHidden()
+  await expect(
+    page.getByRole("region", { name: "调整申请记录" }),
+  ).toContainText("已交给 合成审批经理 审批")
 })

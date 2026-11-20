@@ -2,7 +2,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { AxiosError } from "axios"
 import { useEffect, useState } from "react"
 import { CapacityService, type WeekLoad, type WorkloadPublic } from "@/client"
+import { HelpTip } from "@/components/Common/WorkbenchPrimitives"
 import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 
 export function isCapacityAccessDenied(error: unknown) {
   return (
@@ -88,31 +90,71 @@ export function WorkloadBand({ band }: Pick<WorkloadPublic, "band">) {
   )
 }
 
-export function WorkloadNumbers({ workload }: { workload: WorkloadPublic }) {
+export const unavailableStripes =
+  "bg-[repeating-linear-gradient(135deg,transparent_0_5px,var(--border)_5px_7px)]"
+
+export const loadColors = {
+  unconfirmed: {
+    surface: "border-dashed bg-muted/50",
+    badge: "border-border bg-muted text-muted-foreground",
+    bar: "bg-muted-foreground",
+  },
+  available: {
+    surface: "border-teal-600/25 bg-teal-500/5",
+    badge: "border-teal-600/30 bg-teal-500/10 text-teal-800 dark:text-teal-300",
+    bar: "bg-teal-600 dark:bg-teal-400",
+  },
+  full: {
+    surface: "border-amber-600/30 bg-amber-500/10",
+    badge:
+      "border-amber-600/30 bg-amber-500/10 text-amber-800 dark:text-amber-300",
+    bar: "bg-amber-500",
+  },
+  overloaded: {
+    surface: "border-red-600/30 bg-red-500/10",
+    badge: "border-red-600/30 bg-red-500/10 text-red-700 dark:text-red-300",
+    bar: "bg-red-500",
+  },
+}
+
+export function occupiedPercent(week: WeekLoad) {
+  return (week.other_percent ?? 0) + week.platform_percent
+}
+
+export function weekBand(week: WeekLoad): WorkloadPublic["band"] {
+  if (week.status !== "confirmed") return "unconfirmed"
+  const total = occupiedPercent(week)
+  if (total > week.capacity_percent) return "overloaded"
+  return total < Math.floor(week.capacity_percent * 0.8) ? "available" : "full"
+}
+
+export function loadBandLabel(band: WorkloadPublic["band"]) {
+  return bands[band]
+}
+
+export function UtilizationBadge({
+  band,
+  percent,
+}: {
+  band: WorkloadPublic["band"]
+  percent: number | null
+}) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <div className="rounded-xl border p-5">
-        <p className="text-sm text-muted-foreground">Jira 参考值</p>
-        <p className="mt-2 font-medium">
-          {workload.jira_task_count === null
-            ? "暂无（未关联 Jira）"
-            : `${workload.jira_task_count} 件未完成`}
-        </p>
-      </div>
-      <div className="rounded-xl border bg-muted/30 p-5">
-        <p className="text-sm text-muted-foreground">经理确认</p>
-        <p className="my-2 text-3xl font-semibold tabular-nums">
-          {workload.confirmed_percent === null
-            ? "未确认"
-            : `${workload.confirmed_percent}%`}
-        </p>
-        <WorkloadBand band={workload.band} />
-      </div>
-    </div>
+    <Badge
+      variant="outline"
+      className={cn("shrink-0 tabular-nums", loadColors[band].badge)}
+      title={bands[band]}
+    >
+      {band === "unconfirmed" || percent === null ? bands[band] : `${percent}%`}
+    </Badge>
   )
 }
 
 export const workloadNotice = "负荷数据仅供参考，不用于绩效考核或排名。"
+
+export function WorkloadHelp() {
+  return <HelpTip label="负荷数据说明" content={workloadNotice} />
+}
 
 export function weekLabel(start: string) {
   return `${start.slice(5).replace("-", "/")} 周`
@@ -127,5 +169,5 @@ export function addWeeks(start: string, weeks: number) {
 export function weekLoadLabel(week: WeekLoad) {
   if (week.status === "unconfirmed") return "未确认"
   if (week.status === "stale") return "需重新确认"
-  return `${(week.other_percent ?? 0) + week.platform_percent}% / ${week.capacity_percent}%`
+  return `${occupiedPercent(week)}% / ${week.capacity_percent}%`
 }

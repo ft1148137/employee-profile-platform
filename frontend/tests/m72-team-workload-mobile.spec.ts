@@ -190,6 +190,10 @@ test("团队负荷在手机横向滑动后仍显示姓名和设置", async ({ pa
   const dialog = page.getByRole("dialog")
   await expect(dialog).toContainText("负荷明细 · A合成员工")
   await expect(dialog).toContainText("其他工作占比")
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    390,
+  )
+  await expect(page.locator('[data-slot="sheet-overlay"]')).toHaveCount(0)
   await expect(
     dialog.getByText("另有未展开或待确认负荷 20%", { exact: true }),
   ).toBeVisible()
@@ -219,8 +223,11 @@ test("团队负荷在手机横向滑动后仍显示姓名和设置", async ({ pa
   await expect(dates).toBeInViewport()
   await setting.click()
   await expect(dialog).toContainText("设置周投入 · A合成员工")
-  await dialog.press("Escape")
+  const startWeek = dialog.getByLabel("开始周", { exact: true })
+  await expect(startWeek).toBeFocused()
+  await startWeek.press("Escape")
   await expect(dialog).toBeHidden()
+  await expect(setting).toBeFocused()
 
   await page.setViewportSize({ width: 1280, height: 900 })
   await expect(hint).toBeHidden()
