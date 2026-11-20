@@ -3,7 +3,10 @@ import { useMemo } from "react"
 import { AdminAssistantPanel } from "@/components/AdminAssistant/AdminAssistantPanel"
 import { BotConversation } from "@/components/Bot/BotPanel"
 import { FeishuProjectDraft } from "@/components/Bot/ProjectDraftMessage"
+import { useBotConversations } from "@/components/Bot/SessionHistory"
 import { OrgState } from "@/components/Profile/OrgState"
+import { PeopleSearchFallback } from "@/components/Profile/PeopleSearchFallback"
+import { useAdminConversations } from "@/components/Sidebar/AdminConversations"
 import {
   type AssistantMode,
   useAssistantWorkspace,
@@ -38,7 +41,7 @@ export const Route = createFileRoute("/_layout/assistant")({
 })
 
 function AssistantPage() {
-  const { memberships, roles } = useOrg()
+  const { memberships, roles, managedDepartmentIds } = useOrg()
   const { org, employeeId, mode, storageKey } = useAssistantWorkspace()
   const location = useLocation()
   const {
@@ -50,6 +53,21 @@ function AssistantPage() {
     mode: searchMode,
   } = assistantSearch(location.search)
   const prefill = useMemo(() => ({ text: prompt ?? "" }), [prompt])
+  const personal = mode === "personal"
+  const isOrgAdmin = roles.includes("org_admin")
+  const canFindPeople = isOrgAdmin || roles.includes("dept_manager")
+  const historyOrgId = canFindPeople && !draft ? org?.id : undefined
+  const useAdminHistory = isOrgAdmin && (!personal || !employeeId)
+  const botHistory = useBotConversations(
+    useAdminHistory ? undefined : historyOrgId,
+    0,
+  )
+  const adminHistory = useAdminConversations(
+    useAdminHistory ? historyOrgId : undefined,
+    0,
+  )
+  const modelAvailable = (useAdminHistory ? adminHistory : botHistory).data
+    ?.model_available
   if (!org) return <OrgState />
   if (draft) {
     const membership = memberships.find((item) => item.org.id === linkedOrg)
@@ -59,21 +77,28 @@ function AssistantPage() {
       <p role="alert">无法打开项目草稿，请用绑定飞书的员工账号登录。</p>
     )
   }
-  const personal = mode === "personal"
   return (
     <section
       aria-label={personal ? "助手" : "管理助手"}
       className="flex h-full min-h-0 min-w-0 flex-col"
     >
-      {find &&
-        (roles.includes("org_admin") || roles.includes("dept_manager")) && (
+      {canFindPeople &&
+        (modelAvailable === false ? (
+          <PeopleSearchFallback
+            key={`${org.id}:${find ?? false}`}
+            orgId={org.id}
+            initiallyOpen={find ?? false}
+            isOrgAdmin={isOrgAdmin}
+            managedDepartmentIds={managedDepartmentIds}
+          />
+        ) : find ? (
           <div className="shrink-0 border-b px-4 py-3 md:px-6">
             <h2 className="text-sm font-semibold">按能力找人</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               可直接向助手描述要找的能力、等级、部门或证据时间。
             </p>
           </div>
-        )}
+        ) : null)}
       {!storageKey ? (
         <p role="alert" className="p-4">
           {personal

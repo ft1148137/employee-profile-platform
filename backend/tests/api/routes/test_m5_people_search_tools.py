@@ -12,6 +12,7 @@ from sqlmodel import Session, select
 
 from app.authz.principal import Principal
 from app.core.db import engine
+from app.core.secrets import encrypt_secret
 from app.domains.base import utc_now
 from app.domains.bot import core, store, tools
 from app.domains.capability.search import PeopleSearchInput
@@ -20,6 +21,7 @@ from app.domains.im import binding, gateway
 from app.domains.im.adapters.feishu import Feishu
 from app.domains.im.models import ImSetting
 from app.domains.manager_tools import MANAGER_TOOLS
+from app.domains.model.models import ModelSetting
 from app.domains.model.pi_client import TurnResult
 from app.domains.org.models import Department, OrgMembership, Role, RoleGrant
 from app.domains.profile.models import ProfileVersion
@@ -28,6 +30,83 @@ from tests.domains.test_bot_core import enable
 from tests.domains.test_im_gateway import principal
 from tests.utils.bot import final_response
 from tests.utils.pi import PiHarness
+
+
+@pytest.mark.parametrize(
+    ("enabled", "model", "available"),
+    [
+        (None, None, False),
+        (False, "synthetic-model", False),
+        (True, None, False),
+        (True, "synthetic-model", True),
+    ],
+)
+def test_session_lists_report_only_model_availability(
+    demo: tuple,
+    db: Session,
+    client: TestClient,
+    enabled: bool | None,
+    model: str | None,
+    available: bool,
+) -> None:
+    _, employees, auth = demo
+    manager = principal(db, employees["E01"].org_id, employees["E01"].id)
+    ciphertext = encrypt_secret("synthetic-key")
+    if enabled is not None:
+        assert manager.user_id is not None
+        db.add(
+            ModelSetting(
+                org_id=manager.org_id,
+                updated_by_user_id=manager.user_id,
+                enabled=enabled,
+                model=model,
+                provider="synthetic-provider",
+                base_url="https://model.example.com",
+                api_key_ciphertext=ciphertext,
+            )
+        )
+        db.commit()
+
+    for assistant, role in (("bot", "manager"), ("admin-assistant", "admin")):
+        response = client.get(
+            f"/api/v1/{assistant}/sessions",
+            params={"org_id": str(manager.org_id)},
+            headers=auth[role],
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert set(payload) == {"data", "retention_days", "model_available"}
+        assert payload["model_available"] is available
+        assert "synthetic-" not in response.text
+        assert "model.example.com" not in response.text
+        assert ciphertext not in response.text
+
+
+def test_manager_without_employee_can_read_availability_only(
+    demo: tuple, db: Session, client: TestClient
+) -> None:
+    _, employees, auth = demo
+    manager = principal(db, employees["E01"].org_id, employees["E01"].id)
+    bot_session = store.create_session(db, manager)
+    store.append_message(db, bot_session, "user", {"text": "合成历史消息"})
+    membership = db.exec(
+        select(OrgMembership).where(
+            OrgMembership.org_id == manager.org_id,
+            OrgMembership.user_id == manager.user_id,
+        )
+    ).one()
+    membership.employee_id = None
+    db.add(membership)
+    db.commit()
+
+    url = "/api/v1/bot/sessions"
+    query = {"org_id": str(manager.org_id)}
+    response = client.get(url, params=query, headers=auth["manager"])
+    assert response.status_code == 200
+    assert response.json()["model_available"] is False
+    assert response.json()["data"] == []
+    assert client.post(url, params=query, headers=auth["manager"]).status_code == 404
+    assert client.get(url, params=query, headers=auth["foreign"]).status_code == 404
 
 
 @pytest.fixture
