@@ -474,9 +474,7 @@ def test_pending_proposal_cannot_reintroduce_hidden_reply(
             for key in ("b", "target"):
                 assert people[key].display_name not in raw
                 assert str(people[key].id) not in raw
-            assert detail["reply_notice"] == (
-                "没有读取对方答复正文里的条件，请到需求详情查看"
-            )
+            assert detail["reply_notice"] == ("完整条件请前往需求详情查看")
             assert detail["demand_url"] == f"/capacity?tab=outgoing&demand={demand.id}"
         else:
             assert private in raw

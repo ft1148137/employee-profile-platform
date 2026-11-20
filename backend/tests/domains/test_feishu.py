@@ -343,7 +343,7 @@ def test_attachment_rejected(
     asyncio.run(run())
     expected = {
         "unsupported": "不支持的附件类型",
-        "large": "文件太大",
+        "large": "文件超出限制",
         "permission": "无法读取文件，请让管理员在飞书开放平台开通文件权限",
         "quota": "附件总量已达上限",
         "group": "请私聊我",

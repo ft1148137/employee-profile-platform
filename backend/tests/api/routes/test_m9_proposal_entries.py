@@ -622,7 +622,7 @@ def test_coordination_proposal_projection_and_private_reads(
         assert view["proposal"]["status"] == "pending"
         assert view["proposal"]["hold_expires_at"]
         assert view["proposal"]["approvals"][0]["decision"] == "approved"
-        assert "没有读取对方答复正文里的条件" in view["reply_notice"]
+        assert "完整条件请前往需求详情查看" in view["reply_notice"]
         assert view["demand_url"] == f"/capacity?tab=outgoing&demand={row.id}"
         detailed = handler(b, db, body)
         assert str(people["E04"].id) in detailed._read_employee_ids

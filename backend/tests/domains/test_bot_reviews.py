@@ -445,7 +445,7 @@ def test_delegate_review_and_safe_rendering(demo: tuple, db: Session) -> None:
     )
     card = cards[0]
     card.items[0].jira_only = True
-    assert "仅 Jira 来源" in rendering.render(card)[0]
+    assert "仅来自 Jira，批准后为「暂定」" in rendering.render(card)[0]
     core._save(db, session, [card])
     db.commit()
     core.act(db, delegate, session.id, card.actions[0])
