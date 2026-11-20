@@ -21,6 +21,7 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
   await page.getByRole("link", { name: "IM 入口", exact: true }).click()
   await expect(page.getByRole("heading", { name: "IM 入口" })).toBeVisible()
   await expectChineseCopy(page, ["Telegram"])
+  await expect(page.locator('input[type="password"]')).toHaveCount(0)
   const token = await page.evaluate(() => localStorage.getItem("access_token"))
   const headers = { Authorization: `Bearer ${token}` }
   const memberships = await (
@@ -49,6 +50,9 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
   ]
   try {
     for (const row of rows) {
+      await page
+        .getByRole("button", { name: `配置 ${row.name}`, exact: true })
+        .click()
       const form = page.getByRole("form", { name: row.name, exact: true })
       const enabled = form.getByRole("checkbox", {
         name: "启用入口",
@@ -82,16 +86,19 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
       await expect(save).toBeDisabled()
       const response = await request.get(url, { headers })
       const text = await response.text()
-      for (const secret of Object.values(row.fields))
+      for (const secret of Object.values(row.fields)) {
         expect(text).not.toContain(secret)
+        expect(await page.content()).not.toContain(secret)
+        expect(page.url()).not.toContain(secret)
+      }
+      await page.getByRole("button", { name: "关闭", exact: true }).click()
     }
     await page.reload()
-    for (const row of rows)
-      await expect(
-        page
-          .getByRole("form", { name: row.name, exact: true })
-          .getByRole("checkbox", { name: "启用入口", exact: true }),
-      ).toBeChecked()
+    for (const row of rows) {
+      const card = page.getByRole("region", { name: row.name, exact: true })
+      await expect(card).toContainText("已启用")
+      await expect(card).toContainText("凭据已设置")
+    }
     await expectChineseCopy(page, ["Telegram"])
     await page.screenshot({
       path: "test-results/im-settings.png",
@@ -100,9 +107,16 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
     await page.route("**/im-settings/telegram/test", (route) =>
       route.fulfill({ json: { ok: false, message: "连接超时，请检查网络" } }),
     )
+    await page
+      .getByRole("button", { name: "配置 Telegram", exact: true })
+      .click()
     const telegram = page.getByRole("form", { name: "Telegram", exact: true })
     await telegram.getByRole("button", { name: "测试已保存的连接" }).click()
     await expect(telegram.getByRole("alert")).toHaveText("连接超时，请检查网络")
+    await page.getByRole("button", { name: "关闭", exact: true }).click()
+    await page
+      .getByRole("button", { name: "配置 企业微信", exact: true })
+      .click()
     const wecom = page.getByRole("form", { name: "企业微信", exact: true })
     await expect(wecom).toContainText("无法读取企业邮箱时")
     await expect(wecom).toContainText("同一应用只允许一个服务实例")
@@ -115,27 +129,48 @@ test("IM settings require disclosure acknowledgement and never echo credentials"
     await expect(wecom.getByRole("status")).toHaveText(
       "长连接最近心跳时间：合成时间",
     )
+    await page.getByRole("button", { name: "关闭", exact: true }).click()
     await page.route("**/im-settings/feishu/test", (route) =>
       route.fulfill({ json: { ok: true, message: "连接成功" } }),
     )
+    await page.getByRole("button", { name: "配置 飞书", exact: true }).click()
     const feishu = page.getByRole("form", { name: "飞书", exact: true })
     await feishu.getByRole("button", { name: "测试已保存的连接" }).click()
     await expect(feishu.getByRole("status")).toContainText("连接成功")
+    await page.getByRole("button", { name: "关闭", exact: true }).click()
     for (const row of rows) {
+      await page
+        .getByRole("button", { name: `配置 ${row.name}`, exact: true })
+        .click()
       const form = page.getByRole("form", { name: row.name, exact: true })
       await form
         .getByRole("checkbox", { name: "启用入口", exact: true })
         .uncheck()
       await form.getByRole("button", { name: "保存", exact: true }).click()
       await expect(form.getByRole("status")).toContainText("设置已保存")
+      await page.getByRole("button", { name: "关闭", exact: true }).click()
     }
     await page.reload()
     for (const row of rows)
       await expect(
-        page
-          .getByRole("form", { name: row.name, exact: true })
-          .getByRole("checkbox", { name: "启用入口", exact: true }),
-      ).not.toBeChecked()
+        page.getByRole("region", { name: row.name, exact: true }),
+      ).toContainText("未启用")
+    await page.setViewportSize({ width: 390, height: 844 })
+    const configure = page.getByRole("button", {
+      name: "配置 飞书",
+      exact: true,
+    })
+    await configure.click()
+    const drawer = page.getByRole("dialog", { name: "配置 · 飞书" })
+    await expect(drawer).toBeVisible()
+    expect(
+      await drawer.evaluate(
+        (element) => element.scrollWidth <= element.clientWidth,
+      ),
+    ).toBeTruthy()
+    await page.keyboard.press("Escape")
+    await expect(drawer).toHaveCount(0)
+    await expect(configure).toBeFocused()
   } finally {
     for (const row of rows)
       expect(

@@ -216,6 +216,9 @@ test("manual console completes all fifteen tabs without a model", async ({
   await test.step("data / sources: save Jira and import work records", async () => {
     await page.getByRole("link", { name: "设置", exact: true }).click()
     await page.getByRole("link", { name: "数据来源", exact: true }).click()
+    await page
+      .getByRole("button", { name: "配置 Jira Cloud", exact: true })
+      .click()
     await saveCloud(
       page,
       "https://synthetic.atlassian.net",
@@ -223,9 +226,16 @@ test("manual console completes all fifteen tabs without a model", async ({
       "synthetic-jira-key",
     )
     await page.reload()
+    await page
+      .getByRole("button", { name: "配置 Jira Cloud", exact: true })
+      .click()
     await expect(page.getByLabel("站点地址")).toHaveValue(
       "https://synthetic.atlassian.net",
     )
+    await page.getByRole("button", { name: "关闭", exact: true }).click()
+    await page
+      .getByRole("button", { name: "导入 CSV / Excel 工作记录", exact: true })
+      .click()
     await page
       .getByLabel("选择工作记录文件")
       .setInputFiles(sample("work_records.csv"))
@@ -367,6 +377,7 @@ test("manual console completes all fifteen tabs without a model", async ({
   await test.step("data / IM: save Feishu credentials without a live connection", async () => {
     await page.getByRole("link", { name: "设置", exact: true }).click()
     await page.getByRole("link", { name: "IM 入口", exact: true }).click()
+    await page.getByRole("button", { name: "配置 飞书", exact: true }).click()
     const form = page.getByRole("form", { name: "飞书", exact: true })
     await form.getByLabel("应用标识", { exact: true }).fill("synthetic-app")
     await form
@@ -379,6 +390,7 @@ test("manual console completes all fifteen tabs without a model", async ({
     await form.getByRole("button", { name: "保存", exact: true }).click()
     await expect(form.getByRole("status")).toContainText("设置已保存")
     await page.reload()
+    await page.getByRole("button", { name: "配置 飞书", exact: true }).click()
     await expect(
       form.getByRole("checkbox", { name: "启用入口", exact: true }),
     ).toBeChecked()
@@ -390,15 +402,27 @@ test("manual console completes all fifteen tabs without a model", async ({
       .uncheck()
     await form.getByRole("button", { name: "保存", exact: true }).click()
     await expect(form.getByRole("status")).toContainText("设置已保存")
+    await page.getByRole("button", { name: "关闭", exact: true }).click()
   })
 
   await test.step("data / external assistants: save the enterprise switch", async () => {
     await page.getByRole("link", { name: "外部 AI 工具", exact: true }).click()
+    await page
+      .getByRole("button", { name: "配置 外部 AI 工具", exact: true })
+      .click()
     await page.getByRole("checkbox", { name: "允许接入外部 AI 工具" }).check()
+    await page
+      .getByRole("checkbox", {
+        name: "已确认企业允许向外部工具发送画像、证据和自述",
+      })
+      .check()
     await page.getByLabel("允许的客户端", { exact: true }).fill("Cursor")
     await page.getByRole("button", { name: "保存", exact: true }).click()
     await expect(page.getByRole("status")).toHaveText("已保存")
     await page.reload()
+    await page
+      .getByRole("button", { name: "配置 外部 AI 工具", exact: true })
+      .click()
     await expect(
       page.getByRole("checkbox", { name: "允许接入外部 AI 工具" }),
     ).toBeChecked()

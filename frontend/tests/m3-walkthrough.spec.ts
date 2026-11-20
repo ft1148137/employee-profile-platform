@@ -41,6 +41,9 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
     .first()
     .click()
   await page.goto("/admin/data-ai?tab=sources")
+  await page
+    .getByRole("button", { name: "配置 Jira Cloud", exact: true })
+    .click()
   await saveCloud(
     page,
     new URL("/qingli-saas", jiraTestUrl).href,

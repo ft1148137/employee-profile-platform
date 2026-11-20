@@ -65,6 +65,14 @@ test("enterprise switch and personal token lifecycle", async ({
   let id = ""
   let employeeHeaders = {}
   try {
+    expect(
+      (
+        await request.put(`${base}/mcp-setting`, {
+          headers,
+          data: { enabled: false, allowed_clients: [] },
+        })
+      ).ok(),
+    ).toBeTruthy()
     await page.getByRole("link", { name: "设置", exact: true }).click()
     await page.getByRole("link", { name: "外部 AI 工具", exact: true }).click()
     await expect(
@@ -72,15 +80,31 @@ test("enterprise switch and personal token lifecycle", async ({
         "打开后，员工的画像、证据和自述会发给外部助手的厂商。请先确认企业允许这些数据外发。",
       ),
     ).toBeVisible()
+    const configure = page.getByRole("button", {
+      name: "配置 外部 AI 工具",
+      exact: true,
+    })
+    await configure.click()
     await expect(
       page.getByText("按客户端自报的名称识别，不是安全边界，名称可以伪造。"),
     ).toBeVisible()
     await page.getByRole("checkbox", { name: "允许接入外部 AI 工具" }).check()
     await page.getByLabel("允许的客户端", { exact: true }).fill("Cursor")
+    await expect(
+      page.getByRole("button", { name: "保存", exact: true }),
+    ).toBeDisabled()
+    await page
+      .getByRole("checkbox", {
+        name: "已确认企业允许向外部工具发送画像、证据和自述",
+      })
+      .check()
     await page.getByRole("button", { name: "保存", exact: true }).click()
     await expect(page.getByRole("status")).toHaveText("已保存")
     await page.reload()
-    await expect(page.getByRole("checkbox")).toBeChecked()
+    await configure.click()
+    await expect(
+      page.getByRole("checkbox", { name: "允许接入外部 AI 工具" }),
+    ).toBeChecked()
     await expect(page.getByLabel("允许的客户端", { exact: true })).toHaveValue(
       "Cursor",
     )

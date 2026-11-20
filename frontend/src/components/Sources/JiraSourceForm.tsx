@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useCallback, useState } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useState } from "react"
 import {
   type JiraConfig,
   type JiraConnectionPublic,
@@ -7,37 +7,23 @@ import {
   SourcesService,
 } from "@/client"
 import { DraftField } from "@/components/AdminAssistant/DraftField"
-import { PageDraft } from "@/components/AdminAssistant/PageDraft"
-import { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
+import type { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { LastSyncStatus, useSourceRuns } from "./LastSyncStatus"
 
-export function JiraSourceForm({ orgId }: { orgId: string }) {
-  const connection = useQuery({
-    queryKey: ["jira", orgId],
-    queryFn: async () =>
-      (await SourcesService.getJira({ path: { org_id: orgId } })).data,
-  })
-  if (connection.isPending) return <p role="status">正在加载 Jira 配置…</p>
-  if (connection.isError)
-    return (
-      <>
-        <SetupError error={connection.error} />
-        <Button onClick={() => connection.refetch()}>重试</Button>
-      </>
-    )
-  return <JiraForm key={orgId} orgId={orgId} connection={connection.data} />
-}
-
-function JiraForm({
+export function JiraSourceForm({
   orgId,
   connection,
+  deployment,
+  assistant,
 }: {
   orgId: string
   connection: JiraConnectionPublic
+  deployment: JiraConfig["deployment"]
+  assistant: ReturnType<typeof usePageDraft>
 }) {
   const client = useQueryClient()
   const start = new Date()
@@ -46,35 +32,29 @@ function JiraForm({
     start.getDate(),
     new Date(year, start.getMonth() + 1, 0).getDate(),
   )
-  const [manualConfig, setConfig] = useState<JiraConfig>(
-    connection.config ?? {
-      deployment: "cloud",
-      base_url: "",
-      auth_type: "api_token",
-      username: "",
-      start_date: `${year}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
-      include_description: false,
-    },
+  const savedConfig =
+    connection.config?.deployment === deployment ? connection.config : undefined
+  const [manualConfig, setConfig] = useState<JiraConfig | null>(null)
+  const config = assistant.values<JiraConfig>(
+    manualConfig ??
+      savedConfig ?? {
+        deployment,
+        base_url: "",
+        auth_type: deployment === "cloud" ? "api_token" : "pat",
+        username: "",
+        start_date: `${year}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+        include_description: false,
+      },
   )
-  const [schedule, setSchedule] = useState(connection.sync_schedule ?? "off")
+  const [schedule, setSchedule] =
+    useState<JiraConnectionPublic["sync_schedule"]>()
   const [secret, setSecret] = useState("")
-  const [hasSecret, setHasSecret] = useState(connection.has_secret)
+  const hasSecret = !!savedConfig && connection.has_secret
   const [dirty, setDirty] = useState(false)
   const [projects, setProjects] = useState<JiraProject[]>([])
-  const assistant = usePageDraft(
-    orgId,
-    "update_jira_connection",
-    useCallback(() => {
-      if (connection.config) setConfig(connection.config)
-      setSchedule(connection.sync_schedule ?? "off")
-      setSecret("")
-      setHasSecret(connection.has_secret)
-      setDirty(false)
-    }, [connection]),
-  )
-  const config = assistant.values(manualConfig)
   const displayedSchedule = assistant.values({
-    sync_schedule: schedule,
+    sync_schedule:
+      schedule ?? (savedConfig ? connection.sync_schedule : undefined) ?? "off",
   }).sync_schedule
   const runs = useSourceRuns(orgId, "jira")
   const latest = runs.data?.[0]
@@ -86,14 +66,14 @@ function JiraForm({
         body: {
           ...config,
           project_keys: config.project_keys?.filter(Boolean),
-          sync_schedule: schedule,
+          sync_schedule: displayedSchedule,
           secret: secret || undefined,
         },
       }),
     onSuccess: ({ data }) => {
-      if (data.config) setConfig(data.config)
+      setConfig(null)
+      setSchedule(undefined)
       setSecret("")
-      setHasSecret(data.has_secret)
       setDirty(false)
       client.setQueryData(["jira", orgId], data)
       test.reset()
@@ -114,7 +94,6 @@ function JiraForm({
   function change(patch: Partial<JiraConfig>) {
     if (
       patch.base_url !== undefined ||
-      patch.deployment !== undefined ||
       patch.username !== undefined ||
       patch.auth_type !== undefined
     )
@@ -126,51 +105,34 @@ function JiraForm({
   }
   const busy = save.isPending || test.isPending || sync.isPending
   return (
-    <section
-      aria-label="Jira 连接"
-      className="space-y-4 rounded-xl border p-4 sm:p-6"
-    >
-      <h3 className="text-lg font-semibold">连接 Jira</h3>
-      <PageDraft
-        orgId={orgId}
-        draft={assistant.draft}
-        error={assistant.error}
-      />
+    <section aria-label="Jira 连接" className="space-y-4">
+      {connection.config && !savedConfig && !assistant.item && (
+        <p className="rounded-md border bg-muted/40 p-3 text-sm">
+          保存后将替换当前 Jira 连接。请填写新站点的凭据。
+        </p>
+      )}
       <form
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault()
+          if (busy || syncing || assistant.blocked) return
           save.mutate()
         }}
       >
         <fieldset
           disabled={busy || syncing || assistant.blocked}
-          className="space-y-4"
+          className="min-w-0 space-y-4"
         >
-          <legend className="mb-2 text-sm font-medium">Jira 类型</legend>
-          <DraftField changed={assistant.changed("deployment")}>
-            <div className="flex flex-wrap gap-4">
-              {(["cloud", "data_center"] as const).map((type) => (
-                <label key={type} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="deployment"
-                    checked={config.deployment === type}
-                    onChange={() =>
-                      change({
-                        deployment: type,
-                        auth_type: type === "cloud" ? "api_token" : "pat",
-                        username: "",
-                      })
-                    }
-                  />
-                  {type === "cloud"
-                    ? "Jira Cloud"
-                    : "Jira Data Center / Server"}
-                </label>
-              ))}
-            </div>
-          </DraftField>
+          {assistant.changed("deployment") && (
+            <DraftField changed>
+              <p className="text-sm font-medium">
+                Jira 类型：
+                {config.deployment === "cloud"
+                  ? "Jira Cloud"
+                  : "Jira Data Center"}
+              </p>
+            </DraftField>
+          )}
           <DraftField changed={assistant.changed("base_url")}>
             <Label htmlFor="jira-url">站点地址</Label>
             <Input
@@ -429,23 +391,21 @@ function JiraForm({
             {test.data.data.account_name && `：${test.data.data.account_name}`}
           </p>
           {!test.data.data.ok && (
-            <p>如果暂时接不上，可以先在下方上传工作记录文件</p>
+            <p>如果暂时接不上，可以先导入工作记录文件。</p>
           )}
         </div>
       )}
-      <p className="text-sm text-muted-foreground">
-        下次同步时间：
-        {connection.next_sync_at
-          ? new Date(connection.next_sync_at).toLocaleString("zh-CN")
-          : "定时同步已关闭"}
-      </p>
-      <LastSyncStatus run={latest} />
-      <a
-        href="/admin/data-ai?tab=sources#sync-runs"
-        className="text-sm text-primary underline"
-      >
-        查看同步记录
-      </a>
+      {savedConfig && (
+        <>
+          <p className="text-sm text-muted-foreground">
+            下次同步时间：
+            {connection.next_sync_at
+              ? new Date(connection.next_sync_at).toLocaleString("zh-CN")
+              : "定时同步已关闭"}
+          </p>
+          <LastSyncStatus run={latest} />
+        </>
+      )}
     </section>
   )
 }
