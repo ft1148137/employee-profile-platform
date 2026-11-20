@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.core.security import create_access_token
 from app.domains.audit.models import AuditEvent
@@ -233,6 +233,52 @@ def test_scope_and_direct_adjustment(
         ).status_code
         == 200
     )
+
+
+def test_employee_admin_cannot_adjust_own_capacity_weeks(
+    capacity: tuple, client: TestClient, db: Session
+) -> None:
+    url, employees, auth = capacity
+    enable(client, capacity)
+    admin, report = employees["E02"], employees["E03"]
+    member = db.exec(
+        select(OrgMembership).where(
+            OrgMembership.org_id == admin.org_id, OrgMembership.employee_id == admin.id
+        )
+    ).one()
+    db.add(RoleGrant(org_id=member.org_id, membership_id=member.id, role="org_admin"))
+    db.commit()
+    endpoint = f"{url}/capacity/weeks"
+    body = week_body(admin.id, 50)
+    report_body = week_body(report.id, 20)
+    weeks = select(CapacityWeek).where(
+        CapacityWeek.org_id == admin.org_id,
+        CapacityWeek.week_start == date.fromisoformat(body["start_week"]),
+        col(CapacityWeek.employee_id).in_([admin.id, report.id]),
+    )
+
+    assert client.put(endpoint, headers=auth["employee"], json=body).status_code == 403
+    assert db.exec(weeks).all() == []
+
+    db.add(
+        RoleGrant(
+            org_id=member.org_id,
+            membership_id=member.id,
+            role="dept_manager",
+            department_id=admin.department_id,
+        )
+    )
+    db.commit()
+    assert client.put(endpoint, headers=auth["employee"], json=body).status_code == 403
+    assert db.exec(weeks).all() == []
+    mixed = {**body, "items": report_body["items"] + body["items"]}
+    assert client.put(endpoint, headers=auth["employee"], json=mixed).status_code == 403
+    assert db.exec(weeks).all() == []
+
+    response = client.put(endpoint, headers=auth["employee"], json=report_body)
+    assert response.status_code == 200, response.text
+    stored = db.exec(weeks).one()
+    assert (stored.employee_id, stored.other_percent) == (report.id, 20)
 
 
 def test_jira_reference_and_platform_percent(

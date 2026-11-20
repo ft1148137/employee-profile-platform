@@ -14,7 +14,11 @@ from app.domains.capacity.assignment import (
     assignment_rows,
     change_due_date,
 )
-from app.domains.capacity.demand import represents_department, responder_user_ids
+from app.domains.capacity.demand import (
+    represents_department,
+    responder_user_ids,
+    responders_by_department,
+)
 from app.domains.capacity.extension_schemas import (
     ExtensionDecisionInput,
     ExtensionInput,
@@ -26,6 +30,7 @@ from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityDemand,
     CapacityExtensionRequest,
+    CapacityProposalLine,
     CapacityRequestStatus,
 )
 from app.domains.capacity.schemas import Via
@@ -42,9 +47,14 @@ from app.domains.capacity.workload import (
 )
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.inbox.service import add_item
-from app.domains.org.models import Employee, EmploymentStatus, OrgMembership
-from app.domains.org.service import managed_scope
-from app.domains.review.routing import active_delegations, can_review, review_assignment
+from app.domains.org.models import Department, Employee, EmploymentStatus, OrgMembership
+from app.domains.org.service import department_ancestry, managed_scope
+from app.domains.review.routing import (
+    active_delegations,
+    can_review,
+    review_assignment,
+    reviewable_employees,
+)
 from app.models import User
 
 
@@ -108,6 +118,8 @@ def extension_public(
 
 
 def user_names(session: Session, org_id: UUID, user_ids: set[UUID]) -> dict[UUID, str]:
+    if not user_ids:
+        return {}
     return {
         user_id: employee_name or full_name or "企业管理员"
         for user_id, employee_name, full_name in session.exec(
@@ -227,6 +239,27 @@ def extension_reviewers(
     ]
 
 
+def employee_department_ancestry(principal: Principal, session: Session) -> set[UUID]:
+    if principal.employee_id is None:
+        return set()
+    department_id = session.exec(
+        select(Employee.department_id).where(
+            employee_scope_clause(principal),
+            Employee.id == principal.employee_id,
+            Employee.employment_status == EmploymentStatus.ACTIVE,
+        )
+    ).one_or_none()
+    if department_id is None:
+        return set()
+    departments = {
+        row.id: row
+        for row in session.exec(
+            select(Department).where(Department.org_id == principal.org_id)
+        ).all()
+    }
+    return set(department_ancestry(departments, department_id))
+
+
 def list_extension_requests(principal: Principal, session: Session) -> ExtensionList:
     require_enabled(principal, session)
     query = (
@@ -252,12 +285,12 @@ def list_extension_requests(principal: Principal, session: Session) -> Extension
             & (col(Employee.id) == CapacityAssignment.employee_id),
         )
         .where(
-            CapacityExtensionRequest.org_id == principal.org_id,
-            Employee.employment_status == EmploymentStatus.ACTIVE,
+            col(CapacityExtensionRequest.org_id) == principal.org_id,
+            col(Employee.employment_status) == EmploymentStatus.ACTIVE,
             or_(
-                CapacityExtensionRequest.status == CapacityRequestStatus.PENDING,
-                CapacityExtensionRequest.decided_by_user_id == principal.user_id,
-                CapacityExtensionRequest.decided_for_user_id == principal.user_id,
+                col(CapacityExtensionRequest.status) == CapacityRequestStatus.PENDING,
+                col(CapacityExtensionRequest.decided_by_user_id) == principal.user_id,
+                col(CapacityExtensionRequest.decided_for_user_id) == principal.user_id,
                 CapacityAssignment.employee_id == principal.employee_id,
             ),
         )
@@ -269,70 +302,91 @@ def list_extension_requests(principal: Principal, session: Session) -> Extension
     rows = list(
         session.exec(
             query.where(
-                CapacityExtensionRequest.status == CapacityRequestStatus.PENDING
+                col(CapacityExtensionRequest.status) == CapacityRequestStatus.PENDING
             )
         ).all()
     )
     rows.extend(
         session.exec(
             query.where(
-                CapacityExtensionRequest.status != CapacityRequestStatus.PENDING
+                col(CapacityExtensionRequest.status) != CapacityRequestStatus.PENDING
             ).limit(100)
         ).all()
     )
     rows.sort(key=lambda item: (-item[0].created_at.timestamp(), item[0].id))
-    reviewers: dict[UUID, UUID | None] = {}
-    departments: dict[UUID, bool] = {}
-    reviewer_names: dict[UUID, str] = {}
-    confirmer_names: dict[UUID, list[str]] = {}
+    line_ids = {row.proposal_line_id for _, row, _, _ in rows if row.proposal_line_id}
+    borrowed_lines: set[UUID] = set()
+    if line_ids:
+        borrowed_lines.update(
+            session.exec(
+                select(CapacityProposalLine.id).where(
+                    CapacityProposalLine.org_id == principal.org_id,
+                    col(CapacityProposalLine.id).in_(line_ids),
+                    col(CapacityProposalLine.lender_department_id).is_not(None),
+                )
+            ).all()
+        )
+    reviewers = reviewable_employees(
+        session,
+        principal,
+        {
+            row.employee_id
+            for _, row, _, _ in rows
+            if row.proposal_line_id not in borrowed_lines
+        },
+    )
+    member_targets = {
+        demand.target_department_id
+        for _, row, demand, _ in rows
+        if row.proposal_line_id not in borrowed_lines
+        and reviewers.get(row.employee_id) is not None
+        and not represents_department(principal, demand.target_department_id)
+    }
+    if member_targets:
+        member_targets &= employee_department_ancestry(principal, session)
     data = []
+    delegates: dict[UUID, UUID] = {}
+    confirmations: dict[UUID, UUID] = {}
     for request, row, demand, name in rows:
-        borrowed = assignment_lender(session, row) is not None
-        if borrowed and row.employee_id != principal.employee_id:
-            if represents_department(principal, demand.target_department_id):
+        if row.employee_id == principal.employee_id:
+            data.append(extension_public(request, row, demand, name))
+            continue
+        target = demand.target_department_id
+        represents_target = represents_department(principal, target)
+        if row.proposal_line_id in borrowed_lines:
+            if represents_target:
                 data.append(
                     extension_public(request, row, demand, name, anonymous=True)
                 )
             continue
-        result = extension_public(request, row, demand, name)
-        if row.employee_id != principal.employee_id:
-            if row.employee_id not in reviewers:
-                reviewers[row.employee_id] = can_review(
-                    session, principal, row.employee_id
-                )
-            if reviewers[row.employee_id] is None:
-                continue
-            target = demand.target_department_id
-            if target not in departments:
-                departments[target] = extension_department_allowed(
-                    principal, session, target
-                )
-            if not departments[target]:
-                continue
-            reviewer = reviewers[row.employee_id]
-            assert reviewer is not None
-            if reviewer != principal.user_id:
-                if reviewer not in reviewer_names:
-                    reviewer_names[reviewer] = user_names(
-                        session, principal.org_id, {reviewer}
-                    )[reviewer]
-                result.on_behalf_of_name = reviewer_names[reviewer]
-            if (
-                request.status == CapacityRequestStatus.PENDING
-                and demand.committed_end_date is not None
-                and request.requested_due_date > demand.committed_end_date
-                and not represents_department(principal, target)
-            ):
-                if target not in confirmer_names:
-                    confirmer_names[target] = list(
-                        user_names(
-                            session,
-                            principal.org_id,
-                            responder_user_ids(session, principal.org_id, target),
-                        ).values()
-                    )
-                result.commitment_confirmer_names = confirmer_names[target]
-        data.append(result)
+        reviewer = reviewers.get(row.employee_id)
+        if reviewer is None or not (represents_target or target in member_targets):
+            continue
+        data.append(extension_public(request, row, demand, name))
+        if reviewer != principal.user_id:
+            delegates[request.id] = reviewer
+        if (
+            not represents_target
+            and request.status == CapacityRequestStatus.PENDING
+            and demand.committed_end_date is not None
+            and request.requested_due_date > demand.committed_end_date
+        ):
+            confirmations[request.id] = target
+
+    confirmers = responders_by_department(
+        session, principal.org_id, set(confirmations.values())
+    )
+    names = user_names(
+        session, principal.org_id, set(delegates.values()).union(*confirmers.values())
+    )
+    for result in data:
+        if result.id in delegates:
+            result.on_behalf_of_name = names.get(delegates[result.id])
+        if result.id in confirmations:
+            responders = confirmers[confirmations[result.id]]
+            result.commitment_confirmer_names = [
+                names[user_id] for user_id in sorted(responders) if user_id in names
+            ]
     return ExtensionList(data=data, count=len(data))
 
 

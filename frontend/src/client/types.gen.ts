@@ -9584,6 +9584,10 @@ export type capacityListDemandsData = {
      * Status
      */
     status?: DemandStatus | null
+    /**
+     * Actionable Only
+     */
+    actionable_only?: boolean
   }
   url: "/api/v1/orgs/{org_id}/capacity/demands"
 }

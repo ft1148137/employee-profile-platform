@@ -137,6 +137,7 @@ class DemandListInput(CapacityInput):
     skip: int = Field(default=0, ge=0)
     limit: int = Field(default=50, ge=1, le=100)
     status: DemandStatus | None = None
+    actionable_only: bool = False
 
 
 class DemandIdInput(CapacityInput):

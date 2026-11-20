@@ -1,5 +1,4 @@
 import json
-from collections import Counter
 from collections.abc import Generator
 from datetime import date, timedelta
 from typing import Any
@@ -11,6 +10,7 @@ from sqlalchemy import delete, event
 from sqlmodel import Session
 
 from app.authz.deps import get_org_principal
+from app.authz.principal import Principal
 from app.core.security import create_access_token
 from app.domains.base import utc_now
 from app.domains.capacity import extension, workload
@@ -96,7 +96,7 @@ def test_request_candidates_and_review_cache(
         db.add(row)
         return row.id
 
-    pending = {add(code, -10, True) for code in assignments}
+    pending = {add("w", -10, True)}
     history = [add("w", i, False) for i in range(105 if own_history else 60)]
     db.commit()
     principal = get_org_principal(org.id, users["bm"], db)
@@ -106,22 +106,49 @@ def test_request_candidates_and_review_cache(
         if isinstance(instance, model):
             loaded.append(instance.id)
 
-    calls: Counter[UUID] = Counter()
+    calls: list[set[UUID]] = []
     module = workload if kind == "workload" else extension
-    original = module.can_review
+    list_requests = (
+        workload.list_workload_requests
+        if kind == "workload"
+        else extension.list_extension_requests
+    )
+    original = module.reviewable_employees
 
-    def counted(session: Session, actor: Any, employee_id: UUID) -> UUID | None:
-        calls[employee_id] += 1
-        return original(session, actor, employee_id)
+    def counted(
+        session: Session, actor: Principal, employee_ids: set[UUID]
+    ) -> dict[UUID, UUID | None]:
+        calls.append(employee_ids)
+        return original(session, actor, employee_ids)
 
-    monkeypatch.setattr(module, "can_review", counted)
+    def record_query(*args: Any) -> None:
+        statements.append(args[2])
+
+    def measured_query_count() -> int:
+        statements.clear()
+        event.listen(db.get_bind(), "before_cursor_execute", record_query)
+        try:
+            assert list_requests(principal, db).count > 0
+        finally:
+            event.remove(db.get_bind(), "before_cursor_execute", record_query)
+        return len(statements)
+
+    statements: list[str] = []
+    monkeypatch.setattr(module, "reviewable_employees", counted)
+    baseline = measured_query_count()
+    assert calls == [{people["w"].id}]
+
+    pending.update(add(code, -10, True) for code in ("w2", "cm"))
+    db.commit()
+    calls.clear()
+    assert measured_query_count() == baseline
+    assert calls == [
+        {person.id for code, person in people.items() if code in assignments}
+    ]
+
     event.listen(db, "loaded_as_persistent", record_load)
     try:
-        result = (
-            workload.list_workload_requests(principal, db)
-            if kind == "workload"
-            else extension.list_extension_requests(principal, db)
-        )
+        result = list_requests(principal, db)
     finally:
         event.remove(db, "loaded_as_persistent", record_load)
     assert {r.id for r in result.data if r.status == "pending"} == pending
@@ -130,7 +157,6 @@ def test_request_candidates_and_review_cache(
     )
     assert result.count == (103 if own_history else 3)
     assert len(loaded) <= (103 if own_history else 3)
-    assert len(calls) == 3 and max(calls.values()) == 1
     assert api(f"/{kind}-requests", "am")["data"] == []
 
 
@@ -202,6 +228,93 @@ def test_demand_pagination_batches_timeline_and_preserves_privacy(
         event.remove(db.get_bind(), "before_cursor_execute", record_query)
     for params in ({"limit": 101}, {"limit": 0}, {"skip": -1}):
         assert client.get(url, headers=headers, params=params).status_code == 422
+
+
+def test_actionable_demands_match_can_reply_and_count(
+    list_case: tuple, db: Session, client: TestClient
+) -> None:
+    api, _, demand, people, users, org = list_case
+
+    def add(requester: str, requesting: str, target: str) -> str:
+        row = CapacityDemand(
+            **demand.model_dump(
+                exclude={
+                    "id",
+                    "status",
+                    "requester_user_id",
+                    "requesting_department_id",
+                    "target_department_id",
+                    "committed_start_date",
+                    "committed_end_date",
+                }
+            ),
+            status="submitted",
+            requester_user_id=users[requester].id,
+            requesting_department_id=people[requesting].department_id,
+            target_department_id=people[target].department_id,
+        )
+        db.add(row)
+        return str(row.id)
+
+    child = add("a", "am", "cm")
+    parent = add("a", "am", "bm")
+    manager_self = add("bm", "bm", "cm")
+    admin_self = add("admin", "am", "bm")
+    outside = add("bm", "bm", "am")
+    db.commit()
+
+    expected = {
+        ("bm", "incoming"): {child, parent, admin_self},
+        ("bm", "outgoing"): set(),
+        ("cm", "incoming"): {child, manager_self},
+        ("admin", "incoming"): {child, parent, manager_self, outside},
+        ("admin", "outgoing"): {child, parent, manager_self, outside},
+        ("a", "incoming"): set(),
+        ("a", "outgoing"): set(),
+    }
+    url = f"/api/v1/orgs/{org.id}/capacity/demands"
+    for (role, side), ids in expected.items():
+        headers = {
+            "Authorization": f"Bearer {create_access_token(users[role].id, expires_delta=timedelta(minutes=10))}"
+        }
+        params = {"side": side}
+        default = client.get(url, headers=headers, params=params).json()
+        assert (
+            client.get(
+                url, headers=headers, params={**params, "actionable_only": "false"}
+            ).json()
+            == default
+        )
+        filtered = [row for row in default["data"] if row["can_reply"] is True]
+        assert {row["id"] for row in filtered} == ids
+        for skip in (0, 1, len(ids) + 1):
+            response = client.get(
+                url,
+                headers=headers,
+                params={**params, "actionable_only": "true", "limit": 1, "skip": skip},
+            )
+            assert response.status_code == 200, response.text
+            assert response.json() == {
+                "data": filtered[skip : skip + 1],
+                "count": len(ids),
+            }
+
+    assert (
+        api("/demands?side=incoming&status=submitted&actionable_only=true", "bm")[
+            "count"
+        ]
+        == 3
+    )
+    assert api("/demands?status=accepted&actionable_only=true", "admin") == {
+        "data": [],
+        "count": 0,
+    }
+    assert api(
+        "/demands?side=incoming&actionable_only=true", "foreign", other_org=True
+    ) == {
+        "data": [],
+        "count": 0,
+    }
 
 
 @pytest.mark.parametrize("delegate", ["a", "w2"])

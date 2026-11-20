@@ -68,7 +68,7 @@ from app.domains.org.models import (
     RoleGrant,
 )
 from app.domains.org.schemas import DepartmentPublic, DepartmentsPublic
-from app.domains.org.service import managed_scope
+from app.domains.org.service import department_ancestry, managed_scope
 from app.models import User
 
 LOAD_WORDS = (
@@ -261,6 +261,20 @@ def responder_user_ids(
     *,
     fallback_to_admin: bool = True,
 ) -> set[UUID]:
+    return responders_by_department(
+        session, org_id, {target_department_id}, fallback_to_admin=fallback_to_admin
+    )[target_department_id]
+
+
+def responders_by_department(
+    session: Session,
+    org_id: UUID,
+    target_department_ids: set[UUID],
+    *,
+    fallback_to_admin: bool = True,
+) -> dict[UUID, set[UUID]]:
+    if not target_department_ids:
+        return {}
     rows = session.exec(
         select(OrgMembership.user_id, RoleGrant.role, RoleGrant.department_id)
         .join(
@@ -283,20 +297,31 @@ def responder_user_ids(
             ),
         )
     ).all()
-    current: UUID | None = target_department_id
-    seen = set()
-    while current is not None and current not in seen:
-        seen.add(current)
-        managers = {
-            user
-            for user, role, dept in rows
-            if role == Role.DEPT_MANAGER and dept == current
-        }
-        if managers:
-            return managers
-        current = department(session, org_id, current).parent_department_id
+    admins: set[UUID] = set()
+    managers: dict[UUID, set[UUID]] = defaultdict(set)
+    for user_id, role, department_id in rows:
+        if role == Role.DEPT_MANAGER and department_id is not None:
+            managers[department_id].add(user_id)
+        elif role == Role.ORG_ADMIN and fallback_to_admin:
+            admins.add(user_id)
+    departments = {
+        row.id: row
+        for row in session.exec(
+            select(Department).where(Department.org_id == org_id)
+        ).all()
+    }
+    if target_department_ids - departments.keys():
+        raise CapacityNotFound("未找到该部门")
     return {
-        user for user, role, _ in rows if fallback_to_admin and role == Role.ORG_ADMIN
+        target: next(
+            (
+                managers[ancestor]
+                for ancestor in department_ancestry(departments, target)
+                if ancestor in managers
+            ),
+            admins,
+        ).copy()
+        for target in target_department_ids
     }
 
 
@@ -534,6 +559,7 @@ def list_demands(
     skip: int = 0,
     limit: int = 50,
     status: DemandStatus | None = None,
+    actionable_only: bool = False,
 ) -> DemandList:
     require_enabled(principal, session)
     query = select(CapacityDemand).where(CapacityDemand.org_id == principal.org_id)
@@ -552,6 +578,21 @@ def list_demands(
         )
     if status is not None:
         query = query.where(CapacityDemand.status == status)
+    if actionable_only:
+        if principal.user_id is None or (
+            not principal.is_org_admin and not principal.managed_department_ids
+        ):
+            return DemandList(data=[], count=0)
+        query = query.where(
+            CapacityDemand.status == DemandStatus.SUBMITTED,
+            CapacityDemand.requester_user_id != principal.user_id,
+        )
+        if not principal.is_org_admin and side == "outgoing":
+            query = query.where(
+                col(CapacityDemand.target_department_id).in_(
+                    principal.managed_department_ids
+                )
+            )
     count = session.exec(select(func.count()).select_from(query.subquery())).one()
     rows = list(
         session.exec(
