@@ -19,7 +19,11 @@ import {
 } from "./AssignmentFeedback"
 import { CapacityError, useCapacityRefresh } from "./AssignmentFields"
 import { AssignmentTracking } from "./AssignmentTracking"
-import { PlanningBoard, type PlanningView } from "./PlanningWorkbench"
+import {
+  PlanningBoard,
+  type PlanningView,
+  shortRequestNumber,
+} from "./PlanningWorkbench"
 
 const statuses: Record<string, string> = {
   pending_selection: "待选人",
@@ -370,7 +374,7 @@ export function BorrowRequestCard({
               className="font-mono text-xs text-muted-foreground"
               title={request.id}
             >
-              {request.id.slice(-8)}
+              {shortRequestNumber(request.id)}
             </span>
             <Badge variant="secondary">{statuses[request.status]}</Badge>
           </div>

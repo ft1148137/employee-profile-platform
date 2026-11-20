@@ -34,7 +34,11 @@ import {
 import { DemandAssignments } from "./DemandAssignments"
 import { capabilityLevels } from "./DemandFields"
 import { DemandsReference } from "./DemandsReference"
-import { detailAside, detailColumns } from "./PlanningWorkbench"
+import {
+  detailAside,
+  detailColumns,
+  shortRequestNumber,
+} from "./PlanningWorkbench"
 import { Plans, type SelectedPlanReply } from "./Plans"
 import {
   addWeeks,
@@ -133,7 +137,7 @@ export function DemandsDetail({
                 className="font-mono text-xs text-muted-foreground"
                 title={demandId}
               >
-                {demandId.slice(-8)}
+                {shortRequestNumber(demandId)}
               </p>
               <h2 className="break-words text-lg font-semibold">
                 {query.data.capability_name}

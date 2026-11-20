@@ -11,7 +11,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { DemandsDetail, demandStatuses } from "./DemandsDetail"
-import { PlanningBoard, type PlanningView } from "./PlanningWorkbench"
+import {
+  PlanningBoard,
+  type PlanningView,
+  shortRequestNumber,
+} from "./PlanningWorkbench"
 
 const pageSize = 50
 const demandColumns = [
@@ -65,7 +69,7 @@ export function DemandList({
           className="font-mono text-xs text-muted-foreground"
           title={demand.id}
         >
-          {demand.id.slice(-8)}
+          {shortRequestNumber(demand.id)}
         </span>
         <h3 className="break-words font-semibold">
           {demand.capability_name}

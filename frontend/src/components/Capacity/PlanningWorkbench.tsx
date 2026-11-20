@@ -78,6 +78,10 @@ export function PlanningBoard({
   )
 }
 
+export function shortRequestNumber(id: string) {
+  return Number.parseInt(id.slice(-8), 16).toString().padStart(10, "0")
+}
+
 export const detailColumns =
   "grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(17rem,30%)]"
 export const detailAside =

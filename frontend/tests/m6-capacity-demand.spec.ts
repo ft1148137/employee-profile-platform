@@ -262,7 +262,12 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
     .getByRole("region", { name: "待答复", exact: true })
     .getByRole("article")
     .filter({ hasText: "合成需求：接口联调" })
-  await expect(boardItem).toContainText(demandId!.slice(-8))
+  const requestNumber = Number.parseInt(demandId!.slice(-8), 16)
+    .toString()
+    .padStart(10, "0")
+  await expect(
+    boardItem.getByText(requestNumber, { exact: true }),
+  ).toBeVisible()
   await expect(boardItem).toContainText("2 人 · 50%")
   const listView = page.getByRole("button", { name: "紧凑列表" })
   await listView.click()
