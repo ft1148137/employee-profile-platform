@@ -1,4 +1,5 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
+import { KeyRound } from "lucide-react"
 import { UsersService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
 import ChangePassword from "@/components/UserSettings/ChangePassword"
@@ -26,10 +27,15 @@ function ChangePasswordPage() {
   const { next } = Route.useSearch()
   return (
     <AuthLayout>
-      <h1 className="text-2xl font-bold">设置新密码</h1>
-      <p className="my-4 text-sm text-muted-foreground">
-        首次登录，请将初始密码修改为个人密码。
-      </p>
+      <header className="mb-5 flex flex-col items-center gap-2 text-center">
+        <span className="grid size-10 place-items-center rounded-lg bg-primary text-primary-foreground">
+          <KeyRound className="size-5" aria-hidden="true" />
+        </span>
+        <h1 className="text-xl font-semibold">设置新密码</h1>
+        <p className="text-sm text-muted-foreground">
+          首次登录，请将初始密码修改为个人密码。
+        </p>
+      </header>
       <ChangePassword onSuccess={() => navigate({ href: safeNext(next) })} />
     </AuthLayout>
   )

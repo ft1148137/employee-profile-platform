@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { OauthService } from "@/client"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { handleError } from "@/utils"
 
@@ -27,26 +28,38 @@ export function AuthorizedClients({ orgId }: { orgId: string }) {
     onError: handleError.bind(setMessage),
   })
   return (
-    <section className="space-y-3" aria-label="已授权应用">
-      <h3 className="font-semibold">已授权应用</h3>
-      <p className="text-sm text-muted-foreground">
-        撤销后该应用将无法继续访问，需重新授权。
-      </p>
+    <section className="divide-y" aria-label="已授权应用">
+      <div className="px-4 py-2.5">
+        <h3 className="font-medium">已授权应用</h3>
+        <p className="text-xs text-muted-foreground">
+          撤销后应用需重新授权才能访问。
+        </p>
+      </div>
       {grants.isPending ? (
         <ProfileLoading />
       ) : grants.isError ? (
         <ProfileError retry={() => grants.refetch()} />
       ) : grants.data.length === 0 ? (
-        <p>暂无已授权应用</p>
+        <p className="px-4 py-2.5 text-muted-foreground">暂无已授权应用</p>
       ) : (
         grants.data.map((grant) => (
           <fieldset
             key={grant.id}
             aria-label={grant.client_name}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4"
+            className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5"
           >
-            <div>
-              <p className="font-medium">{grant.client_name}</p>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="min-w-0 wrap-anywhere font-medium">
+                  {grant.client_name}
+                </p>
+                <Badge
+                  variant="outline"
+                  className="border-primary/20 bg-primary/5 text-primary"
+                >
+                  已授权
+                </Badge>
+              </div>
               <p className="text-xs text-muted-foreground">
                 授权时间：{new Date(grant.created_at).toLocaleString("zh-CN")} ·
                 最近使用：
@@ -56,7 +69,9 @@ export function AuthorizedClients({ orgId }: { orgId: string }) {
               </p>
             </div>
             <Button
+              size="sm"
               variant="outline"
+              className="ml-auto"
               disabled={revoke.isPending}
               onClick={() => revoke.mutate(grant.id)}
             >
@@ -65,7 +80,11 @@ export function AuthorizedClients({ orgId }: { orgId: string }) {
           </fieldset>
         ))
       )}
-      {message && <p role="status">{message}</p>}
+      {message && (
+        <p role="status" className="px-4 py-2.5">
+          {message}
+        </p>
+      )}
     </section>
   )
 }

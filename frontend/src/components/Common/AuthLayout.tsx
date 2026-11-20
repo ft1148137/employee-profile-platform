@@ -7,18 +7,16 @@ interface AuthLayoutProps {
 
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="grid min-h-svh lg:grid-cols-2">
-      <div className="bg-muted dark:bg-zinc-900 relative hidden lg:flex lg:items-center lg:justify-center">
-        <Logo variant="full" className="h-16" asLink={false} />
-      </div>
-      <div className="flex flex-col gap-4 p-6 md:p-10">
-        <div className="flex justify-end">
-          <Appearance />
+    <div className="flex min-h-svh flex-col bg-canvas">
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-surface-border bg-surface px-4 sm:px-6">
+        <Logo asLink={false} className="text-sm" />
+        <Appearance />
+      </header>
+      <main className="grid flex-1 place-items-center px-4 py-8">
+        <div className="w-full max-w-md rounded-xl border border-surface-border bg-surface p-6 shadow-md shadow-black/5 sm:p-8">
+          {children}
         </div>
-        <div className="flex flex-1 items-center justify-center">
-          <div className="w-full max-w-xs">{children}</div>
-        </div>
-      </div>
+      </main>
     </div>
   )
 }

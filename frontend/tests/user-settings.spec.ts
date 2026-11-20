@@ -34,11 +34,15 @@ test.describe("Change password", () => {
     await logInUser(page, email, password)
 
     await page.goto("/settings")
+    await page.getByRole("button", { name: "修改密码", exact: true }).click()
+    const dialog = page.getByRole("dialog", { name: "修改密码", exact: true })
+    await expect(dialog).toBeVisible()
     await page.getByTestId("current-password-input").fill(password)
     await page.getByTestId("new-password-input").fill(newPassword)
     await page.getByTestId("confirm-password-input").fill(newPassword)
     await page.getByRole("button", { name: "保存密码" }).click()
 
+    await expect(dialog).toBeHidden()
     await expect(page.getByText("密码修改成功")).toBeVisible()
 
     await logOutUser(page)
@@ -60,6 +64,7 @@ test.describe("Change password validation", () => {
   test.beforeEach(async ({ page }) => {
     await logInUser(page, email, password)
     await page.goto("/settings")
+    await page.getByRole("button", { name: "修改密码", exact: true }).click()
   })
 
   test("Update password with weak passwords", async ({ page }) => {

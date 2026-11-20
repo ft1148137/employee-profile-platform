@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, redirect } from "@tanstack/react-router"
+import { UsersRound } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -101,7 +102,13 @@ function Login() {
           className="flex flex-col gap-6"
         >
           <div className="flex flex-col items-center gap-2 text-center">
-            <h1 className="text-2xl font-bold">登录</h1>
+            <span className="grid size-10 place-items-center rounded-lg bg-primary text-primary-foreground">
+              <UsersRound className="size-5" aria-hidden="true" />
+            </span>
+            <h1 className="text-xl font-semibold">登录员工画像平台</h1>
+            <p className="text-sm text-muted-foreground">
+              使用企业分配的邮箱与密码登录。
+            </p>
           </div>
 
           <div className="grid gap-4">
@@ -116,6 +123,7 @@ function Login() {
                       data-testid="email-input"
                       placeholder="name@company.com"
                       type="text"
+                      autoComplete="username"
                       {...field}
                     />
                   </FormControl>
@@ -133,7 +141,11 @@ function Login() {
                     <FormLabel>密码</FormLabel>
                   </div>
                   <FormControl>
-                    <PasswordInput data-testid="password-input" {...field} />
+                    <PasswordInput
+                      data-testid="password-input"
+                      autoComplete="current-password"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage className="text-xs" />
                 </FormItem>

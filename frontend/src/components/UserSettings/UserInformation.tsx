@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { EmployeeRequestsService } from "@/client"
+import { SectionCard } from "@/components/Common/WorkbenchPrimitives"
 import { ProfileError } from "@/components/Profile/QueryState"
 import useAuth from "@/hooks/useAuth"
 import { useOrg } from "@/hooks/useOrg"
@@ -18,19 +19,28 @@ const UserInformation = () => {
     enabled: !!org && !!employeeId,
   })
   return (
-    <section className="max-w-md space-y-4 py-4">
-      <h2 className="text-lg font-semibold">个人信息</h2>
-      <p className="text-sm text-muted-foreground">
-        姓名和邮箱由企业管理员按员工名单维护。
-      </p>
-      <dl className="space-y-4">
+    <SectionCard aria-label="个人信息" className="divide-y overflow-hidden p-0">
+      <header className="bg-muted/40 px-4 py-2.5">
+        <h2 className="text-sm font-semibold">个人信息</h2>
+      </header>
+      <dl className="divide-y">
         {[
-          ["姓名", user?.full_name],
-          ["登录邮箱", user?.email],
-        ].map(([label, value]) => (
-          <div key={label}>
-            <dt className="text-sm text-muted-foreground">{label}</dt>
-            <dd className="py-2 break-all">{value || "未填写"}</dd>
+          ["姓名", "与企业员工名单同步。", user?.full_name],
+          ["登录邮箱", "如需修改，请联系企业管理员。", user?.email],
+        ].map(([label, description, value]) => (
+          <div
+            key={label}
+            className="grid gap-1 px-4 py-2.5 text-sm sm:grid-cols-2 sm:items-center sm:gap-3"
+          >
+            <dt className="font-medium">
+              {label}
+              <span className="block text-xs font-normal text-muted-foreground">
+                {description}
+              </span>
+            </dt>
+            <dd className="min-w-0 wrap-anywhere sm:text-right">
+              {value || "未填写"}
+            </dd>
           </div>
         ))}
       </dl>
@@ -40,7 +50,7 @@ const UserInformation = () => {
         .map((report) => (
           <p
             key={report.employee_code ?? report.employee_name}
-            className="text-sm text-muted-foreground"
+            className="px-4 py-2.5 text-sm text-muted-foreground"
           >
             你的直属下属 {report.employee_name}
             {report.employee_code && `（工号：${report.employee_code}）`}{" "}
@@ -51,7 +61,7 @@ const UserInformation = () => {
             如需开通团队管理与审批权限，请联系企业管理员。
           </p>
         ))}
-    </section>
+    </SectionCard>
   )
 }
 
