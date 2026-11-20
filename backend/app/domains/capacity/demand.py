@@ -44,6 +44,7 @@ from app.domains.capacity.models import (
     DemandEventKind,
     DemandOutcome,
     DemandStatus,
+    ProposalStatus,
     RequesterPolicy,
 )
 from app.domains.capacity.schemas import REASON_LABELS, ReasonCode, Via
@@ -931,8 +932,19 @@ def respond_demand(
     from app.domains.capacity import proposal
 
     latest = proposal.latest(session, principal.org_id, demand_id, lock=True)
-    if latest is not None and (
-        revision <= latest.demand_revision or not proposal.reply_superseded(row, latest)
+    if (
+        latest is not None
+        and not (
+            action == "withdraw"
+            and row.status == DemandStatus.SUBMITTED
+            and revision == row.revision
+            and latest.kind == "initial"
+            and latest.status == ProposalStatus.WITHDRAWN
+        )
+        and (
+            revision <= latest.demand_revision
+            or not proposal.reply_superseded(row, latest)
+        )
     ):
         return proposal.respond(
             principal,
