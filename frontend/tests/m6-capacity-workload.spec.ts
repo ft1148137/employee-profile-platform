@@ -266,18 +266,19 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
   await expect(nextCell).toHaveAttribute("aria-pressed", "true")
   await details.getByRole("button", { name: "设置周投入" }).click()
   await expect(page.getByLabel("其他工作占比（%）")).toHaveValue("110")
-  await chart
+  const selfCell = chart
     .getByRole("row")
     .filter({ hasText: "合成经理" })
     .getByRole("button", { name: /查看负荷明细/ })
     .first()
-    .click()
+  await selfCell.click()
   const selfDetails = page.getByRole("dialog", { name: "负荷明细 · 合成经理" })
   await expect(selfDetails).toBeVisible()
   await expect(
     selfDetails.getByRole("button", { name: "设置周投入" }),
   ).toHaveCount(0)
   await selfDetails.press("Escape")
+  await expect(selfCell).toBeFocused()
   await page.getByRole("combobox", { name: "部门筛选" }).click()
   await expect(
     page.getByRole("option", { name: "客户", exact: true }),

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { CapacityService, type WorkloadPublic } from "@/client"
 import { HelpTip, SideDrawer } from "@/components/Common/WorkbenchPrimitives"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
@@ -37,6 +37,7 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
   const [department, setDepartment] = useState("all")
   const [offset, setOffset] = useState(0)
   const [dialog, setDialog] = useState<WorkloadDialog | null>(null)
+  const dialogOpener = useRef<HTMLElement | null>(null)
   const list = async (from_week?: string) =>
     (
       await CapacityService.listWorkloads({
@@ -109,6 +110,10 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
     setDialog(null)
     setOffset(weeks)
   }
+  const openDialog = (next: WorkloadDialog, opener?: HTMLElement) => {
+    if (opener) dialogOpener.current = opener
+    setDialog(next)
+  }
   const actions = (
     row: WorkloadPublic,
     week = row.weeks[0].week_start,
@@ -120,7 +125,12 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
           size="sm"
           variant="outline"
           className="px-2"
-          onClick={() => setDialog({ mode: "edit", row, week })}
+          onClick={(event) =>
+            openDialog(
+              { mode: "edit", row, week },
+              inDetails ? undefined : event.currentTarget,
+            )
+          }
         >
           {inDetails ? "设置周投入" : "设置"}
         </Button>
@@ -130,7 +140,12 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
           size="sm"
           variant="outline"
           className="px-2"
-          onClick={() => setDialog({ mode: "dates", row, week })}
+          onClick={(event) =>
+            openDialog(
+              { mode: "dates", row, week },
+              inDetails ? undefined : event.currentTarget,
+            )
+          }
         >
           {inDetails && canEdit(row) ? "登记不可用日期" : "不可用日期"}
         </Button>
@@ -259,14 +274,19 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
             actions={actions}
             activeEmployee={selectedRow?.employee_id}
             activeWeek={selected?.week}
-            onSelect={(selection) => setDialog({ mode: "details", selection })}
+            onSelect={(selection, opener) =>
+              openDialog({ mode: "details", selection }, opener)
+            }
           />
         )}
       </div>
       <SideDrawer
         open={!!selectedRow}
         onOpenChange={(open) => {
-          if (!open) setDialog(null)
+          if (!open) {
+            setDialog(null)
+            dialogOpener.current?.focus({ preventScroll: true })
+          }
         }}
         modal={false}
         showOverlay={false}

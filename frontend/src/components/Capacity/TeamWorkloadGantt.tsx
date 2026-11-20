@@ -181,7 +181,7 @@ function Timeline({
 }: {
   row: WorkloadPublic
   activeWeek?: string
-  onSelect: (selection: WorkloadSelection) => void
+  onSelect: (selection: WorkloadSelection, opener: HTMLButtonElement) => void
 }) {
   const weeks = row.weeks
   const first = weeks[0].week_start
@@ -215,13 +215,16 @@ function Timeline({
                 week.week_start === activeWeek &&
                   "ring-2 ring-primary ring-inset",
               )}
-              onClick={() =>
-                onSelect({
-                  row,
-                  range,
-                  title: weekLabel(week.week_start),
-                  week: week.week_start,
-                })
+              onClick={(event) =>
+                onSelect(
+                  {
+                    row,
+                    range,
+                    title: weekLabel(week.week_start),
+                    week: week.week_start,
+                  },
+                  event.currentTarget,
+                )
               }
             >
               <span
@@ -301,13 +304,16 @@ function Timeline({
                   gridColumn: `${startDay + 1} / ${endDay + 1}`,
                   gridRow: index + 1,
                 }}
-                onClick={() =>
-                  onSelect({
-                    row,
-                    range: segment,
-                    title,
-                    week: weeks[Math.floor(startDay / 7)].week_start,
-                  })
+                onClick={(event) =>
+                  onSelect(
+                    {
+                      row,
+                      range: segment,
+                      title,
+                      week: weeks[Math.floor(startDay / 7)].week_start,
+                    },
+                    event.currentTarget,
+                  )
                 }
               >
                 {segment.start_date < first && (
@@ -341,7 +347,7 @@ export function TeamWorkloadGantt({
   actions: (row: WorkloadPublic) => ReactNode
   activeEmployee?: string
   activeWeek?: string
-  onSelect: (selection: WorkloadSelection) => void
+  onSelect: (selection: WorkloadSelection, opener: HTMLButtonElement) => void
 }) {
   const mobile = useIsMobile()
   const groups = new Map<string | null, WorkloadPublic[]>()
