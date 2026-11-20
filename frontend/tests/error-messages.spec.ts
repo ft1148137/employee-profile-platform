@@ -6,9 +6,9 @@ test("API errors show Chinese validation, detail and fallback messages", () => {
   for (const [status, detail, expected] of [
     [400, "当前密码不正确", "当前密码不正确"],
     [409, { code: "stale", message: "请重新预览" }, "请重新预览"],
-    [422, [{ msg: "Field required" }], "提交的内容格式不正确"],
+    [422, [{ msg: "Field required" }], "填写内容格式有误，请检查后重试"],
     [429, null, "操作过于频繁，请稍后重试"],
-    [500, null, "服务器暂时出错，请稍后重试"],
+    [500, null, "服务暂时异常，请稍后重试"],
     [503, null, "服务暂时不可用，请稍后重试"],
   ] as const) {
     const response = { status, data: { detail } } as AxiosResponse

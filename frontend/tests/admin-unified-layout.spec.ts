@@ -61,9 +61,7 @@ for (const size of [
     await page.goto("/admin/assistant")
     const sidebar = page.getByRole("region", { name: "管理助手会话" })
     await expect(sidebar.getByRole("link")).toHaveCount(25)
-    await expect(
-      page.getByRole("region", { name: "今天要处理的事" }),
-    ).toBeVisible()
+    await expect(page.getByRole("region", { name: "待办事项" })).toBeVisible()
     for (const entry of entries) {
       const row = sidebar.getByRole("link", {
         name: entry.preview,
@@ -167,16 +165,14 @@ for (const size of [
         ),
       )
       .toBe("")
-    await expect(
-      page.getByRole("region", { name: "今天要处理的事" }),
-    ).toBeVisible()
+    await expect(page.getByRole("region", { name: "待办事项" })).toBeVisible()
   })
 }
 
 test("unconfigured model allows history and every manual menu", async ({
   page,
 }) => {
-  const reason = "请先配置模型，可以继续使用手工页面。"
+  const reason = "请先配置模型，你也可以直接在对应页面操作。"
   const id = crypto.randomUUID()
   await page.route("**/admin-assistant/availability?*", (route) =>
     route.fulfill({ json: { available: false, reason } }),
@@ -215,9 +211,7 @@ test("unconfigured model allows history and every manual menu", async ({
     process.env.DEMO_USER_PASSWORD!,
   )
   await expect(page).toHaveURL("/assistant?mode=admin")
-  await expect(
-    page.getByRole("region", { name: "今天要处理的事" }),
-  ).toBeVisible()
+  await expect(page.getByRole("region", { name: "待办事项" })).toBeVisible()
   await expect(page.getByRole("log")).toContainText(reason)
   await expect(page.getByLabel("发给管理助手的消息")).toBeDisabled()
   await page.getByRole("link", { name: "合成历史对话", exact: true }).click()
@@ -361,7 +355,7 @@ test("mobile conversation sheet switches sessions and starts a new task", async 
   )
   await page.getByRole("button", { name: "打开空间导航", exact: true }).click()
   const sheet = page.getByRole("dialog", { name: "空间导航", exact: true })
-  await expect(sheet).toContainText("2 小时没有活动后清除")
+  await expect(sheet).toContainText("闲置 2 小时后自动清除")
   const row = sheet.getByRole("link", { name: "手机历史对话", exact: true })
   await expect(row).toContainText("1/2")
   await expect(row).toContainText("管理助手 · 3 轮")

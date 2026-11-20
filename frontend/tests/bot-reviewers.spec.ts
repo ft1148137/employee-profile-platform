@@ -43,9 +43,9 @@ test("assistant preview and status name the reviewers", async ({ page }) => {
   )
   await logInUser(page, email, password)
   const panel = page.getByRole("region", { name: "助手", exact: true })
-  await panel.getByLabel("发给机器人的消息").fill("查看请求进度")
+  await panel.getByLabel("发给助手的消息").fill("查看请求进度")
   await panel.getByRole("button", { name: "发送", exact: true }).click()
-  await expect(panel.getByLabel("提交前预览", { exact: true })).toContainText(
+  await expect(panel.getByLabel("变更预览", { exact: true })).toContainText(
     "提交后由 合成经理（直属上级）审批",
   )
   await expect(panel.getByLabel("请求进度", { exact: true })).toContainText(

@@ -25,16 +25,14 @@ test("admin saves approval policy versions and category overrides", async ({
     await page.goto("/admin/rules?tab=approval")
     await page.getByRole("link", { name: "审批规则", exact: true }).click()
     const form = page.getByRole("form", { name: "审批规则", exact: true })
-    await expect(form.getByLabel("全企业需要经理确认")).toBeVisible()
+    await expect(form.getByLabel("默认需要经理审批")).toBeVisible()
     await expectChineseCopy(page)
-    await form.getByLabel("全企业需要经理确认").uncheck()
+    await form.getByLabel("默认需要经理审批").uncheck()
     await form.getByLabel(original.categories[0], { exact: true }).click()
     await page.getByRole("option", { name: "需要", exact: true }).click()
-    await form.getByLabel("员工过目期限（天）").fill("7")
+    await form.getByLabel("员工确认期限（天）").fill("7")
     await form.getByRole("button", { name: "保存审批规则" }).click()
-    await expect(form.getByRole("status")).toHaveText(
-      "审批规则已保存为新版本。",
-    )
+    await expect(form.getByRole("status")).toHaveText("审批规则已保存")
     const saved = await (await request.get(url, { headers })).json()
     expect(saved.current.version).toBe(original.current.version + 1)
     expect(saved.current.require_manager).toBe(false)
@@ -42,19 +40,19 @@ test("admin saves approval policy versions and category overrides", async ({
     expect(saved.current.owner_review_days).toBe(7)
     const history = page.getByRole("region", { name: "审批规则历史" })
     await expect(history).toContainText(`第 ${saved.current.version} 版`)
-    await expect(history).toContainText("员工过目期限：7 天")
+    await expect(history).toContainText("员工确认期限：7 天")
     await form.getByLabel(original.categories[0], { exact: true }).click()
-    await page.getByRole("option", { name: "跟随全企业", exact: true }).click()
-    await form.getByLabel("员工过目期限（天）").fill("9")
+    await page.getByRole("option", { name: "跟随默认", exact: true }).click()
+    await form.getByLabel("员工确认期限（天）").fill("9")
     await form.getByRole("button", { name: "保存审批规则" }).click()
     await expect(history).toContainText(`第 ${saved.current.version + 1} 版`)
-    await expect(history).toContainText("员工过目期限：7 天")
+    await expect(history).toContainText("员工确认期限：7 天")
     await page.reload()
     await page.getByRole("link", { name: "审批规则", exact: true }).click()
-    await expect(form.getByLabel("员工过目期限（天）")).toHaveValue("9")
+    await expect(form.getByLabel("员工确认期限（天）")).toHaveValue("9")
     await expect(
       form.getByLabel(original.categories[0], { exact: true }),
-    ).toHaveText("跟随全企业")
+    ).toHaveText("跟随默认")
   } finally {
     expect(
       (
@@ -101,7 +99,7 @@ test("profile preview shows the current approval rule and exempt changes publish
   await editor.getByRole("button", { name: "手动编辑", exact: true }).click()
   const statement = "独立完成合成交付"
   await editor
-    .getByRole("textbox", { name: "陈述", exact: true })
+    .getByRole("textbox", { name: "能力说明", exact: true })
     .fill(statement)
   const preview = editor.getByRole("button", {
     name: "预览并提交",

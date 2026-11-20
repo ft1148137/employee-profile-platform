@@ -61,7 +61,7 @@ test("未匹配 Jira 账号说明邮箱可能隐藏及核对办法", async ({ pa
   const dialog = page.getByRole("dialog", { name: "未匹配 Jira 账号" })
   await expect(
     dialog.getByText(
-      "Jira 可能隐藏邮箱，显示名不一定是真名，请和 Jira 管理员核对账号。",
+      "部分 Jira 账号可能隐藏了邮箱或使用昵称，请核对后再关联。",
       { exact: true },
     ),
   ).toBeVisible()

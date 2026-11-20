@@ -189,7 +189,12 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
     await page.goto(`/capacity?tab=${tab}`)
     await expect(
       page.getByRole("heading", {
-        name: tab === "incoming" ? "待审批" : "需求与容量",
+        name:
+          tab === "incoming"
+            ? "待审批"
+            : tab === "team"
+              ? "团队负荷"
+              : "协作需求",
         exact: true,
       }),
     ).toBeVisible()
@@ -201,16 +206,16 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
   const privatePage = async () => {
     for (const name of privateNames)
       await expect(page.locator("body")).not.toContainText(name)
-    await expect(page.getByRole("region", { name: "本部门依据" })).toHaveCount(
-      0,
-    )
+    await expect(
+      page.getByRole("region", { name: "本部门匹配人员" }),
+    ).toHaveCount(0)
   }
   await open(tokens.get("A")!, "outgoing")
   await privatePage()
   await expect(
-    page.getByRole("link", { name: "收到需求", exact: true }),
+    page.getByRole("link", { name: "协作需求", exact: true }),
   ).toHaveCount(0)
-  await page.getByRole("button", { name: "手工提需求" }).click()
+  await page.getByRole("button", { name: "新建需求" }).click()
   await page
     .getByLabel("需求方部门", { exact: true })
     .selectOption(employee.department!.id)
@@ -231,8 +236,8 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
   await privatePage()
   await page.getByLabel("人数", { exact: true }).fill("2")
   await page.getByLabel("每人投入比例（%）").fill("50")
-  await page.getByLabel("时间窗口开始").fill("2026-12-01")
-  await page.getByLabel("时间窗口结束").fill("2026-12-31")
+  await page.getByLabel("开始日期").fill("2026-12-01")
+  await page.getByLabel("结束日期").fill("2026-12-31")
   await page.getByLabel("需求说明").fill("合成需求：接口联调")
   await page.getByRole("button", { name: "预览需求" }).click()
   const demandPreview = page.getByRole("region", { name: "需求预览" })
@@ -261,7 +266,7 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
       .filter({ hasText: "合成需求：接口联调" })
       .getByRole("link", { name: "查看详情", exact: true })
       .click()
-    const basis = page.getByRole("region", { name: "本部门依据" })
+    const basis = page.getByRole("region", { name: "本部门匹配人员" })
     for (const name of privateNames) await expect(basis).toContainText(name)
     await expect(basis).toContainText("独立完成")
     await expect(basis).toContainText("50%")
@@ -301,7 +306,7 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
     // Requesters must not see the responding department's personal names.
     await expect(timeline).toContainText("答复人：对方部门经理")
     await expect(page.locator("body")).not.toContainText("合成答复经理")
-    await expect(timeline).toContainText("部门级依据（答复时）")
+    await expect(timeline).toContainText("答复时人员概况")
     await privatePage()
     if (!index) {
       await expect(page.getByRole("button", { name: "接受答复" })).toHaveCount(
@@ -350,9 +355,9 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
   await privatePage()
   await settings("managers")
   await open(tokens.get("A")!, "outgoing")
-  await expect(page.getByRole("button", { name: "手工提需求" })).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "新建需求" })).toHaveCount(0)
   for (const token of [admin.access_token, tokens.get("M")!]) {
     await open(token, "outgoing")
-    await expect(page.getByRole("button", { name: "手工提需求" })).toBeVisible()
+    await expect(page.getByRole("button", { name: "新建需求" })).toBeVisible()
   }
 })

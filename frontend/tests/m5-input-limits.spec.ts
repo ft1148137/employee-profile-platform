@@ -19,7 +19,7 @@ test("employee sees character counts and cannot preview oversized text", async (
     .click()
   const dialog = page.getByRole("dialog")
   const statement = dialog
-    .getByRole("textbox", { name: "陈述", exact: true })
+    .getByRole("textbox", { name: "能力说明", exact: true })
     .first()
   await statement.fill("😀".repeat(201))
   await expect(dialog.getByText("201 / 200 字", { exact: true })).toBeVisible()
@@ -34,7 +34,7 @@ test("employee sees character counts and cannot preview oversized text", async (
     dialog.getByRole("button", { name: "预览并提交", exact: true }),
   ).toBeEnabled()
   await dialog
-    .getByLabel("依据说明", { exact: true })
+    .getByLabel("补充说明", { exact: true })
     .first()
     .fill("中".repeat(4001))
   await expect(

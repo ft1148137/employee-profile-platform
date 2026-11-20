@@ -191,18 +191,18 @@ test("M4: employee update, manager publication, history and self-review denial",
   await editor.getByRole("button", { name: "确认提交", exact: true }).click()
   await expect(editor).toBeHidden()
   await enter(managerToken, `/reviews/${draft.id}`)
-  await expect(page.getByRole("heading", { name: "逐项审批" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "画像审批" })).toBeVisible()
   await expect(
     page.getByText("独立完成了合成项目验证", { exact: true }),
   ).toBeVisible()
-  await page.getByLabel("合成能力的决定").selectOption("approved")
+  await page.getByLabel("合成能力的审批意见").selectOption("approved")
   await expectChineseCopy(page)
   await page.screenshot({
     path: info.outputPath("m4-manager-review.png"),
     fullPage: true,
   })
-  await page.getByRole("button", { name: "核对并提交" }).click()
-  await page.getByRole("button", { name: "确认提交决定" }).click()
+  await page.getByRole("button", { name: "提交审批" }).click()
+  await page.getByRole("button", { name: "确认提交" }).click()
   await expect(page.getByRole("status")).toContainText("审批已提交")
   await enter(ownerToken, `/employees/${owner.id}`)
   await page.setViewportSize({ width: 390, height: 844 })

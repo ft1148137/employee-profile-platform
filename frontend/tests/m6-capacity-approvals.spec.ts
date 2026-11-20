@@ -200,12 +200,12 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
   const pendingNav = page
     .locator("#workspace-navigation")
     .getByRole("link", { name: /^待审批/ })
-  const incomingFilter = page.getByRole("link", { name: /^收到需求/ })
-  const incoming = page.getByRole("region", { name: "收到需求" })
+  const incomingFilter = page.getByRole("link", { name: /^协作需求/ })
+  const incoming = page.getByRole("region", { name: "协作需求" })
   const expectNoIncoming = async () => {
-    await expect(incoming.getByRole("status")).toHaveText("目前没有待处理事项")
+    await expect(incoming.getByRole("status")).toHaveText("暂无待审批事项")
     await expect(incoming.getByRole("article")).toHaveCount(0)
-    await expect(incomingFilter).toHaveText("收到需求0")
+    await expect(incomingFilter).toHaveText("协作需求0")
     await expect(pendingNav).toHaveText("待审批")
   }
   await open(root, "/reviews?type=demand")
@@ -224,7 +224,7 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
   await expectNoIncoming()
   await open(m, "/reviews?type=demand")
   await expect(incoming.getByRole("article")).toContainText(ownDescription)
-  await expect(incomingFilter).toHaveText("收到需求1")
+  await expect(incomingFilter).toHaveText("协作需求1")
   await expect(pendingNav).toHaveText("待审批1")
 
   await api(
@@ -280,7 +280,7 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
   })
   await open(e)
   await expect(
-    page.getByText("目前没有需要你审批的申请", { exact: true }),
+    page.getByText("暂无待审批的负荷调整", { exact: true }),
   ).toBeVisible()
   await expect(
     page.getByRole("form", { name: "合成员工的延期申请" }),
@@ -330,7 +330,7 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
   await extension.getByLabel("处理说明（退回必填）").fill("请补充依赖")
   await extension.getByRole("button", { name: "退回延期" }).click()
   await expect(
-    page.getByText("目前没有需要你审批的申请", { exact: true }),
+    page.getByText("暂无待审批的负荷调整", { exact: true }),
   ).toBeVisible()
   await open(e, "/capacity?tab=mine")
   await expect(page.getByText("90%", { exact: true })).toBeVisible()
@@ -343,13 +343,13 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
   ).toContainText("2026-12-20")
   await page.goto("/inbox")
   await expect(
-    page.getByRole("link", { name: "查看需求与容量" }).first(),
+    page.getByRole("link", { name: "查看详情" }).first(),
   ).toHaveAttribute("href", "/capacity")
-  await page.getByRole("link", { name: "查看需求与容量" }).first().click()
+  await page.getByRole("link", { name: "查看详情" }).first().click()
   await expect(page).toHaveURL("/capacity")
   await page.goto("/capacity?tab=approvals")
   await expect(
-    page.getByText("目前没有需要你审批的申请", { exact: true }),
+    page.getByText("暂无待审批的负荷调整", { exact: true }),
   ).toBeVisible()
   await workloadRequest(tokens.get("F")!, 40)
   const [membership] = await api("/api/v1/me/memberships", undefined, root)
@@ -360,7 +360,7 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     .getByRole("button", { name: "同意", exact: true })
     .click()
   await expect(
-    page.getByText("目前没有需要你审批的申请", { exact: true }),
+    page.getByText("暂无待审批的负荷调整", { exact: true }),
   ).toBeVisible()
   await open(tokens.get("F")!, "/capacity?tab=mine")
   await expect(page.getByText("40%", { exact: true })).toBeVisible()
@@ -371,7 +371,7 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     .getByRole("button", { name: "同意", exact: true })
     .click()
   await expect(
-    page.getByText("目前没有需要你审批的申请", { exact: true }),
+    page.getByText("暂无待审批的负荷调整", { exact: true }),
   ).toBeVisible()
   await page.goto("/capacity?tab=team")
   await expect(page.getByRole("region", { name: "延期审批" })).toHaveCount(0)
@@ -388,7 +388,7 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
   await extensionRequest()
   await open(a)
   await expect(
-    page.getByText("目前没有需要你审批的申请", { exact: true }),
+    page.getByText("暂无待审批的负荷调整", { exact: true }),
   ).toBeVisible()
   await expect(page.locator("body")).not.toContainText("合成员工")
   await expect(page.locator("body")).not.toContainText("合成私有延期原因")

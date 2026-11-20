@@ -49,7 +49,7 @@ test("manager downloads every visible published judgment despite page filters", 
   )
   await page.goto("/employees")
   await expect(
-    page.getByText("导出本人可见的全部已发布判断，不受页面筛选影响。"),
+    page.getByText("导出可见范围内的全部已发布画像，不受筛选条件影响。"),
   ).toBeVisible()
   await page
     .getByRole("textbox", { name: "搜索姓名" })
@@ -57,7 +57,7 @@ test("manager downloads every visible published judgment despite page filters", 
   await expect(page.getByText("共 0 名员工")).toBeVisible()
   const downloadPromise = page.waitForEvent("download")
   await page
-    .getByRole("button", { name: "导出已发布画像（CSV）", exact: true })
+    .getByRole("button", { name: "导出画像（CSV）", exact: true })
     .click()
   const download = await downloadPromise
   expect(download.suggestedFilename()).toBe("已发布画像.csv")
@@ -82,7 +82,7 @@ test("manager downloads every visible published judgment despite page filters", 
   )
   const jsonDownload = page.waitForEvent("download")
   const jsonButton = page.getByRole("button", {
-    name: "导出已发布画像（结构化数据）",
+    name: "导出画像（JSON）",
     exact: true,
   })
   await expect(jsonButton).toHaveAttribute("title", "JSON 格式")

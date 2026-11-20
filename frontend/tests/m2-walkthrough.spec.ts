@@ -33,7 +33,7 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
   )
   await activateTemplate(page, "aiot-hardware")
   await page.goto("/admin/people?tab=accounts")
-  await page.getByRole("button", { name: "生成账号", exact: true }).click()
+  await page.getByRole("button", { name: "发放账号", exact: true }).click()
   await page.getByRole("button", { name: "确认生成并下载" }).click()
   await page
     .getByRole("dialog")
@@ -87,8 +87,8 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
   await expect(
     page.getByRole("link", { name: "审批规则", exact: true }),
   ).toHaveAttribute("aria-current", "page")
-  await expect(page.getByLabel("全企业需要经理确认")).toBeChecked()
-  await expect(page.getByLabel("员工过目期限（天）")).toHaveValue("14")
+  await expect(page.getByLabel("默认需要经理审批")).toBeChecked()
+  await expect(page.getByLabel("员工确认期限（天）")).toHaveValue("14")
   await page.goto("/admin/data-ai?tab=model")
   await addDraftingEvidence(page)
   page.once("dialog", (dialog) => dialog.accept())
@@ -134,14 +134,14 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
   await expect(page).toHaveURL("/assistant")
   await page.getByRole("link", { name: "组织", exact: true }).click()
   await expect(
-    page.getByRole("heading", { name: "待你过目：系统起草的初始画像" }),
+    page.getByRole("heading", { name: "待你确认：初始画像草稿" }),
   ).toBeVisible()
   const initialItem = page.getByRole("region", { name: /^草稿改动：/ }).first()
   await expect(initialItem.getByRole("heading")).toBeVisible()
   await expect(initialItem).toContainText("修改后：")
-  await expect(
-    initialItem.getByText("Jira 记录", { exact: false }),
-  ).toHaveCount(0)
+  await expect(initialItem.getByText("工作记录", { exact: false })).toHaveCount(
+    0,
+  )
   const employeeHeaders = await page.evaluate(() => ({
     Authorization: `Bearer ${localStorage.getItem("access_token")}`,
   }))

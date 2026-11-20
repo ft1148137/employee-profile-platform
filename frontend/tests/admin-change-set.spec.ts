@@ -94,7 +94,7 @@ test("reset password requires two clicks and disappears after reload", async ({
   })
   await expect(card.getByText(/涉及账号：合成员工/)).toBeVisible()
   await expect(card.getByText("修改前", { exact: true })).toHaveCount(0)
-  await card.getByRole("button", { name: "确认应用" }).click()
+  await card.getByRole("button", { name: "确认生效" }).click()
   await expect(card.getByRole("status")).toHaveText("请再次确认")
   await expect(card.getByLabel("初始密码", { exact: true })).toHaveCount(0)
   const responsePromise = page.waitForResponse(
@@ -162,7 +162,7 @@ test("Jira draft accepts a private token, tests it and highlights the source pag
   await expect(
     section.getByRole("button", { name: "保存", exact: true }),
   ).toBeDisabled()
-  await section.getByRole("button", { name: "确认应用", exact: true }).click()
+  await section.getByRole("button", { name: "确认生效", exact: true }).click()
   await expect(
     section.getByRole("region", { name: "页面草稿确认" }),
   ).toHaveCount(0)
@@ -212,7 +212,7 @@ for (const width of [1440, 390]) {
       (await (await request.get(`${base}/update-settings`, { headers })).json())
         .reminder_schedule,
     ).toBe("quarterly")
-    await card.getByRole("button", { name: "确认应用" }).click()
+    await card.getByRole("button", { name: "确认生效" }).click()
     await expect(card.getByRole("status")).toHaveText("已应用")
     expect(
       (await (await request.get(`${base}/update-settings`, { headers })).json())
@@ -247,7 +247,7 @@ for (const width of [1440, 390]) {
       .fill("把提醒改成每年一次，证据期限改为36个月")
     await page.getByRole("button", { name: "发送", exact: true }).click()
     const latest = page.getByRole("region", { name: "设置改动确认卡" }).last()
-    await latest.getByRole("button", { name: "确认应用" }).click()
+    await latest.getByRole("button", { name: "确认生效" }).click()
     await expect(latest.getByRole("status")).toHaveText("已应用")
     expect(
       (
@@ -271,7 +271,7 @@ for (const width of [1440, 390]) {
       (await (await request.get(`${base}/update-settings`, { headers })).json())
         .reminder_schedule,
     ).toBe("off")
-    await reverse.getByRole("button", { name: "确认应用" }).click()
+    await reverse.getByRole("button", { name: "确认生效" }).click()
     await expect(reverse.getByRole("status")).toHaveText("已应用")
     expect(
       (await (await request.get(`${base}/update-settings`, { headers })).json())
@@ -321,7 +321,7 @@ test("auto drafting switch shows affected people and can be undone", async ({
     (await (await request.get(`${base}/drafting-settings`, { headers })).json())
       .enabled
   expect(await read()).toBe(false)
-  await card.getByRole("button", { name: "确认应用" }).click()
+  await card.getByRole("button", { name: "确认生效" }).click()
   await expect(card.getByRole("status")).toHaveText("已应用")
   expect(await read()).toBe(true)
   await card.getByRole("button", { name: "撤销", exact: true }).click()
@@ -343,7 +343,7 @@ test("closing manager confirmation requires two clicks with impact", async ({
   await page.getByRole("button", { name: "发送", exact: true }).click()
   const card = page.getByRole("region", { name: "设置改动确认卡" })
   await expect(card).toBeVisible({ timeout: 30000 })
-  await card.getByRole("button", { name: "确认应用" }).click()
+  await card.getByRole("button", { name: "确认生效" }).click()
   await expect(card.getByRole("status")).toHaveText("请再次确认")
   await expect(card.getByRole("alert")).toContainText("影响全体在职员工")
   expect(
@@ -406,7 +406,7 @@ test("Feishu draft keeps credentials private and requires a second confirmation"
       (row: { platform: string }) => row.platform === "feishu",
     )
   const confirmation = page.getByRole("region", { name: "页面草稿确认" })
-  await confirmation.getByRole("button", { name: "确认应用" }).click()
+  await confirmation.getByRole("button", { name: "确认生效" }).click()
   await expect(confirmation.getByRole("status")).toHaveText("请再次确认")
   expect((await read()).enabled).toBe(false)
   await expect(confirmation.getByRole("alert")).toContainText(
@@ -496,14 +496,14 @@ test("saving credentials and retesting clear the previous apply error", async ({
   await page.getByRole("button", { name: "发送", exact: true }).click()
   const card = page.getByRole("region", { name: "设置改动确认卡" })
   const oldError = card.getByText("还缺少应用密钥，请先填写", { exact: true })
-  await card.getByRole("button", { name: "确认应用" }).click()
+  await card.getByRole("button", { name: "确认生效" }).click()
   await expect(oldError).toBeVisible()
   const secure = page.getByRole("form", { name: "安全输入框" })
   await secure.locator('input[type="password"]').fill("synthetic-new-key")
   await secure.getByRole("button", { name: "安全提交" }).click()
   await expect(secure.getByRole("status")).toHaveText("已填写")
   await expect(oldError).toHaveCount(0)
-  await card.getByRole("button", { name: "确认应用" }).click()
+  await card.getByRole("button", { name: "确认生效" }).click()
   await expect(oldError).toBeVisible()
   await card.getByRole("button", { name: "测试连接" }).click()
   await expect(

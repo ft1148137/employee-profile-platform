@@ -165,9 +165,9 @@ test("assistant shows status and appeal todo through resubmission", async ({
   })
   expect(grant.ok()).toBeTruthy()
   await enter(owner.access_token, "/admin")
-  await expect(
-    page.getByRole("region", { name: "今天要处理的事" }),
-  ).toContainText("1 个争议待处理")
+  await expect(page.getByRole("region", { name: "待办事项" })).toContainText(
+    "1 个争议待处理",
+  )
   await page.goto(`/employees/${subject.id}?tab=appeals`)
   await expect(
     page.getByText("不能处理自己提出的申诉，请由另一位企业管理员处理"),
@@ -187,7 +187,7 @@ test("assistant shows status and appeal todo through resubmission", async ({
   await page.goto("/admin/progress")
   await expect(page).toHaveURL("/assistant?mode=admin")
   await expect(page.getByLabel("发给管理助手的消息")).toBeDisabled()
-  const today = page.getByRole("region", { name: "今天要处理的事" })
+  const today = page.getByRole("region", { name: "待办事项" })
   for (const step of ["sources", "identities"]) {
     expect(
       (
@@ -258,14 +258,14 @@ test("assistant shows status and appeal todo through resubmission", async ({
   ).toHaveText("0 项待处理申诉")
   await page.goto("/admin")
   await expect(
-    page.getByRole("region", { name: "今天要处理的事" }),
+    page.getByRole("region", { name: "待办事项" }),
   ).not.toContainText("个争议待处理")
   await page.route("**/admin/overview", async (route) => {
     const response = await route.fetch()
     await route.fulfill({ json: { ...(await response.json()), todos: [] } })
   })
   await page.reload()
-  await expect(page.getByText("今天没有要处理的事")).toBeVisible()
+  await expect(page.getByText("暂无待办事项")).toBeVisible()
   await page.unroute("**/admin/overview")
   await enter(owner.access_token, "/inbox")
   await expect(
@@ -281,7 +281,7 @@ test("assistant shows status and appeal todo through resubmission", async ({
   await page.getByRole("button", { name: "继续修改" }).click()
   await page
     .getByRole("dialog")
-    .getByRole("textbox", { name: "依据说明", exact: true })
+    .getByRole("textbox", { name: "补充说明", exact: true })
     .fill("本人补充了独立完成的合成依据")
   await page.getByRole("button", { name: "预览并提交", exact: true }).click()
   await page.getByRole("button", { name: "确认提交", exact: true }).click()

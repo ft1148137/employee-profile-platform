@@ -45,7 +45,7 @@ for (const [status, reason] of [
     await expect(
       page.getByRole("button", { name: "添加能力", exact: true }),
     ).toBeVisible()
-    await expect(page.getByText("已生成候选")).toHaveCount(0)
+    await expect(page.getByText("已生成")).toHaveCount(0)
     await explanation.getByRole("link", { name: "去助手", exact: true }).click()
     await expect(page).toHaveURL(/\/assistant/)
   })
@@ -63,7 +63,7 @@ test("team cards show initial and review statuses on a phone without horizontal 
     await expect(card.getByRole("link")).toBeVisible()
     await expect(card).toContainText("平台研发部")
     await expect(card).toContainText("初始画像")
-    await expect(card).toContainText("审核状态")
+    await expect(card).toContainText("审批状态")
     await expect(card.locator("dd").nth(1)).not.toBeEmpty()
   }
   await expect(page.getByRole("table")).toBeHidden()

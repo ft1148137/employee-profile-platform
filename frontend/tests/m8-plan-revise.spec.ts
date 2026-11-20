@@ -31,7 +31,7 @@ test("B 方经理快捷换人并锁定安排", async ({ page, request }) => {
   const revised = page.getByRole("article", { name: "自定方案" }).last()
   await expect(revised).toContainText("在「直接安排方案」上修改")
   await expect(revised).toContainText("把合成研发甲换成合成研发丙")
-  await expect(revised).toContainText("这次改了什么")
+  await expect(revised).toContainText("本次调整")
   await expect(revised).toContainText("结论：不可行")
   const weekText = (date: string) =>
     `${Number(date.slice(5, 7))} 月 ${Number(date.slice(8, 10))} 日那一周`

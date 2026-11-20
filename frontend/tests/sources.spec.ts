@@ -214,9 +214,7 @@ for (const account of ["manager.platform", "employee.platform"]) {
       page.getByRole("link", { name: "数据来源", exact: true }),
     ).toHaveCount(0)
     await page.goto("/admin/sources")
-    await expect(page.getByRole("alert")).toContainText(
-      "你没有权限管理数据来源",
-    )
+    await expect(page.getByRole("alert")).toContainText("需要企业管理员权限")
     await expect(page.getByLabel("站点地址")).toHaveCount(0)
   })
 }

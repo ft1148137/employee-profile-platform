@@ -122,12 +122,12 @@ for (const admin of [false, true]) {
     await expect(
       page.getByRole("navigation", { name: "助手模式" }),
     ).toHaveCount(0)
-    await expect(page.getByRole("heading", { name: "最近会话" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "最近对话" })).toBeVisible()
     await expect(
       page.getByRole("button", { name: "打开画像机器人" }),
     ).toHaveCount(0)
     await page
-      .getByLabel(admin ? "发给管理助手的消息" : "发给机器人的消息")
+      .getByLabel(admin ? "发给管理助手的消息" : "发给助手的消息")
       .fill(prompt)
     await page.getByRole("button", { name: "发送", exact: true }).click()
     const results = page.getByRole("log")
@@ -172,12 +172,9 @@ for (const admin of [false, true]) {
     )
     await mockModelAvailability(page, admin, false)
     const form = page.getByRole("form", { name: "按能力找人（只读筛选）" })
-    const openFallback = page.getByText(
-      "模型暂未启用 · 按能力找人（只读筛选）",
-      {
-        exact: true,
-      },
-    )
+    const openFallback = page.getByText("按能力找人", {
+      exact: true,
+    })
     if (!admin) {
       await page.goto("/assistant")
       await expect(openFallback).toBeVisible()
@@ -223,7 +220,7 @@ for (const admin of [false, true]) {
       .getByRole("combobox", { name: "判断状态" })
       .selectOption({ label: "已确认" })
     await search.click()
-    await expect(results).toContainText("共 1 条已发布判断")
+    await expect(results).toContainText("共找到 1 条记录")
     await expect(results).toContainText("通过复杂冲突处理任务与经理复核")
     await expect(results.getByRole("link", { name: "林澈" })).toHaveCount(0)
     const refreshed = page.waitForResponse("**/people-search?*")
@@ -272,13 +269,11 @@ for (const available of [false, true]) {
     const sessions = page.waitForResponse(sessionsPath(false))
     await page.goto("/assistant?find=true")
     await sessions
-    await expect(page.getByRole("heading", { name: "最近会话" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "最近对话" })).toBeVisible()
     await expect(
       page.getByRole("link", { name: "找人", exact: true }),
     ).toHaveCount(0)
-    await expect(
-      page.getByText("模型暂未启用 · 按能力找人（只读筛选）", { exact: true }),
-    ).toHaveCount(0)
+    await expect(page.getByText("按能力找人", { exact: true })).toHaveCount(0)
     await page.goto("/find-people")
     await expect(page.getByRole("alert")).toContainText("没有权限使用找人")
     await expect(

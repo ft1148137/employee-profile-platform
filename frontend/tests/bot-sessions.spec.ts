@@ -19,15 +19,15 @@ test("employee resumes either conversation after reload and in a new tab", async
   await logInUser(page, email, password)
   await page.setViewportSize({ width: 1440, height: 900 })
   const dialog = page
-  await expect(dialog.getByText("还没有历史对话")).toBeVisible()
+  await expect(dialog.getByText("暂无历史对话")).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath("empty-history.png") })
   await expect(
     dialog.getByText("对话在 2 小时没有活动后会被清除", { exact: false }),
   ).toBeVisible()
   const send = async (text: string) => {
-    await dialog.getByLabel("发给机器人的消息").fill(text)
+    await dialog.getByLabel("发给助手的消息").fill(text)
     await dialog.getByRole("button", { name: "发送", exact: true }).click()
-    await expect(dialog.getByLabel("发给机器人的消息")).toBeEnabled()
+    await expect(dialog.getByLabel("发给助手的消息")).toBeEnabled()
     await expect(dialog.getByRole("log")).toContainText(text)
   }
   await send("第一个合成对话")
@@ -61,7 +61,7 @@ test("employee resumes either conversation after reload and in a new tab", async
     { times: 1 },
   )
   await page.reload()
-  await expect(dialog.getByLabel("发给机器人的消息")).toBeEnabled()
+  await expect(dialog.getByLabel("发给助手的消息")).toBeEnabled()
   await expect(dialog.getByRole("log")).not.toContainText("继续第一个对话")
   expect(
     await page.evaluate(
@@ -75,9 +75,7 @@ test("employee resumes either conversation after reload and in a new tab", async
   expect(
     await page.evaluate(() => JSON.stringify({ ...localStorage })),
   ).not.toContain("清理后继续对话")
-  await expect(
-    dialog.getByText("这段对话已过期被清除，已为你新开对话"),
-  ).toBeVisible()
+  await expect(dialog.getByText("原对话已过期，已为你开启新对话")).toBeVisible()
   await checkSwitching(page, context, false, "第二个合成对话")
 })
 
@@ -155,8 +153,8 @@ test("admin resumes conversations across manual pages with matching page drafts"
       draftRequests.push(url.searchParams.get("session_id") ?? "")
   })
   await page.goto("/admin/rules?tab=reminders")
-  const section = page.getByRole("region", { name: "持续更新提醒" })
-  await expect(section.getByLabel("证据较旧期限（月）")).toHaveValue("36")
+  const section = page.getByRole("region", { name: "定期更新提醒" })
+  await expect(section.getByLabel("证据过期提醒（月）")).toHaveValue("36")
   expect(messageRequests).toEqual([])
   const currentId = await page.evaluate(
     () =>
@@ -175,7 +173,7 @@ test("admin resumes conversations across manual pages with matching page drafts"
     .click()
   await expect(dialog.getByRole("log")).toContainText("第二个合成对话")
   await returnToManualPage(page)
-  await expect(section.getByLabel("证据较旧期限（月）")).toHaveValue("24")
+  await expect(section.getByLabel("证据过期提醒（月）")).toHaveValue("24")
   await expectChineseCopy(page)
   await checkSwitching(page, context, true, "把提醒改成每年一次")
 })
@@ -187,7 +185,7 @@ async function checkSwitching(
   expiredPreview: string,
 ) {
   const service = administrator ? "admin-assistant" : "bot"
-  const label = administrator ? "发给管理助手的消息" : "发给机器人的消息"
+  const label = administrator ? "发给管理助手的消息" : "发给助手的消息"
   const dialog = administrator
     ? page.getByRole("region", { name: "管理助手", exact: true })
     : page.getByRole("region", { name: "助手", exact: true })
@@ -285,7 +283,7 @@ async function checkSwitching(
     .click()
   await expect(
     dialog.getByRole("status").filter({ hasText: "这段对话已过期被清除" }),
-  ).toHaveText("这段对话已过期被清除，已为你新开对话")
+  ).toHaveText("原对话已过期，已为你开启新对话")
   await expect(input).toBeEnabled()
   await expect(input).toHaveValue("")
   await expect(

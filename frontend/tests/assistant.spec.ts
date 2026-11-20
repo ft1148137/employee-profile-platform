@@ -98,7 +98,7 @@ test("mobile unsent text survives page navigation, stays in its session and clea
   )
   await page.setViewportSize({ width: 390, height: 844 })
   await logInUser(page, email, password)
-  const input = page.getByLabel("发给机器人的消息")
+  const input = page.getByLabel("发给助手的消息")
   await expect(input).toBeEnabled()
   const currentSession = () =>
     page.evaluate(
@@ -214,7 +214,7 @@ for (const manager of [false, true]) {
     await expect(
       page.getByRole("navigation", { name: "面包屑" }),
     ).toContainText("助手")
-    await expect(page.getByLabel("发给机器人的消息")).toBeEnabled()
+    await expect(page.getByLabel("发给助手的消息")).toBeEnabled()
     await expect(
       page.getByRole("button", { name: "打开画像机器人" }),
     ).toHaveCount(0)
@@ -268,7 +268,7 @@ test("prompt only prefills and mobile history selects sessions and opens a new c
   })
   await logInUser(page, email, password)
   await page.goto(`/assistant?prompt=${encodeURIComponent("请修改合成能力")}`)
-  const input = page.getByLabel("发给机器人的消息")
+  const input = page.getByLabel("发给助手的消息")
   await expect(input).toBeEnabled()
   await expect(input).toHaveValue("请修改合成能力")
   expect(turns).toBe(0)

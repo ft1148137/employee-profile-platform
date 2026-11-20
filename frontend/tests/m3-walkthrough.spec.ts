@@ -33,7 +33,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   )
   await activateTemplate(page, "tech-rnd")
   await page.goto("/admin/people?tab=accounts")
-  await page.getByRole("button", { name: "生成账号", exact: true }).click()
+  await page.getByRole("button", { name: "发放账号", exact: true }).click()
   await page.getByRole("button", { name: "确认生成并下载" }).click()
   await page
     .getByRole("dialog")
@@ -71,8 +71,8 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   await expect(
     page.getByRole("link", { name: "审批规则", exact: true }),
   ).toHaveAttribute("aria-current", "page")
-  await expect(page.getByLabel("全企业需要经理确认")).toBeChecked()
-  await expect(page.getByLabel("员工过目期限（天）")).toHaveValue("14")
+  await expect(page.getByLabel("默认需要经理审批")).toBeChecked()
+  await expect(page.getByLabel("员工确认期限（天）")).toHaveValue("14")
   await page.goto("/admin/data-ai?tab=model")
   await addDraftingEvidence(page)
   page.once("dialog", (dialog) => dialog.accept())
@@ -119,14 +119,14 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   await page.getByRole("link", { name: "组织", exact: true }).click()
   await page.setViewportSize({ width: 390, height: 844 })
   await expect(
-    page.getByRole("heading", { name: "待你过目：系统起草的初始画像" }),
+    page.getByRole("heading", { name: "待你确认：初始画像草稿" }),
   ).toBeVisible()
   const initialItem = page.getByRole("region", { name: /^草稿改动：/ }).first()
   await expect(initialItem.getByRole("heading")).toBeVisible()
   await expect(initialItem).toContainText("修改后：")
-  await expect(
-    initialItem.getByText("Jira 记录", { exact: false }),
-  ).toHaveCount(0)
+  await expect(initialItem.getByText("工作记录", { exact: false })).toHaveCount(
+    0,
+  )
   const employeeHeaders = await page.evaluate(() => ({
     Authorization: `Bearer ${localStorage.getItem("access_token")}`,
   }))
@@ -165,14 +165,12 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   const editor = page.getByRole("dialog")
   await editor.getByLabel("新增能力").selectOption("automated_testing")
   await editor
-    .getByRole("textbox", { name: "陈述", exact: true })
+    .getByRole("textbox", { name: "能力说明", exact: true })
     .last()
     .fill("我补充了一段合成项目经历")
-  await editor.getByLabel("依据说明").last().fill("本人完成了合成项目的验证")
+  await editor.getByLabel("补充说明").last().fill("本人完成了合成项目的验证")
   await editor.getByRole("button", { name: "预览并提交", exact: true }).click()
-  await expect(
-    editor.getByRole("heading", { name: "提交前预览" }),
-  ).toBeVisible()
+  await expect(editor.getByRole("heading", { name: "变更预览" })).toBeVisible()
   await editor.getByRole("button", { name: "确认提交", exact: true }).click()
   const pending = page.getByRole("region", { name: "其他待处理请求" })
   await expect(pending).toContainText("待经理审批")
@@ -187,7 +185,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   )
   await page.getByRole("link", { name: /^协同/ }).click()
   const bot = page.getByRole("region", { name: "助手", exact: true })
-  await bot.getByLabel("发给机器人的消息").fill("补充一段合成项目经历")
+  await bot.getByLabel("发给助手的消息").fill("补充一段合成项目经历")
   await bot.getByRole("button", { name: "发送", exact: true }).click()
   await expect(
     bot.getByText("本人完成了合成项目的验证", { exact: false }),
@@ -203,9 +201,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
     .getByRole("button", { name: "确认提交", exact: true })
     .last()
     .click()
-  await expect(
-    bot.getByText("已提交给经理审批，审批前可以撤回。"),
-  ).toBeVisible()
+  await expect(bot.getByText("已提交审批，经理审批前可撤回。")).toBeVisible()
   await bot.getByRole("button", { name: "撤回", exact: true }).click()
   await expect(bot.getByRole("heading", { name: "已撤回" })).toBeVisible()
 })

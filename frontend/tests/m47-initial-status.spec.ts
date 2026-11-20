@@ -145,7 +145,7 @@ isolated(
     await dialog.getByRole("button", { name: "合成能力1", exact: true }).click()
     await dialog.getByRole("button", { name: "手动编辑", exact: true }).click()
     await dialog
-      .getByRole("textbox", { name: "陈述", exact: true })
+      .getByRole("textbox", { name: "能力说明", exact: true })
       .fill("本人补充的合成陈述")
     await dialog
       .getByRole("combobox", { name: /^等级/ })
@@ -161,15 +161,15 @@ isolated(
       "你的补充正在等 合成经理（直属上级） 审批",
     )
     await expect(explanation).toContainText("企业还没有接入工作记录")
-    await expect(explanation).not.toContainText("已提交、已发布或本人已过目")
-    await expect(explanation).not.toContainText("初始画像已由你过目")
+    await expect(explanation).not.toContainText("已提交、已发布或本人已确认")
+    await expect(explanation).not.toContainText("初始画像已由你确认")
     await logOutUser(page)
     await logInUser(page, company.manager.account!.username, password)
     await page.goto(`/employees/${company.employee.id}`)
     await page.getByRole("button", { name: "添加能力", exact: true }).click()
     await dialog.getByRole("button", { name: "合成能力2", exact: true }).click()
     await dialog
-      .getByRole("textbox", { name: "陈述", exact: true })
+      .getByRole("textbox", { name: "能力说明", exact: true })
       .fill("经理直接发布的合成陈述")
     await dialog
       .getByRole("combobox", { name: /^等级/ })
@@ -182,13 +182,13 @@ isolated(
     await page.goto("/employees")
     const row = page.getByRole("row").filter({ hasText: "合成员工" })
     await expect(row).toContainText("经理或管理员已直接修改")
-    await expect(row).not.toContainText("本人已过目")
+    await expect(row).not.toContainText("本人已确认")
     await page.setViewportSize({ width: 390, height: 844 })
     const card = page
       .getByRole("region", { name: "团队员工卡片" })
       .getByRole("article")
       .filter({ hasText: "合成员工" })
     await expect(card).toContainText("经理或管理员已直接修改")
-    await expect(card).not.toContainText("本人已过目")
+    await expect(card).not.toContainText("本人已确认")
   },
 )

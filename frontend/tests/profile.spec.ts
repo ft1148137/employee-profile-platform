@@ -32,12 +32,12 @@ test("administrator reads capability, Jira evidence and earlier published snapsh
   await openE02(page, "admin@demo.example.com")
   const api = page.getByRole("article", { name: "后端 API 开发", exact: true })
   await expect(api.getByText("已确认", { exact: true })).toBeVisible()
-  await expect(api.getByText("审核状态", { exact: true })).toHaveCount(0)
+  await expect(api.getByText("审批状态", { exact: true })).toHaveCount(0)
   await expect(
     page.getByRole("article").filter({ hasText: "未知：暂无足够证据" }),
   ).toHaveCount(2)
   await expect(page.getByText("证据质量", { exact: true })).toHaveCount(0)
-  await expect(page.getByText("本部门还没有设置对应能力")).toBeVisible()
+  await expect(page.getByText("本部门暂未配置常用能力")).toBeVisible()
   await expect(page.getByRole("link", { name: "去组织架构设置" })).toHaveCount(
     1,
   )
@@ -65,7 +65,7 @@ test("administrator reads capability, Jira evidence and earlier published snapsh
       .getByRole("listitem"),
   ).toHaveCount(2)
   await page.getByRole("button", { name: /^r1 ·/ }).click()
-  const snapshot = page.getByRole("region", { name: "r1 只读快照" })
+  const snapshot = page.getByRole("region", { name: "第 1 版（历史版本）" })
   await expect(
     snapshot
       .getByRole("article", { name: "后端 API 开发", exact: true })
@@ -102,7 +102,7 @@ for (const [role, email, restricted] of [
         "相关证据",
         "信心",
         "生成来源",
-        "暂无解释",
+        "暂无说明",
         "证据较旧",
         selfReport,
       ])
@@ -185,13 +185,13 @@ test("administrator tolerates incomplete evidence fields", async ({ page }) => {
     .first()
     .click()
   await expect(page.getByRole("dialog")).toContainText("关联任务：—")
-  await expect(page.getByRole("dialog")).toContainText("来源与导入信息")
+  await expect(page.getByRole("dialog")).toContainText("来源信息")
 })
 
 for (const [email, title] of [
-  ["employee.platform@demo.example.com", "待你过目：系统起草的初始画像"],
-  ["manager.platform@demo.example.com", "待本人过目：系统起草的初始画像"],
-  ["admin@demo.example.com", "待本人过目：系统起草的初始画像"],
+  ["employee.platform@demo.example.com", "待你确认：初始画像草稿"],
+  ["manager.platform@demo.example.com", "待本人确认：初始画像草稿"],
+  ["admin@demo.example.com", "待本人确认：初始画像草稿"],
 ]) {
   test(`${email} reads initial draft and opens its evidence`, async ({
     page,
@@ -202,31 +202,31 @@ for (const [email, title] of [
       exact: true,
     })
     await expect(draft.getByRole("heading", { name: title })).toBeVisible()
-    await expect(draft).toContainText("草稿，还没有生效。本人可以直接提交")
+    await expect(draft).toContainText("根据工作记录初步整理，尚未生效。")
     await expect(draft.getByRole("region")).toHaveCount(2)
     if (email !== "employee.platform@demo.example.com") {
       await expect(
         draft.getByRole("button", {
-          name: /^(修改|填写|提异议|直接提交|添加能力|撤回这条判断)$/,
+          name: /^(修改|填写|提异议|直接提交|添加能力|移除此项)$/,
         }),
       ).toHaveCount(0)
     }
     await expect(
       draft.getByText(
         email === "admin@demo.example.com"
-          ? "等级：未给等级"
+          ? "等级：未定级"
           : "→ 修改后：未定级",
         { exact: true },
       ),
     ).toHaveCount(2)
     await expect(draft.getByText("暂定", { exact: true })).toHaveCount(2)
     await expect(
-      draft.getByText(/不确定之处：任务关联不等于已独立完成/),
+      draft.getByText(/待核实点：任务关联不等于已独立完成/),
     ).toHaveCount(email === "admin@demo.example.com" ? 2 : 0)
     for (const capability of ["自动化测试", "问题诊断与支持"]) {
       await expect(
         page.getByRole("article", { name: capability, exact: true }),
-      ).toContainText("有待处理的改动")
+      ).toContainText("有待处理更新")
     }
     if (email === "admin@demo.example.com") {
       await draft
@@ -238,7 +238,7 @@ for (const [email, title] of [
       for (const text of ["依据说明", "不确定之处", "请求时间线", "相关证据"])
         await expect(draft.getByText(text, { exact: false })).toHaveCount(0)
       await expect(
-        draft.getByText("修改前：暂无判断", { exact: true }),
+        draft.getByText("修改前：暂无记录", { exact: true }),
       ).toHaveCount(2)
     }
     await page.screenshot({
@@ -301,7 +301,7 @@ test("department capabilities filter counts, retain other claims and add through
     name: "后端 API 开发",
     exact: true,
   })
-  await expect(known).toContainText("其他部门能力")
+  await expect(known).toContainText("其他能力")
   await expect(page.getByRole("article")).toHaveCount(3)
   const stats = page.getByRole("region", { name: "能力状态统计" })
   await expect(stats).toContainText("已确认 1")
@@ -332,12 +332,12 @@ test("department capabilities filter counts, retain other claims and add through
   await page.getByRole("button", { name: "手动编辑", exact: true }).click()
   dialog = page.getByRole("dialog", { name: "更新我的画像" })
   await expect(
-    dialog.getByRole("textbox", { name: "陈述", exact: true }),
+    dialog.getByRole("textbox", { name: "能力说明", exact: true }),
   ).toHaveValue("")
   await dialog
-    .getByRole("textbox", { name: "陈述", exact: true })
+    .getByRole("textbox", { name: "能力说明", exact: true })
     .fill("我完成了合成项目的能力验证")
-  await dialog.getByLabel("依据说明").fill("本人确认的合成经历")
+  await dialog.getByLabel("补充说明").fill("本人确认的合成经历")
   const created = page.waitForResponse(
     (response) =>
       response.url().endsWith("/me/requests") &&
@@ -357,7 +357,7 @@ test("department capabilities filter counts, retain other claims and add through
       name: hidden.capability.name,
       exact: true,
     })
-    await expect(added).toContainText("有待处理的改动")
+    await expect(added).toContainText("有待处理更新")
     await expect(page.getByRole("article")).toHaveCount(4)
   } finally {
     expect(
@@ -374,7 +374,7 @@ test("administrator gets the department setup link and can add for another emplo
   page,
 }) => {
   await openE02(page, "admin@demo.example.com")
-  await expect(page.getByText("本部门还没有设置对应能力")).toBeVisible()
+  await expect(page.getByText("本部门暂未配置常用能力")).toBeVisible()
   await expect(
     page.getByRole("link", { name: "去组织架构设置" }),
   ).toHaveAttribute("href", "/org-chart")
@@ -413,7 +413,7 @@ test("empty initial draft cannot submit and pending requests can be withdrawn", 
   await openE02(page, "employee.platform@demo.example.com")
   await expect(
     page.getByRole("region", { name: "初始画像草稿", exact: true }),
-  ).toContainText("系统没有找到能对应到能力词典的工作记录。")
+  ).toContainText("暂未匹配到对应的工作记录，你可以手动补充。")
   const others = page.getByRole("region", { name: "其他待处理请求" })
   await expect(others).toContainText("待经理审批 · 2 项改动")
   await expect(
@@ -426,7 +426,7 @@ test("empty initial draft cannot submit and pending requests can be withdrawn", 
   const editor = page.getByRole("dialog")
   await editor.getByLabel("新增能力").selectOption("automated_testing")
   await expect(
-    editor.getByRole("textbox", { name: "陈述", exact: true }),
+    editor.getByRole("textbox", { name: "能力说明", exact: true }),
   ).toBeVisible()
   await expect(
     editor.getByRole("textbox", { name: "异议原因", exact: true }),
@@ -504,11 +504,11 @@ test("pending change shows levels and expandable statement while keeping basis h
   const statement = pending.locator("p").filter({ hasText: "本人提交的陈述" })
   await expect(statement).toBeVisible()
   const collapsedHeight = (await statement.boundingBox())!.height
-  await pending.getByRole("button", { name: "展开陈述" }).click()
+  await pending.getByRole("button", { name: "展开全文" }).click()
   expect((await statement.boundingBox())!.height).toBeGreaterThan(
     collapsedHeight,
   )
-  await pending.getByRole("button", { name: "收起陈述" }).click()
+  await pending.getByRole("button", { name: "收起" }).click()
   expect((await statement.boundingBox())!.height).toBe(collapsedHeight)
   await expect(page.getByText("不应显示的依据")).toHaveCount(0)
   await expect(
@@ -530,7 +530,7 @@ test("editing an initial candidate sends uncertainty back unchanged", async ({
     .click()
   const dialog = page.getByRole("dialog")
   await dialog
-    .getByRole("textbox", { name: "陈述", exact: true })
+    .getByRole("textbox", { name: "能力说明", exact: true })
     .first()
     .fill("合成修改，不丢不确定说明")
   let uncertainties: (string | null)[] = []

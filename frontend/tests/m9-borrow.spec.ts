@@ -285,7 +285,7 @@ async function acceptInAssistant({
     )
     await open(a, "mode=personal", "/assistant")
     const panel = page.getByRole("region", { name: "助手", exact: true })
-    await panel.getByLabel("发给机器人的消息").fill("请准备接受借调方案")
+    await panel.getByLabel("发给助手的消息").fill("请准备接受借调方案")
     await panel.getByRole("button", { name: "发送", exact: true }).click()
     const card = panel.getByRole("region", { name: "回应部门需求" })
     await expect(card).toContainText("预占到期时间")
@@ -423,7 +423,7 @@ for (const approve of [true, false]) {
         0,
       )
       await open(lender, "tab=borrows")
-      await expect(page.getByText("已安排人员，等待本人同意")).toBeVisible()
+      await expect(page.getByText("待员工确认")).toBeVisible()
 
       if (approve) {
         await open(employee, "", "/inbox")

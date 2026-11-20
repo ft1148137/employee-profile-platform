@@ -174,7 +174,7 @@ test("团队负荷在手机横向滑动后仍显示姓名和设置", async ({ pa
 
   const scroller = card.getByRole("region", { name: "A合成员工的 8 周排期" })
   const committed = scroller.getByRole("button", {
-    name: /^已承诺分配：合成已承诺需求/,
+    name: /^已分配任务：合成已承诺需求/,
   })
   const borrow = scroller.getByRole("button", {
     name: /^跨部门借调：借调 · 合成借调需求/,
@@ -185,24 +185,22 @@ test("团队负荷在手机横向滑动后仍显示姓名和设置", async ({ pa
     scroller.getByRole("button", { name: /^不可用：不可用日期/ }),
   ).toBeVisible()
   await scroller
-    .getByRole("button", { name: /^方案预占：预占 · 合成方案/ })
+    .getByRole("button", { name: /^方案暂留：暂留 · 合成方案/ })
     .click()
   const dialog = page.getByRole("dialog")
   await expect(dialog).toContainText("负荷明细 · A合成员工")
   await expect(dialog).toContainText("其他工作占比")
   await expect(
-    dialog.getByText("含未展示明细的受保护/待确认负荷 20%", { exact: true }),
+    dialog.getByText("另有未展开或待确认负荷 20%", { exact: true }),
   ).toBeVisible()
-  await expect(dialog.getByText("含未展示明细的受保护/待确认负荷")).toHaveCount(
-    1,
-  )
+  await expect(dialog.getByText("另有未展开或待确认负荷")).toHaveCount(1)
   await expect(
-    dialog.getByRole("region", { name: "已承诺分配" }),
+    dialog.getByRole("region", { name: "已分配任务" }),
   ).toContainText("合成已承诺需求 · 25%")
   await expect(
     dialog.getByRole("region", { name: "跨部门借调" }),
   ).toContainText("合成借调需求 · 25%")
-  await expect(dialog.getByRole("region", { name: "方案预占" })).toContainText(
+  await expect(dialog.getByRole("region", { name: "方案暂留" })).toContainText(
     "待确认，到期",
   )
   await expect(
@@ -229,6 +227,6 @@ test("团队负荷在手机横向滑动后仍显示姓名和设置", async ({ pa
   const table = page.getByRole("table", { name: "团队负荷，按部门、姓名排序" })
   await expect(table.getByText("本周", { exact: true })).toBeVisible()
   await expect(
-    table.getByRole("button", { name: /^已承诺分配：合成已承诺需求/ }),
+    table.getByRole("button", { name: /^已分配任务：合成已承诺需求/ }),
   ).toBeVisible()
 })

@@ -50,7 +50,10 @@ test("小样本隐藏及零依据时选择本部门其他员工", async ({ page,
     )
     await page.goto(`/capacity?tab=${tab}`)
     await expect(
-      page.getByRole("heading", { name: "需求与容量", exact: true }),
+      page.getByRole("heading", {
+        name: tab === "team" ? "团队负荷" : "协作需求",
+        exact: true,
+      }),
     ).toBeVisible()
   }
   await open(admin.access_token, "team")
@@ -146,7 +149,7 @@ test("小样本隐藏及零依据时选择本部门其他员工", async ({ page,
     admin.access_token,
   )
   await open(a, "outgoing")
-  await page.getByRole("button", { name: "手工提需求", exact: true }).click()
+  await page.getByRole("button", { name: "新建需求", exact: true }).click()
   await page.getByLabel("目标部门").selectOption(person("M").department!.id)
   await page.getByLabel("能力", { exact: true }).selectOption("delivery")
   const reference = page.getByRole("region", { name: "即时参考" })
@@ -227,12 +230,10 @@ test("小样本隐藏及零依据时选择本部门其他员工", async ({ page,
   await expect(assignment).toContainText(
     "依据中达到要求的有 0 人，需要 2 人。可以从本部门其他在职员工中选择；选择不会改变画像，也不会改变依据人数，需求方看到的内容不变。",
   )
-  const group = assignment.locator(
-    'optgroup[label="本部门其他在职员工（不在依据中）"]',
-  )
+  const group = assignment.locator('optgroup[label="本部门其他员工"]')
   await expect(group.locator("option")).toHaveCount(3)
   await expect(
-    assignment.locator('optgroup[label="依据中的员工"] option'),
+    assignment.locator('optgroup[label="符合条件的员工"] option'),
   ).toHaveCount(0)
   await assignment
     .locator('select[name="employee_id"]')
@@ -242,7 +243,7 @@ test("小样本隐藏及零依据时选择本部门其他员工", async ({ page,
     .fill("2026-12-20")
   await assignment.getByLabel("开始日期", { exact: true }).fill("2026-12-01")
   await assignment
-    .getByLabel("该员工不在依据中，我确认按自己的判断安排")
+    .getByLabel("该员工未满足画像条件，我确认按实际需要安排")
     .check()
   await assignment.getByRole("button", { name: "确认分配" }).click()
   await expect(

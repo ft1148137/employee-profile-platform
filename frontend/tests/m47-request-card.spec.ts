@@ -49,7 +49,7 @@ for (const [decision, summary] of [
     await expect(processed).toContainText(summary)
     await expect(processed).toContainText("合成能力1：批准")
     await expect(processed).toContainText(
-      `合成能力2：${decision === "changes_requested" ? "退回修改" : decision === "rejected" ? "拒绝" : "批准"}`,
+      `合成能力2：${decision === "changes_requested" ? "退回" : decision === "rejected" ? "拒绝" : "批准"}`,
     )
   })
 }
@@ -122,7 +122,7 @@ test("old initial draft previews the current value and submits an edited proposa
       await route.fulfill({
         status: 422,
         json: {
-          detail: [{ index: 0, message: "等级 key 不在该能力的等级中" }],
+          detail: [{ index: 0, message: "等级编码不在该能力的等级中" }],
         },
       })
       return
@@ -145,11 +145,11 @@ test("old initial draft previews the current value and submits an edited proposa
   )
   await dialog.getByRole("button", { name: "返回修改" }).click()
   await dialog
-    .getByRole("textbox", { name: "陈述", exact: true })
+    .getByRole("textbox", { name: "能力说明", exact: true })
     .fill("本人基于当前值补充")
   await dialog.getByRole("button", { name: "预览并提交" }).click()
   await expect(dialog.getByRole("alert")).toContainText(
-    "第 1 项：等级 key 不在该能力的等级中",
+    "第 1 项：等级编码不在该能力的等级中",
   )
   await dialog.getByRole("button", { name: "预览并提交" }).click()
   await expect(dialog).toContainText("本人基于当前值补充")

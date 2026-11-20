@@ -242,7 +242,7 @@ test("需求理解卡、经理方案卡和模型失败后的手工答复", async
       "PUT",
     )
     let panel = await openAssistant("A")
-    await panel.getByLabel("发给机器人的消息").fill("请一句话帮我提需求")
+    await panel.getByLabel("发给助手的消息").fill("请一句话帮我提需求")
     await panel.getByRole("button", { name: "发送", exact: true }).click()
     const demandCard = panel.getByRole("region", { name: "提交部门需求" })
     await expect(demandCard).toContainText("人数是否确定？")
@@ -266,7 +266,7 @@ test("需求理解卡、经理方案卡和模型失败后的手工答复", async
     await expectChineseCopy(page)
 
     panel = await openAssistant("M")
-    await panel.getByLabel("发给机器人的消息").fill("帮我模拟方案")
+    await panel.getByLabel("发给助手的消息").fill("帮我模拟方案")
     await panel.getByRole("button", { name: "发送", exact: true }).click()
     const planCard = panel.getByRole("region", { name: "直接安排方案" })
     await expect(planCard).toContainText("交付日期")
@@ -291,17 +291,19 @@ test("需求理解卡、经理方案卡和模型失败后的手工答复", async
     await expectChineseCopy(page)
 
     panel = await openAssistant("W")
-    await panel.getByLabel("发给机器人的消息").fill("帮我模拟方案")
+    await panel.getByLabel("发给助手的消息").fill("帮我模拟方案")
     await panel.getByRole("button", { name: "发送", exact: true }).click()
     await expect(panel.getByRole("region", { name: /方案$/ })).toHaveCount(0)
-    await expect(panel.getByText("收到的需求")).toHaveCount(0)
+    await expect(
+      panel.getByRole("link", { name: "前往待审批", exact: true }),
+    ).toHaveCount(0)
     await expectChineseCopy(page)
 
     fail = true
     panel = await openAssistant("M")
-    await panel.getByLabel("发给机器人的消息").fill("再帮我模拟方案")
+    await panel.getByLabel("发给助手的消息").fill("再帮我模拟方案")
     await panel.getByRole("button", { name: "发送", exact: true }).click()
-    await panel.getByRole("link", { name: "前往收到的需求" }).click()
+    await panel.getByRole("link", { name: "前往待审批" }).click()
     await expect(page.getByText("合成跨部门交付")).toBeVisible()
     await page.getByRole("link", { name: "查看详情" }).click()
     await page.getByRole("button", { name: "生成方案 / 查看方案" }).click()

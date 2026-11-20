@@ -102,7 +102,7 @@ test("draft roster from materials, restore and confirm without offboarding omitt
     (await (await request.get(`${base}/roster/imports`, { headers })).json())
       .data
   expect(await history()).toHaveLength(1)
-  await card.getByRole("button", { name: "确认应用", exact: true }).click()
+  await card.getByRole("button", { name: "确认生效", exact: true }).click()
   await expect(card.getByRole("status")).toHaveText("请再次确认")
   expect(await history()).toHaveLength(1)
   await card.getByRole("button", { name: "再次确认", exact: true }).click()
@@ -168,7 +168,7 @@ test("preview work records in chat, repair errors and confirm", async ({
   await expect(card.getByRole("status")).toHaveText("待确认")
   await page.reload()
   await expect(preview).toContainText("涉及人数")
-  await card.getByRole("button", { name: "确认应用" }).click()
+  await card.getByRole("button", { name: "确认生效" }).click()
   await expect(card.getByRole("status")).toHaveText("已应用")
   await expectChineseCopy(page)
   await page.screenshot({
@@ -202,7 +202,7 @@ test("dictionary materials produce a restored confirmation card and a new versio
   ).toBe(404)
   await page.reload()
   await expect(card).toContainText("新增 1 项")
-  await card.getByRole("button", { name: "确认应用", exact: true }).click()
+  await card.getByRole("button", { name: "确认生效", exact: true }).click()
   await expect(card.getByRole("status")).toHaveText("已应用")
   const result = await request.get(`${base}/capabilities`, { headers })
   expect(result.ok()).toBeTruthy()

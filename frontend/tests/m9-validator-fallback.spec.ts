@@ -303,12 +303,12 @@ test("较差推荐同时展示规则方案、差别和两个可打开的链接",
     )
     await page.goto("/assistant")
     const panel = page.getByRole("region", { name: "助手", exact: true })
-    await panel.getByLabel("发给机器人的消息").fill("帮我核对推荐方案")
+    await panel.getByLabel("发给助手的消息").fill("帮我核对推荐方案")
     await panel.getByRole("button", { name: "发送", exact: true }).click()
     const card = panel
       .getByRole("region", { name: "自定方案方案", exact: true })
       .first()
-    await expect(card).toContainText("规则引擎方案")
+    await expect(card).toContainText("备选方案")
     await expect(card).toContainText("不可行 → 可行")
     await expect(card).toContainText("新人数")
     await expect(card).toContainText("自定方案")
@@ -333,7 +333,7 @@ test("较差推荐同时展示规则方案、差别和两个可打开的链接",
     expect(best).toBeTruthy()
     for (const [name, expectedOption, expectedTitle] of [
       ["在方案页修改", bad.id, "自定方案方案"],
-      ["查看规则引擎方案", best.id, "直接安排方案"],
+      ["查看备选方案", best.id, "直接安排方案"],
     ] as const) {
       await page.evaluate(
         ({ org, demand }) => {

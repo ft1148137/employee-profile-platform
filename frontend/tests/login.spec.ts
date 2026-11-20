@@ -33,7 +33,7 @@ test("Log In button is visible", async ({ page }) => {
 test("Password reset hint replaces public account links", async ({ page }) => {
   await page.goto("/login")
 
-  await expect(page.getByText("忘记密码请联系企业管理员重置")).toBeVisible()
+  await expect(page.getByText("忘记密码？请联系企业管理员重置")).toBeVisible()
   await expect(
     page.locator('a[href="/signup"], a[href="/recover-password"]'),
   ).toHaveCount(0)
@@ -113,7 +113,7 @@ for (const viewport of [
     await logout.click()
     await page.waitForURL("/login")
     await expect(page.getByRole("status")).toHaveText(
-      "已退出登录。在公用电脑上用完，请关闭浏览器。",
+      "已退出登录。如使用公用电脑，请关闭浏览器。",
     )
     expect(
       await page.evaluate(() => localStorage.getItem("access_token")),

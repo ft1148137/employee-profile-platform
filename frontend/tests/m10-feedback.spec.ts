@@ -87,7 +87,7 @@ test("经理写工作反馈，员工过目后由经理发布", async ({ page, re
     department.getByRole("checkbox", { name: "合成交付" }),
   ).toBeChecked()
   await department.getByLabel("工作反馈（20～500 字）").fill(text)
-  await department.getByRole("button", { name: "发送给员工过目" }).click()
+  await department.getByRole("button", { name: "发送给员工确认" }).click()
   await expect(department.getByText("已写反馈")).toBeVisible()
 
   await open(worker, `/employees/${person("B3").id}`)
@@ -96,7 +96,7 @@ test("经理写工作反馈，员工过目后由经理发布", async ({ page, re
   const evidence = page.getByRole("dialog")
   await expect(evidence).toContainText(text)
   await evidence.getByRole("button", { name: "关闭", exact: true }).click()
-  await pending.getByRole("button", { name: "过目并提交" }).click()
+  await pending.getByRole("button", { name: "确认并提交" }).click()
   await page
     .getByRole("combobox", { name: "等级", exact: true })
     .selectOption("routine")
@@ -108,9 +108,9 @@ test("经理写工作反馈，员工过目后由经理发布", async ({ page, re
   const approvals = (await api(`${base}/reviews`, undefined, manager)).data
   expect(approvals).toHaveLength(1)
   await page.locator(`a[href="/reviews/${approvals[0].id}"]`).click()
-  await page.getByLabel("合成交付的决定").selectOption("approved")
-  await page.getByRole("button", { name: "核对并提交" }).click()
-  await page.getByRole("button", { name: "确认提交决定" }).click()
+  await page.getByLabel("合成交付的审批意见").selectOption("approved")
+  await page.getByRole("button", { name: "提交审批" }).click()
+  await page.getByRole("button", { name: "确认提交" }).click()
   await expect(page.getByRole("heading", { name: "审批已提交" })).toBeVisible()
   const found = await api(
     `${base}/people-search?capability_key=delivery`,

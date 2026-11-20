@@ -12,7 +12,7 @@ const demandInput = {
   window_end: "2026-12-31",
 }
 
-test("待审批角标汇总、分类与收到需求的角色入口", async ({ page, request }) => {
+test("待审批角标汇总、分类与协作需求的角色入口", async ({ page, request }) => {
   test.setTimeout(90_000)
   const { base, departments, managerToken, open } =
     await setupProjectManagers(request)
@@ -112,7 +112,7 @@ test("待审批角标汇总、分类与收到需求的角色入口", async ({ pa
     "全部4",
     "画像变更1",
     "负荷与延期1",
-    "收到需求1",
+    "协作需求1",
     "借调确认1",
   ])
   expect(demandQueries).toHaveLength(1)
@@ -127,14 +127,14 @@ test("待审批角标汇总、分类与收到需求的角色入口", async ({ pa
   await expect(page.getByText("合成调整员工", { exact: false })).toBeVisible()
   await expect(page.getByText("合成待选人借调")).toBeVisible()
 
-  await filters.getByRole("link", { name: /^收到需求/ }).click()
+  await filters.getByRole("link", { name: /^协作需求/ }).click()
   await expect(page).toHaveURL("/reviews?type=demand")
   await expect(
-    filters.getByRole("link", { name: /^收到需求/ }),
+    filters.getByRole("link", { name: /^协作需求/ }),
   ).toHaveAttribute("aria-current", "page")
   await expect(page.getByRole("region", { name: "画像变更" })).toHaveCount(0)
   const details = page.getByRole("link", { name: "查看详情" })
-  const simulate = page.getByRole("link", { name: "在 AI 助手中模拟并答复" })
+  const simulate = page.getByRole("link", { name: "用助手拟定方案" })
   const demandPath = `/capacity?tab=incoming&demand=${demand.id}`
   await expect(details).toHaveAttribute("href", demandPath)
   await simulate.click()
@@ -159,8 +159,8 @@ test("待审批角标汇总、分类与收到需求的角色入口", async ({ pa
     "已答复",
   )
   await page.getByRole("button", { name: "返回待审批" }).click()
-  await expect(filters.getByRole("link", { name: /^收到需求/ })).toHaveText(
-    "收到需求0",
+  await expect(filters.getByRole("link", { name: /^协作需求/ })).toHaveText(
+    "协作需求0",
   )
   await expect(
     sidebar.getByRole("link", { name: "待审批 3", exact: true }),
@@ -201,8 +201,8 @@ test("待审批按需翻页并打开第 101 条真实需求", async ({ page, req
   })
 
   const filters = page.getByRole("navigation", { name: "待审批类型" })
-  const incoming = page.getByRole("region", { name: "收到需求" })
-  const pagination = incoming.getByRole("navigation", { name: "收到需求分页" })
+  const incoming = page.getByRole("region", { name: "协作需求" })
+  const pagination = incoming.getByRole("navigation", { name: "协作需求分页" })
   const details = incoming.getByRole("link", { name: "查看详情" })
   const next = pagination.getByRole("button", { name: "下一页" })
   const previous = pagination.getByRole("button", { name: "上一页" })
@@ -210,8 +210,8 @@ test("待审批按需翻页并打开第 101 条真实需求", async ({ page, req
   for (const type of ["all", "demand"]) {
     demandQueries.length = 0
     await open(page, "B", type === "all" ? "/reviews" : "/reviews?type=demand")
-    await expect(filters.getByRole("link", { name: /^收到需求/ })).toHaveText(
-      "收到需求101",
+    await expect(filters.getByRole("link", { name: /^协作需求/ })).toHaveText(
+      "协作需求101",
     )
     await expect(
       page.getByRole("navigation", { name: "空间导航" }).getByRole("link", {

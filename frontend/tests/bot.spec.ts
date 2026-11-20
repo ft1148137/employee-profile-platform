@@ -126,7 +126,7 @@ for (const width of [1440, 390]) {
     await page.getByText("高级设置：聊天原文保留", { exact: true }).click()
     await page.getByLabel("聊天原文保留天数").fill("3")
     await page.getByRole("button", { name: "保存", exact: true }).click()
-    await expect(page.getByRole("status")).toContainText("机器人设置已保存")
+    await expect(page.getByRole("status")).toContainText("助手设置已保存")
     await page.reload()
     await expect(page.getByLabel("提问指南")).toHaveValue("请询问具体合作经历")
     await expect(page.getByLabel("聊天原文保留天数")).toHaveValue("3")
@@ -167,20 +167,18 @@ for (const width of [1440, 390]) {
     await logInUser(page, employeeEmail, password)
     await page.setViewportSize({ width, height: 900 })
     let panel = page.getByRole("region", { name: "助手", exact: true })
-    await panel.getByLabel("发给机器人的消息").fill("请帮我过目初始画像")
+    await panel.getByLabel("发给助手的消息").fill("请帮我过目初始画像")
     await panel.getByRole("button", { name: "发送", exact: true }).click()
-    await expect(
-      panel.getByRole("region", { name: "提交前预览" }),
-    ).toBeVisible()
+    await expect(panel.getByRole("region", { name: "变更预览" })).toBeVisible()
     // The fake Pi model claims submission; only the card action can actually submit.
     await expect(panel.getByText("已提交", { exact: true })).toBeVisible()
     expect((await readRequests())[0].status).toBe("pending_owner")
     await panel.getByRole("button", { name: "继续修改", exact: true }).click()
     await expect(panel.getByText("请告诉我需要修改的内容")).toBeVisible()
     const previewsBefore = await panel
-      .getByRole("region", { name: "提交前预览" })
+      .getByRole("region", { name: "变更预览" })
       .count()
-    await panel.getByLabel("发给机器人的消息").fill("补充一段合成项目经历")
+    await panel.getByLabel("发给助手的消息").fill("补充一段合成项目经历")
     await panel.getByRole("button", { name: "发送", exact: true }).click()
     await expect(
       panel.getByText("本人完成了合成项目的验证", { exact: false }),
@@ -188,7 +186,7 @@ for (const width of [1440, 390]) {
     await expect(
       panel.getByText("我补充了一段合成项目经历", { exact: false }),
     ).toBeVisible()
-    await expect(panel.getByRole("region", { name: "提交前预览" })).toHaveCount(
+    await expect(panel.getByRole("region", { name: "变更预览" })).toHaveCount(
       previewsBefore + 1,
     )
     const current = (await readRequests())[0]
@@ -217,10 +215,10 @@ for (const width of [1440, 390]) {
       .last()
       .click()
     await expect(
-      panel.getByText("内容已变化，请重新预览后再确认。"),
+      panel.getByText("内容已更新，请重新预览后再确认"),
     ).toBeVisible()
     expect((await readRequests())[0].status).toBe("draft")
-    await panel.getByRole("button", { name: "重新预览最新内容" }).click()
+    await panel.getByRole("button", { name: "重新预览" }).click()
     await expect(
       panel.getByText("另一标签页的经历", { exact: false }),
     ).toBeVisible()
@@ -251,7 +249,7 @@ for (const width of [1440, 390]) {
       .last()
       .click()
     await expect(
-      panel.getByText("已提交给经理审批，审批前可以撤回。"),
+      panel.getByText("已提交审批，经理审批前可撤回。"),
     ).toBeVisible()
     const sent = (await readRequests())[0]
     expect(sent.status).toBe("pending_review")
@@ -272,11 +270,11 @@ test("disabled model keeps the entry and points to the form", async ({
   await createUser({ email, password, withEmptyProfile: true })
   await logInUser(page, email, password)
   const panel = page.getByRole("region", { name: "助手", exact: true })
-  await expect(panel.getByRole("link", { name: "打开画像页" })).toBeVisible()
-  await panel.getByLabel("发给机器人的消息").fill("你好")
+  await expect(panel.getByRole("link", { name: "「我的画像」" })).toBeVisible()
+  await panel.getByLabel("发给助手的消息").fill("你好")
   await panel.getByRole("button", { name: "发送", exact: true }).click()
   await expect(
-    panel.getByText("机器人需要先配置模型，你也可以在画像页直接修改"),
+    panel.getByText("工作助手需要先配置模型，你也可以在「我的画像」直接修改"),
   ).toBeVisible()
   await expectChineseCopy(page)
   const question = {
@@ -295,9 +293,9 @@ test("disabled model keeps the entry and points to the form", async ({
         "\n",
     }),
   )
-  await panel.getByLabel("发给机器人的消息").fill("查看待确认问题")
+  await panel.getByLabel("发给助手的消息").fill("查看待确认问题")
   await panel.getByRole("button", { name: "发送", exact: true }).click()
-  await panel.getByLabel("确认后的回答").fill("本人完成了跨部门合成项目")
+  await panel.getByLabel("你的回答").fill("本人完成了跨部门合成项目")
   await page.route("**/bot/sessions/*/actions?*", async (route) => {
     expect(route.request().postDataJSON()).toEqual({
       action: "answer_question",
@@ -308,8 +306,8 @@ test("disabled model keeps the entry and points to the form", async ({
       json: { messages: [{ ...question, status: "answered", actions: [] }] },
     })
   })
-  await panel.getByRole("button", { name: "确认回答" }).click()
-  await expect(panel.getByText("问题已处理")).toBeVisible()
+  await panel.getByRole("button", { name: "提交回答" }).click()
+  await expect(panel.getByText("已回答")).toBeVisible()
   await expectChineseCopy(page)
 })
 
@@ -346,13 +344,13 @@ test("web bot keeps review evidence links and renders decision cards", async ({
     }),
   )
   const panel = page.getByRole("region", { name: "助手", exact: true })
-  await panel.getByLabel("发给机器人的消息").fill("查看待审批请求")
+  await panel.getByLabel("发给助手的消息").fill("查看待审批请求")
   await panel.getByRole("button", { name: "发送", exact: true }).click()
   await expect(
     panel.getByRole("link", { name: "去审批页", exact: true }),
   ).toHaveCount(1)
   await expect(
-    panel.getByRole("region", { name: "审批决定复述" }),
+    panel.getByRole("region", { name: "审批决定确认" }),
   ).toBeVisible()
   await expect(
     panel.getByRole("link", { name: "去审批页查看证据" }),

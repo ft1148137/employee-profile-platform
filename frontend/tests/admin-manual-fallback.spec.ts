@@ -72,7 +72,7 @@ test("manual console completes all fifteen tabs without a model", async ({
     await logInUser(page, email, password)
     await expect(page).toHaveURL(/\/assistant\?mode=admin$/)
     await expect(page.getByRole("log")).toContainText(
-      "请先在模型设置里配置模型，也可以继续使用手工页面。",
+      "请先在模型设置里配置模型，你也可以直接在对应页面操作。",
     )
     const availability = await request.get(
       `/api/v1/admin-assistant/availability?org_id=${org_id}`,
@@ -81,9 +81,7 @@ test("manual console completes all fifteen tabs without a model", async ({
     expect(availability.ok()).toBeTruthy()
     expect(await availability.json()).toMatchObject({ available: false })
     await expect(page.getByLabel("发给管理助手的消息")).toBeDisabled()
-    await expect(
-      page.getByRole("region", { name: "今天要处理的事" }),
-    ).toBeVisible()
+    await expect(page.getByRole("region", { name: "待办事项" })).toBeVisible()
     await screenshot("home")
   })
 
@@ -102,7 +100,7 @@ test("manual console completes all fifteen tabs without a model", async ({
   })
 
   await test.step("people / accounts: issue accounts and retain the result", async () => {
-    await page.getByRole("button", { name: "生成账号", exact: true }).click()
+    await page.getByRole("button", { name: "发放账号", exact: true }).click()
     const dialog = page.getByRole("dialog")
     const download = page.waitForEvent("download")
     await dialog.getByRole("button", { name: "确认生成并下载" }).click()
@@ -162,7 +160,7 @@ test("manual console completes all fifteen tabs without a model", async ({
     await editor.getByRole("button", { name: "新增能力", exact: true }).click()
     const capability = editor.getByRole("article").last()
     await capability.getByLabel("能力名称").fill("硬件设计")
-    await capability.getByLabel("能力标识").fill("hardware")
+    await capability.getByLabel("能力编码").fill("hardware")
     await capability.getByLabel("分类", { exact: true }).fill("工程")
     await capability.getByLabel("能力说明").fill("合成硬件设计能力")
     await capability.getByLabel("等级描述").fill("在指导下完成")
@@ -182,13 +180,11 @@ test("manual console completes all fifteen tabs without a model", async ({
   await test.step("rules / approval: save and reopen", async () => {
     await page.getByRole("link", { name: "审批规则", exact: true }).click()
     const form = page.getByRole("form", { name: "审批规则", exact: true })
-    await form.getByLabel("员工过目期限（天）").fill("7")
+    await form.getByLabel("员工确认期限（天）").fill("7")
     await form.getByRole("button", { name: "保存审批规则" }).click()
-    await expect(form.getByRole("status")).toContainText(
-      "审批规则已保存为新版本。",
-    )
+    await expect(form.getByRole("status")).toContainText("审批规则已保存")
     await page.reload()
-    await expect(form.getByLabel("员工过目期限（天）")).toHaveValue("7")
+    await expect(form.getByLabel("员工确认期限（天）")).toHaveValue("7")
   })
 
   await test.step("model / drafting: disabled without a model", async () => {
@@ -206,15 +202,15 @@ test("manual console completes all fifteen tabs without a model", async ({
 
   await test.step("rules / reminders: save a yearly reminder", async () => {
     await page.getByRole("link", { name: "定期提醒", exact: true }).click()
-    const section = page.getByRole("region", { name: "持续更新提醒" })
+    const section = page.getByRole("region", { name: "定期更新提醒" })
     await section.getByRole("combobox", { name: "提醒周期" }).click()
     await page.getByRole("option", { name: "每年", exact: true }).click()
-    await section.getByLabel("证据较旧期限（月）").fill("36")
+    await section.getByLabel("证据过期提醒（月）").fill("36")
     await section.getByRole("button", { name: "保存提醒设置" }).click()
     await expect(section.getByRole("status")).toContainText("已保存")
     await page.reload()
     await expect(section.getByRole("combobox")).toHaveText("每年")
-    await expect(section.getByLabel("证据较旧期限（月）")).toHaveValue("36")
+    await expect(section.getByLabel("证据过期提醒（月）")).toHaveValue("36")
   })
 
   await test.step("data / sources: save Jira and import work records", async () => {
@@ -340,26 +336,28 @@ test("manual console completes all fifteen tabs without a model", async ({
   await test.step("data / model: save a disabled configuration without calling AI", async () => {
     await page.goto("/admin/data-ai?tab=model")
     await page.getByLabel("模型类型").selectOption("openai_compatible")
-    await page.getByLabel("模型名", { exact: true }).fill("synthetic-disabled")
+    await page
+      .getByLabel("模型名称", { exact: true })
+      .fill("synthetic-disabled")
     await page.getByLabel(/base URL/).fill("https://model.example.com/v1")
     await page.getByRole("button", { name: "保存", exact: true }).click()
     await expect(
       page.getByText("模型设置已保存。", { exact: true }),
     ).toBeVisible()
     await page.reload()
-    await expect(page.getByLabel("模型名", { exact: true })).toHaveValue(
+    await expect(page.getByLabel("模型名称", { exact: true })).toHaveValue(
       "synthetic-disabled",
     )
     await expect(page.getByLabel("启用模型")).not.toBeChecked()
   })
 
   await test.step("data / bot: save the question guide", async () => {
-    await page.getByRole("link", { name: "内置机器人", exact: true }).click()
+    await page.getByRole("link", { name: "内置助手", exact: true }).click()
     await page
       .getByLabel("提问指南", { exact: true })
       .fill("先询问员工希望补充的合成经历。")
     await page.getByRole("button", { name: "保存", exact: true }).click()
-    await expect(page.getByRole("status")).toContainText("机器人设置已保存")
+    await expect(page.getByRole("status")).toContainText("助手设置已保存")
     await page.reload()
     await expect(page.getByLabel("提问指南", { exact: true })).toHaveValue(
       "先询问员工希望补充的合成经历。",
@@ -395,14 +393,14 @@ test("manual console completes all fifteen tabs without a model", async ({
   })
 
   await test.step("data / external assistants: save the enterprise switch", async () => {
-    await page.getByRole("link", { name: "外部 AI 助手", exact: true }).click()
-    await page.getByRole("checkbox", { name: "允许外部 AI 助手" }).check()
+    await page.getByRole("link", { name: "外部 AI 工具", exact: true }).click()
+    await page.getByRole("checkbox", { name: "允许接入外部 AI 工具" }).check()
     await page.getByLabel("允许的客户端", { exact: true }).fill("Cursor")
     await page.getByRole("button", { name: "保存", exact: true }).click()
     await expect(page.getByRole("status")).toHaveText("已保存")
     await page.reload()
     await expect(
-      page.getByRole("checkbox", { name: "允许外部 AI 助手" }),
+      page.getByRole("checkbox", { name: "允许接入外部 AI 工具" }),
     ).toBeChecked()
     await expect(page.getByLabel("允许的客户端", { exact: true })).toHaveValue(
       "Cursor",
@@ -417,7 +415,7 @@ test("manual console completes all fifteen tabs without a model", async ({
     ).toContainText("已完成")
     await page.goto("/admin/assistant")
     await page
-      .getByRole("region", { name: "今天要处理的事" })
+      .getByRole("region", { name: "待办事项" })
       .getByRole("article", { name: "AI 模型", exact: true })
       .getByRole("link", { name: "去处理", exact: true })
       .click()

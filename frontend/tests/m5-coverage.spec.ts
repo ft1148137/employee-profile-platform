@@ -37,7 +37,7 @@ for (const role of [
     for (const status of [
       "已发布",
       "存在争议",
-      "待本人过目",
+      "待本人确认",
       "待审批",
       "未知",
     ]) {

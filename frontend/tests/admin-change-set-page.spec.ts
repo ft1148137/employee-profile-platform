@@ -18,7 +18,7 @@ test("page shows assistant reminder draft and can apply or discard it", async ({
   )
   await logInUser(page, email, password)
   await page.goto("/admin/rules?tab=reminders")
-  const section = page.getByRole("region", { name: "持续更新提醒" })
+  const section = page.getByRole("region", { name: "定期更新提醒" })
   async function propose() {
     await openAdminAssistant(page)
     const dialog = page.getByRole("region", { name: "管理助手", exact: true })
@@ -34,7 +34,7 @@ test("page shows assistant reminder draft and can apply or discard it", async ({
     ).toBeVisible({ timeout: 30000 })
     await returnToManualPage(page)
     await expect(section.getByRole("combobox")).toHaveText("每年")
-    await expect(section.getByLabel("证据较旧期限（月）")).toHaveValue("36")
+    await expect(section.getByLabel("证据过期提醒（月）")).toHaveValue("36")
     await expect(
       section.locator('[data-assistant-suggested="true"]'),
     ).toHaveCount(2)
@@ -52,7 +52,7 @@ test("page shows assistant reminder draft and can apply or discard it", async ({
     (await (await request.get(`${base}/update-settings`, { headers })).json())
       .reminder_schedule,
   ).toBe("quarterly")
-  await section.getByRole("button", { name: "确认应用" }).click()
+  await section.getByRole("button", { name: "确认生效" }).click()
   await expect(
     section.getByRole("region", { name: "页面草稿确认" }),
   ).toHaveCount(0)
@@ -76,7 +76,7 @@ test("page shows assistant reminder draft and can apply or discard it", async ({
   await expect(section.getByRole("combobox")).toHaveText("每年")
   await section.getByRole("button", { name: "放弃", exact: true }).click()
   await expect(section.getByRole("combobox")).toHaveText("每季度")
-  await expect(section.getByLabel("证据较旧期限（月）")).toHaveValue("24")
+  await expect(section.getByLabel("证据过期提醒（月）")).toHaveValue("24")
   await expect(
     section.locator('[data-assistant-suggested="true"]'),
   ).toHaveCount(0)
@@ -119,7 +119,7 @@ test("approval page highlights assistant draft and requires both confirmations",
   await returnToManualPage(page)
   const form = page.getByRole("form", { name: "审批规则", exact: true })
   await expect(
-    form.getByRole("checkbox", { name: "全企业需要经理确认" }),
+    form.getByRole("checkbox", { name: "默认需要经理审批" }),
   ).not.toBeChecked()
   await expect(form.locator('[data-assistant-suggested="true"]')).toHaveCount(1)
   await expect(form.getByText("助手建议", { exact: true })).toBeVisible()
@@ -127,7 +127,7 @@ test("approval page highlights assistant draft and requires both confirmations",
     form.getByRole("button", { name: "保存审批规则" }),
   ).toBeDisabled()
   const card = page.getByRole("region", { name: "页面草稿确认" })
-  await card.getByRole("button", { name: "确认应用", exact: true }).click()
+  await card.getByRole("button", { name: "确认生效", exact: true }).click()
   await expect(card.getByRole("status")).toHaveText("请再次确认")
   expect(
     (await (await request.get(`${base}/approval-policy`, { headers })).json())
@@ -136,7 +136,7 @@ test("approval page highlights assistant draft and requires both confirmations",
   await card.getByRole("button", { name: "再次确认", exact: true }).click()
   await expect(card).toHaveCount(0)
   await expect(
-    form.getByRole("checkbox", { name: "全企业需要经理确认" }),
+    form.getByRole("checkbox", { name: "默认需要经理审批" }),
   ).not.toBeChecked()
   await expect(form.locator('[data-assistant-suggested="true"]')).toHaveCount(0)
   expect(
@@ -208,7 +208,7 @@ test("model page highlights the auto drafting switch and applies it after confir
       .enabled
   expect(await read()).toBe(false)
   const card = page.getByRole("region", { name: "页面草稿确认" })
-  await card.getByRole("button", { name: "确认应用", exact: true }).click()
+  await card.getByRole("button", { name: "确认生效", exact: true }).click()
   await expect(card).toHaveCount(0)
   await expect(suggested).toHaveCount(0)
   await expect(toggle).toBeChecked()
@@ -262,7 +262,7 @@ test("dictionary page highlights a modified capability and publishes a new versi
   expect(before.schema_version).toMatchObject(original)
   expect(before.data[0].description).toBe("合成能力说明")
   const card = page.getByRole("region", { name: "页面草稿确认" })
-  await card.getByRole("button", { name: "确认应用", exact: true }).click()
+  await card.getByRole("button", { name: "确认生效", exact: true }).click()
   await expect(card).toHaveCount(0)
   await expect(page.getByText("当前第 2 版 · 1 项能力")).toBeVisible()
   await expect(suggested).toHaveCount(0)
@@ -352,10 +352,10 @@ test("model draft highlights fields and applies only after two confirmations", a
     dialog.getByRole("region", { name: "设置改动确认卡" }),
   ).toBeVisible({ timeout: 30000 })
   await returnToManualPage(page)
-  const field = page.getByLabel("模型名", { exact: true })
+  const field = page.getByLabel("模型名称", { exact: true })
   await expect(field).toHaveValue("synthetic-updated")
   const suggested = page.locator('[data-assistant-suggested="true"]')
-  await expect(suggested.getByLabel("模型名", { exact: true })).toHaveValue(
+  await expect(suggested.getByLabel("模型名称", { exact: true })).toHaveValue(
     "synthetic-updated",
   )
   await expect(
@@ -373,7 +373,7 @@ test("model draft highlights fields and applies only after two confirmations", a
     timeout: 30000,
   })
   expect(await read()).toBe("synthetic")
-  await card.getByRole("button", { name: "确认应用", exact: true }).click()
+  await card.getByRole("button", { name: "确认生效", exact: true }).click()
   await expect(card.getByText("请再次确认", { exact: true })).toBeVisible()
   expect(await read()).toBe("synthetic")
   await card.getByRole("button", { name: "再次确认", exact: true }).click()

@@ -100,7 +100,7 @@ test("admin streams, folds tool progress, stops, sends again and hides pasted se
     })
   })
   await expect(
-    panel.getByText("正在执行：查看员工及账号状态", { exact: true }),
+    panel.getByText("正在查看员工及账号状态…", { exact: true }),
   ).toBeVisible()
   await page.evaluate(() => {
     window.reply.emit({
@@ -124,7 +124,7 @@ test("admin streams, folds tool progress, stops, sends again and hides pasted se
     window.reply.emit({ type: "text", text: "第二段" })
   })
   await expect(panel.getByText("第一段第二段", { exact: true })).toBeVisible()
-  const toggle = panel.getByText("2 步", { exact: true })
+  const toggle = panel.getByText("已完成 2 步操作", { exact: true })
   await expect(
     panel.getByText("查看员工及账号状态：成功", { exact: true }),
   ).toBeHidden()
@@ -159,7 +159,7 @@ test("admin streams, folds tool progress, stops, sends again and hides pasted se
   const assistantBox = await assistantMessage.boundingBox()
   expect(userBox!.x).toBeGreaterThan(assistantBox!.x)
   expect(userBox!.width).toBeLessThanOrEqual(assistantBox!.width * 0.7 + 1)
-  await expect(assistantMessage).toContainText("秒内回复")
+  await expect(assistantMessage).toContainText("耗时")
   await assistantMessage
     .getByRole("button", { name: "复制", exact: true })
     .click()
@@ -249,9 +249,9 @@ test("new chat suggestions disappear in history; historical timestamps and missi
   )
   await page.goto("/admin/assistant")
   await expect(
-    page.getByRole("heading", { name: "今天要处理的事", exact: true }),
+    page.getByRole("heading", { name: "待办事项", exact: true }),
   ).toBeVisible()
-  await expect(page.getByRole("heading", { name: "可以这样问" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "常用操作" })).toBeVisible()
   await page
     .getByRole("button", { name: "查看同步与起草进度", exact: true })
     .click()
@@ -268,13 +268,17 @@ test("new chat suggestions disappear in history; historical timestamps and missi
   await page.goto(`/admin/assistant?session=${session}`)
   await expect(page.getByText("历史回复", { exact: true })).toBeVisible()
   await expect(
-    page.getByRole("heading", { name: "今天要处理的事", exact: true }),
+    page.getByRole("heading", { name: "待办事项", exact: true }),
   ).toHaveCount(0)
-  await expect(page.getByRole("heading", { name: "可以这样问" })).toHaveCount(0)
-  await expect(page.getByText(/试着问/)).toHaveCount(0)
+  await expect(page.getByRole("heading", { name: "常用操作" })).toHaveCount(0)
+  await expect(
+    page.getByText("可以查询状态、排查同步问题，或让我起草设置变更。", {
+      exact: true,
+    }),
+  ).toHaveCount(0)
   const replies = page.locator('[data-role="assistant"]')
-  await expect(replies.nth(0)).toContainText("3 秒内回复")
-  await expect(replies.nth(1)).not.toContainText("秒内回复")
+  await expect(replies.nth(0)).toContainText("耗时 3 秒")
+  await expect(replies.nth(1)).not.toContainText("耗时")
   await replies
     .nth(1)
     .getByRole("button", { name: "复制", exact: true })
@@ -380,8 +384,10 @@ test("first-turn steps persist through navigation, reload and history; wide tabl
   await page.getByLabel("发给管理助手的消息").press("Enter")
   await expect(page).toHaveURL(new RegExp(`session=${session}`))
   const panel = page.getByRole("region", { name: "管理助手", exact: true })
-  await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
-  await panel.getByText("2 步", { exact: true }).click()
+  await expect(
+    panel.getByText("已完成 2 步操作", { exact: true }),
+  ).toBeVisible()
+  await panel.getByText("已完成 2 步操作", { exact: true }).click()
   await expect(
     panel.getByText("查看员工及账号状态：成功", { exact: true }),
   ).toBeVisible()
@@ -389,11 +395,15 @@ test("first-turn steps persist through navigation, reload and history; wide tabl
     panel.getByText("查看同步与起草进度：失败", { exact: true }),
   ).toBeVisible()
   await page.reload()
-  await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
+  await expect(
+    panel.getByText("已完成 2 步操作", { exact: true }),
+  ).toBeVisible()
   await page.getByRole("button", { name: "新对话", exact: true }).click()
   await page.getByRole("link", { name: "合成步骤会话", exact: true }).click()
-  await expect(panel.getByText("2 步", { exact: true })).toBeVisible()
-  await panel.getByText("2 步", { exact: true }).click()
+  await expect(
+    panel.getByText("已完成 2 步操作", { exact: true }),
+  ).toBeVisible()
+  await panel.getByText("已完成 2 步操作", { exact: true }).click()
   await expect(
     panel.getByText("查看同步与起草进度：失败", { exact: true }),
   ).toBeVisible()

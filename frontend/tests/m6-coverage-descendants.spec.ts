@@ -117,7 +117,7 @@ for (const role of [
     if (role.descendants) {
       await expect(
         coverage.getByText(
-          "含下级部门：4 人 · 已发布 0 · 存在争议 0 · 待本人过目 0 · 待审批 0 · 未知 4",
+          "含下级部门：4 人 · 已发布 0 · 存在争议 0 · 待本人确认 0 · 待审批 0 · 未知 4",
           { exact: true },
         ),
       ).toBeVisible()

@@ -54,7 +54,14 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
     await page.goto(`/capacity?tab=${tab}`)
     await expect(
       page.getByRole("heading", {
-        name: tab === "approvals" ? "待审批" : "需求与容量",
+        name:
+          tab === "approvals"
+            ? "待审批"
+            : tab === "team"
+              ? "团队负荷"
+              : tab === "assignments"
+                ? "我的负荷"
+                : "协作需求",
         exact: true,
       }),
     ).toBeVisible()
@@ -181,9 +188,7 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
   await details(m, "incoming")
   const assignment = page.getByRole("region", { name: "部门内分配" })
   for (const code of ["B1", "B2"]) {
-    await assignment
-      .getByLabel("从依据中选择员工")
-      .selectOption(person(code).id)
+    await assignment.getByLabel("选择员工").selectOption(person(code).id)
     await assignment.getByLabel("开始日期", { exact: true }).fill(startWeek)
     await assignment
       .getByLabel("预计完成日期", { exact: true })

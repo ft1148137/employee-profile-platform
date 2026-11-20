@@ -135,7 +135,9 @@ for (const available of [true, false]) {
       route.fulfill({
         json: {
           available: modelAvailable,
-          reason: modelAvailable ? "" : "请先配置模型，可以继续使用手工页面。",
+          reason: modelAvailable
+            ? ""
+            : "请先配置模型，你也可以直接在对应页面操作。",
         },
       }),
     )
@@ -160,12 +162,12 @@ for (const available of [true, false]) {
     await expect(page).toHaveURL(/\/assistant\?mode=admin$/)
     if (!available) {
       await expect(page.getByRole("log")).toContainText(
-        "请先配置模型，可以继续使用手工页面。",
+        "请先配置模型，你也可以直接在对应页面操作。",
       )
       await expect(
         page
           .getByRole("status")
-          .filter({ hasText: "请先配置模型，可以继续使用手工页面。" })
+          .filter({ hasText: "请先配置模型，你也可以直接在对应页面操作。" })
           .getByRole("link", { name: "去配置模型" }),
       ).toHaveAttribute("href", "/admin/data-ai?tab=model")
     }
