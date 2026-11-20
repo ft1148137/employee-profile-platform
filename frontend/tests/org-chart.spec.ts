@@ -223,6 +223,17 @@ test("department navigation preserves hierarchy across search, selection and mem
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     390,
   )
+  await nav.getByRole("button", { name: /^支持组/ }).click()
+  await expect(tree.getByRole("button", { name: /^支持组/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+  expect(
+    await tree
+      .getByRole("region", { name: "可滚动组织架构图" })
+      .evaluate((el) => el.scrollLeft),
+  ).toBeGreaterThan(0)
+  await nav.getByRole("button", { name: /^研发中心/ }).click()
   await page.getByRole("button", { name: "成员表", exact: true }).click()
   await expect(page.getByRole("table")).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(

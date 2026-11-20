@@ -135,9 +135,14 @@ function ChartWorkspace({
     departments.find((item) => item.id === selectedDepartment) ??
     firstDepartment
 
+  const activeItemId = view === "tree" ? department?.id : selectedPerson
+
   useLayoutEffect(() => {
+    if (!activeItemId) return
     const canvas = canvasRef.current
-    const active = canvas?.querySelector('[aria-pressed="true"]')
+    const active = canvas?.querySelector(
+      `[data-org-item="${CSS.escape(activeItemId)}"]`,
+    )
     if (!canvas || !active) return
     const bounds = canvas.getBoundingClientRect()
     const node = active.getBoundingClientRect()
@@ -149,7 +154,7 @@ function ChartWorkspace({
         Math.max(0, node.bottom - bounds.bottom) +
         Math.min(0, node.top - bounds.top),
     })
-  }, [])
+  }, [activeItemId])
 
   const byDepartment = new Map(departments.map((item) => [item.id, item]))
   const byPerson = new Map(people.map((item) => [item.id, item]))
@@ -405,6 +410,7 @@ function ChartWorkspace({
                         className="org-node"
                         style={{ borderTopColor: colors.get(id) }}
                         data-selected={id === department.id}
+                        data-org-item={id}
                       >
                         <button
                           type="button"
@@ -863,6 +869,7 @@ function PersonCard({
 }) {
   return (
     <div
+      data-org-item={person.id}
       className={cn(
         "w-52 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm",
         selected && "border-primary ring-2 ring-primary/30",
