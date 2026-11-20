@@ -182,8 +182,14 @@ test("departed employees leave the team and administrators see a read-only archi
   await expect(
     page.getByRole("button", { name: "添加能力", exact: true }),
   ).toHaveCount(0)
+  await page
+    .getByRole("article", { name: "合成归档能力", exact: true })
+    .getByRole("button", { name: "合成归档能力", exact: true })
+    .click()
+  await expect(page.getByRole("dialog", { name: "合成归档能力" })).toBeVisible()
   await expect(
     page.getByRole("button", { name: "直接修改", exact: true }),
   ).toHaveCount(0)
+  await page.keyboard.press("Escape")
   await expect(page.getByRole("region", { name: "人员操作" })).toHaveCount(0)
 })

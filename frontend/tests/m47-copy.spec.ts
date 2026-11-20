@@ -47,13 +47,10 @@ test("谁能看到说明数据存放和咨询方式", async ({ page, request }) 
   const employees: EmployeeAccount[] = (await accounts.json()).data
   const employee = employees.find((entry) => entry.employee_code === "COPY1")!
   await page.goto(`/employees/${employee.id}`)
-  await page.getByText("谁能看到", { exact: true }).click()
-  await expect(
-    page.getByText(
-      "数据保存在本企业自己部署的服务器上；存放位置、备份和保留期限请问企业管理员。",
-      { exact: true },
-    ),
-  ).toBeVisible()
+  await page.getByRole("button", { name: "谁能看到", exact: true }).hover()
+  await expect(page.getByRole("tooltip")).toContainText(
+    "数据保存在本企业自己部署的服务器上；存放位置、备份和保留期限请问企业管理员。",
+  )
 })
 
 test("未匹配 Jira 账号说明邮箱可能隐藏及核对办法", async ({ page }) => {

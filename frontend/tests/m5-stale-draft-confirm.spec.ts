@@ -97,6 +97,7 @@ test("direct submit shows current values and a stale confirmation reloads the pr
     process.env.DEMO_USER_PASSWORD!,
   )
   await page.getByRole("link", { name: "组织", exact: true }).click()
+  await page.locator("summary", { hasText: /待你确认：初始画像草稿/ }).click()
   await page.getByRole("button", { name: "直接提交", exact: true }).click()
   const dialog = page.getByRole("dialog")
   await expect(dialog).toContainText("修改前")

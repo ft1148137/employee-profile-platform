@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useId, useState } from "react"
+import { ChevronDown } from "lucide-react"
+import { type ReactNode, useEffect, useId, useState } from "react"
 import {
   type ChangeItemPublic,
   type ChangeRequestPublic,
@@ -56,10 +57,12 @@ export function ChangeRequestCard({
   onEdit,
   compact = false,
   profileItems = [],
+  focusedRequestId,
 }: {
   compact?: boolean
   profileItems?: ProfileItem[]
   requests: ChangeRequestPublic[]
+  focusedRequestId?: string | null
   employeeId: string
   isOwner: boolean
   onEvidence: (id: string) => void
@@ -67,6 +70,17 @@ export function ChangeRequestCard({
   onEdit: (selection: EditorSelection) => void
 }) {
   const client = useQueryClient()
+  useEffect(() => {
+    if (
+      !focusedRequestId ||
+      !requests.some(({ id }) => id === focusedRequestId)
+    )
+      return
+    const request = document.getElementById(`request-${focusedRequestId}`)
+    const disclosure = request?.closest("details")
+    if (disclosure) disclosure.open = true
+    request?.scrollIntoView({ block: "center" })
+  }, [focusedRequestId, requests])
   const withdraw = useMutation({
     mutationFn: (id: string) =>
       EmployeeRequestsService.withdrawRequest({
@@ -87,27 +101,33 @@ export function ChangeRequestCard({
   const open = others.filter((request) =>
     ["draft", "pending_owner", "pending_review"].includes(request.status),
   )
+  const returnedCount = others.filter(
+    (request) => request.status === "changes_requested",
+  ).length
+  const actionable = others.filter(
+    (request) =>
+      open.includes(request) || request.status === "changes_requested",
+  )
   const groups = [
-    { title: "其他待处理请求", requests: open },
+    { title: "其他待处理请求", requests: actionable, returnedCount },
     {
       title: "已处理请求",
-      requests: others.filter((request) => !open.includes(request)),
+      requests: others.filter((request) => !actionable.includes(request)),
     },
   ]
   return (
-    <div className="mb-6 space-y-4">
+    <div className="empty:hidden space-y-2">
       <SetupError error={withdraw.error} />
       {pending.map((initial) => (
-        <section
+        <RequestDisclosure
           key={initial.id}
           id={`request-${initial.id}`}
-          aria-label={
-            initial.origin === "import" ? "导入画像草稿" : "初始画像草稿"
-          }
-          className="rounded-xl border border-primary/30 bg-muted/20 p-6 space-y-5"
+          label={initial.origin === "import" ? "导入画像草稿" : "初始画像草稿"}
+          summary={`${isOwner ? "待你确认：" : "待本人确认："}${initial.origin === "import" ? "管理员导入的画像" : "初始画像草稿"} · ${initial.items?.length ?? 0} 项改动`}
+          pending
         >
           <div className="space-y-2">
-            <h2 className="text-lg font-semibold">
+            <h2 className="sr-only">
               {isOwner ? "待你确认：" : "待本人确认："}
               {initial.origin === "import"
                 ? "管理员导入的画像"
@@ -133,12 +153,12 @@ export function ChangeRequestCard({
               )}
             </div>
           )}
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid gap-3 lg:grid-cols-2">
             {(initial.items ?? []).map((item) => (
               <section
                 key={item.id}
                 aria-label={`草稿改动：${item.capability.name}`}
-                className="rounded-lg border bg-card p-5 space-y-3"
+                className="space-y-2 rounded-lg border border-surface-border bg-surface p-3"
               >
                 {compact ? (
                   <CompactChange item={item} profileItems={profileItems} />
@@ -224,17 +244,17 @@ export function ChangeRequestCard({
               直接提交
             </Button>
           )}
-        </section>
+        </RequestDisclosure>
       ))}
       {groups.map(
-        ({ title, requests: group }) =>
+        ({ title, requests: group, returnedCount }) =>
           group.length > 0 && (
-            <section
+            <RequestDisclosure
               key={title}
-              aria-label={title}
-              className="rounded-lg border p-4"
+              label={title}
+              summary={`${title} · ${group.length} 条${returnedCount ? ` · 已退回 ${returnedCount} 条` : ""}`}
+              pending={title === "其他待处理请求"}
             >
-              <h2 className="mb-2 font-semibold">{title}</h2>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 {group.map((request) => (
                   <li
@@ -342,10 +362,47 @@ export function ChangeRequestCard({
                   </li>
                 ))}
               </ul>
-            </section>
+            </RequestDisclosure>
           ),
       )}
     </div>
+  )
+}
+
+function RequestDisclosure({
+  id,
+  label,
+  summary,
+  pending,
+  children,
+}: {
+  id?: string
+  label: string
+  summary: string
+  pending?: boolean
+  children: ReactNode
+}) {
+  return (
+    <details
+      className={`group/requests rounded-lg border bg-surface ${pending ? "border-amber-500/40" : "border-surface-border"}`}
+    >
+      <summary
+        className={`flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium group-open/requests:rounded-b-none [&::-webkit-details-marker]:hidden ${pending ? "bg-amber-500/10" : "bg-muted/40"}`}
+      >
+        {summary}
+        <ChevronDown
+          aria-hidden="true"
+          className="size-4 shrink-0 transition-transform group-open/requests:rotate-180"
+        />
+      </summary>
+      <section
+        id={id}
+        aria-label={label}
+        className="space-y-3 border-t border-surface-border p-3"
+      >
+        {children}
+      </section>
+    </details>
   )
 }
 

@@ -172,8 +172,11 @@ isolated(
     await logInUser(page, company.manager.account!.username, password)
     await page.goto("/employees")
     await page.getByRole("link", { name: "合成员工", exact: true }).click()
-    await page.getByText("谁能看到", { exact: true }).click()
-    await expect(page.getByText(/查看不通知本人、不留记录/)).toBeVisible()
+    await page.getByRole("button", { name: "谁能看到", exact: true }).hover()
+    await expect(page.getByRole("tooltip")).toContainText(
+      "查看不通知本人、不留记录",
+    )
+    await page.keyboard.press("Escape")
     const card = page.getByRole("article", { name: "合成能力1", exact: true })
     await card.getByRole("button", { name: "合成能力1", exact: true }).click()
     const detail = page.getByRole("dialog")
@@ -195,7 +198,11 @@ isolated(
       .getByRole("dialog")
       .getByRole("button", { name: "关闭", exact: true })
       .click()
-    await card.getByRole("button", { name: "直接修改", exact: true }).click()
+    await card.getByRole("button", { name: "合成能力1", exact: true }).click()
+    await page
+      .getByRole("dialog", { name: "合成能力1", exact: true })
+      .getByRole("button", { name: "直接修改", exact: true })
+      .click()
     await expect(
       page.getByRole("textbox", { name: "能力说明", exact: true }),
     ).toBeVisible()
@@ -212,7 +219,18 @@ isolated(
       .getByRole("article", { name: "合成能力1", exact: true })
       .getByRole("button", { name: "合成能力1", exact: true })
       .click()
-    await page.getByRole("button", { name: "修改", exact: true }).last().click()
+    const detail = page.getByRole("dialog", { name: "合成能力1" })
+    await expect(detail).toHaveAttribute("data-slot", "sheet-content")
+    await expect
+      .poll(async () => {
+        const bounds = await detail.boundingBox()
+        return bounds && Math.round(bounds.x + bounds.width)
+      })
+      .toBe(390)
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(390)
+    await detail.getByRole("button", { name: "修改", exact: true }).click()
     await page.getByRole("button", { name: "手动编辑", exact: true }).click()
     const dialog = page.getByRole("dialog")
     const input = dialog.getByRole("textbox", { name: "能力说明", exact: true })
@@ -234,6 +252,7 @@ isolated(
     await page.keyboard.press("Escape")
     await dialog.getByRole("button", { name: "保存草稿", exact: true }).click()
     await expect(dialog).toBeHidden()
+    await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
     await expect(
       page.getByRole("region", { name: "其他待处理请求" }),
     ).toContainText("草稿 · 1 项改动")
@@ -243,6 +262,10 @@ isolated(
     await expect(dialog).toBeHidden()
     await page
       .getByRole("article", { name: "合成能力1", exact: true })
+      .getByRole("button", { name: "合成能力1", exact: true })
+      .click()
+    await page
+      .getByRole("dialog", { name: "合成能力1" })
       .getByRole("button", { name: "修改", exact: true })
       .click()
     await page.getByRole("button", { name: "手动编辑", exact: true }).click()
@@ -307,12 +330,14 @@ isolated(
     const card = page.getByRole("article", { name: "合成能力2", exact: true })
     await expect(card).toContainText("未定级")
     await expect(card).not.toContainText("已确认")
-    await expect(card).toContainText(
-      `${Array.from(statement).slice(0, 40).join("")}…`,
+    await expect(card.locator(".line-clamp-2")).toContainText(
+      statement.slice(0, 24),
     )
     const stats = page.getByRole("region", { name: "能力状态统计" })
     await expect(stats).toContainText("已确认 1")
     await expect(stats).toContainText("未定级 1")
+    await stats.getByRole("button", { name: "未定级 1", exact: true }).click()
+    await expect(page.getByRole("article")).toHaveCount(1)
     await card.getByRole("button", { name: "合成能力2", exact: true }).click()
     await expect(page.getByRole("dialog")).toContainText(statement)
   },
@@ -340,6 +365,7 @@ isolated(
     await dialog.getByRole("button", { name: "预览并提交" }).click()
     await dialog.getByRole("button", { name: "确认提交", exact: true }).click()
     await expect(dialog).toBeHidden()
+    await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
     await expect(
       page.getByRole("region", { name: "其他待处理请求" }),
     ).toContainText("待经理审批")
@@ -394,7 +420,11 @@ for (const role of ["manager", "admin"] as const) {
       )
       await page.goto(`/employees/${company.employee.id}`)
       const card = page.getByRole("article", { name: "合成能力1", exact: true })
-      await card.getByRole("button", { name: "直接修改", exact: true }).click()
+      await card.getByRole("button", { name: "合成能力1", exact: true }).click()
+      await page
+        .getByRole("dialog", { name: "合成能力1", exact: true })
+        .getByRole("button", { name: "直接修改", exact: true })
+        .click()
       const dialog = page.getByRole("dialog")
       await dialog
         .getByRole("textbox", { name: "能力说明", exact: true })
@@ -431,7 +461,13 @@ for (const role of ["manager", "admin"] as const) {
         exact: true,
       })
       await expect(added).toContainText("已确认")
-      await added.getByRole("button", { name: "直接修改", exact: true }).click()
+      await added
+        .getByRole("button", { name: "合成能力2", exact: true })
+        .click()
+      await page
+        .getByRole("dialog", { name: "合成能力2", exact: true })
+        .getByRole("button", { name: "直接修改", exact: true })
+        .click()
       await dialog.getByLabel("移除此项", { exact: true }).check()
       await dialog.getByRole("button", { name: "预览修改" }).click()
       await expect(
@@ -480,6 +516,10 @@ isolated(
     for (const stage of ["preview", "publish"]) {
       await page
         .getByRole("article", { name: "合成能力1", exact: true })
+        .getByRole("button", { name: "合成能力1", exact: true })
+        .click()
+      await page
+        .getByRole("dialog", { name: "合成能力1", exact: true })
         .getByRole("button", { name: "直接修改", exact: true })
         .click()
       const dialog = page.getByRole("dialog")

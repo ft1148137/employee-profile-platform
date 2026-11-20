@@ -118,6 +118,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   await expect(page).toHaveURL("/assistant")
   await page.getByRole("link", { name: "组织", exact: true }).click()
   await page.setViewportSize({ width: 390, height: 844 })
+  await page.locator("summary", { hasText: /待你确认：初始画像草稿/ }).click()
   await expect(
     page.getByRole("heading", { name: "待你确认：初始画像草稿" }),
   ).toBeVisible()
@@ -172,6 +173,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   await editor.getByRole("button", { name: "预览并提交", exact: true }).click()
   await expect(editor.getByRole("heading", { name: "变更预览" })).toBeVisible()
   await editor.getByRole("button", { name: "确认提交", exact: true }).click()
+  await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
   const pending = page.getByRole("region", { name: "其他待处理请求" })
   await expect(pending).toContainText("待经理审批")
   page.once("dialog", (dialog) => dialog.accept())
@@ -180,6 +182,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
     .first()
     .click()
   await expect(pending).not.toBeVisible()
+  await page.locator("summary", { hasText: /^已处理请求/ }).click()
   await expect(page.getByRole("region", { name: "已处理请求" })).toContainText(
     "已撤回",
   )

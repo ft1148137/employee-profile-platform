@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { isAxiosError } from "axios"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import {
   ChangeRequestsService,
   type ProfileItem,
   ProfilesService,
 } from "@/client"
 import { tabSearch } from "@/components/Admin/AdminTabs"
+import { WorkspacePage } from "@/components/Common/WorkbenchPrimitives"
 import { AutoDraftSetting } from "@/components/Profile/AutoDraftSetting"
 import { CapabilityList } from "@/components/Profile/CapabilityList"
 import { ChangeRequestCard } from "@/components/Profile/ChangeRequestCard"
@@ -84,12 +85,6 @@ function EmployeeDetails() {
     enabled: !!org,
     retry: false,
   })
-  useEffect(() => {
-    if (detailTab === "capabilities" && requestId && requests.data)
-      document
-        .getElementById(`request-${requestId}`)
-        ?.scrollIntoView({ block: "center" })
-  }, [detailTab, requestId, requests.data])
   if (!org) return <OrgState />
   if (query.isPending) return <ProfileLoading />
   if (query.isError) {
@@ -104,9 +99,11 @@ function EmployeeDetails() {
       </div>
     )
   }
+  const active = query.data.employee.employment_status === "active"
+  const canEditOwn = active && ownEmployeeId === employeeId
   const canDirectEdit =
     ownEmployeeId !== employeeId &&
-    query.data.employee.employment_status === "active" &&
+    active &&
     (isAdmin ||
       managedDepartmentIds.includes(query.data.employee.department?.id ?? ""))
   const pendingSupplement = requests.data?.data.find(
@@ -117,7 +114,7 @@ function EmployeeDetails() {
     .map((reviewer) => `${reviewer.name}（${reviewer.role}）`)
     .join("、")
   return (
-    <div className="space-y-8">
+    <WorkspacePage>
       <EmployeeDetailTabs
         employee={query.data.employee}
         tab={detailTab}
@@ -147,9 +144,7 @@ function EmployeeDetails() {
           </>
         }
       >
-        {isAdmin && ownEmployeeId === employeeId && (
-          <AutoDraftSetting orgId={org.id} />
-        )}
+        {isAdmin && canEditOwn && <AutoDraftSetting orgId={org.id} />}
         {requests.isPending ? (
           <ProfileLoading />
         ) : requests.isError ? (
@@ -157,10 +152,11 @@ function EmployeeDetails() {
         ) : (
           <ChangeRequestCard
             requests={requests.data.data}
+            focusedRequestId={requestId}
             compact={!isAdmin}
             profileItems={query.data.items}
             employeeId={employeeId}
-            isOwner={ownEmployeeId === employeeId}
+            isOwner={canEditOwn}
             onEvidence={setEvidenceId}
             orgId={org.id}
             onEdit={setEditing}
@@ -170,7 +166,7 @@ function EmployeeDetails() {
           !query.data.items.some((item) => item.claim) && (
             <section
               aria-label="画像说明"
-              className="mb-6 rounded-xl border bg-muted/20 p-6 space-y-3"
+              className="space-y-1.5 rounded-lg border border-surface-border bg-surface p-3 text-sm"
             >
               <h2 className="font-semibold">
                 {ownEmployeeId === employeeId
@@ -190,16 +186,20 @@ function EmployeeDetails() {
                     : "你的补充正在等待审批，暂时没有可用的审批人，企业管理员会处理。"}
                 </p>
               )}
-              {ownEmployeeId === employeeId ? (
+              {canEditOwn ? (
                 <p>
-                  可点击下方「添加能力」手动补充，或前往
+                  可点击顶栏「添加能力」手动补充，或前往
                   <Link to="/assistant" className="text-primary underline">
                     「AI 助手」
                   </Link>
                   口述经历生成。
                 </p>
               ) : (
-                <p>该员工可以通过「添加能力」自己补充，或去助手里描述经历。</p>
+                active && (
+                  <p>
+                    该员工可以通过「添加能力」自己补充，或去助手里描述经历。
+                  </p>
+                )
               )}
               <p>画像仅用于跨部门协作找人，不用于绩效、薪酬或晋升。</p>
             </section>
@@ -218,8 +218,13 @@ function EmployeeDetails() {
           canConfigureDepartment={roles.includes("org_admin")}
           onEvidence={setEvidenceId}
           directEdit={canDirectEdit}
+          appeals={
+            canEditOwn && requests.data
+              ? { orgId: org.id, requests: requests.data.data }
+              : undefined
+          }
           onEdit={
-            ownEmployeeId === employeeId
+            canEditOwn
               ? (item, retract) =>
                   retract ? setEditing({ item, retract }) : setChoosing(item)
               : canDirectEdit
@@ -248,7 +253,7 @@ function EmployeeDetails() {
           onClose={() => setEvidenceId(null)}
         />
       )}
-      {editing && ownEmployeeId === employeeId && (
+      {editing && canEditOwn && (
         <ChangeRequestEditor
           orgId={org.id}
           selection={editing}
@@ -256,7 +261,7 @@ function EmployeeDetails() {
           onClose={() => setEditing(null)}
         />
       )}
-      {choosing && (
+      {choosing && canEditOwn && (
         <Dialog open onOpenChange={(open) => !open && setChoosing(null)}>
           <DialogContent>
             <DialogTitle>编辑「{choosing.capability.name}」</DialogTitle>
@@ -293,6 +298,6 @@ function EmployeeDetails() {
           onClose={() => setDirectEditing(null)}
         />
       )}
-    </div>
+    </WorkspacePage>
   )
 }

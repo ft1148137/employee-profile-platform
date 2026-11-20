@@ -45,6 +45,7 @@ for (const [decision, summary] of [
     )
     await logInUser(page, "employee.platform@demo.example.com", password)
     await page.getByRole("link", { name: "组织", exact: true }).click()
+    await page.locator("summary", { hasText: /^已处理请求/ }).click()
     const processed = page.getByRole("region", { name: "已处理请求" })
     await expect(processed).toContainText(summary)
     await expect(processed).toContainText("合成能力1：批准")
@@ -137,6 +138,7 @@ test("old initial draft previews the current value and submits an edited proposa
   })
   await logInUser(page, "employee.platform@demo.example.com", password)
   await page.getByRole("link", { name: "组织", exact: true }).click()
+  await page.locator("summary", { hasText: /待你确认：初始画像草稿/ }).click()
   await page.getByRole("button", { name: "直接提交", exact: true }).click()
   const dialog = page.getByRole("dialog")
   await expect(dialog).toContainText("经理已发布的当前判断")
@@ -155,6 +157,7 @@ test("old initial draft previews the current value and submits an edited proposa
   await expect(dialog).toContainText("本人基于当前值补充")
   await dialog.getByRole("button", { name: "确认提交", exact: true }).click()
   await expect(dialog).toBeHidden()
+  await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
   await expect(
     page.getByRole("region", { name: "其他待处理请求" }),
   ).toContainText("待经理审批")
