@@ -1,3 +1,5 @@
+from collections import defaultdict
+from collections.abc import Collection
 from uuid import UUID
 
 from sqlmodel import Session, SQLModel, col, or_, select
@@ -17,7 +19,7 @@ from app.domains.org.models import (
     Role,
     RoleGrant,
 )
-from app.domains.org.service import managed_scope
+from app.domains.org.service import department_ancestry
 from app.domains.review.models import ReviewDelegation
 from app.models import User
 
@@ -69,15 +71,30 @@ def reviewers_for(
 def review_assignment(
     session: Session, org_id: UUID, subject_employee_id: UUID
 ) -> tuple[list[UUID], str | None]:
-    subject = session.exec(
-        select(Employee).where(
-            Employee.org_id == org_id, Employee.id == subject_employee_id
+    return _review_assignments(session, org_id, {subject_employee_id}).get(
+        subject_employee_id, ([], None)
+    )
+
+
+def _review_assignments(
+    session: Session, org_id: UUID, subject_employee_ids: Collection[UUID]
+) -> dict[UUID, tuple[list[UUID], str | None]]:
+    if not subject_employee_ids:
+        return {}
+    subjects = session.exec(
+        select(Employee.id, Employee.department_id).where(
+            Employee.org_id == org_id, col(Employee.id).in_(subject_employee_ids)
         )
-    ).one_or_none()
-    if subject is None:
-        return [], None
+    ).all()
+    if not subjects:
+        return {}
     rows = session.exec(
-        select(OrgMembership, RoleGrant)
+        select(
+            OrgMembership.user_id,
+            OrgMembership.employee_id,
+            RoleGrant.role,
+            RoleGrant.department_id,
+        )
         .join(
             RoleGrant,
             (col(RoleGrant.membership_id) == OrgMembership.id)
@@ -98,56 +115,83 @@ def review_assignment(
             ),
         )
     ).all()
-    candidates = [(m, g) for m, g in rows if m.employee_id != subject.id]
-    line = session.exec(
-        select(ReportingLine).where(
-            ReportingLine.org_id == org_id,
-            ReportingLine.employee_id == subject.id,
-            col(ReportingLine.valid_to).is_(None),
-        )
-    ).one_or_none()
-    if line:
-        for member, grant in candidates:
-            if (
-                member.employee_id == line.manager_employee_id
-                and grant.role == Role.DEPT_MANAGER
-                and grant.department_id
-                and subject.department_id
-                in managed_scope(session, org_id, frozenset([grant.department_id]))
-            ):
-                return [member.user_id], "申请人的直属上级，并且是该部门的部门经理"
+    admins: dict[UUID, UUID | None] = {}
+    managers: dict[UUID, dict[UUID, UUID | None]] = defaultdict(dict)
+    for user_id, employee_id, role, department_id in rows:
+        if role == Role.ORG_ADMIN:
+            admins[user_id] = employee_id
+        elif role == Role.DEPT_MANAGER and department_id is not None:
+            managers[department_id][user_id] = employee_id
+    reporting_lines = dict(
+        session.exec(
+            select(ReportingLine.employee_id, ReportingLine.manager_employee_id).where(
+                ReportingLine.org_id == org_id,
+                col(ReportingLine.employee_id).in_(
+                    [employee_id for employee_id, _ in subjects]
+                ),
+                col(ReportingLine.valid_to).is_(None),
+            )
+        ).all()
+    )
     departments = {
         row.id: row
         for row in session.exec(
             select(Department).where(Department.org_id == org_id)
         ).all()
     }
-    department, visited = subject.department_id, set()
-    while department is not None and department not in visited:
-        visited.add(department)
-        managers = {
-            m.user_id
-            for m, g in candidates
-            if g.role == Role.DEPT_MANAGER and g.department_id == department
-        }
-        if managers:
+    return {
+        employee_id: _assignment(
+            employee_id,
+            department_id,
+            reporting_lines.get(employee_id),
+            departments,
+            managers,
+            admins,
+        )
+        for employee_id, department_id in subjects
+    }
+
+
+def _assignment(
+    employee_id: UUID,
+    department_id: UUID | None,
+    direct_manager_id: UUID | None,
+    departments: dict[UUID, Department],
+    managers: dict[UUID, dict[UUID, UUID | None]],
+    admins: dict[UUID, UUID | None],
+) -> tuple[list[UUID], str]:
+    ancestry = list(department_ancestry(departments, department_id))
+    if direct_manager_id is not None:
+        for ancestor in ancestry:
+            for user_id, manager_id in managers.get(ancestor, {}).items():
+                if manager_id == direct_manager_id and manager_id != employee_id:
+                    return [user_id], "申请人的直属上级，并且是该部门的部门经理"
+    for ancestor in ancestry:
+        reviewers = sorted(
+            user_id
+            for user_id, manager_id in managers.get(ancestor, {}).items()
+            if manager_id != employee_id
+        )
+        if reviewers:
             reason = (
                 "申请人所在部门的部门经理"
-                if department == subject.department_id
-                else f"申请人上级部门 {departments[department].name} 的部门经理"
+                if ancestor == department_id
+                else f"申请人上级部门 {departments[ancestor].name} 的部门经理"
             )
-            return sorted(managers), reason
-        row = departments.get(department)
-        department = row.parent_department_id if row else None
+            return reviewers, reason
     return (
-        sorted({m.user_id for m, g in candidates if g.role == Role.ORG_ADMIN}),
+        sorted(
+            user_id for user_id, admin_id in admins.items() if admin_id != employee_id
+        ),
         "申请人所在部门和上级部门都没有部门经理，由企业管理员审批",
     )
 
 
 def active_delegations(
-    session: Session, org_id: UUID, managers: list[UUID]
+    session: Session, org_id: UUID, managers: Collection[UUID]
 ) -> list[ReviewDelegation]:
+    if not managers:
+        return []
     now = utc_now()
     return list(
         session.exec(
@@ -176,18 +220,47 @@ def can_review(
     session: Session, principal: Principal, subject_employee_id: UUID
 ) -> UUID | None:
     """Return the original reviewer represented by this actor, without following chains."""
-    if principal.user_id is None or principal.employee_id == subject_employee_id:
-        return None
-    reviewers = reviewers_for(session, principal.org_id, subject_employee_id)
-    if principal.user_id in reviewers:
-        return principal.user_id
+    return reviewable_employees(session, principal, {subject_employee_id}).get(
+        subject_employee_id
+    )
+
+
+def reviewable_employees(
+    session: Session, principal: Principal, subject_employee_ids: Collection[UUID]
+) -> dict[UUID, UUID | None]:
+    user_id = principal.user_id
+    if user_id is None:
+        return {}
+    assignments = _review_assignments(
+        session, principal.org_id, set(subject_employee_ids) - {principal.employee_id}
+    )
+    delegated_managers = {
+        row.manager_user_id
+        for row in active_delegations(
+            session,
+            principal.org_id,
+            {
+                manager_id
+                for reviewers, _ in assignments.values()
+                if user_id not in reviewers
+                for manager_id in reviewers
+            },
+        )
+        if row.delegate_user_id == user_id
+    }
+    return {
+        employee_id: _represented_reviewer(user_id, reviewers, delegated_managers)
+        for employee_id, (reviewers, _) in assignments.items()
+    }
+
+
+def _represented_reviewer(
+    user_id: UUID, reviewers: list[UUID], delegated_managers: set[UUID]
+) -> UUID | None:
+    if user_id in reviewers:
+        return user_id
     return next(
-        (
-            row.manager_user_id
-            for row in active_delegations(session, principal.org_id, reviewers)
-            if row.delegate_user_id == principal.user_id
-        ),
-        None,
+        (manager for manager in reviewers if manager in delegated_managers), None
     )
 
 

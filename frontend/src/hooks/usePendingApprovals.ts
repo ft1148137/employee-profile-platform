@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { CapacityService, type DemandPublic } from "@/client"
+import { CapacityService } from "@/client"
 import {
   useExtensions,
   useMyAssignments,
@@ -48,23 +48,28 @@ export function usePendingApprovals() {
   const extensions = useExtensions(orgId, enabled)
   const own = useMyAssignments(orgId, enabled && !!employeeId)
   const incoming = useQuery({
-    queryKey: ["capacity", orgId, "demands", "incoming", "submitted"],
+    queryKey: [
+      "capacity",
+      orgId,
+      "demands",
+      "incoming",
+      "submitted",
+      "actionable",
+    ],
     enabled: enabled && manages,
-    queryFn: async ({ signal }) => {
-      const pending = new Map<string, DemandPublic>()
-      const limit = 100
-      for (let skip = 0; ; skip += limit) {
-        const { data: page } = await CapacityService.listDemands({
+    queryFn: async ({ signal }) =>
+      (
+        await CapacityService.listDemands({
           path: { org_id: orgId },
-          query: { side: "incoming", status: "submitted", skip, limit },
+          query: {
+            side: "incoming",
+            status: "submitted",
+            actionable_only: true,
+            limit: 100,
+          },
           signal,
         })
-        for (const row of page.data) {
-          if (row.can_reply === true) pending.set(row.id, row)
-        }
-        if (skip + limit >= page.count) return [...pending.values()]
-      }
-    },
+      ).data,
   })
   const selection = useBorrowRequests(orgId, false, enabled && manages)
   const consent = useBorrowRequests(orgId, true, enabled && !!employeeId)
@@ -78,7 +83,10 @@ export function usePendingApprovals() {
           (row) => row.status === "pending" && !ownIds.has(row.assignment_id),
         ) ?? [])
       : []
-  const demands = enabled && manages ? (incoming.data ?? []) : []
+  const demands =
+    enabled && manages
+      ? (incoming.data?.data.filter((row) => row.can_reply === true) ?? [])
+      : []
   const borrows = new Map(
     (enabled && manages ? (selection.data ?? []) : [])
       .filter((row) => row.status === "pending_selection")
@@ -93,7 +101,7 @@ export function usePendingApprovals() {
   const counts = {
     profile: profile.data?.count ?? 0,
     workload: pendingWorkloads.length + pendingExtensions.length,
-    demand: demands.length,
+    demand: enabled && manages ? (incoming.data?.count ?? 0) : 0,
     borrow: borrows.size,
   }
   return {

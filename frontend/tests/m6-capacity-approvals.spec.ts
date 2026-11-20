@@ -179,8 +179,11 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     )
     await page.goto(path)
   }
-  const incomingQueries: Array<{ status: string | null; skip: string | null }> =
-    []
+  const incomingQueries: Array<{
+    status: string | null
+    actionableOnly: string | null
+    skip: string | null
+  }> = []
   page.on("request", (req) => {
     const { pathname, searchParams } = new URL(req.url())
     if (
@@ -189,6 +192,7 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     ) {
       incomingQueries.push({
         status: searchParams.get("status"),
+        actionableOnly: searchParams.get("actionable_only"),
         skip: searchParams.get("skip"),
       })
     }
@@ -206,7 +210,9 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
   }
   await open(root, "/reviews?type=demand")
   await expectNoIncoming()
-  expect(incomingQueries).toEqual([{ status: "submitted", skip: "0" }])
+  expect(incomingQueries).toEqual([
+    { status: "submitted", actionableOnly: "true", skip: null },
+  ])
 
   const ownDescription = "纯管理员自提需求"
   await api(

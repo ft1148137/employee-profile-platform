@@ -74,21 +74,21 @@ test("待审批角标汇总、分类与收到需求的角色入口", async ({ pa
     }),
   )
   const demandList = `**${base}/capacity/demands?*`
-  const demandPages: Array<{ status: string | null; skip: string | null }> = []
+  const demandQueries: URLSearchParams[] = []
   await page.route(demandList, (route) => {
-    const url = new URL(route.request().url())
-    const skip = url.searchParams.get("skip")
-    demandPages.push({ status: url.searchParams.get("status"), skip })
+    demandQueries.push(new URL(route.request().url()).searchParams)
     return route.fulfill({
       json: {
         count: 101,
-        data:
-          skip === "0"
-            ? Array.from({ length: 100 }, () => ({
-                status: "submitted",
-                can_reply: false,
-              }))
-            : [{ ...demand, can_reply: true }],
+        data: [
+          { ...demand, can_reply: true },
+          {
+            ...demand,
+            id: crypto.randomUUID(),
+            capability_name: "合成不可答复需求",
+            can_reply: false,
+          },
+        ],
       },
     })
   })
@@ -98,22 +98,26 @@ test("待审批角标汇总、分类与收到需求的角色入口", async ({ pa
   const sidebar = page.getByRole("navigation", { name: "空间导航" })
   const filters = page.getByRole("navigation", { name: "待审批类型" })
   await expect(
-    rail.getByRole("link", { name: "协同 6", exact: true }),
+    rail.getByRole("link", { name: "协同 106", exact: true }),
   ).toBeVisible()
   await expect(
-    sidebar.getByRole("link", { name: "待审批 4", exact: true }),
+    sidebar.getByRole("link", { name: "待审批 104", exact: true }),
   ).toBeVisible()
   await expect(filters.getByRole("link")).toHaveText([
-    "全部4",
+    "全部104",
     "画像变更1",
     "负荷与延期1",
-    "收到需求1",
+    "收到需求101",
     "借调确认1",
   ])
-  expect(demandPages).toEqual([
-    { status: "submitted", skip: "0" },
-    { status: "submitted", skip: "100" },
-  ])
+  expect(demandQueries).toHaveLength(1)
+  const [query] = demandQueries
+  expect(query.get("side")).toBe("incoming")
+  expect(query.get("status")).toBe("submitted")
+  expect(query.get("actionable_only")).toBe("true")
+  expect(query.get("limit")).toBe("100")
+  expect(query.has("skip")).toBe(false)
+  await expect(page.getByText("合成不可答复需求")).toHaveCount(0)
   await expect(page.getByText("合成画像员工", { exact: false })).toBeVisible()
   await expect(page.getByText("合成调整员工", { exact: false })).toBeVisible()
   await expect(page.getByText("合成待选人借调")).toBeVisible()

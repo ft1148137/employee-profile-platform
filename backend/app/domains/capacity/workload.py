@@ -61,7 +61,12 @@ from app.domains.org.models import (
     ExternalIdentity,
     OrgMembership,
 )
-from app.domains.review.routing import active_delegations, can_review, review_assignment
+from app.domains.review.routing import (
+    active_delegations,
+    can_review,
+    review_assignment,
+    reviewable_employees,
+)
 from app.domains.source.models import SourceConnection
 from app.domains.work.models import Task
 from app.models import User
@@ -756,28 +761,24 @@ def list_workload_requests(
         ).all()
     )
     rows.sort(key=lambda r: (-r[0].created_at.timestamp(), r[0].id))
-    reviewers: dict[UUID, UUID | None] = {}
-    reviewer_names: dict[UUID, str] = {}
-    data = []
-    for row, employee_name in rows:
-        if row.employee_id not in reviewers:
-            reviewers[row.employee_id] = can_review(session, principal, row.employee_id)
-        if reviewers[row.employee_id] is not None:
-            reviewer = reviewers[row.employee_id]
-            assert reviewer is not None
-            if reviewer != principal.user_id and reviewer not in reviewer_names:
-                reviewer_names[reviewer] = user_names(
-                    session, principal.org_id, {reviewer}
-                )[reviewer]
-            data.append(
-                WorkloadRequestPublic(
-                    **row.model_dump(),
-                    employee_name=employee_name,
-                    on_behalf_of_name=reviewer_names[reviewer]
-                    if reviewer != principal.user_id
-                    else None,
-                )
-            )
+    reviewers = reviewable_employees(
+        session, principal, {row.employee_id for row, _ in rows}
+    )
+    delegated = {
+        reviewer
+        for reviewer in reviewers.values()
+        if reviewer is not None and reviewer != principal.user_id
+    }
+    reviewer_names = user_names(session, principal.org_id, delegated)
+    data = [
+        WorkloadRequestPublic(
+            **row.model_dump(),
+            employee_name=employee_name,
+            on_behalf_of_name=reviewer_names.get(reviewer),
+        )
+        for row, employee_name in rows
+        if (reviewer := reviewers.get(row.employee_id)) is not None
+    ]
     return WorkloadRequestList(data=data, count=len(data))
 
 

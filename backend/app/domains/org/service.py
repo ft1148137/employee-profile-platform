@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -257,6 +258,17 @@ def _initial_profile_status() -> ColumnElement[str]:
         (source | imported, "no_records"),
         else_="waiting_source",
     )
+
+
+def department_ancestry(
+    departments: dict[UUID, Department], department_id: UUID | None
+) -> Iterator[UUID]:
+    visited: set[UUID] = set()
+    while department_id is not None and department_id not in visited:
+        visited.add(department_id)
+        yield department_id
+        row = departments.get(department_id)
+        department_id = row.parent_department_id if row else None
 
 
 def managed_scope(
