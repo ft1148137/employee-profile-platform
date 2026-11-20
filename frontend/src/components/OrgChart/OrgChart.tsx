@@ -1,12 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { ChevronDown, ChevronRight, Network } from "lucide-react"
-import { type ReactNode, useState } from "react"
+import { ChevronDown, ChevronRight, Search } from "lucide-react"
+import {
+  Fragment,
+  type ReactNode,
+  type Ref,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react"
 import {
   type OrgChartDepartment,
   type OrgChartPerson,
+  type OrgChartPublic,
   OrgsService,
 } from "@/client"
+import { TopbarActions } from "@/components/Common/TopbarSlot"
+import { WorkspacePage } from "@/components/Common/WorkbenchPrimitives"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
@@ -21,6 +31,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { useOrg } from "@/hooks/useOrg"
 import { cn } from "@/lib/utils"
 import { DepartmentCapabilities } from "./DepartmentCapabilities"
@@ -61,10 +79,27 @@ function reportingCycles(people: OrgChartPerson[]) {
   return cycles
 }
 
+const branchColors = ["#2563eb", "#0d9488", "#7c3aed", "#d97706", "#e11d48"]
+
+function groupByParent<T extends { id: string }>(
+  items: T[],
+  parentOf: (item: T) => string | null,
+) {
+  const groups = new Map<string | null, string[]>()
+  for (const item of items) {
+    const parent = parentOf(item)
+    const siblings = groups.get(parent) ?? []
+    siblings.push(item.id)
+    groups.set(parent, siblings)
+  }
+  return groups
+}
+
+function managerNames(department: OrgChartDepartment) {
+  return department.managers?.map((manager) => manager.display_name).join("、")
+}
+
 function Chart({ orgId, canEdit }: { orgId: string; canEdit: boolean }) {
-  const [selectedDepartment, setDepartment] = useState<string | null>(null)
-  const [selectedPerson, setPerson] = useState<string | null>(null)
-  const [collapsed, setCollapsed] = useState(new Set<string>())
   const chart = useQuery({
     queryKey: ["org-chart", orgId],
     queryFn: async () =>
@@ -72,218 +107,587 @@ function Chart({ orgId, canEdit }: { orgId: string; canEdit: boolean }) {
   })
   if (chart.isPending) return <ProfileLoading />
   if (chart.isError) return <ProfileError retry={() => chart.refetch()} />
-  const { departments, people } = chart.data
-  const department = departments.find((item) => item.id === selectedDepartment)
-  const person = people.find((item) => item.id === selectedPerson)
+  return <ChartWorkspace data={chart.data} orgId={orgId} canEdit={canEdit} />
+}
+
+function ChartWorkspace({
+  data: { departments, people },
+  orgId,
+  canEdit,
+}: {
+  data: OrgChartPublic
+  orgId: string
+  canEdit: boolean
+}) {
+  const firstDepartment =
+    departments.find((item) => !item.parent_department_id) ?? departments[0]
+  const [selectedDepartment, setDepartment] = useState(firstDepartment?.id)
+  const [selectedPerson, setPerson] = useState<string | null>(null)
+  const [view, setView] = useState<"tree" | "members">("tree")
+  const [reporting, setReporting] = useState(false)
+  const [includeChildren, setIncludeChildren] = useState(false)
+  const [search, setSearch] = useState("")
+  const [navCollapsed, setNavCollapsed] = useState(new Set<string>())
+  const [chartCollapsed, setChartCollapsed] = useState(new Set<string>())
+  const canvasRef = useRef<HTMLElement>(null)
+  const actionsRef = useRef<HTMLFieldSetElement>(null)
+  const department =
+    departments.find((item) => item.id === selectedDepartment) ??
+    firstDepartment
+
+  const activeItemId = view === "tree" ? department?.id : selectedPerson
+
+  useLayoutEffect(() => {
+    if (!activeItemId) return
+    const canvas = canvasRef.current
+    const active = canvas?.querySelector(
+      `[data-org-item="${CSS.escape(activeItemId)}"]`,
+    )
+    if (!canvas || !active) return
+    const bounds = canvas.getBoundingClientRect()
+    const node = active.getBoundingClientRect()
+    canvas.scrollBy({
+      left:
+        Math.max(0, node.right - bounds.right) +
+        Math.min(0, node.left - bounds.left),
+      top:
+        Math.max(0, node.bottom - bounds.bottom) +
+        Math.min(0, node.top - bounds.top),
+    })
+  }, [activeItemId])
+
+  const byDepartment = new Map(departments.map((item) => [item.id, item]))
+  const byPerson = new Map(people.map((item) => [item.id, item]))
+  const person = selectedPerson ? byPerson.get(selectedPerson) : undefined
+  const children = groupByParent(
+    departments,
+    (item) => item.parent_department_id,
+  )
+  const colors = new Map<string, string>()
+  function colorBranch(id: string, color: string) {
+    colors.set(id, color)
+    for (const child of children.get(id) ?? []) colorBranch(child, color)
+  }
+  const roots = children.get(null) ?? []
+  const soleRoot = roots.length === 1 ? roots[0] : undefined
+  const primaryBranches = soleRoot ? (children.get(soleRoot) ?? []) : roots
+  if (soleRoot) colors.set(soleRoot, "var(--foreground)")
+  primaryBranches.forEach((id, index) => {
+    colorBranch(id, branchColors[index % branchColors.length])
+  })
+
+  const matches = new Set<string>()
+  const term = search.trim().toLocaleLowerCase()
+  function ancestors(id: string) {
+    const ids: string[] = []
+    let parent = byDepartment.get(id)?.parent_department_id
+    while (parent) {
+      ids.push(parent)
+      parent = byDepartment.get(parent)?.parent_department_id
+    }
+    return ids
+  }
+  for (const item of departments) {
+    if (
+      `${item.name} ${managerNames(item) ?? ""}`
+        .toLocaleLowerCase()
+        .includes(term)
+    ) {
+      matches.add(item.id)
+      if (term) for (const id of ancestors(item.id)) matches.add(id)
+    }
+  }
+  const members = people.filter(
+    (item) =>
+      item.department_id &&
+      department &&
+      (item.department_id === department.id ||
+        (includeChildren &&
+          ancestors(item.department_id).includes(department.id))),
+  )
   const cycles = reportingCycles(people)
-  const children = new Map<string | null, string[]>()
-  const addChild = (parent: string | null, id: string) =>
-    children.set(parent, [...(children.get(parent) ?? []), id])
-  let renderCard: (id: string) => ReactNode
-  let label = "部门层级"
-  if (person || department) {
-    const visible = person
-      ? people
-      : people.filter((item) => item.department_id === department?.id)
-    const byId = new Map(visible.map((item) => [item.id, item]))
+  let reports = new Map<string | null, string[]>()
+  if (view === "members" && (person || reporting)) {
     if (person) {
-      label = "人员汇报关系"
       const chain = [person.id]
       let manager = person.manager_id
-      while (manager && byId.has(manager) && !chain.includes(manager)) {
+      while (manager && byPerson.has(manager) && !chain.includes(manager)) {
         chain.unshift(manager)
-        manager = byId.get(manager)?.manager_id ?? null
+        manager = byPerson.get(manager)?.manager_id ?? null
       }
       chain.forEach((id, index) => {
-        addChild(index ? chain[index - 1] : null, id)
+        reports.set(index ? chain[index - 1] : null, [id])
       })
-      for (const report of people)
-        if (report.manager_id === person.id && !chain.includes(report.id))
-          addChild(person.id, report.id)
-    } else {
-      label = "部门汇报关系"
-      for (const item of visible)
-        addChild(
-          !cycles.has(item.id) && item.manager_id && byId.has(item.manager_id)
-            ? item.manager_id
-            : null,
-          item.id,
-        )
-    }
-    renderCard = (id) => {
-      const item = byId.get(id)!
-      return (
-        <PersonCard
-          person={item}
-          selected={person?.id === id}
-          cycle={cycles.has(id)}
-          onSelect={() => setPerson(id)}
-        />
+      reports.set(
+        person.id,
+        people
+          .filter(
+            (item) => item.manager_id === person.id && !chain.includes(item.id),
+          )
+          .map((item) => item.id),
       )
-    }
-  } else {
-    const byId = new Map(departments.map((item) => [item.id, item]))
-    for (const item of departments) addChild(item.parent_department_id, item.id)
-    renderCard = (id) => {
-      const item = byId.get(id)!
-      const childCount = children.get(id)?.length ?? 0
-      return (
-        <div className="w-52 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
-          <button
-            type="button"
-            aria-label={`查看${item.name}人员`}
-            onClick={() => setDepartment(id)}
-            className="w-full p-2 text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"
-          >
-            <span className="block font-semibold">{item.name}</span>
-            <span className="mt-1 block text-xs text-muted-foreground">
-              经理：
-              {item.managers
-                ?.map((manager) => manager.display_name)
-                .join("、") || "未设置"}
-            </span>
-            <span className="mt-1 flex justify-between text-xs text-muted-foreground">
-              <span>
-                本部门{" "}
-                <strong className="text-foreground">{item.direct_count}</strong>{" "}
-                人
-              </span>
-              <span>
-                含下级{" "}
-                <strong className="text-foreground">{item.total_count}</strong>{" "}
-                人
-              </span>
-            </span>
-          </button>
-          {canEdit && (
-            <DepartmentActions
-              orgId={orgId}
-              department={item}
-              departments={departments}
-            />
-          )}
-          {childCount > 0 && (
-            <button
-              type="button"
-              aria-expanded={!collapsed.has(id)}
-              aria-controls={`org-children-${id}`}
-              aria-label={`${collapsed.has(id) ? "展开" : "折叠"}${item.name}下级部门`}
-              onClick={() =>
-                setCollapsed((old) => {
-                  const next = new Set(old)
-                  if (next.has(id)) next.delete(id)
-                  else next.add(id)
-                  return next
-                })
-              }
-              className="flex w-full items-center justify-center gap-1 border-t bg-muted/40 py-2 text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary"
-            >
-              {collapsed.has(id) ? (
-                <ChevronRight className="size-3" />
-              ) : (
-                <ChevronDown className="size-3" />
-              )}
-              {childCount} 个下级部门
-            </button>
-          )}
-        </div>
+    } else {
+      const ids = new Set(members.map((item) => item.id))
+      reports = groupByParent(members, (item) =>
+        !cycles.has(item.id) && item.manager_id && ids.has(item.manager_id)
+          ? item.manager_id
+          : null,
       )
     }
   }
+
+  function selectDepartment(id: string) {
+    setDepartment(id)
+    setPerson(null)
+    const parentIds = ancestors(id)
+    const reveal = (previous: Set<string>) =>
+      new Set([...previous].filter((parent) => !parentIds.includes(parent)))
+    setChartCollapsed(reveal)
+    setNavCollapsed(reveal)
+  }
+
+  function toggleBranch(
+    id: string,
+    set: (update: (previous: Set<string>) => Set<string>) => void,
+  ) {
+    set((previous) => {
+      const next = new Set(previous)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function renderNav(parent: string | null): ReactNode {
+    const items = (children.get(parent) ?? []).filter((id) => matches.has(id))
+    if (!items.length) return null
+    return (
+      <ul className={parent ? "org-nav-children" : ""}>
+        {items.map((id) => {
+          const item = byDepartment.get(id)!
+          const hasChildren = (children.get(id) ?? []).some((child) =>
+            matches.has(child),
+          )
+          const expanded = !!term || !navCollapsed.has(id)
+          return (
+            <li key={id}>
+              <div
+                className={cn(
+                  "org-nav-row",
+                  department?.id === id && "bg-primary/10 text-primary",
+                )}
+              >
+                {hasChildren && !term ? (
+                  <button
+                    type="button"
+                    className="grid size-6 shrink-0 place-items-center rounded hover:bg-muted"
+                    aria-label={`${expanded ? "折叠" : "展开"}${item.name}导航分支`}
+                    aria-expanded={expanded}
+                    onClick={() => toggleBranch(id, setNavCollapsed)}
+                  >
+                    {expanded ? (
+                      <ChevronDown className="size-3" />
+                    ) : (
+                      <ChevronRight className="size-3" />
+                    )}
+                  </button>
+                ) : (
+                  <span className="w-6 shrink-0" />
+                )}
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded py-1.5 pr-2 text-left"
+                  aria-pressed={department?.id === id}
+                  title={item.name}
+                  onClick={() => selectDepartment(id)}
+                >
+                  <span
+                    className="size-1.5 shrink-0 rounded-full"
+                    style={{ background: colors.get(id) }}
+                  />
+                  <span className="flex-1 truncate">{item.name}</span>
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {item.total_count}
+                  </span>
+                </button>
+              </div>
+              {expanded && renderNav(id)}
+            </li>
+          )
+        })}
+      </ul>
+    )
+  }
+
+  const label =
+    view === "tree"
+      ? "部门层级"
+      : person
+        ? "人员汇报关系"
+        : reporting
+          ? "部门汇报关系"
+          : "部门成员"
   return (
-    <div className="min-w-0 space-y-5">
-      <header className="flex items-center gap-3">
-        <span className="rounded-xl bg-primary/10 p-3 text-primary">
-          <Network className="size-6" />
-        </span>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">组织架构</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+    <WorkspacePage variant="split" className="org-workspace">
+      <h1 className="sr-only">组织架构</h1>
+      <TopbarActions>
+        <fieldset
+          aria-label="组织架构视图"
+          className="flex shrink-0 gap-0.5 rounded-md border bg-surface-muted p-0.5"
+        >
+          {(["tree", "members"] as const).map((mode) => (
+            <Button
+              key={mode}
+              variant="ghost"
+              size="sm"
+              aria-pressed={view === mode}
+              className="h-6 px-2 text-xs aria-pressed:bg-surface aria-pressed:shadow-xs"
+              onClick={() => {
+                setView(mode)
+                setPerson(null)
+                setReporting(false)
+              }}
+            >
+              {mode === "tree" ? "树图" : "成员表"}
+            </Button>
+          ))}
+        </fieldset>
+        {canEdit && department && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 shrink-0 px-2 text-xs"
+            onClick={() => actionsRef.current?.querySelector("button")?.focus()}
+          >
+            管理部门
+          </Button>
+        )}
+      </TopbarActions>
+      <div className="org-layout">
+        <nav aria-label="部门导航" className="org-nav bg-surface">
+          <div className="relative border-surface-border border-b p-3">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute top-5 left-5 size-3.5 text-muted-foreground"
+            />
+            <Input
+              className="h-8 pl-7 text-xs"
+              aria-label="搜索部门或负责人"
+              placeholder="搜索部门或负责人…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+          <div className="org-nav-scroll p-2">
+            {renderNav(null) ?? (
+              <p className="px-2 py-3 text-sm text-muted-foreground">
+                {term ? "没有匹配的部门" : "暂无可见部门"}
+              </p>
+            )}
+          </div>
+          <p className="border-surface-border border-t px-3 py-2 text-xs text-muted-foreground">
             {departments.length} 个可见部门 · 人数仅统计在职员工
           </p>
-        </div>
-      </header>
-      <nav
-        aria-label="组织架构面包屑"
-        className="flex flex-wrap items-center gap-2 text-sm"
-      >
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setDepartment(null)
-            setPerson(null)
-          }}
-        >
-          部门层级
-        </Button>
-        {department && (
-          <>
-            <ChevronRight className="size-4 text-muted-foreground" />
-            <Button variant="ghost" size="sm" onClick={() => setPerson(null)}>
-              {department.name}
-            </Button>
-          </>
-        )}
-        {person && (
-          <>
-            <ChevronRight className="size-4 text-muted-foreground" />
-            <span aria-current="page">{person.display_name}</span>
-          </>
-        )}
-      </nav>
-      <section
-        aria-label={label}
-        className="overflow-hidden rounded-2xl border bg-muted/20"
-      >
-        <header className="flex items-center justify-between border-b bg-background px-5 py-3">
-          <h2 className="font-medium">
-            {person
-              ? `${person.display_name} · 上级与直接下属`
-              : department
-                ? `${department.name} · 汇报关系`
-                : "部门层级"}
-          </h2>
-          <span className="text-xs text-muted-foreground">
-            {department && !person
-              ? `共 ${department.direct_count} 人`
-              : "点击部门查看详情"}
-          </span>
-        </header>
-        <section
-          aria-label="可滚动组织架构图"
-          className="max-h-[calc(100dvh-20rem)] min-h-80 overflow-auto px-4 py-6 focus-visible:outline-2 focus-visible:outline-primary"
-        >
-          {children.size ? (
-            <ChartTree
-              childrenByParent={children}
-              renderCard={renderCard}
-              collapsed={person || department ? new Set() : collapsed}
-            />
+        </nav>
+
+        <section aria-label={label} className="org-canvas">
+          {view === "tree" ? (
+            <section
+              ref={canvasRef}
+              aria-label="可滚动组织架构图"
+              className="org-diagram px-3 py-5"
+            >
+              {department ? (
+                <ChartTree
+                  childrenByParent={children}
+                  collapsed={chartCollapsed}
+                  renderCard={(id) => {
+                    const item = byDepartment.get(id)!
+                    const childCount = children.get(id)?.length ?? 0
+                    const expanded = !chartCollapsed.has(id)
+                    return (
+                      <div
+                        className="org-node"
+                        style={{ borderTopColor: colors.get(id) }}
+                        data-selected={id === department.id}
+                        data-org-item={id}
+                      >
+                        <button
+                          type="button"
+                          aria-pressed={id === department.id}
+                          onClick={() => selectDepartment(id)}
+                          className="block w-full rounded-sm px-2.5 py-2 text-left hover:bg-muted/50"
+                        >
+                          <span className="flex items-start justify-between gap-1.5">
+                            <span className="min-w-0 font-semibold wrap-anywhere">
+                              {item.name}
+                            </span>
+                            <span className="shrink-0 rounded-full bg-muted px-1.5 text-xs text-muted-foreground">
+                              {item.total_count}人
+                            </span>
+                          </span>
+                          <span
+                            className="mt-0.5 block truncate text-xs text-muted-foreground"
+                            title={managerNames(item)}
+                          >
+                            负责人：{managerNames(item) || "未设置"}
+                          </span>
+                          <span className="block text-xs text-muted-foreground">
+                            直属 {item.direct_count} 人
+                          </span>
+                        </button>
+                        {childCount > 0 && (
+                          <button
+                            type="button"
+                            aria-expanded={expanded}
+                            aria-label={`${expanded ? "折叠" : "展开"}${item.name}下级部门`}
+                            onClick={() => toggleBranch(id, setChartCollapsed)}
+                            className="flex w-full items-center justify-center gap-1 border-surface-border border-t py-1 text-xs text-muted-foreground hover:bg-muted"
+                          >
+                            {expanded ? (
+                              <ChevronDown className="size-3" />
+                            ) : (
+                              <ChevronRight className="size-3" />
+                            )}
+                            {childCount} 个下级部门
+                          </button>
+                        )}
+                      </div>
+                    )
+                  }}
+                />
+              ) : (
+                <p className="p-6 text-center text-sm text-muted-foreground">
+                  暂无可见部门
+                </p>
+              )}
+            </section>
           ) : (
-            <p className="py-20 text-center text-sm text-muted-foreground">
-              {department ? "本部门暂无在职人员" : "暂无可见部门"}
-            </p>
+            <>
+              <header className="flex flex-wrap items-center justify-between gap-2 border-surface-border border-b bg-surface px-3 py-2">
+                <h2 className="min-w-0 font-semibold wrap-anywhere">
+                  {person
+                    ? `${person.display_name} · 上级与直接下属`
+                    : (department?.name ?? "部门成员")}
+                </h2>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  {department && !person && (
+                    <>
+                      <span className="text-muted-foreground">
+                        共 {members.length} 人
+                      </span>
+                      <label className="flex items-center gap-1.5">
+                        <input
+                          type="checkbox"
+                          checked={includeChildren}
+                          onChange={(event) =>
+                            setIncludeChildren(event.target.checked)
+                          }
+                        />
+                        含下级
+                      </label>
+                    </>
+                  )}
+                  {department && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (person) setPerson(null)
+                        else setReporting(!reporting)
+                      }}
+                    >
+                      {person
+                        ? reporting
+                          ? "返回部门汇报图"
+                          : "返回成员表"
+                        : reporting
+                          ? "返回成员表"
+                          : "部门汇报图"}
+                    </Button>
+                  )}
+                </div>
+              </header>
+              {person || reporting ? (
+                <section
+                  ref={canvasRef}
+                  aria-label="可滚动汇报关系图"
+                  className="org-diagram px-3 py-5"
+                >
+                  {reports.get(null)?.length ? (
+                    <ChartTree
+                      childrenByParent={reports}
+                      renderCard={(id) => (
+                        <PersonCard
+                          person={byPerson.get(id)!}
+                          selected={person?.id === id}
+                          cycle={cycles.has(id)}
+                          onSelect={() => setPerson(id)}
+                        />
+                      )}
+                    />
+                  ) : (
+                    <p className="p-6 text-center text-sm text-muted-foreground">
+                      本部门暂无在职人员
+                    </p>
+                  )}
+                </section>
+              ) : members.length ? (
+                <div className="bg-surface">
+                  <Table className="[&_td]:h-11 [&_td]:px-3 [&_td]:py-1 [&_th]:px-3">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>成员</TableHead>
+                        <TableHead>部门</TableHead>
+                        <TableHead>直属上级</TableHead>
+                        <TableHead>
+                          <span className="sr-only">操作</span>
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {members.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <button
+                              type="button"
+                              aria-label={`查看${item.display_name}汇报关系`}
+                              onClick={() => setPerson(item.id)}
+                              className="block text-left font-medium hover:text-primary hover:underline"
+                            >
+                              {item.display_name}
+                              {item.title && (
+                                <span className="block text-xs font-normal text-muted-foreground">
+                                  {item.title}
+                                </span>
+                              )}
+                            </button>
+                          </TableCell>
+                          <TableCell>
+                            {byDepartment.get(item.department_id ?? "")?.name ??
+                              "—"}
+                          </TableCell>
+                          <TableCell>
+                            {item.manager_id
+                              ? (byPerson.get(item.manager_id)?.display_name ??
+                                "—")
+                              : "—"}
+                            {cycles.has(item.id) && (
+                              <span className="block text-xs text-destructive">
+                                汇报线有循环
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Link
+                              className="text-xs text-primary hover:underline"
+                              aria-label={`查看${item.display_name}画像`}
+                              to="/employees/$employeeId"
+                              params={{ employeeId: item.id }}
+                            >
+                              画像
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <p className="p-6 text-center text-sm text-muted-foreground">
+                  {department ? "本部门暂无在职人员" : "暂无可见部门"}
+                </p>
+              )}
+            </>
           )}
         </section>
-      </section>
-      {department && !person && (
-        <DepartmentCapabilities
-          key={department.id}
-          orgId={orgId}
-          departmentId={department.id}
-          canEdit={canEdit}
-        />
-      )}
-    </div>
+
+        <aside
+          aria-label="部门详情"
+          className="org-detail space-y-4 bg-surface p-4"
+        >
+          {department ? (
+            <>
+              <h2 className="flex items-center gap-2 font-semibold wrap-anywhere">
+                <span
+                  className="size-2.5 shrink-0 rounded-sm"
+                  style={{ background: colors.get(department.id) }}
+                />
+                <span className="min-w-0">{department.name}</span>
+              </h2>
+              <dl className="grid grid-cols-2 gap-2">
+                {[
+                  ["含下级总人数", department.total_count],
+                  ["直属人数", department.direct_count],
+                ].map(([name, count]) => (
+                  <div
+                    key={name}
+                    className="rounded-md border border-surface-border bg-surface-muted p-2.5"
+                  >
+                    <dt className="text-xs text-muted-foreground">{name}</dt>
+                    <dd className="font-semibold tabular-nums">{count}</dd>
+                  </div>
+                ))}
+              </dl>
+              <div className="space-y-1 text-sm">
+                <h3 className="text-xs text-muted-foreground">部门负责人</h3>
+                <p className="wrap-anywhere">
+                  {managerNames(department) || "未设置"}
+                </p>
+              </div>
+              {!!children.get(department.id)?.length && (
+                <div className="space-y-1.5 border-surface-border border-t pt-3">
+                  <h3 className="text-xs text-muted-foreground">下级部门</h3>
+                  <ul className="flex flex-wrap gap-1.5">
+                    {children.get(department.id)?.map((id) => {
+                      const item = byDepartment.get(id)!
+                      return (
+                        <li key={id} className="min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => selectDepartment(id)}
+                            className="rounded-full border border-surface-border px-2 py-0.5 text-left text-xs wrap-anywhere hover:bg-muted"
+                          >
+                            {item.name} ({item.total_count})
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              )}
+              <Fragment key={department.id}>
+                {canEdit && (
+                  <DepartmentActions
+                    actionsRef={actionsRef}
+                    orgId={orgId}
+                    department={department}
+                    departments={departments}
+                  />
+                )}
+                <DepartmentCapabilities
+                  orgId={orgId}
+                  departmentId={department.id}
+                  canEdit={canEdit}
+                />
+              </Fragment>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">暂无部门详情</p>
+          )}
+        </aside>
+      </div>
+    </WorkspacePage>
   )
 }
 
 function DepartmentActions({
+  actionsRef,
   orgId,
   department,
   departments,
 }: {
+  actionsRef: Ref<HTMLFieldSetElement>
   orgId: string
   department: OrgChartDepartment
   departments: OrgChartDepartment[]
@@ -342,7 +746,8 @@ function DepartmentActions({
   return (
     <>
       <fieldset
-        className="flex justify-center gap-1 border-t p-1"
+        ref={actionsRef}
+        className="flex flex-wrap gap-1 border-surface-border border-t pt-2"
         aria-label={`${department.name}部门操作`}
       >
         {(["改名", "移动到", "删除"] as const).map((label) => (
@@ -464,6 +869,7 @@ function PersonCard({
 }) {
   return (
     <div
+      data-org-item={person.id}
       className={cn(
         "w-52 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm",
         selected && "border-primary ring-2 ring-primary/30",
@@ -513,21 +919,21 @@ function ChartTree({
 }: {
   childrenByParent: Map<string | null, string[]>
   renderCard: (id: string) => ReactNode
-  collapsed: Set<string>
+  collapsed?: Set<string>
 }) {
   function branch(id: string): ReactNode {
     const children = childrenByParent.get(id) ?? []
     return (
       <li key={id}>
         {renderCard(id)}
-        {children.length > 0 && !collapsed.has(id) && (
+        {children.length > 0 && !collapsed?.has(id) && (
           <>
             <span
               className="org-stem"
               data-testid="org-connector"
               aria-hidden="true"
             />
-            <ul id={`org-children-${id}`}>{children.map(branch)}</ul>
+            <ul>{children.map(branch)}</ul>
           </>
         )}
       </li>
