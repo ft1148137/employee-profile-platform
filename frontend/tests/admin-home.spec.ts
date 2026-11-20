@@ -268,8 +268,15 @@ test("assistant shows status and appeal todo through resubmission", async ({
   await expect(page.getByText("暂无待办事项")).toBeVisible()
   await page.unroute("**/admin/overview")
   await enter(owner.access_token, "/inbox")
+  const appealNotice = "申诉已处理：允许重新提交，请修改草稿"
+  await page
+    .getByRole("complementary", { name: "消息列表" })
+    .getByRole("button", { name: new RegExp(appealNotice) })
+    .click()
   await expect(
-    page.getByText("申诉已处理：允许重新提交，请修改草稿"),
+    page
+      .getByRole("region", { name: "消息详情" })
+      .getByRole("heading", { name: appealNotice, exact: true }),
   ).toBeVisible()
   await page.goto(`/employees/${subject.id}`)
   await expect(
