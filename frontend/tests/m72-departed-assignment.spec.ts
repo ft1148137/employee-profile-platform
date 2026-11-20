@@ -48,6 +48,9 @@ test("旧分配表单收到离职冲突后提示并刷新候选人", async ({ pa
     { token: admin.access_token, org: admin.org_id },
   )
   await page.goto("/capacity?tab=team")
+  await expect(
+    page.getByRole("heading", { name: "团队负荷", exact: true }),
+  ).toBeAttached()
   await importRoster(
     page,
     Buffer.from(
