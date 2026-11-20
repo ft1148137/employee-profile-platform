@@ -283,7 +283,7 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     page.getByText("暂无待审批的负荷调整", { exact: true }),
   ).toBeVisible()
   await expect(
-    page.getByRole("form", { name: "合成员工的延期申请" }),
+    page.getByText("合成员工 · 合成交付", { exact: true }),
   ).toHaveCount(0)
   await open(d)
   await expect(page.getByRole("link", { name: /^负荷与延期/ })).toHaveAttribute(
@@ -294,13 +294,10 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     page.getByRole("link", { name: "团队负荷", exact: true }),
   ).toHaveCount(0)
   await expect(
-    page.getByRole("heading", { name: "合成员工 · 申请 60%", exact: true }),
+    page.getByText("合成员工 · 申请 60%", { exact: true }),
   ).toBeVisible()
   await expect(
-    page.getByRole("article", { name: "员工的调整申请" }),
-  ).toContainText("申请 60%")
-  await expect(
-    page.getByRole("form", { name: "合成员工的延期申请" }),
+    page.getByText("合成员工 · 合成交付", { exact: true }),
   ).toBeVisible()
   expect(teamReads).toEqual([])
   await page.screenshot({
@@ -309,9 +306,13 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
   })
   await page.goto("/inbox")
   for (const message of ["有负荷调整申请等你审批", "有延期申请等你审批"]) {
-    const link = page
+    await page
       .getByRole("listitem")
       .filter({ hasText: message })
+      .getByRole("button")
+      .click()
+    const link = page
+      .getByRole("region", { name: "消息详情" })
       .getByRole("link", { name: "查看待审批" })
     await expect(link).toHaveAttribute("href", "/reviews?type=workload")
     await link.click()
@@ -321,10 +322,12 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     await page.goto("/inbox")
   }
   await page.goto("/capacity?tab=approvals")
+  await page.getByText(/· 申请 \d+%/).click()
   await page
     .getByRole("article", { name: "员工的调整申请" })
     .getByRole("button", { name: "同意", exact: true })
     .click()
+  await page.getByText("合成员工 · 合成交付", { exact: true }).click()
   const extension = page.getByRole("form", { name: "合成员工的延期申请" })
   await extension.getByLabel("处理方式").selectOption("return")
   await extension.getByLabel("处理说明（退回必填）").fill("请补充依赖")
@@ -355,6 +358,7 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
   const [membership] = await api("/api/v1/me/memberships", undefined, root)
   expect(membership.managed_department_ids).toEqual([])
   await open(root)
+  await page.getByText(/· 申请 \d+%/).click()
   await page
     .getByRole("article", { name: "员工的调整申请" })
     .getByRole("button", { name: "同意", exact: true })
@@ -366,6 +370,7 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
   await expect(page.getByText("40%", { exact: true })).toBeVisible()
   await workloadRequest(e, 50)
   await open(m)
+  await page.getByText(/· 申请 \d+%/).click()
   await page
     .getByRole("article", { name: "员工的调整申请" })
     .getByRole("button", { name: "同意", exact: true })

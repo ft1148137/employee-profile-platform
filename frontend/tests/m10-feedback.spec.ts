@@ -108,7 +108,10 @@ test("经理写工作反馈，员工过目后由经理发布", async ({ page, re
   const approvals = (await api(`${base}/reviews`, undefined, manager)).data
   expect(approvals).toHaveLength(1)
   await page.locator(`a[href="/reviews/${approvals[0].id}"]`).click()
-  await page.getByLabel("合成交付的审批意见").selectOption("approved")
+  await page
+    .getByRole("group", { name: "合成交付的审批意见" })
+    .getByRole("button", { name: "批准", exact: true })
+    .click()
   await page.getByRole("button", { name: "提交审批" }).click()
   await page.getByRole("button", { name: "确认提交" }).click()
   await expect(page.getByRole("heading", { name: "审批已提交" })).toBeVisible()

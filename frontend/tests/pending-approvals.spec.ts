@@ -36,6 +36,8 @@ test("待审批角标汇总、分类与协作需求的角色入口", async ({ pa
           {
             id: crypto.randomUUID(),
             employee_name: "合成画像员工",
+            submitted_via: "mcp",
+            client_name: "合成外部客户端",
             item_count: 2,
             owner_reviewed: true,
             can_decide: true,
@@ -67,6 +69,7 @@ test("待审批角标汇总、分类与协作需求的角色入口", async ({ pa
           id: "pending",
           status: "pending_selection",
           description: "合成待选人借调",
+          borrower_department: "合成借入部门",
           capability_name: "合成交付",
         },
         { id: "done", status: "selected" },
@@ -124,8 +127,13 @@ test("待审批角标汇总、分类与协作需求的角色入口", async ({ pa
   expect(query.has("skip")).toBe(false)
   await expect(page.getByText("合成不可答复需求")).toHaveCount(0)
   await expect(page.getByText("合成画像员工", { exact: false })).toBeVisible()
+  await expect(
+    page.getByText("外部 AI（MCP） · 合成外部客户端", { exact: true }),
+  ).toBeVisible()
   await expect(page.getByText("合成调整员工", { exact: false })).toBeVisible()
-  await expect(page.getByText("合成待选人借调")).toBeVisible()
+  await expect(
+    page.locator("summary").filter({ hasText: "合成待选人借调" }),
+  ).toBeVisible()
 
   await filters.getByRole("link", { name: /^协作需求/ }).click()
   await expect(page).toHaveURL("/reviews?type=demand")

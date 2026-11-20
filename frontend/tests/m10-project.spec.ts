@@ -92,7 +92,10 @@ test("需求方创建多角色项目并看到承接方答复和排程影响", as
   await expect(roleDetail).toContainText("角色 · 接口开发")
 
   await open(page, "B", "/capacity?tab=incoming")
-  const incoming = page.locator("article").filter({ hasText: "角色：接口开发" })
+  const incoming = page
+    .getByRole("region", { name: "协作需求", exact: true })
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { name: / · 接口开发$/ }) })
   await incoming.getByRole("link", { name: "查看详情" }).click()
   await expect(page.getByRole("list", { name: "前置角色" })).toContainText(
     "技术验证（测试）",

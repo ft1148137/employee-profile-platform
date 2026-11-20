@@ -170,7 +170,14 @@ test("延期显示审批人、受阻指引和代理标示，代理给目标经�
       .weeks[0].week_start,
     reason: "合成负荷调整",
   })
-  await open(tokens.get("C")!, "/capacity?tab=approvals")
+  const openExtension = async (code: string) => {
+    await open(tokens.get(code)!, "/capacity?tab=approvals")
+    await page
+      .getByRole("region", { name: "延期审批" })
+      .getByText("延期申请", { exact: true })
+      .click()
+  }
+  await openExtension("C")
   const extension = page.getByRole("form", { name: "合成员工的延期申请" })
   await expect(extension).toContainText("需由 合成目标经理 确认")
   await expect(extension).toContainText(
@@ -197,13 +204,14 @@ test("延期显示审批人、受阻指引和代理标示，代理给目标经�
     )
   }
   await delegate("D")
-  await open(tokens.get("D")!, "/capacity?tab=approvals")
+  await openExtension("D")
   await expect(extension).toContainText(
     "代 合成原审批人 审批（原审批人：合成原审批人）",
   )
   await expect(extension).toContainText(
     "请原审批人 合成原审批人 把审批代理给 合成目标经理",
   )
+  await page.getByText("负荷调整", { exact: true }).click()
   await expect(
     page.getByRole("article", { name: "员工的调整申请" }),
   ).toContainText("代 合成原审批人 审批（原审批人：合成原审批人）")
@@ -214,7 +222,7 @@ test("延期显示审批人、受阻指引和代理标示，代理给目标经�
     "已撤销",
   )
   await delegate("M")
-  await open(tokens.get("M")!, "/capacity?tab=approvals")
+  await openExtension("M")
   await expect(extension).toContainText("代 合成原审批人 审批")
   await extension.getByLabel("新的承诺完成日期").fill("2027-01-05")
   await extension.getByLabel("给对方部门的说明").fill("调整部门交付安排")

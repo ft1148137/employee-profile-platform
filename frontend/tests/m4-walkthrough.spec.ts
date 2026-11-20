@@ -195,7 +195,10 @@ test("M4: employee update, manager publication, history and self-review denial",
   await expect(
     page.getByText("独立完成了合成项目验证", { exact: true }),
   ).toBeVisible()
-  await page.getByLabel("合成能力的审批意见").selectOption("approved")
+  await page
+    .getByRole("group", { name: "合成能力的审批意见" })
+    .getByRole("button", { name: "批准", exact: true })
+    .click()
   await expectChineseCopy(page)
   await page.screenshot({
     path: info.outputPath("m4-manager-review.png"),
