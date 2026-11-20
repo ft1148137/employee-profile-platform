@@ -223,8 +223,11 @@ test("团队负荷在手机横向滑动后仍显示姓名和设置", async ({ pa
   await expect(dates).toBeInViewport()
   await setting.click()
   await expect(dialog).toContainText("设置周投入 · A合成员工")
-  await dialog.press("Escape")
+  const startWeek = dialog.getByLabel("开始周", { exact: true })
+  await expect(startWeek).toBeFocused()
+  await startWeek.press("Escape")
   await expect(dialog).toBeHidden()
+  await expect(setting).toBeFocused()
 
   await page.setViewportSize({ width: 1280, height: 900 })
   await expect(hint).toBeHidden()
