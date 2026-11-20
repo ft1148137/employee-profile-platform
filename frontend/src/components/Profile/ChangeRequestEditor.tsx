@@ -358,7 +358,7 @@ export function ChangeRequestEditor({
                       {new Date(current_changed_at).toLocaleString("zh-CN", {
                         timeZone: "Asia/Shanghai",
                         hour12: false,
-                      })}
+                      })}{" "}
                       被更新，本次提交将基于最新内容送审。
                     </p>
                   )}

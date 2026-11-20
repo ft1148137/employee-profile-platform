@@ -157,7 +157,7 @@ export function DataTable<TData extends RowData>({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border-t bg-muted/20">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="text-sm text-muted-foreground">
-              第
+              第{" "}
               {table.state.pagination.pageIndex *
                 table.state.pagination.pageSize +
                 1}
