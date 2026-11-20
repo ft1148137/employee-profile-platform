@@ -1,7 +1,16 @@
 import { expect, test } from "@playwright/test"
+import type { DemandPublic } from "../src/client"
 import { setupProjectManagers } from "./utils/projects"
 
 test.use({ storageState: { cookies: [], origins: [] } })
+
+const demandInput = {
+  capability_key: "delivery",
+  headcount: 1,
+  allocation_percent: 30,
+  window_start: "2026-12-01",
+  window_end: "2026-12-31",
+}
 
 test("待审批角标汇总、分类与收到需求的角色入口", async ({ page, request }) => {
   test.setTimeout(90_000)
@@ -10,13 +19,9 @@ test("待审批角标汇总、分类与收到需求的角色入口", async ({ pa
   const submitted = await request.post(`${base}/capacity/demands`, {
     headers: { Authorization: `Bearer ${managerToken}` },
     data: {
+      ...demandInput,
       requesting_department_id: departments.A,
       target_department_id: departments.B,
-      capability_key: "delivery",
-      headcount: 1,
-      allocation_percent: 30,
-      window_start: "2026-12-01",
-      window_end: "2026-12-31",
       description: "合成待答复需求",
     },
   })
@@ -79,7 +84,7 @@ test("待审批角标汇总、分类与收到需求的角色入口", async ({ pa
     demandQueries.push(new URL(route.request().url()).searchParams)
     return route.fulfill({
       json: {
-        count: 101,
+        count: 1,
         data: [
           { ...demand, can_reply: true },
           {
@@ -98,16 +103,16 @@ test("待审批角标汇总、分类与收到需求的角色入口", async ({ pa
   const sidebar = page.getByRole("navigation", { name: "空间导航" })
   const filters = page.getByRole("navigation", { name: "待审批类型" })
   await expect(
-    rail.getByRole("link", { name: "协同 106", exact: true }),
+    rail.getByRole("link", { name: "协同 6", exact: true }),
   ).toBeVisible()
   await expect(
-    sidebar.getByRole("link", { name: "待审批 104", exact: true }),
+    sidebar.getByRole("link", { name: "待审批 4", exact: true }),
   ).toBeVisible()
   await expect(filters.getByRole("link")).toHaveText([
-    "全部104",
+    "全部4",
     "画像变更1",
     "负荷与延期1",
-    "收到需求101",
+    "收到需求1",
     "借调确认1",
   ])
   expect(demandQueries).toHaveLength(1)
@@ -160,4 +165,102 @@ test("待审批角标汇总、分类与收到需求的角色入口", async ({ pa
   await expect(
     sidebar.getByRole("link", { name: "待审批 3", exact: true }),
   ).toBeVisible()
+})
+
+test("待审批按需翻页并打开第 101 条真实需求", async ({ page, request }) => {
+  test.setTimeout(90_000)
+  const { base, departments, managerToken, open } =
+    await setupProjectManagers(request)
+  const demands: DemandPublic[] = []
+  for (let index = 1; index <= 101; index++) {
+    const response = await request.post(`${base}/capacity/demands`, {
+      headers: { Authorization: `Bearer ${managerToken}` },
+      data: {
+        ...demandInput,
+        requesting_department_id: departments.A,
+        target_department_id: departments.B,
+        description: `合成分页需求 ${index}`,
+      },
+    })
+    expect(response.ok(), await response.text()).toBeTruthy()
+    demands.push(await response.json())
+  }
+  const detailPath = (id: string) => `/capacity?tab=incoming&demand=${id}`
+  const oldest = demands[0]
+  const oldestPath = detailPath(oldest.id)
+  const expectedFirstPage = demands
+    .slice(1)
+    .reverse()
+    .map(({ id }) => detailPath(id))
+  const demandQueries: URLSearchParams[] = []
+  page.on("request", (request) => {
+    const { pathname, searchParams } = new URL(request.url())
+    if (pathname === `${base}/capacity/demands`) {
+      demandQueries.push(searchParams)
+    }
+  })
+
+  const filters = page.getByRole("navigation", { name: "待审批类型" })
+  const incoming = page.getByRole("region", { name: "收到需求" })
+  const pagination = incoming.getByRole("navigation", { name: "收到需求分页" })
+  const details = incoming.getByRole("link", { name: "查看详情" })
+  const next = pagination.getByRole("button", { name: "下一页" })
+  const previous = pagination.getByRole("button", { name: "上一页" })
+
+  for (const type of ["all", "demand"]) {
+    demandQueries.length = 0
+    await open(page, "B", type === "all" ? "/reviews" : "/reviews?type=demand")
+    await expect(filters.getByRole("link", { name: /^收到需求/ })).toHaveText(
+      "收到需求101",
+    )
+    await expect(
+      page.getByRole("navigation", { name: "空间导航" }).getByRole("link", {
+        name: "待审批 101",
+        exact: true,
+      }),
+    ).toBeVisible()
+    await expect(pagination.getByRole("status")).toHaveText(
+      "第 1 页 · 共 101 条",
+    )
+    await expect(previous).toBeDisabled()
+    await expect(details).toHaveCount(100)
+    expect(
+      await details.evaluateAll((links) =>
+        links.map((link) => link.getAttribute("href")),
+      ),
+    ).toEqual(expectedFirstPage)
+    expect(demandQueries.map((query) => query.get("skip"))).toEqual([null])
+
+    await next.click()
+    await expect(pagination.getByRole("status")).toHaveText(
+      "第 2 页 · 共 101 条",
+    )
+    await expect(next).toBeDisabled()
+    await expect(details).toHaveCount(1)
+    await expect(details).toHaveAttribute("href", oldestPath)
+    await expect(
+      incoming.getByText(oldest.description, { exact: true }),
+    ).toBeVisible()
+    expect(demandQueries.map((query) => query.get("skip"))).toEqual([
+      null,
+      "100",
+    ])
+    for (const query of demandQueries) {
+      expect(query.get("side")).toBe("incoming")
+      expect(query.get("status")).toBe("submitted")
+      expect(query.get("actionable_only")).toBe("true")
+      expect(query.get("limit")).toBe("100")
+    }
+    if (type === "all") {
+      await previous.click()
+      await expect(details).toHaveCount(100)
+      expect(demandQueries).toHaveLength(2)
+    }
+  }
+
+  await details.click()
+  await expect(page).toHaveURL(oldestPath)
+  await expect(page.getByRole("region", { name: "需求详情" })).toContainText(
+    oldest.description,
+  )
 })
