@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant workspace (&:is([data-workspace] *));
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -9,6 +10,12 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --color-background: var(--background);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-border: var(--surface-border);
+  --color-surface-muted: var(--surface-muted);
+  --color-workspace-rail: var(--workspace-rail);
+  --color-workspace-panel: var(--workspace-panel);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -43,6 +50,12 @@
 
 :root {
   --radius: 0.625rem;
+  --canvas: #f7f8fa;
+  --surface: #fff;
+  --surface-border: #e5e7eb;
+  --surface-muted: #f9fafb;
+  --workspace-rail: #f3f4f6;
+  --workspace-panel: #fafafb;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -77,6 +90,12 @@
 }
 
 .dark {
+  --canvas: var(--background);
+  --surface: var(--card);
+  --surface-border: var(--border);
+  --surface-muted: var(--muted);
+  --workspace-rail: var(--sidebar);
+  --workspace-panel: var(--sidebar);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -108,6 +127,12 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* Existing cards and borders inherit the workspace palette inside the canvas. */
+main[data-workspace]:not(.dark, .dark *) {
+  --card: var(--surface);
+  --border: var(--surface-border);
 }
 
 @layer base {

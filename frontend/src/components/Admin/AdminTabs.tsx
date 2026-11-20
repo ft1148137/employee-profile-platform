@@ -25,8 +25,8 @@ export function AdminSection({
     value,
   } = sections.find((section) => section.value === tab) ?? sections[0]
   return (
-    <div className="min-w-0 space-y-6" key={`${org.id}:${value}`}>
-      {title && <h1 className="text-3xl font-semibold">{title}</h1>}
+    <div className="min-w-0" key={`${org.id}:${value}`}>
+      {title && <h1 className="sr-only">{title}</h1>}
       <Content />
     </div>
   )

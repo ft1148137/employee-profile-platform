@@ -6,9 +6,11 @@ import type {
 } from "@/client"
 
 const neutral = "bg-muted text-muted-foreground"
+export const unknownStatus = { label: "未知", className: neutral }
 const positive = "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
 const pending = "bg-amber-500/10 text-amber-700 dark:text-amber-300"
-const active = "bg-sky-500/10 text-sky-700 dark:text-sky-300"
+const active =
+  "bg-sky-500/10 text-sky-700 dark:text-sky-300 workspace:bg-blue-500/10 workspace:text-blue-700 workspace:dark:text-blue-300"
 const negative = "bg-rose-500/10 text-rose-700 dark:text-rose-300"
 type Label = { label: string; className: string }
 
@@ -16,7 +18,7 @@ export const labels = {
   assessment_status: {
     confirmed: { label: "已确认", className: positive },
     tentative: { label: "暂定", className: pending },
-    unknown: { label: "未知", className: neutral },
+    unknown: unknownStatus,
     disputed: { label: "存在争议", className: negative },
   } satisfies Record<string, Label>,
   fill_status: {
@@ -41,7 +43,7 @@ export const labels = {
     sufficient: { label: "覆盖充分", className: positive },
     weak: { label: "证据薄弱", className: pending },
     conflicting: { label: "来源冲突", className: negative },
-    unknown: { label: "未知", className: neutral },
+    unknown: unknownStatus,
   } satisfies Record<EvidenceQuality, Label>,
   confidence: {
     low: { label: "低", className: neutral },

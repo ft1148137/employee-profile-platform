@@ -1,5 +1,28 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
-import { Plus } from "lucide-react"
+import {
+  Bell,
+  BookOpen,
+  Bot,
+  BriefcaseBusiness,
+  ChartGantt,
+  Cpu,
+  Database,
+  FileText,
+  Gauge,
+  Inbox,
+  Link2,
+  type LucideIcon,
+  MessageSquare,
+  Network,
+  Plug,
+  Plus,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
+  SquareCheck,
+  UserRound,
+  Users,
+} from "lucide-react"
 import { SessionHistory } from "@/components/Bot/SessionHistory"
 import { AdminConversations } from "@/components/Sidebar/AdminConversations"
 import { Button } from "@/components/ui/button"
@@ -14,6 +37,7 @@ import {
 import { useInbox } from "@/hooks/useInbox"
 import { useOrg } from "@/hooks/useOrg"
 import { usePendingApprovals } from "@/hooks/usePendingApprovals"
+import { cn } from "@/lib/utils"
 
 export const spaceTitles = {
   collab: "协同",
@@ -26,6 +50,7 @@ export type Space = keyof typeof spaceTitles
 
 type Item = {
   title: string
+  icon: LucideIcon
   to: string
   search?:
     | { tab: string }
@@ -36,8 +61,8 @@ type Item = {
 
 type Group = { title?: string; items: Item[] }
 
-function tabItem(to: string, tab: string, title: string) {
-  return { to, title, search: { tab } }
+function tabItem(to: string, tab: string, title: string, icon: LucideIcon) {
+  return { to, title, icon, search: { tab } }
 }
 
 export function useWorkspaceNavigation() {
@@ -54,21 +79,37 @@ export function useWorkspaceNavigation() {
   const assistantSearch = searchMode ? { mode: searchMode } : undefined
   const ownProfile = employeeId ? `/employees/${employeeId}` : undefined
   const unread = inbox.data?.unread_count ?? 0
-  const dictionary = tabItem("/admin/rules", "dictionary", "能力词典")
+  const dictionary = tabItem("/admin/rules", "dictionary", "能力词典", BookOpen)
   const canPlan = capacity.data?.enabled && (employeeId || managesEmployees)
-  const myLoad = tabItem("/capacity", "mine", "我的负荷")
-  const teamLoad = tabItem("/capacity", "team", "团队负荷")
+  const myLoad = tabItem("/capacity", "mine", "我的负荷", Gauge)
+  const teamLoad = tabItem("/capacity", "team", "团队负荷", ChartGantt)
 
   const groups: Record<Space, Group[]> = {
     collab: [
       {
         items: [
           ...(isAdmin || employeeId
-            ? [{ title: "AI 助手", to: assistant, search: assistantSearch }]
+            ? [
+                {
+                  title: "AI 助手",
+                  icon: Sparkles,
+                  to: assistant,
+                  search: assistantSearch,
+                },
+              ]
             : []),
-          ...(org ? [{ title: "收件箱", to: "/inbox", badge: unread }] : []),
+          ...(org
+            ? [{ title: "收件箱", icon: Inbox, to: "/inbox", badge: unread }]
+            : []),
           ...(managesEmployees || pending
-            ? [{ title: "待审批", to: "/reviews", badge: pending }]
+            ? [
+                {
+                  title: "待审批",
+                  icon: SquareCheck,
+                  to: "/reviews",
+                  badge: pending,
+                },
+              ]
             : []),
         ],
       },
@@ -77,11 +118,17 @@ export function useWorkspaceNavigation() {
       {
         title: "成员与架构",
         items: [
-          ...(ownProfile ? [{ title: "我的画像", to: ownProfile }] : []),
+          ...(ownProfile
+            ? [{ title: "我的画像", icon: UserRound, to: ownProfile }]
+            : []),
           ...(managesEmployees
             ? [
-                { title: isAdmin ? "员工" : "我的团队", to: "/employees" },
-                { title: "组织架构", to: "/org-chart" },
+                {
+                  title: isAdmin ? "员工" : "我的团队",
+                  icon: Users,
+                  to: "/employees",
+                },
+                { title: "组织架构", icon: Network, to: "/org-chart" },
               ]
             : []),
         ],
@@ -92,9 +139,14 @@ export function useWorkspaceNavigation() {
           dictionary,
           ...(isAdmin
             ? [
-                tabItem("/admin/rules", "approval", "审批规则"),
-                tabItem("/admin/rules", "reminders", "定期提醒"),
-                tabItem("/admin/rules", "capacity", "负荷与需求规则"),
+                tabItem("/admin/rules", "approval", "审批规则", ShieldCheck),
+                tabItem("/admin/rules", "reminders", "定期提醒", Bell),
+                tabItem(
+                  "/admin/rules",
+                  "capacity",
+                  "负荷与需求规则",
+                  SlidersHorizontal,
+                ),
               ]
             : []),
         ],
@@ -106,7 +158,15 @@ export function useWorkspaceNavigation() {
             items: [
               ...(employeeId ? [myLoad] : []),
               ...(managesEmployees
-                ? [teamLoad, tabItem("/capacity", "borrows", "借调请求")]
+                ? [
+                    teamLoad,
+                    tabItem(
+                      "/capacity",
+                      "borrows",
+                      "借调请求",
+                      BriefcaseBusiness,
+                    ),
+                  ]
                 : []),
             ],
           },
@@ -118,16 +178,19 @@ export function useWorkspaceNavigation() {
         items: [
           {
             title: "账号与安全",
+            icon: UserRound,
             to: "/settings",
             search: { section: "account" },
           },
           {
             title: "连接与集成",
+            icon: Link2,
             to: "/settings",
             search: { section: "integrations" },
           },
           {
             title: "偏好与代理",
+            icon: SlidersHorizontal,
             to: "/settings",
             search: { section: "preferences" },
           },
@@ -138,12 +201,12 @@ export function useWorkspaceNavigation() {
             {
               title: "企业管理",
               items: [
-                tabItem("/admin/data-ai", "sources", "数据来源"),
-                tabItem("/admin/data-ai", "model", "模型"),
-                tabItem("/admin/data-ai", "bot", "内置助手"),
-                tabItem("/admin/data-ai", "im", "IM 入口"),
-                tabItem("/admin/data-ai", "mcp", "外部 AI 工具"),
-                { title: "审计日志", to: "/admin/audit" },
+                tabItem("/admin/data-ai", "sources", "数据来源", Database),
+                tabItem("/admin/data-ai", "model", "模型", Cpu),
+                tabItem("/admin/data-ai", "bot", "内置助手", Bot),
+                tabItem("/admin/data-ai", "im", "IM 入口", MessageSquare),
+                tabItem("/admin/data-ai", "mcp", "外部 AI 工具", Plug),
+                { title: "审计日志", icon: FileText, to: "/admin/audit" },
               ],
             },
           ]
@@ -231,10 +294,11 @@ export function SpacePanel({
   space,
   groups,
   active,
+  isAssistant,
   onNavigate,
 }: Pick<
   ReturnType<typeof useWorkspaceNavigation>,
-  "space" | "groups" | "active"
+  "space" | "groups" | "active" | "isAssistant"
 > & {
   onNavigate?: () => void
 }) {
@@ -253,15 +317,37 @@ export function SpacePanel({
   return (
     <nav
       aria-label="空间导航"
-      className={`min-h-0 flex-1 px-3 pb-4 ${showHistory ? "flex flex-col" : "overflow-y-auto"}`}
+      className={cn(
+        "min-h-0 flex-1 pb-4",
+        isAssistant ? "px-3" : "px-2",
+        showHistory ? "flex flex-col" : "overflow-y-auto",
+      )}
     >
-      <p className="px-2 py-4 text-lg font-semibold tracking-tight">
-        {spaceTitles[space]}
+      <p
+        className={cn(
+          "font-semibold tracking-tight",
+          isAssistant
+            ? "px-2 py-4 text-lg"
+            : "-mx-2 mb-2.5 flex h-12 shrink-0 items-center justify-between gap-2 border-surface-border border-b px-3.5 pr-10 text-sm md:pr-3.5",
+        )}
+      >
+        <span className="shrink-0">{spaceTitles[space]}</span>
+        {!isAssistant && org && (
+          <span
+            className="truncate rounded bg-muted px-1.5 py-0.5 text-[11px] font-normal text-muted-foreground"
+            title={org.name}
+          >
+            {org.name}
+          </span>
+        )}
       </p>
       {groups
         .filter((group) => group.items.length)
         .map(({ title, items }) => (
-          <div className="mb-5 shrink-0" key={title ?? space}>
+          <div
+            className={cn("shrink-0", isAssistant ? "mb-5" : "mb-3.5")}
+            key={title ?? space}
+          >
             {title && (
               <p className="mb-1 px-2 text-xs font-medium text-muted-foreground">
                 {title}
@@ -276,8 +362,19 @@ export function SpacePanel({
                     activeOptions={{ exact: true }}
                     aria-current={item === active ? "page" : undefined}
                     onClick={onNavigate}
-                    className="flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-md border-l-2 border-transparent px-2.5 py-1 text-sm hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring aria-[current=page]:border-primary aria-[current=page]:bg-primary/10 aria-[current=page]:font-medium aria-[current=page]:text-foreground"
+                    className={cn(
+                      "flex min-w-0 flex-1 items-center gap-2 rounded-md hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-ring",
+                      isAssistant
+                        ? "min-h-9 border-transparent border-l-2 px-2.5 py-1 text-sm aria-[current=page]:border-primary aria-[current=page]:bg-primary/10 aria-[current=page]:font-medium aria-[current=page]:text-foreground"
+                        : "min-h-8 px-2.5 py-1 text-[13px] text-muted-foreground aria-[current=page]:bg-blue-50 aria-[current=page]:font-semibold aria-[current=page]:text-blue-700 dark:aria-[current=page]:bg-blue-500/15 dark:aria-[current=page]:text-blue-300",
+                    )}
                   >
+                    {!isAssistant && (
+                      <item.icon
+                        className="size-3.5 shrink-0"
+                        aria-hidden="true"
+                      />
+                    )}
                     <span>{item.title}</span>
                     {!!item.badge && (
                       <span className="ml-auto rounded-full bg-primary/10 px-1.5 text-xs tabular-nums text-primary">
