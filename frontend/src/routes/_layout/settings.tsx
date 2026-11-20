@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { useState } from "react"
 import { Appearance } from "@/components/Common/Appearance"
+import {
+  SectionCard,
+  WorkspacePage,
+} from "@/components/Common/WorkbenchPrimitives"
 import { AutoDraftSetting } from "@/components/Profile/AutoDraftSetting"
 import { AiConnections } from "@/components/UserSettings/AiConnections"
 import ChangePassword from "@/components/UserSettings/ChangePassword"
@@ -7,6 +12,15 @@ import { ExternalIdentities } from "@/components/UserSettings/ExternalIdentities
 import { ImBindings } from "@/components/UserSettings/ImBindings"
 import { ReviewDelegation } from "@/components/UserSettings/ReviewDelegation"
 import UserInformation from "@/components/UserSettings/UserInformation"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import useAuth from "@/hooks/useAuth"
 import { useOrg } from "@/hooks/useOrg"
 
@@ -35,50 +49,72 @@ function UserSettings() {
   if (!currentUser) return null
 
   return (
-    <div className="max-w-3xl space-y-6" key={org?.id}>
+    <WorkspacePage variant="form" className="space-y-4" key={org?.id}>
       {section === "account" && (
         <>
-          <h1 className="text-3xl font-semibold">账号与安全</h1>
-          <section aria-label="个人信息" className="rounded-xl border px-5">
-            <UserInformation />
-          </section>
-          <div className="rounded-xl border px-5 pb-5">
-            <ChangePassword />
-          </div>
-          <section
+          <h1 className="sr-only">账号与安全</h1>
+          <UserInformation />
+          <PasswordSetting />
+          <SectionCard
             aria-label="外观"
-            className="flex items-center justify-between rounded-xl border p-5"
+            className="flex items-center justify-between gap-3"
           >
-            <h2 className="text-lg font-semibold">外观</h2>
+            <div>
+              <h2 className="text-sm font-semibold">外观</h2>
+              <p className="text-sm text-muted-foreground">
+                选择浅色、深色或跟随系统。
+              </p>
+            </div>
             <Appearance />
-          </section>
+          </SectionCard>
         </>
       )}
       {section === "integrations" && (
         <>
-          <h1 className="text-3xl font-semibold">连接与集成</h1>
-          <div className="rounded-xl border px-5">
+          <h1 className="sr-only">连接与集成</h1>
+          <SectionCard className="divide-y overflow-hidden p-0">
+            <h2 className="bg-muted/40 px-4 py-2.5 text-sm font-semibold">
+              聊天账号与外部工作身份
+            </h2>
             <ImBindings />
-          </div>
-          <div className="rounded-xl border p-5">
-            <AiConnections />
-          </div>
-          {org && employeeId && (
-            <div className="rounded-xl border px-5">
-              <ExternalIdentities orgId={org.id} />
-            </div>
-          )}
+            {org && employeeId && <ExternalIdentities orgId={org.id} />}
+          </SectionCard>
+          <AiConnections />
         </>
       )}
       {section === "preferences" && (
         <>
-          <h1 className="text-3xl font-semibold">偏好与代理</h1>
+          <h1 className="sr-only">偏好与代理</h1>
           {org && employeeId && <AutoDraftSetting orgId={org.id} />}
-          <div className="rounded-xl border px-5">
-            <ReviewDelegation />
-          </div>
+          <ReviewDelegation />
         </>
       )}
-    </div>
+    </WorkspacePage>
+  )
+}
+
+function PasswordSetting() {
+  const [open, setOpen] = useState(false)
+  return (
+    <SectionCard className="flex items-center justify-between gap-3">
+      <div>
+        <h2 className="text-sm font-semibold">登录密码</h2>
+        <p className="text-sm text-muted-foreground">使用当前密码验证身份。</p>
+      </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            修改密码
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>修改密码</DialogTitle>
+            <DialogDescription>输入当前密码与新密码。</DialogDescription>
+          </DialogHeader>
+          <ChangePassword onSuccess={() => setOpen(false)} />
+        </DialogContent>
+      </Dialog>
+    </SectionCard>
   )
 }

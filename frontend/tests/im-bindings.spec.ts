@@ -69,17 +69,12 @@ test("employees generate a code, see bindings and unbind from personal settings"
   await notification.click()
   await expect(bindings.getByRole("status")).toHaveText("保存失败，请重试")
   await expect(notification).toBeChecked()
+  const tokens = page.getByRole("region", { name: "我的令牌" })
+  await expect(tokens).toBeVisible()
   await expectChineseCopy(
     page,
     ["Telegram", "skill", "Cursor", "MCP"],
-    [
-      "demo-jira-02",
-      (await page.getByTestId("cursor-config").textContent()) ?? "",
-      ...(await page
-        .getByRole("region", { name: "我的令牌" })
-        .locator("code")
-        .allTextContents()),
-    ],
+    ["demo-jira-02", ...(await tokens.locator("code").allTextContents())],
   )
   await page.screenshot({
     path: "test-results/im-bindings.png",

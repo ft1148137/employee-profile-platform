@@ -25,6 +25,7 @@ async function initialize(page: Page) {
   const { token } = await response.json()
   await page.goto(`/setup#token=${token}`)
   await fillSetup(page)
+  await expect(page).toHaveURL(/\/setup$/)
   await page.getByRole("button", { name: "创建企业并继续" }).click()
   await expect(page).toHaveURL(/\/assistant\?mode=admin&session=/)
   await expect(page.getByRole("list", { name: "设置步骤" })).toBeVisible()

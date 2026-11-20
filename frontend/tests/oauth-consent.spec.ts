@@ -124,7 +124,14 @@ for (const action of ["允许", "拒绝", "企业关闭"] as const) {
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
       "合成测试助手",
     )
-    await expectChineseCopy(page, ["client", "example"])
+    await expect(page.getByText("当前企业：", { exact: false })).toBeVisible()
+    await expect(
+      page.getByText("授权后跳转至：client.example", { exact: true }),
+    ).toBeVisible()
+    const permissions = page.getByRole("list", { name: "授权后，该工具可以" })
+    await expect(permissions.getByRole("listitem")).toHaveCount(3)
+    await expect(page.getByText(/数据外发提醒。.*AI 服务商/)).toBeVisible()
+    await expectChineseCopy(page, ["client", "example", "AI"])
     await page.screenshot({
       path: testInfo.outputPath("oauth-consent.png"),
       fullPage: true,

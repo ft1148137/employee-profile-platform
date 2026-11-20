@@ -5,6 +5,7 @@ import {
   useNavigate,
 } from "@tanstack/react-router"
 import { AxiosError } from "axios"
+import { Building2 } from "lucide-react"
 import { useLayoutEffect, useState } from "react"
 import { SetupService } from "@/client"
 import { AuthLayout } from "@/components/Common/AuthLayout"
@@ -69,10 +70,17 @@ function Initialize() {
         "初始化链接无效或已过期，请联系部署人员重新获取")
   return (
     <AuthLayout>
-      <h1 className="mb-2 text-2xl font-bold">初始化企业</h1>
-      <p className="mb-6 text-sm text-muted-foreground">
-        先创建企业和首个管理员账号。
-      </p>
+      <header className="mb-5 flex items-center gap-3 border-b border-surface-border pb-4">
+        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
+          <Building2 className="size-5" aria-hidden="true" />
+        </span>
+        <div>
+          <h1 className="text-xl font-semibold">初始化企业</h1>
+          <p className="text-sm text-muted-foreground">
+            先创建企业和首个管理员账号。
+          </p>
+        </div>
+      </header>
       {invalid ? (
         <p role="alert">{invalidLink}</p>
       ) : (

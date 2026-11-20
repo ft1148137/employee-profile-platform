@@ -70,8 +70,7 @@ const ChangePassword = ({ onSuccess }: { onSuccess?: () => void }) => {
   }
 
   return (
-    <div className="max-w-md">
-      {!onSuccess && <h3 className="text-lg font-semibold py-4">修改密码</h3>}
+    <div>
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
@@ -134,11 +133,7 @@ const ChangePassword = ({ onSuccess }: { onSuccess?: () => void }) => {
             )}
           />
 
-          <LoadingButton
-            type="submit"
-            loading={mutation.isPending}
-            className="self-start"
-          >
+          <LoadingButton type="submit" loading={mutation.isPending}>
             保存密码
           </LoadingButton>
         </form>

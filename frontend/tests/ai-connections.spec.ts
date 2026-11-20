@@ -30,6 +30,8 @@ test("HTTPS connection examples do not show the local HTTP notice", async ({
     await expect(page.getByTestId("user-menu")).toBeVisible()
     await page.goto("https://platform.example.test/settings")
     await page.getByRole("link", { name: "连接与集成" }).click()
+    await expect(page.getByTestId("cursor-config")).toHaveCount(0)
+    await page.getByRole("button", { name: "查看 MCP 接入配置" }).click()
     await expect(page.getByTestId("cursor-config")).toContainText(
       "https://platform.example.test/mcp",
     )
@@ -89,7 +91,6 @@ test("enterprise switch and personal token lifecycle", async ({
     employeeHeaders = { Authorization: `Bearer ${accessToken}` }
     await employee.goto("/settings")
     await employee.getByRole("link", { name: "连接与集成" }).click()
-    await expect(employee.getByText(httpNotice)).toBeVisible()
     await employee.getByLabel("令牌名称").fill(name)
     const created = employee.waitForResponse(
       (response) =>
@@ -102,17 +103,43 @@ test("enterprise switch and personal token lifecycle", async ({
     const data = await response.json()
     id = data.id
     await expect(employee.getByTestId("new-token")).toHaveText(data.token)
+    await expect(employee.getByTestId("cursor-config")).toHaveCount(0)
+    const configButton = employee.getByRole("button", {
+      name: "查看 MCP 接入配置",
+    })
+    const configDialog = employee.getByRole("dialog", {
+      name: "查看 MCP 接入配置",
+    })
+    await configButton.click()
+    await expect(configDialog.getByText(httpNotice)).toBeVisible()
     await expect(employee.getByTestId("cursor-config")).toContainText(
       `Bearer ${data.token}`,
     )
     await expect(employee.getByTestId("cursor-config")).toContainText(
       `${new URL(employee.url()).origin}/mcp`,
     )
+    await configDialog.getByRole("button", { name: "关闭" }).click()
     await employee.getByRole("button", { name: "已保存，隐藏令牌" }).click()
+    await configButton.click()
     await expect(employee.getByTestId("new-token")).toHaveCount(0)
     await expect(employee.getByTestId("cursor-config")).not.toContainText(
       data.token,
     )
+    await expect(employee.getByTestId("cursor-config")).toContainText(
+      "Bearer <令牌>",
+    )
+    await employee
+      .context()
+      .grantPermissions(["clipboard-read", "clipboard-write"])
+    await configDialog.getByRole("button", { name: "复制配置" }).click()
+    await expect(configDialog.getByRole("status")).toHaveText("已复制")
+    const copied = await employee.evaluate(() => navigator.clipboard.readText())
+    expect(copied).toBe(
+      await employee.getByTestId("cursor-config").textContent(),
+    )
+    await employee.keyboard.press("Escape")
+    await expect(configDialog).toBeHidden()
+    await expect(configButton).toBeFocused()
     await expectChineseCopy(
       employee,
       [
