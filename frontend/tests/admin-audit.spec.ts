@@ -1,3 +1,4 @@
+import assert from "node:assert/strict"
 import { expect, test } from "@playwright/test"
 import { localMidnight } from "../src/components/Admin/auditLabels"
 import { expectChineseCopy } from "./utils/copy"
@@ -94,7 +95,9 @@ test("audit records show account and revoked role labels with filters", async ({
   const payload = drawer
     .getByRole("region", { name: "结构化载荷" })
     .locator("pre")
-  expect(JSON.parse(await payload.textContent())).toMatchObject({
+  const payloadText = await payload.textContent()
+  assert(payloadText !== null, "Expected the structured audit payload")
+  expect(JSON.parse(payloadText)).toMatchObject({
     id: grantId,
     user_id: userId,
     role: "dept_manager",
