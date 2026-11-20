@@ -25,9 +25,9 @@ jobs:
         with:
           persist-credentials: false
       - run: cp .env.example .env
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Build stack with cache
-        uses: docker/bake-action@5be5f02ff8819ecd3092ea6b2e6261c31774f2b4 # v6
+        uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
         with:
           source: .
           files: compose.yml
@@ -55,9 +55,9 @@ jobs:
           persist-credentials: false
       - name: Check shell scripts
         run: shellcheck install.sh upgrade.sh backup.sh restore.sh deploy/common.sh deploy/backup/*.sh
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Warm production build cache
-        uses: docker/bake-action@5be5f02ff8819ecd3092ea6b2e6261c31774f2b4 # v6
+        uses: docker/bake-action@59cb1203cd42bcefd40a1b6d73b589e48c86040e # v7.5.0
         env:
           COMPOSE_PROJECT_NAME: epp-production-ci
           PROJECT_NAME: CI
