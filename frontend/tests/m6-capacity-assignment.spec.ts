@@ -243,8 +243,15 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
       page.getByRole("button", { name: "提交延期申请", exact: true }),
     ).toHaveCount(0)
   }
+  const openExtension = async () => {
+    await open(m, "approvals")
+    await page
+      .getByRole("region", { name: "延期审批" })
+      .getByText("延期申请", { exact: true })
+      .click()
+  }
   await extension("2026-12-23")
-  await open(m, "approvals")
+  await openExtension()
   await expect(page.getByLabel("新的承诺完成日期")).toHaveCount(0)
   await page.getByRole("button", { name: "同意延期", exact: true }).click()
   await expect(page.getByRole("region", { name: "延期审批" })).toContainText(
@@ -259,7 +266,7 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
     page.getByRole("region", { name: "延期申请记录" }),
   ).toContainText("已同意")
   await extension("2026-12-28")
-  await open(m, "approvals")
+  await openExtension()
   await page.getByLabel("处理方式").selectOption("return")
   await page.getByRole("button", { name: "退回延期", exact: true }).click()
   expect(
@@ -280,7 +287,7 @@ test("分配、延期审批及推迟承诺通知，A 方始终只见部门信息
     page.getByRole("region", { name: "延期申请记录" }),
   ).toContainText("请先确认依赖方时间")
   await extension("2026-12-28")
-  await open(m, "approvals")
+  await openExtension()
   await page.getByRole("button", { name: "同意延期", exact: true }).click()
   await expect(page.getByLabel("新的承诺完成日期")).toHaveJSProperty(
     "value",

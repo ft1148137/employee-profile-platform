@@ -406,8 +406,11 @@ for (const approve of [true, false]) {
       await expect(
         lenderNotice.getByText("未读", { exact: true }),
       ).toBeVisible()
-      await lenderNotice.getByRole("link", { name: "查看待审批" }).click()
+      await lenderNotice.getByRole("button").click()
+      const messageDetail = page.getByRole("region", { name: "消息详情" })
+      await messageDetail.getByRole("link", { name: "查看待审批" }).click()
       await expect(page).toHaveURL("/reviews?type=borrow")
+      await page.getByText("待确认人选", { exact: true }).click()
       const selection = page
         .getByRole("region", { name: "借调确认" })
         .getByRole("article")
@@ -432,11 +435,13 @@ for (const approve of [true, false]) {
           .filter({ hasText: "借调请求待你确认" })
           .first()
         await expect(notice).toBeVisible()
-        await notice.getByRole("link", { name: "查看待审批" }).click()
+        await notice.getByRole("button").click()
+        await messageDetail.getByRole("link", { name: "查看待审批" }).click()
         await expect(page).toHaveURL("/reviews?type=borrow")
         await expect(
           page.getByRole("link", { name: /^借调确认/ }),
         ).toHaveAttribute("aria-current", "page")
+        await page.getByText("待本人确认", { exact: true }).click()
       } else {
         await open(employee, "tab=assignments")
       }
@@ -511,7 +516,8 @@ for (const approve of [true, false]) {
           .filter({ hasText: /分配任务跟踪.*尚未关联任务/ })
         await expect(trackingNotice).toContainText(/分配 #[0-9a-f]{8}（/)
         await expect(trackingNotice).not.toContainText("/capacity?tab=borrows")
-        await trackingNotice.getByRole("link", { name: "打开借调页" }).click()
+        await trackingNotice.getByRole("button").click()
+        await messageDetail.getByRole("link", { name: "打开借调页" }).click()
         await expect(page).toHaveURL(/\/capacity\?tab=borrows$/)
         await expect(
           page.getByRole("link", { name: "借调请求", exact: true }),
@@ -530,7 +536,8 @@ for (const approve of [true, false]) {
         await expect(linked).toContainText(`${taskKey} · ${taskTitle}`)
 
         await open(m, "", "/inbox")
-        await trackingNotice.getByRole("link", { name: "打开方案页" }).click()
+        await trackingNotice.getByRole("button").click()
+        await messageDetail.getByRole("link", { name: "打开方案页" }).click()
         await expect(page).toHaveURL(`/capacity?${incoming}&plans=1`)
         const assignments = page.getByRole("region", { name: "部门内分配" })
         await expect(assignments).toContainText("借调 1 人")

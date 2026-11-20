@@ -132,9 +132,11 @@ test("管理员审批最高负责人时看到分配原因", async ({ page, reque
   await page.locator(`a[href="/reviews/${draft.id}"]`).click()
   await expect(page.getByRole("heading", { name: "画像审批" })).toBeVisible()
   await expect(
-    page.getByText(
-      "分配原因：申请人所在部门和上级部门都没有部门经理，由企业管理员审批",
-      { exact: true },
-    ),
+    page
+      .getByRole("region", { name: "审批决策面板" })
+      .getByText(
+        "分配原因：申请人所在部门和上级部门都没有部门经理，由企业管理员审批",
+        { exact: true },
+      ),
   ).toBeVisible()
 })

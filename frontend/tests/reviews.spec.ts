@@ -206,6 +206,11 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
     )
     await expect(page.getByRole("link", { name: /^待审批/ })).toHaveCount(0)
     await enter(reviewerToken, "/inbox")
+    await page
+      .getByRole("listitem")
+      .filter({ hasText: "画像待审批" })
+      .getByRole("button")
+      .click()
     await page.getByRole("link", { name: "查看并审批", exact: true }).click()
     await expect(page.getByRole("heading", { name: "画像审批" })).toBeVisible()
     if (reviewer === "delegate")
@@ -260,15 +265,20 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       page
         .getByRole("listitem")
         .filter({ has: page.locator(`a[href="/reviews/${draft.id}"]`) }),
-    ).toContainText("3 项改动")
+    ).toContainText(/3 项改动.*网页提交/)
     await page.locator(`a[href="/reviews/${draft.id}"]`).click()
     await page.setViewportSize({ width: 390, height: 844 })
+    const decision = (number: number, name: string) =>
+      page
+        .getByRole("group", { name: `合成能力${number}的审批意见` })
+        .getByRole("button", { name, exact: true })
     const choose = async () => {
-      await page.getByLabel("合成能力1的审批意见").selectOption("approved")
-      await page
-        .getByLabel("合成能力2的审批意见")
-        .selectOption("changes_requested")
-      await page.getByLabel("合成能力3的审批意见").selectOption("rejected")
+      await expect(page.getByLabel("合成能力2的原因")).toHaveCount(0)
+      await decision(1, "批准").click()
+      await expect(decision(1, "批准")).toHaveAttribute("aria-pressed", "true")
+      await expect(page.getByLabel("合成能力1的原因")).toHaveCount(0)
+      await decision(2, "退回").click()
+      await decision(3, "拒绝").click()
       await expect(
         page.getByRole("button", { name: "提交审批" }),
       ).toBeDisabled()
@@ -291,11 +301,11 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
         page.getByText("仅来自 Jira，批准后为「暂定」"),
       ).toBeVisible()
       await expect(page.getByText("员工未确认", { exact: true })).toBeVisible()
+      await expect(decision(2, "批准")).toBeDisabled()
       await expect(
-        page
-          .getByLabel("合成能力2的审批意见")
-          .locator('option[value="approved"]'),
-      ).toHaveAttribute("disabled", "")
+        page.getByText("不能批准：目标判断已被其他请求取代"),
+      ).toBeVisible()
+      await expect(page.getByText("暂无说明")).toHaveCount(0)
       await expectChineseCopy(page)
       await page.unroute(pattern)
       await page.reload()
@@ -332,9 +342,9 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       await expect(page.getByRole("alert")).toContainText(
         "内容已更新，请刷新查看",
       )
-      await expect(page.getByLabel("合成能力1的审批意见")).toHaveCount(0)
+      await expect(decision(1, "批准")).toHaveCount(0)
       await page.reload()
-      await expect(page.getByLabel("合成能力1的审批意见")).toHaveValue("")
+      await expect(decision(1, "批准")).toHaveAttribute("aria-pressed", "false")
       await choose()
     }
     await page.getByRole("button", { name: "提交审批" }).click()

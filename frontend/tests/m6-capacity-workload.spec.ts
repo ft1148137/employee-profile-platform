@@ -175,12 +175,12 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     await expect(
       page.getByRole("link", { name: /^负荷与延期/ }),
     ).toHaveAttribute("aria-current", "page")
-    const application = page.getByRole("article", {
-      name: "员工的调整申请",
-    })
-    await expect(application).toContainText(
+    const row = page.locator("summary").filter({ hasText: `申请 ${percent}%` })
+    await expect(row).toContainText(
       `${start} 至 ${end.toISOString().slice(0, 10)}`,
     )
+    await row.click()
+    const application = page.getByRole("article", { name: "员工的调整申请" })
     if (percent === "85")
       await application
         .getByRole("button", { name: "同意", exact: true })
@@ -197,6 +197,7 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
         .click()
     }
     await expect(application).toHaveCount(0)
+    await expect(row).toHaveCount(0)
     await open(tokens.get("E")!)
     await expect(page.getByText("85%", { exact: true })).toBeVisible()
     await expect(page.getByText("基本满", { exact: true })).toBeVisible()

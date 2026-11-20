@@ -1,12 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { isAxiosError } from "axios"
+import { ArrowLeft, ArrowRight, FileText } from "lucide-react"
 import { useState } from "react"
 import {
   type DecisionInput,
   type PendingReviews,
   ReviewsService,
 } from "@/client"
+import { TopbarActions } from "@/components/Common/TopbarSlot"
+import {
+  SectionCard,
+  WorkspacePage,
+} from "@/components/Common/WorkbenchPrimitives"
 import { EvidenceSheet } from "@/components/Profile/EvidenceSheet"
 import { levelLabel } from "@/components/Profile/fields"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
@@ -23,6 +29,7 @@ import {
 } from "@/components/ui/dialog"
 import { useOrg } from "@/hooks/useOrg"
 import { useReviews } from "@/hooks/useReviews"
+import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/_layout/reviews/$requestId")({
   component: ReviewPage,
@@ -39,6 +46,20 @@ function ReviewPage() {
     />
   ) : null
 }
+const decisionOptions = Object.entries(decisionLabels) as [
+  DecisionInput["decision"],
+  string,
+][]
+
+const decisionStyles = {
+  approved:
+    "aria-pressed:bg-emerald-600 aria-pressed:text-white aria-pressed:hover:bg-emerald-600",
+  changes_requested:
+    "aria-pressed:bg-amber-400 aria-pressed:text-amber-950 aria-pressed:hover:bg-amber-400",
+  rejected:
+    "aria-pressed:bg-destructive aria-pressed:text-white aria-pressed:hover:bg-destructive",
+}
+
 function ReviewForm({
   orgId,
   requestId,
@@ -138,206 +159,273 @@ function ReviewForm({
       )
     })
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <header className="space-y-2 border-b pb-6">
-        <Link className="text-primary underline" to="/reviews">
-          返回待审批
-        </Link>
-        <h1 className="text-2xl font-semibold">画像审批</h1>
-        {query.data.acting_for_name && (
-          <p className="font-medium text-primary">
-            代{query.data.acting_for_name}审批
-          </p>
-        )}
-        {query.data.assignment_reason && (
-          <p className="text-muted-foreground">
-            分配原因：{query.data.assignment_reason}
-          </p>
-        )}
-        {subject && (
-          <p>
-            {subject.employee_name} · {subject.department_name ?? "未分配部门"}
-          </p>
-        )}
-        <p className="text-muted-foreground">
-          请结合工作事实逐项核对，审批意见员工本人可见。
+    <WorkspacePage>
+      <h1 className="sr-only">画像审批</h1>
+      <TopbarActions>
+        <Button asChild size="sm" variant="outline">
+          <Link to="/reviews">
+            <ArrowLeft aria-hidden="true" />
+            返回待审批
+          </Link>
+        </Button>
+      </TopbarActions>
+      {stale && (
+        <p role="alert" className="mb-3 text-sm text-destructive">
+          内容已更新，请刷新查看
         </p>
-      </header>
-      {!query.data.owner_reviewed && (
-        <p className="text-amber-700">员工未确认</p>
       )}
-      {stale && <p role="alert">内容已更新，请刷新查看</p>}
       {!stale && <SetupError error={mutation.error} />}
       <form
-        className="space-y-6"
+        className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,31%)]"
         onSubmit={(event) => {
           event.preventDefault()
+          if (!valid || mutation.isPending || query.isFetching) return
           setRevision(query.data.revision)
           setConfirm(true)
         }}
       >
-        {items.map(
-          (
-            {
-              before,
-              after,
-              evidence,
-              jira_only,
-              approvable,
-              approval_blocked_reason,
-            },
-            index,
-          ) => (
-            <section
-              key={after.id}
-              aria-label={`审批：${after.capability.name}`}
-              className="rounded-xl border p-4 sm:p-6 space-y-4"
-            >
-              <h2 className="text-lg font-semibold">
-                {index + 1}. {after.capability.name}
-              </h2>
+        <section aria-label="待审批变更项" className="min-w-0 space-y-3">
+          <h2 className="text-sm font-semibold">
+            待审批变更项{" "}
+            <span className="text-muted-foreground">（{items.length}）</span>
+          </h2>
+          {items.map(({ before, after, evidence, jira_only }) => (
+            <SectionCard key={after.id} className="space-y-3">
+              <h3 className="wrap-anywhere text-sm font-semibold">
+                {after.capability.name}
+              </h3>
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+                {[
+                  { title: "改动前", claim: before, fallback: "暂无记录" },
+                  {
+                    title: "改动后",
+                    claim: after.after,
+                    fallback:
+                      after.op === "retract" ? "移除此项" : "仅补充证据",
+                  },
+                ].map(({ title, claim, fallback }, index) => (
+                  <div
+                    key={title}
+                    className={cn(
+                      "min-w-0 rounded-md bg-muted/60 p-2.5 text-sm",
+                      index === 1 && "sm:col-start-3 sm:row-start-1",
+                    )}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-xs text-muted-foreground">{title}</h4>
+                      {claim && (
+                        <>
+                          <span className="font-medium">
+                            {levelLabel(
+                              after.capability.level_rubric,
+                              claim.level ?? "未定级",
+                            )}
+                          </span>
+                          <StatusBadge
+                            kind="assessment_status"
+                            value={claim.assessment_status}
+                          />
+                        </>
+                      )}
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap wrap-anywhere">
+                      {claim?.statement ?? fallback}
+                    </p>
+                  </div>
+                ))}
+                <ArrowRight
+                  aria-hidden="true"
+                  className="hidden size-4 self-center text-primary sm:col-start-2 sm:row-start-1 sm:block"
+                />
+              </div>
               {jira_only && (
-                <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+                <p className="rounded bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-800 dark:text-amber-300">
                   仅来自 Jira，批准后为「暂定」
                 </p>
               )}
-              <div className="grid gap-4 sm:grid-cols-2">
-                {[
-                  { title: "改动前", claim: before },
-                  { title: "改动后", claim: after.after },
-                ].map(({ title, claim }) => (
-                  <div
-                    key={title}
-                    className="min-w-0 rounded-lg bg-muted/40 p-4 space-y-2"
-                  >
-                    <h3 className="text-sm text-muted-foreground">{title}</h3>
-                    <p className="whitespace-pre-wrap break-words">
-                      {claim?.statement ??
-                        (title === "改动前"
-                          ? "暂无记录"
-                          : after.op === "retract"
-                            ? "移除此项"
-                            : "仅补充证据")}
-                    </p>
-                    {claim && (
-                      <>
-                        <p className="text-sm">
-                          等级：
-                          {levelLabel(
-                            after.capability.level_rubric,
-                            claim.level ?? "未定级",
-                          )}
-                        </p>
-                        <StatusBadge
-                          kind="assessment_status"
-                          value={claim.assessment_status}
-                        />
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <p className="text-sm">
-                起草说明：{after.explanation ?? "暂无说明"}
-              </p>
-              <p className="text-sm">
-                待核实点：{after.uncertainty ?? "暂无说明"}
-              </p>
-              <p className="text-sm">
-                员工补充：{after.owner_statement ?? "暂无说明"}
-              </p>
-              <p className="text-sm">员工异议：{after.objection ?? "无"}</p>
-              <div className="flex flex-wrap gap-2">
-                {evidence.map((value) => (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-auto whitespace-normal text-left"
-                    key={value.id}
-                    onClick={() => setEvidenceId(value.id)}
-                  >
-                    {value.title}
-                  </Button>
-                ))}
-              </div>
-              {!approvable && (
-                <p role="status" className="text-destructive">
-                  不能批准：{approval_blocked_reason}
-                </p>
-              )}
-              <label className="block space-y-2">
-                <span>审批意见</span>
-                <select
-                  aria-label={`${after.capability.name}的审批意见`}
-                  required
-                  className="w-full rounded-md border bg-background p-2"
-                  value={decisions[after.id]?.decision ?? ""}
-                  onChange={(event) => {
-                    const decision = event.target
-                      .value as DecisionInput["decision"]
-                    setDecisions({
-                      ...decisions,
-                      [after.id]: {
-                        item_id: after.id,
-                        decision,
-                        reason: decisions[after.id]?.reason ?? "",
-                      },
-                    })
-                  }}
-                >
-                  <option value="" disabled>
-                    请选择
-                  </option>
-                  {Object.entries(decisionLabels).map(([value, label]) => (
-                    <option
-                      key={value}
-                      value={value}
-                      disabled={value === "approved" && !approvable}
+              {[
+                {
+                  label: "起草说明",
+                  text: after.explanation,
+                  style: "border-surface-border bg-muted/60",
+                },
+                {
+                  label: "待核实点",
+                  text: after.uncertainty,
+                  style: "border-amber-500 bg-amber-500/10",
+                },
+                {
+                  label: "员工补充",
+                  text: after.owner_statement,
+                  style: "border-primary/50 bg-primary/5",
+                },
+                {
+                  label: "员工异议",
+                  text: after.objection,
+                  style: "border-destructive bg-destructive/5",
+                },
+              ].map(
+                ({ label, text, style }) =>
+                  text?.trim() && (
+                    <p
+                      key={label}
+                      className={cn(
+                        "whitespace-pre-wrap wrap-anywhere border-l-2 px-2.5 py-1.5 text-sm",
+                        style,
+                      )}
                     >
-                      {label}
-                    </option>
+                      <span className="font-medium">{label}：</span>
+                      {text}
+                    </p>
+                  ),
+              )}
+              {evidence.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {evidence.map(({ id, title }) => (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-auto max-w-full rounded-full py-1 whitespace-normal wrap-anywhere text-left text-xs shadow-none"
+                      key={id}
+                      onClick={() => setEvidenceId(id)}
+                    >
+                      <FileText aria-hidden="true" />
+                      {title}
+                    </Button>
                   ))}
-                </select>
-              </label>
-              <label className="block space-y-2">
-                <span>说明（退回或拒绝时必填）</span>
-                <textarea
-                  aria-label={`${after.capability.name}的原因`}
-                  className="min-h-20 w-full rounded-md border bg-background p-3"
-                  disabled={!decisions[after.id]}
-                  required={
-                    !!decisions[after.id] &&
-                    decisions[after.id].decision !== "approved"
-                  }
-                  value={decisions[after.id]?.reason ?? ""}
-                  onChange={(event) =>
-                    setDecisions({
-                      ...decisions,
-                      [after.id]: {
-                        ...decisions[after.id],
-                        reason: event.target.value,
-                      },
-                    })
-                  }
-                />
-              </label>
-            </section>
-          ),
-        )}
-        <label className="block space-y-2">
-          <span>整体意见（选填）</span>
-          <textarea
-            className="min-h-24 w-full rounded-md border bg-background p-3"
-            value={comment}
-            onChange={(event) => setComment(event.target.value)}
-          />
-        </label>
-        <Button
-          disabled={!valid || mutation.isPending || query.isFetching}
-          type="submit"
+                </div>
+              )}
+            </SectionCard>
+          ))}
+        </section>
+        <SectionCard
+          aria-label="审批决策面板"
+          className="flex min-w-0 flex-col p-0 lg:sticky lg:top-16 lg:max-h-[calc(100dvh-5rem)]"
         >
-          提交审批
-        </Button>
+          <header className="flex flex-wrap items-center justify-between gap-1 border-surface-border border-b px-4 py-3">
+            <h2 className="text-sm font-semibold">审批决策面板</h2>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+              {Object.keys(decisions).length}/{items.length} 已选
+            </span>
+          </header>
+          <div className="min-h-0 divide-y divide-surface-border px-4 lg:overflow-y-auto">
+            {(subject ||
+              query.data.acting_for_name ||
+              query.data.assignment_reason ||
+              !query.data.owner_reviewed) && (
+              <div className="space-y-1 py-3 text-sm wrap-anywhere">
+                {subject && (
+                  <p className="font-medium">
+                    {subject.employee_name} ·{" "}
+                    {subject.department_name ?? "未分配部门"}
+                  </p>
+                )}
+                {query.data.acting_for_name && (
+                  <p className="font-medium text-primary">
+                    代{query.data.acting_for_name}审批
+                  </p>
+                )}
+                {query.data.assignment_reason && (
+                  <p className="text-muted-foreground">
+                    分配原因：{query.data.assignment_reason}
+                  </p>
+                )}
+                {!query.data.owner_reviewed && (
+                  <p className="text-amber-700 dark:text-amber-300">
+                    员工未确认
+                  </p>
+                )}
+              </div>
+            )}
+            {items.map(({ after, approvable, approval_blocked_reason }) => {
+              const value = decisions[after.id]
+              return (
+                <fieldset key={after.id} className="min-w-0 space-y-2 py-3">
+                  <legend className="sr-only">
+                    {after.capability.name}的审批意见
+                  </legend>
+                  <h3 className="wrap-anywhere text-sm font-semibold">
+                    {after.capability.name}
+                  </h3>
+                  <div className="grid grid-cols-3 gap-0.5 rounded-md bg-muted p-0.5">
+                    {decisionOptions.map(([decision, label]) => (
+                      <Button
+                        key={decision}
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn("px-1", decisionStyles[decision])}
+                        aria-pressed={value?.decision === decision}
+                        disabled={decision === "approved" && !approvable}
+                        onClick={() =>
+                          setDecisions((previous) => ({
+                            ...previous,
+                            [after.id]: {
+                              item_id: after.id,
+                              decision,
+                              reason:
+                                decision === "approved"
+                                  ? ""
+                                  : (previous[after.id]?.reason ?? ""),
+                            },
+                          }))
+                        }
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                  {!approvable && (
+                    <p role="status" className="text-xs text-destructive">
+                      不能批准：{approval_blocked_reason}
+                    </p>
+                  )}
+                  {value && value.decision !== "approved" && (
+                    <label className="block space-y-1 text-xs text-muted-foreground">
+                      <span>{decisionLabels[value.decision]}原因（必填）</span>
+                      <textarea
+                        aria-label={`${after.capability.name}的原因`}
+                        className="min-h-16 w-full rounded-md border bg-background p-2 text-sm text-foreground"
+                        required
+                        value={value.reason ?? ""}
+                        onChange={(event) =>
+                          setDecisions({
+                            ...decisions,
+                            [after.id]: {
+                              ...value,
+                              reason: event.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                  )}
+                </fieldset>
+              )
+            })}
+            <label className="block space-y-1 py-3 text-xs text-muted-foreground">
+              <span>整体意见（选填）</span>
+              <textarea
+                className="min-h-16 w-full rounded-md border bg-background p-2 text-sm text-foreground"
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+              />
+            </label>
+          </div>
+          <footer className="sticky bottom-0 space-y-2 rounded-b-lg border-surface-border border-t bg-surface px-4 py-3">
+            <Button
+              className="w-full"
+              disabled={!valid || mutation.isPending || query.isFetching}
+              type="submit"
+            >
+              提交审批
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              审批意见员工本人可见。
+            </p>
+          </footer>
+        </SectionCard>
       </form>
       <Dialog
         open={confirm}
@@ -358,7 +446,9 @@ function ReviewForm({
                 {item.after.capability.name}：
                 {decisions[item.after.id] &&
                   decisionLabels[decisions[item.after.id].decision]}
-                <p>{decisions[item.after.id]?.reason || "未填写原因"}</p>
+                {decisions[item.after.id]?.reason?.trim() && (
+                  <p>{decisions[item.after.id].reason}</p>
+                )}
               </li>
             ))}
           </ul>
@@ -380,6 +470,6 @@ function ReviewForm({
         evidenceId={evidenceId}
         onClose={() => setEvidenceId(null)}
       />
-    </div>
+    </WorkspacePage>
   )
 }

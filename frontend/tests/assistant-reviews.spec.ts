@@ -233,12 +233,15 @@ test("manager confirms a review from the assistant", async ({
     await expect(
       panel.getByText("审批决定已保存", { exact: false }),
     ).toBeVisible()
-    await page.goto("/reviews")
+    await page.goto("/reviews?type=profile")
     await expect(
       page.getByRole("heading", { name: "待审批", exact: true }),
     ).toBeVisible()
     await expect(
-      page.getByRole("listitem").filter({ hasText: "合成员工" }),
+      page
+        .getByRole("region", { name: "画像变更" })
+        .getByRole("listitem")
+        .filter({ hasText: "合成员工" }),
     ).toHaveCount(0)
     const processed = await (
       await request.get(`${base}/me/requests?status=all`, {

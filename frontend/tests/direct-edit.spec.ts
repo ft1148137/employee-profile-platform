@@ -459,7 +459,11 @@ for (const role of ["manager", "admin"] as const) {
       await logOutUser(page)
       await logInUser(page, company.employee.account!.username, password)
       await page.goto("/inbox")
-      await expect(page.getByText("画像已更新", { exact: true })).toHaveCount(4)
+      await expect(
+        page
+          .getByRole("complementary", { name: "消息列表" })
+          .getByText("画像已更新", { exact: true }),
+      ).toHaveCount(4)
       await expect(
         page.getByText(/直接修改了你的画像：合成能力1/).first(),
       ).toContainText(role === "manager" ? "合成经理" : "合成管理员")
