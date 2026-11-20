@@ -234,14 +234,11 @@ def _entry(
                 if limit:
                     message = limit.split("：", 1)[-1]
                     label = {
-                        "statement": "能力说明",
                         "basis": "补充说明",
                         "uncertainty": "待核实点",
                     }.get(field)
                     if label:
-                        message = label + message.removeprefix(
-                            "陈述" if field == "statement" else "说明"
-                        )
+                        message = label + message.removeprefix("说明")
                 elif name == "draft_profiles_from_material" and field == "level":
                     index = location[-2] if len(location) > 1 else None
                     message = (

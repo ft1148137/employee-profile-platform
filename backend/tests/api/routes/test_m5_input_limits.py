@@ -41,7 +41,7 @@ def test_reject_long_statement(demo: tuple, client: TestClient) -> None:
         },
     )
     assert response.status_code == 422, response.text
-    assert "陈述最多 200 字" in response.text
+    assert "能力说明最多 200 字" in response.text
 
 
 @pytest.mark.parametrize(
@@ -62,7 +62,7 @@ def test_reject_long_statement(demo: tuple, client: TestClient) -> None:
 @pytest.mark.parametrize(
     "problem,expected",
     [
-        ("statement", "陈述最多 200 字"),
+        ("statement", "能力说明最多 200 字"),
         ("explanation", "说明最多 4000 字"),
         ("items", "每次最多 50 条改动"),
     ],
@@ -200,7 +200,7 @@ def test_existing_draft_submission_checks_all_text(
         json={"revision": draft["revision"]},
     )
     assert response.status_code == 422, response.text
-    assert {"statement": "陈述最多 200 字", "items": "每次最多 50 条改动"}.get(
+    assert {"statement": "能力说明最多 200 字", "items": "每次最多 50 条改动"}.get(
         field, "说明最多 4000 字"
     ) in response.text
 
@@ -373,7 +373,9 @@ def test_unchanged_legacy_draft_can_save_but_must_fix_before_submit(
         json={"revision": saved.json()["revision"]},
     )
     assert rejected.status_code == 422
-    assert "陈述最多 200 字" in rejected.text and "说明最多 4000 字" in rejected.text
+    assert (
+        "能力说明最多 200 字" in rejected.text and "说明最多 4000 字" in rejected.text
+    )
     body["items"][0]["statement"] += "改"
     assert (
         client.put(f"{url}/items", headers=auth["employee"], json=body).status_code

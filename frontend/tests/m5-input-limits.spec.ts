@@ -24,7 +24,7 @@ test("employee sees character counts and cannot preview oversized text", async (
   await statement.fill("😀".repeat(201))
   await expect(dialog.getByText("201 / 200 字", { exact: true })).toBeVisible()
   await expect(dialog.getByRole("alert")).toContainText(
-    "陈述最多 200 字，第 1 条有 201 字",
+    "能力说明最多 200 字，第 1 条有 201 字",
   )
   await expect(
     dialog.getByRole("button", { name: "预览并提交", exact: true }),

@@ -10,7 +10,7 @@ ITEMS_MAX = 50
 def limit_message(field: str, actual: int, index: int | None = None) -> str:
     if field == "items":
         return f"每次最多 {ITEMS_MAX} 条改动，本次有 {actual} 条"
-    label = "陈述" if field == "statement" else "说明"
+    label = "能力说明" if field == "statement" else "说明"
     limit = STATEMENT_MAX if field == "statement" else EXPLANATION_MAX
     position = f"第 {index + 1} 条" if index is not None else "本次"
     return f"{label}最多 {limit} 字，{position}有 {actual} 字"
