@@ -5,9 +5,40 @@ from uuid import uuid4
 
 import pytest
 from dotenv import dotenv_values
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL, make_url
+from xdist.workermanage import WorkerController
 
 DATABASES = pytest.StashKey[ExitStack]()
+SHARED_TEMPLATE = pytest.StashKey[str]()
+
+
+def _database_url() -> URL:
+    env = dotenv_values(Path(__file__).resolve().parents[2] / ".env")
+    return make_url(os.environ.get("DATABASE_URL") or env["DATABASE_URL"]).set(
+        drivername="postgresql+psycopg"
+    )
+
+
+def _create_template(stack: ExitStack, url: URL) -> str:
+    from tests.utils.migrations import isolated_database, migrate
+
+    template = f"migration_template_{uuid4().hex}"
+    engine = stack.enter_context(isolated_database(url, template))
+    migrate(engine, "upgrade", "head")
+    engine.dispose()
+    return template
+
+
+@pytest.hookimpl(optionalhook=True)
+def pytest_configure_node(node: WorkerController) -> None:
+    config = node.config
+    template = config.stash.get(SHARED_TEMPLATE, None)
+    if template is None:
+        with ExitStack() as stack:
+            template = _create_template(stack, _database_url())
+            config.stash[SHARED_TEMPLATE] = template
+            config.add_cleanup(stack.pop_all().close)
+    node.workerinput["migration_template"] = template
 
 
 @pytest.hookimpl(trylast=True)
@@ -19,12 +50,10 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     ):
         return
 
-    from tests.utils.migrations import MIGRATION_TEMPLATE, isolated_database, migrate
+    from tests.utils.migrations import MIGRATION_TEMPLATE, isolated_database
 
     with ExitStack() as stack:
-        env = dotenv_values(Path(__file__).resolve().parents[2] / ".env")
-        url = make_url(os.environ.get("DATABASE_URL") or env["DATABASE_URL"])
-        url = url.set(drivername="postgresql+psycopg")
+        url = _database_url()
         worker = os.environ.get("PYTEST_XDIST_WORKER", "main")
         database = f"{(url.database or 'app')[:20]}_{worker}_{uuid4().hex}"
         patch = stack.enter_context(pytest.MonkeyPatch.context())
@@ -33,10 +62,11 @@ def pytest_sessionstart(session: pytest.Session) -> None:
             "DATABASE_URL",
             url.set(database=database).render_as_string(hide_password=False),
         )
-        template = f"migration_template_{uuid4().hex}"
-        template_engine = stack.enter_context(isolated_database(url, template))
-        migrate(template_engine, "upgrade", "head")
-        template_engine.dispose()
+        template = (
+            config.workerinput["migration_template"]
+            if hasattr(config, "workerinput")
+            else _create_template(stack, url)
+        )
         stack.enter_context(isolated_database(url, database, template=template))
         config.stash[MIGRATION_TEMPLATE] = template
         config.pluginmanager.import_plugin("tests.fixtures")

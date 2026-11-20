@@ -24,9 +24,21 @@ def isolated_database(
         admin_url.render_as_string(hide_password=False), autocommit=True
     ) as admin:
         statement = sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database))
-        if template is not None:
+        if template is None:
+            admin.execute(statement)
+        else:
             statement += sql.SQL(" TEMPLATE {}").format(sql.Identifier(template))
-        admin.execute(statement)
+            # CREATE DATABASE needs autocommit, so use a session lock and release it
+            # before handing the cloned database to the caller.
+            admin.execute(
+                "SELECT pg_advisory_lock(hashtextextended(%s, 0))", (template,)
+            )
+            try:
+                admin.execute(statement)
+            finally:
+                admin.execute(
+                    "SELECT pg_advisory_unlock(hashtextextended(%s, 0))", (template,)
+                )
         isolated = create_engine(url.set(database=database))
         try:
             yield isolated

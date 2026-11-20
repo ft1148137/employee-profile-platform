@@ -4,6 +4,7 @@ set -euo pipefail
 usage() {
   echo 'Usage: scripts/remote-test.sh [--force] {preflight|pytest [args...]|playwright [args...]|status}'
   echo 'Set COMPOSE_PROJECT_NAME=nere<issue-number> (optional -review suffix) for test runs.'
+  echo 'Use preflight --full or PREFLIGHT_FULL_PYTEST=1 for the full selected pytest set.'
 }
 
 die() { echo "$*" >&2; exit 2; }
@@ -17,17 +18,20 @@ case "$mode" in
   *) usage >&2; exit 2 ;;
 esac
 case "$mode" in
-  preflight|status) [[ $# == 0 ]] || die "$mode does not take arguments" ;;
+  preflight)
+    [[ $# == 0 || ( $# == 1 && $1 == --full ) ]] || die 'preflight does not take arguments other than --full'
+    if [[ ${PREFLIGHT_FULL_PYTEST:-0} == 1 ]]; then set -- --full; fi ;;
+  status) [[ $# == 0 ]] || die "$mode does not take arguments" ;;
 esac
 project=${COMPOSE_PROJECT_NAME:-}
-workers=${PREFLIGHT_PYTEST_WORKERS:-4}
+workers=${PREFLIGHT_PYTEST_WORKERS:-}
 if [[ $mode == status ]]; then
   ! $force || die '--force only applies to test runs'
 else
   if ! [[ $project =~ ^nere([1-9][0-9]{0,3})(-review)?$ ]] || (( BASH_REMATCH[1] > 2999 )); then
     die 'Set COMPOSE_PROJECT_NAME=nere<issue-number 1–2999> (optional -review suffix)'
   fi
-  [[ $workers =~ ^[1-4]$ ]] || die 'Set PREFLIGHT_PYTEST_WORKERS to 1–4'
+  [[ -z $workers || $workers =~ ^[1-8]$ ]] || die 'Set PREFLIGHT_PYTEST_WORKERS to 1–8'
 fi
 
 config_dir=$HOME/.config/employee-profile-platform
@@ -145,8 +149,9 @@ lease=/usr/local/bin/cloud-test-lease-run.sh
 locked="$lease epp-$project -- flock -n -E 75 $remote_lock"
 # Invalidate the previous snapshot before any writes. A racing or failed sync
 # can cause a retry, but it cannot run the wrong checkout.
-receiver="test ! -L $remote_dir && rm -f $remote_dir/.remote-test-snapshot/id && exec \"\$@\""
-upload="umask 077 && mkdir -p $remote_root && exec $locked bash -c $(printf '%q' "$receiver") epp-receiver"
+# The lease runner backgrounds its child, which otherwise receives /dev/null.
+receiver="test ! -L $remote_dir && rm -f $remote_dir/.remote-test-snapshot/id && exec \"\$@\" <&8"
+upload="umask 077 && mkdir -p $remote_root && exec 8<&0 && exec $locked bash -c $(printf '%q' "$receiver") epp-receiver"
 EPP_RSYNC_PREFIX=$upload rsync -rpt --checksum --timeout=60 --delete --exclude='/.git' --exclude=.venv --exclude=node_modules \
   -e "$(printf '%q' "$scratch/iap-ssh")" \
   "$scratch/tree/" "$GCP_INSTANCE:epp-runs/$project/" || die 'Workspace sync failed (project may be busy)'

@@ -23,6 +23,10 @@ echo 'from app.domains import planning' > backend/tests/eval/coordination/test_c
 echo 'from app.domains.planning import solver' >> backend/tests/eval/coordination/test_coordination.py
 touch backend/tests/domains/test_sample_unrelated.py
 touch backend/tests/domains/test_admin_assistant.py backend/app/domains/admin_assistant/registry.py
+for i in {1..30}; do
+  echo 'import app.domains.sample.wide' > "backend/tests/sample/test_unrelated_$i.py"
+done
+echo 'before' > backend/app/domains/sample/wide.py
 for module in models schemas demand_schemas; do
   printf 'class OldContract:\n    pass\n\nclass ChangedContract:\n    value: str\n' > "backend/app/domains/sample/$module.py"
   echo "from app.domains.sample.$module import OldContract" >> backend/tests/sample/test_shared.py
@@ -93,6 +97,7 @@ rg -q '^总耗时: [0-9]+s$' "$scratch/run"
 rg -q 'run prek run --files' "$PREFLIGHT_CALLS"
 [[ $(rg -c '^run prek run' "$PREFLIGHT_CALLS") == 1 ]]
 rg -q 'run pytest --no-cov -x -q -n 4 --dist loadgroup' "$PREFLIGHT_CALLS"
+if rg -q 'pytest 分流' "$scratch/run"; then exit 1; fi
 : > "$PREFLIGHT_CALLS"
 PREFLIGHT_PYTEST_WORKERS=1 bash scripts/preflight.sh > "$scratch/run"
 rg -q 'run pytest --no-cov -x -q -n 1 --dist loadgroup' "$PREFLIGHT_CALLS"
@@ -122,6 +127,33 @@ for bad_url in '' 'postgresql://user:secret@localhost/db' 'postgresql://user:sec
 done
 expect_failure '数据库环境: 失败' env -u POSTGRES_PORT bash scripts/preflight.sh
 expect_failure '数据库环境: 失败' env POSTGRES_PORT=5432 DATABASE_URL='postgresql://localhost:5432/db' bash scripts/preflight.sh
+
+# A directory and its directly changed child count only once; --full restores all targets.
+mkdir -p backend/tests/eval/planning
+echo 'after' > backend/app/domains/sample/wide.py
+for i in {1..30}; do
+  touch "backend/tests/eval/planning/test_case_$i.py"
+done
+echo 'changed' > backend/tests/eval/planning/test_case_1.py
+echo 'case data' > backend/tests/eval/planning/case.yml
+: > "$PREFLIGHT_CALLS"
+bash scripts/preflight.sh > "$scratch/run"
+rg -q '^pytest 分流：命中 [0-9]+/[0-9]+ 个测试文件.*GitHub Actions CI' "$scratch/run"
+rg -q '^run pytest .*tests/eval/planning/test_case_1\.py.*tests/sample/test_feature\.py.*tests/test_ci_workflows\.py.*tests/test_sample_migration\.py' "$PREFLIGHT_CALLS"
+assert_absent '^run pytest .*tests/(domains/test_importer\.py|eval/planning/ |sample/test_unrelated_)' "$PREFLIGHT_CALLS"
+for override in flag env; do
+  : > "$PREFLIGHT_CALLS"
+  if [[ $override == flag ]]; then
+    bash scripts/preflight.sh --full > "$scratch/run"
+  else
+    PREFLIGHT_FULL_PYTEST=1 bash scripts/preflight.sh > "$scratch/run"
+  fi
+  assert_absent 'pytest 分流' "$scratch/run"
+  rg -q '^run pytest .*tests/domains/test_importer\.py.*tests/eval/planning/ .*tests/sample/test_unrelated_' "$PREFLIGHT_CALLS"
+  assert_absent '^run pytest .*tests/eval/planning/test_case_1\.py' "$PREFLIGHT_CALLS"
+done
+git restore backend/app/domains/sample/wide.py
+rm backend/tests/eval/planning/{case.yml,test_case_{1..30}.py}
 
 # Added migrations on both sides must stop before Alembic or pytest runs.
 git add .
