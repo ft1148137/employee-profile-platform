@@ -379,8 +379,9 @@ test("模块开关、负荷申请、审批和直接调整遵守角色范围", as
     ).toHaveCount(0)
   }
   await open(tokens.get("M")!, "/find-people")
+  await expect(page).toHaveURL("/assistant?mode=personal&find=true")
   await expect(
-    page.getByRole("heading", { name: "按能力找人", exact: true }),
+    page.getByRole("form", { name: "按能力找人（只读筛选）" }),
   ).toBeVisible()
   await page.goto(`/employees/${employee.id}`)
   await expect(
