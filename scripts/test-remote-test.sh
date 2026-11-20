@@ -28,6 +28,7 @@ expect_failure 'Usage:' "$runner" unknown
 expect_failure 'preflight does not take arguments' "$runner" preflight unexpected
 expect_failure '--force only applies' "$runner" --force status
 expect_failure '1–2999' env COMPOSE_PROJECT_NAME=nere3000 "$runner" pytest
+expect_failure '1–8' env COMPOSE_PROJECT_NAME=nere123 PREFLIGHT_PYTEST_WORKERS=9 "$runner" preflight
 expect_failure 'Set GCP_PROJECT' "$runner" status
 
 export CLOUD_RUNNER_CONFIG=$scratch/runner.env
@@ -59,6 +60,30 @@ export PATH="$scratch/bin:$PATH"
 expect_failure 'Monthly soft cap reached' env COMPOSE_PROJECT_NAME=nere123 "$runner" preflight
 if grep -q 'mock start reached' "$scratch/output"; then exit 1; fi
 expect_failure 'mock start reached' env COMPOSE_PROJECT_NAME=nere123 "$runner" --force preflight
+expect_failure 'mock start reached' env COMPOSE_PROJECT_NAME=nere123 PREFLIGHT_PYTEST_WORKERS=8 "$runner" --force preflight --full
+
+# Stop the worker at its first VM operation after checking the lease selection.
+mkdir "$scratch/leases"
+touch "$scratch/leases/quant-test.lock"
+cat > "$scratch/bin/flock" <<'MOCK'
+#!/usr/bin/env bash
+[[ $* == '-xn -E 75 9' && -f /dev/fd/9 ]] || exit 3
+exit "${MOCK_LEASE_STATUS:-0}"
+MOCK
+cat > "$scratch/bin/lsof" <<'MOCK'
+#!/usr/bin/env bash
+echo 'mock lsof reached' >&2
+exit 3
+MOCK
+chmod +x "$scratch/bin/flock" "$scratch/bin/lsof"
+worker=$scripts_dir/remote-test-worker.sh
+for lease in 0 75; do
+  expect_failure 'mock lsof reached' env CLOUD_TEST_LEASE_DIR="$scratch/leases" MOCK_LEASE_STATUS=$lease bash "$worker" fixture nere123 preflight ''
+  if [[ $lease == 0 ]]; then expected=6; else expected=4; fi
+  grep -Fq "pytest workers: $expected" "$scratch/output"
+done
+expect_failure 'mock lsof reached' env CLOUD_TEST_LEASE_DIR="$scratch/leases" MOCK_LEASE_STATUS=75 bash "$worker" fixture nere123 preflight 8
+grep -Fq 'pytest workers: 8（显式指定）' "$scratch/output"
 
 # Mock wall-clock time after the first hour, including when run at month rollover.
 python3 - "$metadata" "$scratch" <<'PY'

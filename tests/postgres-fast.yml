@@ -1,0 +1,7 @@
+services:
+  db:
+    # postgres:18 mounts the versioned PGDATA directory under this parent.
+    volumes:
+      - type: tmpfs
+        target: /var/lib/postgresql
+    command: ["postgres", "-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off", "-c", "max_wal_size=2GB"]

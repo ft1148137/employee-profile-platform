@@ -38,6 +38,26 @@ def auth_pi(pi_service: PiHarness) -> PiHarness:
     return pi_service
 
 
+@pytest.mark.xdist_group(name="pi_login_isolation")
+@pytest.mark.parametrize("previous_test_left_login_pending", [False, True])
+def test_pi_isolates_pending_login(
+    auth_pi: PiHarness, previous_test_left_login_pending: bool
+) -> None:
+    assert not auth_pi.requests and not auth_pi.replies
+    assert not auth_pi.rate_limited and not auth_pi.auto_draft
+    with httpx.Client(trust_env=False) as client:
+        response = client.post(
+            f"{settings.PI_URL}/v1/auth/openai-codex/logins",
+            headers={
+                "Authorization": f"Bearer {settings.PI_SERVICE_TOKEN.get_secret_value()}"
+            },
+            json={},
+        )
+    assert response.status_code == 200 and response.json()["login_id"]
+    assert auth_pi.logs.read_text().count('"type":"listening"') == 1
+    auth_pi.rate_limited = not previous_test_left_login_pending
+
+
 def callback(
     start: dict, code: str = "synthetic-code", state: str | None = None
 ) -> dict:

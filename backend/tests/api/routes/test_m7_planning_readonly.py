@@ -1,4 +1,5 @@
 import json
+from functools import cache
 
 import sqlalchemy as sa
 from fastapi.testclient import TestClient
@@ -7,16 +8,22 @@ from sqlmodel import Session
 from tests.api.routes.test_m7_planning_validator import planning_setup as planning_setup
 
 
-def business_rows(db: Session, org_id: object) -> dict[str, str]:
-    inspector = sa.inspect(db.get_bind())
-    names = sorted(
-        name
-        for name in inspector.get_table_names()
-        if name.startswith("capacity_") or name in {"audit_event", "inbox_item"}
+@cache
+def _business_tables(engine: sa.Engine) -> dict[str, sa.Table]:
+    metadata = sa.MetaData()
+    metadata.reflect(
+        engine,
+        only=lambda name, _: (
+            name.startswith("capacity_") or name in {"audit_event", "inbox_item"}
+        ),
+        resolve_fks=False,
     )
+    return dict(sorted(metadata.tables.items()))
+
+
+def business_rows(db: Session, org_id: object) -> dict[str, str]:
     result = {}
-    for name in names:
-        table = sa.Table(name, sa.MetaData(), autoload_with=db.get_bind())
+    for name, table in _business_tables(db.connection().engine).items():
         rows = (
             db.execute(sa.select(table).where(table.c.org_id == org_id))
             .mappings()

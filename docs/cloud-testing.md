@@ -31,7 +31,7 @@ scripts/remote-test.sh --force preflight
 bash scripts/test-remote-test.sh
 ```
 
-`pytest` 的路径相对于 `backend/`，Playwright 的路径相对于 `frontend/`。自检的 pytest 默认 4 个 worker，可用 `PREFLIGHT_PYTEST_WORKERS=1` 至 `4` 调低。Playwright 复用 Compose 后端、worker 和 mock Jira，通过 VM 上的 Chromium 跑单 worker。失败时终端会显示本机临时报告目录，可在其中打开 `report/index.html` 或用 Playwright 查看 `test-results/` 里的 trace。
+`pytest` 的路径相对于 `backend/`，Playwright 的路径相对于 `frontend/`。远端预检默认使用 6 个 pytest worker，量化任务持有租约时使用 4 个，可用 `PREFLIGHT_PYTEST_WORKERS=1` 至 `8` 显式指定。预检命中超过 30% 的后端测试文件时，仅运行直接改动、对应单测和守卫。用 `scripts/remote-test.sh preflight --full` 或 `PREFLIGHT_FULL_PYTEST=1` 保留完整的预检选择。Playwright 复用 Compose 后端、worker 和 mock Jira，通过 VM 上的 Chromium 跑单 worker。失败时终端会显示本机临时报告目录，可在其中打开 `report/index.html` 或用 Playwright 查看 `test-results/` 里的 trace。
 
 每个项目使用 `~/epp-runs/<COMPOSE_PROJECT_NAME>`、单独的数据库和 API 端口，以及 `epp-<COMPOSE_PROJECT_NAME>` 共享租约。第二套环境使用 `-review` 后缀。同步和执行都在项目锁内进行。遇到同项目正在运行或同步快照被另一进程替换时，等待对方完成后重试。测试结束时清理本次 Compose 容器和卷，保留镜像与构建缓存。
 

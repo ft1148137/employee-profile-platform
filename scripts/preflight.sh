@@ -3,12 +3,14 @@
 set -euo pipefail
 
 list=false
-case "${1:-}" in
-  --list) list=true ;;
-  '') ;;
-  *) echo 'Usage: bash scripts/preflight.sh [--list]' >&2; exit 2 ;;
-esac
-[[ $# -le 1 ]] || { echo 'Too many arguments' >&2; exit 2; }
+full=${PREFLIGHT_FULL_PYTEST:-0}
+for option in "$@"; do
+  case "$option" in
+    --list) list=true ;;
+    --full) full=1 ;;
+    *) echo 'Usage: bash scripts/preflight.sh [--list] [--full]' >&2; exit 2 ;;
+  esac
+done
 [[ -d backend && -d frontend && -d scripts ]] || {
   echo 'Run from the repository root' >&2; exit 2;
 }
@@ -34,6 +36,7 @@ finish() {
   for i in "${!steps[@]}"; do
     printf '%s: %s (%ss)\n' "${steps[$i]}" "${states[$i]}" "${elapsed[$i]}"
   done
+  if [[ -n ${diversion:-} ]]; then printf '%s\n' "$diversion"; fi
   printf '总耗时: %ss\n' "$((SECONDS - started))"
   rm -rf "$scratch"
   exit "$code"
@@ -81,12 +84,14 @@ select_checks() {
   local test_globs outside_domain
   local import_space='([[:space:]]|#[^\n]*\n)*'
   : > "$scratch/targets"
+  : > "$scratch/focused"
+  : > "$scratch/guards"
   : > "$scratch/playwright"
   : > "$scratch/services"
   while IFS= read -r path; do
     case "$path" in
       backend/tests/test_*.py|backend/tests/*/test_*.py)
-        [[ ! -f $path ]] || echo "${path#backend/}" >> "$scratch/targets" ;;
+        [[ ! -f $path ]] || echo "${path#backend/}" >> "$scratch/focused" ;;
       backend/tests/acceptance/*) echo tests/acceptance/ >> "$scratch/targets" ;;
       backend/tests/eval/admin_assistant/*) ;; # Covered by the registry guard below.
       backend/tests/eval/*/*)
@@ -162,20 +167,20 @@ select_checks() {
         fi
         relative=${relative#app/}
         for candidate in "backend/tests/${relative%/*}/test_$stem.py" "backend/tests/${relative%.py}/"; do
-          [[ ! -e $candidate ]] || echo "${candidate#backend/}" >> "$scratch/targets"
+          [[ ! -e $candidate ]] || echo "${candidate#backend/}" >> "$scratch/focused"
         done
         if [[ -n $domain ]]; then
           relative=${relative#domains/}
           for candidate in "backend/tests/${relative%/*}/test_$stem.py" "backend/tests/${relative%.py}/" "backend/tests/domains/test_${domain}_${stem}.py"; do
-            [[ ! -e $candidate ]] || echo "${candidate#backend/}" >> "$scratch/targets"
+            [[ ! -e $candidate ]] || echo "${candidate#backend/}" >> "$scratch/focused"
           done
           if $shared || [[ $stem == __init__ || $stem == service ]]; then
             candidate="backend/tests/domains/test_$domain.py"
-            [[ ! -f $candidate ]] || echo "${candidate#backend/}" >> "$scratch/targets"
+            [[ ! -f $candidate ]] || echo "${candidate#backend/}" >> "$scratch/focused"
           fi
         fi
         if [[ $path == backend/app/domains/__init__.py ]]; then
-          echo tests/test_m6_capacity_architecture.py >> "$scratch/targets"
+          echo tests/test_m6_capacity_architecture.py >> "$scratch/guards"
         fi
         case "$path" in
           backend/app/models.py|backend/app/core/*)
@@ -183,15 +188,15 @@ select_checks() {
         esac ;;
     esac
     case "$path" in
-      .github/*) echo tests/test_ci_workflows.py >> "$scratch/targets" ;;
+      .github/*) echo tests/test_ci_workflows.py >> "$scratch/guards" ;;
       backend/app/domains/audit/*|frontend/src/components/Admin/auditLabels.ts)
-        echo tests/domains/test_audit_labels.py >> "$scratch/targets" ;;
+        echo tests/domains/test_audit_labels.py >> "$scratch/guards" ;;
       backend/app/domains/admin_assistant/*change_set*|backend/app/domains/admin_assistant/*audit*|backend/app/domains/admin_assistant/registry.py|backend/scripts/eval_admin_assistant.py|backend/tests/eval/admin_assistant/*)
         # Evaluation patches the shared registry and can break change-set guards.
-        echo tests/admin_assistant/ >> "$scratch/targets"
+        echo tests/admin_assistant/ >> "$scratch/guards"
         if [[ $path == backend/app/domains/admin_assistant/registry.py ]]; then
           # The turn integration tests exercise registry tools through the callback.
-          echo tests/domains/test_admin_assistant.py >> "$scratch/targets"
+          echo tests/domains/test_admin_assistant.py >> "$scratch/guards"
         fi ;;
       backend/app/alembic/versions/*)
         if [[ $path == *.py ]]; then
@@ -220,9 +225,9 @@ select_checks() {
       */Dockerfile*) echo "$path（核对对应服务）" >> "$scratch/services" ;;
     esac
   done < "$scratch/changed"
-  if [[ -f $scratch/migration-tests ]]; then cat "$scratch/migration-tests" >> "$scratch/targets"; fi
-  if rg -q '^backend/app/alembic/versions/[^/]+\.py$' "$scratch/changed" && ! rg -q '^tests/.*test_.*_migration\.py$' "$scratch/targets"; then
-    rg --files backend/tests -g 'test_*_migration.py' | sed 's|^backend/||' >> "$scratch/targets"
+  if [[ -f $scratch/migration-tests ]]; then cat "$scratch/migration-tests" >> "$scratch/guards"; fi
+  if rg -q '^backend/app/alembic/versions/[^/]+\.py$' "$scratch/changed" && ! rg -q '^tests/.*test_.*_migration\.py$' "$scratch/guards" "$scratch/focused"; then
+    rg --files backend/tests -g 'test_*_migration.py' | sed 's|^backend/||' >> "$scratch/guards"
   fi
   # An audit label can change on the action line of an unchanged multiline call.
   if awk '
@@ -233,20 +238,41 @@ select_checks() {
     action && audit_context {found=1}
     END {exit !found}
   ' "$scratch/app-diff"; then
-    echo tests/domains/test_audit_labels.py >> "$scratch/targets"
+    echo tests/domains/test_audit_labels.py >> "$scratch/guards"
   fi
-  LC_ALL=C sort -u "$scratch/targets" > "$scratch/sorted"
+}
+
+normalize_targets() {
+  local candidate
+  LC_ALL=C sort -u "$@" > "$scratch/sorted"
   # A directory already includes its children; don't execute the same test twice.
   while IFS= read -r candidate; do
     if [[ -e backend/$candidate ]]; then echo "$candidate"; fi
   done < "$scratch/sorted" > "$scratch/existing"
-  awk 'prefix && index($0, prefix) == 1 {next} {print; prefix = ($0 ~ /\/$/ ? $0 : "")}' "$scratch/existing" > "$scratch/targets"
+  awk 'prefix && index($0, prefix) == 1 {next} {print; prefix = ($0 ~ /\/$/ ? $0 : "")}' "$scratch/existing"
 }
 select_checks
+normalize_targets "$scratch/targets" "$scratch/focused" "$scratch/guards" > "$scratch/selected"
+if [[ $full != 1 && -s $scratch/selected ]]; then
+  rg --files backend/tests -g 'test_*.py' | sed 's|^backend/||' > "$scratch/test-files"
+  total=$(awk 'END {print NR}' "$scratch/test-files")
+  selected=$(awk '
+    NR == FNR {if ($0 ~ /\/$/) dirs[$0]; else files[$0]; next}
+    $0 in files {count++; next}
+    {for (dir in dirs) if (index($0, dir) == 1) {count++; break}}
+    END {print count+0}
+  ' "$scratch/selected" "$scratch/test-files")
+  if (( selected * 100 > total * 30 )); then
+    printf '%s\n' tests/test_ci_workflows.py tests/test_test_database.py >> "$scratch/guards"
+    normalize_targets "$scratch/focused" "$scratch/guards" > "$scratch/selected"
+    diversion="pytest 分流：命中 $selected/$total 个测试文件（超过 30%），仅执行直接改动、对应单测和守卫；全量后端回归交由 GitHub Actions CI（3 分片并行）验收。"
+    echo "$diversion"
+  fi
+fi
 
 echo '检查计划: 同步检查 → (cd backend && uv run alembic heads) → uv run prek run → 数据库环境 → pytest'
 echo "pytest 目标（backend 下，uv run pytest --no-cov -x -q -n ${PREFLIGHT_PYTEST_WORKERS:-4} --dist loadgroup）:"
-cat "$scratch/targets"
+cat "$scratch/selected"
 if [[ -s $scratch/dirty ]]; then
   echo '工作区有未提交改动：请先提交；本次用 uv run prek run --files 检查所有现存变动文件。'
 fi
@@ -300,7 +326,7 @@ PY
   states[3]=通过
   next_step 4
   targets=()
-  while IFS= read -r path; do targets+=("$path"); done < "$scratch/targets"
+  while IFS= read -r path; do targets+=("$path"); done < "$scratch/selected"
   if [[ ${#targets[@]} -gt 0 ]]; then
     (cd backend && uv run pytest --no-cov -x -q -n "${PREFLIGHT_PYTEST_WORKERS:-4}" --dist loadgroup "${targets[@]}")
     states[4]=通过

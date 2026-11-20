@@ -38,8 +38,8 @@ jobs:
         uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           version: "latest-known"
-      - run: docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
-      - run: docker compose -f compose.yml -f compose.dev.yml up -d --wait db
+      - run: docker compose -f compose.yml -f compose.dev.yml -f tests/postgres-fast.yml down -v --remove-orphans
+      - run: docker compose -f compose.yml -f compose.dev.yml -f tests/postgres-fast.yml up -d --wait db
       - name: Install dependencies and compile bytecode before coverage
         run: uv sync --all-packages --frozen --compile-bytecode
       - name: Migrate DB
@@ -62,7 +62,7 @@ jobs:
         env:
           FASTAPI_ENV: development
       - if: always()
-        run: docker compose -f compose.yml -f compose.dev.yml down -v --remove-orphans
+        run: docker compose -f compose.yml -f compose.dev.yml -f tests/postgres-fast.yml down -v --remove-orphans
       - name: Give shard results unique filenames
         env:
           SHARD: ${{ matrix.shard }}

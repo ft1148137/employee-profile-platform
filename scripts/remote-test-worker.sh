@@ -18,6 +18,28 @@ if [[ $project == *-review ]]; then
   export API_PORT=$((API_PORT + 10000))
 fi
 
+if [[ $mode == preflight ]]; then
+  if [[ -z $PREFLIGHT_PYTEST_WORKERS ]]; then
+    PREFLIGHT_PYTEST_WORKERS=6
+    for lock in "${CLOUD_TEST_LEASE_DIR:-/run/cloud-test-leases}"/quant-*.lock; do
+      [[ -f $lock ]] || continue
+      # The lease runner holds a shared lock, so probe with an exclusive lock.
+      if flock -xn -E 75 9 9< "$lock"; then
+        continue
+      elif [[ $? == 75 ]]; then
+        PREFLIGHT_PYTEST_WORKERS=4
+        break
+      else
+        echo "Could not inspect cloud test lease: $lock" >&2
+        exit 1
+      fi
+    done
+    printf '远端预检 pytest workers: %s（按量化租约自动选择）\n' "$PREFLIGHT_PYTEST_WORKERS"
+  else
+    printf '远端预检 pytest workers: %s（显式指定）\n' "$PREFLIGHT_PYTEST_WORKERS"
+  fi
+fi
+
 if [[ $mode == preflight && -d .remote-test-snapshot ]]; then
   meta=.remote-test-snapshot
   base=$(cat "$meta/base")
@@ -56,7 +78,7 @@ export FRONTEND_HOST="http://127.0.0.1:$API_PORT"
 unset SENTRY_DSN COMPOSE_PROFILES
 # The override is kept outside the build context.
 scratch=$(mktemp -d)
-compose=(docker compose --env-file /dev/null -p "$project" -f compose.yml -f compose.dev.yml -f "$scratch/ports.yml")
+compose=(docker compose --env-file /dev/null -p "$project" -f compose.yml -f compose.dev.yml -f tests/postgres-fast.yml -f "$scratch/ports.yml")
 started=false
 artifacts=
 cleanup() {
@@ -104,8 +126,11 @@ EOF
 started=true
 "${compose[@]}" up -d --wait db
 [[ $("${compose[@]}" port db 5432) == "127.0.0.1:$POSTGRES_PORT" ]]
+if [[ $mode != playwright ]]; then
+  npm ci --prefix pi --ignore-scripts --no-audit --no-fund
+fi
 case "$mode" in
-  preflight) bash scripts/preflight.sh ;;
+  preflight) bash scripts/preflight.sh "$@" ;;
   pytest) (cd backend && uv run pytest "$@") ;;
   playwright)
     artifacts=$HOME/epp-runs/.artifacts/$project/$run_id
