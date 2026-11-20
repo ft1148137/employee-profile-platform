@@ -557,7 +557,7 @@ function OptionCard({
           </p>
           {diff && (
             <div>
-              <p>这次改了什么</p>
+              <p>本次调整</p>
               <p>
                 结论：{base.verdict_label} → {option.verdict_label}
               </p>
@@ -667,12 +667,11 @@ function OptionCard({
         )}
         {unconfirmedFindings.length > 0 && (
           <p className="mt-2 text-sm text-muted-foreground">
-            请前往「需求与容量 →
-            团队负荷」，由有管辖权的经理确认相关人员对应周的其他工作占比
+            请先前往「规划 → 团队负荷」确认相关人员对应周次的负荷
             {unconfirmedIncludesSelf
-              ? "（当前涉及你本人，需由有管辖权的另一位经理设置）"
-              : "（若涉及经理本人，需由有管辖权的另一位经理设置）"}
-            ，确认后回到此页点击「重新模拟」。{" "}
+              ? "（涉及你本人的周次需由上级或同级经理确认）"
+              : ""}
+            ，再回来点击「重新模拟」。{" "}
             <Link to="/capacity" search={{ tab: "team" }} className="underline">
               去确认团队负荷
             </Link>

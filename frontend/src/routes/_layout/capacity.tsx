@@ -43,7 +43,7 @@ export const Route = createFileRoute("/_layout/capacity")({
         replace: true,
       })
   },
-  head: () => ({ meta: [{ title: "需求与容量 - 员工画像平台" }] }),
+  head: () => ({ meta: [{ title: "规划 - 员工画像平台" }] }),
 })
 
 function CapacityPage() {
@@ -53,7 +53,7 @@ function CapacityPage() {
   const { tab, demand, plans, project } = Route.useSearch()
   if (!org) return <OrgState />
   if (disabled || settings.data?.enabled === false)
-    return <p role="status">需求与容量功能已关闭，如需使用请联系企业管理员</p>
+    return <p role="status">规划与负荷功能未开启，如需使用请联系企业管理员。</p>
   if (settings.isPending) return <ProfileLoading />
   if (settings.isError) return <ProfileError retry={() => settings.refetch()} />
   const manages = roles.includes("org_admin") || roles.includes("dept_manager")
@@ -61,41 +61,49 @@ function CapacityPage() {
     manages || (!!employeeId && settings.data.requester_policy === "everyone")
   const isPlanningView = !tab || ["mine", "team", "borrows"].includes(tab)
   const orgId = org.id
+  let title = "规划"
   let view: ReactNode
   if (manages && tab === "incoming" && demand) {
+    title = "协作需求"
     view = (
       <IncomingDemands orgId={orgId} demand={demand} plansOpen={plans === 1} />
     )
   } else if (tab === "outgoing" && demand) {
+    title = "协作需求"
     view = <OutgoingDemands orgId={orgId} demand={demand} />
   } else if (tab === "projects" && project) {
+    title = "项目需求"
     view = <Projects orgId={orgId} projectId={project} />
   } else if (tab === "outgoing" || tab === "projects") {
+    title = tab === "projects" ? "项目需求" : "协作需求"
     view = (
       <RequestGuide key={tab} orgId={orgId} tab={tab} canRequest={canRequest} />
     )
   } else if (manages && tab === "borrows") {
+    title = "借调请求"
     view = <BorrowRequests orgId={orgId} />
   } else if (manages && (tab === "team" || !employeeId)) {
+    title = "团队负荷"
     view = <TeamWorkload orgId={orgId} />
   } else if (employeeId) {
+    title = "我的负荷"
     view = <MyWorkload orgId={orgId} />
   }
   return (
     <div key={orgId} className="min-w-0 space-y-6">
       <header>
-        <h1 className="text-3xl font-semibold">需求与容量</h1>
+        <h1 className="text-3xl font-semibold">{title}</h1>
         <p className="mt-3 text-sm text-muted-foreground">{workloadNotice}</p>
         {canRequest && isPlanningView && (
           <div className="mt-4 flex flex-wrap gap-2">
             <Button variant="outline" asChild>
               <Link to="/capacity" search={{ tab: "outgoing" }}>
-                手工提需求
+                新建需求
               </Link>
             </Button>
             <Button variant="outline" asChild>
               <Link to="/capacity" search={{ tab: "projects" }}>
-                手工建项目
+                新建项目
               </Link>
             </Button>
           </div>
@@ -138,9 +146,7 @@ function RequestGuide({
         {isProject ? "项目需求" : "部门需求"}
       </h2>
       <p className="text-sm text-muted-foreground">
-        {isProject
-          ? "用 AI 助手起草多角色项目并查询项目进展。"
-          : "用 AI 助手提出部门需求并查询答复进度。"}
+        可在 AI 助手中快速发起并跟进进展，或直接通过表单新建。
       </p>
       <div className="flex flex-wrap gap-2">
         <Button asChild>
@@ -148,7 +154,7 @@ function RequestGuide({
         </Button>
         {canRequest && (
           <Button variant="outline" onClick={() => setCreating(true)}>
-            {isProject ? "手工建项目" : "手工提需求"}
+            {isProject ? "新建项目" : "新建需求"}
           </Button>
         )}
       </div>

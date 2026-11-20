@@ -106,7 +106,7 @@ function MyAssignmentRow({
         <p role="status">
           {waitingNames
             ? `已提交，等待 ${waitingNames} 审批`
-            : "目前没有能审批这条延期的经理，请联系企业管理员"}
+            : "暂未配置对应审批人，请联系企业管理员"}
         </p>
       )}
       {!pending && row.status === "active" && (
@@ -121,7 +121,7 @@ function MyAssignmentRow({
           <p className="text-sm text-muted-foreground">
             {row.reviewer_names.length
               ? `将交给 ${row.reviewer_names.join("、")} 审批`
-              : "目前没有能审批这条延期的经理，请联系企业管理员"}
+              : "暂未配置对应审批人，请联系企业管理员"}
           </p>
           <fieldset disabled={submit.isPending} className="space-y-3">
             <DateField

@@ -76,8 +76,8 @@ export function DemandWorkFields({ prefix = "" }: { prefix?: string }) {
           min: 10,
           max: 100,
         },
-        { name: "start", label: "时间窗口开始", type: "date" },
-        { name: "end", label: "时间窗口结束", type: "date" },
+        { name: "start", label: "开始日期", type: "date" },
+        { name: "end", label: "结束日期", type: "date" },
       ].map(({ name, label, ...input }) => (
         <label
           key={name}

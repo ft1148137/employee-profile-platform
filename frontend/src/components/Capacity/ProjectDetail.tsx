@@ -11,7 +11,7 @@ const impactLabels: Record<ProjectImpactReason, string> = {
   partial: "只能承接一部分",
   not_now: "暂时不能承接",
   late_commitment: "承诺完成日期晚于需求窗口",
-  dependency: "计划开始日期早于前置角色完成后的最早开始日",
+  dependency: "开始日期早于前置角色完成时间",
 }
 
 export function Projects({
@@ -125,7 +125,7 @@ export function Projects({
                         {[
                           "角色与部门",
                           "计划起止",
-                          "前置约束最早开始",
+                          "最早可开始",
                           "预计起止",
                         ].map((heading) => (
                           <th scope="col" className="px-3 py-2" key={heading}>

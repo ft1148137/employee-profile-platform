@@ -23,7 +23,7 @@ export function Approvals({
     <div className="space-y-6">
       {!pendingWorkloads.length && !pendingExtensions.length && (
         <p role="status" className="text-muted-foreground">
-          目前没有需要你审批的申请
+          暂无待审批的负荷调整
         </p>
       )}
       <section aria-label="待处理的调整申请" className="space-y-3">

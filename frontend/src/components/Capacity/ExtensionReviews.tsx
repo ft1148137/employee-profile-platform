@@ -97,14 +97,14 @@ function ExtensionDecision({
         </label>
         {approve && !!request.commitment_confirmer_names?.length && (
           <p className="text-sm rounded-lg border p-3">
-            这次延期会推迟对需求方的承诺日期，你不能确认新的承诺日期，需要{" "}
-            {request.commitment_confirmer_names.join("、")} 确认。可以：①{" "}
+            此次延期将推迟对外承诺日期，需由{" "}
+            {request.commitment_confirmer_names.join("、")} 确认。可选方式：①{" "}
             {request.on_behalf_of_name
               ? `请原审批人 ${request.on_behalf_of_name} 把审批代理给 ${request.commitment_confirmer_names.join("、")}`
-              : `在「设置 → 代理审批」把审批代理给 ${request.commitment_confirmer_names.join("、")}`}
-            ， 对方会在「需求与容量 → 待我审批」里处理；②
-            选择「退回」，请员工把完成日期改到 {request.committed_end_date}{" "}
-            或之前再申请。代理设置适用于原审批人的全部审批，包括画像审批。
+              : `在「设置 → 偏好与代理」中授权其代理审批`}
+            （对方在「协同 → 待审批」处理）；② 退回并请员工调整至{" "}
+            {request.committed_end_date}{" "}
+            及之前。代理设置适用于原审批人的全部审批，包括画像审批。
           </p>
         )}
         <NoteField

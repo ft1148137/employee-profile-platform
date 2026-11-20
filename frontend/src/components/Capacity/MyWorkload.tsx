@@ -60,7 +60,7 @@ export function MyWorkload({ orgId }: { orgId: string }) {
               {weekLoadLabel(week)}
             </p>
             {query.data.correction_pending[week.week_start] && (
-              <p className="text-xs">修正待审</p>
+              <p className="text-xs">调整审批中</p>
             )}
             {week.capacity_percent < 100 && (
               <p className="text-xs">可用 {week.capacity_percent}%</p>
@@ -81,7 +81,7 @@ export function MyWorkload({ orgId }: { orgId: string }) {
       >
         <h2 className="text-lg font-semibold">申请调整</h2>
         <p className="text-sm text-muted-foreground">
-          填写平台外其他工作的占比（0–200%），平台内分配将另行计入经理确认值。
+          填写平台外工作的精力占比（0–200%），平台内已分配任务会自动累加。
         </p>
         <p className="text-sm text-muted-foreground">
           {reviewerNames
@@ -144,7 +144,7 @@ export function MyWorkload({ orgId }: { orgId: string }) {
             {submit.isPending ? "正在提交…" : "提交申请"}
           </Button>
         </fieldset>
-        {pending && <p role="status">已有申请待处理，请等待经理答复。</p>}
+        {pending && <p role="status">当前有申请正在审批中，请等待处理。</p>}
         {submit.isSuccess && (
           <p aria-live="polite">
             {submittedNames
@@ -310,7 +310,7 @@ export function Unavailability({
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
-              最多登记 92 天，不填写原因；已有分配不会自动调整。
+              单次最多登记 92 天，无需填写原因（已有任务不会自动调整）。
             </p>
             <Button type="submit">
               {save.isPending ? "正在保存…" : "登记"}
@@ -320,7 +320,7 @@ export function Unavailability({
       )}
       {!!over.length && (
         <p role="status">
-          这几周已有分配超出可用，请和部门经理沟通：{over.join("、")}
+          以下周次已有任务超出可用负荷，请与部门经理协调：{over.join("、")}
         </p>
       )}
       <SetupError error={save.error} />

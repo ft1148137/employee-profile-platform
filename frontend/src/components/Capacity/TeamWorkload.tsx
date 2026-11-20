@@ -140,12 +140,11 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
   return (
     <div className="min-w-0 space-y-2 md:space-y-4">
       <p className="text-sm text-muted-foreground">
-        这里按周显示本周和后面 7
-        周经理确认的投入比例，只是参考，不是排班承诺；能否承接以部门经理的正式答复为准。
+        展示未来 8 周的投入参考，实际承接以部门经理答复为准。
       </p>
       {isAdmin && (
         <p className="text-sm text-muted-foreground">
-          企业管理员可查看团队负荷，调整由管辖经理确认。
+          管理员仅可查看，调整需由对应部门经理操作。
         </p>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -215,11 +214,11 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
             }
             onClick={() => confirm.mutate()}
           >
-            沿用上次确认值确认未来 4 周
+            按上次设置确认未来 4 周
           </Button>
           <p className="text-xs text-muted-foreground">
-            从本周起确认 {reusable.length} 人；
-            {eligible.length - reusable.length} 人没有上次确认值，请先逐人设置。
+            将批量确认 {reusable.length} 人（另有{" "}
+            {eligible.length - reusable.length} 人尚无历史记录，需单独设置）。
           </p>
           {reusable.length > 200 && (
             <p className="text-sm text-muted-foreground">
@@ -230,7 +229,7 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
         </div>
       )}
       <p className="text-xs text-muted-foreground">
-        周格显示占用 / 可用；占用包含其他工作、平台分配和预占。
+        格子数值为「已占用 / 可用」（含其他工作、已分配及暂留）。
       </p>
       <WorkloadLegend />
       {chart.isPending ? (
@@ -275,11 +274,11 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
               <DialogTitle className="pr-6">
                 不可用日期 · {dialog.row.employee_name}
               </DialogTitle>
-              <DialogDescription>
-                {canEdit(dialog.row)
-                  ? "登记后会通知本人，不会自动调整已有分配。"
-                  : "此处展示员工已登记的不可用日期。"}
-              </DialogDescription>
+              {canEdit(dialog.row) && (
+                <DialogDescription>
+                  保存后将通知本人，不会自动调整已有任务。
+                </DialogDescription>
+              )}
               <Unavailability
                 orgId={orgId}
                 employeeId={dialog.row.employee_id}
@@ -294,7 +293,7 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
                 设置周投入 · {dialog.row.employee_name}
               </DialogTitle>
               <DialogDescription>
-                设置平台外其他工作占比，平台内分配另行计入。改后会通知本人。
+                填写平台外工作占比，平台内任务会自动累加，保存后通知本人。
               </DialogDescription>
               <Adjustment
                 orgId={orgId}

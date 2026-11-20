@@ -94,7 +94,7 @@ export function DemandsDetail({
       ) : query.isError ? (
         isCapacityAccessDenied(query.error) ? (
           <p role="status" className="rounded-xl border bg-muted/30 p-5">
-            未找到这条需求，或你没有权限查看。需求只有提出人、需求方部门经理和目标部门经理能查看，可以联系他们了解进度。
+            未找到该需求，或你无权查看（仅发起人及双方部门经理可见）。
           </p>
         ) : (
           <ProfileError retry={() => query.refetch()} />
@@ -176,7 +176,7 @@ export function DemandsDetail({
                 <p className="whitespace-pre-wrap break-words">{event.text}</p>
                 {event.basis && (
                   <div className="rounded-lg bg-muted/30 p-3">
-                    <p className="text-sm font-medium">部门级依据（答复时）</p>
+                    <p className="text-sm font-medium">答复时人员概况</p>
                     <DemandsReference reference={event.basis} />
                   </div>
                 )}
@@ -438,8 +438,8 @@ function DemandsBasis({
       ).data,
   })
   return (
-    <section aria-label="本部门依据" className="space-y-3">
-      <h3 className="font-semibold">本部门依据</h3>
+    <section aria-label="本部门匹配人员" className="space-y-3">
+      <h3 className="font-semibold">本部门匹配人员</h3>
       {query.isPending ? (
         <ProfileLoading />
       ) : query.isError ? (
@@ -451,8 +451,7 @@ function DemandsBasis({
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            达到要求的有 {query.data.count} 人，按姓名排序。Jira
-            参考值与经理确认值分别展示。
+            共 {query.data.count} 名符合条件的员工
           </p>
           <div className="overflow-x-auto rounded-xl border">
             <table className="w-full text-left text-sm">
@@ -476,7 +475,7 @@ function DemandsBasis({
                     <td className="p-3">{person.level_name ?? "未定级"}</td>
                     <td className="p-3">
                       {person.workload.jira_task_count === null
-                        ? "无，未接 Jira 或未关联 Jira 账号"
+                        ? "暂无"
                         : `${person.workload.jira_task_count} 件未完成`}
                     </td>
                     <td className="p-3">
@@ -599,7 +598,7 @@ function DemandsAction({
           {selected.outside_basis && (
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="outside_basis" required />
-              方案包含不在依据中的人员，我确认按自己的判断安排
+              方案包含未达画像条件的员工，我确认按实际需要安排
             </label>
           )}
           <Button type="submit" disabled={!text.trim()}>
@@ -643,7 +642,7 @@ function DemandsAction({
             {selected?.outside_basis && (
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="outside_basis" required />
-                方案包含不在依据中的人员，我确认按自己的判断安排
+                方案包含未达画像条件的员工，我确认按实际需要安排
               </label>
             )}
             {selected && (
@@ -654,8 +653,7 @@ function DemandsAction({
               </p>
             )}
             <p className="text-sm text-muted-foreground">
-              答复会发给对方部门，不要写本部门员工的姓名；不写负荷说法（例如基本满、饱和、有余量），只写能否承接、时间和条件。在助手里可以让
-              AI 先起草
+              回复将发送给对方部门：请勿填写员工姓名或个人负荷情况，仅说明能否承接、时间及条件。
             </p>
             <label className="block space-y-2 text-sm font-medium">
               <span>答复结论</span>
@@ -941,7 +939,7 @@ function ProposalPanel({
           <h4 className="font-semibold">变更前</h4>
           {side === "outgoing" && (
             <p className="text-sm text-muted-foreground">
-              未变人员沿用原编号。仅一人替换一人时，新人沿用被替换人员的编号。
+              编号用于对应调整前后的人员位置，方便对比变动。
             </p>
           )}
           <ProposalPeople
@@ -979,7 +977,7 @@ function ProposalPanel({
             {{
               被拒: "对方拒绝了方案，需要重新规划。",
               已过期: "预占已到期，请重新规划。",
-              复核未通过: "容量、版本或权限已变化，请重新规划。",
+              复核未通过: "人员负荷或需求信息已变动，请重新规划。",
               已撤回: "提议已撤回，预占已释放。",
             }[label] ?? "方案未达成，请重新规划。"}
           </p>
