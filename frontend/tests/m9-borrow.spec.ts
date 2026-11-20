@@ -315,7 +315,7 @@ async function acceptInAssistant({
 for (const approve of [true, false]) {
   test(
     approve
-      ? "借出经理在借调页跟踪任务，借入经理仅看匿名进度"
+      ? "借出经理在借调页跟踪并完成分配，借入经理仅看匿名进度"
       : "本人不同意后仅本人看得到理由",
     async ({ page, request, baseURL }) => {
       test.setTimeout(120000)
@@ -486,6 +486,9 @@ for (const approve of [true, false]) {
         await expect(assignments).not.toContainText("合成借调员工")
         await expect(assignments).not.toContainText(taskKey)
         await expect(assignments.getByLabel("任务编号或标题")).toHaveCount(0)
+        await expect(
+          assignments.getByRole("button", { name: "标记完成" }),
+        ).toHaveCount(0)
 
         await open(lender, "")
         await page.getByRole("link", { name: "借调请求", exact: true }).click()
@@ -495,26 +498,49 @@ for (const approve of [true, false]) {
         await expect(
           assignment.getByText("未关联任务", { exact: true }),
         ).toBeVisible()
+        await assignment.getByLabel("任务编号或标题").fill(taskKey)
+        await assignment.getByRole("button", { name: "搜索任务" }).click()
+        await assignment
+          .getByRole("button", { name: "关联任务", exact: true })
+          .click()
+        await expect(assignment).toContainText(
+          "关联任务已全部完成，可以结束分配",
+        )
 
-        const [row] = await api(
-          `${base}/capacity/assignments/active-borrows`,
-          undefined,
-          lender,
-        )
-        await api(
-          `${base}/capacity/assignments/${row.id}`,
-          { status: "done" },
-          lender,
-          "PATCH",
-        )
-        await page.reload()
+        const complete = assignment.getByRole("button", { name: "标记完成" })
         const completed = page.getByRole("region", { name: "已结束的借调分配" })
+        await page.route(
+          new RegExp(`${base}/capacity/assignments/[0-9a-f-]+$`),
+          (route) =>
+            route.fulfill({
+              status: 409,
+              json: { detail: "合成测试：暂时无法结束分配" },
+            }),
+          { times: 1 },
+        )
+        await complete.click()
+        await expect(assignment.getByRole("alert")).toHaveText(
+          "合成测试：暂时无法结束分配",
+        )
+        await expect(assignment).toBeVisible()
+        await expect(completed).toHaveCount(0)
+        await complete.click()
+        await expect(active).toHaveCount(0)
         await expect(completed).toContainText("合成借调员工")
         await completed.getByRole("button", { name: "写反馈" }).click()
         await expect(
           completed.getByLabel("工作反馈（20～500 字）"),
         ).toBeVisible()
-        await expect(active).toHaveCount(0)
+
+        await open(m, incoming)
+        await expect(
+          assignments.getByRole("article").filter({ hasText: "借调 1 人" }),
+        ).toContainText("已完成")
+        await expect(assignments).not.toContainText("合成借调员工")
+        await expect(assignments).not.toContainText(taskKey)
+        await expect(
+          assignments.getByRole("button", { name: "写反馈" }),
+        ).toHaveCount(0)
       } else {
         await card.getByLabel("拒绝理由").fill("仅本人可见的合成理由")
         await card.getByLabel("拒绝原因").selectOption("priority")

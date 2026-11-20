@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { useState } from "react"
 import {
+  type ActiveBorrowAssignment,
   type BorrowDecisionInput,
   type BorrowRequest,
   CapacityService,
@@ -123,20 +124,50 @@ function ActiveBorrowAssignments({ orgId }: { orgId: string }) {
     <section aria-label="进行中的借调分配" className="space-y-3">
       <h2 className="text-lg font-semibold">进行中的借调分配</h2>
       {assignments.data.map((assignment) => (
-        <article
+        <ActiveBorrowAssignmentCard
           key={assignment.id}
-          className="space-y-2 rounded-xl border p-4"
-        >
-          <h3 className="font-medium">{assignment.employee_name}</h3>
-          <p>
-            {assignment.demand_title} ·{" "}
-            {assignment.start_date && `${assignment.start_date} 至 `}
-            {assignment.due_date}
-          </p>
-          <AssignmentTracking orgId={orgId} assignmentId={assignment.id} />
-        </article>
+          orgId={orgId}
+          assignment={assignment}
+        />
       ))}
     </section>
+  )
+}
+
+function ActiveBorrowAssignmentCard({
+  orgId,
+  assignment,
+}: {
+  orgId: string
+  assignment: ActiveBorrowAssignment
+}) {
+  const refresh = useCapacityRefresh(orgId)
+  const complete = useMutation({
+    mutationFn: () =>
+      CapacityService.updateAssignment({
+        path: { org_id: orgId, assignment_id: assignment.id },
+        body: { status: "done" },
+      }),
+    onSuccess: refresh,
+  })
+  return (
+    <article className="space-y-2 rounded-xl border p-4">
+      <h3 className="font-medium">{assignment.employee_name}</h3>
+      <p>
+        {assignment.demand_title} ·{" "}
+        {assignment.start_date && `${assignment.start_date} 至 `}
+        {assignment.due_date}
+      </p>
+      <AssignmentTracking orgId={orgId} assignmentId={assignment.id} />
+      <Button
+        variant="outline"
+        disabled={complete.isPending || complete.isSuccess}
+        onClick={() => complete.mutate()}
+      >
+        标记完成
+      </Button>
+      <CapacityError error={complete.error} />
+    </article>
   )
 }
 
