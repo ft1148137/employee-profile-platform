@@ -11,6 +11,7 @@ import {
   type DepartedDemandAssignment,
   type FeedbackAssignment,
 } from "@/client"
+import { SectionCard } from "@/components/Common/WorkbenchPrimitives"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -88,9 +89,10 @@ export function DemandAssignments({
       </section>
     )
   return (
-    <section
+    <SectionCard
+      id="demand-assignments"
       aria-label="部门内分配"
-      className="space-y-4 rounded-xl border p-5"
+      className="scroll-mt-16 space-y-3"
     >
       <h3 className="text-lg font-semibold">部门内分配</h3>
       {basis.data &&
@@ -258,7 +260,7 @@ export function DemandAssignments({
         </>
       )}
       <CapacityError error={feedback.error} />
-    </section>
+    </SectionCard>
   )
 }
 

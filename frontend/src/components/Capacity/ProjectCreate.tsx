@@ -42,6 +42,7 @@ export function ProjectCreate({
   const options = useDemandOptions(orgId)
   const cache = useQueryClient()
   const submit = useMutation({
+    mutationKey: ["capacity", orgId, "create", "projects"],
     mutationFn: (body: ProjectInput) =>
       CapacityService.submitProject({ path: { org_id: orgId }, body }),
     onSuccess: ({ data }) => {
@@ -53,11 +54,7 @@ export function ProjectCreate({
   if (options.isError) return <ProfileError retry={() => options.refetch()} />
 
   return (
-    <div className="max-w-4xl space-y-5">
-      <Button variant="outline" onClick={back} disabled={submit.isPending}>
-        返回项目入口
-      </Button>
-      <h2 className="text-xl font-semibold">新建项目需求</h2>
+    <div className="space-y-4">
       <form
         onSubmit={(event) => {
           event.preventDefault()
@@ -119,7 +116,7 @@ export function ProjectCreate({
         }}
       >
         <fieldset disabled={submit.isPending} className="space-y-5">
-          <div className="grid gap-4 rounded-xl border p-5 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <label className={labelStyle} htmlFor="project-title">
               <span>项目名称</span>
               <Input id="project-title" name="title" required maxLength={100} />
@@ -199,6 +196,14 @@ export function ProjectCreate({
             </Button>
           </div>
         </fieldset>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={back}
+          disabled={submit.isPending}
+        >
+          取消
+        </Button>
       </form>
     </div>
   )

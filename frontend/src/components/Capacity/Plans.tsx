@@ -529,9 +529,10 @@ function OptionCard({
   return (
     <article
       id={`plan-option-${option.id}`}
+      tabIndex={-1}
       aria-current={selected ? "true" : undefined}
       data-selected={selected ? "true" : undefined}
-      className={`scroll-mt-20 space-y-4 rounded-xl border p-5 ${
+      className={`scroll-mt-20 space-y-3 rounded-md border bg-surface p-3 text-sm ${
         selected ? "border-primary bg-primary/5 ring-2 ring-primary/30" : ""
       }`}
       aria-label={
@@ -594,110 +595,6 @@ function OptionCard({
         {number(option.summary.covered_headcount)} 人 · 还差{" "}
         {number(option.summary.gap_person_weeks)} 人周
       </p>
-      <div>
-        <h5 className="font-medium">人员安排</h5>
-        {assignees.length ? (
-          <ul className="list-inside list-disc">
-            {Array.from(grouped, ([employeeId, parts]) => (
-              <li key={employeeId}>
-                {people.get(employeeId) ?? "待确认人员"} · 投入{" "}
-                {number(parts[0].allocation_percent)}% ·{" "}
-                {label(parts[0].start_date)} 至 {label(parts[0].end_date)}
-                {locks.has(employeeId) && " · 已锁定"}
-                {matchedExtras && (
-                  <p className="pl-4 text-sm text-muted-foreground">
-                    满足的额外能力：
-                    {strings(matchedExtras[employeeId]).join("、") || "无"}
-                  </p>
-                )}
-                {parts.length > 1 && (
-                  <ul className="pl-4">
-                    {parts.slice(1).map((person, index) => (
-                      <li key={index}>
-                        投入 {number(person.allocation_percent)}% ·{" "}
-                        {label(person.start_date)} 至 {label(person.end_date)}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>尚未确定具体人员</p>
-        )}
-        {departments.map((department, index) => (
-          <p key={index}>候选部门：{label(department.department_name)}</p>
-        ))}
-      </div>
-      <div>
-        <h5 className="font-medium">受影响的工作</h5>
-        {affected.length ? (
-          <ul className="list-inside list-disc">
-            {affected.map((id) => {
-              const work = assignments.get(id)
-              if (!work) return null
-              return (
-                <li key={id}>
-                  {people.get(label(work.employee_id)) ?? "待确认人员"} ·
-                  {work.start_date === null
-                    ? "开始日期未确认"
-                    : label(work.start_date)}
-                  （计入日期 {label(work.counted_from)}）至{" "}
-                  {label(work.due_date)} · 已投入{" "}
-                  {number(work.allocation_percent)}%
-                </li>
-              )
-            })}
-          </ul>
-        ) : (
-          <p>暂无受影响的进行中工作</p>
-        )}
-      </div>
-      <div>
-        <h5 className="font-medium">风险</h5>
-        {option.findings.length ? (
-          <ul className="list-inside list-disc">
-            {option.findings.map((finding, index) => (
-              <li key={index}>{findingText(finding, people)}</li>
-            ))}
-          </ul>
-        ) : (
-          <p>暂无已发现风险</p>
-        )}
-        {unconfirmedFindings.length > 0 && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            请先前往「规划 → 团队负荷」确认相关人员对应周次的负荷
-            {unconfirmedIncludesSelf
-              ? "（涉及你本人的周次需由上级或同级经理确认）"
-              : ""}
-            ，再回来点击「重新模拟」。{" "}
-            <Link to="/capacity" search={{ tab: "team" }} className="underline">
-              去确认团队负荷
-            </Link>
-          </p>
-        )}
-      </div>
-      <div>
-        <h5 className="font-medium">条件</h5>
-        {strings(option.summary.conditions).length ? (
-          <ul className="list-inside list-disc">
-            {strings(option.summary.conditions).map((condition) => (
-              <li key={condition}>{condition}</li>
-            ))}
-          </ul>
-        ) : (
-          <p>无附加条件</p>
-        )}
-      </div>
-      <div>
-        <h5 className="font-medium">需要谁确认</h5>
-        <ul className="list-inside list-disc">
-          {strings(option.summary.approvers).map((approver) => (
-            <li key={approver}>{approver}</li>
-          ))}
-        </ul>
-      </div>
       {onReply && ["feasible", "conditional"].includes(option.verdict) && (
         <div className="space-y-3">
           {borrowing && (
@@ -810,6 +707,110 @@ function OptionCard({
             )}
           </>
         )}
+      <div>
+        <h5 className="font-medium">人员安排</h5>
+        {assignees.length ? (
+          <ul className="divide-y divide-surface-border rounded-md border border-surface-border">
+            {Array.from(grouped, ([employeeId, parts]) => (
+              <li className="break-words px-2 py-1.5" key={employeeId}>
+                {people.get(employeeId) ?? "待确认人员"} · 投入{" "}
+                {number(parts[0].allocation_percent)}% ·{" "}
+                {label(parts[0].start_date)} 至 {label(parts[0].end_date)}
+                {locks.has(employeeId) && " · 已锁定"}
+                {matchedExtras && (
+                  <p className="pl-4 text-sm text-muted-foreground">
+                    满足的额外能力：
+                    {strings(matchedExtras[employeeId]).join("、") || "无"}
+                  </p>
+                )}
+                {parts.length > 1 && (
+                  <ul className="pl-4">
+                    {parts.slice(1).map((person, index) => (
+                      <li key={index}>
+                        投入 {number(person.allocation_percent)}% ·{" "}
+                        {label(person.start_date)} 至 {label(person.end_date)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>尚未确定具体人员</p>
+        )}
+        {departments.map((department, index) => (
+          <p key={index}>候选部门：{label(department.department_name)}</p>
+        ))}
+      </div>
+      <div>
+        <h5 className="font-medium">受影响的工作</h5>
+        {affected.length ? (
+          <ul className="list-inside list-disc">
+            {affected.map((id) => {
+              const work = assignments.get(id)
+              if (!work) return null
+              return (
+                <li key={id}>
+                  {people.get(label(work.employee_id)) ?? "待确认人员"} ·
+                  {work.start_date === null
+                    ? "开始日期未确认"
+                    : label(work.start_date)}
+                  （计入日期 {label(work.counted_from)}）至{" "}
+                  {label(work.due_date)} · 已投入{" "}
+                  {number(work.allocation_percent)}%
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <p>暂无受影响的进行中工作</p>
+        )}
+      </div>
+      <div>
+        <h5 className="font-medium">风险</h5>
+        {option.findings.length ? (
+          <ul className="list-inside list-disc">
+            {option.findings.map((finding, index) => (
+              <li key={index}>{findingText(finding, people)}</li>
+            ))}
+          </ul>
+        ) : (
+          <p>暂无已发现风险</p>
+        )}
+        {unconfirmedFindings.length > 0 && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            请先前往「规划 → 团队负荷」确认相关人员对应周次的负荷
+            {unconfirmedIncludesSelf
+              ? "（涉及你本人的周次需由上级或同级经理确认）"
+              : ""}
+            ，再回来点击「重新模拟」。{" "}
+            <Link to="/capacity" search={{ tab: "team" }} className="underline">
+              去确认团队负荷
+            </Link>
+          </p>
+        )}
+      </div>
+      <div>
+        <h5 className="font-medium">条件</h5>
+        {strings(option.summary.conditions).length ? (
+          <ul className="list-inside list-disc">
+            {strings(option.summary.conditions).map((condition) => (
+              <li key={condition}>{condition}</li>
+            ))}
+          </ul>
+        ) : (
+          <p>无附加条件</p>
+        )}
+      </div>
+      <div>
+        <h5 className="font-medium">需要谁确认</h5>
+        <ul className="list-inside list-disc">
+          {strings(option.summary.approvers).map((approver) => (
+            <li key={approver}>{approver}</li>
+          ))}
+        </ul>
+      </div>
       <RevisionControls
         option={option}
         plan={plan}
@@ -931,7 +932,62 @@ export function Plans({
           {plan.notes.map((note) => (
             <p key={note}>{note}</p>
           ))}
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="min-w-0 overflow-x-auto rounded-md border border-surface-border">
+            <table
+              aria-label="方案对比"
+              className="w-full min-w-max text-left text-sm"
+            >
+              <thead className="bg-muted/40 text-muted-foreground">
+                <tr>
+                  {["方案", "可行性", "预计交付", "覆盖 / 缺口", "操作"].map(
+                    (heading) => (
+                      <th
+                        key={heading}
+                        scope="col"
+                        className="px-3 py-2 font-medium"
+                      >
+                        {heading}
+                      </th>
+                    ),
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-border">
+                {plan.options.map((option) => (
+                  <tr key={option.id} className="h-10">
+                    <th scope="row" className="px-3 font-medium">
+                      {option.kind_label}
+                    </th>
+                    <td className="px-3">{option.verdict_label}</td>
+                    <td className="px-3">
+                      {label(option.summary.finish_date)}
+                    </td>
+                    <td className="px-3">
+                      {number(option.summary.covered_headcount)} 人 /{" "}
+                      {number(option.summary.gap_person_weeks)} 人周
+                    </td>
+                    <td className="px-3">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`查看${option.kind_label}详情`}
+                        onClick={() => {
+                          const card = document.getElementById(
+                            `plan-option-${option.id}`,
+                          )
+                          card?.focus()
+                          card?.scrollIntoView()
+                        }}
+                      >
+                        查看详情
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="space-y-3">
             {plan.options.map((option) => (
               <OptionCard
                 key={option.id}

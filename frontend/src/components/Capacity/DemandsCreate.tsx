@@ -43,6 +43,7 @@ export function DemandsCreate({
     enabled: !!target && !!capability,
   })
   const submit = useMutation({
+    mutationKey: ["capacity", orgId, "create", "outgoing"],
     mutationFn: (body: DemandInput) =>
       CapacityService.submitDemand({ path: { org_id: orgId }, body }),
     onSuccess: ({ data }) => {
@@ -56,13 +57,9 @@ export function DemandsCreate({
   const selectedCapability = capabilities.find((c) => c.key === capability)
   const levels = capabilityLevels(selectedCapability?.level_rubric)
   return (
-    <div className="max-w-3xl space-y-5">
-      <Button variant="outline" onClick={back} disabled={submit.isPending}>
-        返回需求入口
-      </Button>
-      <h2 className="text-xl font-semibold">新建协作需求</h2>
+    <div className="space-y-4">
       <form
-        className="space-y-4 rounded-xl border p-5"
+        className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault()
           const data = new FormData(event.currentTarget)
@@ -141,6 +138,14 @@ export function DemandsCreate({
             预览需求
           </Button>
         </fieldset>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={back}
+          disabled={submit.isPending}
+        >
+          取消
+        </Button>
       </form>
       {target && capability && (
         <section
