@@ -277,8 +277,10 @@ def save_bytes(
     ext = Path(filename).suffix.lower().lstrip(".")
     limit = size_limit(filename)
     image = MIME[ext].startswith("image/")
-    if not data or len(data) > limit:
-        raise AttachmentError("附件不能为空，图片不超过 5 MB，文件不超过 10 MB")
+    if not data:
+        raise AttachmentError("附件不能为空")
+    if len(data) > limit:
+        raise AttachmentError("文件超出限制：图片不超过 5 MB，文件不超过 10 MB")
     session_table: type[BotSession] | type[AdminAssistantSession]
     if kind == "admin":
         session_table = AdminAssistantSession
