@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ChevronDown } from "lucide-react"
-import { type ReactNode, useId, useState } from "react"
+import { type ReactNode, useEffect, useId, useState } from "react"
 import {
   type ChangeItemPublic,
   type ChangeRequestPublic,
@@ -57,10 +57,12 @@ export function ChangeRequestCard({
   onEdit,
   compact = false,
   profileItems = [],
+  focusedRequestId,
 }: {
   compact?: boolean
   profileItems?: ProfileItem[]
   requests: ChangeRequestPublic[]
+  focusedRequestId?: string | null
   employeeId: string
   isOwner: boolean
   onEvidence: (id: string) => void
@@ -68,6 +70,17 @@ export function ChangeRequestCard({
   onEdit: (selection: EditorSelection) => void
 }) {
   const client = useQueryClient()
+  useEffect(() => {
+    if (
+      !focusedRequestId ||
+      !requests.some(({ id }) => id === focusedRequestId)
+    )
+      return
+    const request = document.getElementById(`request-${focusedRequestId}`)
+    const disclosure = request?.closest("details")
+    if (disclosure) disclosure.open = true
+    request?.scrollIntoView({ block: "center" })
+  }, [focusedRequestId, requests])
   const withdraw = useMutation({
     mutationFn: (id: string) =>
       EmployeeRequestsService.withdrawRequest({

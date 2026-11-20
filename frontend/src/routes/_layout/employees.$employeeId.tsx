@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { isAxiosError } from "axios"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import {
   ChangeRequestsService,
   type ProfileItem,
@@ -85,13 +85,6 @@ function EmployeeDetails() {
     enabled: !!org,
     retry: false,
   })
-  useEffect(() => {
-    if (detailTab !== "capabilities" || !requestId || !requests.data) return
-    const request = document.getElementById(`request-${requestId}`)
-    const disclosure = request?.closest("details")
-    if (disclosure) disclosure.open = true
-    request?.scrollIntoView({ block: "center" })
-  }, [detailTab, requestId, requests.data])
   if (!org) return <OrgState />
   if (query.isPending) return <ProfileLoading />
   if (query.isError) {
@@ -159,6 +152,7 @@ function EmployeeDetails() {
         ) : (
           <ChangeRequestCard
             requests={requests.data.data}
+            focusedRequestId={requestId}
             compact={!isAdmin}
             profileItems={query.data.items}
             employeeId={employeeId}
