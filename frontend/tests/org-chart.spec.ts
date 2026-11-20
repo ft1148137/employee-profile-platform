@@ -60,7 +60,7 @@ const syntheticChart = {
   ],
 }
 
-test("admin opens department reporting tree, person chain and employee details", async ({
+test("admin opens the member table, reporting chain and employee profile", async ({
   page,
 }, testInfo) => {
   await logInUser(
@@ -72,10 +72,16 @@ test("admin opens department reporting tree, person chain and employee details",
   await expect(
     page.getByRole("heading", { name: "员工", exact: true }),
   ).toBeVisible()
-  await page
-    .getByRole("navigation", { name: "空间导航", exact: true })
-    .getByRole("link", { name: "组织架构", exact: true })
-    .click()
+  const [chartResponse] = await Promise.all([
+    page.waitForResponse((response) =>
+      /\/api\/v1\/orgs\/[^/]+\/org-chart$/.test(response.url()),
+    ),
+    page
+      .getByRole("navigation", { name: "空间导航", exact: true })
+      .getByRole("link", { name: "组织架构", exact: true })
+      .click(),
+  ])
+  expect(chartResponse.ok()).toBeTruthy()
   await expect(page).toHaveURL(/\/org-chart$/)
   const tree = page.getByRole("region", { name: "部门层级", exact: true })
   await expect(
@@ -86,8 +92,9 @@ test("admin opens department reporting tree, person chain and employee details",
     path: testInfo.outputPath("org-chart-admin.png"),
     fullPage: true,
   })
-  await tree.getByRole("button", { name: "查看平台研发部人员" }).click()
-  const people = page.getByRole("region", { name: "部门汇报关系" })
+  await tree.getByRole("button", { name: /^平台研发部/ }).click()
+  await page.getByRole("button", { name: "成员表", exact: true }).click()
+  const people = page.getByRole("region", { name: "部门成员" })
   await expect(people).toContainText("共 3 人")
   await people.getByRole("button", { name: "查看张伟汇报关系" }).click()
   await expect(
@@ -100,11 +107,20 @@ test("admin opens department reporting tree, person chain and employee details",
   ).toBeVisible()
 })
 
-test("three department levels have connectors, fit viewport and collapse", async ({
+test("department navigation preserves hierarchy across search, selection and member views", async ({
   page,
 }, testInfo) => {
   await page.route("**/api/v1/orgs/*/org-chart", (route) =>
     route.fulfill({ json: syntheticChart }),
+  )
+  await page.route("**/departments/*/capabilities", (route) =>
+    route.fulfill({
+      json: {
+        capability_keys: [],
+        inherited_capability_keys: [],
+        capabilities: [],
+      },
+    }),
   )
   await logInUser(
     page,
@@ -112,10 +128,13 @@ test("three department levels have connectors, fit viewport and collapse", async
     process.env.DEMO_USER_PASSWORD!,
   )
   await page.goto("/org-chart")
-  await expect(page.getByTestId("org-connector")).toHaveCount(5)
+  const tree = page.getByRole("region", { name: "部门层级", exact: true })
+  const nav = page.getByRole("navigation", { name: "部门导航" })
+  const details = page.getByRole("complementary", { name: "部门详情" })
+  await expect(tree.getByTestId("org-connector")).toHaveCount(5)
   for (const name of ["研发中心", "平台部", "质量组", "支持组"]) {
     await expect(
-      page.getByRole("button", { name: `查看${name}人员` }),
+      tree.getByRole("button", { name: new RegExp(`^${name}`) }),
     ).toBeInViewport()
   }
   const overflow = await page
@@ -130,22 +149,34 @@ test("three department levels have connectors, fit viewport and collapse", async
     fullPage: true,
   })
   await page.getByRole("button", { name: "折叠平台部下级部门" }).click()
-  await expect(
-    page.getByRole("button", { name: "查看质量组人员" }),
-  ).toBeHidden()
+  await expect(tree.getByRole("button", { name: /^质量组/ })).toBeHidden()
   await page.getByRole("button", { name: "展开平台部下级部门" }).click()
   await page.getByRole("button", { name: "折叠研发中心下级部门" }).click()
-  await expect(
-    page.getByRole("button", { name: "查看平台部人员" }),
-  ).toBeHidden()
+  await expect(tree.getByRole("button", { name: /^平台部/ })).toBeHidden()
   await page.getByRole("button", { name: "展开研发中心下级部门" }).click()
-  await expect(
-    page.getByRole("button", { name: "查看质量组人员" }),
-  ).toBeVisible()
-  await page.getByRole("button", { name: "查看质量组人员" }).click()
+  await expect(tree.getByRole("button", { name: /^质量组/ })).toBeVisible()
+  const search = nav.getByRole("textbox", { name: "搜索部门或负责人" })
+  await nav.getByRole("button", { name: "折叠平台部导航分支" }).click()
+  await expect(nav.getByRole("button", { name: /^质量组/ })).toHaveCount(0)
+  await search.fill("质量组")
+  await expect(nav.getByRole("button", { name: /^研发中心/ })).toBeVisible()
+  await expect(nav.getByRole("button", { name: /^产品部/ })).toHaveCount(0)
+  await nav.getByRole("button", { name: /^质量组/ }).click()
+  await expect(details.getByRole("heading", { name: "质量组" })).toBeVisible()
+  await expect(tree.getByRole("button", { name: /^质量组/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
+  await search.clear()
+  await expect(nav.getByRole("button", { name: /^产品部/ })).toBeVisible()
+  await page.getByRole("button", { name: "成员表", exact: true }).click()
   await expect(page.getByText("本部门暂无在职人员")).toBeVisible()
-  await page.getByRole("button", { name: "部门层级", exact: true }).click()
-  await page.getByRole("button", { name: "查看平台部人员" }).click()
+  await nav.getByRole("button", { name: /^研发中心/ }).click()
+  await expect(page.getByRole("table").getByRole("row")).toHaveCount(2)
+  await page.getByRole("checkbox", { name: "含下级" }).check()
+  await expect(page.getByRole("table").getByRole("row")).toHaveCount(5)
+  await nav.getByRole("button", { name: /^平台部/ }).click()
+  await page.getByRole("button", { name: "部门汇报图" }).click()
   await expect(page.getByTestId("org-connector")).toHaveCount(2)
   await page.screenshot({
     path: testInfo.outputPath("org-chart-department.png"),
@@ -171,8 +202,14 @@ test("three department levels have connectors, fit viewport and collapse", async
   await expect(
     personTree.getByRole("button", { name: "查看许言汇报关系" }),
   ).toBeHidden()
-  await page.getByRole("button", { name: "平台部", exact: true }).click()
+  await page
+    .getByRole("button", { name: "返回部门汇报图", exact: true })
+    .click()
   await expect(page.getByRole("region", { name: "部门汇报关系" })).toBeVisible()
+  await page.getByRole("button", { name: "返回成员表", exact: true }).click()
+  await expect(
+    page.getByRole("link", { name: "查看周宁画像" }),
+  ).toHaveAttribute("href", "/employees/engineer")
   await page.evaluate(() => localStorage.setItem("vite-ui-theme", "light"))
   await page.reload()
   await expect(page.locator("html")).toHaveClass("light")
@@ -181,6 +218,16 @@ test("three department levels have connectors, fit viewport and collapse", async
     path: testInfo.outputPath("org-chart-light.png"),
     fullPage: true,
   })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(tree).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    390,
+  )
+  await page.getByRole("button", { name: "成员表", exact: true }).click()
+  await expect(page.getByRole("table")).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    390,
+  )
 })
 
 test("reporting cycles become marked roots and person navigation terminates", async ({
@@ -202,7 +249,12 @@ test("reporting cycles become marked roots and person navigation terminates", as
     process.env.DEMO_USER_PASSWORD!,
   )
   await page.goto("/org-chart")
-  await page.getByRole("button", { name: "查看平台部人员" }).click()
+  await page
+    .getByRole("navigation", { name: "部门导航" })
+    .getByRole("button", { name: /^平台部/ })
+    .click()
+  await page.getByRole("button", { name: "成员表", exact: true }).click()
+  await page.getByRole("button", { name: "部门汇报图" }).click()
   await expect(page.getByText("汇报线有循环", { exact: true })).toHaveCount(2)
   await expect(page.locator(".org-tree > li")).toHaveCount(2)
   await page.getByRole("button", { name: "查看林清汇报关系" }).click()
@@ -233,10 +285,11 @@ test("manager chart excludes other departments", async ({ page }, testInfo) => {
   const tree = page.getByRole("region", { name: "部门层级", exact: true })
   for (const name of ["算法与模型部", "交付与技术支持部", "边缘计算部"])
     await expect(tree).not.toContainText(name)
-  await tree.getByRole("button", { name: "查看平台研发部人员" }).click()
-  await expect(
-    page.getByRole("region", { name: "部门汇报关系" }),
-  ).toContainText("共 3 人")
+  await tree.getByRole("button", { name: /^平台研发部/ }).click()
+  await page.getByRole("button", { name: "成员表", exact: true }).click()
+  await expect(page.getByRole("region", { name: "部门成员" })).toContainText(
+    "共 3 人",
+  )
   const capabilities = page.getByRole("region", {
     name: "部门常用能力",
     exact: true,
@@ -293,7 +346,7 @@ for (const legacy of [
 test("administrator saves department capabilities and the profile follows the selection", async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   await logInUser(
     page,
     "admin@demo.example.com",
@@ -313,7 +366,10 @@ test("administrator saves department capabilities and the profile follows the se
   const original = await (await request.get(endpoint, { headers })).json()
   try {
     await page.goto("/org-chart")
-    await page.getByRole("button", { name: "查看平台研发部人员" }).click()
+    await page
+      .getByRole("navigation", { name: "部门导航" })
+      .getByRole("button", { name: /^平台研发部/ })
+      .click()
     const panel = page.getByRole("region", {
       name: "部门常用能力",
       exact: true,
@@ -327,7 +383,7 @@ test("administrator saves department capabilities and the profile follows the se
     await panel.getByRole("button", { name: "保存", exact: true }).click()
     await expect(panel.getByRole("status")).toHaveText("部门常用能力已保存")
     await page.screenshot({
-      path: "../docs/screenshots/m4.2/org-chart-department-capabilities.png",
+      path: testInfo.outputPath("org-chart-department-capabilities.png"),
       fullPage: true,
     })
     const profile: ProfileView = await (
@@ -348,7 +404,10 @@ test("administrator saves department capabilities and the profile follows the se
       page.getByRole("article", { name: "后端 API 开发", exact: true }),
     ).toContainText("其他能力")
     await page.goto("/org-chart")
-    await page.getByRole("button", { name: "查看平台研发部人员" }).click()
+    await page
+      .getByRole("navigation", { name: "部门导航" })
+      .getByRole("button", { name: /^平台研发部/ })
+      .click()
     await panel.getByRole("button", { name: "移除前端交互实现" }).click()
     await panel.getByRole("button", { name: "保存", exact: true }).click()
     await expect(panel.getByRole("status")).toHaveText("部门常用能力已保存")
@@ -394,7 +453,10 @@ test("inherited capabilities stay read only when an administrator removes a loca
     process.env.DEMO_USER_PASSWORD!,
   )
   await page.goto("/org-chart")
-  await page.getByRole("button", { name: "查看平台部人员" }).click()
+  await page
+    .getByRole("navigation", { name: "部门导航" })
+    .getByRole("button", { name: /^平台部/ })
+    .click()
   const panel = page.getByRole("region", { name: "部门常用能力", exact: true })
   await expect(panel).toContainText("后端 API 开发 · 继承自上级部门")
   await panel.getByRole("button", { name: "移除后端 API 开发" }).click()
