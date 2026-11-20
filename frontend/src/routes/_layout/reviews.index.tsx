@@ -6,7 +6,10 @@ import { Approvals } from "@/components/Capacity/Approvals"
 import { BorrowRequestCard } from "@/components/Capacity/BorrowRequests"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
-import { viaLabels } from "@/components/Profile/RequestTimeline"
+import {
+  requestClientName,
+  viaLabels,
+} from "@/components/Profile/RequestTimeline"
 import { Button } from "@/components/ui/button"
 import { useOrg } from "@/hooks/useOrg"
 import {
@@ -293,7 +296,8 @@ function ProfileReviews({ data }: { data?: PendingReviews }) {
                 ? new Date(request.submitted_at).toLocaleString("zh-CN")
                 : "—"}{" "}
               · {viaLabels[request.submitted_via ?? "web"]}
-              {request.client_name && ` · ${request.client_name}`}
+              {request.client_name &&
+                ` · ${requestClientName(request.client_name, request.submitted_via)}`}
             </p>
             {!request.owner_reviewed && (
               <p className="text-sm text-amber-700">员工未确认</p>
