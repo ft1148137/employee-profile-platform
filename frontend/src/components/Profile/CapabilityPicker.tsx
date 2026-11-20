@@ -3,12 +3,7 @@ import { useId, useState } from "react"
 import { CapabilitiesService, type CapabilityPublic } from "@/client"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useOrg } from "@/hooks/useOrg"
 
@@ -48,9 +43,8 @@ export function CapabilityPicker({
   }
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <DialogTitle>添加能力</DialogTitle>
-        <DialogDescription>从当前词典中搜索并选择能力。</DialogDescription>
         <Input
           aria-label="搜索能力"
           placeholder="搜索能力名称或分类"
@@ -86,7 +80,7 @@ export function CapabilityPicker({
           {!groups.size && !!search.trim() && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground break-words">
-                词典里没有『{search.trim()}』，可以建议企业管理员新增这项能力
+                词典中暂无「{search.trim()}」，可建议管理员新增。
               </p>
               {suggest.isSuccess ? (
                 <p role="status">{suggest.data.data.message}</p>

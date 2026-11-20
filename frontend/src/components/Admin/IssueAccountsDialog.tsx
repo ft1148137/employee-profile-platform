@@ -137,7 +137,7 @@ export function IssueAccountsDialog({
     <Dialog open={open} onOpenChange={close}>
       {controlledOpen === undefined && (
         <Button onClick={() => setOpen(true)}>
-          生成账号{selected ? `（已选 ${selected.length} 人）` : ""}
+          发放账号{selected ? `（已选 ${selected.length} 人）` : ""}
         </Button>
       )}
       <DialogContent
@@ -151,9 +151,9 @@ export function IssueAccountsDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle>生成账号</DialogTitle>
+          <DialogTitle>发放账号</DialogTitle>
           <DialogDescription>
-            确认生成范围后，下载包含初始密码的账号文件。
+            将为所选员工创建登录账号，并下载含初始密码的表格。
           </DialogDescription>
         </DialogHeader>
         {issued !== null ? (
@@ -163,7 +163,7 @@ export function IssueAccountsDialog({
           >
             <p className="font-semibold">已生成 {issued} 个账号。</p>
             <p>
-              账号文件只能下载这一次，里面有初始密码。请单独交给每位员工，不要发到群里。员工第一次登录时必须修改密码。
+              账号表仅支持下载一次，内含初始密码，请私发给对应员工（首次登录须改密）。
             </p>
           </div>
         ) : (
@@ -191,12 +191,12 @@ export function IssueAccountsDialog({
             ) : (
               <p>
                 {count.isPending
-                  ? "正在统计可生成账号的员工…"
-                  : `将为 ${count.data} 名还没有账号的在职员工生成账号`}
+                  ? "正在统计可发放账号的员工…"
+                  : `将为 ${count.data} 名未开通账号的在职员工发放账号`}
               </p>
             )}
             {!selected && count.data === 0 && (
-              <p>没有还没有账号的在职员工，无需生成账号。</p>
+              <p>所有在职员工均已开通账号，无需发放。</p>
             )}
             {needsRegeneration && (
               <>
@@ -210,9 +210,7 @@ export function IssueAccountsDialog({
                     onCheckedChange={(value) => setRegenerate(value === true)}
                     disabled={busy}
                   />
-                  <span>
-                    为待首次登录的账号重新生成初始密码（之前的账号文件里的密码会失效）
-                  </span>
+                  <span>为「待首次登录」账号重置初始密码（旧密码将失效）</span>
                 </label>
                 {!regenerate && (
                   <p className="text-sm text-muted-foreground">
@@ -223,7 +221,7 @@ export function IssueAccountsDialog({
             )}
             {conflicts.length > 0 && (
               <div role="alert">
-                <p>有冲突时这一批都没有生成，请处理后重试</p>
+                <p>以下人员存在冲突，本次未发放任何账号，请处理后重试：</p>
                 <DataTable
                   data={conflicts}
                   columns={[

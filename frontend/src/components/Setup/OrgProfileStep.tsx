@@ -52,11 +52,11 @@ export function OrgProfileStep({
         />
       </div>
       <p className="text-sm text-muted-foreground">
-        管理员账号已建立。如需修改密码，请前往
+        管理员账号已创建，可随时在
         <Link to="/settings" className="text-primary underline">
-          设置页
+          「设置 → 账号与安全」
         </Link>
-        。
+        修改密码。
       </p>
       <SetupError error={mutation.error} />
     </form>

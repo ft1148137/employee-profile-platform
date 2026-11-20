@@ -19,7 +19,7 @@ import { StatusBadge } from "./StatusBadge"
 
 const statusLabels: Record<RequestStatus, string> = {
   draft: "草稿",
-  pending_owner: "待本人过目",
+  pending_owner: "待本人确认",
   pending_review: "待经理审批",
   approved: "已批准",
   changes_requested: "已退回",
@@ -108,21 +108,21 @@ export function ChangeRequestCard({
         >
           <div className="space-y-2">
             <h2 className="text-lg font-semibold">
-              {isOwner ? "待你过目：" : "待本人过目："}
+              {isOwner ? "待你确认：" : "待本人确认："}
               {initial.origin === "import"
                 ? "管理员导入的画像"
-                : "系统起草的初始画像"}
+                : "初始画像草稿"}
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
               {initial.origin === "import"
-                ? "这是管理员导入的画像草稿"
-                : "这是系统根据工作记录整理的草稿"}
-              ，还没有生效。本人可以直接提交、修改后提交或提出异议。
+                ? "由管理员导入，尚未生效。"
+                : "根据工作记录初步整理，尚未生效。"}
+              {isOwner ? "你" : "本人"}可以直接提交、修改或提出异议。
             </p>
           </div>
           {!initial.items?.length && (
             <div className="space-y-3">
-              <p>系统没有找到能对应到能力词典的工作记录。</p>
+              <p>暂未匹配到对应的工作记录，你可以手动补充。</p>
               {isOwner && (
                 <Button
                   variant="outline"
@@ -161,14 +161,14 @@ export function ChangeRequestCard({
                             item.capability.level_rubric,
                             item.after.level,
                           )
-                        : "未给等级"}
+                        : "未定级"}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      依据说明：
+                      补充说明：
                       {item.owner_statement ?? item.explanation ?? "暂无说明"}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      不确定之处：{item.uncertainty ?? "暂无说明"}
+                      待核实点：{item.uncertainty ?? "暂无说明"}
                     </p>
                     <EvidenceRows
                       items={(item.evidence ?? []).map((evidence) => ({
@@ -248,7 +248,7 @@ export function ChangeRequestCard({
                       <RequestReviewers reviewers={request.reviewers} />
                     )}
                     {!compact && request.submitted_via === "admin_handover" && (
-                      <span> · 员工未过目</span>
+                      <span> · 员工未确认</span>
                     )}
                     {open.includes(request) &&
                       request.items?.map((item) => (
@@ -318,7 +318,7 @@ export function ChangeRequestCard({
                           onClick={() => onEdit({ request })}
                         >
                           {request.status === "pending_owner"
-                            ? "过目并提交"
+                            ? "确认并提交"
                             : "继续修改"}
                         </Button>
                       )}
@@ -330,7 +330,7 @@ export function ChangeRequestCard({
                         onClick={() => {
                           if (
                             window.confirm(
-                              "确定撤回待审批的改动？已发布的改动仍然保留。",
+                              "撤回后本次申请将取消，已发布的内容不受影响。确认撤回吗？",
                             )
                           )
                             withdraw.mutate(request.id)
@@ -371,7 +371,7 @@ function CompactChange({
         (entry: unknown) => record(entry) && entry.key === level,
       )
     )
-      return "等级暂不可用"
+      return "等级已调整"
     return levelLabel(rubric, level)
   }
   return (
@@ -385,8 +385,8 @@ function CompactChange({
             : before
               ? "未定级"
               : item.target_claim_id
-                ? "历史判断"
-                : "暂无判断"}
+                ? "原记录"
+                : "暂无记录"}
         </span>
         {(before || !item.target_claim_id) && (
           <StatusBadge
@@ -414,7 +414,7 @@ function CompactChange({
       >
         {item.after?.statement ??
           before?.statement ??
-          (item.op === "retract" ? "撤回这条判断" : "补充依据，保留原判断")}
+          (item.op === "retract" ? "移除此项" : "仅补充证据")}
       </p>
       {(item.after?.statement || before?.statement) && (
         <Button
@@ -424,7 +424,7 @@ function CompactChange({
           aria-expanded={expanded}
           onClick={() => setExpanded(!expanded)}
         >
-          {expanded ? "收起陈述" : "展开陈述"}
+          {expanded ? "收起" : "展开全文"}
         </Button>
       )}
     </div>

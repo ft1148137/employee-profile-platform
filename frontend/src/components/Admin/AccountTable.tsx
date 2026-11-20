@@ -152,7 +152,7 @@ export function AccountTable({
       ["fill_status", "inference_status", "review_status", "published"] as const
     ).map((kind, index) => ({
       id: kind,
-      header: ["填写进度", "初始画像", "审核状态", "最近发布版本"][index],
+      header: ["填写进度", "初始画像", "审批状态", "最近发布版本"][index],
       cell: ({ row }: { row: { original: EmployeeAccount } }) =>
         org ? (
           <EmployeeProgress
@@ -207,7 +207,8 @@ export function AccountActions({
     client.invalidateQueries({ queryKey: ["accounts", org?.id] })
   }
   if (!org || !roles.includes("org_admin") || !e.account) return "—"
-  if (e.account.user_id === user?.id) return "请在设置页修改自己的密码"
+  if (e.account.user_id === user?.id)
+    return "请在「设置 → 账号与安全」修改本人密码"
   const path = { org_id: org.id, user_id: e.account.user_id }
   const disabled = e.account.status === "disabled"
   return (
@@ -220,7 +221,7 @@ export function AccountActions({
         description={
           disabled
             ? `确认启用 ${e.display_name} 的账号？`
-            : `确认停用 ${e.display_name} 的账号？停用后这名员工不能登录，画像和证据保留。`
+            : `停用后 ${e.display_name} 将无法登录，已有画像和记录会保留。确认停用吗？`
         }
         action={() =>
           disabled
@@ -304,7 +305,7 @@ export function AccountMenu({
           {e.account &&
             (e.account.user_id === user?.id ? (
               <DropdownMenuItem disabled>
-                请在设置页修改自己的密码
+                请在「设置 → 账号与安全」修改本人密码
               </DropdownMenuItem>
             ) : (
               <>
@@ -324,7 +325,7 @@ export function AccountMenu({
           description={
             disabled
               ? `确认启用 ${name} 的账号？`
-              : `确认停用 ${name} 的账号？停用后这名员工不能登录，画像和证据保留。`
+              : `停用后 ${name} 将无法登录，已有画像和记录会保留。确认停用吗？`
           }
           open={confirm}
           onOpenChange={setConfirm}

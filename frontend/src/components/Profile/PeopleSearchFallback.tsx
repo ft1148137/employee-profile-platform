@@ -114,8 +114,11 @@ export function PeopleSearchFallback({
       className="max-h-[60%] shrink-0 overflow-y-auto border-b bg-muted/20 px-4 py-3 md:px-6"
     >
       <summary className="cursor-pointer text-sm font-semibold">
-        模型暂未启用 · 按能力找人（只读筛选）
+        按能力找人
       </summary>
+      <p className="mt-2 text-sm text-muted-foreground">
+        AI 模型未启用，当前使用条件筛选。
+      </p>
       <form
         aria-label="按能力找人（只读筛选）"
         className="mt-3 flex flex-wrap items-end gap-3"
@@ -205,11 +208,11 @@ export function PeopleSearchFallback({
       {results.data && (
         <section aria-label="找人结果" className="mt-3 space-y-2">
           <p role="status" className="text-sm text-muted-foreground">
-            共 {results.data.count} 条已发布判断
+            共找到 {results.data.count} 条记录
           </p>
           {results.data.data.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              未知不等于不会：没有已发布判断的人不会出现在这里
+              仅显示已有画像记录的员工（未显示不代表不具备该能力）
             </p>
           ) : (
             <Table>
@@ -221,7 +224,7 @@ export function PeopleSearchFallback({
                     "能力",
                     "等级",
                     "状态",
-                    "陈述",
+                    "能力说明",
                     "证据数",
                     "最近证据时间",
                   ].map((label) => (

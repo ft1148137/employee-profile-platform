@@ -127,13 +127,7 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4 border-l-4 border-primary pl-4">
         <div>
-          <p className="mb-1 text-xs tracking-widest text-muted-foreground">
-            组织 · 员工资源
-          </p>
           <h1 className="text-3xl font-semibold tracking-tight">员工</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            查看画像进度，管理员工档案与登录账号。
-          </p>
         </div>
         <div className="flex flex-wrap items-start gap-3">
           <ExportProfilesButtons orgId={orgId} />
@@ -208,7 +202,7 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
         labels={{
           appeals: "有待处理争议",
           roles: "有管理角色",
-          "account-only": "仅账号（没有员工身份）",
+          "account-only": "未绑定员工的账号",
         }}
         onChange={(value) =>
           navigate({

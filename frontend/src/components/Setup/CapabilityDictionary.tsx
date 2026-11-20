@@ -74,16 +74,16 @@ function Dictionary({
       <header className="border-l-4 border-primary pl-4">
         <h2 className="text-2xl font-semibold">能力词典</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          每次保存生成新版本，已有判断和发布记录保留。能力标识
-          相同的判断会在新词典中继续显示。
+          每次保存将生成新版本，不影响员工已有画像。
         </p>
       </header>
       {current.isPending && <p role="status">正在加载词典…</p>}
       <SetupError error={missingDictionary ? null : current.error} />
       {missingDictionary && (
         <p>
-          尚未启用能力词典。
-          {admin ? "请点击编辑词典创建。" : "请联系企业管理员。"}
+          {admin
+            ? "尚未配置能力词典。点击「编辑词典」开始创建。"
+            : "企业尚未配置能力词典，请联系管理员。"}
         </p>
       )}
       {current.data && (
@@ -125,13 +125,13 @@ function Dictionary({
       />
       {admin && (
         <section className="space-y-3 rounded-xl border p-4">
-          <p>要导入任意格式的词典，在管理助手里上传文件</p>
+          <p>有现成文档？可直接发给管理助手整理导入</p>
           <Button variant="outline" asChild>
             <Link
               to="/admin/assistant"
               search={{ prompt: "帮我按这份材料导入能力词典" }}
             >
-              在管理助手中导入词典
+              用助手导入
             </Link>
           </Button>
         </section>

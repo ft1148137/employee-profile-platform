@@ -180,9 +180,9 @@ export function IdentityTable({
         />
       ))}
       <div className="space-y-1 rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
-        <p>只有关联到员工的账号，它的记录才会算到这名员工头上。</p>
-        <p>系统按邮箱或姓名给出候选，需要你确认；同名的人不会自动合并。</p>
-        <p>服务账号、公用账号、外部人员可以不关联。</p>
+        <p>
+          仅关联员工后的账号记录会计入画像；系统匹配候选需人工确认，公用或外部账号可忽略。
+        </p>
       </div>
       {message && (
         <p
@@ -307,7 +307,7 @@ export function IdentityTable({
           <ConfirmActionDialog
             title="关联到此员工"
             disabled={pending || !visible.some((row) => row.id === identityId)}
-            description={`确认把账号「${visible.find((row) => row.id === identityId)?.external_id ?? ""}」关联到当前员工？这个账号的工作记录将作为这名员工的证据。`}
+            description={`关联后，账号「${visible.find((row) => row.id === identityId)?.external_id ?? ""}」的工作记录将计入该员工画像。确认关联吗？`}
             action={() =>
               ExternalIdentitiesService.identitiesPostLinks({
                 path: { org_id: orgId },
@@ -348,7 +348,7 @@ export function IdentityTable({
               <TableHead>账号</TableHead>
               {status === "unlinked" ? (
                 <>
-                  <TableHead>来源里的名字</TableHead>
+                  <TableHead>来源显示名</TableHead>
                   <TableHead>邮箱</TableHead>
                   <TableHead>记录数</TableHead>
                   <TableHead>候选</TableHead>
@@ -478,7 +478,7 @@ export function IdentityTable({
                       <ConfirmActionDialog
                         disabled={pending}
                         title="关联到此员工"
-                        description={`确认把账号「${row.external_id}」关联到当前员工？这个账号的工作记录将作为这名员工的证据。`}
+                        description={`关联后，账号「${row.external_id}」的工作记录将计入该员工画像。确认关联吗？`}
                         action={() =>
                           ExternalIdentitiesService.identitiesPostLinks({
                             path: { org_id: orgId },
@@ -580,7 +580,7 @@ export function IdentityTable({
       </div>
       {inWizard && identities.isSuccess && unlinked.length > 0 && (
         <p className="text-sm text-muted-foreground">
-          还有 {unlinked.length} 个账号未关联，它们的记录不会算到任何人头上
+          尚有 {unlinked.length} 个未关联账号（其记录暂不计入画像）
         </p>
       )}
       {picker && (

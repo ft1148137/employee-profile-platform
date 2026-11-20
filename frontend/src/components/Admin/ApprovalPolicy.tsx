@@ -19,9 +19,9 @@ import {
 } from "@/components/ui/select"
 
 const fieldLabels: Record<string, string> = {
-  require_manager: "全企业审批要求",
-  category_overrides: "能力类别覆盖",
-  owner_review_days: "员工过目期限",
+  require_manager: "默认审批规则",
+  category_overrides: "按类别例外",
+  owner_review_days: "员工确认期限",
 }
 
 export function ApprovalPolicy({ orgId }: { orgId: string }) {
@@ -59,10 +59,8 @@ export function ApprovalPolicy({ orgId }: { orgId: string }) {
   return (
     <div className="space-y-6">
       <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-2">
-        <p>不需要经理确认的能力，员工提交后直接发布为暂定。</p>
-        <p className="text-muted-foreground">
-          规则只影响之后的提交；管理员批量送审仍由经理审批。默认需要经理确认，员工过目期限为
-          14 天。
+        <p>
+          新规则仅对后续提交生效；免经理审批的能力由员工确认后直接生效（标为「暂定」）。
         </p>
       </div>
       <PageDraft
@@ -99,18 +97,18 @@ export function ApprovalPolicy({ orgId }: { orgId: string }) {
                   })
                 }
               />
-              <span className="font-medium">全企业需要经理确认</span>
+              <span className="font-medium">默认需要经理审批</span>
             </label>
           </DraftField>
 
           <p className="text-sm text-muted-foreground">
-            打开后员工提交的判断须经经理批准才发布；关闭后由员工本人确认并标为暂定。
+            开启后，员工提交的画像更新需经理批准生效；关闭后员工确认即可生效（标为「暂定」）。
           </p>
           <DraftField changed={suggestion.changed("category_overrides")}>
             <div className="space-y-3">
               <h3 className="font-medium">按能力类别设置</h3>
               <p className="text-sm text-muted-foreground">
-                单独设置的类别优先于全企业要求；选择「跟随全企业」即可使用上面的规则。
+                可为特定类别单独设置审批要求，默认跟随上方规则。
               </p>
               {policy.data.categories.length === 0 && (
                 <p className="text-sm text-muted-foreground">
@@ -142,7 +140,7 @@ export function ApprovalPolicy({ orgId }: { orgId: string }) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="inherit">跟随全企业</SelectItem>
+                      <SelectItem value="inherit">跟随默认</SelectItem>
                       <SelectItem value="required">需要</SelectItem>
                       <SelectItem value="optional">不需要</SelectItem>
                     </SelectContent>
@@ -153,7 +151,7 @@ export function ApprovalPolicy({ orgId }: { orgId: string }) {
           </DraftField>
           <DraftField changed={suggestion.changed("owner_review_days")}>
             <div className="space-y-2 max-w-sm">
-              <Label htmlFor="owner-review-days">员工过目期限（天）</Label>
+              <Label htmlFor="owner-review-days">员工确认期限（天）</Label>
               <Input
                 id="owner-review-days"
                 type="number"
@@ -170,7 +168,7 @@ export function ApprovalPolicy({ orgId }: { orgId: string }) {
                 }
               />
               <p className="text-xs text-muted-foreground">
-                1–90 天。到期后管理员可以批量送审。
+                1–90 天，超期未确认的初始画像可由管理员批量送审。
               </p>
             </div>
           </DraftField>
@@ -179,9 +177,7 @@ export function ApprovalPolicy({ orgId }: { orgId: string }) {
             {save.isPending ? "正在保存…" : "保存审批规则"}
           </Button>
         </fieldset>
-        {save.isSuccess && !changes && (
-          <p role="status">审批规则已保存为新版本。</p>
-        )}
+        {save.isSuccess && !changes && <p role="status">审批规则已保存</p>}
       </form>
       <section aria-label="审批规则历史" className="border-t pt-5 space-y-3">
         <h3 className="font-medium">历史版本</h3>
@@ -209,7 +205,7 @@ export function ApprovalPolicy({ orgId }: { orgId: string }) {
               </p>
               <p>
                 全企业：{version.require_manager ? "需要" : "不需要"}
-                经理确认；员工过目期限：{version.owner_review_days} 天
+                经理确认；员工确认期限：{version.owner_review_days} 天
               </p>
               {Object.entries(version.category_overrides ?? {}).map(
                 ([category, required]) => (

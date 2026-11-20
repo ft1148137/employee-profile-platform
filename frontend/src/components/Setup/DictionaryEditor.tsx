@@ -186,8 +186,7 @@ function Editor({
       <header>
         <h3 className="text-xl font-semibold">编辑能力与等级</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          基于第 {baseVersion}{" "}
-          版。新增能力的标识由系统生成，保存后固定。编辑不会直接改变员工的判断。
+          基于第 {baseVersion} 版编辑，保存不会直接改动员工已有画像。
         </p>
       </header>
       <SetupError error={proposals.error} />
@@ -198,7 +197,7 @@ function Editor({
         >
           <h3 className="font-semibold">建议新增的能力</h3>
           <p className="text-sm text-muted-foreground">
-            加入后会自动生成标识，并预填当前词典的等级描述，可按需修改。预览并保存才会更新词典。已有判断保持不变。
+            加入后自动预填等级模板，确认保存新版本后生效。
           </p>
           {proposals.data.data.map((proposal) => (
             <article
@@ -301,7 +300,7 @@ function Editor({
                       {(
                         [
                           ["name", "能力名称", 200],
-                          ["key", "能力标识", 100],
+                          ["key", "能力编码", 100],
                           ["category", "分类", 200],
                           ["description", "能力说明", 4000],
                         ] as const
@@ -349,7 +348,7 @@ function Editor({
                         >
                           {(
                             [
-                              ["key", "等级标识", 100],
+                              ["key", "等级编码", 100],
                               ["label", "等级名称", 200],
                               ["description", "等级描述", 4000],
                             ] as const

@@ -78,7 +78,7 @@ const columns: ColumnDef<DataTableFeatures, EmployeeSummary>[] = [
   ...(["fill_status", "inference_status", "review_status"] as const).map(
     (kind, i) => ({
       id: kind,
-      header: ["填写进度", "初始画像", "审核状态"][i],
+      header: ["填写进度", "初始画像", "审批状态"][i],
       cell: ({ row }: { row: { original: EmployeeSummary } }) =>
         kind === "inference_status" ? (
           initialStatusLabel(row.original.progress?.initial_profile_status)
@@ -154,13 +154,7 @@ function EmployeesList({ orgId }: { orgId: string }) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4 border-l-4 border-primary pl-4">
         <div>
-          <p className="mb-1 text-xs tracking-widest text-muted-foreground">
-            组织 · 员工资源
-          </p>
           <h1 className="text-3xl font-semibold tracking-tight">员工</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            了解工作经历与画像进度，让每项判断都有事实可循。
-          </p>
         </div>
         <ExportProfilesButtons orgId={orgId} />
       </div>
@@ -191,7 +185,7 @@ function EmployeesList({ orgId }: { orgId: string }) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">全部可见部门</SelectItem>
+            <SelectItem value="all">全部部门</SelectItem>
             {options.map((item) => (
               <SelectItem key={item.id} value={item.id}>
                 {item.name}
@@ -248,7 +242,7 @@ function EmployeesList({ orgId }: { orgId: string }) {
                       employee.progress?.initial_profile_status,
                     )}
                   </dd>
-                  <dt className="text-muted-foreground">审核状态</dt>
+                  <dt className="text-muted-foreground">审批状态</dt>
                   <dd>
                     <StatusBadge
                       kind="review_status"

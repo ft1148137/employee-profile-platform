@@ -72,8 +72,8 @@ export function ResetPasswordDialog({
           <DialogTitle>重置密码 · {name}</DialogTitle>
           <DialogDescription>
             {mutation.data
-              ? "新密码只显示这一次，请单独交给员工。关闭后不能再查看。"
-              : "重置后原密码立即失效，员工已经打开的页面需要重新登录；员工用新密码登录后必须修改密码。"}
+              ? "新密码仅显示一次，请私发给员工，关闭后无法再次查看。"
+              : "重置后原密码立即失效，员工需用新密码重新登录并修改密码。"}
           </DialogDescription>
         </DialogHeader>
         {mutation.data ? (

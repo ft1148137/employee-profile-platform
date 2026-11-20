@@ -27,13 +27,13 @@ export const labels = {
   inference_status: {
     pending: { label: "待处理", className: neutral },
     running: { label: "处理中", className: active },
-    generated: { label: "已生成候选", className: positive },
-    failed: { label: "失败可重试", className: negative },
+    generated: { label: "已生成", className: positive },
+    failed: { label: "生成失败", className: negative },
   } satisfies Record<InferenceStatus, Label>,
   review_status: {
-    none: { label: "未进入审核", className: neutral },
+    none: { label: "未提交", className: neutral },
     pending_employee: { label: "待本人确认", className: pending },
-    pending_manager: { label: "待经理审核", className: active },
+    pending_manager: { label: "待经理审批", className: active },
     published: { label: "已发布", className: positive },
     disputed: { label: "存在争议", className: negative },
   } satisfies Record<ProgressReviewStatus, Label>,
@@ -55,7 +55,7 @@ export const labels = {
     not_sure: { label: "不确定", className: neutral },
   } satisfies Record<string, Label>,
   evidence_kind: {
-    work_record: { label: "Jira 记录", className: active },
+    work_record: { label: "工作记录", className: active },
     self_report: { label: "员工自述", className: neutral },
     manager_review: { label: "经理评价", className: pending },
   } satisfies Record<string, Label>,

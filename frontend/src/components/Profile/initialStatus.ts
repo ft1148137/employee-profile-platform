@@ -5,10 +5,10 @@ const initialStatusLabels: Record<InitialProfileStatus, string> = {
   no_records: "没有工作记录",
   waiting_draft: "等待起草",
   drafting: "起草中",
-  pending_owner: "待本人过目",
-  no_judgment: "未生成判断",
+  pending_owner: "待本人确认",
+  no_judgment: "暂未生成内容",
   failed: "起草失败",
-  owner_reviewed: "本人已过目",
+  owner_reviewed: "本人已确认",
   direct_edited: "经理或管理员已直接修改",
 }
 
@@ -31,16 +31,16 @@ export function initialStatusReason(
     case "waiting_draft":
       return `已有${subject}的工作记录，正在等待系统起草初始画像。`
     case "drafting":
-      return `系统正在为${subject}起草初始画像，完成后会交给本人过目。`
+      return `系统正在为${subject}起草初始画像，完成后会交给本人确认。`
     case "pending_owner":
-      return `初始画像已起草，等待${subject}过目，确认或修改后才会提交审核。`
+      return `初始画像已起草，等待${subject}确认，确认或修改后才会提交审批。`
     case "no_judgment":
-      return `已有${subject}的工作记录，但起草时定不了等级，没有生成判断。这不表示${subject}不会这项能力。`
+      return `现有记录暂不足以评估等级，这不代表不具备相关能力。`
     case "failed":
       return "初始画像起草失败，可以联系管理员重试。"
     case "owner_reviewed":
-      return `初始画像已由${subject}过目。`
+      return `初始画像已由${subject}确认。`
     case "direct_edited":
-      return `画像由经理或管理员直接修改过，没有经过${subject}过目。`
+      return `画像由经理或管理员直接修改过，没有经过${subject}确认。`
   }
 }

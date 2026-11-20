@@ -40,7 +40,7 @@ export function DirectEditDialog({
   const [retract, setRetract] = useState(false)
   const limitError =
     !retract && statement !== item.claim?.statement
-      ? textLimitMessage(statement, STATEMENT_MAX, 0, "陈述")
+      ? textLimitMessage(statement, STATEMENT_MAX, 0, "能力说明")
       : null
   const [preview, setPreview] = useState<DirectEditResult | null>(null)
   const path = { org_id: orgId, employee_id: employeeId }
@@ -104,12 +104,12 @@ export function DirectEditDialog({
       >
         <DialogTitle>直接修改「{item.capability.name}」</DialogTitle>
         <DialogDescription>
-          直接发布，不需要本人同意，会通知本人。
+          提交后直接生效并通知本人，无需本人确认。
         </DialogDescription>
         <ProfileVisibility />
         {conflict ? (
           <>
-            <p role="alert">画像已变化，请刷新后再改</p>
+            <p role="alert">画像已更新，请刷新后再修改</p>
             <Button
               onClick={async () => {
                 await refresh()
@@ -130,12 +130,12 @@ export function DirectEditDialog({
                     className="space-y-2 rounded-lg border p-4"
                   >
                     <h3 className="font-semibold">修改前</h3>
-                    <p>{change.before?.statement ?? "暂无判断"}</p>
+                    <p>{change.before?.statement ?? "暂无记录"}</p>
                     <p>
                       等级：
                       {change.before?.level
                         ? levelLabel(rubric, change.before.level)
-                        : "未给等级"}
+                        : "未定级"}
                     </p>
                   </section>
                   <section
@@ -143,12 +143,12 @@ export function DirectEditDialog({
                     className="space-y-2 rounded-lg border p-4"
                   >
                     <h3 className="font-semibold">修改后</h3>
-                    <p>{retract ? "撤回这条判断" : change.after.statement}</p>
+                    <p>{retract ? "移除此项" : change.after.statement}</p>
                     <p>
                       等级：
                       {change.after.level
                         ? levelLabel(rubric, change.after.level)
-                        : "未给等级"}
+                        : "未定级"}
                     </p>
                     <p>状态：{retract ? "未知" : "已确认"}</p>
                   </section>
@@ -185,13 +185,13 @@ export function DirectEditDialog({
                         checked={retract}
                         onChange={(event) => setRetract(event.target.checked)}
                       />
-                      撤回这条判断
+                      移除此项
                     </label>
                   )}
                   {!retract && (
                     <>
                       <label className="block space-y-1">
-                        陈述
+                        能力说明
                         <textarea
                           required
                           value={statement}
@@ -214,7 +214,7 @@ export function DirectEditDialog({
                           className="block w-full rounded-md border bg-background p-2"
                           onChange={(event) => setLevel(event.target.value)}
                         >
-                          <option value="">未给等级</option>
+                          <option value="">未定级</option>
                           {invalidLevel && (
                             <option value={level}>等级需要重新选择</option>
                           )}

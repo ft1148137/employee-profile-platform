@@ -133,7 +133,7 @@ export function PersonnelDialog({
           <DialogDescription>
             {offboard
               ? "确认后停用员工及账号，保留画像和证据。"
-              : "先核对变动预览，确认后才更新员工名单。部门层级用 / 分隔。"}
+              : "多级部门请用 / 分隔（如：研发部/前端组），保存前可预览变动。"}
           </DialogDescription>
         </DialogHeader>
         {!preview ? (

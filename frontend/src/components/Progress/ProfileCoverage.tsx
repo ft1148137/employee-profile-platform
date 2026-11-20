@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 const statuses = [
   ["published", "已发布", "bg-emerald-500"],
   ["disputed", "存在争议", "bg-rose-500"],
-  ["pending_employee", "待本人过目", "bg-amber-500"],
+  ["pending_employee", "待本人确认", "bg-amber-500"],
   ["pending_manager", "待审批", "bg-sky-500"],
   ["none", "未知", "bg-muted-foreground"],
 ] as const
@@ -46,7 +46,7 @@ export function ProfileCoverage({
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b p-4">
         <h2 className="font-semibold">画像覆盖率</h2>
         <p className="text-xs text-muted-foreground">
-          当前可见范围 · 在职员工 · 未知不等于不会
+          统计在职员工（未评估不代表不具备该能力）
         </p>
       </div>
       {coverage.isPending ? (
@@ -82,8 +82,7 @@ export function ProfileCoverage({
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2 border-t pt-3 text-sm">
             <p>
-              初始画像超期未过目：{coverage.data.overdue_initial_requests}{" "}
-              个请求
+              初始画像超期未确认：{coverage.data.overdue_initial_requests} 人
             </p>
             <p>
               等待审批超过 7 天：{coverage.data.review_backlog_requests} 个请求
@@ -100,7 +99,7 @@ export function ProfileCoverage({
           </div>
           <details>
             <summary className="cursor-pointer text-sm font-medium">
-              按部门查看（本部门在职人数；有下级时另列含下级合计）
+              按部门分布
             </summary>
             <p className="mt-2 text-xs text-muted-foreground">
               未分配部门的员工计入总人数。
@@ -110,7 +109,7 @@ export function ProfileCoverage({
               className="my-2"
               onClick={() => onDepartmentChange("all")}
             >
-              全部可见部门
+              全部部门
             </Button>
             <div className="divide-y">
               {coverage.data.departments.map((item) => (

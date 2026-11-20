@@ -174,8 +174,8 @@ function EmployeeDetails() {
             >
               <h2 className="font-semibold">
                 {ownEmployeeId === employeeId
-                  ? "你的画像还没有内容"
-                  : "该员工的画像还没有内容"}
+                  ? "画像暂为空"
+                  : "该员工暂未建立画像"}
               </h2>
               <p>
                 {initialStatusReason(
@@ -192,21 +192,21 @@ function EmployeeDetails() {
               )}
               {ownEmployeeId === employeeId ? (
                 <p>
-                  你可以在下面的「添加能力」里自己补充，或者
+                  可点击下方「添加能力」手动补充，或前往
                   <Link to="/assistant" className="text-primary underline">
-                    去助手
+                    「AI 助手」
                   </Link>
-                  里描述你的经历。
+                  口述经历生成。
                 </p>
               ) : (
                 <p>该员工可以通过「添加能力」自己补充，或去助手里描述经历。</p>
               )}
-              <p>画像只用来帮助跨部门找到合适的人，不用于绩效、薪酬和晋升。</p>
+              <p>画像仅用于跨部门协作找人，不用于绩效、薪酬或晋升。</p>
             </section>
           )}
         {!query.data.schema_version && (
           <p role="status" className="mb-6 text-muted-foreground">
-            企业管理员还没有选择能力词典
+            企业尚未配置能力词典，请联系管理员。
           </p>
         )}
         <CapabilityList
@@ -261,7 +261,7 @@ function EmployeeDetails() {
           <DialogContent>
             <DialogTitle>编辑「{choosing.capability.name}」</DialogTitle>
             <DialogDescription>
-              选择手动编辑，或在助手中描述你想做的修改。
+              可手动填写，或直接告诉 AI 助手帮你整理。
             </DialogDescription>
             <Button
               onClick={() => {
@@ -278,7 +278,7 @@ function EmployeeDetails() {
                   prompt: `我想修改「${choosing.capability.name}」这项能力，现在的等级是${choosing.claim?.level ? levelLabel(choosing.capability.level_rubric, choosing.claim.level) : "未填写"}：`,
                 }}
               >
-                让助手改
+                用助手整理
               </Link>
             </Button>
           </DialogContent>

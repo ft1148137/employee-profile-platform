@@ -20,7 +20,7 @@ const sections = [
   { value: "dictionary", component: CapabilityDictionary },
   { value: "approval", title: "审批规则", component: Approval },
   { value: "reminders", title: "定期提醒", component: Reminders },
-  { value: "capacity", title: "需求与容量规则", component: CapacitySettings },
+  { value: "capacity", title: "负荷与需求规则", component: CapacitySettings },
 ]
 
 export const Route = createFileRoute("/_layout/admin/rules")({

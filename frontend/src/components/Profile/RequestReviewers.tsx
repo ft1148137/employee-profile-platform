@@ -20,7 +20,7 @@ export function RequestReviewers({
         ? preview
           ? `提交后由 ${names}审批`
           : `待经理审批：${names}`
-        : "暂时没有可用的审批人，企业管理员会处理"}
+        : "暂未配置部门审批人，将由企业管理员处理"}
     </p>
   )
 }

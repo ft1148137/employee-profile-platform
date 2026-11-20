@@ -93,7 +93,7 @@ export function ChangeRequestEditor({
       item.statement !==
         profileItems.find((p) => p.capability.key === item.capability_key)
           ?.claim?.statement
-        ? textLimitMessage(item.statement, STATEMENT_MAX, index, "陈述")
+        ? textLimitMessage(item.statement, STATEMENT_MAX, index, "能力说明")
         : null,
       ...[item.owner_statement, item.objection, item.uncertainty].map((text) =>
         textLimitMessage(text ?? "", EXPLANATION_MAX, index),
@@ -199,7 +199,7 @@ export function ChangeRequestEditor({
             refresh()
             return
           }
-          setNotice("内容已变化，请重新预览")
+          setNotice("内容已更新，请重新预览")
           setPreview(null)
           setShowPreview(false)
           refresh()
@@ -263,9 +263,9 @@ export function ChangeRequestEditor({
         className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl"
         showCloseButton={!busy}
       >
-        <DialogTitle>{showPreview ? "提交前预览" : "更新我的画像"}</DialogTitle>
+        <DialogTitle>{showPreview ? "变更预览" : "更新我的画像"}</DialogTitle>
         <DialogDescription>
-          画像不用于绩效、薪酬和晋升。提交后按企业审批规则处理；待审批的改动可以在批准前撤回。
+          提交后按企业规则审批，批准前可随时撤回。
         </DialogDescription>
         <ProfileVisibility />
         {itemErrors.length ? (
@@ -291,7 +291,7 @@ export function ChangeRequestEditor({
         {notice && <p role="status">{notice}</p>}
         {confirmClose || blocker.status === "blocked" ? (
           <section className="space-y-3" aria-label="未保存的内容">
-            <p>有没保存的内容，确定放弃吗？</p>
+            <p>修改尚未保存，确定放弃吗？</p>
             <div className="flex flex-wrap gap-3">
               <Button
                 disabled={
@@ -323,7 +323,7 @@ export function ChangeRequestEditor({
               </Button>
             </div>
           </section>
-        ) : notice === "内容已变化，请重新预览" ? (
+        ) : notice === "内容已更新，请重新预览" ? (
           <Button disabled={busy} onClick={() => reloadPreview.mutate()}>
             重新预览最新内容
           </Button>
@@ -354,18 +354,18 @@ export function ChangeRequestEditor({
                   <p>{submission_notice}</p>
                   {current_changed_at && (
                     <p role="status" className="text-sm text-muted-foreground">
-                      经理或管理员已在{" "}
+                      该项已于{" "}
                       {new Date(current_changed_at).toLocaleString("zh-CN", {
                         timeZone: "Asia/Shanghai",
                         hour12: false,
                       })}
-                      （北京时间）修改过这项。提交将以当前正式值为基础，仍按企业审批规则处理。
+                      被更新，本次提交将基于最新内容送审。
                     </p>
                   )}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-sm text-muted-foreground">修改前</p>
-                      <p>{before?.statement ?? "暂无判断"}</p>
+                      <p>{before?.statement ?? "暂无记录"}</p>
                       <p>
                         等级：
                         {before?.level
@@ -373,7 +373,7 @@ export function ChangeRequestEditor({
                               after.capability.level_rubric,
                               before.level,
                             )
-                          : "未给等级"}
+                          : "未定级"}
                       </p>
                     </div>
                     <div>
@@ -382,7 +382,7 @@ export function ChangeRequestEditor({
                         {after.op === "attach_evidence"
                           ? "补充依据，保留原判断"
                           : after.op === "retract"
-                            ? "撤回这条判断"
+                            ? "移除此项"
                             : after.after?.statement}
                       </p>
                       <p>
@@ -392,12 +392,12 @@ export function ChangeRequestEditor({
                               after.capability.level_rubric,
                               after.after.level,
                             )
-                          : "未给等级"}
+                          : "未定级"}
                       </p>
                     </div>
                   </div>
                   {after.owner_statement && (
-                    <p>依据说明：{after.owner_statement}</p>
+                    <p>补充说明：{after.owner_statement}</p>
                   )}
                   {after.uncertainty && <p>不确定之处：{after.uncertainty}</p>}
                   {after.objection && <p>异议原因：{after.objection}</p>}
@@ -470,11 +470,11 @@ export function ChangeRequestEditor({
                     {item.op === "attach_evidence" ? (
                       <p>补充依据，保留原判断</p>
                     ) : item.op === "retract" ? (
-                      <p>撤回这条判断</p>
+                      <p>移除此项</p>
                     ) : (
                       <>
                         <label className="block space-y-1">
-                          陈述
+                          能力说明
                           <textarea
                             ref={
                               item.capability_key === selection.capabilityKey &&
@@ -483,7 +483,7 @@ export function ChangeRequestEditor({
                                 : undefined
                             }
                             required
-                            aria-label="陈述"
+                            aria-label="能力说明"
                             value={item.statement}
                             className="block min-h-24 w-full rounded-md border bg-background p-2"
                             onChange={(e) =>
@@ -503,7 +503,7 @@ export function ChangeRequestEditor({
                               update(index, { level: e.target.value || null })
                             }
                           >
-                            <option value="">未给等级</option>
+                            <option value="">未定级</option>
                             {invalidLevel && (
                               <option value={item.level!}>
                                 等级需要重新选择
@@ -522,7 +522,7 @@ export function ChangeRequestEditor({
                       </>
                     )}
                     <label className="block space-y-1">
-                      依据说明
+                      补充说明
                       <textarea
                         value={item.owner_statement ?? ""}
                         className="block min-h-20 w-full rounded-md border bg-background p-2"

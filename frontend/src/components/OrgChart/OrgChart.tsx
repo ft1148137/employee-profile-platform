@@ -247,7 +247,7 @@ function Chart({ orgId, canEdit }: { orgId: string; canEdit: boolean }) {
           <span className="text-xs text-muted-foreground">
             {department && !person
               ? `共 ${department.direct_count} 人`
-              : "点击卡片查看"}
+              : "点击部门查看详情"}
           </span>
         </header>
         <section
@@ -382,7 +382,7 @@ function DepartmentActions({
               </DialogTitle>
               <DialogDescription>
                 {action === "删除"
-                  ? "只能删除没有员工（含离职员工）、下级部门和经理授权的空部门。对应能力设置一并删除，不可撤销。"
+                  ? "仅支持删除空部门（无在职/离职员工、无下级部门且无经理授权）。删除后不可撤销。"
                   : action === "移动到"
                     ? "移动部门会改变部门经理的查看和审批范围，并改变继承的对应能力。请核对新上级后确认。"
                     : "同一上级下的部门名称不能重复。"}
@@ -411,7 +411,7 @@ function DepartmentActions({
                   value={parent}
                   onChange={(e) => setParent(e.target.value)}
                 >
-                  <option value="">第一层（无上级）</option>
+                  <option value="">顶级部门（无上级）</option>
                   {departments
                     .filter((item) => !blocked.has(item.id))
                     .map((item) => (

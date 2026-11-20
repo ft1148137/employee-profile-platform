@@ -93,8 +93,7 @@ export function OrganizationTimezoneSettings({ orgId }: { orgId: string }) {
         </SelectContent>
       </Select>
       <p className="text-xs text-muted-foreground">
-        用于直接修改画像的通知时间、没有时区的工作记录导入，以及当地上午 9
-        点的管理员每日待办。
+        用于通知时间显示、工作记录导入及每日 9:00 管理员待办推送。
       </p>
       {message && <p role={save.isError ? "alert" : "status"}>{message}</p>}
       <Button
