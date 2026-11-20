@@ -17,7 +17,7 @@ function Reminders() {
 }
 
 const sections = [
-  { value: "dictionary", component: CapabilityDictionary },
+  { value: "dictionary", title: "能力词典", component: CapabilityDictionary },
   { value: "approval", title: "审批规则", component: Approval },
   { value: "reminders", title: "定期提醒", component: Reminders },
   { value: "capacity", title: "负荷与需求规则", component: CapacitySettings },
