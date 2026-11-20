@@ -172,20 +172,19 @@ function Workspace() {
             </>
           )}
         </header>
-        {isAssistant ? (
-          <main className="min-h-0 flex-1">
-            <div className="h-full min-h-0">
-              <Outlet />
-            </div>
-          </main>
-        ) : (
-          <main
-            data-workspace=""
-            className="min-w-0 flex-1 bg-canvas [&:not(:has([data-workspace-page]))]:p-3 md:[&:not(:has([data-workspace-page]))]:p-4"
-          >
+        {/* Keep the outlet mounted while the router resolves the next match. */}
+        <main
+          data-workspace={isAssistant ? undefined : ""}
+          className={
+            isAssistant
+              ? "min-h-0 flex-1"
+              : "min-w-0 flex-1 bg-canvas [&:not(:has([data-workspace-page]))]:p-3 md:[&:not(:has([data-workspace-page]))]:p-4"
+          }
+        >
+          <div className={isAssistant ? "h-full min-h-0" : undefined}>
             <Outlet />
-          </main>
-        )}
+          </div>
+        </main>
       </div>
     </>
   )
