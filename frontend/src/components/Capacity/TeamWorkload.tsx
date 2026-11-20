@@ -119,6 +119,7 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
         <Button
           size="sm"
           variant="outline"
+          className="px-2"
           onClick={() => setDialog({ mode: "edit", row, week })}
         >
           {inDetails ? "设置周投入" : "设置"}
@@ -128,6 +129,7 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
         <Button
           size="sm"
           variant="outline"
+          className="px-2"
           onClick={() => setDialog({ mode: "dates", row, week })}
         >
           {inDetails && canEdit(row) ? "登记不可用日期" : "不可用日期"}
