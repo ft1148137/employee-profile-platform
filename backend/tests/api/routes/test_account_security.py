@@ -17,6 +17,8 @@ from app.models import User, UserCreate
 from tests.utils.migrations import migrate
 from tests.utils.utils import random_lower_string
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 URL = settings.API_V1_STR
 
 

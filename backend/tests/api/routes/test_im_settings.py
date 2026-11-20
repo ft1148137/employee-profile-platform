@@ -124,8 +124,8 @@ def test_permissions(shared_demo: tuple, client: TestClient, platform: str) -> N
             )
 
 
-def test_validation(demo: tuple, client: TestClient) -> None:
-    base, _, auth = demo
+def test_validation(shared_demo: tuple, client: TestClient) -> None:
+    base, _, auth = shared_demo
     for body in [
         {"enabled": True, "data_transfer_acknowledged": True},
         {"credentials": {"app_secret": "private-value"}},

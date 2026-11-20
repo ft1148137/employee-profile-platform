@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import text
+from psycopg import ClientCursor, Connection, Error, sql
 from sqlmodel import Session, col, delete, select
 
 from app.domains.access_token.models import (
@@ -131,13 +131,43 @@ def cleanup_new_users(session: Session, existing_user_ids: set[UUID]) -> None:
     )
 
 
-def delete_test_organization(session: Session, org_id: UUID) -> None:
-    org = session.get(Organization, org_id)
-    if org is None or org.slug == "demo":
-        raise ValueError("Only a test-owned organization may be deleted")
-    for model in ORG_MODELS:
-        if model is Evidence:
-            session.execute(text("SET LOCAL app.allow_evidence_delete = 'on'"))
-        session.execute(delete(model).where(model.org_id == org_id))
-    session.delete(org)
+def delete_test_organization(session: Session, org_id: UUID, *other_ids: UUID) -> None:
+    org_ids = list(dict.fromkeys((org_id, *other_ids)))
+    tables = (*ORG_MODELS, Organization)
+    deletes = sql.SQL("\n").join(
+        sql.SQL("DELETE FROM {} WHERE {} = ANY(target_ids);").format(
+            sql.Identifier(str(model.__tablename__)),
+            sql.Identifier("id" if model is Organization else "org_id"),
+        )
+        for model in tables
+    )
+    # Client binding safely passes the UUID array inside the dollar-quoted block.
+    block = sql.SQL("""
+        DO $cleanup$
+        DECLARE target_ids uuid[] := %s;
+        BEGIN
+            IF (SELECT count(*) FROM (
+                SELECT id FROM organization
+                WHERE id = ANY(target_ids) AND slug <> 'demo'
+                FOR UPDATE
+            ) AS owned) <> cardinality(target_ids) THEN
+                RAISE EXCEPTION USING ERRCODE = 'Z0001',
+                    MESSAGE = 'Only a test-owned organization may be deleted';
+            END IF;
+            PERFORM set_config('app.allow_evidence_delete', 'on', true);
+            {}
+        END
+        $cleanup$
+    """).format(deletes)
+    session.flush()
+    connection = session.connection().connection.driver_connection
+    assert isinstance(connection, Connection)
+    try:
+        with ClientCursor(connection) as cursor:
+            cursor.execute(block, (org_ids,))
+    except Error as exc:
+        if exc.sqlstate != "Z0001":
+            raise
+        session.rollback()
+        raise ValueError(str(exc.diag.message_primary)) from exc
     session.commit()

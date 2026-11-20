@@ -38,6 +38,8 @@ from tests.domains.test_im_gateway import principal
 from tests.utils.feishu_listener import fake_listener, message
 from tests.utils.pi import PiHarness
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 CREDS = {"app_id": "synthetic-app", "app_secret": "synthetic-secret"}
 
 

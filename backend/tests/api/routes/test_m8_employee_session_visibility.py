@@ -1,69 +1,53 @@
 """Employee visibility changes must invalidate cached assistant disclosures."""
 
 import json
-from collections.abc import Generator
 from dataclasses import replace
-from datetime import timedelta
-from pathlib import Path
 from typing import Literal
-from uuid import uuid4
 
 import pytest
-import yaml
 from fastapi.testclient import TestClient
 from sqlmodel import Session, col, select
 
 from app.authz.deps import get_org_principal
 from app.authz.policies import can_view_employee
 from app.core.secrets import encrypt_secret
-from app.core.security import create_access_token
 from app.domains.bot import core, store
 from app.domains.bot.models import BotMessage
 from app.domains.model.models import ModelSetting
 from app.domains.model.pi_client import TurnResult
 from app.domains.org.models import (
     Department,
-    Employee,
-    Organization,
     OrgMembership,
     RoleGrant,
 )
 from app.domains.org.paths import department_paths
 from app.domains.org.roster import single
 from app.models import User
-from app.seed.loader import load_demo
 from tests.api.routes.test_m8_session_scope import HIDDEN, _headers
 from tests.domains.test_im_gateway import principal
-from tests.utils.org import delete_test_organization
 
 pytest_plugins = ("tests.api.routes.test_m8_coordination_tools",)
 
 
 @pytest.fixture
-def demo(seed_path: Path, db: Session) -> Generator[tuple]:
-    # Demo logins are shared across tenants; personnel writes require local accounts.
-    path = seed_path / "org.yaml"
-    data = yaml.safe_load(path.read_text())
-    emails = {}
-    for account in data["accounts"]:
-        emails[account["email"]] = account["email"] = f"{uuid4()}@example.com"
-    for employee in data["employees"]:
-        employee["work_email"] = f"{uuid4()}@example.com"
-    path.write_text(yaml.safe_dump(data, allow_unicode=True))
-    for source in seed_path.glob("*.yaml"):
-        text = source.read_text()
-        for old, new in emails.items():
-            text = text.replace(old, new)
-        source.write_text(text)
-    load_demo(db, seed_path)
-    org = db.exec(select(Organization).where(Organization.slug == data["slug"])).one()
-    admin_user = db.exec(
-        select(User).where(User.email == emails["admin@demo.example.com"])
+def demo(isolated_demo: tuple, db: Session) -> tuple:
+    _, people, _ = isolated_demo
+    org_id = people["E01"].org_id
+    admin_user_id = db.exec(
+        select(OrgMembership.user_id)
+        .join(RoleGrant, col(RoleGrant.membership_id) == col(OrgMembership.id))
+        .join(User, col(OrgMembership.user_id) == col(User.id))
+        .where(
+            OrgMembership.org_id == org_id,
+            RoleGrant.org_id == org_id,
+            RoleGrant.role == "org_admin",
+            col(User.is_superuser).is_(False),
+        )
     ).one()
     db.add(
         ModelSetting(
-            org_id=org.id,
-            updated_by_user_id=admin_user.id,
+            org_id=org_id,
+            updated_by_user_id=admin_user_id,
             enabled=True,
             kind="cloud_api",
             provider="openai-compatible",
@@ -71,34 +55,8 @@ def demo(seed_path: Path, db: Session) -> Generator[tuple]:
             base_url="http://127.0.0.1/v1",
         )
     )
-    people = {
-        e.employee_code: e
-        for e in db.exec(select(Employee).where(Employee.org_id == org.id)).all()
-    }
-    foreign = Organization(slug=str(uuid4()), name="合成外企业")
-    user = User(
-        username=str(uuid4()), email=f"{uuid4()}@example.com", hashed_password="unused"
-    )
-    db.add_all([foreign, user])
-    db.flush()
-    db.add(OrgMembership(org_id=foreign.id, user_id=user.id))
     db.commit()
-    auth = {}
-    for role, email in {
-        "admin": emails["admin@demo.example.com"],
-        "manager": emails["manager.platform@demo.example.com"],
-        "employee": emails["employee.platform@demo.example.com"],
-        "foreign": user.email,
-    }.items():
-        account_user = db.exec(select(User).where(User.email == email)).one()
-        auth[role] = {
-            "Authorization": f"Bearer {create_access_token(account_user.id, expires_delta=timedelta(minutes=10))}"
-        }
-    try:
-        yield f"/api/v1/orgs/{org.id}", people, auth
-    finally:
-        db.rollback()
-        delete_test_organization(db, foreign.id)
+    return isolated_demo
 
 
 @pytest.mark.parametrize("channel", ["web", "feishu"])

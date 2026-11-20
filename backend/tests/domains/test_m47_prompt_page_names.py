@@ -51,8 +51,8 @@ def test_page_name_guard_rejects_invented_entry() -> None:
     assert missing_page_names("请到画像页的「请求记录」点击「申诉」。") == {"请求记录"}
 
 
-def test_employee_navigation_and_privacy(db: Session, demo: tuple) -> None:
-    p = principal_for(db, demo[1]["E02"].org_id)
+def test_employee_navigation_and_privacy(db: Session, shared_demo: tuple) -> None:
+    p = principal_for(db, shared_demo[1]["E02"].org_id)
     prompt = bot_prompts.system_prompt(db, p, "feishu")
     assert "「已处理请求」" in prompt and "「申诉」" in prompt
     assert "「我的团队」" in prompt and "「初始画像」列" in prompt
@@ -64,8 +64,8 @@ def test_employee_navigation_and_privacy(db: Session, demo: tuple) -> None:
     assert "不猜" in prompt
 
 
-def test_department_hierarchy_guidance(db: Session, demo: tuple) -> None:
-    p = principal_for(db, demo[1]["E02"].org_id)
+def test_department_hierarchy_guidance(db: Session, shared_demo: tuple) -> None:
+    p = principal_for(db, shared_demo[1]["E02"].org_id)
     prompt = admin_prompts.system_prompt(p, "/admin/assistant")
     assert "部门路径" in prompt and "上级部门" in prompt
     assert "「组织架构」" in prompt and "「移动到」" in prompt

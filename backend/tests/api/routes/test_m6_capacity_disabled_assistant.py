@@ -17,6 +17,8 @@ from tests.domains.test_im_gateway import principal
 from tests.utils.bot import final_response
 from tests.utils.pi import PiHarness
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 DISABLED = "规划与负荷功能未开启，如需使用请联系企业管理员。"
 
 

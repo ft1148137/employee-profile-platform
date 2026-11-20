@@ -11,6 +11,8 @@ from tests.api.routes.test_employee_requests import payload
 from tests.domains.test_bot_core import enable
 from tests.utils.bot import final_response
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 
 def test_saved_guide_is_used_on_next_turn(
     demo: tuple, db: Session, client: TestClient, monkeypatch: pytest.MonkeyPatch

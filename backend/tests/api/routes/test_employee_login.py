@@ -11,6 +11,8 @@ from app.core.config import settings
 from app.models import User, UserCreate
 from tests.utils.utils import random_email, random_lower_string
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 
 @pytest.mark.parametrize("with_email", [False, True])
 def test_login_identifiers(client: TestClient, db: Session, with_email: bool) -> None:

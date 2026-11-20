@@ -28,6 +28,8 @@ from app.domains.org.models import (
 from app.models import User
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 
 @pytest.fixture
 def accounts(request: pytest.FixtureRequest, db: Session) -> tuple:

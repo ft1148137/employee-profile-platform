@@ -24,6 +24,8 @@ from tests.api.routes.test_roster import client as client
 from tests.api.routes.test_setup_steps import SetupTenant
 from tests.api.routes.test_setup_steps import tenant as tenant
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 PASSWORD = "synthetic-owner-password"
 
 

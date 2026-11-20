@@ -21,19 +21,21 @@ from app.domains.model.models import ModelSetting
 from tests.domains.test_bot_core import enable as enable_model
 from tests.domains.test_im_gateway import principal
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 ACK = "收到，正在处理…"
 WAIT = "上一条消息还在处理中，请稍候。"
 
 
 @pytest.fixture(params=["feishu", "wecom"])
 def im(
-    demo: tuple,
+    minimal_demo: tuple,
     db: Session,
     monkeypatch: pytest.MonkeyPatch,
     request: pytest.FixtureRequest,
 ) -> tuple:
     platform = request.param
-    person = demo[1]["E02"]
+    person = minimal_demo[1]["E02"]
     p = principal(db, person.org_id, person.id)
     setting = ImSetting(
         org_id=p.org_id,

@@ -31,6 +31,8 @@ from app.models import User
 from tests.domains.test_im_gateway import TOKEN, enable, principal
 from tests.utils.migrations import migrate
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 
 @pytest.fixture
 def bound(demo: tuple, db: Session) -> tuple:

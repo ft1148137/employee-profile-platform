@@ -34,6 +34,8 @@ from app.mcp.oauth import resource_url
 from app.mcp.server import endpoint, lifespan
 from app.models import User
 
+pytestmark = pytest.mark.usefixtures("reset_login_attempts")
+
 
 def token_for(
     db: Session, employee: Employee
