@@ -74,12 +74,20 @@ test("administrator reads capability, Jira evidence and earlier published snapsh
   await expect(
     api.getByRole("button", { name: "后端 API 开发", exact: true }),
   ).toBeFocused()
-  await page.getByRole("tab", { name: "证据与历史", exact: true }).click()
+  await api.getByRole("button", { name: "后端 API 开发", exact: true }).click()
+  const viewVersions = { name: "查看版本历史", exact: true }
+  await detail.getByRole("button", viewVersions).click()
+  await expect(detail).toBeHidden()
+  await expect(page).toHaveURL(/\?tab=versions$/)
   await expect(
-    page
-      .getByRole("region", { name: "版本历史", exact: true })
-      .getByRole("listitem"),
-  ).toHaveCount(2)
+    page.getByRole("tab", { name: "证据与历史", exact: true, selected: true }),
+  ).toBeVisible()
+  const history = page.getByRole("region", { name: "版本历史", exact: true })
+  await expect(history).toBeFocused()
+  await expect(history.getByRole("listitem")).toHaveCount(2)
+  await expect(
+    history.getByRole("heading", { name: "版本历史", exact: true }),
+  ).toBeInViewport()
   await page.getByRole("button", { name: /^r1 ·/ }).click()
   const snapshot = page.getByRole("region", { name: "第 1 版（历史版本）" })
   await expect(
@@ -92,6 +100,12 @@ test("administrator reads capability, Jira evidence and earlier published snapsh
     path: "test-results/profile-versions.png",
     fullPage: true,
   })
+  await snapshot
+    .getByRole("button", { name: "后端 API 开发", exact: true })
+    .click()
+  await expect(detail).toBeVisible()
+  await expect(detail.getByRole("button", viewVersions)).toHaveCount(0)
+  await detail.getByRole("button", { name: "关闭", exact: true }).click()
   await page.getByRole("tab", { name: "能力画像" }).click()
   await expect(api.getByText("已确认", { exact: true })).toBeVisible()
 })
@@ -130,6 +144,18 @@ for (const [role, email, restricted] of [
         page.getByRole("region", { name: "员工档案摘要" }),
       ).toHaveCount(0)
       await expect(page.getByRole("switch")).toHaveCount(0)
+      await api
+        .getByRole("button", { name: "后端 API 开发", exact: true })
+        .click()
+      const detail = page.getByRole("dialog", {
+        name: "后端 API 开发",
+        exact: true,
+      })
+      await expect(detail).toBeVisible()
+      await expect(
+        detail.getByRole("button", { name: "查看版本历史", exact: true }),
+      ).toHaveCount(0)
+      await detail.getByRole("button", { name: "关闭", exact: true }).click()
       await page.screenshot({
         path: `test-results/profile-compact-${role}.png`,
         fullPage: true,

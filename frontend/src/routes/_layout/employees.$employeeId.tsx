@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { isAxiosError } from "axios"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   ChangeRequestsService,
   type ProfileItem,
@@ -85,6 +85,17 @@ function EmployeeDetails() {
     enabled: !!org,
     retry: false,
   })
+  useEffect(() => {
+    if (!isAdmin || detailTab !== "versions" || !query.isSuccess) return
+    const history = document.getElementById("version-history")
+    history?.focus({ preventScroll: true })
+    history?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+    })
+  }, [detailTab, isAdmin, query.isSuccess])
+
   if (!org) return <OrgState />
   if (query.isPending) return <ProfileLoading />
   if (query.isError) {
@@ -129,7 +140,12 @@ function EmployeeDetails() {
                 onSelect={setEvidenceId}
               />
             </section>
-            <section aria-label="版本历史" className="space-y-4 border-t pt-6">
+            <section
+              id="version-history"
+              aria-label="版本历史"
+              tabIndex={-1}
+              className="scroll-mt-14 space-y-4 border-t pt-6"
+            >
               <h2 className="text-lg font-semibold">版本历史</h2>
               <VersionHistory
                 orgId={org.id}
@@ -217,6 +233,15 @@ function EmployeeDetails() {
           }
           canConfigureDepartment={roles.includes("org_admin")}
           onEvidence={setEvidenceId}
+          onViewVersions={
+            isAdmin
+              ? () =>
+                  navigate({
+                    search: { tab: "versions" },
+                    resetScroll: false,
+                  })
+              : undefined
+          }
           directEdit={canDirectEdit}
           appeals={
             canEditOwn && requests.data
