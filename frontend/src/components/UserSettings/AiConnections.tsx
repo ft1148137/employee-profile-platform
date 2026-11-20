@@ -113,10 +113,10 @@ function Tokens({
   return (
     <section className="max-w-3xl space-y-6 py-4">
       <header>
-        <h2 className="text-xl font-semibold">连接 AI 助手</h2>
+        <h2 className="text-xl font-semibold">外部 AI 工具</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          个人令牌可让外部助手访问你的画像和证据，并以你的身份提交请求。请像密码一样保管，默认
-          90 天到期。
+          个人令牌用于授权外部 AI 工具读写你的画像与记录，请妥善保管（默认 90
+          天有效）。
         </p>
       </header>
       {hasEmployee && (
@@ -129,17 +129,17 @@ function Tokens({
               downloadSkill.mutate()
             }}
           >
-            下载生成指南（skill）
+            下载画像整理指南
           </a>
           <p className="text-sm text-muted-foreground">
-            外部 AI 按指南生成的文件，请在助手对话里上传
+            使用外部 AI 生成画像文件后，可在「AI 助手」对话中上传导入。
           </p>
         </div>
       )}
       {!setting.data.enabled && (
         <p className="rounded-lg border bg-muted/30 p-4">
-          企业管理员关闭了这个功能。需要使用的话，请联系企业管理员在「数据与 AI
-          → 外部 AI 助手」开启。你仍可查看和吊销已有令牌。
+          企业未开启此功能，请联系管理员在「设置 → 外部 AI
+          工具」中开启（已有令牌仍可查看或吊销）。
         </p>
       )}
       {!hasEmployee && <p>当前账号没有员工身份，不能生成令牌。</p>}
@@ -179,7 +179,7 @@ function Tokens({
           className="space-y-3 rounded-xl border border-primary/40 bg-muted/20 p-5"
           aria-label="新令牌"
         >
-          <h3 className="font-semibold">请立即保存，明文只显示这一次</h3>
+          <h3 className="font-semibold">令牌仅显示一次，请立即复制保存</h3>
           <code className="block break-all" data-testid="new-token">
             {secret}
           </code>
@@ -235,8 +235,7 @@ function Tokens({
       <section className="space-y-3 rounded-xl border p-5">
         <h3 className="font-semibold">Cursor 配置示例</h3>
         <p className="text-sm text-muted-foreground">
-          需要外部客户端能访问到的 HTTPS 地址。请在 Cursor 的 MCP
-          设置中添加以下配置；隐藏明文后，请自行替换「令牌」。
+          将下方配置粘贴到 Cursor 的 MCP 设置中（隐藏后请自行替换为你的令牌）。
         </p>
         <pre
           className="overflow-x-auto rounded-lg bg-muted p-4 text-xs"
@@ -246,8 +245,8 @@ function Tokens({
         </pre>
         {window.location.protocol === "http:" && (
           <p className="text-sm text-muted-foreground">
-            你现在是用 HTTP 地址打开的，只适合在部署平台的这台电脑上测试；外部
-            AI 客户端需要 HTTPS 地址，请向部署平台的人要正式网址。
+            当前为 HTTP 地址，外部工具连接需使用 HTTPS
+            正式地址，请联系部署人员获取。
           </p>
         )}
         <Button variant="outline" onClick={() => copy(config)}>

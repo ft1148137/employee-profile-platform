@@ -148,19 +148,13 @@ export function ChatGptConnect({ orgId }: { orgId: string }) {
 
       <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
         <li>
-          这种方式走的是 ChatGPT 的 Codex 后端，不是 OpenAI
-          面向第三方应用的官方计划，OpenAI 以后可能限制。
+          通过 ChatGPT 订阅账号接入，受 5
+          小时及每周用量限制，全企业共用该账号额度（超限后自动暂停并等待恢复）。
         </li>
+        <li>个人 Plus/Pro 账号请在 ChatGPT「数据控制」中关闭模型训练。</li>
         <li>
-          订阅有 5
-          小时和每周两种用量上限。只配订阅时，全企业员工和内置机器人的对话共用这一个账号的额度。到上限时起草会暂停，额度恢复后自动继续。
-        </li>
-        <li>
-          个人 Plus/Pro 适用 ChatGPT 个人版的数据设置，内容可能被用于训练，请在
-          ChatGPT 的「数据控制」里关闭。
-        </li>
-        <li>
-          处理真实员工数据，建议用 Business/Enterprise 工作区，或者改用 API。
+          处理正式企业数据时，建议使用 Business/Enterprise 工作区或直接配置
+          API。
         </li>
       </ul>
     </section>

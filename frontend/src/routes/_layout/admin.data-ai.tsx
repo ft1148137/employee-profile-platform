@@ -17,7 +17,7 @@ const sections = [
 export const Route = createFileRoute("/_layout/admin/data-ai")({
   component: DataAi,
   validateSearch: tabSearch,
-  head: () => ({ meta: [{ title: "数据与 AI - 员工画像平台" }] }),
+  head: () => ({ meta: [{ title: "企业管理 - 员工画像平台" }] }),
 })
 
 function DataAi() {
@@ -26,11 +26,7 @@ function DataAi() {
     <AdminSection
       sections={sections}
       tab={tab}
-      deniedMessage={
-        ["model", "bot", "im", "mcp"].includes(tab ?? "")
-          ? "需要企业管理员权限"
-          : "你没有权限管理数据来源，只有企业管理员可以操作。"
-      }
+      deniedMessage="需要企业管理员权限"
     />
   )
 }

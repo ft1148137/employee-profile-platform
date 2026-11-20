@@ -46,7 +46,7 @@ export function ChangeHistory({
     <section aria-label="修改记录" className="space-y-4 rounded-xl border p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold">修改记录</h2>
-        <p className="text-xs text-muted-foreground">最近二十条</p>
+        <p className="text-xs text-muted-foreground">最近 20 条</p>
       </div>
       <SetupError error={query.error} />
       {query.isError && (

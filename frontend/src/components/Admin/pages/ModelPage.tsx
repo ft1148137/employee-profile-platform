@@ -12,7 +12,6 @@ export function ModelPage() {
   return (
     <div key={org.id} className="max-w-6xl space-y-8">
       <header className="border-l-4 border-primary pl-4">
-        <p className="text-xs tracking-widest text-muted-foreground">管理</p>
         <h1 className="mt-2 text-3xl font-semibold">模型</h1>
       </header>
       <DraftingPage orgId={org.id} />

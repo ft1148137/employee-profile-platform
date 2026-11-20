@@ -171,10 +171,6 @@ function JiraForm({
               ))}
             </div>
           </DraftField>
-          <p className="text-xs text-muted-foreground">
-            按企业正在使用的 Jira
-            版本选择，云端版与企业自行部署的版本需要不同的连接方式。
-          </p>
           <DraftField changed={assistant.changed("base_url")}>
             <Label htmlFor="jira-url">站点地址</Label>
             <Input
@@ -187,7 +183,7 @@ function JiraForm({
               onChange={(e) => change({ base_url: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">
-              填写企业 Jira 首页的网址，用于读取已授权的工作记录。
+              填写企业 Jira 访问地址，例如 https://your-company.atlassian.net
             </p>
           </DraftField>
           {config.deployment === "data_center" && (
@@ -203,8 +199,8 @@ function JiraForm({
                   })
                 }
               >
-                <option value="pat">个人访问令牌（Jira 8.14 及以上）</option>
-                <option value="basic">用户名和密码（更老的版本）</option>
+                <option value="pat">个人访问令牌（Jira 8.14+）</option>
+                <option value="basic">用户名和密码（旧版本）</option>
               </select>
             </DraftField>
           )}
@@ -247,7 +243,7 @@ function JiraForm({
               }}
             />
             <p className="text-xs text-muted-foreground">
-              这是授权平台读取工作记录的连接凭据，加密保存；已有凭据时留空表示不修改。
+              加密保存，留空则保持原有凭据不变。
             </p>
             {config.deployment === "cloud" && (
               <p className="text-xs text-muted-foreground">
@@ -365,9 +361,9 @@ function JiraForm({
                 }
               />
               <span>
-                同步任务描述（description）
+                同步任务描述
                 <span className="mt-1 block text-xs text-muted-foreground">
-                  勾选后，任务描述会存进平台，并可能在起草时发给模型
+                  开启后将保存任务详情，起草画像时会发送给 AI 模型。
                 </span>
               </span>
             </label>

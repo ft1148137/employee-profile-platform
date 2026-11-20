@@ -83,7 +83,7 @@ export function DraftProgress({
             天未处理、可批量送审：{handover.data?.count ?? "—"} 人
           </p>
           <p className="text-sm text-muted-foreground">
-            送审后标为「员工未过目」，通知本人，批准前本人可以撤回。
+            送审后标为「员工未确认」，通知本人，批准前本人可以撤回。
           </p>
           <SetupError error={handover.error ?? send.error} />
           <Button
@@ -95,7 +95,7 @@ export function DraftProgress({
                 latest.isSuccess &&
                 latest.data.count > 0 &&
                 window.confirm(
-                  `确认将 ${latest.data.count} 名员工的初始画像批量送审？这些员工尚未过目。`,
+                  `确认将 ${latest.data.count} 名员工的初始画像批量送审？这些员工尚未确认。`,
                 )
               )
                 send.mutate()
@@ -115,19 +115,18 @@ export function DraftProgress({
       {data && (
         <>
           {!settings.data?.enabled && (
-            <p>自动起草未打开，请先在「数据与 AI → 模型」里打开。</p>
+            <p>自动起草未开启，请先前往「设置 → 模型」开启。</p>
           )}
-          {data.mode === "none" ? (
+          {data.mode === "none" && (
             <div role="alert" className="rounded-lg border p-4">
               <p>
-                还没有配置模型，请先在设置页配置模型，或者让员工用 JSON 导入画像
+                尚未配置 AI 模型，请先前往「设置 →
+                模型」配置，或由员工手动/导入维护画像。
               </p>
               <Link className="underline" to="/admin/model">
                 去配置模型
               </Link>
             </div>
-          ) : (
-            <p>当前方式：模型</p>
           )}
           {data.paused_until && (
             <div
@@ -188,7 +187,9 @@ export function DraftProgress({
           onClick={() => {
             if (
               wizard ||
-              window.confirm("只覆盖员工还没过目的草稿，确定重新起草全部？")
+              window.confirm(
+                "将仅覆盖员工尚未确认的草稿，已发布内容不受影响。确认重新起草吗？",
+              )
             )
               draft.mutate("all")
           }}
@@ -205,7 +206,7 @@ export function DraftProgress({
           }
           onClick={() => draft.mutate("failed")}
         >
-          重试失败的
+          重试失败项
         </Button>
       </div>
     </section>

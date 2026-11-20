@@ -13,7 +13,7 @@ const statuses = {
 const countLabels: Record<string, string> = {
   records: "记录",
   evidence_added: "新增证据",
-  evidence_superseded: "取代",
+  evidence_superseded: "更正证据",
   evidence_retracted: "撤销",
   people_unlinked: "未关联账号",
   tasks_added: "新增记录",
@@ -53,7 +53,7 @@ export function SyncRunTable({ orgId }: { orgId: string }) {
       <SetupError error={runs.error ?? retry.error} />
       {runs.isError && <Button onClick={() => runs.refetch()}>重新读取</Button>}
       {runs.isPending && <p role="status">正在读取同步记录…</p>}
-      {runs.data?.count === 0 && <p>还没有同步记录</p>}
+      {runs.data?.count === 0 && <p>暂无同步记录</p>}
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead>
@@ -62,7 +62,7 @@ export function SyncRunTable({ orgId }: { orgId: string }) {
                 "类型 / 文件名",
                 "项目范围",
                 "状态 / 尝试次数",
-                "计数",
+                "处理结果",
                 "错误说明",
                 "时间",
                 "操作",

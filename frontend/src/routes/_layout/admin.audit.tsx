@@ -109,13 +109,7 @@ function AuditList({ orgId }: { orgId: string }) {
   return (
     <div className="space-y-6">
       <div className="border-l-4 border-primary pl-4">
-        <p className="mb-1 text-xs tracking-widest text-muted-foreground">
-          管理 · 操作记录
-        </p>
         <h1 className="text-3xl font-semibold tracking-tight">审计日志</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          查看本企业的操作记录，最新记录显示在最前面。
-        </p>
       </div>
       <div className="flex flex-wrap items-end gap-4 rounded-xl border bg-muted/20 p-4">
         <div className="space-y-2">
