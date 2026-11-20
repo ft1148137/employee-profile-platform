@@ -270,6 +270,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
   await page.getByRole("button", { name: "保存密码" }).click()
   await expect(page).toHaveURL("/assistant")
   await page.getByRole("link", { name: "组织", exact: true }).click()
+  await page.locator("summary", { hasText: /待你确认：初始画像草稿/ }).click()
   await expect(
     page.getByRole("heading", { name: "待你确认：初始画像草稿" }),
   ).toBeVisible()
@@ -341,6 +342,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     await editor.getByRole("button", { name: "保存草稿", exact: true }).click()
     await expect(editor.getByRole("status")).toHaveText("草稿已保存")
     await editor.getByRole("button", { name: "关闭", exact: true }).click()
+    await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
     await page.getByRole("button", { name: "继续修改", exact: true }).click()
     editor = page.getByRole("dialog")
     await expect(
@@ -365,6 +367,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     // Another real tab edits the saved request after this tab has previewed it.
     const other = await page.context().newPage()
     await other.goto(page.url())
+    await other.locator("summary", { hasText: /^其他待处理请求/ }).click()
     await other.getByRole("button", { name: "继续修改", exact: true }).click()
     await other
       .getByRole("dialog")

@@ -133,6 +133,7 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
   await page.getByRole("button", { name: "保存密码" }).click()
   await expect(page).toHaveURL("/assistant")
   await page.getByRole("link", { name: "组织", exact: true }).click()
+  await page.locator("summary", { hasText: /待你确认：初始画像草稿/ }).click()
   await expect(
     page.getByRole("heading", { name: "待你确认：初始画像草稿" }),
   ).toBeVisible()

@@ -235,6 +235,11 @@ test("work attributes in personnel form and employee pages", async ({
   await expect(
     page.getByRole("heading", { name: "合成档案员工", exact: true }),
   ).toBeVisible()
+  const identity = page.locator("header").filter({
+    has: page.getByRole("heading", { name: "合成档案员工", exact: true }),
+  })
+  await expect(identity).toContainText("工号 FIELD01")
+  await expect(identity.getByRole("region", { name: "人员操作" })).toBeVisible()
   await expect(page.getByText("入职 3 年", { exact: true })).toBeVisible()
   await expect(page.getByText("上海", { exact: true })).toBeVisible()
   expect(profileReads).toBeLessThan(10)

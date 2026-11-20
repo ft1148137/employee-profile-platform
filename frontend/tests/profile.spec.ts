@@ -46,7 +46,14 @@ test("administrator reads capability, Jira evidence and earlier published snapsh
   await expect(
     api.getByText("能独立完成复杂任务", { exact: true }),
   ).toBeVisible()
-  await api.locator('[data-slot="tooltip-trigger"]').hover()
+  await api.click({ position: { x: 12, y: 45 } })
+  const detail = page.getByRole("dialog", {
+    name: "后端 API 开发",
+    exact: true,
+  })
+  await expect(detail).toHaveAttribute("data-slot", "sheet-content")
+  await expect(detail).toContainText("等级说明")
+  await detail.locator('[data-slot="tooltip-trigger"]').hover()
   await expect(page.getByRole("tooltip")).toContainText(
     "参考把握度，并非精确概率",
   )
@@ -57,11 +64,16 @@ test("administrator reads capability, Jira evidence and earlier published snapsh
     path: "test-results/profile-capabilities.png",
     fullPage: true,
   })
-  await api.locator("summary").click()
-  await api.getByRole("button", { name: /实现分页查询接口/ }).click()
-  await expect(page.getByRole("dialog")).toContainText("PLAT-104")
-  await expect(page.getByRole("dialog")).toContainText("背景")
-  await page.getByRole("button", { name: "关闭", exact: true }).click()
+  await detail.getByRole("button", { name: /实现分页查询接口/ }).click()
+  const evidence = page.getByRole("dialog", { name: /实现分页查询接口/ })
+  await expect(evidence).toContainText("PLAT-104")
+  await expect(evidence).toContainText("背景")
+  await evidence.getByRole("button", { name: "关闭", exact: true }).click()
+  await expect(detail).toBeVisible()
+  await detail.getByRole("button", { name: "关闭", exact: true }).click()
+  await expect(
+    api.getByRole("button", { name: "后端 API 开发", exact: true }),
+  ).toBeFocused()
   await page.getByRole("tab", { name: "证据与历史", exact: true }).click()
   await expect(
     page
@@ -205,6 +217,10 @@ for (const [email, title] of [
       name: "初始画像草稿",
       exact: true,
     })
+    const reminder = page.locator("summary", { hasText: title })
+    await expect(reminder).toBeVisible()
+    await expect(draft).toBeHidden()
+    await reminder.click()
     await expect(draft.getByRole("heading", { name: title })).toBeVisible()
     await expect(draft).toContainText("根据工作记录初步整理，尚未生效。")
     await expect(draft.getByRole("region")).toHaveCount(2)
@@ -309,6 +325,14 @@ test("department capabilities filter counts, retain other claims and add through
   await expect(page.getByRole("article")).toHaveCount(3)
   const stats = page.getByRole("region", { name: "能力状态统计" })
   await expect(stats).toContainText("已确认 1")
+  await stats.getByRole("button", { name: "未知 2", exact: true }).click()
+  await expect(
+    stats.getByRole("button", { name: "未知 2", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true")
+  await expect(known).toHaveCount(0)
+  await expect(page.getByRole("article")).toHaveCount(2)
+  await stats.getByRole("button", { name: "全部能力 3", exact: true }).click()
+  await expect(known).toBeVisible()
   await expect(stats).toContainText("未知 2")
   await page.screenshot({
     path: "../docs/screenshots/m4.2/profile-department-capabilities.png",
@@ -415,9 +439,11 @@ test("empty initial draft cannot submit and pending requests can be withdrawn", 
     },
   )
   await openE02(page, "employee.platform@demo.example.com")
+  await page.locator("summary", { hasText: /待你确认：初始画像草稿/ }).click()
   await expect(
     page.getByRole("region", { name: "初始画像草稿", exact: true }),
   ).toContainText("暂未匹配到对应的工作记录，你可以手动补充。")
+  await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
   const others = page.getByRole("region", { name: "其他待处理请求" })
   await expect(others).toContainText("待经理审批 · 2 项改动")
   await expect(
@@ -445,6 +471,7 @@ test("initial draft read failure can be retried", async ({ page }) => {
   await expect(page.getByRole("alert")).toBeVisible()
   await page.unroute("**/employees/*/change-requests?status=all")
   await page.getByRole("button", { name: "重试" }).click()
+  await page.locator("summary", { hasText: /待你确认：初始画像草稿/ }).click()
   await expect(
     page.getByRole("region", { name: "初始画像草稿", exact: true }),
   ).toBeVisible()
@@ -500,6 +527,7 @@ test("pending change shows levels and expandable statement while keeping basis h
     },
   )
   await openE02(page, "employee.platform@demo.example.com")
+  await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
   const pending = page.getByRole("region", { name: "其他待处理请求" })
   await expect(pending).toContainText("修改前：能独立完成复杂任务")
   await expect(pending).toContainText("修改后：未定级")
@@ -524,6 +552,7 @@ test("editing an initial candidate sends uncertainty back unchanged", async ({
   page,
 }) => {
   await openE02(page, "employee.platform@demo.example.com")
+  await page.locator("summary", { hasText: /待你确认：初始画像草稿/ }).click()
   const initial = page.getByRole("region", {
     name: "初始画像草稿",
     exact: true,

@@ -188,6 +188,7 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
     )
     expect(submitted.ok()).toBeTruthy()
     await enter(ownerToken, `/employees/${subject.id}`)
+    await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
     const pendingCard = page.locator(`[id="request-${draft.id}"]`)
     await expect(pendingCard).toContainText(
       reviewer === "admin"
@@ -380,6 +381,10 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       await page.getByRole("link", { name: "员工", exact: true }).click()
       await page.getByRole("row").filter({ hasText: "合成员工" }).click()
       await page.getByRole("tab", { name: "证据与历史", exact: true }).click()
+      await page.getByRole("button", { name: "来源请求", exact: true }).click()
+      await expect(page).toHaveURL(/tab=capabilities$/)
+      await expect(page.locator(`[id="request-${draft.id}"]`)).toBeVisible()
+      await page.getByRole("tab", { name: "证据与历史", exact: true }).click()
       await page.getByLabel("证据类型").selectOption("self_report")
       let release = () => {}
       const gate = new Promise<void>((resolve) => {
@@ -420,6 +425,8 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       await page.setViewportSize({ width: 390, height: 844 })
     }
     await enter(ownerToken, `/employees/${subject.id}`)
+    await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
+    await page.locator("summary", { hasText: /^已处理请求/ }).click()
     const card = page.locator(`[id="request-${draft.id}"]`)
     await expect(card).toContainText("合成能力1：批准")
     await expect(card).toContainText("合成能力2：退回")

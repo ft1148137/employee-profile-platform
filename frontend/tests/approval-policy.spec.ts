@@ -142,6 +142,7 @@ test("profile preview shows the current approval rule and exempt changes publish
   })
   expect(draft.ok(), await draft.text()).toBeTruthy()
   await page.reload()
+  await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
   await page.getByRole("button", { name: "继续修改", exact: true }).click()
   await preview.click()
 

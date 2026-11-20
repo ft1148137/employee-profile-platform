@@ -182,6 +182,7 @@ test("M4: employee update, manager publication, history and self-review denial",
     })
   ).json()
   await enter(ownerToken, `/employees/${owner.id}`)
+  await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
   await page
     .locator(`[id="request-${draft.id}"]`)
     .getByRole("button", { name: "继续修改" })
@@ -206,6 +207,7 @@ test("M4: employee update, manager publication, history and self-review denial",
   await expect(page.getByRole("status")).toContainText("审批已提交")
   await enter(ownerToken, `/employees/${owner.id}`)
   await page.setViewportSize({ width: 390, height: 844 })
+  await page.locator("summary", { hasText: /^已处理请求/ }).click()
   const card = page.locator(`[id="request-${draft.id}"]`)
   await expect(card).toContainText("合成能力：批准")
   await expect(card.getByText("请求时间线", { exact: true })).toHaveCount(0)

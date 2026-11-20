@@ -309,12 +309,20 @@ test("M4.3 screenshots: file preview, web approval, profiles, settings and direc
       name: "接口设计与联调",
       exact: true,
     })
-    await expect(capability).toContainText("等级：独立完成")
-    await expect(
-      capability.getByRole("button", { name: "直接修改", exact: true }),
-    ).toBeVisible()
-    await expect(capability).not.toContainText("独立完成订单接口设计与联调")
+    await expect(capability).toContainText("独立完成")
     await expect(capability).not.toContainText("依据")
+    await capability
+      .getByRole("button", { name: "接口设计与联调", exact: true })
+      .click()
+    const detail = page.getByRole("dialog", {
+      name: "接口设计与联调",
+      exact: true,
+    })
+    await expect(
+      detail.getByRole("button", { name: "直接修改", exact: true }),
+    ).toBeVisible()
+    await expect(detail).toContainText("独立完成订单接口设计与联调")
+    await detail.getByRole("button", { name: "关闭", exact: true }).click()
     await expect(
       page.getByRole("tab", { name: "档案与账号", exact: true }),
     ).toHaveCount(0)
@@ -331,11 +339,15 @@ test("M4.3 screenshots: file preview, web approval, profiles, settings and direc
     await screenshot("manager-settings")
 
     await enter(ownerToken, `/employees/${subject.id}`)
-    await expect(capability).toContainText("等级：独立完成")
+    await expect(capability).toContainText("独立完成")
     await expect(capability).not.toContainText("本人确认工作总结")
+    await capability
+      .getByRole("button", { name: "接口设计与联调", exact: true })
+      .click()
     await expect(
-      page.getByRole("button", { name: "直接修改", exact: true }),
+      detail.getByRole("button", { name: "直接修改", exact: true }),
     ).toHaveCount(0)
+    await detail.getByRole("button", { name: "关闭", exact: true }).click()
     await screenshot("employee-profile")
     await page.getByRole("link", { name: "组织", exact: true }).click()
     await page.getByRole("tab", { name: "档案", exact: true }).click()
@@ -350,8 +362,9 @@ test("M4.3 screenshots: file preview, web approval, profiles, settings and direc
 
     await enter(admin.access_token, `/employees/${subject.id}`)
     await capability
-      .getByRole("button", { name: "直接修改", exact: true })
+      .getByRole("button", { name: "接口设计与联调", exact: true })
       .click()
+    await detail.getByRole("button", { name: "直接修改", exact: true }).click()
     const dialog = page.getByRole("dialog")
     await dialog
       .getByRole("textbox", { name: "能力说明", exact: true })

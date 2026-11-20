@@ -150,11 +150,19 @@ test("assistant shows status and appeal todo through resubmission", async ({
     await page.goto(path)
   }
   await enter(owner.access_token, `/employees/${subject.id}`)
+  await page
+    .getByRole("article", { name: "合成能力", exact: true })
+    .getByRole("button", { name: "合成能力", exact: true })
+    .click()
+  await expect(page.getByRole("dialog", { name: "合成能力" })).toBeVisible()
   await page.getByRole("button", { name: "申诉", exact: true }).click()
   await expect(page.getByRole("button", { name: "提交申诉" })).toBeDisabled()
   await page.getByLabel("申诉原因").fill("本人希望补充独立完成的合成依据")
   await page.getByRole("button", { name: "提交申诉" }).click()
-  await expect(page.getByText("申诉：待处理")).toBeVisible()
+  await expect(
+    page.getByRole("dialog", { name: "合成能力" }).getByText("申诉：待处理"),
+  ).toBeVisible()
+  await page.keyboard.press("Escape")
   await expect(
     page.getByRole("article", { name: "合成能力", exact: true }),
   ).toContainText("存在争议")
@@ -272,12 +280,14 @@ test("assistant shows status and appeal todo through resubmission", async ({
     page.getByText("申诉已处理：允许重新提交，请修改草稿"),
   ).toBeVisible()
   await page.goto(`/employees/${subject.id}`)
+  await page.locator("summary", { hasText: /^已处理请求/ }).click()
   await expect(
     page.getByText("申诉：允许重新提交 · 请在新草稿补充合成依据"),
   ).toBeVisible()
   await expect(
     page.getByRole("article", { name: "合成能力", exact: true }),
   ).not.toContainText("存在争议")
+  await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
   await page.getByRole("button", { name: "继续修改" }).click()
   await page
     .getByRole("dialog")

@@ -91,6 +91,7 @@ test("经理写工作反馈，员工过目后由经理发布", async ({ page, re
   await expect(department.getByText("已写反馈")).toBeVisible()
 
   await open(worker, `/employees/${person("B3").id}`)
+  await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
   const pending = page.getByRole("region", { name: "其他待处理请求" })
   await pending.getByRole("button", { name: /^工作反馈/ }).click()
   const evidence = page.getByRole("dialog")

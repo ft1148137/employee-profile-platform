@@ -151,6 +151,7 @@ test("non-reviewer admin sees metadata and a privacy notice without the unpublis
     { accessToken: admin.access_token, orgId: admin.org_id },
   )
   await page.goto(`/employees/${subject.id}`)
+  await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
   const card = page.locator(`[id="request-${draft.id}"]`)
   await expect(card).toContainText("未发布的陈述仅本人、管辖经理和审批人可见")
   await expect(card).toContainText("合成能力1")

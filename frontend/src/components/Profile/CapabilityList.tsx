@@ -1,20 +1,28 @@
 import { Link } from "@tanstack/react-router"
 import { useState } from "react"
-import type { ProfileItem } from "@/client"
+import type { ChangeRequestPublic, ProfileItem } from "@/client"
+import { TopbarActions } from "@/components/Common/TopbarSlot"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { CapabilityDetailDialog } from "./CapabilityDetailDialog"
 import { CapabilityPicker } from "./CapabilityPicker"
-import { EvidenceRows } from "./EvidenceList"
 import { dateLabel, levelLabel } from "./fields"
 import { labels } from "./labels"
-import { ProfileVisibility } from "./ProfileVisibility"
-import { StatusBadge } from "./StatusBadge"
+
+function assessmentLabel(item: ProfileItem) {
+  return item.status === "confirmed" && item.claim && !item.claim.level
+    ? "ungraded"
+    : item.status
+}
+
+const filters = [
+  ["all", "全部能力"],
+  ...Object.entries(labels.assessment_status).map(([status, { label }]) => [
+    status,
+    label,
+  ]),
+  ["ungraded", "未定级"],
+]
 
 export function CapabilityList({
   items,
@@ -25,6 +33,7 @@ export function CapabilityList({
   canConfigureDepartment,
   compact = false,
   directEdit = false,
+  appeals,
 }: {
   directEdit?: boolean
   compact?: boolean
@@ -34,10 +43,18 @@ export function CapabilityList({
   onEdit?: (item: ProfileItem, retract?: boolean) => void
   departmentConfigured?: boolean
   canConfigureDepartment?: boolean
+  appeals?: { orgId: string; requests: ChangeRequestPublic[] }
 }) {
   const [added, setAdded] = useState(new Set<string>())
   const [picking, setPicking] = useState(false)
-  const [viewing, setViewing] = useState<ProfileItem | null>(null)
+  const [filter, setFilter] = useState("all")
+  const rejectedCapabilityKeys = new Set(
+    appeals?.requests.flatMap((request) =>
+      (request.items ?? [])
+        .filter((item) => item.decision === "rejected")
+        .map((item) => item.capability.key),
+    ),
+  )
   // Historical snapshots omit departmentConfigured and keep every frozen item.
   const visible = items.filter(
     (item) =>
@@ -45,89 +62,163 @@ export function CapabilityList({
       (departmentConfigured && item.in_department) ||
       item.status !== "unknown" ||
       pendingCapabilityIds?.has(item.capability.id) ||
+      rejectedCapabilityKeys.has(item.capability.key) ||
       added.has(item.capability.id),
   )
   const available = items.filter(
     (item) => !item.retired && !visible.includes(item),
   )
+  const counts = new Map<string, number>()
   const groups = new Map<string, ProfileItem[]>()
   for (const item of visible) {
+    const status = assessmentLabel(item)
+    counts.set(status, (counts.get(status) ?? 0) + 1)
+    const ungraded = item.claim && !item.claim.level
+    if (ungraded && status !== "ungraded")
+      counts.set("ungraded", (counts.get("ungraded") ?? 0) + 1)
+    if (
+      filter !== "all" &&
+      filter !== status &&
+      !(filter === "ungraded" && ungraded)
+    )
+      continue
     const category = item.retired
       ? "历史能力（已移出词典）"
       : (item.capability.category ?? "其他能力")
     groups.set(category, [...(groups.get(category) ?? []), item])
   }
   return (
-    <div className="space-y-8">
-      <ProfileVisibility />
+    <div className="space-y-3">
+      {onEdit && (
+        <TopbarActions>
+          <Button size="sm" onClick={() => setPicking(true)}>
+            添加能力
+          </Button>
+        </TopbarActions>
+      )}
       {departmentConfigured === false && (
-        <p className="rounded-lg border bg-muted/20 p-4 text-sm">
+        <p className="text-xs text-muted-foreground">
           本部门暂未配置常用能力
           {canConfigureDepartment && (
-            <Link to="/org-chart" className="ml-3 text-primary underline">
+            <Link to="/org-chart" className="ml-2 text-primary underline">
               去组织架构设置
             </Link>
           )}
         </p>
       )}
-      <section
-        className="flex flex-wrap gap-4 rounded-lg border bg-muted/20 p-4"
-        aria-label="能力状态统计"
-      >
-        {Object.entries(labels.assessment_status).map(([status, label]) => (
-          <span
+      <section className="flex flex-wrap gap-1.5" aria-label="能力状态统计">
+        {filters.map(([status, label]) => (
+          <Button
             key={status}
-            className={`rounded-md px-3 py-1 text-sm ${label.className}`}
+            size="sm"
+            variant="outline"
+            aria-pressed={filter === status}
+            className="h-7 gap-1 rounded-full border-surface-border bg-surface px-2.5 text-xs text-muted-foreground shadow-none aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-primary"
+            onClick={() => setFilter(status)}
           >
-            {label.label}{" "}
-            {
-              visible.filter(
-                (item) =>
-                  item.status === status &&
-                  (status !== "confirmed" || item.claim?.level),
-              ).length
-            }
-          </span>
+            {label}{" "}
+            <span className="tabular-nums">
+              {status === "all" ? visible.length : (counts.get(status) ?? 0)}
+            </span>
+          </Button>
         ))}
-        <span className="rounded-md bg-muted px-3 py-1 text-sm">
-          未定级{" "}
-          {visible.filter((item) => item.claim && !item.claim.level).length}
-        </span>
       </section>
-      {!visible.length && (
-        <p className="py-8 text-muted-foreground">暂无可显示的能力。</p>
+      {groups.size === 0 && (
+        <p className="rounded-lg border border-surface-border bg-surface p-4 text-sm text-muted-foreground">
+          {filter === "all" ? "暂无可显示的能力。" : "此状态下暂无能力。"}
+        </p>
       )}
       {Array.from(groups, ([category, entries]) => (
-        <section key={category} className="space-y-4">
-          <h2 className="border-l-2 border-primary pl-3 text-lg font-semibold">
+        <section key={category} className="space-y-2">
+          <h2 className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
             {category}
+            <span className="rounded-full bg-muted px-1.5 tabular-nums">
+              {entries.length}
+            </span>
           </h2>
-          <div className="grid gap-4 xl:grid-cols-2">
-            {entries.map((item) => (
-              <ClaimCard
-                key={item.capability.id}
-                item={item}
-                compact={compact}
-                directEdit={directEdit}
-                onView={() => setViewing(item)}
-                onEvidence={onEvidence}
-                pending={pendingCapabilityIds?.has(item.capability.id)}
-                onEdit={!item.retired ? onEdit : undefined}
-                otherDepartment={
-                  departmentConfigured !== undefined &&
-                  !item.in_department &&
-                  item.status !== "unknown"
-                }
-              />
-            ))}
+          <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3">
+            {entries.map((item) => {
+              const { capability, claim } = item
+              const evidenceCount = claim?.evidence?.length ?? 0
+              const assessment = assessmentLabel(item)
+              const badge =
+                assessment === "ungraded"
+                  ? {
+                      label: "未定级",
+                      className: "bg-muted text-muted-foreground",
+                    }
+                  : labels.assessment_status[item.status]
+              const level = claim?.level
+                ? item.level_adjusted
+                  ? "等级已调整"
+                  : levelLabel(capability.level_rubric, claim.level)
+                : claim && assessment !== "ungraded"
+                  ? "未定级"
+                  : null
+              return (
+                <article
+                  key={capability.id}
+                  aria-label={capability.name}
+                  className="relative flex min-w-0 flex-col gap-2 rounded-lg border border-surface-border bg-surface p-3 transition-colors hover:border-primary/45"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+                    <h3 className="min-w-0 font-semibold text-sm">
+                      <CapabilityDetailDialog
+                        item={item}
+                        compact={compact}
+                        directEdit={directEdit}
+                        onEdit={onEdit}
+                        onEvidence={onEvidence}
+                        appeals={appeals}
+                      />
+                    </h3>
+                    {level && (
+                      <Badge
+                        variant="outline"
+                        className="max-w-full whitespace-normal [overflow-wrap:anywhere]"
+                      >
+                        {level}
+                      </Badge>
+                    )}
+                  </div>
+                  {claim ? (
+                    <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
+                      {claim.statement}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      暂无记录（不代表不具备该能力）
+                    </p>
+                  )}
+                  <div className="mt-auto flex flex-wrap items-center gap-1.5 border-t border-surface-border pt-2 text-xs text-muted-foreground">
+                    <Badge variant="outline" className={badge.className}>
+                      {badge.label}
+                    </Badge>
+                    {departmentConfigured !== undefined &&
+                      !item.in_department &&
+                      item.status !== "unknown" && (
+                        <Badge variant="outline">其他能力</Badge>
+                      )}
+                    {!compact && item.evidence_stale && (
+                      <Badge variant="outline">证据较旧</Badge>
+                    )}
+                    {pendingCapabilityIds?.has(capability.id) && (
+                      <span>有待处理更新</span>
+                    )}
+                    {(evidenceCount > 0 || claim?.created_at) && (
+                      <span className="ml-auto tabular-nums">
+                        {evidenceCount > 0 && `${evidenceCount} 条证据`}
+                        {evidenceCount > 0 && claim?.created_at && " · "}
+                        {claim?.created_at && dateLabel(claim.created_at)}
+                      </span>
+                    )}
+                  </div>
+                </article>
+              )
+            })}
           </div>
         </section>
       ))}
-      {onEdit && (
-        <Button variant="outline" onClick={() => setPicking(true)}>
-          添加能力
-        </Button>
-      )}
       {picking && onEdit && (
         <CapabilityPicker
           capabilities={available.map((item) => item.capability)}
@@ -136,179 +227,11 @@ export function CapabilityList({
             const item = available.find((item) => item.capability.key === key)!
             setAdded((old) => new Set([...old, item.capability.id]))
             setPicking(false)
+            setFilter("all")
             onEdit(item)
           }}
         />
       )}
-      {viewing && (
-        <CapabilityDetailDialog
-          item={viewing}
-          directEdit={directEdit}
-          onEdit={onEdit}
-          onClose={() => setViewing(null)}
-        />
-      )}
     </div>
-  )
-}
-
-function ClaimCard({
-  item: {
-    capability,
-    status,
-    claim,
-    evidence_stale,
-    level_adjusted,
-    original_level_description,
-  },
-  onEvidence,
-  pending,
-  onEdit,
-  otherDepartment,
-  compact = false,
-  directEdit = false,
-  onView,
-}: {
-  onView: () => void
-  directEdit?: boolean
-  item: ProfileItem
-  compact?: boolean
-  onEvidence: (id: string) => void
-  pending?: boolean
-  onEdit?: (item: ProfileItem, retract?: boolean) => void
-  otherDepartment?: boolean
-}) {
-  const actor = claim?.generated_by.actor_type
-  const sources: Record<string, string> = {
-    seed: "示例数据",
-    agent: "助手",
-    human: "人工",
-    user: "人工",
-  }
-  const source = actor ? (sources[actor] ?? actor) : "—"
-  return (
-    <article
-      aria-label={capability.name}
-      className="rounded-xl border bg-card p-5 shadow-sm"
-    >
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h3 className="font-semibold">
-            <button
-              type="button"
-              className="text-left underline-offset-4 hover:underline focus-visible:outline-ring"
-              onClick={onView}
-            >
-              {capability.name}
-            </button>
-          </h3>
-          {pending && (
-            <p className="mt-1 text-xs text-muted-foreground">有待处理更新</p>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {otherDepartment && <Badge variant="outline">其他能力</Badge>}
-          {!compact && evidence_stale && (
-            <Badge variant="outline">证据较旧</Badge>
-          )}
-          {status === "confirmed" && claim && !claim.level ? (
-            <Badge variant="outline">未定级</Badge>
-          ) : (
-            <StatusBadge kind="assessment_status" value={status} />
-          )}
-        </div>
-      </div>
-      {compact ? (
-        <>
-          <p className="text-sm">
-            等级：
-            {claim?.level
-              ? levelLabel(capability.level_rubric, claim.level)
-              : claim
-                ? "未定级"
-                : "未定级"}
-          </p>
-          {claim && !claim.level && (
-            <p className="mt-2 break-words text-sm">
-              {Array.from(claim.statement).slice(0, 40).join("")}
-              {Array.from(claim.statement).length > 40 && "…"}
-            </p>
-          )}
-        </>
-      ) : claim ? (
-        <>
-          <p className="leading-relaxed">{claim.statement}</p>
-          <dl className="my-4 flex flex-wrap gap-x-5 gap-y-3 text-sm">
-            {claim.level && (
-              <div>
-                <dt className="text-muted-foreground">等级</dt>
-                <dd>
-                  {level_adjusted
-                    ? original_level_description
-                    : levelLabel(capability.level_rubric, claim.level)}
-                  {level_adjusted && (
-                    <span className="ml-2 text-muted-foreground">
-                      等级已调整
-                    </span>
-                  )}
-                </dd>
-              </div>
-            )}
-            <div>
-              <dt className="mb-1 text-muted-foreground">把握度</dt>
-              <dd>
-                <Tooltip>
-                  <TooltipTrigger className="cursor-help rounded focus-visible:outline-ring">
-                    <StatusBadge kind="confidence" value={claim.confidence} />
-                  </TooltipTrigger>
-                  <TooltipContent>参考把握度，并非精确概率</TooltipContent>
-                </Tooltip>
-              </dd>
-            </div>
-          </dl>
-          <p className="rounded-md bg-muted/30 p-3 text-sm leading-relaxed text-muted-foreground">
-            {claim.explanation ?? "暂无说明"}
-          </p>
-          <p className="my-3 text-xs text-muted-foreground">
-            来源：{source}
-            {claim.created_at && ` · ${dateLabel(claim.created_at)}`}
-          </p>
-          <details className="border-t pt-3">
-            <summary className="cursor-pointer text-sm font-medium">
-              相关证据（{claim.evidence?.length ?? 0}）
-            </summary>
-            <EvidenceRows
-              items={(claim.evidence ?? []).map((evidence) => ({
-                ...evidence,
-                id: evidence.evidence_id,
-              }))}
-              onSelect={onEvidence}
-            />
-          </details>
-        </>
-      ) : (
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          暂无记录（不代表不具备该能力）
-        </p>
-      )}
-      {onEdit && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            onClick={() => onEdit({ capability, status, claim })}
-          >
-            {directEdit ? "直接修改" : claim ? "修改" : "填写"}
-          </Button>
-          {claim && !directEdit && (
-            <Button
-              variant="ghost"
-              onClick={() => onEdit({ capability, status, claim }, true)}
-            >
-              移除此项
-            </Button>
-          )}
-        </div>
-      )}
-    </article>
   )
 }

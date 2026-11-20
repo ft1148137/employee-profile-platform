@@ -35,6 +35,14 @@ test("admin manages account, roles and history from the unified employee detail"
   await expect(
     page.getByRole("heading", { name: employee.display_name, exact: true }),
   ).toBeVisible()
+  const identity = page.locator("header").filter({
+    has: page.getByRole("heading", {
+      name: employee.display_name,
+      exact: true,
+    }),
+  })
+  await expect(identity).toContainText("直属上级")
+  await expect(identity.getByRole("button", { name: "谁能看到" })).toBeVisible()
   const detailTabs = page.getByRole("tablist", {
     name: "员工详情",
     exact: true,

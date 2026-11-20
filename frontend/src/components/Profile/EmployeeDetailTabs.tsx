@@ -24,6 +24,7 @@ import { ResetPasswordDialog } from "@/components/Admin/ResetPasswordDialog"
 import { RoleGrantDialog } from "@/components/Admin/RoleGrantDialog"
 import { IdentityTable } from "@/components/Identities/IdentityTable"
 import { EmployeeSummaryContent } from "@/components/Profile/EmployeeSummary"
+import { ProfileVisibility } from "@/components/Profile/ProfileVisibility"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import {
   employeeFieldLabels,
@@ -102,45 +103,52 @@ export function EmployeeDetailTabs({
         ? "evidence"
         : "capabilities"
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-6">
-        <div className="flex items-center gap-4">
-          {isAdmin && (
-            <Avatar className="size-16 text-2xl">
-              <AvatarFallback>
-                {summary.display_name.slice(0, 1)}
-              </AvatarFallback>
-            </Avatar>
-          )}
-          <div>
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h1 className="text-3xl font-semibold">{summary.display_name}</h1>
-              <p className="text-sm text-muted-foreground">
-                工号 {summary.employee_code ?? "未填写"}
-              </p>
-            </div>
-            <p className="mt-2 text-muted-foreground">
+    <div className="space-y-3">
+      <header className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-surface-border bg-surface px-3 py-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Avatar className="size-9 shrink-0">
+            <AvatarFallback className="bg-primary/10 font-semibold text-primary">
+              {summary.display_name.slice(0, 1)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+            <h1 className="font-semibold [overflow-wrap:anywhere]">
+              {summary.display_name}
+            </h1>
+            <p className="font-mono text-xs text-muted-foreground [overflow-wrap:anywhere]">
+              工号 {summary.employee_code ?? "未填写"}
+            </p>
+            <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
               {summary.title ?? "未填写职位"} ·{" "}
               {summary.department?.name ?? "未分配部门"}
             </p>
             {isAdmin && (
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
                 直属上级：{summary.manager?.display_name ?? "暂无上级"}
               </p>
             )}
-          </div>
-          {isAdmin && (
-            <Badge variant="secondary">
+            <Badge
+              variant="secondary"
+              className={
+                summary.employment_status === "active"
+                  ? "rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200"
+                  : "rounded-full"
+              }
+            >
               {summary.employment_status === "inactive"
                 ? "已离职 · 归档只读"
                 : employmentLabels[summary.employment_status]}
             </Badge>
-          )}
+            <ProfileVisibility tooltip />
+          </div>
         </div>
         {isAdmin &&
           employee?.employment_status === "active" &&
           departments.isSuccess && (
-            <section aria-label="人员操作" className="flex gap-3">
+            <section
+              aria-label="人员操作"
+              className="ml-auto flex flex-wrap gap-2 [&_[data-slot=dialog-trigger]]:h-8"
+            >
               <PersonnelDialog
                 orgId={orgId}
                 employee={employee}
@@ -157,7 +165,7 @@ export function EmployeeDetailTabs({
         previousManager.data && (
           <section
             aria-label="重新设置直属上级"
-            className="space-y-3 rounded-xl border p-5"
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm"
           >
             <p>直属上级未设置</p>
             {!previousManager.data.is_active ? (
@@ -205,10 +213,14 @@ export function EmployeeDetailTabs({
           </div>
         </details>
       )}
-      <Tabs value={selected} onValueChange={onTabChange} className="gap-6">
+      <Tabs
+        value={selected}
+        onValueChange={onTabChange}
+        className="min-w-0 gap-3"
+      >
         <TabsList
           aria-label="员工详情"
-          className="h-auto flex-wrap justify-start"
+          className="h-auto max-w-full flex-wrap justify-start"
         >
           <TabsTrigger value="capabilities">能力画像</TabsTrigger>
           {isAdmin && <TabsTrigger value="evidence">证据与历史</TabsTrigger>}
@@ -216,11 +228,13 @@ export function EmployeeDetailTabs({
             {isAdmin ? "档案与账号" : "档案"}
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="capabilities" className="space-y-6">
-          {isAdmin && (
-            <EmployeeSummaryContent employee={summary} showHeading={false} />
-          )}
+        <TabsContent value="capabilities" className="space-y-3">
           {children}
+          {isAdmin && (
+            <div className="[&_dl]:gap-3 [&_dl]:rounded-lg [&_dl]:border-surface-border [&_dl]:bg-surface [&_dl]:p-3 [&_dt]:mb-1 [&_dt]:text-xs [&_dd]:text-sm">
+              <EmployeeSummaryContent employee={summary} showHeading={false} />
+            </div>
+          )}
         </TabsContent>
         {isAdmin && (
           <TabsContent value="evidence" className="space-y-6">
