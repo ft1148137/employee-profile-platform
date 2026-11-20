@@ -72,7 +72,11 @@ test("management sections and audit open from the space navigation", async ({
         ).toBeVisible()
       else
         await expect(
-          main.getByRole("heading", { name, exact: true }),
+          main.getByRole("heading", {
+            name,
+            exact: true,
+            level: tab === "mcp" ? 1 : undefined,
+          }),
         ).toBeVisible()
     }
   }
