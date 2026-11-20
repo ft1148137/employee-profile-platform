@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query"
+import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { isAxiosError } from "axios"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   ChangeRequestsService,
   type ProfileItem,
@@ -54,9 +54,14 @@ function EmployeeDetails() {
     managedDepartmentIds,
   } = useOrg()
   const isAdmin = roles.includes("org_admin")
+  const orgId = org?.id
   const { employeeId } = Route.useParams()
   const { tab: detailTab } = Route.useSearch()
   const navigate = Route.useNavigate()
+  const queryClient = useQueryClient()
+  const evidenceLoading =
+    useIsFetching({ queryKey: ["evidence", orgId, employeeId] }) > 0
+  const visitedHistory = useRef(false)
   const [requestId, setRequestId] = useState<string | null>(null)
   const [evidenceId, setEvidenceId] = useState<string | null>(null)
   const [editing, setEditing] = useState<EditorSelection | null>(null)
@@ -86,15 +91,42 @@ function EmployeeDetails() {
     retry: false,
   })
   useEffect(() => {
-    if (!isAdmin || detailTab !== "versions" || !query.isSuccess) return
-    const history = document.getElementById("version-history")
-    history?.focus({ preventScroll: true })
-    history?.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "instant"
-        : "smooth",
-    })
-  }, [detailTab, isAdmin, query.isSuccess])
+    if (detailTab !== "versions") {
+      visitedHistory.current = false
+      return
+    }
+    if (
+      !isAdmin ||
+      !query.isSuccess ||
+      evidenceLoading ||
+      visitedHistory.current
+    )
+      return
+
+    // Wait for the tabs and drawer to commit before checking the evidence layout.
+    const focusTimer = window.setTimeout(() => {
+      if (queryClient.isFetching({ queryKey: ["evidence", orgId, employeeId] }))
+        return
+      const history = document.getElementById("version-history")
+      if (!history) return
+      visitedHistory.current = true
+      history.focus({ preventScroll: true })
+      history.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+      })
+    }, 0)
+    return () => window.clearTimeout(focusTimer)
+  }, [
+    detailTab,
+    employeeId,
+    evidenceLoading,
+    isAdmin,
+    orgId,
+    query.isSuccess,
+    queryClient,
+  ])
 
   if (!org) return <OrgState />
   if (query.isPending) return <ProfileLoading />
