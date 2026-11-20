@@ -94,7 +94,7 @@ test("audit records show account and revoked role labels with filters", async ({
   const payload = drawer
     .getByRole("region", { name: "结构化载荷" })
     .locator("pre")
-  expect(JSON.parse(await payload.textContent())).toMatchObject({
+  expect(JSON.parse((await payload.textContent()) ?? "")).toMatchObject({
     id: grantId,
     user_id: userId,
     role: "dept_manager",

@@ -164,7 +164,8 @@ test("inbox filters, marks the page as read and keeps the answered question open
     }),
   )
   await page.route("**/me/inbox/*/read", (route) => {
-    read.add(new URL(route.request().url()).pathname.split("/").at(-2)!)
+    const segments = new URL(route.request().url()).pathname.split("/")
+    read.add(segments[segments.length - 2])
     return route.fulfill({ json: {} })
   })
   await page.route("**/me/questions/task", (route) =>

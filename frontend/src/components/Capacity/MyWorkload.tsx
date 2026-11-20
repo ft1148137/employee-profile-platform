@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Plus } from "lucide-react"
+import { SlidersHorizontal } from "lucide-react"
 import { type ReactNode, useState } from "react"
 import { CapacityService, type MyWorkload as MyWorkloadData } from "@/client"
 import { TopbarActions } from "@/components/Common/TopbarSlot"
@@ -82,9 +82,13 @@ export function MyWorkload({
           open={adjusting}
           onOpenChange={setAdjusting}
           trigger={
-            <Button size="sm" disabled={submit.isPending}>
-              <Plus aria-hidden="true" className="hidden sm:block" />
-              申请调整
+            <Button
+              size="sm"
+              className="max-sm:size-8 max-sm:p-0"
+              disabled={submit.isPending}
+            >
+              <SlidersHorizontal aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">申请调整</span>
             </Button>
           }
         >
