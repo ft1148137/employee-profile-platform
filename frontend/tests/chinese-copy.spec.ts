@@ -50,6 +50,7 @@ for (const account of ["admin", "manager.platform", "employee.platform"]) {
         .getByRole("row")
         .filter({ hasText: "张伟" })
         .filter({ hasText: "平台研发部" })
+        .getByRole("link", { name: "张伟", exact: true })
         .click()
     }
     await expect(
@@ -121,6 +122,7 @@ for (const [account, own] of [
         .getByRole("row")
         .filter({ hasText: "张伟" })
         .filter({ hasText: "平台研发部" })
+        .getByRole("link", { name: "张伟", exact: true })
         .click()
     await expect(
       page.getByRole("heading", {

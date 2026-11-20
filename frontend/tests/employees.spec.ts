@@ -64,12 +64,26 @@ test("demo admin sees all employees, filters, searches and paginates", async ({
   ).toHaveCount(0)
   await page.getByRole("textbox", { name: "搜索姓名或工号" }).fill("林澈")
   await expect(page.locator("tbody tr")).toHaveCount(1)
-  await page.getByRole("row").filter({ hasText: "林澈" }).click()
-  await expect(page.getByRole("heading", { name: "林澈" })).toBeVisible()
+  await page
+    .getByRole("row")
+    .getByRole("cell", { name: "E01", exact: true })
+    .click()
+  const preview = page.getByRole("dialog", { name: "员工快速预览" })
+  await expect(preview).toContainText("林澈")
+  await expect(page).toHaveURL(/\/employees\/?$/)
+  await preview.getByRole("link", { name: "进入完整画像" }).click()
+  await expect(
+    page.getByRole("heading", { name: "林澈", exact: true }),
+  ).toBeVisible()
 })
 
 test("platform manager sees only their department", async ({ page }) => {
   await logInUser(page, "manager.platform@demo.example.com", password)
+  const profileRequests: string[] = []
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname
+    if (path.endsWith("/profile")) profileRequests.push(path)
+  })
   await page.getByRole("link", { name: "组织", exact: true }).click()
   await page.getByRole("link", { name: "我的团队", exact: true }).click()
   await expect(page.getByText("共 3 名员工")).toBeVisible()
@@ -87,12 +101,77 @@ test("platform manager sees only their department", async ({ page }) => {
     path: "test-results/employees-manager.png",
     fullPage: true,
   })
-  await page.getByRole("combobox", { name: "部门筛选" }).click()
+  const departmentFilter = page.getByRole("combobox", { name: "部门筛选" })
+  await departmentFilter.click()
   await expect(page.getByRole("option")).toHaveCount(2)
   await expect(page.getByRole("option", { name: "算法与模型部" })).toHaveCount(
     0,
   )
+  await page.keyboard.press("Escape")
+  await expect(departmentFilter).toBeFocused()
+  const row = page
+    .getByRole("row")
+    .filter({ has: page.getByRole("cell", { name: "E02", exact: true }) })
+  const detailLink = row.getByRole("link", { name: "张伟", exact: true })
+  const profilePath = `${await detailLink.getAttribute("href")}/profile`
+  const subjectRequests = () =>
+    profileRequests.filter((path) => path.endsWith(profilePath))
+  expect(subjectRequests()).toHaveLength(0)
+  await row.focus()
+  await row.press("Enter")
+  const preview = page.getByRole("dialog", { name: "员工快速预览" })
+  await expect(preview).toContainText("张伟")
+  await expect(preview).toContainText("后端 API 开发")
+  expect(subjectRequests()).toHaveLength(1)
+  await page.screenshot({
+    path: test.info().outputPath("employee-quick-peek.png"),
+    animations: "disabled",
+  })
+  await page.keyboard.press("Escape")
+  await expect(preview).toBeHidden()
+  await expect(row).toBeFocused()
+  await detailLink.click()
+  await expect(page).toHaveURL(/\/employees\/[^/]+$/)
 })
+
+test("quick preview handles a denied profile without showing capabilities", async ({
+  page,
+}) => {
+  await logInUser(page, "manager.platform@demo.example.com", password)
+  await page.route("**/employees/*/profile", (route) =>
+    route.fulfill({ status: 403, json: { detail: "无权查看" } }),
+  )
+  await page.goto("/employees")
+  await page.getByRole("cell", { name: "E02", exact: true }).click()
+  const preview = page.getByRole("dialog", { name: "员工快速预览" })
+  await expect(preview).toContainText("张伟")
+  await expect(preview.getByRole("alert")).toContainText("没有权限查看画像")
+  await expect(preview.getByText("后端 API 开发")).toHaveCount(0)
+  await expect(preview.getByRole("link", { name: "进入完整画像" })).toHaveCount(
+    0,
+  )
+})
+
+for (const [email, cardsLabel] of [
+  ["admin@demo.example.com", "员工卡片"],
+  ["manager.platform@demo.example.com", "团队员工卡片"],
+]) {
+  test(`mobile employee cards fit the viewport for ${email}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await logInUser(page, email, password)
+    await page.goto("/employees")
+    const cards = page.getByRole("region", { name: cardsLabel })
+    const link = cards.getByRole("link", { name: "林澈", exact: true })
+    await expect(link).toBeVisible()
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(375)
+    await link.click()
+    await expect(page).toHaveURL(/\/employees\/[^/]+$/)
+  })
+}
 
 test("employee lands on own profile and cannot read a colleague", async ({
   page,

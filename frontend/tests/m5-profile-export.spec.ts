@@ -48,16 +48,20 @@ test("manager downloads every visible published judgment despite page filters", 
     expected.map((r) => [r.employee_code, r.capability_key]),
   )
   await page.goto("/employees")
-  await expect(
-    page.getByText("导出可见范围内的全部已发布画像，不受筛选条件影响。"),
-  ).toBeVisible()
+  const exportButton = page
+    .locator("header")
+    .getByRole("button", { name: "导出画像", exact: true })
   await page
     .getByRole("textbox", { name: "搜索姓名" })
     .fill("没有匹配的合成员工")
   await expect(page.getByText("共 0 名员工")).toBeVisible()
+  await exportButton.click()
+  await expect(
+    page.getByText("导出可见范围内的全部已发布画像，不受筛选条件影响。"),
+  ).toBeVisible()
   const downloadPromise = page.waitForEvent("download")
   await page
-    .getByRole("button", { name: "导出画像（CSV）", exact: true })
+    .getByRole("menuitem", { name: "导出画像（CSV）", exact: true })
     .click()
   const download = await downloadPromise
   expect(download.suggestedFilename()).toBe("已发布画像.csv")
@@ -80,12 +84,12 @@ test("manager downloads every visible published judgment despite page filters", 
   expect(lines.slice(1).map((line) => line.split(",")[0])).toEqual(
     expected.map((row) => row.employee_code ?? ""),
   )
+  await exportButton.click()
   const jsonDownload = page.waitForEvent("download")
-  const jsonButton = page.getByRole("button", {
+  const jsonButton = page.getByRole("menuitem", {
     name: "导出画像（JSON）",
     exact: true,
   })
-  await expect(jsonButton).toHaveAttribute("title", "JSON 格式")
   await jsonButton.click()
   const jsonFile = await jsonDownload
   expect(jsonFile.suggestedFilename()).toBe("已发布画像.json")

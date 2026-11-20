@@ -1,5 +1,12 @@
 import { useQuery } from "@tanstack/react-query"
-import { type CoveragePublic, OrgsService } from "@/client"
+import { ChevronDown } from "lucide-react"
+import { useState } from "react"
+import {
+  type CoverageSummary,
+  OrgsService,
+  type ProgressReviewStatus,
+} from "@/client"
+import { HelpTip, SectionCard } from "@/components/Common/WorkbenchPrimitives"
 import { Button } from "@/components/ui/button"
 
 const statuses = [
@@ -10,129 +17,193 @@ const statuses = [
   ["none", "未知", "bg-muted-foreground"],
 ] as const
 
-function Counts({ summary }: { summary: Pick<CoveragePublic, "statuses"> }) {
-  return statuses.map(([status, title]) => {
-    const value = summary.statuses.find((item) => item.status === status)
-    return (
-      <div key={status} className="space-y-1">
-        <dt className="text-xs text-muted-foreground">{title}</dt>
-        <dd className="tabular-nums">
-          <span className="text-lg font-semibold">{value?.count ?? 0}</span>
-          <span className="ml-2 text-xs text-muted-foreground">
-            {value?.percentage ?? 0}%
-          </span>
-        </dd>
-      </div>
-    )
-  })
+function counts(summary: CoverageSummary) {
+  return statuses.map(([status, title, color]) => ({
+    status,
+    title,
+    color,
+    value: summary.statuses.find((item) => item.status === status),
+  }))
 }
 
 export function ProfileCoverage({
   orgId,
   department,
   onDepartmentChange,
+  highlightedStatus,
+  onStatusChange,
 }: {
   orgId: string
   department: string
-  onDepartmentChange: (id: string) => void
+  onDepartmentChange?: (id: string) => void
+  highlightedStatus: ProgressReviewStatus | null
+  onStatusChange?: (status: ProgressReviewStatus | null) => void
 }) {
+  const [expanded, setExpanded] = useState(false)
   const coverage = useQuery({
     queryKey: ["coverage", orgId],
     queryFn: async () =>
       (await OrgsService.getCoverage({ path: { org_id: orgId } })).data,
   })
+  const summary = coverage.data
+  const metrics = summary ? counts(summary) : []
   return (
-    <section aria-label="画像覆盖率" className="rounded-xl border">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b p-4">
-        <h2 className="font-semibold">画像覆盖率</h2>
-        <p className="text-xs text-muted-foreground">
-          统计在职员工（未评估不代表不具备该能力）
-        </p>
-      </div>
-      {coverage.isPending ? (
-        <p role="status" className="p-4">
-          正在加载覆盖率…
-        </p>
-      ) : coverage.isError ? (
-        <div role="alert" className="p-4">
-          无法加载画像覆盖率。
-          <Button variant="outline" onClick={() => coverage.refetch()}>
-            重试
-          </Button>
+    <SectionCard aria-label="画像覆盖率" className="space-y-2 px-3 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div className="flex items-center gap-1.5">
+          <h2 className="whitespace-nowrap font-semibold text-sm">
+            画像覆盖率
+          </h2>
+          <HelpTip
+            label="画像覆盖率说明"
+            content="未评估不代表不具备该能力。点击状态可高亮当前页中符合该状态的在职员工。"
+          />
         </div>
-      ) : (
-        <div className="space-y-4 p-4">
-          <p className="text-sm">范围内在职员工 {coverage.data.total} 人</p>
-          <dl className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-            <Counts summary={coverage.data} />
-          </dl>
+        {coverage.isPending ? (
+          <p role="status" className="text-sm">
+            正在加载覆盖率…
+          </p>
+        ) : coverage.isError ? (
+          <div role="alert" className="flex items-center gap-2 text-sm">
+            无法加载画像覆盖率。
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => coverage.refetch()}
+            >
+              重试
+            </Button>
+          </div>
+        ) : (
+          summary && (
+            <>
+              <p className="whitespace-nowrap text-muted-foreground text-xs">
+                范围内在职员工{" "}
+                <strong className="text-foreground text-sm tabular-nums">
+                  {summary.total}
+                </strong>{" "}
+                人
+              </p>
+              {metrics.map(({ status, title, color, value }) => (
+                <Button
+                  key={status}
+                  variant={highlightedStatus === status ? "secondary" : "ghost"}
+                  size="sm"
+                  className="h-7 px-1.5 text-xs tabular-nums"
+                  disabled={!onStatusChange}
+                  aria-pressed={highlightedStatus === status}
+                  onClick={() =>
+                    onStatusChange?.(
+                      highlightedStatus === status ? null : status,
+                    )
+                  }
+                >
+                  <span className={`size-1.5 shrink-0 rounded-full ${color}`} />
+                  <span>{title}</span>
+                  <strong>{value?.count ?? 0}</strong>
+                  <span className="text-muted-foreground">
+                    {value?.percentage ?? 0}%
+                  </span>
+                </Button>
+              ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-expanded={expanded}
+                className="ml-auto h-7 text-xs"
+                onClick={() => setExpanded(!expanded)}
+              >
+                按部门分布
+                <ChevronDown
+                  aria-hidden="true"
+                  className={expanded ? "rotate-180" : ""}
+                />
+              </Button>
+            </>
+          )
+        )}
+      </div>
+      {summary && (
+        <>
           <div
             aria-hidden="true"
-            className="flex h-2 overflow-hidden rounded-full bg-muted"
+            className="flex h-1.5 overflow-hidden rounded-full bg-muted"
           >
-            {statuses.map(([status, , color]) => (
+            {metrics.map(({ status, color, value }) => (
               <span
                 key={status}
                 className={color}
-                style={{
-                  width: `${coverage.data.statuses.find((s) => s.status === status)?.percentage ?? 0}%`,
-                }}
+                style={{ width: `${value?.percentage ?? 0}%` }}
               />
             ))}
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2 border-t pt-3 text-sm">
-            <p>
-              初始画像超期未确认：{coverage.data.overdue_initial_requests} 人
-            </p>
-            <p>
-              等待审批超过 7 天：{coverage.data.review_backlog_requests} 个请求
-            </p>
-            {coverage.data.jira_sync_failure && (
-              <p className="text-destructive">
-                {coverage.data.jira_sync_failure.connection_name}{" "}
-                最近一次同步失败：
-                {new Date(
-                  coverage.data.jira_sync_failure.failed_at,
-                ).toLocaleString("zh-CN")}
-              </p>
-            )}
-          </div>
-          <details>
-            <summary className="cursor-pointer text-sm font-medium">
-              按部门分布
-            </summary>
-            <p className="mt-2 text-xs text-muted-foreground">
-              未分配部门的员工计入总人数。
-            </p>
-            <Button
-              variant={department === "all" ? "secondary" : "ghost"}
-              className="my-2"
-              onClick={() => onDepartmentChange("all")}
-            >
-              全部部门
-            </Button>
-            <div className="divide-y">
-              {coverage.data.departments.map((item) => (
-                <div key={item.department_id} className="space-y-2 py-3">
-                  <Button
-                    variant={
-                      department === item.department_id ? "secondary" : "ghost"
-                    }
-                    aria-pressed={department === item.department_id}
-                    onClick={() => onDepartmentChange(item.department_id)}
-                  >
-                    {item.department_name} · {item.total} 人
-                  </Button>
-                  <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                    <Counts summary={item} />
-                  </dl>
+          {(expanded ||
+            summary.overdue_initial_requests > 0 ||
+            summary.review_backlog_requests > 0 ||
+            summary.jira_sync_failure) && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground text-xs">
+              <p>初始画像超期未确认：{summary.overdue_initial_requests} 人</p>
+              <p>等待审批超过 7 天：{summary.review_backlog_requests} 个请求</p>
+              {summary.jira_sync_failure && (
+                <p className="text-destructive">
+                  {summary.jira_sync_failure.connection_name} 最近一次同步失败：
+                  {new Date(summary.jira_sync_failure.failed_at).toLocaleString(
+                    "zh-CN",
+                  )}
+                </p>
+              )}
+            </div>
+          )}
+          {expanded && (
+            <div className="divide-y border-surface-border border-t">
+              <div className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <p className="text-muted-foreground text-xs">
+                  未分配部门的员工计入总人数。
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-pressed={department === "all"}
+                  disabled={!onDepartmentChange}
+                  onClick={() => onDepartmentChange?.("all")}
+                >
+                  全部部门
+                </Button>
+              </div>
+              {summary.departments.map((item) => (
+                <div key={item.department_id} className="space-y-1.5 py-2.5">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <Button
+                      variant={
+                        department === item.department_id
+                          ? "secondary"
+                          : "ghost"
+                      }
+                      size="sm"
+                      aria-pressed={department === item.department_id}
+                      disabled={!onDepartmentChange}
+                      onClick={() => onDepartmentChange?.(item.department_id)}
+                    >
+                      {item.department_name} · {item.total} 人
+                    </Button>
+                    <dl className="flex flex-wrap gap-x-3 gap-y-1 text-xs tabular-nums">
+                      {counts(item).map(({ status, title, value }) => (
+                        <div key={status} className="flex gap-1">
+                          <dt>{title}</dt>
+                          <dd className="text-muted-foreground">
+                            {value?.count ?? 0} · {value?.percentage ?? 0}%
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
                   {item.with_descendants && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="px-3 text-muted-foreground text-xs">
                       含下级部门：{item.with_descendants.total} 人
-                      {statuses
+                      {counts(item.with_descendants)
                         .map(
-                          ([status, title]) =>
-                            ` · ${title} ${item.with_descendants?.statuses.find((s) => s.status === status)?.count ?? 0}`,
+                          ({ title, value }) =>
+                            ` · ${title} ${value?.count ?? 0}`,
                         )
                         .join("")}
                     </p>
@@ -140,9 +211,9 @@ export function ProfileCoverage({
                 </div>
               ))}
             </div>
-          </details>
-        </div>
+          )}
+        </>
       )}
-    </section>
+    </SectionCard>
   )
 }
