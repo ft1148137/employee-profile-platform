@@ -208,7 +208,9 @@ def check_demand(
     ]
 
 
-def check_demand_response(db: Session, p: Principal, value: BaseModel) -> str:
+def check_demand_response(
+    db: Session, p: Principal, value: BaseModel
+) -> tuple[str, s.CardLink | None]:
     body = RespondDemandInput.model_validate(value)
     row = demand.demand_row(p, db, body.demand_id)
     if p.user_id is None or not (
@@ -236,17 +238,20 @@ def check_demand_response(db: Session, p: Principal, value: BaseModel) -> str:
             raise CapacityConflict()
     pending = detail.proposal
     proposal_text = ""
+    detail_link = None
     if pending is not None and pending.status == "pending":
         if body.action == "follow_up":
             demand.require_rejection_reason(body.reason_code, body.text)
         if body.action == "follow_up" and (not body.text or len(body.text) > 500):
             raise proposal.ProposalConflict("拒绝方案时必须填写不超过 500 字的理由")
+        detail_link = s.CardLink(
+            label="查看需求详情", href=f"/capacity?tab=outgoing&demand={row.id}"
+        )
         proposal_text = (
             f"\n方案人数：{pending.headcount}\n投入："
             + "、".join(f"{percent}%" for percent in pending.allocation_percents)
             + f"\n开始日期：{pending.start_date}\n结束日期：{pending.end_date}"
             + "\n条件：没有读取对方答复正文里的条件，请到需求详情查看"
-            + f"\n/capacity?tab=outgoing&demand={row.id}"
             + f"\n预占到期时间：{pending.hold_expires_at.isoformat()}"
             + (
                 "\n确认后记录需求方接受，原部门经理和员工本人也同意后才生成分配"
@@ -268,12 +273,13 @@ def check_demand_response(db: Session, p: Principal, value: BaseModel) -> str:
         if rejecting and body.reason_code is not None
         else ""
     )
-    return (
+    content = (
         f"需求：{detail.capability_name}\n原说明：{detail.description}\n"
         f"操作：{'拒绝方案' if rejecting else RESPONSES[body.action]}\n{reason}"
         f"说明：{body.text or '无'}\n"
         f"修订：{body.revision}{proposal_text}"
     )
+    return content, detail_link
 
 
 def check_demand_reply(db: Session, p: Principal, value: BaseModel) -> str:
@@ -360,7 +366,6 @@ def check_extension_request(db: Session, p: Principal, value: BaseModel) -> str:
 
 
 CHECKS: dict[CardKind, Callable[[Session, Principal, BaseModel], str]] = {
-    "demand_response": check_demand_response,
     "demand_reply": check_demand_reply,
     "workload_request": check_workload_request,
     "extension_request": check_extension_request,
@@ -395,6 +400,7 @@ def call(
         kind, write_name, title = PREPARES[name]
         fields: list[s.CardField] = []
         questions: list[str] = []
+        detail_link = None
         if name == "prepare_demand":
             preview = PrepareDemandInput.model_validate(arguments)
             body = DemandInput.model_validate(
@@ -404,7 +410,10 @@ def call(
             questions = preview.questions
         else:
             body = WRITES[write_name].input_model.model_validate(arguments)
-            content = CHECKS[kind](db, p, body)
+            if kind == "demand_response":
+                content, detail_link = check_demand_response(db, p, body)
+            else:
+                content = CHECKS[kind](db, p, body)
         card = s.CapacityCard(
             kind=kind,
             title=title,
@@ -412,6 +421,7 @@ def call(
             fields=fields,
             questions=questions,
             arguments=body.model_dump(mode="json"),
+            detail_link=detail_link,
         )
         card.actions = [
             s.CapacityAction(action=a, card_id=card.card_id)

@@ -1357,6 +1357,7 @@ export type CapacityCard = {
    */
   actions?: Array<CapacityAction>
   plan?: PlanCard | null
+  detail_link?: CardLink | null
 }
 
 export type CapacityReference =

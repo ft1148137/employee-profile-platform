@@ -209,6 +209,11 @@ class PlanCard(BaseModel):
     )
 
 
+class CardLink(BaseModel):
+    label: str
+    href: str
+
+
 class CapacityCard(BaseModel):
     type: Literal["capacity_card"] = "capacity_card"
     card_id: UUID = Field(default_factory=uuid4)
@@ -228,11 +233,9 @@ class CapacityCard(BaseModel):
     result: str | None = None
     actions: list[CapacityAction] = Field(default_factory=list)
     plan: PlanCard | None = Field(default=None, exclude_if=lambda value: value is None)
-
-
-class CardLink(BaseModel):
-    label: str
-    href: str
+    detail_link: CardLink | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 class TextMessage(BaseModel):

@@ -6,7 +6,11 @@ import {
   type Page,
   test,
 } from "@playwright/test"
-import type { EmployeeAccount } from "../src/client"
+import type {
+  CapacityCard,
+  EmployeeAccount,
+  SessionMessage,
+} from "../src/client"
 
 test.use({ storageState: { cookies: [], origins: [] }, actionTimeout: 15000 })
 
@@ -311,6 +315,56 @@ async function acceptInAssistant({
     )
   }
 }
+
+test("需求确认卡用结构化链接导航并过滤站外地址", async ({ page, request }) => {
+  const { a, demand, open } = await setup(page, request)
+  const session = crypto.randomUUID()
+  const href = `/capacity?tab=outgoing&demand=${demand.id}`
+  const card = {
+    type: "capacity_card",
+    kind: "demand_response",
+    title: "新版确认卡",
+    content: "请核对这次借调方案。",
+    arguments: { demand_id: demand.id },
+  } satisfies CapacityCard
+  const messages: SessionMessage[] = [
+    {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      created_at: new Date().toISOString(),
+      payload: {
+        messages: [
+          { ...card, detail_link: { label: "打开需求", href } },
+          ...["https://example.invalid/", "//example.invalid/"].map(
+            (externalHref, index) => ({
+              ...card,
+              title: `站外地址示例 ${index + 1}`,
+              detail_link: { label: "打开需求", href: externalHref },
+            }),
+          ),
+          { ...card, title: "历史确认卡", content: "历史卡片的正文" },
+        ],
+      },
+    },
+  ]
+  await page.route(`**/bot/sessions/${session}/messages?*`, (route) =>
+    route.fulfill({ json: messages }),
+  )
+  await open(a, `mode=personal&session=${session}`, "/assistant")
+  const latest = page.getByRole("region", { name: "新版确认卡" })
+  await expect(latest).toContainText(card.content)
+  for (const title of ["站外地址示例 1", "站外地址示例 2", "历史确认卡"]) {
+    const other = page.getByRole("region", { name: title })
+    await expect(other).toBeVisible()
+    await expect(other.getByRole("link")).toHaveCount(0)
+  }
+  await expect(page.getByText("历史卡片的正文")).toBeVisible()
+  await latest.getByRole("link", { name: "打开需求" }).click()
+  await expect(page).toHaveURL(href)
+  await expect(page.getByRole("region", { name: "需求详情" })).toContainText(
+    "合成借调需求",
+  )
+})
 
 for (const approve of [true, false]) {
   test(
