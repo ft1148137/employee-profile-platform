@@ -118,7 +118,10 @@ def test_model_and_statistics(
         item.after.level == "needs_support"
         and item.after.assessment_status == AssessmentStatus.TENTATIVE
     )
-    assert item.after.statement == "合成能力建议" and "2026-04-03。" in item.explanation
+    assert (
+        item.after.statement == "合成能力建议"
+        and "最近更新于 2026-04-03）。" in item.explanation
+    )
     assert "依据 1 项工作经历" in item.explanation and "2 个来源" in item.explanation
     assert (
         "Git" in item.explanation

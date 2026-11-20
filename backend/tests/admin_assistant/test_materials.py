@@ -236,10 +236,12 @@ def test_rejected_arguments_have_specific_errors_and_no_card(
     if problem in ("capability", "level"):
         field = "capability_key" if problem == "capability" else "level"
         item[field] = "missing"
-        expected = field
+        expected = (
+            "能力编码不在当前词典中" if problem == "capability" else "等级编码无效"
+        )
     elif problem in ("missing_level", "null_level"):
         item.pop("level") if problem == "missing_level" else item.update(level=None)
-        expected = "people.0.items.0.level"
+        expected = "第 1 人：第 1 项请选择等级"
     elif problem == "self":
         p = replace(p, employee_id=demo[1]["E03"].id)
         expected = "不能直接修改自己的画像"
@@ -274,10 +276,10 @@ def test_rejected_arguments_have_specific_errors_and_no_card(
         expected = "同一份改动只能整理一批画像"
     elif problem == "people_limit":
         args["people"] *= 51
-        expected = "people"
+        expected = "一次最多整理 50 人"
     elif problem == "item_limit":
         person["items"] *= 51
-        expected = "people.0.items"
+        expected = "第 1 人：每次最多 50 条改动"
     elif problem == "attachment":
         other = store.create_session(db, p).id
         attachment = attachments.upload(
@@ -293,6 +295,11 @@ def test_rejected_arguments_have_specific_errors_and_no_card(
         expected = "attachment_id"
     else:
         item[problem] = "x" * (201 if problem == "statement" else 4001)
+        expected = {
+            "statement": "能力说明最多 200 字",
+            "basis": "补充说明最多 4000 字",
+            "uncertainty": "待核实点最多 4000 字",
+        }[problem]
     before = snapshot(db, p.org_id)
     cards = []
     result = tools.call(

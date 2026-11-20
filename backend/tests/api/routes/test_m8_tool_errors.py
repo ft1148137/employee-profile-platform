@@ -170,7 +170,8 @@ def test_system_error_ends_turn_and_rolls_back(
     monkeypatch.setattr(core.pi_client, "run_turn", fake_turn)
     response = core.turn(db, b, session.id, "请协调")
     assert "模型服务暂时不可用" in response.messages[0].text
-    assert "收到的需求" in response.messages[0].text
+    assert "「协同 → 待审批」" in response.messages[0].text
+    assert "/reviews?type=demand" in response.messages[0].text
     assert "private" not in response.model_dump_json()
     assert len(response.messages) == 1
     assert (
