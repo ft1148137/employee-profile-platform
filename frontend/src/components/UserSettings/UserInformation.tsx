@@ -33,7 +33,7 @@ const UserInformation = () => {
             className="grid gap-1 px-4 py-2.5 text-sm sm:grid-cols-2 sm:items-center sm:gap-3"
           >
             <dt className="font-medium">
-              {label}
+              <span>{label}</span>
               <span className="block text-xs font-normal text-muted-foreground">
                 {description}
               </span>
