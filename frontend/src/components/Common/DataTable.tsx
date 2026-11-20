@@ -77,14 +77,17 @@ export function DataTable<TData extends RowData>({
   })
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="min-w-0 overflow-hidden rounded-lg border border-surface-border bg-surface [&>[data-slot=table-container]]:rounded-none [&>[data-slot=table-container]]:border-0">
       <Table>
-        <TableHeader>
+        <TableHeader className="bg-surface-muted">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id} className="hover:bg-transparent">
               {headerGroup.headers.map((header) => {
                 return (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    className="h-10 px-3 normal-case tracking-normal"
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -134,7 +137,7 @@ export function DataTable<TData extends RowData>({
                 }
               >
                 {row.getAllCells().map((cell) => (
-                  <TableCell key={cell.id}>
+                  <TableCell key={cell.id} className="h-[43px] px-3 py-0.5">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
@@ -154,9 +157,9 @@ export function DataTable<TData extends RowData>({
       </Table>
 
       {(table.getPageCount() > 1 || (pagination && (rowCount ?? 0) > 0)) && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border-t bg-muted/20">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-surface-border border-t bg-surface-muted px-3 py-1.5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="text-xs text-muted-foreground">
               第{" "}
               {table.state.pagination.pageIndex *
                 table.state.pagination.pageSize +
@@ -174,14 +177,18 @@ export function DataTable<TData extends RowData>({
               条
             </div>
             <div className="flex items-center gap-x-2">
-              <p className="text-sm text-muted-foreground">每页条数</p>
+              <p className="text-xs text-muted-foreground">每页条数</p>
               <Select
                 value={`${table.state.pagination.pageSize}`}
                 onValueChange={(value) => {
                   table.setPageSize(Number(value))
                 }}
               >
-                <SelectTrigger className="h-8 w-[70px]">
+                <SelectTrigger
+                  aria-label="每页条数"
+                  size="sm"
+                  className="w-16 bg-surface"
+                >
                   <SelectValue placeholder={table.state.pagination.pageSize} />
                 </SelectTrigger>
                 <SelectContent side="top">
@@ -195,8 +202,8 @@ export function DataTable<TData extends RowData>({
             </div>
           </div>
 
-          <div className="flex items-center gap-x-6">
-            <div className="flex items-center gap-x-1 text-sm text-muted-foreground">
+          <div className="flex items-center gap-x-3">
+            <div className="flex items-center gap-x-1 text-xs text-muted-foreground">
               <span>页码</span>
               <span className="font-medium text-foreground">
                 {table.state.pagination.pageIndex + 1}
@@ -210,8 +217,7 @@ export function DataTable<TData extends RowData>({
             <div className="flex items-center gap-x-1">
               <Button
                 variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
+                size="icon-sm"
                 onClick={() => table.setPageIndex(0)}
                 disabled={!table.getCanPreviousPage()}
               >
@@ -220,8 +226,7 @@ export function DataTable<TData extends RowData>({
               </Button>
               <Button
                 variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
+                size="icon-sm"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
               >
@@ -230,8 +235,7 @@ export function DataTable<TData extends RowData>({
               </Button>
               <Button
                 variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
+                size="icon-sm"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
               >
@@ -240,8 +244,7 @@ export function DataTable<TData extends RowData>({
               </Button>
               <Button
                 variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0"
+                size="icon-sm"
                 onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                 disabled={!table.getCanNextPage()}
               >

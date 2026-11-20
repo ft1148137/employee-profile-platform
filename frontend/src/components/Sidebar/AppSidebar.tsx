@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sidebar"
 import useAuth from "@/hooks/useAuth"
 import { useOrg } from "@/hooks/useOrg"
+import { cn } from "@/lib/utils"
 import { Main } from "./Main"
 import type { useWorkspaceNavigation } from "./SpacePanel"
 import { User } from "./User"
@@ -20,20 +21,36 @@ import { User } from "./User"
 export function AppSidebar({
   space,
   destinations,
-}: Pick<ReturnType<typeof useWorkspaceNavigation>, "space" | "destinations">) {
+  isAssistant,
+}: Pick<
+  ReturnType<typeof useWorkspaceNavigation>,
+  "space" | "destinations" | "isAssistant"
+>) {
   const { user } = useAuth()
   const { org, memberships, setOrg, isPending } = useOrg()
   const navigate = useNavigate()
   const location = useLocation()
   const orgMark = (
-    <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground">
+    <span
+      className={cn(
+        "flex items-center justify-center text-sm font-semibold",
+        isAssistant
+          ? "size-9 rounded-xl bg-primary text-primary-foreground"
+          : "size-[34px] rounded-lg bg-foreground text-background",
+      )}
+    >
       {org?.name.slice(0, 1) || "企"}
     </span>
   )
   return (
     <Sidebar
       collapsible="none"
-      className="sticky top-0 h-dvh w-16! shrink-0 border-r"
+      className={cn(
+        "sticky top-0 h-dvh shrink-0 border-r",
+        isAssistant
+          ? "w-16!"
+          : "w-[60px]! border-surface-border bg-workspace-rail [&_a]:h-[46px] [&_a]:gap-0.5 [&_a]:text-[11px] [&_a[aria-current=page]]:bg-surface [&_a[aria-current=page]]:text-blue-700 [&_a[aria-current=page]]:shadow-sm [&_a[aria-current=page]]:ring-1 [&_a[aria-current=page]]:ring-surface-border dark:[&_a[aria-current=page]]:text-blue-300 [&_a>svg]:size-[17px]",
+      )}
       data-testid="app-rail"
     >
       <SidebarHeader className="h-14 shrink-0 items-center justify-center p-0">
@@ -67,7 +84,7 @@ export function AppSidebar({
           </div>
         )}
       </SidebarHeader>
-      <SidebarContent className="gap-0 px-1">
+      <SidebarContent className={isAssistant ? "gap-0 px-1" : "gap-0 px-1.5"}>
         {!isPending && (
           <nav aria-label="主导航" className="space-y-1">
             <Main space="collab" active={space} {...destinations.collab} />
@@ -78,7 +95,9 @@ export function AppSidebar({
           </nav>
         )}
       </SidebarContent>
-      <SidebarFooter className="shrink-0 gap-1 px-1 py-2">
+      <SidebarFooter
+        className={cn("shrink-0 gap-1 py-2", isAssistant ? "px-1" : "px-1.5")}
+      >
         <Main space="settings" active={space} {...destinations.settings} />
         <User user={user} />
       </SidebarFooter>

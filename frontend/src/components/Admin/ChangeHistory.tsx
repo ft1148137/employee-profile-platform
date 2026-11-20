@@ -1,25 +1,34 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { AuditService } from "@/client"
+import {
+  SectionCard,
+  SideDrawer,
+} from "@/components/Common/WorkbenchPrimitives"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 import { useOrg } from "@/hooks/useOrg"
+import { cn } from "@/lib/utils"
 import { actorLabels, auditLabels } from "./auditLabels"
 
 export function ChangeHistory({
   targetType,
   targetIds,
   employeeId,
+  variant = "card",
 }: {
   targetType?: string
   targetIds?: string[]
   employeeId?: string
+  variant?: "card" | "compact" | "drawer"
 }) {
   const { org, roles } = useOrg()
   const client = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const canRead = !!org && roles.includes("org_admin")
   const query = useQuery({
     queryKey: ["change-history", org?.id, targetType, targetIds, employeeId],
-    enabled: !!org && roles.includes("org_admin"),
+    enabled: canRead && (variant !== "drawer" || open),
     queryFn: async () =>
       (
         await AuditService.readAuditEvents({
@@ -41,13 +50,10 @@ export function ChangeHistory({
       }),
     [client, org?.id],
   )
-  if (!org || !roles.includes("org_admin")) return null
-  return (
-    <section aria-label="修改记录" className="space-y-4 rounded-xl border p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold">修改记录</h2>
-        <p className="text-xs text-muted-foreground">最近 20 条</p>
-      </div>
+  if (!canRead) return null
+  const compact = variant !== "card"
+  const history = (
+    <>
       <SetupError error={query.error} />
       {query.isError && (
         <Button type="button" variant="outline" onClick={() => query.refetch()}>
@@ -62,7 +68,10 @@ export function ChangeHistory({
         {query.data?.data.map((event) => (
           <li
             key={event.id}
-            className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3 text-sm"
+            className={cn(
+              "flex flex-wrap items-baseline gap-y-1 text-sm",
+              compact ? "gap-x-2 py-2" : "gap-x-4 py-3",
+            )}
           >
             <time
               dateTime={event.created_at}
@@ -85,6 +94,39 @@ export function ChangeHistory({
           </li>
         ))}
       </ol>
-    </section>
+    </>
+  )
+  if (variant === "drawer") {
+    return (
+      <SideDrawer
+        title="变更历史"
+        trigger={
+          <Button type="button" variant="outline" size="sm">
+            变更历史
+          </Button>
+        }
+        open={open}
+        onOpenChange={setOpen}
+      >
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">最近 20 条</p>
+          {history}
+        </div>
+      </SideDrawer>
+    )
+  }
+  return (
+    <SectionCard
+      aria-label="修改记录"
+      className={compact ? "space-y-2 p-3" : "space-y-4 rounded-xl p-5"}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className={cn("font-semibold", compact ? "text-sm" : "text-lg")}>
+          修改记录
+        </h2>
+        <p className="text-xs text-muted-foreground">最近 20 条</p>
+      </div>
+      {history}
+    </SectionCard>
   )
 }

@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useId } from "react"
 import { DraftingSettingsService } from "@/client"
+import { HelpTip, SectionCard } from "@/components/Common/WorkbenchPrimitives"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { Button } from "@/components/ui/button"
 
 export function AutoDraftSetting({ orgId }: { orgId: string }) {
+  const labelId = useId()
   const client = useQueryClient()
   const queryKey = ["auto-draft", orgId]
   const query = useQuery({
@@ -29,17 +32,22 @@ export function AutoDraftSetting({ orgId }: { orgId: string }) {
   if (query.isPending) return <ProfileLoading />
   if (query.isError) return <ProfileError retry={() => query.refetch()} />
   return (
-    <section
-      aria-label="自动起草偏好"
-      className="rounded-xl border bg-muted/20 p-5 space-y-3"
-    >
-      <div className="flex items-center justify-between gap-4">
-        <span id="auto-draft-label" className="font-medium">
-          根据工作记录自动起草画像
-        </span>
+    <SectionCard aria-label="自动起草偏好" className="space-y-2 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span id={labelId} className="text-sm font-medium">
+            根据工作记录自动起草画像
+          </span>
+          <HelpTip
+            label="关于自动起草偏好"
+            content="关闭后不再为你自动生成草稿，已有画像不受影响，可随时重新开启。"
+          />
+        </div>
         <Button
+          type="button"
+          size="sm"
           role="switch"
-          aria-labelledby="auto-draft-label"
+          aria-labelledby={labelId}
           aria-checked={query.data.enabled}
           disabled={save.isPending}
           variant={query.data.enabled ? "default" : "outline"}
@@ -48,13 +56,10 @@ export function AutoDraftSetting({ orgId }: { orgId: string }) {
           {query.data.enabled ? "已开启" : "已关闭"}
         </Button>
       </div>
-      <p className="text-sm text-muted-foreground">
-        关闭后不再为你自动生成草稿，已有画像不受影响，可随时重新开启。
-      </p>
       {query.data.org_disabled && (
         <p className="text-sm">企业暂未开启自动起草功能。</p>
       )}
       {save.isError && <p role="alert">保存失败，请重试。</p>}
-    </section>
+    </SectionCard>
   )
 }
