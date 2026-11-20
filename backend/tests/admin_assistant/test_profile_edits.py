@@ -85,7 +85,9 @@ def test_confirmation_publication_and_private_content(
     added = snapshot(db, p.org_id)
     assert added[-1] == before[-1]
     assert len(added[2]) == len(before[2]) + 1
-    assert added[2][-1]["kind"] == "profile_edited"
+    before_inbox_ids = {item["id"] for item in before[2]}
+    new_items = [item for item in added[2] if item["id"] not in before_inbox_ids]
+    assert [item["kind"] for item in new_items] == ["profile_edited"]
     audit = next(i for i in added[3] if i["action"] == "profile.direct_edited")
     assert all(t not in json.dumps(audit, ensure_ascii=False) for t in private)
     request = db.exec(
