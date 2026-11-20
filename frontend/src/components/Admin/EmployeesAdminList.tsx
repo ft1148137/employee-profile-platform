@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
+import { Search } from "lucide-react"
 import { useEffect, useState } from "react"
 import {
   AccountsService,
@@ -7,6 +8,7 @@ import {
   type EmployeeAccount,
   type EmploymentStatus,
   OrgsService,
+  type ProgressReviewStatus,
 } from "@/client"
 import { AccountTable } from "@/components/Admin/AccountTable"
 import { departmentOptions } from "@/components/Admin/departments"
@@ -19,7 +21,10 @@ import {
 import { PersonnelDialog } from "@/components/Admin/PersonnelDialog"
 import { ResetPasswordDialog } from "@/components/Admin/ResetPasswordDialog"
 import { UnlinkedAccounts } from "@/components/Admin/UnlinkedAccounts"
+import { TopbarActions } from "@/components/Common/TopbarSlot"
+import { WorkspacePage } from "@/components/Common/WorkbenchPrimitives"
 import { UnmatchedIdentities } from "@/components/Identities/UnmatchedIdentities"
+import { EmployeeQuickPeekDrawer } from "@/components/Profile/EmployeeQuickPeekDrawer"
 import { ExportProfilesButtons } from "@/components/Profile/ExportProfilesButtons"
 import { OrgState } from "@/components/Profile/OrgState"
 import { ProfileCoverage } from "@/components/Progress/ProfileCoverage"
@@ -56,6 +61,9 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
   const navigate = useNavigate()
   const client = useQueryClient()
   const { org, roles } = useOrg()
+  const [highlightedStatus, setHighlightedStatus] =
+    useState<ProgressReviewStatus | null>(null)
+  const [preview, setPreview] = useState<EmployeeAccount | null>(null)
   const [department, setDepartment] = useState("all")
   const [status, setStatus] = useState<AccountStatus | "all">("all")
   const [employment, setEmployment] = useState<EmploymentStatus | "all">("all")
@@ -123,14 +131,37 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
     handleError.call((message) => {
       error = message
     }, accounts.error)
+  function changeDepartment(value: string) {
+    setDepartment(value)
+    reset()
+  }
+  const scopeFilter = (
+    <AccountFilter
+      title="员工范围"
+      value={
+        filter === "appeals" || filter === "roles" || filter === "account-only"
+          ? filter
+          : "all"
+      }
+      labels={{
+        appeals: "有待处理争议",
+        roles: "有管理角色",
+        "account-only": "未绑定员工的账号",
+      }}
+      onChange={(value) =>
+        navigate({
+          to: "/employees",
+          search: { filter: value === "all" ? undefined : value },
+        })
+      }
+    />
+  )
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-l-4 border-primary pl-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">员工</h1>
-        </div>
-        <div className="flex flex-wrap items-start gap-3">
-          <ExportProfilesButtons orgId={orgId} />
+    <WorkspacePage className="space-y-3">
+      <h1 className="sr-only">员工</h1>
+      <ExportProfilesButtons orgId={orgId} />
+      <TopbarActions>
+        <div className="[&>button]:h-8 [&>button]:px-2 [&>button]:text-xs">
           {roles.includes("org_admin") && filter !== "account-only" && (
             <IssueAccountsDialog
               orgId={orgId}
@@ -149,31 +180,40 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
             />
           )}
         </div>
-      </div>
+      </TopbarActions>
       <ProfileCoverage
         orgId={orgId}
         department={department}
-        onDepartmentChange={(value) => {
-          setDepartment(value)
-          reset()
-        }}
+        onDepartmentChange={
+          filter === "account-only" ? undefined : changeDepartment
+        }
+        highlightedStatus={highlightedStatus}
+        onStatusChange={
+          filter === "account-only" ? undefined : setHighlightedStatus
+        }
       />
-      {roles.includes("org_admin") && (
-        <div className="flex flex-wrap gap-2">
-          <PersonnelDialog orgId={orgId} />
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline">档案字段</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>档案字段</DialogTitle>
-              </DialogHeader>
-              {org && <EmployeeFields org={org} />}
-            </DialogContent>
-          </Dialog>
-        </div>
-      )}
+      <div className="flex flex-wrap items-center gap-2 [&>button]:h-8 [&>button]:text-xs">
+        {roles.includes("org_admin") && (
+          <>
+            <PersonnelDialog orgId={orgId} />
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline">档案字段</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>档案字段</DialogTitle>
+                </DialogHeader>
+                {org && <EmployeeFields org={org} />}
+              </DialogContent>
+            </Dialog>
+          </>
+        )}
+        <UnmatchedIdentities
+          orgId={orgId}
+          initiallyOpen={filter === "identities"}
+        />
+      </div>
       {passwordTarget?.account && (
         <ResetPasswordDialog
           orgId={orgId}
@@ -186,51 +226,32 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
           }}
         />
       )}
-      <UnmatchedIdentities
-        orgId={orgId}
-        initiallyOpen={filter === "identities"}
-      />
-      <AccountFilter
-        title="员工范围"
-        value={
-          filter === "appeals" ||
-          filter === "roles" ||
-          filter === "account-only"
-            ? filter
-            : "all"
-        }
-        labels={{
-          appeals: "有待处理争议",
-          roles: "有管理角色",
-          "account-only": "未绑定员工的账号",
-        }}
-        onChange={(value) =>
-          navigate({
-            to: "/employees",
-            search: { filter: value === "all" ? undefined : value },
-          })
-        }
-      />
       {filter === "account-only" ? (
-        <UnlinkedAccounts orgId={orgId} />
-      ) : (
         <>
-          <div className="flex flex-wrap items-center gap-3">
-            <Input
-              className="max-w-xs"
-              aria-label="搜索姓名或工号"
-              placeholder="搜索姓名或工号…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          {scopeFilter}
+          <UnlinkedAccounts orgId={orgId} />
+        </>
+      ) : (
+        <div>
+          <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-t-lg border border-surface-border bg-surface px-3 py-1.5">
+            <div className="relative min-w-36 flex-1 sm:max-w-56">
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground"
+              />
+              <Input
+                className="h-8 pl-8"
+                aria-label="搜索姓名或工号"
+                placeholder="搜索姓名或工号…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
             <AccountFilter
               title="部门"
               value={department}
               labels={Object.fromEntries(options.map((d) => [d.id, d.name]))}
-              onChange={(value) => {
-                setDepartment(value)
-                reset()
-              }}
+              onChange={changeDepartment}
             />
             <AccountFilter
               title="账号状态"
@@ -250,7 +271,8 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
                 reset()
               }}
             />
-            <span className="ml-auto text-sm text-muted-foreground">
+            {scopeFilter}
+            <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">
               共 {accounts.data?.count ?? "—"} 名员工 · 已选 {selected.length}{" "}
               人
             </span>
@@ -294,6 +316,8 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
                     ? employee.roles.length > 0
                     : true,
               )}
+              highlightedStatus={highlightedStatus}
+              onPreview={setPreview}
               onResetPassword={setPasswordTarget}
               count={accounts.data.count}
               departments={new Map(options.map((d) => [d.id, d.name]))}
@@ -310,9 +334,14 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
               }}
             />
           )}
-        </>
+        </div>
       )}
-    </div>
+      <EmployeeQuickPeekDrawer
+        orgId={orgId}
+        employee={preview}
+        onClose={() => setPreview(null)}
+      />
+    </WorkspacePage>
   )
 }
 
@@ -336,7 +365,7 @@ function AccountFilter<T extends string>({
         if (value === "all" || key) onChange(key ?? "all")
       }}
     >
-      <SelectTrigger aria-label={`${title}筛选`} className="w-48">
+      <SelectTrigger aria-label={`${title}筛选`} size="sm" className="max-w-40">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

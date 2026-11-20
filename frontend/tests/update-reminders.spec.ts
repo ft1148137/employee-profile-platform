@@ -77,7 +77,7 @@ test("reminder settings persist and stale badges follow profile data", async ({
     await page.goto("/employees")
     await page.getByRole("combobox", { name: "部门筛选" }).click()
     await page.getByRole("option", { name: "平台研发部", exact: true }).click()
-    await page.getByRole("row").filter({ hasText: "张伟" }).click()
+    await page.getByRole("link", { name: "张伟", exact: true }).click()
     const confirmed = page.getByRole("article", {
       name: "后端 API 开发",
       exact: true,

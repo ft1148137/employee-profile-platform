@@ -1,18 +1,24 @@
 import { useQuery } from "@tanstack/react-query"
-import {
-  createFileRoute,
-  Link,
-  Navigate,
-  useNavigate,
-} from "@tanstack/react-router"
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router"
 import type { ColumnDef } from "@tanstack/react-table"
+import { Search } from "lucide-react"
 import { useEffect, useState } from "react"
-import { type EmployeeSummary, EmployeesService, OrgsService } from "@/client"
+import {
+  type EmployeeSummary,
+  EmployeesService,
+  OrgsService,
+  type ProgressReviewStatus,
+} from "@/client"
 import { EmployeesAdminList } from "@/components/Admin/EmployeesAdminList"
 import {
   DataTable,
   type DataTableFeatures,
 } from "@/components/Common/DataTable"
+import { WorkspacePage } from "@/components/Common/WorkbenchPrimitives"
+import {
+  EmployeeQuickPeekDrawer,
+  preventRowEnterDefault,
+} from "@/components/Profile/EmployeeQuickPeekDrawer"
 import { publishedLabel } from "@/components/Profile/EmployeeSummary"
 import { ExportProfilesButtons } from "@/components/Profile/ExportProfilesButtons"
 import { initialStatusLabel } from "@/components/Profile/initialStatus"
@@ -46,57 +52,71 @@ export const Route = createFileRoute("/_layout/employees/")({
   head: () => ({ meta: [{ title: "员工 - 员工画像平台" }] }),
 })
 
-const columns: ColumnDef<DataTableFeatures, EmployeeSummary>[] = [
-  {
-    accessorKey: "display_name",
-    header: "姓名",
-    cell: ({ row }) => (
-      <Link
-        className="font-medium hover:underline"
-        to="/employees/$employeeId"
-        params={{ employeeId: row.original.id }}
-      >
-        {row.original.display_name}
-      </Link>
+function columns(
+  highlightedStatus: ProgressReviewStatus | null,
+): ColumnDef<DataTableFeatures, EmployeeSummary>[] {
+  return [
+    {
+      accessorKey: "display_name",
+      header: "姓名",
+      cell: ({ row }) => (
+        <Link
+          className="font-medium hover:underline"
+          to="/employees/$employeeId"
+          params={{ employeeId: row.original.id }}
+        >
+          {row.original.display_name}
+        </Link>
+      ),
+    },
+    {
+      accessorKey: "employee_code",
+      header: "工号",
+      cell: ({ row }) => row.original.employee_code ?? "未填写",
+    },
+    {
+      accessorKey: "title",
+      header: "职位",
+      cell: ({ row }) => row.original.title ?? "—",
+    },
+    {
+      id: "department",
+      header: "部门",
+      cell: ({ row }) => row.original.department?.name ?? "—",
+    },
+    ...(["fill_status", "inference_status", "review_status"] as const).map(
+      (kind, i) => ({
+        id: kind,
+        header: ["填写进度", "初始画像", "审批状态"][i],
+        cell: ({ row }: { row: { original: EmployeeSummary } }) =>
+          kind === "inference_status" ? (
+            initialStatusLabel(row.original.progress?.initial_profile_status)
+          ) : (
+            <span
+              data-coverage-match={
+                kind === "review_status" &&
+                row.original.employment_status === "active" &&
+                row.original.progress?.review_status === highlightedStatus
+                  ? ""
+                  : undefined
+              }
+            >
+              <StatusBadge kind={kind} value={row.original.progress?.[kind]} />
+            </span>
+          ),
+      }),
     ),
-  },
-  {
-    accessorKey: "employee_code",
-    header: "工号",
-    cell: ({ row }) => row.original.employee_code ?? "未填写",
-  },
-  {
-    accessorKey: "title",
-    header: "职位",
-    cell: ({ row }) => row.original.title ?? "—",
-  },
-  {
-    id: "department",
-    header: "部门",
-    cell: ({ row }) => row.original.department?.name ?? "—",
-  },
-  ...(["fill_status", "inference_status", "review_status"] as const).map(
-    (kind, i) => ({
-      id: kind,
-      header: ["填写进度", "初始画像", "审批状态"][i],
-      cell: ({ row }: { row: { original: EmployeeSummary } }) =>
-        kind === "inference_status" ? (
-          initialStatusLabel(row.original.progress?.initial_profile_status)
-        ) : (
-          <StatusBadge kind={kind} value={row.original.progress?.[kind]} />
-        ),
-    }),
-  ),
-  {
-    id: "published",
-    header: "最近发布版本",
-    cell: ({ row }) => (
-      <span className="whitespace-nowrap text-muted-foreground">
-        {publishedLabel(row.original.latest_published)}
-      </span>
-    ),
-  },
-]
+    {
+      id: "published",
+      header: "最近发布版本",
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap text-muted-foreground">
+          {publishedLabel(row.original.latest_published)}
+        </span>
+      ),
+    },
+  ]
+}
 
 function EmployeesPage() {
   const { org, roles } = useOrg()
@@ -113,7 +133,9 @@ function EmployeesPage() {
 
 function EmployeesList({ orgId }: { orgId: string }) {
   const { org, roles, managedDepartmentIds } = useOrg()
-  const navigate = useNavigate()
+  const [highlightedStatus, setHighlightedStatus] =
+    useState<ProgressReviewStatus | null>(null)
+  const [preview, setPreview] = useState<EmployeeSummary | null>(null)
   const [department, setDepartment] = useState("all")
   const [search, setSearch] = useState("")
   const [q, setQ] = useState("")
@@ -150,173 +172,186 @@ function EmployeesList({ orgId }: { orgId: string }) {
       (item) =>
         roles.includes("org_admin") || managedDepartmentIds.includes(item.id),
     ) ?? []
+  function changeDepartment(value: string) {
+    setDepartment(value)
+    setPagination((old) => ({ ...old, pageIndex: 0 }))
+  }
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-l-4 border-primary pl-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">员工</h1>
-        </div>
-        <ExportProfilesButtons orgId={orgId} />
-      </div>
+    <WorkspacePage className="space-y-3">
+      <h1 className="sr-only">员工</h1>
+      <ExportProfilesButtons orgId={orgId} />
       <ProfileCoverage
         orgId={orgId}
         department={department}
-        onDepartmentChange={(value) => {
-          setDepartment(value)
-          setPagination((old) => ({ ...old, pageIndex: 0 }))
-        }}
+        onDepartmentChange={changeDepartment}
+        highlightedStatus={highlightedStatus}
+        onStatusChange={setHighlightedStatus}
       />
-      <div className="flex flex-wrap items-center gap-3">
-        <Input
-          aria-label="搜索姓名"
-          placeholder="搜索姓名…"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          className="max-w-xs"
-        />
-        <Select
-          value={department}
-          onValueChange={(value) => {
-            setDepartment(value)
-            setPagination((old) => ({ ...old, pageIndex: 0 }))
-          }}
-        >
-          <SelectTrigger aria-label="部门筛选" className="w-52">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部部门</SelectItem>
-            {options.map((item) => (
-              <SelectItem key={item.id} value={item.id}>
-                {item.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <span className="ml-auto text-sm text-muted-foreground">
-          共 {employees.data?.count ?? "—"} 名员工
-        </span>
-      </div>
-      {departments.isError && (
-        <div role="alert">
-          无法加载部门筛选。
-          <Button variant="outline" onClick={() => departments.refetch()}>
-            重试
-          </Button>
-        </div>
-      )}
-      {employees.isPending ? (
-        <p role="status">正在加载员工…</p>
-      ) : employees.isError ? (
-        <div role="alert">
-          无法加载员工列表。
-          <Button variant="outline" onClick={() => employees.refetch()}>
-            重试
-          </Button>
-        </div>
-      ) : (
-        <>
-          <section className="space-y-3 sm:hidden" aria-label="团队员工卡片">
-            {employees.data.data.length === 0 && <p>暂无员工。</p>}
-            {employees.data.data.map((employee) => (
-              <article
-                key={employee.id}
-                aria-label={employee.display_name}
-                className="rounded-xl border p-4 space-y-3 break-words"
-              >
-                <Link
-                  className="font-semibold text-primary hover:underline"
-                  to="/employees/$employeeId"
-                  params={{ employeeId: employee.id }}
-                >
-                  {employee.display_name}
-                </Link>
-                <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
-                  <dt className="text-muted-foreground">工号</dt>
-                  <dd>{employee.employee_code ?? "未填写"}</dd>
-                  <dt className="text-muted-foreground">部门</dt>
-                  <dd>{employee.department?.name ?? "未分配部门"}</dd>
-                  <dt className="text-muted-foreground">初始画像</dt>
-                  <dd>
-                    {initialStatusLabel(
-                      employee.progress?.initial_profile_status,
-                    )}
-                  </dd>
-                  <dt className="text-muted-foreground">审批状态</dt>
-                  <dd>
-                    <StatusBadge
-                      kind="review_status"
-                      value={employee.progress?.review_status}
-                    />
-                  </dd>
-                </dl>
-              </article>
-            ))}
-            {employees.data.count > pagination.pageSize && (
-              <div className="flex items-center justify-between gap-2">
-                <Button
-                  variant="outline"
-                  disabled={pagination.pageIndex === 0}
-                  onClick={() =>
-                    setPagination((old) => ({
-                      ...old,
-                      pageIndex: old.pageIndex - 1,
-                    }))
-                  }
-                >
-                  上一页
-                </Button>
-                <span className="text-sm">
-                  第 {pagination.pageIndex + 1} 页
-                </span>
-                <Button
-                  variant="outline"
-                  disabled={
-                    (pagination.pageIndex + 1) * pagination.pageSize >=
-                    employees.data.count
-                  }
-                  onClick={() =>
-                    setPagination((old) => ({
-                      ...old,
-                      pageIndex: old.pageIndex + 1,
-                    }))
-                  }
-                >
-                  下一页
-                </Button>
-              </div>
-            )}
-          </section>
-          <div className="hidden sm:block overflow-hidden rounded-xl border">
-            <DataTable
-              columns={[
-                ...columns,
-                ...(org?.employee_fields ?? []).map((field) => ({
-                  id: field,
-                  header:
-                    field === "hire_date"
-                      ? "入职年限"
-                      : employeeFieldLabels[field],
-                  cell: ({ row }: { row: { original: EmployeeSummary } }) =>
-                    field === "hire_date" && row.original.hire_date
-                      ? tenureLabel(row.original.hire_date)
-                      : (row.original[field] ?? "—"),
-                })),
-              ]}
-              data={employees.data.data}
-              pagination={pagination}
-              onPaginationChange={setPagination}
-              rowCount={employees.data.count}
-              onRowClick={(employee) =>
-                navigate({
-                  to: "/employees/$employeeId",
-                  params: { employeeId: employee.id },
-                })
-              }
+      <div className="space-y-0">
+        <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-t-lg border border-surface-border bg-surface px-3 py-1.5">
+          <div className="relative min-w-36 flex-1 sm:max-w-56">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground"
+            />
+            <Input
+              aria-label="搜索姓名"
+              placeholder="搜索姓名…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="h-8 pl-8"
             />
           </div>
-        </>
-      )}
-    </div>
+          <Select value={department} onValueChange={changeDepartment}>
+            <SelectTrigger aria-label="部门筛选" size="sm" className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部部门</SelectItem>
+              {options.map((item) => (
+                <SelectItem key={item.id} value={item.id}>
+                  {item.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">
+            共 {employees.data?.count ?? "—"} 名员工
+          </span>
+        </div>
+        {departments.isError && (
+          <div role="alert">
+            无法加载部门筛选。
+            <Button variant="outline" onClick={() => departments.refetch()}>
+              重试
+            </Button>
+          </div>
+        )}
+        {employees.isPending ? (
+          <p role="status">正在加载员工…</p>
+        ) : employees.isError ? (
+          <div role="alert">
+            无法加载员工列表。
+            <Button variant="outline" onClick={() => employees.refetch()}>
+              重试
+            </Button>
+          </div>
+        ) : (
+          <>
+            <section
+              className="space-y-2 pt-2 sm:hidden"
+              aria-label="团队员工卡片"
+            >
+              {employees.data.data.length === 0 && <p>暂无员工。</p>}
+              {employees.data.data.map((employee) => (
+                <article
+                  key={employee.id}
+                  aria-label={employee.display_name}
+                  data-coverage-match={
+                    employee.employment_status === "active" &&
+                    employee.progress?.review_status === highlightedStatus
+                      ? ""
+                      : undefined
+                  }
+                  className="space-y-2 rounded-lg border border-surface-border bg-surface p-3 wrap-anywhere data-coverage-match:bg-primary/5"
+                >
+                  <Link
+                    className="font-semibold text-primary hover:underline"
+                    to="/employees/$employeeId"
+                    params={{ employeeId: employee.id }}
+                  >
+                    {employee.display_name}
+                  </Link>
+                  <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
+                    <dt className="text-muted-foreground">工号</dt>
+                    <dd>{employee.employee_code ?? "未填写"}</dd>
+                    <dt className="text-muted-foreground">部门</dt>
+                    <dd>{employee.department?.name ?? "未分配部门"}</dd>
+                    <dt className="text-muted-foreground">初始画像</dt>
+                    <dd>
+                      {initialStatusLabel(
+                        employee.progress?.initial_profile_status,
+                      )}
+                    </dd>
+                    <dt className="text-muted-foreground">审批状态</dt>
+                    <dd>
+                      <StatusBadge
+                        kind="review_status"
+                        value={employee.progress?.review_status}
+                      />
+                    </dd>
+                  </dl>
+                </article>
+              ))}
+              {employees.data.count > pagination.pageSize && (
+                <div className="flex items-center justify-between gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={pagination.pageIndex === 0}
+                    onClick={() =>
+                      setPagination((old) => ({
+                        ...old,
+                        pageIndex: old.pageIndex - 1,
+                      }))
+                    }
+                  >
+                    上一页
+                  </Button>
+                  <span className="text-sm">
+                    第 {pagination.pageIndex + 1} 页
+                  </span>
+                  <Button
+                    variant="outline"
+                    disabled={
+                      (pagination.pageIndex + 1) * pagination.pageSize >=
+                      employees.data.count
+                    }
+                    onClick={() =>
+                      setPagination((old) => ({
+                        ...old,
+                        pageIndex: old.pageIndex + 1,
+                      }))
+                    }
+                  >
+                    下一页
+                  </Button>
+                </div>
+              )}
+            </section>
+            <div
+              onKeyDownCapture={preventRowEnterDefault}
+              className="hidden min-w-0 sm:block [&>div]:rounded-t-none [&>div]:border-t-0 [&_th]:h-11 [&_tr:has([data-coverage-match])]:bg-primary/5"
+            >
+              <DataTable
+                columns={[
+                  ...columns(highlightedStatus),
+                  ...(org?.employee_fields ?? []).map((field) => ({
+                    id: field,
+                    header:
+                      field === "hire_date"
+                        ? "入职年限"
+                        : employeeFieldLabels[field],
+                    cell: ({ row }: { row: { original: EmployeeSummary } }) =>
+                      field === "hire_date" && row.original.hire_date
+                        ? tenureLabel(row.original.hire_date)
+                        : (row.original[field] ?? "—"),
+                  })),
+                ]}
+                data={employees.data.data}
+                pagination={pagination}
+                onPaginationChange={setPagination}
+                rowCount={employees.data.count}
+                onRowClick={setPreview}
+              />
+            </div>
+          </>
+        )}
+      </div>
+      <EmployeeQuickPeekDrawer
+        orgId={orgId}
+        employee={preview}
+        onClose={() => setPreview(null)}
+      />
+    </WorkspacePage>
   )
 }

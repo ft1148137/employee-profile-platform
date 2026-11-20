@@ -51,6 +51,9 @@ test("reset password once, disable and enable employee accounts", async ({
   await page.getByRole("menuitem", { name: "重置密码" }).click()
   const dialog = page.getByRole("dialog")
   await expect(dialog).toContainText("重置后原密码立即失效")
+  await expect(page.getByRole("dialog", { name: "员工快速预览" })).toHaveCount(
+    0,
+  )
   await expectChineseCopy(page)
   await dialog.getByRole("button", { name: "确认重置密码" }).click()
   const password = dialog.getByRole("textbox", { name: "新密码" })

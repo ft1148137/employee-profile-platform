@@ -1,7 +1,16 @@
 import { useMutation } from "@tanstack/react-query"
+import { Download } from "lucide-react"
 import { PeopleSearchService } from "@/client"
+import { TopbarActions } from "@/components/Common/TopbarSlot"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export function ExportProfilesButtons({ orgId }: { orgId: string }) {
   const download = useMutation({
@@ -21,24 +30,36 @@ export function ExportProfilesButtons({ orgId }: { orgId: string }) {
     },
   })
   return (
-    <section aria-label="导出已发布画像" className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        {(["csv", "json"] as const).map((format) => (
-          <Button
-            key={format}
-            variant="outline"
-            title={format === "json" ? "JSON 格式" : undefined}
-            disabled={download.isPending}
-            onClick={() => download.mutate(format)}
-          >
-            导出画像（{format.toUpperCase()}）
-          </Button>
-        ))}
-      </div>
-      <p className="text-sm text-muted-foreground">
-        导出可见范围内的全部已发布画像，不受筛选条件影响。
-      </p>
+    <>
+      <TopbarActions>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="导出画像"
+              disabled={download.isPending}
+            >
+              <Download aria-hidden="true" />
+              <span className="hidden sm:inline">导出画像</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="max-w-60">
+            <DropdownMenuLabel className="font-normal text-muted-foreground text-xs">
+              导出可见范围内的全部已发布画像，不受筛选条件影响。
+            </DropdownMenuLabel>
+            {(["csv", "json"] as const).map((format) => (
+              <DropdownMenuItem
+                key={format}
+                onSelect={() => download.mutate(format)}
+              >
+                导出画像（{format.toUpperCase()}）
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TopbarActions>
       <SetupError error={download.error} />
-    </section>
+    </>
   )
 }

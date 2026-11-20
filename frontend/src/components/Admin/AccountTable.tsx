@@ -1,21 +1,23 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link, useNavigate } from "@tanstack/react-router"
+import { Link } from "@tanstack/react-router"
 import type {
   CellContext,
   ColumnDef,
   OnChangeFn,
   PaginationState,
 } from "@tanstack/react-table"
-import { useCallback, useState } from "react"
+import { type SyntheticEvent, useCallback, useState } from "react"
 import {
   AccountsService,
   type EmployeeAccount,
   EmployeesService,
+  type ProgressReviewStatus,
 } from "@/client"
 import {
   DataTable,
   type DataTableFeatures,
 } from "@/components/Common/DataTable"
+import { preventRowEnterDefault } from "@/components/Profile/EmployeeQuickPeekDrawer"
 import { publishedLabel } from "@/components/Profile/EmployeeSummary"
 import { initialStatusLabel } from "@/components/Profile/initialStatus"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
@@ -38,6 +40,38 @@ import { ConfirmActionDialog } from "./ConfirmActionDialog"
 import { IssueAccountsDialog } from "./IssueAccountsDialog"
 import { accountLabels, employmentLabels, roleLabels } from "./labels"
 
+function stopPortalEvent(event: SyntheticEvent<HTMLElement>) {
+  // React bubbles events from account dialogs through the row that opened them.
+  if (
+    event.target instanceof Node &&
+    !event.currentTarget.contains(event.target)
+  )
+    event.stopPropagation()
+}
+
+function RowAccountActions({
+  employee,
+  onResetPassword,
+}: {
+  employee: EmployeeAccount
+  onResetPassword: (employee: EmployeeAccount) => void
+}) {
+  return (
+    <fieldset
+      className="contents"
+      aria-label="账号操作"
+      onClick={stopPortalEvent}
+      onKeyDown={stopPortalEvent}
+    >
+      <AccountMenu
+        employee={employee}
+        onResetPassword={() => onResetPassword(employee)}
+        issuable={employee}
+      />
+    </fieldset>
+  )
+}
+
 export function AccountTable({
   data,
   selected,
@@ -47,6 +81,8 @@ export function AccountTable({
   pagination,
   onPaginationChange,
   onResetPassword,
+  onPreview,
+  highlightedStatus,
 }: {
   selected: string[]
   onSelect: (id: string, checked: boolean) => void
@@ -56,48 +92,55 @@ export function AccountTable({
   pagination: PaginationState
   onPaginationChange: OnChangeFn<PaginationState>
   onResetPassword: (employee: EmployeeAccount) => void
+  onPreview: (employee: EmployeeAccount) => void
+  highlightedStatus: ProgressReviewStatus | null
 }) {
-  const navigate = useNavigate()
   const { org } = useOrg()
   const actions = useCallback(
     ({ row }: CellContext<DataTableFeatures, EmployeeAccount>) => (
-      <AccountMenu
+      <RowAccountActions
         employee={row.original}
-        onResetPassword={() => onResetPassword(row.original)}
-        issuable={row.original}
+        onResetPassword={onResetPassword}
       />
     ),
     [onResetPassword],
   )
+  function selection(employee: EmployeeAccount) {
+    return (
+      <Checkbox
+        aria-label={`选择 ${employee.employee_code ?? employee.display_name}`}
+        checked={selected.includes(employee.id)}
+        disabled={
+          employee.employment_status !== "active" ||
+          (!!employee.account &&
+            employee.account.status !== "pending_first_login")
+        }
+        onCheckedChange={(checked) => onSelect(employee.id, checked === true)}
+      />
+    )
+  }
+  function employeeLink(employee: EmployeeAccount) {
+    return (
+      <Link
+        className="font-medium text-primary hover:underline"
+        to="/employees/$employeeId"
+        params={{ employeeId: employee.id }}
+      >
+        {employee.display_name}
+      </Link>
+    )
+  }
   const columns: ColumnDef<DataTableFeatures, EmployeeAccount>[] = [
     {
       id: "select",
       header: "选择",
-      cell: ({ row: { original: e } }) => (
-        <Checkbox
-          aria-label={`选择 ${e.employee_code ?? e.display_name}`}
-          checked={selected.includes(e.id)}
-          disabled={
-            e.employment_status !== "active" ||
-            (!!e.account && e.account.status !== "pending_first_login")
-          }
-          onCheckedChange={(checked) => onSelect(e.id, checked === true)}
-        />
-      ),
+      cell: ({ row }) => selection(row.original),
     },
     { accessorKey: "employee_code", header: "工号" },
     {
       accessorKey: "display_name",
       header: "姓名",
-      cell: ({ row }) => (
-        <Link
-          className="text-primary underline underline-offset-4"
-          to="/employees/$employeeId"
-          params={{ employeeId: row.original.id }}
-        >
-          {row.original.display_name}
-        </Link>
-      ),
+      cell: ({ row }) => employeeLink(row.original),
     },
     {
       id: "actions",
@@ -134,7 +177,7 @@ export function AccountTable({
       header: "角色",
       cell: ({ row }) =>
         row.original.roles.length ? (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex gap-1">
             {row.original.roles.map((role) => (
               <Badge key={role.id} variant="outline">
                 {roleLabels[role.role]}
@@ -159,6 +202,11 @@ export function AccountTable({
             orgId={org.id}
             employeeId={row.original.id}
             kind={kind}
+            highlightedStatus={
+              row.original.employment_status === "active"
+                ? highlightedStatus
+                : null
+            }
           />
         ) : (
           "—"
@@ -174,21 +222,72 @@ export function AccountTable({
     })),
   ]
   return (
-    <div className="overflow-x-auto rounded-xl border">
-      <DataTable
-        columns={columns}
-        data={data}
-        onRowClick={(employee) =>
-          navigate({
-            to: "/employees/$employeeId",
-            params: { employeeId: employee.id },
-          })
-        }
-        getRowId={(employee) => employee.id}
-        rowCount={count}
-        pagination={pagination}
-        onPaginationChange={onPaginationChange}
-      />
+    <div className="min-w-0">
+      <section aria-label="员工卡片" className="space-y-2 py-2 sm:hidden">
+        {data.length === 0 && (
+          <p className="p-3 text-sm text-muted-foreground">暂无数据</p>
+        )}
+        {data.map((employee) => (
+          <article
+            key={employee.id}
+            className="space-y-2 rounded-lg border border-surface-border bg-surface p-3 wrap-anywhere has-[[data-coverage-match]]:bg-primary/5"
+          >
+            <div className="flex items-start gap-2">
+              <div className="flex size-8 shrink-0 items-center justify-center">
+                {selection(employee)}
+              </div>
+              <div className="min-w-0 flex-1">
+                {employeeLink(employee)}
+                <p className="text-xs text-muted-foreground">
+                  {[
+                    employee.employee_code,
+                    employee.title,
+                    departments.get(employee.department?.id ?? ""),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </div>
+              <RowAccountActions
+                employee={employee}
+                onResetPassword={onResetPassword}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <Badge variant="secondary">
+                {accountLabels[employee.account?.status ?? "none"]}
+              </Badge>
+              <span>{employmentLabels[employee.employment_status]}</span>
+              {org && (
+                <EmployeeProgress
+                  orgId={org.id}
+                  employeeId={employee.id}
+                  kind="review_status"
+                  highlightedStatus={
+                    employee.employment_status === "active"
+                      ? highlightedStatus
+                      : null
+                  }
+                />
+              )}
+            </div>
+          </article>
+        ))}
+      </section>
+      <div
+        onKeyDownCapture={preventRowEnterDefault}
+        className="[&>div]:rounded-t-none [&>div]:border-t-0 [&_th]:h-11 [&_tr:has([data-coverage-match])]:bg-primary/5 max-sm:[&_[data-slot=table-container]]:hidden"
+      >
+        <DataTable
+          columns={columns}
+          data={data}
+          onRowClick={onPreview}
+          getRowId={(employee) => employee.id}
+          rowCount={count}
+          pagination={pagination}
+          onPaginationChange={onPaginationChange}
+        />
+      </div>
     </div>
   )
 }
@@ -238,9 +337,11 @@ function EmployeeProgress({
   orgId,
   employeeId,
   kind,
+  highlightedStatus,
 }: {
   orgId: string
   employeeId: string
+  highlightedStatus: ProgressReviewStatus | null
   kind: "fill_status" | "inference_status" | "review_status" | "published"
 }) {
   const summary = useQuery({
@@ -255,7 +356,7 @@ function EmployeeProgress({
   if (summary.isPending) return "加载中…"
   if (summary.isError)
     return (
-      <Button variant="ghost" onClick={() => summary.refetch()}>
+      <Button variant="ghost" size="sm" onClick={() => summary.refetch()}>
         重试进度
       </Button>
     )
@@ -264,7 +365,16 @@ function EmployeeProgress({
   ) : kind === "inference_status" ? (
     initialStatusLabel(summary.data.progress?.initial_profile_status)
   ) : (
-    <StatusBadge kind={kind} value={summary.data.progress?.[kind]} />
+    <span
+      data-coverage-match={
+        kind === "review_status" &&
+        summary.data.progress?.review_status === highlightedStatus
+          ? ""
+          : undefined
+      }
+    >
+      <StatusBadge kind={kind} value={summary.data.progress?.[kind]} />
+    </span>
   )
 }
 
