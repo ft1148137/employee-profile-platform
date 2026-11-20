@@ -17,10 +17,14 @@ for (const deployment of ["cloud", "data_center"]) {
   }) => {
     test.setTimeout(120000)
     await createSourcesOrg(page)
+    const name = deployment === "cloud" ? "Jira Cloud" : "Jira Data Center"
+    await expect(page.getByLabel("站点地址")).toHaveCount(0)
+    await page
+      .getByRole("button", { name: `配置 ${name}`, exact: true })
+      .click()
     if (deployment === "cloud") {
       await saveCloud(page, base, "jira-admin@example.com", "mock-cloud-token")
     } else {
-      await page.getByLabel("Jira Data Center / Server").check()
       await page.getByLabel("站点地址").fill(base)
       await page.getByLabel("个人访问令牌", { exact: true }).fill("mock-dc-pat")
       await page.getByRole("button", { name: "保存", exact: true }).click()
@@ -40,6 +44,9 @@ for (const deployment of ["cloud", "data_center"]) {
     await page.getByRole("button", { name: "保存", exact: true }).click()
     await expect(page.getByText("Jira 配置已保存。")).toBeVisible()
     await page.reload()
+    await page
+      .getByRole("button", { name: `配置 ${name}`, exact: true })
+      .click()
     await expect(page.getByLabel("同步项目标识")).toHaveValue("EDGE")
     await syncJira(page)
     const status = page
@@ -47,6 +54,7 @@ for (const deployment of ["cloud", "data_center"]) {
       .filter({ hasText: "Jira 同步：成功" })
     await expect(status).toContainText("记录 20")
     await expect(status).toContainText("新增任务 20")
+    await page.getByRole("button", { name: "关闭", exact: true }).click()
     const history = page.getByRole("region", { name: "同步记录", exact: true })
     await expect(
       history.getByRole("cell", { name: "Jira", exact: true }),
@@ -57,13 +65,20 @@ for (const deployment of ["cloud", "data_center"]) {
     await expect(
       history.getByRole("cell", { name: "EDGE", exact: true }),
     ).toBeVisible()
+    await expect(page.getByRole("region", { name, exact: true })).toContainText(
+      "最近 Jira 同步：",
+    )
+    await page
+      .getByRole("button", { name: `配置 ${name}`, exact: true })
+      .click()
     await page.getByLabel("同步项目标识").fill("fw,EDGE,fw")
     await page.getByRole("button", { name: "保存", exact: true }).click()
     await expect(page.getByLabel("同步项目标识")).toHaveValue("FW,EDGE")
+    await expect(page.getByText(/缩小范围不会删除已经同步的记录/)).toBeVisible()
+    await page.getByRole("button", { name: "关闭", exact: true }).click()
     await expect(
       history.getByRole("cell", { name: "EDGE", exact: true }),
     ).toBeVisible()
-    await expect(page.getByText(/缩小范围不会删除已经同步的记录/)).toBeVisible()
   })
 }
 
@@ -77,22 +92,29 @@ test("Cloud connection, secret preservation, sync and complete source step", asy
   expect((await blocked.json()).detail.blockers).toContain(
     "还没有成功同步或导入过工作记录",
   )
+  await page
+    .getByRole("button", { name: "配置 Jira Cloud", exact: true })
+    .click()
   await saveCloud(page, base, "jira-admin@example.com", "wrong-token")
   await page.getByRole("button", { name: "测试连接" }).click()
   await expect(
     page.getByRole("alert").filter({ hasText: "账号或令牌不正确" }),
   ).toBeVisible()
   await expect(
-    page.getByText("如果暂时接不上，可以先在下方上传工作记录文件"),
+    page.getByText("如果暂时接不上，可以先导入工作记录文件。"),
   ).toBeVisible()
   await saveCloud(page, base, "jira-admin@example.com", "mock-cloud-token")
   await page.reload()
+  await page
+    .getByRole("button", { name: "配置 Jira Cloud", exact: true })
+    .click()
   await expect(page.getByLabel("API token", { exact: true })).toHaveAttribute(
     "placeholder",
     "已保存，留空表示不修改",
   )
   await expect(page.getByLabel("API token", { exact: true })).toHaveValue("")
   expect(await page.content()).not.toContain("mock-cloud-token")
+  expect(page.url()).not.toContain("mock-cloud-token")
   const response = await page.evaluate(async () => {
     const result = await fetch(
       `/api/v1/orgs/${localStorage.getItem("current_org_id")}/sources/jira`,
@@ -141,6 +163,23 @@ test("Cloud connection, secret preservation, sync and complete source step", asy
   await expect(
     page.getByRole("heading", { name: "数据来源", exact: true }),
   ).toBeVisible()
+  await page.getByRole("button", { name: "变更历史", exact: true }).click()
+  const audit = page.getByRole("dialog", { name: "变更历史", exact: true })
+  await expect(
+    audit.getByText("修改 Jira 连接", { exact: true }).first(),
+  ).toBeVisible()
+  await audit.getByRole("button", { name: "关闭", exact: true }).click()
+  await page
+    .getByRole("button", { name: "配置 Jira Data Center", exact: true })
+    .click()
+  await expect(page.getByText(/保存后将替换当前 Jira 连接/)).toBeVisible()
+  await expect(page.getByLabel("个人访问令牌", { exact: true })).toHaveValue("")
+  await expect(
+    page.getByLabel("个人访问令牌", { exact: true }),
+  ).toHaveAttribute("required", "")
+  await expect(
+    page.getByRole("button", { name: "测试连接", exact: true }),
+  ).toBeDisabled()
 })
 
 test("Data Center PAT, file errors, warnings and successful import", async ({
@@ -148,13 +187,19 @@ test("Data Center PAT, file errors, warnings and successful import", async ({
 }) => {
   test.setTimeout(120000)
   await createSourcesOrg(page)
-  await page.getByLabel("Jira Data Center / Server").check()
+  await page
+    .getByRole("button", { name: "配置 Jira Data Center", exact: true })
+    .click()
   await page.getByLabel("站点地址").fill(base)
   await page.getByLabel("个人访问令牌", { exact: true }).fill("mock-dc-pat")
   await page.getByRole("button", { name: "保存", exact: true }).click()
   await expect(page.getByText("Jira 配置已保存。")).toBeVisible()
   await page.getByRole("button", { name: "测试连接" }).click()
   await expect(page.getByText(/Jira 连接成功：.+/)).toBeVisible()
+  await page.getByRole("button", { name: "关闭", exact: true }).click()
+  await page
+    .getByRole("button", { name: "导入 CSV / Excel 工作记录", exact: true })
+    .click()
   for (const format of ["Excel", "CSV"]) {
     const download = page.waitForEvent("download")
     await page.getByRole("button", { name: `下载 ${format} 模板` }).click()
@@ -198,6 +243,15 @@ test("Data Center PAT, file errors, warnings and successful import", async ({
   await expect(page.getByRole("alert")).toContainText(
     "文件超过 5 MB，请拆分后再上传",
   )
+  await page.getByRole("button", { name: "关闭", exact: true }).click()
+  await expect(
+    page.getByRole("region", { name: "CSV / Excel 工作记录", exact: true }),
+  ).toContainText("最近导入：")
+  const row = page
+    .getByRole("region", { name: "同步记录", exact: true })
+    .getByRole("row")
+    .filter({ hasText: "synthetic.csv" })
+  await expect(row).toContainText("已完成")
 })
 
 for (const account of ["manager.platform", "employee.platform"]) {
@@ -223,14 +277,23 @@ test("Jira schedule persists after refresh and can be disabled", async ({
   page,
 }) => {
   await createSourcesOrg(page)
+  await page
+    .getByRole("button", { name: "配置 Jira Cloud", exact: true })
+    .click()
   await saveCloud(page, base, "jira-admin@example.com", "mock-cloud-token")
   await page.goto("/admin/sources")
+  await page
+    .getByRole("button", { name: "配置 Jira Cloud", exact: true })
+    .click()
   await expect(page.getByLabel("同步周期")).toHaveValue("off")
   for (const period of ["monthly", "quarterly", "yearly", "off"]) {
     await page.getByLabel("同步周期").selectOption(period)
     await page.getByRole("button", { name: "保存", exact: true }).click()
     await expect(page.getByText("Jira 配置已保存。")).toBeVisible()
     await page.reload()
+    await page
+      .getByRole("button", { name: "配置 Jira Cloud", exact: true })
+      .click()
     await expect(page.getByLabel("同步周期")).toHaveValue(period)
     const next = page.getByText(/下次同步时间：/)
     await expect(next).toBeVisible()

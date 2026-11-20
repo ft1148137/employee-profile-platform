@@ -19,6 +19,9 @@ test("real Cloud connection and synchronization through the settings page", asyn
   test.setTimeout(180000)
   await createSourcesOrg(page)
   await page.goto("/admin/sources")
+  await page
+    .getByRole("button", { name: "配置 Jira Cloud", exact: true })
+    .click()
   await saveCloud(
     page,
     process.env.JIRA_BASE_URL!,

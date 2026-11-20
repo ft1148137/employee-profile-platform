@@ -41,6 +41,9 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
     .first()
     .click()
   await page.goto("/admin/data-ai?tab=sources")
+  await page
+    .getByRole("button", { name: "配置 Jira Cloud", exact: true })
+    .click()
   await saveCloud(
     page,
     "http://mock-jira:8080/qiguang-aiot",
@@ -48,6 +51,10 @@ test("M2: roster, Jira and PLM, identities, model, employee evidence", async ({
     "mock-cloud-token",
   )
   await syncJira(page)
+  await page.getByRole("button", { name: "关闭", exact: true }).click()
+  await page
+    .getByRole("button", { name: "导入 CSV / Excel 工作记录", exact: true })
+    .click()
   await page
     .getByLabel("选择工作记录文件")
     .setInputFiles(

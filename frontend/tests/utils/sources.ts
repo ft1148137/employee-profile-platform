@@ -92,7 +92,9 @@ export async function createSourcesOrg(page: Page) {
     localStorage.setItem("current_org_id", result.org_id)
   }, data)
   await page.goto("/admin/data-ai?tab=sources")
-  await expect(page.getByRole("heading", { name: "连接 Jira" })).toBeVisible()
+  await expect(
+    page.getByRole("region", { name: "Jira Cloud", exact: true }),
+  ).toBeVisible()
 }
 
 export async function saveCloud(

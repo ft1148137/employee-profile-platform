@@ -154,6 +154,11 @@ test("Jira draft accepts a private token, tests it and highlights the source pag
       .configured,
   ).toBe(false)
   await returnToManualPage(page)
+  const jiraCard = page.getByRole("region", { name: "Jira Cloud", exact: true })
+  await expect(jiraCard).toContainText("有助手草稿")
+  await page
+    .getByRole("button", { name: "配置 Jira Cloud", exact: true })
+    .click()
   const section = page.getByRole("region", { name: "Jira 连接" })
   await expect(section.getByLabel("站点地址")).toHaveValue(jiraTestUrl)
   await expect(
@@ -162,10 +167,12 @@ test("Jira draft accepts a private token, tests it and highlights the source pag
   await expect(
     section.getByRole("button", { name: "保存", exact: true }),
   ).toBeDisabled()
-  await section.getByRole("button", { name: "确认生效", exact: true }).click()
-  await expect(
-    section.getByRole("region", { name: "页面草稿确认" }),
-  ).toHaveCount(0)
+  await page.getByRole("button", { name: "关闭", exact: true }).click()
+  const confirmation = page.getByRole("region", { name: "页面草稿确认" })
+  await confirmation
+    .getByRole("button", { name: "确认生效", exact: true })
+    .click()
+  await expect(confirmation).toHaveCount(0)
   expect(
     (await (await request.get(`${base}/sources/jira`, { headers })).json())
       .configured,
@@ -395,6 +402,10 @@ test("Feishu draft keeps credentials private and requires a second confirmation"
   await card.getByRole("button", { name: "测试连接" }).click()
   await expect(card.getByText("测试连接：成功", { exact: true })).toBeVisible()
   await returnToManualPage(page)
+  await expect(
+    page.getByRole("region", { name: "飞书", exact: true }),
+  ).toContainText("有助手草稿")
+  await page.getByRole("button", { name: "配置 飞书", exact: true }).click()
   const form = page.getByRole("form", { name: "飞书", exact: true })
   await expect(form.getByRole("checkbox", { name: "启用入口" })).toBeChecked()
   await expect(form.locator('[data-assistant-suggested="true"]')).toHaveCount(2)
@@ -405,6 +416,7 @@ test("Feishu draft keeps credentials private and requires a second confirmation"
     (await (await request.get(`${base}/im-settings`, { headers })).json()).find(
       (row: { platform: string }) => row.platform === "feishu",
     )
+  await page.getByRole("button", { name: "关闭", exact: true }).click()
   const confirmation = page.getByRole("region", { name: "页面草稿确认" })
   await confirmation.getByRole("button", { name: "确认生效" }).click()
   await expect(confirmation.getByRole("status")).toHaveText("请再次确认")
@@ -417,6 +429,7 @@ test("Feishu draft keeps credentials private and requires a second confirmation"
     .click()
   await expect(confirmation).toHaveCount(0)
   expect((await read()).enabled).toBe(true)
+  await page.getByRole("button", { name: "配置 飞书", exact: true }).click()
   await expect(form.getByLabel("应用密钥", { exact: true })).toHaveValue("")
   await expectChineseCopy(page, ["IM", "Telegram"])
 })

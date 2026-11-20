@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { SourcesService } from "@/client"
+import { SectionCard } from "@/components/Common/WorkbenchPrimitives"
 import { SetupError } from "@/components/Setup/SetupError"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
 const statuses = {
@@ -45,11 +47,14 @@ export function SyncRunTable({ orgId }: { orgId: string }) {
     mutationFn: (id: string) =>
       SourcesService.retrySync({ path: { org_id: orgId, run_id: id } }),
     onSuccess: () =>
-      client.invalidateQueries({ queryKey: ["sync-runs", orgId] }),
+      Promise.all([
+        client.invalidateQueries({ queryKey: ["sync-runs", orgId] }),
+        client.invalidateQueries({ queryKey: ["source-runs", orgId] }),
+      ]),
   })
   return (
-    <section className="space-y-4" aria-label="同步记录">
-      <h2 className="text-xl font-semibold">同步记录</h2>
+    <SectionCard className="space-y-2 p-3" aria-label="同步记录">
+      <h2 className="text-sm font-semibold">同步记录</h2>
       <SetupError error={runs.error ?? retry.error} />
       {runs.isError && <Button onClick={() => runs.refetch()}>重新读取</Button>}
       {runs.isPending && <p role="status">正在读取同步记录…</p>}
@@ -57,7 +62,7 @@ export function SyncRunTable({ orgId }: { orgId: string }) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead>
-            <tr className="border-b">
+            <tr className="h-10 border-b bg-muted/30 text-muted-foreground">
               {[
                 "类型 / 文件名",
                 "项目范围",
@@ -67,65 +72,116 @@ export function SyncRunTable({ orgId }: { orgId: string }) {
                 "时间",
                 "操作",
               ].map((h) => (
-                <th className="p-3 whitespace-nowrap" key={h}>
+                <th
+                  className="whitespace-nowrap px-2 py-1 text-xs font-medium"
+                  key={h}
+                >
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {runs.data?.data.map((run) => (
-              <tr key={run.id} className="border-b align-top">
-                <td className="p-3">
-                  {run.kind === "jira" ? "Jira" : "CSV"}
-                  <p>{run.filename}</p>
-                </td>
-                <td className="p-3">
-                  {run.kind === "jira"
-                    ? run.project_keys?.length
-                      ? run.project_keys.join("、")
-                      : "全部项目"
-                    : "—"}
-                </td>
-                <td className="p-3 whitespace-nowrap">
-                  {statuses[run.status]}
-                  <p>{run.attempts} 次</p>
-                </td>
-                <td className="p-3">
-                  {Object.entries(run.counts).map(([key, n]) => (
-                    <p className="whitespace-nowrap" key={key}>
-                      {countLabels[key] ?? "其他"}：{n}
-                    </p>
-                  ))}
-                </td>
-                <td className="p-3">{run.error ?? "—"}</td>
-                <td className="p-3">
-                  {new Date(run.created_at).toLocaleString("zh-CN")}
-                  <p>
-                    {run.finished_at &&
-                      `完成：${new Date(run.finished_at).toLocaleString("zh-CN")}`}
-                  </p>
-                </td>
-                <td className="p-3">
-                  {run.status === "failed" && (
-                    <Button
-                      variant="outline"
-                      disabled={retry.isPending}
-                      onClick={() => retry.mutate(run.id)}
+            {runs.data?.data.map((run) => {
+              const entries = Object.entries(run.counts)
+              const overview = entries.filter(
+                ([key]) => key === "records" || key === "evidence_added",
+              )
+              const additional = entries.filter(
+                ([key]) => key !== "records" && key !== "evidence_added",
+              )
+              return (
+                <tr key={run.id} className="h-11 border-b last:border-b-0">
+                  <td className="px-2 py-1">
+                    {run.kind === "jira" ? "Jira" : "CSV"}
+                    {run.filename && (
+                      <p className="break-all text-xs text-muted-foreground">
+                        {run.filename}
+                      </p>
+                    )}
+                  </td>
+                  <td className="max-w-48 px-2 py-1 [overflow-wrap:anywhere]">
+                    {run.kind === "jira"
+                      ? run.project_keys?.length
+                        ? run.project_keys.join("、")
+                        : "全部项目"
+                      : "—"}
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-1">
+                    <Badge
+                      variant={
+                        run.status === "failed" ? "destructive" : "secondary"
+                      }
                     >
-                      重试
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                      {statuses[run.status]}
+                    </Badge>{" "}
+                    <span className="text-xs text-muted-foreground">
+                      {run.attempts} 次
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-1 text-xs">
+                    <div className="flex gap-2">
+                      {overview.map(([key, n]) => (
+                        <span key={key}>
+                          {countLabels[key]}：{n}
+                        </span>
+                      ))}
+                    </div>
+                    {additional.length > 0 && (
+                      <details className="inline-block">
+                        <summary className="cursor-pointer text-primary">
+                          其他计数
+                        </summary>
+                        {additional.map(([key, n]) => (
+                          <p key={key}>
+                            {countLabels[key] ?? "其他"}：{n}
+                          </p>
+                        ))}
+                      </details>
+                    )}
+                  </td>
+                  <td className="max-w-48 px-2 py-1 text-xs">
+                    {run.error && (
+                      <details>
+                        <summary className="cursor-pointer whitespace-nowrap text-destructive">
+                          查看错误
+                        </summary>
+                        <p className="break-words">{run.error}</p>
+                      </details>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-1 text-xs tabular-nums">
+                    {new Date(run.created_at).toLocaleString("zh-CN")}
+                    {run.finished_at && (
+                      <p className="text-muted-foreground">
+                        完成：
+                        {new Date(run.finished_at).toLocaleString("zh-CN")}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-2 py-1">
+                    {run.status === "failed" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={retry.isPending}
+                        onClick={() => retry.mutate(run.id)}
+                      >
+                        重试
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
       {!!runs.data?.count && (
-        <div className="flex gap-3 items-center">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <Button
             variant="outline"
+            size="sm"
             disabled={skip === 0}
             onClick={() => setSkip(skip - 20)}
           >
@@ -137,6 +193,7 @@ export function SyncRunTable({ orgId }: { orgId: string }) {
           </span>
           <Button
             variant="outline"
+            size="sm"
             disabled={skip + 20 >= runs.data.count}
             onClick={() => setSkip(skip + 20)}
           >
@@ -144,6 +201,6 @@ export function SyncRunTable({ orgId }: { orgId: string }) {
           </Button>
         </div>
       )}
-    </section>
+    </SectionCard>
   )
 }

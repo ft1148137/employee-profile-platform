@@ -53,6 +53,9 @@ test("M2 real Cloud: roster, manual identity, initial request and evidence", asy
     ).ok(),
   ).toBeTruthy()
   await page.goto("/admin/sources")
+  await page
+    .getByRole("button", { name: "配置 Jira Cloud", exact: true })
+    .click()
   await saveCloud(
     page,
     process.env.JIRA_BASE_URL!,

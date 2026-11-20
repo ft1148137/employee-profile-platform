@@ -20,7 +20,10 @@ export function CsvImportCard({ orgId }: { orgId: string }) {
       }),
     onSuccess: ({ data }) => {
       setIssues(data.issues)
-      client.invalidateQueries({ queryKey: ["source-runs", orgId] })
+      return Promise.all([
+        client.invalidateQueries({ queryKey: ["source-runs", orgId] }),
+        client.invalidateQueries({ queryKey: ["sync-runs", orgId] }),
+      ])
     },
     onError: (error) => {
       if (
@@ -50,11 +53,7 @@ export function CsvImportCard({ orgId }: { orgId: string }) {
   })
   const recent = runs.data ?? []
   return (
-    <section
-      aria-label="工作记录文件"
-      className="space-y-4 rounded-xl border p-4 sm:p-6"
-    >
-      <h3 className="text-lg font-semibold">上传 CSV / Excel 工作记录</h3>
+    <section aria-label="工作记录文件" className="space-y-4">
       <p className="text-sm text-muted-foreground">
         支持从其他系统导出后上传（CSV / Excel，不超过 5 MB）。
       </p>
