@@ -90,7 +90,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
     save.reset()
     test.reset()
   }
-  const selectClass = "h-10 w-full rounded-md border bg-background px-3"
+  const selectClass = "h-9 w-full min-w-0 rounded-md border bg-background px-2"
   return (
     <>
       <PageDraft
@@ -99,7 +99,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
         error={pageDraft.error}
       />
       <form
-        className="max-w-2xl space-y-5"
+        className="max-w-2xl min-w-0 space-y-3 text-sm"
         onSubmit={(event) => {
           event.preventDefault()
           save.mutate({
@@ -109,7 +109,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
         }}
       >
         <fieldset
-          className="space-y-5"
+          className="min-w-0 space-y-3"
           disabled={pageDraft.blocked || save.isPending}
         >
           <DraftField changed={pageDraft.changed("enabled")}>
@@ -129,7 +129,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
             saved.kind !== "chatgpt_subscription" &&
             !saved.provider && <p role="status">请重新选择提供方</p>}
           <DraftField changed={pageDraft.changed("kind")}>
-            <label className="block space-y-2">
+            <label className="block space-y-1">
               <span>模型类型</span>
               <select
                 className={selectClass}
@@ -172,7 +172,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
           {current.kind && (
             <>
               <DraftField changed={pageDraft.changed("model")}>
-                <label htmlFor="model-name" className="block space-y-2">
+                <label htmlFor="model-name" className="block space-y-1">
                   <span>模型名称</span>
                   <Input
                     id="model-name"
@@ -194,12 +194,12 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                   前缀；能使用哪些模型，以所连接账号的订阅为准。
                 </p>
               )}
-              <details className="space-y-3 rounded-lg border p-4">
+              <details className="space-y-2 rounded-md border border-surface-border p-3">
                 <summary className="cursor-pointer font-medium">
                   高级设置：模型思考深度
                 </summary>
                 <DraftField changed={pageDraft.changed("reasoning_effort")}>
-                  <label className="block space-y-2">
+                  <label className="block space-y-1">
                     <span>思考深度</span>
                     <select
                       className={selectClass}
@@ -237,7 +237,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                   {current.kind === "cloud_api" && (
                     <>
                       <DraftField changed={pageDraft.changed("provider")}>
-                        <label className="block space-y-2">
+                        <label className="block space-y-1">
                           <span>提供方</span>
                           <select
                             aria-label="提供方"
@@ -274,7 +274,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                       </p>
                       {current.provider === "qwen" && (
                         <DraftField changed={pageDraft.changed("base_url")}>
-                          <label className="block space-y-2">
+                          <label className="block space-y-1">
                             <span>百炼区域</span>
                             <select
                               className={selectClass}
@@ -296,7 +296,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                   )}
                   {current.kind !== "cloud_api" && (
                     <DraftField changed={pageDraft.changed("base_url")}>
-                      <label htmlFor="model-url" className="block space-y-2">
+                      <label htmlFor="model-url" className="block space-y-1">
                         <span>
                           base URL
                           {current.kind === "openai_compatible"
@@ -321,7 +321,7 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
                       URL），请向服务商获取，并非聊天网页地址。
                     </p>
                   )}
-                  <label htmlFor="model-key" className="block space-y-2">
+                  <label htmlFor="model-key" className="block space-y-1">
                     <span>
                       密钥{current.kind !== "cloud_api" && "（可选）"}
                     </span>
@@ -381,12 +381,13 @@ export function ModelSettingForm({ orgId }: { orgId: string }) {
               {test.data.data.message}
             </p>
           )}
-          <div className="flex gap-3">
-            <Button type="submit" disabled={save.isPending}>
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" size="sm" disabled={save.isPending}>
               保存
             </Button>
             <Button
               type="button"
+              size="sm"
               variant="outline"
               disabled={
                 save.isPending ||

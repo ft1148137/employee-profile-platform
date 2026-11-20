@@ -7,6 +7,7 @@ import {
 import { DraftField } from "@/components/AdminAssistant/DraftField"
 import { PageDraft } from "@/components/AdminAssistant/PageDraft"
 import { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
+import { SectionCard } from "@/components/Common/WorkbenchPrimitives"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
@@ -57,13 +58,14 @@ export function DraftingPage({ orgId }: { orgId: string }) {
     )
   const current = suggestion.values(settings.data)
   return (
-    <section aria-label="自动起草" className="rounded-xl border p-6 space-y-5">
+    <SectionCard aria-label="自动起草" className="space-y-3">
       <div className="flex items-center justify-between gap-4">
-        <h2 id="auto-drafting-title" className="text-xl font-semibold">
+        <h2 id="auto-drafting-title" className="text-sm font-semibold">
           自动起草
         </h2>
         <DraftField changed={suggestion.changed("enabled")}>
           <Button
+            size="sm"
             role="switch"
             aria-labelledby="auto-drafting-title"
             aria-checked={current.enabled}
@@ -81,7 +83,9 @@ export function DraftingPage({ orgId }: { orgId: string }) {
         开启后，每次同步工作记录将自动起草或更新画像（会消耗模型额度）。
       </p>
       {!model.data?.enabled && (
-        <p role="status">模型未启用，请先在下方配置并启用模型。</p>
+        <p role="status" className="text-sm">
+          模型未启用，请先在模型配置中启用模型。
+        </p>
       )}
       <PageDraft
         orgId={orgId}
@@ -91,6 +95,7 @@ export function DraftingPage({ orgId }: { orgId: string }) {
       <SetupError error={save.error ?? start.error} />
       <div className="flex flex-wrap items-center gap-4">
         <Button
+          size="sm"
           disabled={
             !settings.data?.enabled ||
             !model.data?.enabled ||
@@ -113,9 +118,11 @@ export function DraftingPage({ orgId }: { orgId: string }) {
         </a>
       </div>
       {start.isSuccess && (
-        <p role="status">已排队 {start.data.data.queued} 名员工</p>
+        <p role="status" className="text-sm">
+          已排队 {start.data.data.queued} 名员工
+        </p>
       )}
       <DraftingNoteForm orgId={orgId} />
-    </section>
+    </SectionCard>
   )
 }

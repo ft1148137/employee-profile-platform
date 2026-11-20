@@ -53,10 +53,10 @@ test("audit records show account and revoked role labels with filters", async ({
     },
   })
   expect(granted.ok()).toBeTruthy()
-  const revoked = await request.delete(
-    `${base}/role-grants/${(await granted.json()).id}`,
-    { headers },
-  )
+  const grantId = (await granted.json()).id
+  const revoked = await request.delete(`${base}/role-grants/${grantId}`, {
+    headers,
+  })
   expect(revoked.ok()).toBeTruthy()
   await page.getByRole("link", { name: "设置", exact: true }).click()
   await page.getByRole("link", { name: "审计日志", exact: true }).click()
@@ -85,6 +85,28 @@ test("audit records show account and revoked role labels with filters", async ({
     "部门经理 · 平台研发部",
   )
   await expectChineseCopy(page, ["admin"])
+  const revokedRow = rows.filter({ hasText: "撤销角色" }).first()
+  await revokedRow.click()
+  const drawer = page.getByRole("dialog", { name: "审计事件详情" })
+  await expect(drawer).toContainText("企业管理员（admin@demo.example.com）")
+  await expect(drawer).toContainText("role.revoked")
+  await expect(drawer).toContainText(grantId)
+  const payload = drawer
+    .getByRole("region", { name: "结构化载荷" })
+    .locator("pre")
+  expect(JSON.parse(await payload.textContent())).toMatchObject({
+    id: grantId,
+    user_id: userId,
+    role: "dept_manager",
+    department_id: department.id,
+  })
+  await page.keyboard.press("Escape")
+  await expect(drawer).toBeHidden()
+  await expect(revokedRow).toBeFocused()
+  await revokedRow.press("Enter")
+  await expect(drawer).toBeVisible()
+  await drawer.getByRole("button", { name: "关闭" }).click()
+  await expect(drawer).toBeHidden()
   await page.screenshot({
     path: "test-results/admin-audit.png",
     fullPage: true,
