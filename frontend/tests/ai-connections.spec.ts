@@ -122,6 +122,19 @@ test("enterprise switch and personal token lifecycle", async ({
     await expect(tokenScope).toContainText("管辖经理也可查看管辖团队摘要")
     await expect(tokenScope).toContainText("记录提交来源和客户端")
     await expect(tokenScope).toContainText("需审批的改动可在经理批准前撤回")
+    await expect(tokenScope).toContainText("普通员工不能审批")
+    await expect(tokenScope).toContainText("任何人都不能审批自己的请求")
+    await expect(tokenScope).toContainText(
+      "有审批权的经理可凭令牌通过 MCP 在管辖范围内提交画像审批决定",
+    )
+    await expect(tokenScope).toContainText("工具指引要求先征得经理本人同意")
+    await expect(tokenScope).toContainText("平台不强制逐次验证经理是否同意")
+    await expect(tokenScope).toContainText(
+      "每次调用都会留下审计记录，记录来源和客户端",
+    )
+    await expect(tokenScope).toContainText(
+      "协作、负荷、延期审批与方案接受仅限网页操作",
+    )
     await expect(tokenScope).toContainText("权限受你本人账号的限制")
     await expect(tokenScope).toContainText("可随时在本页「我的令牌」中吊销")
     await employee.getByLabel("令牌名称").fill(name)
