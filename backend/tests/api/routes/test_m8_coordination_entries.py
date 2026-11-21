@@ -158,13 +158,14 @@ def test_bot_privacy_and_proposal_card(
             "demand_id": str(row.id),
             "revision": row.revision,
             "outcome": "not_now",
-            "text": "目前无法承接",
-            "reason_code": "skill",
+            "text": "需要核实是否达到要求的能力等级",
+            "reason_code": "other",
         },
     )
     assert result["status"] == "pending"
     assert len(b_cards) == plan_count + 1 and isinstance(b_cards[-1], s.CapacityCard)
     assert b_cards[-1].kind == "demand_reply"
+    assert "暂不能承接的原因：其他" in b_cards[-1].content
     assert_no_b_people(b_cards[-1].model_dump(mode="json"), people)
     assert business_rows(db, row.org_id) == before
     db.refresh(row)

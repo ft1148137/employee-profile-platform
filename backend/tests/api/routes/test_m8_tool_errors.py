@@ -95,23 +95,22 @@ def test_model_corrects_business_error_in_same_turn(
                 and "card_id" not in missing_reason
             )
             assert business_rows(db, row.org_id) == before
-            result = use(
-                "prepare_demand_reply",
-                {
-                    "demand_id": str(row.id),
-                    "revision": row.revision,
-                    "outcome": "not_now",
-                    "text": "目前无法承接",
-                    "reason_code": "skill",
-                },
-            )
+            reply = {
+                "demand_id": str(row.id),
+                "revision": row.revision,
+                "outcome": "not_now",
+                "text": "需要核实是否达到要求的能力等级",
+            }
+            unverified = use("prepare_demand_reply", {**reply, "reason_code": "skill"})
+            assert "其他" in unverified["error"] and "card_id" not in unverified
+            result = use("prepare_demand_reply", {**reply, "reason_code": "other"})
             assert result["status"] == "pending"
             assert business_rows(db, row.org_id) == before
         return TurnResult(
             text="已修正方案",
             stop_reason="stop",
             model_calls=2,
-            tool_calls=6 if mistake == "name" else 5,
+            tool_calls=7 if mistake == "name" else 5,
         )
 
     monkeypatch.setattr(core.pi_client, "run_turn", fake_turn)

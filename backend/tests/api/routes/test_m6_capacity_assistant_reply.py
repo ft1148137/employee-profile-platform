@@ -14,9 +14,11 @@ from app.authz.principal import Principal
 from app.core.db import engine
 from app.core.security import create_access_token
 from app.domains.audit.models import AuditEvent
+from app.domains.base import utc_now
 from app.domains.bot import core, prompts, store, tools
 from app.domains.bot import schemas as s
 from app.domains.bot.models import BotSession
+from app.domains.capability.service import get_schema, list_capabilities
 from app.domains.capacity import assistant, demand
 from app.domains.capacity.calendar import this_week
 from app.domains.capacity.demand_schemas import PlanReplyDemandInput
@@ -32,6 +34,7 @@ from app.domains.im import binding, gateway
 from app.domains.im.adapters.feishu import Feishu
 from app.domains.im.models import ImAction, ImSetting
 from app.domains.org.models import Department, OrgMembership, RoleGrant
+from app.domains.profile.models import ProfileVersion
 from tests.domains.test_bot_core import enable
 from tests.domains.test_im_gateway import principal
 from tests.utils.bot import final_response
@@ -122,14 +125,24 @@ def model_call(name: str, args: dict) -> dict:
     return {"calls": [{"name": name, "arguments": args}]}
 
 
-def test_reply_with_unverified_required_capability(case: tuple, db: Session) -> None:
+@pytest.mark.parametrize(
+    "text",
+    [
+        "暂时无法确认承接，必需能力尚未确认，需要进一步核实",
+        "无法判断候选人是否达到所需的接口设计等级",
+        "已核实，必需能力等级低于要求",
+    ],
+)
+def test_reply_with_unverified_required_capability(
+    case: tuple, db: Session, text: str
+) -> None:
     _, manager, args = case
     arguments = {
         **args,
         "outcome": "not_now",
         "start_date": None,
         "end_date": None,
-        "text": "暂时无法确认承接，必需能力尚未确认，需要进一步核实",
+        "text": text,
         "reason_code": "skill",
     }
     with pytest.raises(demand.RejectionReasonInvalid, match="其他"):
@@ -140,12 +153,6 @@ def test_reply_with_unverified_required_capability(case: tuple, db: Session) -> 
     rejected = assistant.call(db, manager, cards, "prepare_demand_reply", arguments)
     assert "待核实的能力" in rejected["error"]
     assert not cards
-    confirmed_mismatch = PlanReplyDemandInput.model_validate(
-        {**arguments, "text": "已核实，必需能力等级低于要求"}
-    )
-    assert "暂不能承接的原因：能力不匹配" in assistant.check_demand_reply(
-        db, manager, confirmed_mismatch
-    )
     result = assistant.call(
         db,
         manager,
@@ -165,6 +172,202 @@ def test_reply_with_unverified_required_capability(case: tuple, db: Session) -> 
     assert "未知不等于不会" in system_prompt
     assert "reason_code=other（其他）" in system_prompt
     assert "reason_code=skill（能力不匹配）只用于已核实" in system_prompt
+
+
+def test_legacy_skill_reply_card_is_rechecked(
+    case: tuple, demo: tuple, db: Session, client: TestClient
+) -> None:
+    requester, manager, args = case
+    session = store.create_session(db, manager)
+    card = prepare(
+        db,
+        manager,
+        session,
+        "prepare_demand_reply",
+        {
+            **args,
+            "outcome": "not_now",
+            "reason_code": "other",
+            "text": "无法判断候选人是否达到所需的接口设计等级",
+        },
+    )
+    legacy = card.model_copy(deep=True)
+    legacy.arguments["reason_code"] = "skill"
+    legacy.content = legacy.content.replace("其他", "能力不匹配")
+    store.append_message(
+        db,
+        session,
+        "assistant",
+        s.TurnResponse(messages=[legacy]).model_dump(mode="json"),
+    )
+    db.commit()
+
+    result = core.act(db, manager, session.id, legacy.actions[0]).messages[0]
+    assert result.status == "failed"
+    assert "其他" in (result.result or "")
+    assert demand.get_demand(requester, db, UUID(args["demand_id"])).revision == 1
+    assert not db.exec(
+        select(AuditEvent.id).where(
+            AuditEvent.org_id == manager.org_id,
+            AuditEvent.action == "capacity.demand_replied",
+        )
+    ).all()
+
+    manual = client.post(
+        f"{demo[0]}/capacity/demands/{args['demand_id']}/reply",
+        headers={
+            "Authorization": f"Bearer {create_access_token(manager.user_id, expires_delta=timedelta(minutes=5))}"
+        },
+        json={
+            "revision": args["revision"],
+            "outcome": "not_now",
+            "reason_code": "skill",
+            "text": "部门已线下核实能力要求",
+        },
+    )
+    assert manual.status_code == 200, manual.text
+
+
+@pytest.mark.parametrize(
+    ("status", "level", "requirement", "expected"),
+    [
+        ("confirmed", "routine", "primary", "confirmed"),
+        ("tentative", "routine", "primary", "rejected"),
+        ("disputed", "routine", "primary", "rejected"),
+        ("unknown", None, "primary", "rejected"),
+        ("confirmed", None, "primary", "rejected"),
+        ("confirmed", "independent_complex", "primary", "rejected"),
+        ("confirmed", "retired_level", "primary", "rejected"),
+        ("confirmed", "routine", "primary", "stale"),
+        ("confirmed", "routine", "required_extra", "confirmed"),
+        ("confirmed", "routine", "optional_extra", "rejected"),
+        ("confirmed", "routine", "primary", "unknown_alternative"),
+    ],
+)
+def test_skill_reply_requires_a_confirmed_mismatch(
+    case: tuple,
+    demo: tuple,
+    db: Session,
+    status: str,
+    level: str | None,
+    requirement: str,
+    expected: str,
+) -> None:
+    requester, manager, args = case
+    row = demand.demand_row(manager, db, UUID(args["demand_id"]))
+    schema = get_schema(db, manager.org_id)
+    definitions = list_capabilities(db, manager.org_id, schema.id)
+    capability = next(
+        c
+        for c in definitions
+        if (c.key == row.capability_key) == (requirement == "primary")
+    )
+    if requirement == "primary":
+        row.minimum_level = "independent_complex"
+    else:
+        row.extra_capabilities = [
+            {
+                "key": capability.key,
+                "minimum_level": "independent_complex",
+                "required": requirement == "required_extra",
+            }
+        ]
+    db.add(row)
+
+    def publish_level(
+        person_id: UUID, revision: int, assessment: str, current_level: str | None
+    ) -> None:
+        db.add(
+            ProfileVersion(
+                org_id=manager.org_id,
+                subject_employee_id=person_id,
+                revision=revision,
+                schema_version_id=schema.id,
+                snapshot={
+                    "claims": [
+                        {
+                            "id": str(uuid4()),
+                            "capability_definition_id": str(capability.id),
+                            "statement": "合成能力依据",
+                            "level": current_level,
+                            "assessment_status": assessment,
+                            "confidence": None,
+                            "explanation": None,
+                            "generated_by": {"actor_type": "user"},
+                            "evidence": [],
+                        }
+                    ]
+                },
+                published_at=utc_now(),
+                published_by={"actor_type": "system_worker"},
+            )
+        )
+        db.commit()
+
+    assert manager.employee_id is not None
+    publish_level(manager.employee_id, 99, status, level)
+    if expected == "unknown_alternative":
+        alternative = demo[1]["E06"]
+        alternative.department_id = row.target_department_id
+        db.add(alternative)
+        publish_level(alternative.id, 99, "unknown", None)
+    session = store.create_session(db, manager)
+    cards: list[s.Message] = []
+    preview = assistant.call(
+        db,
+        manager,
+        cards,
+        "prepare_demand_reply",
+        {
+            **args,
+            "outcome": "not_now",
+            "reason_code": "skill",
+            "text": "已核实，必需能力等级低于要求",
+            "start_date": None,
+            "end_date": None,
+        },
+    )
+    if expected in {"rejected", "unknown_alternative"}:
+        assert "其他" in preview["error"]
+        assert not cards
+        return
+
+    (card,) = cards
+    assert isinstance(card, s.CapacityCard) and "能力不匹配" in card.content
+    store.append_message(
+        db,
+        session,
+        "assistant",
+        s.TurnResponse(messages=cards).model_dump(mode="json"),
+    )
+    db.commit()
+    if expected == "stale":
+        publish_level(manager.employee_id, 100, "confirmed", "independent_complex")
+    result = core.act(db, manager, session.id, card.actions[0]).messages[0]
+    if expected == "stale":
+        assert result.status == "failed"
+        assert "其他" in (result.result or "")
+        assert demand.get_demand(requester, db, row.id).revision == 1
+        return
+
+    assert result.status == "confirmed"
+    event = db.exec(
+        select(CapacityDemandEvent).where(
+            CapacityDemandEvent.org_id == manager.org_id,
+            CapacityDemandEvent.demand_id == row.id,
+            CapacityDemandEvent.kind == "replied",
+        )
+    ).one()
+    assert event.reason_code == "skill" and event.via == "bot"
+    assert event.text in card.content
+    assert "合成能力依据" not in card.content and "合成承接经理" not in card.content
+    audit = db.exec(
+        select(AuditEvent).where(
+            AuditEvent.org_id == manager.org_id,
+            AuditEvent.action == "capacity.demand_replied",
+        )
+    ).one()
+    assert audit.details["via"] == "bot"
 
 
 def test_replaced_reply_card_is_rejected(case: tuple, db: Session) -> None:
