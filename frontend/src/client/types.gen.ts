@@ -6848,6 +6848,11 @@ export type ReviewDetail = {
    * Owner Reviewed
    */
   owner_reviewed?: boolean
+  submitted_via?: SubmissionVia | null
+  /**
+   * Client Name
+   */
+  client_name?: string | null
   /**
    * Id
    */
@@ -14921,6 +14926,10 @@ export type employeesReadEmployeesData = {
      */
     employment_status?: EmploymentStatus | null
     /**
+     * Review Status
+     */
+    review_status?: ProgressReviewStatus | null
+    /**
      * Q
      */
     q?: string | null
@@ -16069,6 +16078,10 @@ export type accountsReadAccountsData = {
      * Employment Status
      */
     employment_status?: EmploymentStatus | null
+    /**
+     * Review Status
+     */
+    review_status?: ProgressReviewStatus | null
     /**
      * Skip
      */

@@ -6,6 +6,7 @@ import { useState } from "react"
 import {
   type DecisionInput,
   type PendingReviews,
+  type ReviewDetail,
   ReviewsService,
 } from "@/client"
 import { TopbarActions } from "@/components/Common/TopbarSlot"
@@ -16,7 +17,10 @@ import {
 import { EvidenceSheet } from "@/components/Profile/EvidenceSheet"
 import { levelLabel } from "@/components/Profile/fields"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
-import { decisionLabels } from "@/components/Profile/RequestTimeline"
+import {
+  decisionLabels,
+  RequestSourceBadge,
+} from "@/components/Profile/RequestTimeline"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
@@ -35,6 +39,16 @@ export const Route = createFileRoute("/_layout/reviews/$requestId")({
   component: ReviewPage,
   head: () => ({ meta: [{ title: "审批请求 - 员工画像平台" }] }),
 })
+function approvalStatusHint({
+  after,
+  jira_only,
+}: ReviewDetail["items"][number]) {
+  if (jira_only) return "仅来自 Jira，批准后为「暂定」"
+  if (after.after?.assessment_status === "tentative") {
+    return "批准后将由「暂定」发布为「已确认」"
+  }
+}
+
 function ReviewPage() {
   const { org } = useOrg()
   const { requestId } = Route.useParams()
@@ -146,7 +160,9 @@ function ReviewForm({
       )
     return <ProfileError retry={() => query.refetch()} />
   }
-  const items = query.data.items.filter((item) => !item.after.decision)
+  const items = query.data.items
+    .filter((item) => !item.after.decision)
+    .map((item) => ({ ...item, approvalHint: approvalStatusHint(item) }))
   const valid =
     items.length > 0 &&
     items.every((item) => {
@@ -189,7 +205,11 @@ function ReviewForm({
             待审批变更项{" "}
             <span className="text-muted-foreground">（{items.length}）</span>
           </h2>
-          {items.map(({ before, after, evidence, jira_only }) => (
+          <RequestSourceBadge
+            via={query.data.submitted_via}
+            clientName={query.data.client_name}
+          />
+          {items.map(({ before, after, evidence, approvalHint }) => (
             <SectionCard key={after.id} className="space-y-3">
               <h3 className="wrap-anywhere text-sm font-semibold">
                 {after.capability.name}
@@ -238,9 +258,9 @@ function ReviewForm({
                   className="hidden size-4 self-center text-primary sm:col-start-2 sm:row-start-1 sm:block"
                 />
               </div>
-              {jira_only && (
+              {approvalHint && (
                 <p className="rounded bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-800 dark:text-amber-300">
-                  仅来自 Jira，批准后为「暂定」
+                  {approvalHint}
                 </p>
               )}
               {[
@@ -446,6 +466,12 @@ function ReviewForm({
                 {item.after.capability.name}：
                 {decisions[item.after.id] &&
                   decisionLabels[decisions[item.after.id].decision]}
+                {decisions[item.after.id]?.decision === "approved" &&
+                  item.approvalHint && (
+                    <p className="text-sm text-muted-foreground">
+                      {item.approvalHint}
+                    </p>
+                  )}
                 {decisions[item.after.id]?.reason?.trim() && (
                   <p>{decisions[item.after.id].reason}</p>
                 )}

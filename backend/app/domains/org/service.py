@@ -20,7 +20,7 @@ from app.domains.change_request.models import (
     ReviewDecision,
     ReviewVia,
 )
-from app.domains.change_request.service import review_statuses
+from app.domains.change_request.service import coverage_status_clause, review_statuses
 from app.domains.evidence.models import Evidence, EvidenceKind, EvidenceStatus
 from app.domains.org.models import (
     Department,
@@ -417,8 +417,11 @@ def list_employees(
     skip: int,
     limit: int,
     employment_status: EmploymentStatus | None = None,
+    review_status: ProgressReviewStatus | None = None,
 ) -> EmployeesPublic:
     filters = [employee_scope_clause(principal)]
+    if review_status is not None:
+        filters.append(coverage_status_clause(principal.org_id, review_status))
     if employment_status is not None:
         filters.append(col(Employee.employment_status) == employment_status)
     if department_id is not None:
