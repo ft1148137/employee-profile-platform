@@ -21,6 +21,9 @@ test("首次登录先改密，保存新令牌后进入首页", async ({ page }, 
   await page.getByRole("button", { name: "登录", exact: true }).click()
   await expect(page).toHaveURL("/change-password")
   await expect(page.getByRole("heading", { name: "设置新密码" })).toBeVisible()
+  await expect(
+    page.getByText("新密码须为 8–128 个字符，不能与当前密码或登录邮箱相同。"),
+  ).toBeVisible()
   await page.screenshot({
     path: testInfo.outputPath("change-password.png"),
     fullPage: true,

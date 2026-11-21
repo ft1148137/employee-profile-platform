@@ -201,6 +201,20 @@ function Tokens({
         </p>
       )}
       <AuthorizedClients orgId={orgId} />
+      <section aria-label="个人令牌与画像" className="space-y-2 px-4 py-2.5">
+        <h3 className="font-medium">个人令牌与画像</h3>
+        <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+          <li>
+            读取本人画像、可见证据和画像变更请求。管辖经理也可查看管辖团队摘要。
+          </li>
+          <li>
+            直接提交本人的画像变更请求，系统会记录提交来源和客户端。需审批的改动可在经理批准前撤回。
+          </li>
+        </ul>
+        <p className="text-muted-foreground">
+          工具以你的身份操作，权限受你本人账号的限制。可随时在本页「我的令牌」中吊销。
+        </p>
+      </section>
       <form
         className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5"
         onSubmit={(event) => {
@@ -214,7 +228,7 @@ function Tokens({
             令牌名称
           </label>
           <p id="token-hint" className="text-xs text-muted-foreground">
-            外部工具可凭令牌读写你的画像与记录。请妥善保管，默认 90 天有效。
+            请妥善保管令牌，默认 90 天有效。
           </p>
         </div>
         <div className="ml-auto flex w-full items-center gap-2 sm:w-auto">

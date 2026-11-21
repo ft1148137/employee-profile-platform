@@ -7,12 +7,16 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useOrg } from "@/hooks/useOrg"
 
+type PickerCapability = Pick<CapabilityPublic, "key" | "name" | "category"> & {
+  profileStatus?: "unfilled" | "recorded"
+}
+
 export function CapabilityPicker({
   capabilities,
   onSelect,
   onClose,
 }: {
-  capabilities: Pick<CapabilityPublic, "key" | "name" | "category">[]
+  capabilities: PickerCapability[]
   onSelect: (key: string) => void
   onClose: () => void
 }) {
@@ -62,16 +66,42 @@ export function CapabilityPicker({
               <h3 className="text-sm font-medium text-muted-foreground">
                 {category}
               </h3>
-              {entries.map((capability) => (
-                <Button
-                  key={capability.key}
-                  variant="outline"
-                  className="h-auto w-full justify-start whitespace-normal text-left"
-                  onClick={() => onSelect(capability.key)}
-                >
-                  {capability.name}
-                </Button>
-              ))}
+              {entries.map(({ key, name, profileStatus }) =>
+                profileStatus ? (
+                  <div
+                    key={key}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2"
+                  >
+                    <div className="min-w-0 break-words">
+                      <p className="text-sm font-medium">{name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {profileStatus === "unfilled"
+                          ? "已在画像中（未填写）"
+                          : "已在画像中"}
+                      </p>
+                    </div>
+                    {profileStatus === "unfilled" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        aria-label={`去填写：${name}`}
+                        onClick={() => onSelect(key)}
+                      >
+                        去填写
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <Button
+                    key={key}
+                    variant="outline"
+                    className="h-auto w-full justify-start whitespace-normal text-left"
+                    onClick={() => onSelect(key)}
+                  >
+                    {name}
+                  </Button>
+                ),
+              )}
             </section>
           ))}
           {!groups.size && !search.trim() && (

@@ -8,7 +8,7 @@ import type {
   SetupPublic,
 } from "../src/client"
 import { expectChineseCopy } from "./utils/copy"
-import { enableAutoDrafting, expect, test } from "./utils/model"
+import { enableAutoDrafting, expect, jiraTestUrl, test } from "./utils/model"
 import { addDraftingEvidence } from "./utils/sources"
 import { logInUser, logOutUser } from "./utils/user"
 
@@ -84,7 +84,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
         headers,
         data: {
           deployment: "cloud",
-          base_url: "http://mock-jira:8080/qingli-saas",
+          base_url: new URL("/qingli-saas", jiraTestUrl).href,
           auth_type: "api_token",
           username: "jira-admin@example.com",
           secret: "mock-cloud-token",
@@ -305,9 +305,10 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     const dictionary: CapabilitiesPublic = await (
       await request.get(`${base}/me/capabilities`, { headers: employeeHeaders })
     ).json()
-    const newCapability = dictionary.data.find(
+    const newCapabilities = dictionary.data.filter(
       (c) => !initial?.items?.some((i) => i.capability.key === c.key),
-    )!
+    )
+    const newCapability = newCapabilities[0]
     if (initial) {
       await page
         .getByRole("region", { name: "初始画像草稿", exact: true })
@@ -332,14 +333,33 @@ test("employee reviews initial profile and updates on desktop and mobile", async
         .getByLabel("异议原因")
         .first()
         .fill("系统判断的工作范围需要本人补充")
-    if (initial)
+    if (initial) {
+      await editor.getByLabel("新增能力").selectOption(newCapabilities[1].key)
+      await editor
+        .getByRole("textbox", { name: "能力说明" })
+        .last()
+        .fill("补充另一项合成能力")
       await editor.getByLabel("新增能力").selectOption(newCapability.key)
+    }
     await editor
       .getByRole("textbox", { name: "能力说明", exact: true })
       .last()
       .fill("我补充了一段合成项目经历")
     await editor.getByLabel("补充说明").last().fill("本人完成了合成项目的验证")
-    await editor.getByRole("button", { name: "保存草稿", exact: true }).click()
+    await expect(editor.getByRole("textbox", { name: "能力说明" })).toHaveCount(
+      initial ? 3 : 1,
+    )
+    const saveDraft = editor.getByRole("button", {
+      name: "保存草稿",
+      exact: true,
+    })
+    const previewDraft = editor.getByRole("button", {
+      name: "预览并提交",
+      exact: true,
+    })
+    await expect(saveDraft).toBeInViewport({ ratio: 1 })
+    await expect(previewDraft).toBeInViewport({ ratio: 1 })
+    await saveDraft.click()
     await expect(editor.getByRole("status")).toHaveText("草稿已保存")
     await editor.getByRole("button", { name: "关闭", exact: true }).click()
     await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
@@ -348,13 +368,18 @@ test("employee reviews initial profile and updates on desktop and mobile", async
     await expect(
       editor.getByRole("textbox", { name: "能力说明", exact: true }).last(),
     ).toHaveValue("我补充了一段合成项目经历")
-    await editor
-      .getByRole("button", { name: "预览并提交", exact: true })
-      .click()
+    await expect(saveDraft).toBeInViewport({ ratio: 1 })
+    await expect(previewDraft).toBeInViewport({ ratio: 1 })
+    await previewDraft.click()
     await expect(
       editor.getByRole("heading", { name: "变更预览" }),
     ).toBeVisible()
     await expect(editor).toContainText("本人完成了合成项目的验证")
+    for (const name of ["返回修改", "确认提交"]) {
+      await expect(editor.getByRole("button", { name })).toBeInViewport({
+        ratio: 1,
+      })
+    }
     await page.screenshot({
       path: testInfo.outputPath(`profile-form-preview-${width}.png`),
       fullPage: true,

@@ -67,9 +67,7 @@ export function CapabilityList({
       rejectedCapabilityKeys.has(item.capability.key) ||
       added.has(item.capability.id),
   )
-  const available = items.filter(
-    (item) => !item.retired && !visible.includes(item),
-  )
+  const available = items.filter((item) => !item.retired)
   const counts = new Map<string, number>()
   const groups = new Map<string, ProfileItem[]>()
   for (const item of visible) {
@@ -224,7 +222,14 @@ export function CapabilityList({
       ))}
       {picking && onEdit && (
         <CapabilityPicker
-          capabilities={available.map((item) => item.capability)}
+          capabilities={available.map((item) => ({
+            ...item.capability,
+            profileStatus: visible.includes(item)
+              ? item.status === "unknown" && !item.claim
+                ? "unfilled"
+                : "recorded"
+              : undefined,
+          }))}
           onClose={() => setPicking(false)}
           onSelect={(key) => {
             const item = available.find((item) => item.capability.key === key)!

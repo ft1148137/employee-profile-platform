@@ -115,6 +115,15 @@ test("enterprise switch and personal token lifecycle", async ({
     employeeHeaders = { Authorization: `Bearer ${accessToken}` }
     await employee.goto("/settings")
     await employee.getByRole("link", { name: "连接与集成" }).click()
+    const tokenScope = employee.getByRole("region", { name: "个人令牌与画像" })
+    await expect(tokenScope).toContainText(
+      "读取本人画像、可见证据和画像变更请求",
+    )
+    await expect(tokenScope).toContainText("管辖经理也可查看管辖团队摘要")
+    await expect(tokenScope).toContainText("记录提交来源和客户端")
+    await expect(tokenScope).toContainText("需审批的改动可在经理批准前撤回")
+    await expect(tokenScope).toContainText("权限受你本人账号的限制")
+    await expect(tokenScope).toContainText("可随时在本页「我的令牌」中吊销")
     await employee.getByLabel("令牌名称").fill(name)
     const created = employee.waitForResponse(
       (response) =>

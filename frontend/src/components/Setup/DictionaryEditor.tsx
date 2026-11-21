@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useId, useRef, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import {
   CapabilitiesService,
   type CapabilityProposalPublic,
   type DictionaryDefinition,
   type DictionaryPreview,
 } from "@/client"
+import { ConfirmActionDialog } from "@/components/Admin/ConfirmActionDialog"
 import { DraftField } from "@/components/AdminAssistant/DraftField"
 import type { usePageDraft } from "@/components/AdminAssistant/usePageDraft"
 import { Button } from "@/components/ui/button"
@@ -55,17 +56,7 @@ function Editor({
         })
       ).data,
   })
-  const dismiss = useMutation({
-    mutationFn: (id: string) =>
-      CapabilitiesService.dismissCapabilityProposal({
-        path: { org_id: orgId, id },
-      }),
-    onSuccess: () => {
-      client.invalidateQueries({ queryKey: ["capability-proposals", orgId] })
-      client.invalidateQueries({ queryKey: ["admin-overview", orgId] })
-    },
-    onError: setError,
-  })
+  const [dismissed, setDismissed] = useState("")
   const prefix = useId()
   const nextId = useRef(initial.definitions.length)
   const [baseVersion] = useState(initial.expected_version)
@@ -80,6 +71,13 @@ function Editor({
       })),
   )
   const [preview, setPreview] = useState<DictionaryPreview | null>(null)
+  const previewPanel = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (preview) {
+      previewPanel.current?.focus({ preventScroll: true })
+      previewPanel.current?.scrollIntoView({ block: "nearest" })
+    }
+  }, [preview])
   const [redraft, setRedraft] = useState(false)
   const body = {
     definitions: rows.map((r) => r.definition),
@@ -103,14 +101,13 @@ function Editor({
     mutationFn: () =>
       CapabilitiesService.updateDictionary({ path: { org_id: orgId }, body }),
     onMutate: () => setError(null),
-    onSuccess: onSaved,
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["dictionary-editor", orgId] })
+      onSaved()
+    },
     onError: setError,
   })
-  const busy =
-    check.isPending ||
-    save.isPending ||
-    dismiss.isPending ||
-    !!suggestion?.blocked
+  const busy = check.isPending || save.isPending || !!suggestion?.blocked
   const proposed = suggestion?.item
     ? suggestion.values(initial).definitions
     : null
@@ -190,6 +187,7 @@ function Editor({
         </p>
       </header>
       <SetupError error={proposals.error} />
+      {dismissed && <p role="status">已忽略「{dismissed}」的新增建议。</p>}
       {!!proposals.data?.data.length && (
         <section
           aria-label="建议新增的能力"
@@ -239,20 +237,25 @@ function Editor({
                 >
                   加入词典
                 </Button>
-                <Button
-                  variant="outline"
+                <ConfirmActionDialog
+                  title="忽略"
+                  description={`忽略「${proposal.name}」后，起草将不再提示同名建议。`}
                   disabled={busy}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        `忽略「${proposal.name}」？之后起草不再提示同名建议。`,
-                      )
-                    )
-                      dismiss.mutate(proposal.id)
+                  action={() =>
+                    CapabilitiesService.dismissCapabilityProposal({
+                      path: { org_id: orgId, id: proposal.id },
+                    })
+                  }
+                  onSuccess={() => {
+                    setDismissed(proposal.name)
+                    client.invalidateQueries({
+                      queryKey: ["capability-proposals", orgId],
+                    })
+                    client.invalidateQueries({
+                      queryKey: ["admin-overview", orgId],
+                    })
                   }}
-                >
-                  忽略
-                </Button>
+                />
               </div>
             </article>
           ))}
@@ -453,13 +456,15 @@ function Editor({
       </form>
       <SetupError error={error} />
       {preview && !suggestion?.draft && (
-        <DictionaryPreviewPanel
-          preview={preview}
-          busy={busy}
-          redraft={redraft}
-          onRedraft={setRedraft}
-          onSave={() => save.mutate()}
-        />
+        <section ref={previewPanel} tabIndex={-1} aria-label="词典预览已就绪">
+          <DictionaryPreviewPanel
+            preview={preview}
+            busy={busy}
+            redraft={redraft}
+            onRedraft={setRedraft}
+            onSave={() => save.mutate()}
+          />
+        </section>
       )}
     </section>
   )

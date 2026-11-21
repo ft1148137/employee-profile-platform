@@ -67,15 +67,23 @@ test.describe("Change password validation", () => {
     await page.getByRole("button", { name: "修改密码", exact: true }).click()
   })
 
-  test("Update password with weak passwords", async ({ page }) => {
-    const weakPassword = "weak"
-
-    await page.getByTestId("current-password-input").fill(password)
-    await page.getByTestId("new-password-input").fill(weakPassword)
-    await page.getByTestId("confirm-password-input").fill(weakPassword)
-    await page.getByRole("button", { name: "保存密码" }).click()
-
-    await expect(page.getByText("密码至少需要 8 个字符")).toBeVisible()
+  test("Password length and login email are validated while typing", async ({
+    page,
+  }) => {
+    const dialog = page.getByRole("dialog", { name: "修改密码" })
+    await expect(
+      dialog.getByText(
+        "新密码须为 8–128 个字符，不能与当前密码或登录邮箱相同。",
+      ),
+    ).toBeVisible()
+    await dialog.getByTestId("current-password-input").fill(password)
+    const newPassword = dialog.getByTestId("new-password-input")
+    await newPassword.fill("😀".repeat(7))
+    await expect(dialog.getByText("密码至少需要 8 个字符")).toBeVisible()
+    await newPassword.fill("长".repeat(129))
+    await expect(dialog.getByText("密码最多 128 个字符")).toBeVisible()
+    await newPassword.fill(` ${email.toUpperCase()} `)
+    await expect(dialog.getByText("新密码不能与登录邮箱相同")).toBeVisible()
   })
 
   test("New password and confirmation password do not match", async ({
@@ -92,10 +100,9 @@ test.describe("Change password validation", () => {
   test("Current password and new password are the same", async ({ page }) => {
     await page.getByTestId("current-password-input").fill(password)
     await page.getByTestId("new-password-input").fill(password)
-    await page.getByTestId("confirm-password-input").fill(password)
-    await page.getByRole("button", { name: "保存密码" }).click()
-
     await expect(page.getByText("新密码不能与当前密码相同")).toBeVisible()
+    await page.getByTestId("current-password-input").fill(randomPassword())
+    await expect(page.getByText("新密码不能与当前密码相同")).toHaveCount(0)
   })
 })
 

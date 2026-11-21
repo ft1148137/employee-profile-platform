@@ -335,6 +335,8 @@ test("department capabilities filter counts, retain other claims and add through
   page,
   request,
 }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  const departmentKeys = ["frontend_ui", "model_training"]
   let profile: ProfileView
   await page.route("**/employees/*/profile", async (route) => {
     const response = await route.fetch()
@@ -345,9 +347,7 @@ test("department capabilities filter counts, retain other claims and add through
         department_capabilities_configured: true,
         items: profile.items.map((item) => ({
           ...item,
-          in_department: ["frontend_ui", "model_training"].includes(
-            item.capability.key,
-          ),
+          in_department: departmentKeys.includes(item.capability.key),
         })),
       },
     })
@@ -418,13 +418,26 @@ test("department capabilities filter counts, retain other claims and add through
       response.url().endsWith("/me/requests") &&
       response.request().method() === "POST",
   )
-  await dialog.getByRole("button", { name: "预览并提交" }).click()
+  const save = dialog.getByRole("button", { name: "保存草稿", exact: true })
+  await expect.soft(save).toBeInViewport({ ratio: 1 })
+  await save.click()
   const createdResponse = await created
   const savedRequest = await createdResponse.json()
   const requestPath = new URL(createdResponse.url()).pathname
   const token = await page.evaluate(() => localStorage.getItem("access_token"))
   try {
+    await expect(dialog.getByRole("status")).toHaveText("草稿已保存")
+    await dialog.getByRole("button", { name: "关闭", exact: true }).click()
+    await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
+    await page.getByRole("button", { name: "继续修改", exact: true }).click()
     dialog = page.getByRole("dialog")
+    const preview = dialog.getByRole("button", { name: "预览并提交" })
+    await expect.soft(preview).toBeInViewport({ ratio: 1 })
+    await preview.click()
+    await expect(
+      dialog.getByRole("heading", { name: "变更预览" }),
+    ).toBeVisible()
+    await expect(dialog).toContainText("本人确认的合成经历")
     await dialog.getByRole("button", { name: "确认提交", exact: true }).click()
     await expect(dialog).toBeHidden()
     await page.reload()
@@ -434,6 +447,27 @@ test("department capabilities filter counts, retain other claims and add through
     })
     await expect(added).toContainText("有待处理更新")
     await expect(page.getByRole("article")).toHaveCount(4)
+    await page.getByRole("button", { name: "添加能力", exact: true }).click()
+    dialog = page.getByRole("dialog")
+    await dialog.getByLabel("搜索能力").fill("后端 API 开发")
+    await expect(dialog.getByText("已在画像中", { exact: true })).toBeVisible()
+    await expect(
+      dialog.getByRole("button", { name: "建议新增这项能力" }),
+    ).toHaveCount(0)
+    const unfilled = profile!.items.find(
+      (item) =>
+        item.status === "unknown" &&
+        departmentKeys.includes(item.capability.key),
+    )!
+    await dialog.getByLabel("搜索能力").fill(unfilled.capability.name)
+    await expect(dialog.getByText("已在画像中（未填写）")).toBeVisible()
+    await dialog
+      .getByRole("button", { name: `去填写：${unfilled.capability.name}` })
+      .click()
+    await dialog.getByRole("button", { name: "手动编辑", exact: true }).click()
+    await expect(dialog.getByRole("textbox", { name: "能力说明" })).toHaveValue(
+      "",
+    )
   } finally {
     expect(
       (
