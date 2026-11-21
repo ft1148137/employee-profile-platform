@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 const labels = {
   processed: "已处理",
   drafted: "已生成初稿",
-  no_content: "暂无内容（无足够外部记录）",
+  no_content: "暂无内容",
   pending: "排队中",
   running: "起草中",
   failed: "失败",
@@ -138,6 +138,17 @@ export function DraftProgress({
               </div>
             ))}
           </dl>
+          {noContent > 0 && (
+            <p className="text-muted-foreground">
+              暂无内容包括没有可用的外部工作记录，以及已有记录但未形成可用判断。
+              {!wizard && (
+                <span>
+                  如需使用 Jira
+                  任务说明，可在「数据来源」开启「同步任务描述」后重新同步。
+                </span>
+              )}
+            </p>
+          )}
           {processed > 0 && processed === eligible && (
             <p role="status">
               已处理 {processed} 人，已生成初稿 {drafted} 人，暂无内容{" "}

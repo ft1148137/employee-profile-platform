@@ -1,16 +1,21 @@
 import json
 import re
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from pydantic import JsonValue
 from sqlmodel import Session, select
 
 from app.authz.principal import Principal
+from app.connectors.jira.client import CloudJiraClient
 from app.core.secrets import SecretUnavailable
+from app.domains.audit.models import AuditEvent
 from app.domains.base import utc_now
+from app.domains.capability.models import CapabilityProposal
 from app.domains.capability.service import activate_template, list_capabilities
 from app.domains.change_request.models import (
     ChangeItem,
@@ -21,7 +26,12 @@ from app.domains.drafting import model, service
 from app.domains.drafting.collect import collect
 from app.domains.drafting.models import DraftingSetting
 from app.domains.drafting.settings import AutoDraftDisabled
-from app.domains.evidence.models import Evidence, EvidenceKind, Visibility
+from app.domains.evidence.models import (
+    Evidence,
+    EvidenceKind,
+    EvidenceStatus,
+    Visibility,
+)
 from app.domains.evidence.service import append_evidence, retract_evidence
 from app.domains.model.client import (
     ModelRateLimited,
@@ -32,6 +42,8 @@ from app.domains.model.models import ModelSetting
 from app.domains.model.service import model_config
 from app.domains.org.models import Employee, ExternalIdentity
 from app.domains.profile.models import ProfileProgress
+from app.domains.source.schemas import JiraConfig
+from app.domains.source.sync import jira_record
 from app.worker.app import app as worker_app
 from app.worker.tasks import draft_initial
 from tests.api.routes.test_initial_profiles import work_queue
@@ -220,6 +232,167 @@ def test_initial_draft_with_five_assigned_jira_issues(
         feedback = pi_service.requests[1]["body"]["messages"][-1]
         assert feedback["role"] == "tool"
         assert json.loads(feedback["content"])["accepted"] is False
+
+
+@pytest.mark.parametrize(
+    ("capability_key", "contribution", "empty_reply"),
+    [
+        ("observability", "经办人独立配置并验证了常规监控告警。", {"items": []}),
+        (
+            "model_serving",
+            "经办人独立发布了常规推理服务并验证健康检查。",
+            {
+                "items": [],
+                "proposals": [
+                    {
+                        "name": "合成工作台支持",
+                        "description": "处理工作台请求",
+                        "reason": "两条记录描述了工作台相关任务",
+                        "evidence": ["R3", "R4"],
+                    }
+                ],
+            },
+        ),
+    ],
+)
+def test_jira_description_opt_in_reaches_initial_draft(
+    drafting: tuple,
+    db: Session,
+    pi_service: PiHarness,
+    capability_key: str,
+    contribution: str,
+    empty_reply: dict[str, JsonValue],
+) -> None:
+    org, schema, _, employees, _ = drafting
+    employee = employees[1]
+    db.add(
+        ExternalIdentity(
+            org_id=org, employee_id=employee.id, source="jira", external_id="assignee"
+        )
+    )
+    db.commit()
+    details = [
+        "仅关联了工单，具体贡献未记录。",
+        "仅关联了工单，具体贡献未记录。",
+        "仍在整理材料，未记录可验证的个人贡献。",
+        contribution,
+        "其他同事做了技术处理。经办人仅跟进了后续安排。",
+    ]
+    config = JiraConfig(
+        deployment="cloud",
+        base_url="https://jira.example.com",
+        auth_type="api_token",
+        username="jira@example.com",
+    )
+
+    def jira_page(request: httpx.Request) -> httpx.Response:
+        assert ("description" in json.loads(request.content)["fields"]) is (
+            config.include_description
+        )
+        return httpx.Response(
+            200,
+            json={
+                "isLast": True,
+                "issues": [
+                    {
+                        "key": f"SYN-{index}",
+                        "fields": {
+                            "summary": f"合成工作项 {index}",
+                            "status": {"name": "In Progress" if index == 3 else "Done"},
+                            "assignee": {"accountId": "assignee"},
+                            "created": f"2026-01-0{index}T09:00:00+08:00",
+                            "updated": "2026-01-06T09:00:00+08:00",
+                            "description": {
+                                "type": "doc",
+                                "version": 1,
+                                "content": [
+                                    {
+                                        "type": "paragraph",
+                                        "content": [{"type": "text", "text": detail}],
+                                    }
+                                ],
+                            },
+                        },
+                    }
+                    for index, detail in enumerate(details, 1)
+                ],
+            },
+        )
+
+    def sync() -> None:
+        with httpx.Client(transport=httpx.MockTransport(jira_page)) as client:
+            jira = CloudJiraClient(config, "synthetic", client)
+            for issue in jira.search(datetime(2026, 1, 1, tzinfo=UTC), None).issues:
+                ingest(db, org, jira_record(issue))
+        db.commit()
+
+    def input_body() -> model.DraftInput:
+        messages = pi_service.requests[0]["body"]["messages"]
+        return model.DraftInput.model_validate_json(messages[-1]["content"][0]["text"])
+
+    sync()
+    pi_service.replies.append(empty_reply)
+    principal = Principal.system_worker(org)
+    service.run_drafting(principal, [str(employee.id)])
+    record_inputs = input_body().records
+    assert len(record_inputs) == 5
+    assert all(r.roles == ["assignee"] and not r.detail for r in record_inputs)
+    assert not rows(db, ProfileChangeRequest, org)
+    assert len(rows(db, CapabilityProposal, org)) == int("proposals" in empty_reply)
+    assert service.read_progress(db, org).counts["no_content"] == 2
+
+    pi_service.requests.clear()
+    config.include_description = True
+    sync()
+    pi_service.replies.append(
+        answer(capability_key=capability_key, statement=contribution, evidence=["R2"])
+    )
+    service.run_drafting(principal, [str(employee.id)])
+    db.expire_all()
+    supplied = input_body()
+    assert [r.detail for r in supplied.records] == details[::-1]
+    assert [r.ref for r in supplied.records[:2]] == ["R1", "R2"]
+    levels = next(c.levels for c in supplied.capabilities if c.key == capability_key)
+    assert [level.key for level in levels] == [
+        "needs_support",
+        "routine",
+        "independent_complex",
+    ]
+    [draft_request] = rows(db, ProfileChangeRequest, org)
+    assert draft_request.subject_employee_id == employee.id
+    assert draft_request.status == "pending_owner"
+    [item] = rows(db, ChangeItem, org)
+    definition = next(
+        c for c in list_capabilities(db, org, schema.id) if c.key == capability_key
+    )
+    assert item.capability_definition_id == definition.id
+    assert item.after["assessment_status"] == "tentative"
+    assert item.after["level"] == "routine"
+    [link] = rows(db, ChangeItemEvidence, org)
+    [support] = [
+        r.evidence
+        for r in collect(db, org, employee)
+        if r.evidence.id == link.evidence_id
+    ]
+    assert link.relation == "supports" and support.content["detail"] == contribution
+    evidence = [
+        e for e in rows(db, Evidence, org) if e.subject_employee_id == employee.id
+    ]
+    assert len(evidence) == 10
+    assert sum(e.status == EvidenceStatus.ACTIVE for e in evidence) == 5
+    progress = service.read_progress(db, org)
+    assert (
+        progress.counts["processed"],
+        progress.counts["drafted"],
+        progress.counts["no_content"],
+    ) == (2, 1, 1)
+    audits = [
+        e for e in rows(db, AuditEvent, org) if e.action == "initial_profiles.drafted"
+    ]
+    assert [
+        (e.details["generated"], e.details["no_content"])
+        for e in sorted(audits, key=lambda e: e.created_at)
+    ] == [(0, 1), (1, 0)]
 
 
 @pytest.mark.parametrize("restricted_only", [False, True])
