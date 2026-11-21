@@ -229,12 +229,16 @@ for (const [email, cardsLabel] of [
   test(`mobile employee cards fit the viewport for ${email}`, async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 390, height: 844 })
+    await page.setViewportSize({ width: 375, height: 812 })
     await logInUser(page, email, password)
     await page.goto("/employees")
     const cards = page.getByRole("region", { name: cardsLabel })
     const link = cards.getByRole("link", { name: "林澈", exact: true })
     await expect(link).toBeVisible()
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBe(375)
+    await page.setViewportSize({ width: 390, height: 844 })
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBe(390)
