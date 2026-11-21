@@ -423,15 +423,10 @@ test("draft proposals enter the dictionary through preview and save", async ({
     .getByRole("link", { name: "去处理", exact: true })
     .click()
   const panel = page.getByRole("region", { name: "建议新增的能力" })
-  page.once("dialog", (dialog) => dialog.accept())
   await panel
-    .getByRole("article", { name: "建议：将忽略的能力" })
-    .getByRole("button", { name: "忽略", exact: true })
+    .getByRole("article", { name: "建议：新合成能力" })
+    .getByRole("button", { name: "加入词典", exact: true })
     .click()
-  await expect(
-    panel.getByRole("article", { name: "建议：将忽略的能力" }),
-  ).toHaveCount(0)
-  await panel.getByRole("button", { name: "加入词典", exact: true }).click()
   const editor = page.getByRole("region", { name: "网页编辑能力词典" })
   const added = editor.getByRole("article", { name: "新合成能力", exact: true })
   await expect(added.getByLabel("能力编码")).toHaveCount(0)
@@ -441,18 +436,37 @@ test("draft proposals enter the dictionary through preview and save", async ({
   await expect(added.getByLabel("等级描述")).toHaveValue("旧等级说明")
   await added.getByLabel("等级描述").fill("能独立完成合成任务")
   await editor.getByRole("button", { name: "预览改动", exact: true }).click()
-  await editor
-    .getByRole("region", { name: "词典改动预览" })
-    .getByRole("button", { name: "确认保存新版本" })
-    .click()
+  const preview = editor.getByRole("region", { name: "词典改动预览" })
+  const save = preview.getByRole("button", { name: "确认保存新版本" })
+  await expect.soft(preview.getByRole("heading")).toBeInViewport()
+  await expect.soft(save).toBeInViewport()
+  await save.click()
   await expect(
     page.getByRole("status").filter({ hasText: "新词典已启用" }),
   ).toBeVisible()
-  const listed = await request.get(`${base}/proposals`, { headers })
-  expect((await listed.json()).data).toEqual([])
+  await expect(page.locator("#workspace-topbar-actions")).toContainText(
+    "第 2 版",
+  )
   await page.getByRole("button", { name: "编辑词典", exact: true }).click()
-  await expect(panel).toHaveCount(0)
   await expect(added).toBeVisible()
+  await expect(
+    panel.getByRole("article", { name: "建议：新合成能力" }),
+  ).toHaveCount(0)
+  const ignored = panel.getByRole("article", { name: "建议：将忽略的能力" })
+  await ignored.getByRole("button", { name: "忽略", exact: true }).click()
+  const confirm = page.getByRole("dialog", { name: "忽略", exact: true })
+  await expect(confirm).toContainText("将忽略的能力")
+  await confirm.getByRole("button", { name: "确认忽略" }).click()
+  await expect(
+    page.getByRole("status").filter({ hasText: "已忽略" }),
+  ).toBeVisible()
+  await expect(ignored).toHaveCount(0)
+  await page.reload()
+  await expect(added).toBeVisible()
+  await expect(panel).toHaveCount(0)
+  const listed = await request.get(`${base}/proposals`, { headers })
+  expect(listed.ok()).toBeTruthy()
+  expect((await listed.json()).data).toEqual([])
 })
 
 test("employee suggests a missing capability and can add it after admin acceptance", async ({

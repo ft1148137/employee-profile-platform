@@ -121,6 +121,7 @@ test("profile preview shows the current approval rule and exempt changes publish
   })
   await preview.click()
   await expect(editor.getByText(/^提交后由 .+审批$/)).toBeVisible()
+  await expect(editor).toHaveAccessibleDescription(/批准前可随时撤回/)
   await editor.getByRole("button", { name: "返回修改", exact: true }).click()
 
   const policy = await request.put(`${base}/approval-policy`, {
@@ -135,6 +136,10 @@ test("profile preview shows the current approval rule and exempt changes publish
     }),
   ).toBeVisible()
   await expect(editor.getByText(/^提交后由 .+审批$/)).toHaveCount(0)
+  await expect(editor).toHaveAccessibleDescription(
+    /所选能力无需经理确认，确认后将直接发布为暂定/,
+  )
+  await expect(editor).not.toContainText("批准前可随时撤回")
   await editor.getByRole("button", { name: "确认提交", exact: true }).click()
 
   await expect(editor).toBeHidden()
@@ -188,4 +193,7 @@ test("profile preview shows the current approval rule and exempt changes publish
   ).toBeVisible()
   await expect(editor.getByText(retractNotice, { exact: true })).toHaveCount(0)
   await expect(validation.getByText(/直接发布为暂定/)).toBeVisible()
+  await expect(editor).toHaveAccessibleDescription(
+    /发布为暂定。其余改动送交经理审批，批准前可撤回/,
+  )
 })
