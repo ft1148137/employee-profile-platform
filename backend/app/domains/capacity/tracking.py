@@ -13,7 +13,11 @@ from app.authz.principal import Principal
 from app.domains.audit.models import ActorKind
 from app.domains.base import utc_now
 from app.domains.capacity.assignment import assignment_lender
-from app.domains.capacity.demand import demand_row, responder_user_ids
+from app.domains.capacity.demand import (
+    demand_row,
+    responder_user_ids,
+    responders_by_department,
+)
 from app.domains.capacity.models import (
     AssignmentStatus,
     CapacityAssignment,
@@ -558,13 +562,15 @@ def notify_managers(
 ) -> None:
     label = demand.role_name or demand.capability_name
     start = row.start_date or demand.committed_start_date or demand.window_start
-    assignment = f"分配 #{row.id.hex[-8:]}（{start} 至 {row.due_date}，{row.allocation_percent}%）"
+    assignment = f"分配 #{row.id.hex[-8:]}（{start} 至 {row.due_date}）"
     title, _, detail = message.partition("：")
     incoming_url = f"/capacity?tab=incoming&demand={demand.id}&plans=1"
-    recipients = dict.fromkeys(
-        responder_user_ids(session, demand.org_id, demand.target_department_id),
-        incoming_url,
+    responders = responders_by_department(
+        session,
+        demand.org_id,
+        {demand.target_department_id, demand.requesting_department_id},
     )
+    recipients = dict.fromkeys(responders[demand.target_department_id], incoming_url)
     if assignment_lender(session, row) is not None:
         employee_department = session.exec(
             select(Employee.department_id).where(
@@ -578,16 +584,37 @@ def notify_managers(
                 session, row.org_id, employee_department, fallback_to_admin=False
             ):
                 recipients.setdefault(user_id, BORROW_TRACKING_URL)
+    requesters = {demand.requester_user_id} | responders[
+        demand.requesting_department_id
+    ]
     for user_id, url in sorted(recipients.items()):
         if user_id == exclude_user_id:
             continue
+        next_step = (
+            "请前往「借调看板」查看。"
+            if url == BORROW_TRACKING_URL
+            else "请打开方案页核对。"
+        )
+        if user_id in requesters:
+            if title == UNAVAILABILITY_NOTICE:
+                summary = "交付时间可能受人员不可用影响。"
+            elif row.tracking_state == TrackingState.OVERDUE:
+                summary = "该协作需求有延期风险。"
+            else:
+                summary = "协作需求的执行跟踪状态已更新。"
+            body = (
+                f"{title}（{demand.capability_name}，"
+                f"{demand.window_start} 至 {demand.window_end}）。{summary}"
+            )
+        else:
+            body = f"{title}：{assignment}。{detail} 需求：{label}。"
         add_item(
             session,
             InboxItem(
                 org_id=demand.org_id,
                 recipient_user_id=user_id,
                 kind=InboxKind.CAPACITY,
-                message=f"{title}：{assignment}。{detail} 需求：{label}\n{url}",
+                message=f"{body}{next_step}\n{url}",
             ),
             borrow_assignment_id=row.id if url == BORROW_TRACKING_URL else None,
         )

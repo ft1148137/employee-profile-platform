@@ -528,7 +528,14 @@ def test_expired_reject_and_withdraw_follow_expiry_semantics(
     assert new_events[0].text == "方案已过期，需要重新规划"
 
     new_notices = [n for n in rows(db, InboxItem, demand) if n.id not in before_notices]
-    assert {n.message for n in new_notices} == {"方案已过期，需要重新规划"}
+    assert new_notices and all(
+        n.message.startswith(
+            f"方案已过期，需要重新规划（{demand.capability_name}，"
+            f"{demand.window_start} 至 {demand.window_end}）。"
+        )
+        and "查看" in n.message
+        for n in new_notices
+    )
     assert {demand.requester_user_id, updated.proposed_by_user_id} <= {
         n.recipient_user_id for n in new_notices
     }
@@ -809,6 +816,53 @@ def test_commit_audit_notifications_and_privacy(
     assert (
         str(people["E04"].id) not in a.text and people["E04"].display_name not in a.text
     )
+
+
+@pytest.mark.parametrize("action", ["accept", "follow_up"])
+def test_requester_proposal_notifications_exclude_private_details(
+    case: tuple, client: TestClient, action: str
+) -> None:
+    url, people, auth, demand = case
+    subject = people["E04"]
+    reply_text = "合成答复说明"
+    rejection_text = "合成受限反馈"
+    reply = propose(client, case, text=reply_text)
+    assert reply.status_code == 200, reply.text
+    result = respond(
+        client,
+        case,
+        reply.json()["revision"],
+        action,
+        **(
+            {"text": rejection_text, "reason_code": "other"}
+            if action == "follow_up"
+            else {}
+        ),
+    )
+    assert result.status_code == 200, result.text
+    inbox = client.get(f"{url}/me/inbox", headers=auth["a"])
+    assert inbox.status_code == 200
+    messages = [
+        item["message"] for item in inbox.json()["data"] if item["kind"] == "capacity"
+    ]
+    expected = (
+        "方案已接受，安排已生效" if action == "accept" else "方案被拒，需要重新规划"
+    )
+    assert len(messages) == 2
+    assert any(message.startswith(expected) for message in messages)
+    assert all(
+        demand.capability_name in message and "已发出的需求" in message
+        for message in messages
+    )
+    for private in (
+        subject.display_name,
+        subject.employee_code,
+        str(subject.id),
+        "%",
+        reply_text,
+        rejection_text,
+    ):
+        assert all(private not in message for message in messages)
 
 
 def test_m9_migration_roundtrip_with_seed(

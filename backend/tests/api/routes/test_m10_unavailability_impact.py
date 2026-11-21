@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 from sqlmodel import Session, col, delete, select
 
+from app.core.config import settings
 from app.domains.base import utc_now
 from app.domains.capacity.models import (
     CapacityApproval,
@@ -133,7 +134,10 @@ def test_unavailability_notifies_managers_without_changing_commitments(
         assert subject.display_name not in notice.message
         assert f"/capacity?tab=incoming&demand={demand.id}&plans=1" in notice.message
         manager = principal(db, org.id, people["bm"].id)
-        assert "受影响 2 天" in (tracking_notice(db, notice, manager) or "")
+        assert tracking_notice(db, notice, manager) == (
+            f"{UNAVAILABILITY_NOTICE}有更新，请前往网页查看。\n"
+            f"{settings.FRONTEND_HOST.rstrip('/')}/capacity?tab=incoming&demand={demand.id}&plans=1"
+        )
         assert (
             tracking_notice(db, notice, principal(db, org.id, people["am"].id)) is None
         )

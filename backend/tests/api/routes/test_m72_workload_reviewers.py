@@ -92,7 +92,11 @@ def test_workload_reviewers_match_notification_recipients(
     recipients = db.exec(
         select(InboxItem.recipient_user_id).where(
             InboxItem.org_id == subject.org_id,
-            InboxItem.message == WORKLOAD_REVIEW_NOTICE,
+            InboxItem.message
+            == (
+                f"{WORKLOAD_REVIEW_NOTICE}（周次 {week} 至 {week}）。"
+                "请前往「待审批 → 负荷与延期」处理。"
+            ),
         )
     ).all()
     assert set(recipients) == {manager_id, delegate_id}
@@ -126,7 +130,11 @@ def test_manager_cannot_be_their_own_workload_reviewer(
             select(InboxItem).where(
                 InboxItem.org_id == manager.org_id,
                 InboxItem.recipient_user_id == user_id(db, manager),
-                InboxItem.message == WORKLOAD_REVIEW_NOTICE,
+                InboxItem.message
+                == (
+                    f"{WORKLOAD_REVIEW_NOTICE}（周次 {week} 至 {week}）。"
+                    "请前往「待审批 → 负荷与延期」处理。"
+                ),
             )
         ).first()
         is None

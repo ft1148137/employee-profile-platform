@@ -17,6 +17,7 @@ from app.domains.capacity.models import (
     CapacityProposal,
     CapacityProposalLine,
     CapacityUnavailability,
+    TrackingState,
 )
 from app.domains.im.models import ImBinding, ImNotification, ImSetting
 from app.domains.im.notifications import claim, tracking_notice
@@ -27,6 +28,7 @@ from app.domains.org.models import (
     ExternalIdentity,
     Organization,
     OrgMembership,
+    RoleGrant,
 )
 from app.domains.source import sync
 from app.domains.source.models import SourceConnection, SyncRun
@@ -186,6 +188,52 @@ def test_tracking_status(
         assert tracking.tracking_state(db, row, [task, known], now) == "overdue"
 
 
+def test_tracking_notice_for_requester_with_responder_role_is_anonymous(
+    case: tuple, db: Session, tracked: Tracked
+) -> None:
+    _, _, demand, people, users, _ = case
+    member_id = db.exec(
+        select(OrgMembership.id).where(
+            OrgMembership.org_id == tracked.org, OrgMembership.user_id == users["a"].id
+        )
+    ).one()
+    db.add(
+        RoleGrant(
+            org_id=tracked.org,
+            membership_id=member_id,
+            department_id=demand.target_department_id,
+            role="dept_manager",
+        )
+    )
+    row = db.get(CapacityAssignment, tracked.assignment)
+    assert row
+    subject = people["w"]
+    demand.role_name = f"{subject.display_name} PRIVATE_ROLE"
+    row.tracking_state = TrackingState.OVERDUE
+    db.flush()
+    tracking.notify_managers(
+        db, demand, row, f"{tracking.TRACKING_NOTICE}：分配有延期风险。"
+    )
+    db.commit()
+    recipient = principal(db, tracked.org, people["a"].id)
+    [message] = [
+        item.message
+        for item in my_inbox(recipient, db).data
+        if item.message.startswith(tracking.TRACKING_NOTICE)
+    ]
+    assert demand.capability_name in message and str(demand.window_start) in message
+    assert "延期风险" in message and "打开方案页" in message
+    for private in (
+        subject.display_name,
+        subject.employee_code,
+        str(subject.id),
+        f"{row.allocation_percent}%",
+        "PRIVATE_ROLE",
+        row.id.hex[-8:],
+    ):
+        assert private not in message
+
+
 def test_borrowed_tasks_visible_to_owner_and_lender(
     case: tuple, db: Session, tracked: Tracked
 ) -> None:
@@ -318,11 +366,13 @@ def test_borrowed_tasks_visible_to_owner_and_lender(
         assert len(borrow_notices) == 2
         for item in notices:
             assert (
-                f"分配 #{row.id.hex[-8:]}（{row.start_date} 至 {row.due_date}，{row.allocation_percent}%）"
+                f"分配 #{row.id.hex[-8:]}（{row.start_date} 至 {row.due_date}）"
                 in item.message
             )
             assert people["w"].display_name not in item.message
             assert str(row.employee_id) not in item.message
+            assert people["w"].employee_code not in item.message
+            assert f"{row.allocation_percent}%" not in item.message
         manager = principal(db, tracked.org, people["cm"].id)
         other_manager = principal(db, tracked.org, people["am"].id)
         public = my_inbox(manager, db).model_dump_json()
@@ -332,9 +382,23 @@ def test_borrowed_tasks_visible_to_owner_and_lender(
             org_id=tracked.org,
             recipient_user_id=users["cm"].id,
             kind=InboxKind.CAPACITY,
-            message=borrow_notices[0].message,
+            message=(
+                f"{tracking.TRACKING_NOTICE}：{people['w'].display_name} "
+                f"{people['w'].employee_code} {row.employee_id} {row.allocation_percent}% "
+                f"PRIVATE_FEEDBACK\n{tracking.BORROW_TRACKING_URL}"
+            ),
         )
         add_item(db, legacy)
+        add_item(
+            db,
+            legacy_with_assignment := InboxItem(
+                org_id=tracked.org,
+                recipient_user_id=users["cm"].id,
+                kind=InboxKind.CAPACITY,
+                message=legacy.message,
+            ),
+            borrow_assignment_id=row.id,
+        )
         db.commit()
         assert {entry["id"] for entry in api(active_borrows, "cm")} == {
             str(row.id),
@@ -349,7 +413,7 @@ def test_borrowed_tasks_visible_to_owner_and_lender(
                 )
             )
         }
-        for item in borrow_notices:
+        for item in [*borrow_notices, legacy_with_assignment]:
             queued = pending[item.id]
             assert queued.borrow_assignment_id == row.id
             assert item.message.endswith("/capacity?tab=borrows")
@@ -361,6 +425,16 @@ def test_borrowed_tasks_visible_to_owner_and_lender(
                 assert notice is not None
                 assert notice.text.endswith("/capacity?tab=borrows")
                 assert str(row.id) not in notice.text
+                assert all(
+                    private not in notice.text
+                    for private in (
+                        people["w"].display_name,
+                        people["w"].employee_code,
+                        str(row.employee_id),
+                        f"{row.allocation_percent}%",
+                        "PRIVATE_FEEDBACK",
+                    )
+                )
         with claim(engine, tracked.org, pending[legacy.id].id) as notice:
             assert notice is None
 
@@ -378,7 +452,7 @@ def test_borrowed_tasks_visible_to_owner_and_lender(
         assert [entry["id"] for entry in api(active_borrows, "cm")] == [
             str(collision.id)
         ]
-        for item in borrow_notices:
+        for item in [*borrow_notices, legacy_with_assignment]:
             with claim(engine, tracked.org, pending[item.id].id) as notice:
                 assert notice is None
         for queued in pending.values():

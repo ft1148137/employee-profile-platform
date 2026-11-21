@@ -56,6 +56,8 @@ def test_capacity_approval_links_are_fixed_and_private(
     for kind, message in [
         (InboxKind.CAPACITY, WORKLOAD_REVIEW_NOTICE),
         (InboxKind.CAPACITY, EXTENSION_REVIEW_NOTICE),
+        (InboxKind.CAPACITY, f"{WORKLOAD_REVIEW_NOTICE}（{private_message}）"),
+        (InboxKind.CAPACITY, f"{EXTENSION_REVIEW_NOTICE}（{private_message}）"),
         (InboxKind.CAPACITY, private_message),
         (InboxKind.REVIEW_REQUESTED, WORKLOAD_REVIEW_NOTICE),
     ]:
@@ -83,6 +85,8 @@ def test_capacity_approval_links_are_fixed_and_private(
     assert texts == [
         approval_text,
         approval_text,
+        approval_text,
+        approval_text,
         notifications.REMINDERS[InboxKind.CAPACITY] + "，在网页或私聊我查看。",
         notifications.REMINDERS[InboxKind.REVIEW_REQUESTED] + "，在网页或私聊我查看。",
     ]
@@ -91,5 +95,5 @@ def test_capacity_approval_links_are_fixed_and_private(
     rows = db.exec(
         select(ImNotification).where(ImNotification.org_id == p.org_id)
     ).all()
-    assert len(rows) == 4
+    assert len(rows) == 6
     assert all(row.status == "sent" and row.attempts == 1 for row in rows)

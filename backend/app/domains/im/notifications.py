@@ -128,15 +128,21 @@ def tracking_notice(
         list_active_borrow_assignments,
     )
 
-    if (
-        item.org_id != principal.org_id
-        or item.kind != InboxKind.CAPACITY
-        or not item.message.startswith(
-            (f"{TRACKING_NOTICE}：", f"{UNAVAILABILITY_NOTICE}：")
-        )
-    ):
+    if item.org_id != principal.org_id or item.kind != InboxKind.CAPACITY:
         return None
     body, _, url = item.message.rpartition("\n")
+    title = next(
+        (
+            title
+            for title in (TRACKING_NOTICE, UNAVAILABILITY_NOTICE)
+            if body.startswith((f"{title}：", f"{title}（"))
+        ),
+        None,
+    )
+    if title is None:
+        return None
+    # Stored messages can predate inbox redaction. Send only a fixed title and an authorized link.
+    text = f"{title}有更新，请前往网页查看。"
     if url == BORROW_TRACKING_URL:
         # Older notifications only have the display suffix, which cannot identify the source.
         if borrow_assignment_id is None:
@@ -148,7 +154,7 @@ def tracking_notice(
         except HTTPException:
             return None
         if visible:
-            return f"{body}\n{settings.FRONTEND_HOST.rstrip('/')}{url}"
+            return f"{text}\n{settings.FRONTEND_HOST.rstrip('/')}{url}"
         return None
     if not url.startswith("/capacity?tab=incoming&demand=") or not url.endswith(
         "&plans=1"
@@ -163,7 +169,7 @@ def tracking_notice(
         return None
     if not represents_department(principal, demand.target_department_id):
         return None
-    return f"{body}\n{settings.FRONTEND_HOST.rstrip('/')}{url}"
+    return f"{text}\n{settings.FRONTEND_HOST.rstrip('/')}{url}"
 
 
 @contextmanager
@@ -258,7 +264,8 @@ def claim(
             if item.kind == InboxKind.PROFILE_EDITED and row.platform == "feishu"
             else f"{REMINDERS[item.kind]}，在网页处理：{settings.FRONTEND_HOST.rstrip('/')}/reviews?type=workload"
             if item.kind == InboxKind.CAPACITY
-            and item.message in (WORKLOAD_REVIEW_NOTICE, EXTENSION_REVIEW_NOTICE)
+            and item.message.partition("（")[0]
+            in (WORKLOAD_REVIEW_NOTICE, EXTENSION_REVIEW_NOTICE)
             else custom_text or REMINDERS[item.kind] + "，在网页或私聊我查看。",
         )
         yield notice

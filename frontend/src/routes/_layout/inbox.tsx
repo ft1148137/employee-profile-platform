@@ -67,13 +67,14 @@ function capacityDestination(message: string) {
       search: { tab: "borrows" },
       label: "打开借调页",
     } as const
-  if (["借调请求", "借调请求待你确认"].includes(message))
+  const [title] = message.split("（", 1)
+  if (title === "借调请求" || title === "借调请求待你确认")
     return {
       to: "/reviews",
       search: { type: "borrow" },
       label: "查看待审批",
     } as const
-  if (["有负荷调整申请等你审批", "有延期申请等你审批"].includes(message))
+  if (title === "有负荷调整申请等你审批" || title === "有延期申请等你审批")
     return {
       to: "/reviews",
       search: { type: "workload" },

@@ -175,7 +175,10 @@ def request_extension(
                 org_id=principal.org_id,
                 recipient_user_id=user.id,
                 kind=InboxKind.CAPACITY,
-                message=EXTENSION_REVIEW_NOTICE,
+                message=(
+                    f"{EXTENSION_REVIEW_NOTICE}（{demand.capability_name}，申请延至 {request.requested_due_date}）。"
+                    "请前往「待审批 → 负荷与延期」处理。"
+                ),
             ),
         )
     audit(
@@ -451,7 +454,13 @@ def decide_extension_request(
             if lender is not None:
                 raise BorrowExtensionCapacityConflict() from error
             raise
-        notify_employee(principal, session, row.employee_id)
+        notify_employee(
+            principal,
+            session,
+            row.employee_id,
+            f"延期申请已同意（{demand.capability_name}，新完成日期 {row.due_date}）。"
+            "请前往「我的负荷」核对。",
+        )
     else:
         add_item(
             session,
@@ -459,7 +468,10 @@ def decide_extension_request(
                 org_id=principal.org_id,
                 recipient_employee_id=row.employee_id,
                 kind=InboxKind.CAPACITY,
-                message=f"延期申请已退回：{body.note}",
+                message=(
+                    f"延期申请已退回（{demand.capability_name}，申请延至 {request.requested_due_date}）。"
+                    f"请前往「我的负荷」查看。退回说明：{body.note}"
+                ),
             ),
         )
     request.status = (

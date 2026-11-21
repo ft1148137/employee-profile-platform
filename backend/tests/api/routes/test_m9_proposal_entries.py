@@ -262,7 +262,14 @@ def test_mcp_expired_reject_and_withdraw_commit_expiry(
         new_notices = [
             n for n in rows(verify_db, InboxItem, demand) if n.id not in before_notices
         ]
-        assert {n.message for n in new_notices} == {"方案已过期，需要重新规划"}
+        assert new_notices and all(
+            n.message.startswith(
+                f"方案已过期，需要重新规划（{demand.capability_name}，"
+                f"{demand.window_start} 至 {demand.window_end}）。"
+            )
+            and "查看" in n.message
+            for n in new_notices
+        )
         assert {demand.requester_user_id, updated.proposed_by_user_id} <= {
             n.recipient_user_id for n in new_notices
         }
