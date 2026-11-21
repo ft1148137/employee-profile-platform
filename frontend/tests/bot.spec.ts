@@ -263,7 +263,9 @@ for (const width of [1440, 390]) {
     expect(sent.status).toBe("pending_review")
     expect(sent.submitted_via).toBe("bot")
     await panel.getByRole("button", { name: "撤回", exact: true }).click()
-    await expect(panel.getByRole("heading", { name: "已撤回" })).toBeVisible()
+    await expect(
+      panel.getByRole("heading", { name: "已撤回", exact: true }),
+    ).toBeVisible()
     expect((await readRequests())[0].status).toBe("withdrawn")
     await page.reload()
     await expect(
