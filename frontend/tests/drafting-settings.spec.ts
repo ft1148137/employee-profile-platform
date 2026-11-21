@@ -91,7 +91,7 @@ test("drafting settings and personal choice persist with role boundaries", async
     await expect(history).toBeHidden()
     await page.getByRole("link", { name: "查看起草进度" }).click()
     await expect(
-      page.getByRole("progressbar", { name: "当前起草覆盖" }),
+      page.getByRole("progressbar", { name: "已处理" }),
     ).toBeVisible()
     await page.reload()
     await expect(note).toHaveValue("标签说明工单主题，不单独证明能力。")

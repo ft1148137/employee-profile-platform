@@ -64,8 +64,9 @@ class DraftResult:
 PROMPT_VERSION = "initial-draft-v3"
 SYSTEM_PROMPT = """只根据给出的记录起草能力陈述，没有记录支持的能力不要输出，未知不等于不会。
 指派人或报告人不一定是实际完成人，要在 uncertainty 中说明。同一经验组只算一项经验。
+capability_key 必须使用词典给出的 key。
 add / modify 的每条判断必须给出该能力等级里的一个 key，不能为 null。
-证据不足以确定等级、或该能力没有等级时，不要输出这条判断。不做绩效、薪酬、晋升判断。
+证据不足以确定等级、或该能力没有等级时，不要输出这条判断。没有可起草的判断时提交空 items。不做绩效、薪酬、晋升判断。
 explanation 不要写证据条数、来源数和日期，系统会按实际证据补在开头。
 只返回规定格式的 JSON，evidence 使用本次记录的 ref。
 词典里没有合适的能力时，可以在 proposals 里提出，最多 3 条，不要在 items 里使用词典外的 key；proposals 不是判断，不写等级和员工陈述。"""
@@ -202,6 +203,11 @@ def draft(
     )
     definitions = {c.key: c for c in capabilities}
     levels = {c.key: {level.key for level in c.levels} for c in body.capabilities}
+    supporting_refs = {
+        ref
+        for ref, record in refs.items()
+        if relation(record) == EvidenceRelation.SUPPORTS
+    }
 
     existing_names = {
         name_key(value) for c in capabilities for value in (c.key, c.name)
@@ -250,6 +256,16 @@ def draft(
             seen: set[str] = set()
             accepted = []
             for item in self.items:
+                if current is None and item.op == "attach_evidence":
+                    raise ValueError("初稿只接受能力判断")
+                if current is None and item.capability_key not in definitions:
+                    matching_keys = [
+                        c.key
+                        for c in capabilities
+                        if name_key(c.name) == name_key(item.capability_key)
+                    ]
+                    if len(matching_keys) == 1:
+                        item.capability_key = matching_keys[0]
                 if item.capability_key in seen:
                     raise ValueError("能力重复")
                 seen.add(item.capability_key)
@@ -276,6 +292,8 @@ def draft(
                 if item.op in {"add", "modify"} and (
                     item.level is None or not levels[item.capability_key]
                 ):
+                    if current is None:
+                        raise ValueError("初稿判断必须使用词典给出的非空等级")
                     continue
                 if (
                     item.level is not None
@@ -283,6 +301,19 @@ def draft(
                 ):
                     raise ValueError("等级不在该能力的给定等级中")
                 accepted.append(item)
+            if (
+                current is None
+                and accepted
+                and not any(
+                    item.capability_key in definitions
+                    and (
+                        not supporting_refs
+                        or supporting_refs.intersection(item.evidence)
+                    )
+                    for item in accepted
+                )
+            ):
+                raise ValueError("初稿没有使用词典能力和支持证据的判断")
             dropped_items = len(self.items) - len(accepted)
             self.items = accepted
             return self
@@ -302,11 +333,17 @@ def draft(
                 raise ModelOutputInvalid() from None
             return {
                 "accepted": False,
-                "error": "提交不符合要求，请只用给定的能力、等级和 R 编号重新提交",
+                "error": (
+                    "请用词典中的能力 key、该能力的非空等级 key 和支持判断的 R 编号重新提交。"
+                    "依据不足时提交空 items，词典外能力请放入 proposals。"
+                    if current is None
+                    else "提交不符合要求，请只用给定的能力、等级和 R 编号重新提交"
+                ),
             }
         return {"accepted": True}
 
     while output is None and failures < 3:
+        failures_before_turn = failures
         try:
             run_turn(
                 config,
@@ -341,7 +378,7 @@ def draft(
             if failures >= 3:
                 raise ModelOutputInvalid() from None
             raise
-        if output is None:
+        if output is None and failures == failures_before_turn:
             failures += 1
     if output is None:
         raise ModelOutputInvalid()

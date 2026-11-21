@@ -26,6 +26,8 @@ from app.domains.base import utc_now
 from app.domains.capability.service import activate_template
 from app.domains.drafting import incremental, model, service
 from app.domains.drafting.models import DraftingSetting
+from app.domains.evidence.models import EvidenceKind, Visibility
+from app.domains.evidence.service import append_evidence
 from app.domains.im import gateway, notifications
 from app.domains.im.models import ImBinding, ImNotification, ImSetting
 from app.domains.inbox.models import InboxItem, InboxKind
@@ -222,6 +224,21 @@ def test_long_task_progress_keeps_worker_healthy(
                 updated_by_user_id=member.user_id,
             )
         )
+        if kind == "initial":
+            for employee in service.active_employees(db, member.org_id):
+                append_evidence(
+                    db,
+                    org_id=member.org_id,
+                    subject_employee_id=employee.id,
+                    kind=EvidenceKind.WORK_RECORD,
+                    source="csv:synthetic",
+                    source_ref=str(employee.id),
+                    title="合成心跳测试工作记录",
+                    content={},
+                    visibility=Visibility.STANDARD,
+                    provenance={},
+                    occurred_at=started_at,
+                )
         db.commit()
         monkeypatch.setattr(service, "validate_capabilities", lambda *_: None)
         monkeypatch.setattr(model, "draft", progress)

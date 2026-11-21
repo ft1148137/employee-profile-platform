@@ -17,6 +17,7 @@ from app.domains.capability.service import activate_template
 from app.domains.change_request.models import (
     ChangeItem,
     ProfileChangeRequest,
+    RequestOrigin,
     RequestStatus,
 )
 from app.domains.drafting import service
@@ -25,7 +26,7 @@ from app.domains.drafting.model import DraftItem, DraftResult
 from app.domains.evidence.service import retract_evidence
 from app.domains.model.pi_client import PiModelConfig
 from app.domains.org.models import Employee, EmploymentStatus, ExternalIdentity
-from app.domains.profile.models import ProfileProgress
+from app.domains.profile.models import InferenceStatus, ProfileProgress
 from app.worker.app import app
 from app.worker.tasks import draft_initial
 from tests.authz.test_tenant_access import headers, tenant_data  # noqa: F401
@@ -44,6 +45,65 @@ def work_queue() -> None:
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(app.periodic_registry, "periodic_tasks", {})
         asyncio.run(run())
+
+
+def test_progress_separates_completed_employees_and_initial_drafts(
+    request: pytest.FixtureRequest, db: Session, client: TestClient
+) -> None:
+    orgs, _, employees, users = request.getfixturevalue("tenant_data")
+    org = orgs[0].id
+    extra = [Employee(org_id=org, display_name=f"合成员工 {i}") for i in range(45)]
+    db.add_all(extra)
+    db.flush()
+    for employee in [*employees[:5], *extra]:
+        service.progress_row(db, org, employee.id, InferenceStatus.GENERATED)
+    db.add_all(
+        ProfileChangeRequest(
+            org_id=org,
+            subject_employee_id=employee.id,
+            origin=RequestOrigin.INITIAL_SYNC,
+            status=status,
+            author={"actor_type": "system_worker"},
+        )
+        for employee, status in zip(
+            employees[:3],
+            (
+                RequestStatus.PENDING_OWNER,
+                RequestStatus.PENDING_REVIEW,
+                RequestStatus.APPROVED,
+            ),
+            strict=True,
+        )
+    )
+    foreign = employees[-1]
+    service.progress_row(db, foreign.org_id, foreign.id, InferenceStatus.GENERATED)
+    db.add_all(
+        [
+            ProfileChangeRequest(
+                org_id=foreign.org_id,
+                subject_employee_id=foreign.id,
+                origin=RequestOrigin.INITIAL_SYNC,
+                status=RequestStatus.PENDING_OWNER,
+                author={"actor_type": "system_worker"},
+            ),
+            ProfileChangeRequest(
+                org_id=org,
+                subject_employee_id=employees[3].id,
+                origin=RequestOrigin.MANUAL,
+                status=RequestStatus.PENDING_REVIEW,
+                author={"actor_type": "employee"},
+            ),
+        ]
+    )
+    db.commit()
+    response = client.get(
+        f"/api/v1/orgs/{org}/initial-profiles/progress", headers=headers(users[0])
+    )
+    assert response.status_code == 200
+    counts = response.json()["counts"]
+    assert (counts["processed"], counts["drafted"], counts["no_content"]) == (50, 3, 47)
+    assert counts["not_started"] == 0
+    assert response.json()["requests"] == {"pending_owner": 1, "handed_over": 2}
 
 
 def test_stalled_drafting_recovers(
@@ -202,6 +262,9 @@ def test_queue_progress_retry(
         result["mode"] == "model"
         and result["counts"]["failed"] == 1
         and result["counts"]["generated"] == 3
+        and result["counts"]["processed"] == 4
+        and result["counts"]["drafted"] == 0
+        and result["counts"]["no_content"] == 3
     )
     assert len(result["failed"]) == 1 and "起草失败" in result["failed"][0]["error"]
     assert "Synthetic sensitive exception" not in str(result)
@@ -251,7 +314,8 @@ def test_queue_progress_retry(
     ).first()
     assert audit and audit.details == {
         "mode": "model",
-        "generated": 3,
+        "generated": 0,
+        "no_content": 3,
         "failed": 0,
         "handed_over": 1,
     }

@@ -81,9 +81,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
   page.once("dialog", (dialog) => dialog.accept())
   await page.getByRole("button", { name: "重新起草全部", exact: true }).click()
   await expect(
-    page.getByText(
-      "已为 26 名员工生成初始画像，员工登录后能在自己的画像页看到",
-    ),
+    page.getByText("已处理 26 人，已生成初稿 26 人，暂无内容 0 人。"),
   ).toBeVisible({ timeout: 60000 })
   const { base, headers } = await page.evaluate(() => ({
     base: `/api/v1/orgs/${localStorage.getItem("current_org_id")}`,
