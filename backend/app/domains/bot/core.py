@@ -374,7 +374,9 @@ def act(
         messages = [tools.question_card(s.Question.model_validate(question))]
     else:
         confirming = action.action == "confirm_submit"
-        preview = employee.preview(p, db, action.request_id, for_submission=confirming)
+        preview = employee.preview(
+            p, db, action.request_id, for_submission=action.action != "withdraw"
+        )
         if preview.revision != action.revision:
             raise employee.RequestConflict("内容已更新，请重新预览")
         matching_cards = [

@@ -744,7 +744,11 @@ def checked_preview_card(
                 "message": f"这份旧草稿的{names}已有待审请求，暂不提供确认提交预览。"
                 "可以等审完再处理，或者在画像页删除这份草稿。",
             }
-    request_card(cards, preview_card(db, p, request_id))
+        request_card(cards, preview_card(db, p, request_id))
+    else:
+        request_card(
+            cards, status_card(name_levels(db, p, s.Request.model_validate(request)))
+        )
     return {}
 
 

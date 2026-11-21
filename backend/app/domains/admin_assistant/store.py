@@ -47,7 +47,8 @@ def ensure_setup_session(db: Session, principal: Principal) -> None:
 
     if not principal.is_org_admin or principal.user_id is None:
         raise messages.BotSessionNotFound()
-    if read_setup(db, principal.org_id).completed:
+    setup = read_setup(db, principal.org_id)
+    if setup.completed:
         return
     row = AdminAssistantSession(
         org_id=principal.org_id, user_id=principal.user_id, purpose="setup"
@@ -72,18 +73,28 @@ def ensure_setup_session(db: Session, principal: Principal) -> None:
                 AdminAssistantSession.id == inserted,
             )
         ).one()
+        pending = {step.key for step in setup.steps if step.status == "pending"}
+        forms: list[SetupFormCard] = []
+        guidance: list[str] = []
+        if "org_profile" in pending:
+            forms.append(SetupFormCard(step="org_profile"))
+            guidance.append("填写企业名称")
+        if "model" in pending:
+            forms.append(SetupFormCard(step="model"))
+            guidance.append("配置 AI 模型（可稍后再配，密钥加密直传）")
+        welcome = "欢迎使用。"
+        if guidance:
+            welcome += "请在下方" + "，然后".join(guidance) + "。"
+        welcome += "其他待办可在设置清单中查看。"
         messages.append_message(
             db,
             row,
             "assistant",
             AdminTurnResponse(
                 messages=[
-                    TextMessage(
-                        text="欢迎使用。接下来我将带你一步步完成企业初始化，请先在下方填写企业名称并配置 AI 模型（模型可稍后再配，密钥加密直传不经过 AI）。"
-                    ),
+                    TextMessage(text=welcome),
                     SetupChecklistCard(),
-                    SetupFormCard(step="org_profile"),
-                    SetupFormCard(step="model"),
+                    *forms,
                 ]
             ).model_dump(mode="json"),
         )

@@ -264,6 +264,9 @@ test("需求理解卡、经理方案卡和模型失败后的手工答复", async
       "合成跨部门交付",
     )
     await expectChineseCopy(page)
+    await expect(
+      page.getByRole("complementary", { name: "需求属性与操作" }),
+    ).toContainText("独立完成")
 
     panel = await openAssistant("M")
     await panel.getByLabel("发给助手的消息").fill("帮我模拟方案")

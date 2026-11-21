@@ -20,6 +20,7 @@ import type { AssistantMode } from "@/hooks/useAssistantWorkspace"
 import { rememberConversation } from "@/hooks/useCurrentConversation"
 import { useOrg } from "@/hooks/useOrg"
 import { type BotAction, BotMessage } from "./BotMessage"
+import { requestCardHistory } from "./requestCards"
 
 export function BotConversation({
   orgId,
@@ -50,7 +51,7 @@ export function BotConversation({
   const [text, setText] = useState(prompt ?? "")
   const [expired, setExpired] = useState(false)
   const replacementSession = useRef("")
-  const [conflict, setConflict] = useState(false)
+  const [conflict, setConflict] = useState<"preview" | "withdraw" | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
   const navigation = `${selectedSession ?? ""}:${restart ?? ""}`
   const selection = useRef(navigation)
@@ -99,7 +100,7 @@ export function BotConversation({
         client.invalidateQueries({
           queryKey: ["conversation-history", orgId, false],
         })
-      setConflict(false)
+      setConflict(null)
       send.reset()
       setSessionId(data.id)
       setText((current) => current || readChatDraft(`${storageKey}:${data.id}`))
@@ -134,7 +135,7 @@ export function BotConversation({
           created_at: result.created_at,
         },
       ])
-      setConflict(false)
+      setConflict(null)
       client.invalidateQueries({ queryKey: ["conversation-history", orgId] })
       client.invalidateQueries({ queryKey: ["change-requests", orgId] })
       client.invalidateQueries({ queryKey: ["inbox", orgId] })
@@ -142,10 +143,28 @@ export function BotConversation({
       if ("action" in input && input.action === "confirm_project_draft")
         client.invalidateQueries({ queryKey: ["capacity", orgId] })
     },
-    onError: (error, _input, startedAt) => {
+    onError: async (error, input, startedAt) => {
       if (selection.current !== startedAt) return
-      if (error instanceof AxiosError && error.response?.status === 409)
-        setConflict(true)
+      if (!(error instanceof AxiosError) || error.response?.status !== 409) {
+        setConflict(null)
+        return
+      }
+      const withdrawing = "action" in input && input.action === "withdraw"
+      setConflict(withdrawing ? "withdraw" : "preview")
+      if (
+        "request_id" in input &&
+        "action" in input &&
+        (input.action === "confirm_submit" ||
+          input.action === "continue_editing" ||
+          withdrawing)
+      ) {
+        const refreshed = await BotService.listMessages({
+          query,
+          path: { session_id: sessionId },
+        }).catch(() => null)
+        if (refreshed && selection.current === startedAt)
+          setMessages(refreshed.data)
+      }
     },
   })
   useEffect(() => {
@@ -194,8 +213,11 @@ export function BotConversation({
     })
     return !!result
   }
-  const latestProjectDraft = messages
-    .flatMap(({ payload }) => ("messages" in payload ? payload.messages : []))
+  const cards = messages.flatMap(({ payload }) =>
+    "messages" in payload ? payload.messages : [],
+  )
+  const requestHistory = requestCardHistory(cards)
+  const latestProjectDraft = cards
     .reverse()
     .find((message) => message.type === "project_draft_card")
   return (
@@ -245,9 +267,15 @@ export function BotConversation({
                       dictionary={dictionary.data}
                       key={i}
                       message={message}
+                      laterRequest={
+                        message.type === "preview_card" ||
+                        message.type === "status_card"
+                          ? requestHistory.get(message)
+                          : undefined
+                      }
                       disabled={
                         busy ||
-                        conflict ||
+                        conflict === "preview" ||
                         (message.type === "project_draft_card" &&
                           message !== latestProjectDraft)
                       }
@@ -267,14 +295,16 @@ export function BotConversation({
             {initialize.isPending ? "加载对话中…" : "正在思考…"}
           </p>
         )}
-        <SetupError error={initialize.error ?? send.error} />
+        <SetupError
+          error={initialize.error ?? (conflict ? null : send.error)}
+        />
         {expired && <p role="status">原对话已过期，已为你开启新对话</p>}
         {initialize.isError && (
           <Button variant="outline" onClick={() => initialize.mutate()}>
             重试
           </Button>
         )}
-        {conflict && (
+        {conflict === "preview" && (
           <div role="alert" className="space-y-2">
             <p>内容已更新，请重新预览后再确认</p>
             <Button
@@ -284,6 +314,9 @@ export function BotConversation({
               重新预览
             </Button>
           </div>
+        )}
+        {conflict === "withdraw" && (
+          <p role="alert">请求状态已变化，这张卡片无法撤回。请查看当前状态。</p>
         )}
         <div ref={bottom} />
       </div>

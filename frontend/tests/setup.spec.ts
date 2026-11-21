@@ -29,6 +29,9 @@ async function initialize(page: Page) {
   await page.getByRole("button", { name: "创建企业并继续" }).click()
   await expect(page).toHaveURL(/\/assistant\?mode=admin&session=/)
   await expect(page.getByRole("list", { name: "设置步骤" })).toBeVisible()
+  await expect(page.getByText(/请在下方配置 AI 模型/)).toBeVisible()
+  await expect(page.getByText(/请先在下方填写企业名称/)).toHaveCount(0)
+  await expect(page.getByLabel("企业名称", { exact: true })).toBeHidden()
   await page.getByText("企业名称 · 已完成（展开修改）", { exact: true }).click()
   return token
 }

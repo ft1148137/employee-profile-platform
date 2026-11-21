@@ -14,6 +14,7 @@ from pydantic import (
 from app.authz.principal import Principal
 from app.domains.bot.attachments import AttachmentPublic
 from app.domains.capacity.demand_schemas import ProjectInput
+from app.domains.change_request.models import ItemDecision
 from app.domains.change_request.schemas import RequestReviewer, SubmitInput, ToolInput
 from app.domains.profile.models import AssessmentStatus
 from app.domains.review.direct import DirectEditInput
@@ -88,6 +89,7 @@ class ChangeItem(Projection):
     uncertainty: str | None
     owner_statement: str | None
     objection: str | None
+    decision: ItemDecision | None = None
 
 
 class Request(Projection):

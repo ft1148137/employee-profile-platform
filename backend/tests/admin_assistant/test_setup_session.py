@@ -15,6 +15,7 @@ from app.domains.admin_assistant.store import ensure_setup_session
 from app.domains.base import utc_now
 from app.domains.bot.models import BotSetting
 from app.domains.bot.store import append_message, cleanup_messages, messages_for
+from app.domains.setup import wizard
 from app.domains.setup.models import SetupStatus, SetupStepState
 from app.models import User
 from tests.api.routes.test_setup_steps import SetupTenant
@@ -43,12 +44,14 @@ def test_setup_session(client: TestClient, db: Session, tenant: SetupTenant) -> 
     assert row.turn_count == 0
     payload = messages_for(db, row)[0].payload
     assert isinstance(payload, dict)
+    assert "企业名称" not in payload["messages"][0]["text"]
+    assert "配置 AI 模型" in payload["messages"][0]["text"]
     assert [card["type"] for card in payload["messages"]] == [
         "text",
         "setup_checklist",
         "setup_form",
-        "setup_form",
     ]
+    assert payload["messages"][2]["step"] == "model"
     assert sessions(client, tenant)["data"] == data
     todo = next(
         t
@@ -104,6 +107,30 @@ def test_concurrent_setup(db: Session, tenant: SetupTenant) -> None:
     ).all()
     assert len(rows) == 1
     assert len(messages_for(db, rows[0])) == 1
+
+
+def test_setup_welcome_includes_unfinished_company_profile(
+    client: TestClient,
+    db: Session,
+    tenant: SetupTenant,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    setup = wizard.read_setup(db, tenant.org_id)
+    next(step for step in setup.steps if step.key == "org_profile").status = "pending"
+    monkeypatch.setattr(wizard, "read_setup", lambda *_: setup)
+    row = sessions(client, tenant)["data"][0]
+    response = client.get(
+        f"/api/v1/admin-assistant/sessions/{row['id']}/messages",
+        params={"org_id": str(tenant.org_id)},
+        headers=tenant.auth["admin"],
+    )
+    assert response.status_code == 200
+    cards = response.json()[0]["payload"]["messages"]
+    assert "填写企业名称" in cards[0]["text"]
+    assert [card["step"] for card in cards if card["type"] == "setup_form"] == [
+        "org_profile",
+        "model",
+    ]
 
 
 @pytest.mark.parametrize("days", [0, 7])

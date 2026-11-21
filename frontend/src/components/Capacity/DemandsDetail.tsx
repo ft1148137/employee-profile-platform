@@ -108,7 +108,13 @@ export function DemandsDetail({
     (level) => level.key === query.data?.minimum_level,
   )?.label
   const minimumLevel =
-    typeof level === "string" ? level : query.data?.minimum_level
+    typeof level === "string"
+      ? level
+      : query.data?.minimum_level
+        ? catalog.isPending
+          ? "正在加载等级"
+          : "等级名称不可用"
+        : undefined
   const prerequisites = query.data?.project?.prerequisites ?? []
   const change =
     side === "incoming" &&

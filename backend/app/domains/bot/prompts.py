@@ -10,7 +10,10 @@ from app.domains.bot import attachments
 from app.domains.bot.models import BotSession
 from app.domains.bot.settings import read_settings
 from app.domains.capability.models import CapabilityDefinition
-from app.domains.capacity.assistant import requester_departments
+from app.domains.capacity.assistant import (
+    DEMAND_REPLY_REASON_GUIDANCE,
+    requester_departments,
+)
 from app.domains.capacity.settings import read_settings as read_capacity_settings
 from app.domains.change_request.models import ChangeItem, ProfileChangeRequest
 from app.domains.drafting.settings import read_auto_draft
@@ -111,6 +114,7 @@ def system_prompt(
         "只报告本轮工具返回的姓名、部门、每周其他工作占比、平台分配和确认状态；查不到就原样转述提示。"
         "目标部门起草答复前先用 coordination 的 read_coordination_context 和 inspect_capacity，"
         "再用 prepare_demand_reply 出答复卡，只写部门层面的结论、日期和理由，不写人名；"
+        f"{DEMAND_REPLY_REASON_GUIDANCE}"
         "不要写个人负荷，只写能否承接、时间和条件。"
         "答复和承诺说明不写任何负荷说法，只写能否承接、时间和条件；"
         "基本满、基本饱和、已满、有余量都不能写，也不能换说法。"

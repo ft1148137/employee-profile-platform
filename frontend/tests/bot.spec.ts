@@ -251,12 +251,32 @@ for (const width of [1440, 390]) {
     await expect(
       panel.getByText("已提交审批，经理审批前可撤回。"),
     ).toBeVisible()
+    await expect(
+      panel.getByRole("heading", { name: "变更预览 · 已提交", exact: true }),
+    ).toBeVisible()
+    for (const name of ["确认提交", "继续修改"]) {
+      await expect(
+        panel.getByRole("button", { name, exact: true }),
+      ).toHaveCount(0)
+    }
     const sent = (await readRequests())[0]
     expect(sent.status).toBe("pending_review")
     expect(sent.submitted_via).toBe("bot")
     await panel.getByRole("button", { name: "撤回", exact: true }).click()
-    await expect(panel.getByRole("heading", { name: "已撤回" })).toBeVisible()
+    await expect(
+      panel.getByRole("heading", { name: "已撤回", exact: true }),
+    ).toBeVisible()
     expect((await readRequests())[0].status).toBe("withdrawn")
+    await page.reload()
+    await expect(
+      panel.getByRole("region", { name: "请求进度" }).last(),
+    ).toContainText("已撤回")
+    await expect(
+      panel.getByRole("button", { name: "撤回", exact: true }),
+    ).toHaveCount(0)
+    await expect(
+      panel.getByRole("heading", { name: "变更预览 · 已撤回", exact: true }),
+    ).toBeVisible()
     const storage = await page.evaluate(() => ({ ...sessionStorage }))
     expect(JSON.stringify(storage)).not.toContain("合成项目经历")
   })
