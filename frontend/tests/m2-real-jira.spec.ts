@@ -82,9 +82,7 @@ test("M2 real Cloud: roster, manual identity, initial request and evidence", asy
   page.once("dialog", (dialog) => dialog.accept())
   await page.getByRole("button", { name: "重新起草全部", exact: true }).click()
   await expect(
-    page.getByText(
-      "已为 30 名员工生成初始画像，员工登录后能在自己的画像页看到",
-    ),
+    page.getByText("已处理 30 人，已生成初稿 30 人，暂无内容 0 人。"),
   ).toBeVisible({ timeout: 60000 })
   const identities: ExternalIdentitiesPublic = await (
     await page.request.get(

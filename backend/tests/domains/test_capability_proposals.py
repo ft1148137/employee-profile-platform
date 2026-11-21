@@ -19,10 +19,7 @@ from app.domains.capability.proposals import store_proposals
 from app.domains.capability.service import list_capabilities
 from app.domains.change_request.models import ChangeItem, ProfileChangeRequest
 from app.domains.drafting import incremental, model, service
-from app.domains.drafting.collect import collect
 from app.domains.evidence.service import append_evidence
-from app.domains.model.models import ModelSetting
-from app.domains.model.service import model_config
 from app.domains.profile.models import ProfileClaim, ProfileVersion
 from tests.authz.test_tenant_access import tenant_data  # noqa: F401
 from tests.domains.test_drafting_model import (
@@ -134,21 +131,16 @@ def test_bad_proposal_does_not_discard_items_or_good_proposal(
     assert [r.name for r in rows(db, CapabilityProposal, org)] == ["有效建议"]
 
 
-def test_unknown_item_with_one_record_is_dropped(
+def test_unknown_initial_item_with_one_record_requires_correction(
     request: pytest.FixtureRequest, db: Session, pi_service: PiHarness
 ) -> None:
-    org, schema, _, employees, _ = request.getfixturevalue("drafting")
-    pi_service.replies.append(answer(capability_key="missing"))
-    result = model.draft(
-        collect(db, org, employees[0]),
-        list_capabilities(db, org, schema.id),
-        model_config(db.get(ModelSetting, org)),
-    )
-    assert result.generated_by["dropped_items"] == 1
-    assert result.generated_by["proposals"] == 0 and not result.items
-    pi_service.replies.append(answer(capability_key="missing"))
+    org, _, _, employees, _ = request.getfixturevalue("drafting")
+    pi_service.replies.extend([answer(capability_key="missing"), {"items": []}])
     service.run_drafting(Principal.system_worker(org), [str(employees[0].id)])
     db.expire_all()
+    feedback = pi_service.requests[1]["body"]["messages"][-1]
+    assert json.loads(feedback["content"])["accepted"] is False
+    assert service.read_progress(db, org).counts["no_content"] == 1
     assert not rows(db, ProfileChangeRequest, org)
     assert not rows(db, CapabilityProposal, org) and not rows(db, ChangeItem, org)
 

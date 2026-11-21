@@ -30,7 +30,7 @@ from app.domains.model.client import (
 )
 from app.domains.model.models import ModelSetting
 from app.domains.model.service import model_config
-from app.domains.org.models import ExternalIdentity
+from app.domains.org.models import Employee, ExternalIdentity
 from app.domains.profile.models import ProfileProgress
 from app.worker.app import app as worker_app
 from app.worker.tasks import draft_initial
@@ -162,10 +162,107 @@ def test_model_request_and_privacy(
     assert all(r["date"] == "2026-01-01" for r in body["records"])
 
 
+def add_assigned_jira_issues(db: Session, employee: Employee, count: int = 1) -> None:
+    account = f"jira-{employee.id}"
+    db.add(
+        ExternalIdentity(
+            org_id=employee.org_id,
+            employee_id=employee.id,
+            source="jira",
+            external_id=account,
+        )
+    )
+    db.flush()
+    for index in range(count):
+        ingest(db, employee.org_id, record(person(account), key=f"{account}-{index}"))
+    db.commit()
+
+
+@pytest.mark.parametrize("reply", ["name", "null_level", "unknown_key", "empty"])
+def test_initial_draft_with_five_assigned_jira_issues(
+    drafting: tuple, db: Session, pi_service: PiHarness, reply: str
+) -> None:
+    org, schema, _, employees, _ = drafting
+    employee = employees[1]
+    add_assigned_jira_issues(db, employee, 5)
+    capability = next(
+        c for c in list_capabilities(db, org, schema.id) if c.key == "backend_api"
+    )
+    pi_service.replies.extend(
+        {
+            "name": [answer(capability_key=capability.name)],
+            "null_level": [answer(level=None), answer()],
+            "unknown_key": [answer(capability_key="missing"), answer()],
+            "empty": [{"items": []}],
+        }[reply]
+    )
+    service.run_drafting(Principal.system_worker(org), [str(employee.id)])
+    db.expire_all()
+    body = json.loads(
+        pi_service.requests[0]["body"]["messages"][-1]["content"][0]["text"]
+    )
+    assert len(body["records"]) == 5
+    assert all(
+        r["source"] == "Jira" and r["roles"] == ["assignee"] for r in body["records"]
+    )
+    requests = rows(db, ProfileChangeRequest, org)
+    if reply == "empty":
+        assert not requests
+        assert not rows(db, ChangeItem, org)
+        assert service.read_progress(db, org).counts["no_content"] == 2
+    else:
+        assert len(requests) == 1 and requests[0].status == "pending_owner"
+        item = rows(db, ChangeItem, org)[0]
+        assert item.capability_definition_id == capability.id
+        assert item.after["assessment_status"] == "tentative"
+        assert item.after["level"] == "routine"
+    if reply in {"null_level", "unknown_key"}:
+        feedback = pi_service.requests[1]["body"]["messages"][-1]
+        assert feedback["role"] == "tool"
+        assert json.loads(feedback["content"])["accepted"] is False
+
+
+@pytest.mark.parametrize("restricted_only", [False, True])
+def test_empty_records_skip_model(
+    drafting: tuple,
+    db: Session,
+    pi_service: PiHarness,
+    monkeypatch: pytest.MonkeyPatch,
+    restricted_only: bool,
+) -> None:
+    org, _, _, employees, _ = drafting
+    employee_id = employees[1].id
+    if restricted_only:
+        append_evidence(
+            db,
+            org_id=org,
+            subject_employee_id=employee_id,
+            kind=EvidenceKind.WORK_RECORD,
+            source="csv:Git",
+            source_ref="restricted-only",
+            title="Restricted synthetic record",
+            content={},
+            visibility=Visibility.RESTRICTED,
+            provenance={},
+            occurred_at=utc_now(),
+        )
+        db.commit()
+
+    def unexpected_model_check(*_args: object) -> None:
+        pytest.fail("An employee without eligible records must skip the model")
+
+    monkeypatch.setattr(service, "validate_capabilities", unexpected_model_check)
+    service.run_drafting(Principal.system_worker(org), [str(employee_id)])
+    assert not pi_service.requests
+    counts = service.read_progress(db, org).counts
+    assert counts["processed"] == counts["no_content"] == 2
+    assert counts["drafted"] == 0
+
+
 @pytest.mark.parametrize("op", ["add", "modify"])
 @pytest.mark.parametrize("empty_rubric", [False, True])
 @pytest.mark.parametrize("keep_valid", [False, True])
-def test_unlevelled_items_are_discarded_without_retry(
+def test_unlevelled_initial_items_require_correction(
     drafting: tuple,
     db: Session,
     pi_service: PiHarness,
@@ -181,20 +278,23 @@ def test_unlevelled_items_are_discarded_without_retry(
         capability.level_rubric = {"levels": []}
         db.add(capability)
         db.commit()
+    valid = (
+        json.loads(
+            answer(
+                capability_key=other.key, level=other.level_rubric["levels"][0]["key"]
+            )
+        )["items"]
+        if keep_valid
+        else []
+    )
     invalid = json.loads(answer(op=op, level="routine" if empty_rubric else None))
-    if keep_valid:
-        invalid["items"].extend(
-            json.loads(
-                answer(
-                    capability_key=other.key,
-                    level=other.level_rubric["levels"][0]["key"],
-                )
-            )["items"]
-        )
-    pi_service.replies.append(invalid)
+    invalid["items"].extend(valid)
+    pi_service.replies.extend([invalid, {"items": valid}])
     service.run_drafting(Principal.system_worker(org), [str(employees[0].id)])
     db.expire_all()
-    assert len(pi_service.requests) == 2
+    assert len(pi_service.requests) == 3
+    feedback = pi_service.requests[1]["body"]["messages"][-1]
+    assert json.loads(feedback["content"])["accepted"] is False
     assert service.read_progress(db, org).counts["failed"] == 0
     items = rows(db, ChangeItem, org)
     requests = rows(db, ProfileChangeRequest, org)
@@ -202,7 +302,7 @@ def test_unlevelled_items_are_discarded_without_retry(
     if keep_valid:
         assert items[0].capability_definition_id == other.id
         assert items[0].after["level"] is not None
-        assert requests[0].generated_by["dropped_items"] == 1
+        assert requests[0].generated_by["dropped_items"] == 0
 
 
 @pytest.mark.parametrize(
@@ -221,6 +321,7 @@ def test_invalid_output_retries(
     drafting: tuple, db: Session, request: pytest.FixtureRequest, change: dict
 ) -> None:
     org, _, _, employees, _ = drafting
+    add_assigned_jira_issues(db, employees[1])
     replies, calls = request.getfixturevalue("model_completions")
     replies.extend([answer(**change)] * 3 + ['{"items":[]}'])
     service.run_drafting(
@@ -371,6 +472,7 @@ def test_pause_and_resume(
     drafting: tuple, db: Session, request: pytest.FixtureRequest, disable: bool
 ) -> None:
     org, _, _, employees, _ = drafting
+    add_assigned_jira_issues(db, employees[1])
     replies, _ = request.getfixturevalue("model_completions")
     replies.extend([answer(), {"status": 429, "retry_after": 3600}])
     assert service.queue_drafting(db, org, "all") == 5
@@ -703,6 +805,7 @@ def test_no_submission_counts_toward_three_failures(
     drafting: tuple, db: Session, pi_service: PiHarness
 ) -> None:
     org, _, _, employees, _ = drafting
+    add_assigned_jira_issues(db, employees[1])
     pi_service.replies.extend(["未提交"] * 3 + [{"items": []}])
     service.run_drafting(
         Principal.system_worker(org), [str(e.id) for e in employees[:2]]
@@ -739,7 +842,6 @@ def test_scope_rechecked_after_model(
     drafting: tuple, db: Session, monkeypatch: pytest.MonkeyPatch, change: str
 ) -> None:
     from app.core.db import engine
-    from app.domains.org.models import Employee
 
     org, _, _, employees, _ = drafting
     employee_id = employees[0].id
