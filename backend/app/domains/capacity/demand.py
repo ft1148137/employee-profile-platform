@@ -1,5 +1,6 @@
 import re
 from collections import defaultdict
+from collections.abc import Iterator
 from datetime import date
 from typing import Literal
 from uuid import UUID
@@ -33,6 +34,7 @@ from app.domains.capacity.demand_schemas import (
     DemandProject,
     DemandPublic,
     DetailedCapacityReference,
+    ExtraCapability,
     LimitedCapacityReference,
     ProjectRoleInput,
     ProjectRoleSummary,
@@ -784,30 +786,107 @@ def create_demand(
     return row
 
 
+def _search_people(
+    principal: Principal, session: Session, search: PeopleSearchInput
+) -> Iterator[PeopleSearchRow]:
+    while True:
+        page = find_people(session, principal, search)
+        yield from page.data
+        skip = search.skip + len(page.data)
+        if skip >= page.count or not page.data:
+            return
+        search = search.model_copy(update={"skip": skip})
+
+
 def qualified_people(
     principal: Principal, session: Session, row: CapacityDemand, department_id: UUID
 ) -> dict[UUID, PeopleSearchRow]:
+    search = PeopleSearchInput(
+        department_id=department_id,
+        capability_key=row.capability_key,
+        minimum_level=row.minimum_level,
+        limit=100,
+    )
     people: dict[UUID, PeopleSearchRow] = {}
-    skip = 0
-    while True:
-        page = find_people(
-            session,
-            principal,
-            PeopleSearchInput(
-                department_id=department_id,
-                capability_key=row.capability_key,
-                minimum_level=row.minimum_level,
-                skip=skip,
-                limit=100,
-            ),
-        )
-        for person in page.data:
-            if person.level is not None:
-                people.setdefault(person.employee_id, person)
-        skip += len(page.data)
-        if skip >= page.count or not page.data:
-            break
+    for person in _search_people(principal, session, search):
+        if person.level is not None:
+            people.setdefault(person.employee_id, person)
     return people
+
+
+def _active_target_people(
+    principal: Principal, session: Session, target_department_id: UUID
+) -> list[Employee]:
+    target_ids = managed_scope(
+        session, principal.org_id, frozenset({target_department_id})
+    )
+    return list(
+        session.exec(
+            select(Employee)
+            .where(
+                employee_scope_clause(principal),
+                Employee.employment_status == EmploymentStatus.ACTIVE,
+                col(Employee.department_id).in_(target_ids),
+            )
+            .order_by(Employee.display_name, col(Employee.id))
+        ).all()
+    )
+
+
+def verified_skill_shortage(
+    principal: Principal, session: Session, row: CapacityDemand
+) -> bool:
+    if not represents_department(principal, row.target_department_id):
+        raise CapacityNotFound(DEMAND_NOT_FOUND)
+    possible = {
+        person.id
+        for person in _active_target_people(
+            principal, session, row.target_department_id
+        )
+    }
+    if len(possible) < row.headcount:
+        return False
+    requirements = [(row.capability_key, row.minimum_level)]
+    for item in row.extra_capabilities:
+        extra = ExtraCapability.model_validate(item)
+        if extra.required:
+            requirements.append((extra.key, extra.minimum_level))
+    schema = get_schema(session, principal.org_id)
+    definitions = {
+        c.key: c for c in list_capabilities(session, principal.org_id, schema.id)
+    }
+    for key, minimum in requirements:
+        if minimum is None or key not in definitions:
+            continue
+        raw_levels = (definitions[key].level_rubric or {}).get("levels", [])
+        levels = (
+            [
+                str(level["key"])
+                for level in raw_levels
+                if isinstance(level, dict) and "key" in level
+            ]
+            if isinstance(raw_levels, list)
+            else []
+        )
+        if minimum not in levels:
+            continue
+        below = set(levels[: levels.index(minimum)])
+        if not below:
+            continue
+        search = PeopleSearchInput(
+            department_id=row.target_department_id,
+            capability_key=key,
+            limit=100,
+        )
+        # An employee with an unknown or unconfirmed grade could still qualify.
+        possible.difference_update(
+            person.employee_id
+            for person in _search_people(principal, session, search)
+            if person.status == "confirmed" and person.level in below
+        )
+        if len(possible) < row.headcount:
+            return True
+    return False
 
 
 def get_demand_basis(
@@ -826,19 +905,6 @@ def get_demand_basis(
         ).all()
     )
     workloads = {w.employee_id: w for w in views(principal, session, employees)}
-    target_ids = managed_scope(
-        session, principal.org_id, frozenset({row.target_department_id})
-    )
-    others = session.exec(
-        select(Employee)
-        .where(
-            employee_scope_clause(principal),
-            Employee.employment_status == EmploymentStatus.ACTIVE,
-            col(Employee.department_id).in_(target_ids),
-            col(Employee.id).not_in(people),
-        )
-        .order_by(Employee.display_name, col(Employee.id))
-    ).all()
     return DemandBasis(
         data=[
             DemandBasisPerson(**p.model_dump(), workload=workloads[p.employee_id])
@@ -848,7 +914,8 @@ def get_demand_basis(
         ],
         others=[
             DemandOtherPerson(employee_id=p.id, display_name=p.display_name)
-            for p in others
+            for p in _active_target_people(principal, session, row.target_department_id)
+            if p.id not in people
         ],
         count=len(people),
         reference=department_reference(

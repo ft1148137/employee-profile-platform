@@ -1,4 +1,3 @@
-import re
 from collections.abc import Callable
 from typing import Literal
 from zoneinfo import ZoneInfo
@@ -75,13 +74,12 @@ TITLES = {name: t.description for name, t in READS.items()} | {
 RESPONSES = {"accept": "接受", "follow_up": "追问", "withdraw": "撤回"}
 DEMAND_REPLY_REASON_GUIDANCE = (
     "必需能力未知或未确认时，未知不等于不会。暂时不能承接时须用 reason_code=other（其他）"
-    "并说明待核实的能力。reason_code=skill（能力不匹配）只用于已核实不符合能力要求的情况。"
+    "并说明待核实的能力。reason_code=skill（能力不匹配）只用于已核实的等级差距足以导致"
+    "符合必需能力等级的人数不足的情况；服务端会核对当前已确认画像。"
+    "仅凭需求依据中没有匹配结果，不能选择 skill。"
 )
-UNVERIFIED_CAPABILITY = re.compile(
-    r"(?:能力|技能|等级)[^，。；、\n]{0,16}"
-    r"(?:未知|待确认|待核实|未确认|未核实|未验证|证据不足)"
-    r"|(?:尚未|还未|无法|待)(?:确认|核实|验证)[^，。；、\n]{0,16}(?:能力|技能|等级)"
-)
+SKILL_REPLY_TEXT = "根据已确认的画像等级核对，达到必需能力等级要求的人数不足。"
+SKILL_REPLY_UNVERIFIED = "当前依据无法核实能力不匹配，请选择「其他」并说明待核实的能力"
 
 DemandField = Literal[
     "requesting_department_id",
@@ -301,18 +299,15 @@ def check_demand_response(
     return content, detail_link
 
 
-def _validate_demand_reply_reason(body: ReplyInput) -> None:
-    if body.outcome == DemandOutcome.NOT_NOW:
-        demand.require_rejection_reason(body.reason_code, body.text)
-        if body.reason_code == "skill" and UNVERIFIED_CAPABILITY.search(body.text):
-            raise demand.RejectionReasonInvalid(
-                "必需能力尚未确认，请选择「其他」并说明待核实的能力"
-            )
+def _is_skill_rejection(body: ReplyInput) -> bool:
+    return body.outcome == DemandOutcome.NOT_NOW and body.reason_code == "skill"
 
 
-def check_demand_reply(db: Session, p: Principal, value: BaseModel) -> str:
+def check_demand_reply(
+    db: Session, p: Principal, value: BaseModel, *, lock: bool = False
+) -> str:
     body = PlanReplyDemandInput.model_validate(value)
-    row = demand.demand_row(p, db, body.demand_id)
+    row = demand.demand_row(p, db, body.demand_id, lock=lock)
     if not demand.represents_department(p, row.target_department_id):
         raise CapacityNotFound(demand.DEMAND_NOT_FOUND)
     if p.user_id is None or p.user_id == row.requester_user_id:
@@ -325,10 +320,13 @@ def check_demand_reply(db: Session, p: Principal, value: BaseModel) -> str:
         raise ChangeOnWeb()
     if row.revision != body.revision or row.status != DemandStatus.SUBMITTED:
         raise CapacityConflict()
-    _validate_demand_reply_reason(body)
     reason = ""
-    if body.outcome == DemandOutcome.NOT_NOW and body.reason_code is not None:
-        reason = f"暂不能承接的原因：{REASON_LABELS[body.reason_code]}\n"
+    if body.outcome == DemandOutcome.NOT_NOW:
+        demand.require_rejection_reason(body.reason_code, body.text)
+        if _is_skill_rejection(body) and not demand.verified_skill_shortage(p, db, row):
+            raise demand.RejectionReasonInvalid(SKILL_REPLY_UNVERIFIED)
+        if body.reason_code is not None:
+            reason = f"暂不能承接的原因：{REASON_LABELS[body.reason_code]}\n"
     description, _, conditions = body.text.partition("\n条件：")
     content = (
         f"需求：{row.capability_name}\n结论："
@@ -437,6 +435,12 @@ def call(
             questions = preview.questions
         else:
             body = WRITES[write_name].input_model.model_validate(arguments)
+            if (
+                kind == "demand_reply"
+                and isinstance(body, ReplyInput)
+                and _is_skill_rejection(body)
+            ):
+                body.text = SKILL_REPLY_TEXT
             if kind == "demand_response":
                 content, detail_link = check_demand_response(db, p, body)
             else:
@@ -515,9 +519,17 @@ def act(
         except ValidationError:
             card.status, card.result = "failed", "申请内容已变化，请重新生成确认卡"
             return card
-        if card.kind == "demand_reply" and isinstance(body, ReplyInput):
-            _validate_demand_reply_reason(body)
         with db.begin_nested():
+            if (
+                card.kind == "demand_reply"
+                and isinstance(body, ReplyInput)
+                and body.outcome == DemandOutcome.NOT_NOW
+            ):
+                demand.require_rejection_reason(body.reason_code, body.text)
+                if _is_skill_rejection(body):
+                    check_demand_reply(db, p, body, lock=True)
+                    if body.text != SKILL_REPLY_TEXT:
+                        raise demand.RejectionReasonInvalid("能力核实说明已更新")
             try:
                 result: BaseModel
                 if card.kind == "demand_reply" and card.arguments.get("option_id"):
