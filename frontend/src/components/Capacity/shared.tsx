@@ -153,7 +153,17 @@ export function UtilizationBadge({
 export const workloadNotice = "负荷数据仅供参考，不用于绩效考核或排名。"
 
 export function WorkloadHelp() {
-  return <HelpTip label="负荷数据说明" content={workloadNotice} />
+  return (
+    <HelpTip
+      label="负荷数据说明"
+      content={
+        <div className="space-y-2">
+          <p>{workloadNotice}</p>
+          <p>进度条显示已占用的容量，红线标出扣除不可用工作日后的可用容量。</p>
+        </div>
+      }
+    />
+  )
 }
 
 export function weekLabel(start: string) {
