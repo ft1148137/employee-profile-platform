@@ -409,7 +409,7 @@ for (const approve of [true, false]) {
 
       await open(lender, "", "/inbox")
       const lenderNotice = page.getByRole("listitem").filter({
-        has: page.getByText("借调请求", { exact: true }),
+        has: page.getByText(/^借调请求（合成交付，/),
       })
       await expect(
         lenderNotice.getByText("未读", { exact: true }),

@@ -158,6 +158,14 @@ def test_weekly_headcount_and_gap() -> None:
     assert reduced.summary["gap_person_weeks"] == 0.8
 
 
+def test_gap_is_rounded_after_summing_all_weeks() -> None:
+    data = snapshot()
+    data["demand"]["allocation_percent"] = 60
+    data["demand"]["window_end"] = (END + timedelta(weeks=1)).isoformat()
+    result = validate(data, {"assignees": []})
+    assert result.summary["gap_person_weeks"] == 1.8
+
+
 def test_capacity_checks_ignore_past_weeks() -> None:
     data = snapshot()
     data["rules"]["current_week"] = date(2026, 11, 23).isoformat()

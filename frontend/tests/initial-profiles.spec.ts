@@ -206,7 +206,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
   expect(total).toBeGreaterThan(0)
   await expect(
     page.getByText(
-      `已为 ${total} 名员工生成初始画像，员工登录后能在自己的画像页看到`,
+      `已处理 ${total} 人，已生成初稿 ${total} 人，暂无内容 0 人。`,
     ),
   ).toBeVisible({ timeout: 60000 })
   await expectChineseCopy(
@@ -235,7 +235,7 @@ test("employee reviews initial profile and updates on desktop and mobile", async
   await page.goto("/admin/data-ai?tab=model")
   await expect(
     page.getByRole("region", { name: "初始画像起草进度" }),
-  ).toContainText(`已为 ${total} 名员工生成初始画像`)
+  ).toContainText(`已生成初稿 ${total} 人`)
   await page.screenshot({
     path: testInfo.outputPath("initial-profiles-progress.png"),
     fullPage: true,
@@ -451,7 +451,15 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
   page,
 }) => {
   // A saved pending row must not block restarting after its worker has stopped.
-  let counts = { generated: 2, failed: 1, excluded: 3, pending: 1 }
+  let counts = {
+    generated: 2,
+    processed: 3,
+    drafted: 2,
+    no_content: 0,
+    failed: 1,
+    excluded: 3,
+    pending: 1,
+  }
   const modelErrors = [
     "这个模型不可用，请换一个模型",
     "模型服务拒绝了请求，请检查模型设置",
@@ -474,7 +482,7 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
             error,
           })),
         ],
-        requests: { pending_owner: counts.generated, handed_over: 0 },
+        requests: { pending_owner: counts.drafted, handed_over: 0 },
         paused_until: "2026-11-04T10:40:00Z",
         pause_reason: "ChatGPT 订阅 5 小时用量已到上限",
       },
@@ -565,11 +573,31 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
   await expect(
     page.getByRole("alert").filter({ hasText: "已有同步在进行" }),
   ).toBeVisible()
-  counts = { generated: 3, failed: 0, excluded: 3, pending: 0 }
+  counts = {
+    generated: 50,
+    processed: 50,
+    drafted: 3,
+    no_content: 47,
+    failed: 0,
+    excluded: 3,
+    pending: 0,
+  }
   await page.goto("/admin/data-ai?tab=model")
-  await expect(
-    page.getByRole("region", { name: "初始画像起草进度" }).getByRole("status"),
-  ).toContainText("已为 3 名员工生成初始画像", { timeout: 15000 })
+  const progress = page.getByRole("region", { name: "初始画像起草进度" })
+  const bar = progress.getByRole("progressbar", { name: "已处理" })
+  await expect(bar).toHaveAttribute("value", "50")
+  await expect(bar).toHaveAttribute("max", "50")
+  for (const [label, count] of [
+    ["已处理", "50"],
+    ["已生成初稿", "3"],
+    ["暂无内容（无足够外部记录）", "47"],
+  ]) {
+    const term = progress.getByRole("term").filter({ hasText: label })
+    await expect(term.locator("..").getByRole("definition")).toHaveText(count)
+  }
+  await expect(progress.getByRole("status")).toHaveText(
+    "已处理 50 人，已生成初稿 3 人，暂无内容 47 人。",
+  )
 })
 
 for (const username of [

@@ -16,7 +16,6 @@ import { SectionCard } from "@/components/Common/WorkbenchPrimitives"
 import { dateLabel } from "@/components/Profile/fields"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { StatusBadge } from "@/components/Profile/StatusBadge"
-import { SetupError } from "@/components/Setup/SetupError"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { CapacityError } from "./AssignmentFields"
 import {
   type RejectionReason,
   RejectionReasonSelect,
@@ -107,6 +107,8 @@ export function DemandsDetail({
   const level = capabilityLevels(capability?.level_rubric).find(
     (level) => level.key === query.data?.minimum_level,
   )?.label
+  const minimumLevel =
+    typeof level === "string" ? level : query.data?.minimum_level
   const prerequisites = query.data?.project?.prerequisites ?? []
   const change =
     side === "incoming" &&
@@ -281,8 +283,23 @@ export function DemandsDetail({
                 <div>
                   <dt className="text-muted-foreground">能力要求</dt>
                   <dd>
-                    {query.data.capability_name}
-                    {typeof level === "string" && ` · ${level}`}
+                    <ul className="space-y-1">
+                      <li>
+                        {query.data.capability_name} · 必需
+                        {minimumLevel && ` · ${minimumLevel}`}
+                      </li>
+                      {(query.data.extra_capabilities ?? []).map((extra) => {
+                        const minimum =
+                          extra.minimum_level_label ?? extra.minimum_level
+                        return (
+                          <li key={extra.key}>
+                            {extra.capability_name} ·{" "}
+                            {extra.required ? "必需" : "可选"}
+                            {minimum && ` · ${minimum}`}
+                          </li>
+                        )
+                      })}
+                    </ul>
                   </dd>
                 </div>
               </dl>
@@ -676,9 +693,11 @@ function DemandsAction({
   const [text, setText] = useState("")
   const [reasonCode, setReasonCode] = useState<RejectionReason | "">("")
   const path = { org_id: orgId, demand_id: demand.id }
-  const refresh = () => {
-    cache.invalidateQueries({ queryKey: ["capacity", orgId] })
-    cache.invalidateQueries({ queryKey: ["inbox", orgId] })
+  const refresh = async () => {
+    await Promise.all([
+      cache.invalidateQueries({ queryKey: ["capacity", orgId] }),
+      cache.invalidateQueries({ queryKey: ["inbox", orgId] }),
+    ])
   }
   const respond = useMutation({
     mutationFn: (action: RespondInput["action"]) =>
@@ -721,7 +740,7 @@ function DemandsAction({
       }),
     onSuccess: () => {
       clearSelection()
-      refresh()
+      return refresh()
     },
   })
   if (change && selected?.option_id) {
@@ -786,8 +805,8 @@ function DemandsAction({
         event.preventDefault()
         const data = new FormData(event.currentTarget)
         reply.mutate({
-          start_date: String(data.get("start")) || null,
-          end_date: String(data.get("end")) || null,
+          start_date: String(data.get("start") ?? "") || null,
+          end_date: String(data.get("end") ?? "") || null,
           outside_basis: data.has("outside_basis"),
         })
       }}
@@ -1001,7 +1020,7 @@ function ProposalError({ error }: { error: Error | null }) {
       </div>
     )
   }
-  return <SetupError error={error} />
+  return <CapacityError error={error} />
 }
 
 function ProposalPanel({

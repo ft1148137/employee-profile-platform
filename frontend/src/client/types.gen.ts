@@ -2416,6 +2416,32 @@ export type DemandEventPublic = {
 }
 
 /**
+ * DemandExtraCapability
+ */
+export type DemandExtraCapability = {
+  /**
+   * Key
+   */
+  key: string
+  /**
+   * Minimum Level
+   */
+  minimum_level?: string | null
+  /**
+   * Required
+   */
+  required: boolean
+  /**
+   * Capability Name
+   */
+  capability_name: string
+  /**
+   * Minimum Level Label
+   */
+  minimum_level_label: string | null
+}
+
+/**
  * DemandHistory
  */
 export type DemandHistory = {
@@ -2611,6 +2637,10 @@ export type DemandPublic = {
    * Created At
    */
   created_at: string
+  /**
+   * Extra Capabilities
+   */
+  extra_capabilities?: Array<DemandExtraCapability>
   /**
    * Events
    */
@@ -6818,6 +6848,11 @@ export type ReviewDetail = {
    * Owner Reviewed
    */
   owner_reviewed?: boolean
+  submitted_via?: SubmissionVia | null
+  /**
+   * Client Name
+   */
+  client_name?: string | null
   /**
    * Id
    */
@@ -14892,6 +14927,10 @@ export type employeesReadEmployeesData = {
      */
     employment_status?: EmploymentStatus | null
     /**
+     * Review Status
+     */
+    review_status?: ProgressReviewStatus | null
+    /**
      * Q
      */
     q?: string | null
@@ -16040,6 +16079,10 @@ export type accountsReadAccountsData = {
      * Employment Status
      */
     employment_status?: EmploymentStatus | null
+    /**
+     * Review Status
+     */
+    review_status?: ProgressReviewStatus | null
     /**
      * Skip
      */

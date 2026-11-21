@@ -1,8 +1,10 @@
 from typing import Literal
 from uuid import UUID
 
-from sqlalchemy import and_, case, literal, or_, union_all
+from sqlalchemy import and_, case, func, literal, or_, union_all
 from sqlalchemy.orm import aliased
+from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.sql.selectable import Subquery
 from sqlmodel import Session, col, select
 
 from app.authz.policies import can_view_evidence_content
@@ -25,9 +27,11 @@ from app.domains.change_request.schemas import (
     RequestReviewer,
 )
 from app.domains.evidence.models import Visibility
+from app.domains.org.models import Employee, EmploymentStatus
 from app.domains.profile.models import (
     AssessmentStatus,
     ProfileClaim,
+    ProfileVersion,
     ProgressReviewStatus,
 )
 from app.domains.profile.schemas import ClaimEvidencePublic
@@ -234,21 +238,26 @@ def transition(request: ProfileChangeRequest, to: RequestStatus) -> None:
     request.revision += 1
 
 
-def review_statuses(
-    session: Session, org_id: UUID, employee_ids: list[UUID], published_ids: set[UUID]
-) -> dict[UUID, ProgressReviewStatus]:
-    statuses = {
-        employee_id: ProgressReviewStatus.PUBLISHED
-        if employee_id in published_ids
-        else ProgressReviewStatus.NONE
-        for employee_id in employee_ids
-    }
+# Keep the coverage precedence: open appeals outrank requests and disputed claims.
+_STATUS_BY_PRIORITY = {
+    1: ProgressReviewStatus.DISPUTED,
+    2: ProgressReviewStatus.PENDING_MANAGER,
+    3: ProgressReviewStatus.PENDING_EMPLOYEE,
+    4: ProgressReviewStatus.DISPUTED,
+}
+
+
+def _review_status_overrides(
+    org_id: UUID, employee_ids: list[UUID] | None = None
+) -> Subquery:
     successor = aliased(ProfileClaim)
     current = (
         select(ProfileClaim.subject_employee_id, ProfileClaim.assessment_status)
         .where(
             ProfileClaim.org_id == org_id,
-            col(ProfileClaim.subject_employee_id).in_(employee_ids),
+            True
+            if employee_ids is None
+            else col(ProfileClaim.subject_employee_id).in_(employee_ids),
             ~select(successor.id)
             .where(
                 successor.org_id == org_id,
@@ -268,7 +277,7 @@ def review_statuses(
         )
     ).subquery()
     disputed = select(
-        current.c.subject_employee_id, literal("disputed").label("review_status")
+        current.c.subject_employee_id, literal(1).label("priority")
     ).where(current.c.assessment_status == AssessmentStatus.DISPUTED)
     pending = select(
         ProfileChangeRequest.subject_employee_id,
@@ -277,13 +286,15 @@ def review_statuses(
                 col(ProfileChangeRequest.status).in_(
                     [RequestStatus.PENDING_OWNER, RequestStatus.DRAFT]
                 ),
-                "pending_employee",
+                3,
             ),
-            else_="pending_manager",
+            else_=2,
         ),
     ).where(
         ProfileChangeRequest.org_id == org_id,
-        col(ProfileChangeRequest.subject_employee_id).in_(employee_ids),
+        True
+        if employee_ids is None
+        else col(ProfileChangeRequest.subject_employee_id).in_(employee_ids),
         or_(
             col(ProfileChangeRequest.status).in_(
                 [RequestStatus.PENDING_OWNER, RequestStatus.PENDING_REVIEW]
@@ -294,27 +305,64 @@ def review_statuses(
             ),
         ),
     )
-    priority = {
-        "disputed": 1,
-        "pending_manager": 2,
-        "pending_employee": 3,
-        "appealed": 4,
-    }
-    appeals = select(ReviewAppeal.employee_id, literal("appealed")).where(
+    appeals = select(ReviewAppeal.employee_id, literal(4)).where(
         ReviewAppeal.org_id == org_id,
-        col(ReviewAppeal.employee_id).in_(employee_ids),
+        True
+        if employee_ids is None
+        else col(ReviewAppeal.employee_id).in_(employee_ids),
         ReviewAppeal.status == AppealStatus.OPEN,
     )
     combined = union_all(disputed, pending, appeals).subquery()
-    assigned: dict[UUID, int] = {}
-    for employee_id, value in session.exec(
-        select(combined.c.subject_employee_id, combined.c.review_status)
+    return (
+        select(
+            combined.c.subject_employee_id,
+            func.max(combined.c.priority).label("priority"),
+        )
+        .group_by(combined.c.subject_employee_id)
+        .subquery()
+    )
+
+
+def review_statuses(
+    session: Session, org_id: UUID, employee_ids: list[UUID], published_ids: set[UUID]
+) -> dict[UUID, ProgressReviewStatus]:
+    statuses = {
+        employee_id: ProgressReviewStatus.PUBLISHED
+        if employee_id in published_ids
+        else ProgressReviewStatus.NONE
+        for employee_id in employee_ids
+    }
+    overrides = _review_status_overrides(org_id, employee_ids)
+    for employee_id, priority in session.exec(
+        select(overrides.c.subject_employee_id, overrides.c.priority)
     ).all():
-        if priority[value] > assigned.get(employee_id, 0):
-            assigned[employee_id] = priority[value]
-            statuses[employee_id] = (
-                ProgressReviewStatus.DISPUTED
-                if value == "appealed"
-                else ProgressReviewStatus(value)
-            )
+        statuses[employee_id] = _STATUS_BY_PRIORITY[priority]
     return statuses
+
+
+def coverage_status_clause(
+    org_id: UUID, status: ProgressReviewStatus
+) -> ColumnElement[bool]:
+    overrides = _review_status_overrides(org_id)
+    overridden_ids = select(overrides.c.subject_employee_id)
+    active = col(Employee.employment_status) == EmploymentStatus.ACTIVE
+    priorities = [
+        rank for rank, value in _STATUS_BY_PRIORITY.items() if value == status
+    ]
+    if priorities:
+        return active & col(Employee.id).in_(
+            overridden_ids.where(overrides.c.priority.in_(priorities))
+        )
+    published = (
+        select(ProfileVersion.id)
+        .where(
+            ProfileVersion.org_id == org_id,
+            ProfileVersion.subject_employee_id == Employee.id,
+        )
+        .exists()
+    )
+    return (
+        active
+        & col(Employee.id).not_in(overridden_ids)
+        & (published if status == ProgressReviewStatus.PUBLISHED else ~published)
+    )

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import type { EmployeeAccount } from "../src/client"
+import type { EmployeeAccount, InboxList } from "../src/client"
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
@@ -304,23 +304,45 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     path: test.info().outputPath("approvals.png"),
     fullPage: true,
   })
-  await page.goto("/inbox")
-  for (const message of ["有负荷调整申请等你审批", "有延期申请等你审批"]) {
-    await page
-      .getByRole("listitem")
-      .filter({ hasText: message })
-      .getByRole("button")
-      .click()
-    const link = page
-      .getByRole("region", { name: "消息详情" })
-      .getByRole("link", { name: "查看待审批" })
-    await expect(link).toHaveAttribute("href", "/reviews?type=workload")
-    await link.click()
-    await expect(
-      page.getByRole("link", { name: /^负荷与延期/ }),
-    ).toHaveAttribute("aria-current", "page")
-    await page.goto("/inbox")
+  const approvalTitles = ["有负荷调整申请等你审批", "有延期申请等你审批"]
+  for (const legacy of [false, true]) {
+    if (legacy) {
+      await page.route(`**${base}/me/inbox?*`, async (route) => {
+        const response = await route.fetch()
+        const inbox: InboxList = await response.json()
+        for (const item of inbox.data) {
+          const title = approvalTitles.find((title) =>
+            item.message.startsWith(`${title}（`),
+          )
+          if (title) item.message = title
+        }
+        await route.fulfill({ response, json: inbox })
+      })
+    }
+    for (const title of approvalTitles) {
+      await page.goto("/inbox")
+      const message = page.getByText(
+        legacy
+          ? title
+          : new RegExp(`^${title}（.*请前往「待审批 → 负荷与延期」`),
+        { exact: true },
+      )
+      await page
+        .getByRole("listitem")
+        .filter({ has: message })
+        .getByRole("button")
+        .click()
+      const link = page
+        .getByRole("region", { name: "消息详情" })
+        .getByRole("link", { name: "查看待审批" })
+      await expect(link).toHaveAttribute("href", "/reviews?type=workload")
+      await link.click()
+      await expect(
+        page.getByRole("link", { name: /^负荷与延期/ }),
+      ).toHaveAttribute("aria-current", "page")
+    }
   }
+  await page.unroute(`**${base}/me/inbox?*`)
   await page.goto("/capacity?tab=approvals")
   await page.getByText(/· 申请 \d+%/).click()
   await page
@@ -336,7 +358,10 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     page.getByText("暂无待审批的负荷调整", { exact: true }),
   ).toBeVisible()
   await open(e, "/capacity?tab=mine")
-  await expect(page.getByText("90%", { exact: true })).toBeVisible()
+  const overview = page.getByRole("region", { name: "每周投入" })
+  await expect(
+    overview.getByTitle("基本满", { exact: true }).filter({ hasText: /^90%$/ }),
+  ).toBeVisible()
   await page.goto("/capacity?tab=assignments")
   await expect(
     page.getByRole("region", { name: "延期申请记录" }),
@@ -367,7 +392,9 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     page.getByText("暂无待审批的负荷调整", { exact: true }),
   ).toBeVisible()
   await open(tokens.get("F")!, "/capacity?tab=mine")
-  await expect(page.getByText("40%", { exact: true })).toBeVisible()
+  await expect(
+    overview.getByTitle("有余量", { exact: true }).filter({ hasText: /^40%$/ }),
+  ).toBeVisible()
   await workloadRequest(e, 50)
   await open(m)
   await page.getByText(/· 申请 \d+%/).click()

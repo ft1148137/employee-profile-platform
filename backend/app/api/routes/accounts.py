@@ -16,6 +16,7 @@ from app.domains.account.schemas import (
 )
 from app.domains.base import utc_now
 from app.domains.org.models import EmploymentStatus
+from app.domains.profile.models import ProgressReviewStatus
 from app.models import Message
 
 router = APIRouter(prefix="/orgs/{org_id}/accounts", tags=["accounts"])
@@ -29,6 +30,7 @@ def read_accounts(
     status: AccountStatus | None = None,
     q: str | None = None,
     employment_status: EmploymentStatus | None = None,
+    review_status: ProgressReviewStatus | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     employee_id: UUID | None = None,
@@ -43,6 +45,7 @@ def read_accounts(
         limit,
         employment_status,
         employee_id=employee_id,
+        review_status=review_status,
     )
 
 

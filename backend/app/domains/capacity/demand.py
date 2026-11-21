@@ -5,10 +5,12 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import HTTPException
+from pydantic import JsonValue
 from sqlmodel import Session, col, func, or_, select
 
 from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
+from app.domains.capability.models import CapabilityDefinition
 from app.domains.capability.search import (
     PeopleSearchInput,
     PeopleSearchRow,
@@ -22,6 +24,7 @@ from app.domains.capacity.demand_schemas import (
     DemandBasis,
     DemandBasisPerson,
     DemandEventPublic,
+    DemandExtraCapability,
     DemandHistory,
     DemandHistoryEvent,
     DemandInput,
@@ -56,7 +59,7 @@ from app.domains.capacity.settings import (
     read_settings,
     require_enabled,
 )
-from app.domains.capacity.workload import NOTICE, employee, views
+from app.domains.capacity.workload import employee, views
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.inbox.service import add_item
 from app.domains.org.models import (
@@ -322,6 +325,35 @@ def responders_by_department(
     }
 
 
+def _public_extra_capability(
+    item: dict[str, JsonValue], definitions: dict[str, CapabilityDefinition]
+) -> DemandExtraCapability:
+    key = str(item["key"])
+    minimum = item.get("minimum_level")
+    definition = definitions.get(key)
+    rubric = (definition.level_rubric or {}) if definition else {}
+    levels = rubric.get("levels", [])
+    label = None
+    if minimum is not None and isinstance(levels, list):
+        label = next(
+            (
+                level_label
+                for level in levels
+                if isinstance(level, dict)
+                and level.get("key") == minimum
+                and isinstance(level_label := level.get("label"), str)
+            ),
+            None,
+        )
+    return DemandExtraCapability.model_validate(
+        {
+            **item,
+            "capability_name": definition.name if definition else key,
+            "minimum_level_label": label,
+        }
+    )
+
+
 def demand_public(
     principal: Principal, session: Session, row: CapacityDemand
 ) -> DemandPublic:
@@ -381,12 +413,30 @@ def demands_public(
         if project_ids and not requester_view
         else {}
     )
+    definitions = (
+        {
+            definition.key: definition
+            for definition in list_capabilities(
+                session, principal.org_id, get_schema(session, principal.org_id).id
+            )
+        }
+        if any(row.extra_capabilities for row in rows)
+        else {}
+    )
     grouped: dict[UUID, list[CapacityDemandEvent]] = defaultdict(list)
     for event in events:
         grouped[event.demand_id].append(event)
     results = []
     for row in rows:
-        result = DemandPublic.model_validate(row)
+        result = DemandPublic.model_validate(
+            row.model_dump(include=set(DemandPublic.model_fields))
+            | {
+                "extra_capabilities": [
+                    _public_extra_capability(item, definitions)
+                    for item in row.extra_capabilities
+                ]
+            }
+        )
         if (
             row.project_id is not None
             and row.project_id in projects
@@ -654,6 +704,10 @@ def require_requesting_department(
     return principal.user_id
 
 
+def demand_notice_context(demand: CapacityDemand) -> str:
+    return f"（{demand.capability_name}，{demand.window_start} 至 {demand.window_end}）"
+
+
 def create_demand(
     principal: Principal,
     session: Session,
@@ -710,7 +764,10 @@ def create_demand(
                 org_id=principal.org_id,
                 recipient_user_id=user_id,
                 kind=InboxKind.CAPACITY,
-                message=NOTICE,
+                message=(
+                    f"收到新的协作需求{demand_notice_context(row)}。"
+                    "请前往「待审批 → 协作需求」答复。"
+                ),
             ),
         )
     audit(
@@ -929,7 +986,10 @@ def reply_demand(
             org_id=principal.org_id,
             recipient_user_id=row.requester_user_id,
             kind=InboxKind.CAPACITY,
-            message=NOTICE,
+            message=(
+                f"协作需求已收到答复{demand_notice_context(row)}。"
+                "请前往「已发出的需求」查看答复并决定下一步。"
+            ),
         ),
     )
     audit(
@@ -1041,6 +1101,11 @@ def respond_demand(
             via=via,
         )
     )
+    title, next_step = {
+        "accept": ("协作需求的答复已被接受", "查看已接受的需求"),
+        "follow_up": ("协作需求收到追问", "查看并重新答复"),
+        "withdraw": ("协作需求已撤回", "查看撤回状态"),
+    }[action]
     for user_id in sorted(
         responder_user_ids(session, principal.org_id, row.target_department_id)
         - {principal.user_id}
@@ -1051,7 +1116,15 @@ def respond_demand(
                 org_id=principal.org_id,
                 recipient_user_id=user_id,
                 kind=InboxKind.CAPACITY,
-                message=NOTICE,
+                message=(
+                    f"{title}{demand_notice_context(row)}。"
+                    + (
+                        f"请前往「待审批 → 协作需求」{next_step}。"
+                        if action == "follow_up"
+                        else f"请打开需求的方案页{next_step}。"
+                        f"\n/capacity?tab=incoming&demand={row.id}&plans=1"
+                    )
+                ),
             ),
         )
     audit(

@@ -6,6 +6,16 @@ import { HelpTip, SideDrawer } from "@/components/Common/WorkbenchPrimitives"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -30,6 +40,12 @@ type WorkloadDialog =
   | { mode: "details"; selection: WorkloadSelection }
   | { mode: "edit" | "dates"; row: WorkloadPublic; week: string }
 
+type ReusePreview = {
+  startWeek: string
+  endWeek: string
+  people: { id: string; name: string; percent: number }[]
+}
+
 export function TeamWorkload({ orgId }: { orgId: string }) {
   const client = useQueryClient()
   const { employeeId, managedDepartmentIds, roles } = useOrg()
@@ -37,6 +53,7 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
   const [department, setDepartment] = useState("all")
   const [offset, setOffset] = useState(0)
   const [dialog, setDialog] = useState<WorkloadDialog | null>(null)
+  const [preview, setPreview] = useState<ReusePreview | null>(null)
   const dialogOpener = useRef<HTMLElement | null>(null)
   const list = async (from_week?: string) =>
     (
@@ -71,23 +88,28 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
     row.last_confirmed
       ? [
           {
-            employee_id: row.employee_id,
-            other_percent: row.last_confirmed.percent,
+            id: row.employee_id,
+            name: row.employee_name,
+            percent: row.last_confirmed.percent,
           },
         ]
       : [],
   )
   const confirm = useMutation({
-    mutationFn: () =>
+    mutationFn: ({ startWeek, endWeek, people }: ReusePreview) =>
       CapacityService.setCapacityWeeks({
         path: { org_id: orgId },
         body: {
-          items: reusable,
-          start_week: currentWeek!,
-          end_week: addWeeks(currentWeek!, 3),
+          items: people.map(({ id, percent }) => ({
+            employee_id: id,
+            other_percent: percent,
+          })),
+          start_week: startWeek,
+          end_week: endWeek,
         },
       }),
     onSuccess: () => {
+      setPreview(null)
       client.invalidateQueries({ queryKey: ["capacity", orgId] })
       client.invalidateQueries({ queryKey: ["inbox", orgId] })
     },
@@ -237,31 +259,88 @@ export function TeamWorkload({ orgId }: { orgId: string }) {
               content={
                 reusable.length > 200
                   ? "每次最多确认 200 人，请先按部门筛选。"
-                  : `将批量确认 ${reusable.length} 人（另有 ${eligible.length - reusable.length} 人尚无历史记录，需单独设置）。`
+                  : `从下周起批量确认 ${reusable.length} 人的 4 周负荷（另有 ${eligible.length - reusable.length} 人尚无历史记录，需单独设置）。`
               }
             />
-            <Button
-              size="sm"
-              variant="outline"
-              aria-label="按上次设置确认未来 4 周"
-              disabled={
-                !currentWeek ||
-                !reusable.length ||
-                reusable.length > 200 ||
-                confirm.isPending
-              }
-              onClick={() => confirm.mutate()}
+            <Dialog
+              open={!!preview}
+              onOpenChange={(open) => {
+                if (confirm.isPending) return
+                if (!open) setPreview(null)
+                else if (currentWeek) {
+                  confirm.reset()
+                  setDialog(null)
+                  setPreview({
+                    startWeek: addWeeks(currentWeek, 1),
+                    endWeek: addWeeks(currentWeek, 4),
+                    people: reusable,
+                  })
+                }
+              }}
             >
-              沿用上次设置
-            </Button>
+              <DialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label="按上次设置确认未来 4 周"
+                  disabled={
+                    !currentWeek || !reusable.length || reusable.length > 200
+                  }
+                >
+                  沿用上次设置
+                </Button>
+              </DialogTrigger>
+              {preview && (
+                <DialogContent
+                  className="flex max-h-[90dvh] flex-col"
+                  showCloseButton={false}
+                >
+                  <DialogHeader>
+                    <DialogTitle>沿用上次设置</DialogTitle>
+                    <DialogDescription>
+                      从下周起共 4 周，不含本周。将更新以下{" "}
+                      {preview.people.length} 人的平台外工作占比。
+                    </DialogDescription>
+                  </DialogHeader>
+                  <p className="text-sm font-medium">
+                    周次：{preview.startWeek} 当周至 {preview.endWeek} 当周
+                  </p>
+                  <ul
+                    aria-label="受影响人员及沿用占比"
+                    className="min-h-0 divide-y overflow-y-auto rounded-md border px-3"
+                  >
+                    {preview.people.map(({ id, name, percent }) => (
+                      <li
+                        key={id}
+                        className="flex justify-between gap-3 py-2 text-sm"
+                      >
+                        <span className="min-w-0 break-words">{name}</span>
+                        <span className="shrink-0 font-medium tabular-nums">
+                          {percent}%
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <SetupError error={confirm.error} />
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button variant="outline" disabled={confirm.isPending}>
+                        取消
+                      </Button>
+                    </DialogClose>
+                    <Button
+                      disabled={confirm.isPending}
+                      onClick={() => confirm.mutate(preview)}
+                    >
+                      {confirm.isPending ? "正在确认…" : "确认沿用"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              )}
+            </Dialog>
           </div>
         )}
       </div>
-      {confirm.isError && (
-        <div className="px-3 py-2">
-          <SetupError error={confirm.error} />
-        </div>
-      )}
       <div className={cn("min-w-0", selectedRow && "md:pr-[min(380px,38vw)]")}>
         {chart.isPending ? (
           <ProfileLoading />

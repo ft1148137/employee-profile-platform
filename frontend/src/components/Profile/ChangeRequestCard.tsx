@@ -15,7 +15,11 @@ import type { EditorSelection } from "./ChangeRequestEditor"
 import { EvidenceRows } from "./EvidenceList"
 import { levelLabel, record } from "./fields"
 import { RequestReviewers } from "./RequestReviewers"
-import { decisionLabels, RequestTimeline } from "./RequestTimeline"
+import {
+  decisionLabels,
+  RequestSourceBadge,
+  RequestTimeline,
+} from "./RequestTimeline"
 import { StatusBadge } from "./StatusBadge"
 
 const statusLabels: Record<RequestStatus, string> = {
@@ -264,6 +268,10 @@ export function ChangeRequestCard({
                   >
                     {request.origin === "assignment_feedback" && "工作反馈 · "}
                     {requestSummary(request)}
+                    <RequestSourceBadge
+                      via={request.submitted_via}
+                      clientName={request.client_name}
+                    />
                     {isOwner && request.status === "pending_review" && (
                       <RequestReviewers reviewers={request.reviewers} />
                     )}

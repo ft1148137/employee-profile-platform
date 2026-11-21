@@ -9,12 +9,14 @@ import { SectionCard } from "@/components/Common/WorkbenchPrimitives"
 import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
 
-const labels: Record<string, string> = {
-  not_started: "未开始",
+const labels = {
+  processed: "已处理",
+  drafted: "已生成初稿",
+  no_content: "暂无内容（无足够外部记录）",
   pending: "排队中",
   running: "起草中",
-  generated: "已生成",
   failed: "失败",
+  not_started: "未开始",
   excluded: "不自动起草",
 }
 
@@ -70,13 +72,14 @@ export function DraftProgress({
   })
   const data = progress.data
   const counts = data?.counts ?? {}
+  const processed = counts.processed ?? 0
+  const drafted = counts.drafted ?? 0
+  const noContent = counts.no_content ?? 0
   const eligible =
-    Object.values(counts).reduce((total, count) => total + count, 0) -
-    (counts.excluded ?? 0)
-  const covered = counts.generated ?? 0
-  const busy = !!(counts.pending || counts.running)
-  const generated =
-    (data?.requests.pending_owner ?? 0) + (data?.requests.handed_over ?? 0)
+    processed +
+    (counts.pending ?? 0) +
+    (counts.running ?? 0) +
+    (counts.not_started ?? 0)
   return (
     <SectionCard className="space-y-3 text-sm" aria-label="初始画像起草进度">
       <h2 className="text-sm font-semibold">初始画像起草进度</h2>
@@ -115,32 +118,30 @@ export function DraftProgress({
           )}
           <div className="space-y-1.5">
             <div className="flex flex-wrap justify-between gap-x-2">
-              <span className="text-muted-foreground">当前起草覆盖</span>
+              <span className="text-muted-foreground">已处理</span>
               <span className="font-medium tabular-nums">
-                {covered} / {eligible} 人
+                {processed} / {eligible} 人
               </span>
             </div>
             <progress
-              aria-label="当前起草覆盖"
-              value={covered}
+              aria-label="已处理"
+              value={processed}
               max={eligible || 1}
               className="block h-1.5 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
             />
           </div>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
-            {Object.entries(counts).map(([key, count]) => (
+            {Object.entries(labels).map(([key, label]) => (
               <div key={key} className="flex justify-between gap-2">
-                <dt className="text-sm text-muted-foreground">
-                  {labels[key] ?? "其他"}
-                </dt>
-                <dd className="font-medium tabular-nums">{count}</dd>
+                <dt className="text-sm text-muted-foreground">{label}</dt>
+                <dd className="font-medium tabular-nums">{counts[key] ?? 0}</dd>
               </div>
             ))}
           </dl>
-          {generated > 0 && !busy && !counts.failed && !counts.not_started && (
+          {processed > 0 && processed === eligible && (
             <p role="status">
-              已为 {generated}{" "}
-              名员工生成初始画像，员工登录后能在自己的画像页看到
+              已处理 {processed} 人，已生成初稿 {drafted} 人，暂无内容{" "}
+              {noContent} 人。
             </p>
           )}
           {!!counts.excluded && (

@@ -129,6 +129,11 @@ def test_expire_proposals_marks_expired_and_notifies(
         b_user_id,
     }
     assert all(
-        item.kind == InboxKind.CAPACITY and item.message == "方案已过期，需要重新规划"
+        item.kind == InboxKind.CAPACITY
+        and item.message.startswith(
+            f"方案已过期，需要重新规划（{demand.capability_name}，"
+            f"{demand.window_start} 至 {demand.window_end}）。"
+        )
+        and "查看" in item.message
         for item in new_items
     )

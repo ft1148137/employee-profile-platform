@@ -615,6 +615,52 @@ def test_mcp_keeps_existing_reply_contract(
     assert result["structuredContent"]["status"] == "replied"
 
 
+def test_requester_borrow_notifications_keep_worker_private(
+    case: tuple, offered: tuple, client: TestClient, db: Session
+) -> None:
+    url, people, auth, demand = case
+    _, line, worker = offered
+    worker.employee_code = "BORROW-PRIVATE-CODE"
+    db.commit()
+    selected = decide(
+        client, case, line, "lender", action="select", employee_id=str(worker.id)
+    )
+    assert selected.status_code == 204, selected.text
+    private_reason = "合成员工的受限借调反馈"
+    decline = decide(
+        client,
+        case,
+        line,
+        "worker",
+        action="decline",
+        reason=private_reason,
+        reason_code="priority",
+    )
+    assert decline.status_code == 204, decline.text
+    response = client.get(f"{url}/me/inbox", headers=auth["a"])
+    assert response.status_code == 200
+    messages = [
+        item["message"]
+        for item in response.json()["data"]
+        if item["kind"] == "capacity"
+    ]
+    assert len(messages) == 2
+    assert any(message.startswith("借调未达成") for message in messages)
+    for subject in (worker, people["E04"]):
+        for private in (
+            subject.display_name,
+            subject.employee_code,
+            str(subject.id),
+            "%",
+            private_reason,
+        ):
+            assert all(private not in message for message in messages)
+    assert all(
+        demand.capability_name in message and "已发出的需求" in message
+        for message in messages
+    )
+
+
 def test_decline_is_private_and_leaves_profiles_unchanged(
     case: tuple, offered: tuple, client: TestClient, db: Session
 ) -> None:

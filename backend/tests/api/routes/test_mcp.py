@@ -102,8 +102,8 @@ def call(
     return response.json()["result"]
 
 
-def test_sdk_employee_flow(demo: tuple, db: Session) -> None:
-    _, people, _ = demo
+def test_sdk_employee_flow(demo: tuple, db: Session, client: TestClient) -> None:
+    url, people, auth = demo
     headers, row = token_for(db, people["E02"])
     app = FastAPI(lifespan=lifespan)
     app.router.routes.append(Route("/mcp", endpoint, methods=["POST", "GET", "DELETE"]))
@@ -182,6 +182,12 @@ def test_sdk_employee_flow(demo: tuple, db: Session) -> None:
                         select(InboxItem).where(InboxItem.org_id == row.org_id)
                     ).all()
                 )
+                detail = client.get(
+                    f"{url}/reviews/{draft['id']}", headers=auth["manager"]
+                )
+                assert detail.status_code == 200
+                assert detail.json()["submitted_via"] == "mcp"
+                assert detail.json()["client_name"] == "Cursor"
                 withdrawn = await use("withdraw_request", {"request_id": draft["id"]})
                 assert withdrawn["status"] == "withdrawn"
                 assert await use("get_my_profile") == profile

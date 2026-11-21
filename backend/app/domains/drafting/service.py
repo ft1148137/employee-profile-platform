@@ -40,6 +40,7 @@ from app.domains.drafting.settings import (
     read_settings,
     require_auto_drafting,
 )
+from app.domains.evidence.models import Visibility
 from app.domains.inbox.models import InboxKind
 from app.domains.inbox.service import notify
 from app.domains.model.client import (
@@ -313,14 +314,8 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
             # Release the setting row before ChatGPT opens its own locking session.
             session.expunge(setting)
     capability_error = None
-    if setting and setting.enabled and setting.kind != "chatgpt_subscription":
-        try:
-            validate_capabilities(
-                setting.provider, setting.model, setting.reasoning_effort
-            )
-        except ModelUnavailable as error:
-            capability_error = error
-    counts = {"generated": 0, "failed": 0, "handed_over": 0}
+    capabilities_checked = False
+    counts = {"generated": 0, "no_content": 0, "failed": 0, "handed_over": 0}
     if employee_ids is not None and not ids:
         return
     for index, employee_id in enumerate(ids):
@@ -355,14 +350,34 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                     return
                 if employee.id in current_scope.excluded_employee_ids:
                     continue
-                capabilities = list_capabilities(session, org_id, schema.id)
-                groups = task_groups(session, org_id)
-                records = collect(session, org_id, employee, groups)
                 setting = read_setting(session, org_id)
                 if setting is None or not setting.enabled:
                     raise ModelDisabled()
-                if capability_error:
-                    raise capability_error
+                groups = task_groups(session, org_id)
+                records = collect(session, org_id, employee, groups)
+                if not any(
+                    r.evidence.visibility == Visibility.STANDARD for r in records
+                ):
+                    progress_row(
+                        session, org_id, employee_id, InferenceStatus.GENERATED
+                    )
+                    session.commit()
+                    counts["no_content"] += 1
+                    continue
+                if setting.kind != "chatgpt_subscription":
+                    if not capabilities_checked:
+                        capabilities_checked = True
+                        try:
+                            validate_capabilities(
+                                setting.provider,
+                                setting.model,
+                                setting.reasoning_effort,
+                            )
+                        except ModelUnavailable as error:
+                            capability_error = error
+                    if capability_error:
+                        raise capability_error
+                capabilities = list_capabilities(session, org_id, schema.id)
                 result = model.draft(
                     records,
                     capabilities,
@@ -390,7 +405,12 @@ def run_drafting(principal: Principal, employee_ids: list[str] | None) -> None:
                 store_proposals(session, org_id, employee_id, result.proposals)
                 progress_row(session, org_id, employee_id, InferenceStatus.GENERATED)
                 session.commit()
-                counts["generated" if written or not items else "handed_over"] += 1
+                if written:
+                    counts["generated"] += 1
+                elif not items:
+                    counts["no_content"] += 1
+                else:
+                    counts["handed_over"] += 1
             except ModelRateLimited as error:
                 session.rollback()
                 pause_drafting(org_id, ids[index:], error)
@@ -576,48 +596,65 @@ class DraftProgress(BaseModel):
 
 
 def read_progress(session: Session, org_id: UUID) -> DraftProgress:
-    scope = drafting_scope(session, org_id)
-    active = active_employees(session, org_id)
-    employees = {e.id: e for e in active if e.id not in scope.excluded_employee_ids}
-    rows = list(
-        session.exec(
-            select(ProfileProgress).where(
-                ProfileProgress.org_id == org_id,
-                col(ProfileProgress.employee_id).in_(employees),
-            )
-        )
-    )
     counts = {
-        "excluded": len(active) - len(employees),
-        "not_started": len(employees) - len(rows),
-        **{
-            s.value: sum(r.inference_status == s for r in rows) for s in InferenceStatus
-        },
+        "excluded": 0,
+        "not_started": 0,
+        "drafted": 0,
+        "no_content": 0,
+        **dict.fromkeys((status.value for status in InferenceStatus), 0),
     }
-    requests = list(
-        session.exec(
-            select(ProfileChangeRequest).where(
-                ProfileChangeRequest.org_id == org_id,
-                col(ProfileChangeRequest.subject_employee_id).in_(employees),
-                ProfileChangeRequest.origin == RequestOrigin.INITIAL_SYNC,
-            )
+    requests = {"pending_owner": 0, "handed_over": 0}
+    failed = []
+    # Read request existence and worker state together while a batch is committing.
+    rows = session.exec(
+        select(Employee, ProfileProgress, col(ProfileChangeRequest.status))
+        .outerjoin(
+            ProfileProgress,
+            (col(Employee.org_id) == ProfileProgress.org_id)
+            & (col(Employee.id) == ProfileProgress.employee_id),
+        )
+        .outerjoin(
+            ProfileChangeRequest,
+            (col(Employee.org_id) == ProfileChangeRequest.org_id)
+            & (col(Employee.id) == ProfileChangeRequest.subject_employee_id)
+            & (col(ProfileChangeRequest.origin) == RequestOrigin.INITIAL_SYNC),
+        )
+        .where(
+            Employee.org_id == org_id,
+            Employee.employment_status == EmploymentStatus.ACTIVE,
         )
     )
-    pending = sum(r.status == RequestStatus.PENDING_OWNER for r in requests)
+    for employee, row, status in rows:
+        if employee.auto_draft_opt_out:
+            counts["excluded"] += 1
+            continue
+        inference = row.inference_status if row else "not_started"
+        counts[inference] += 1
+        if status is not None:
+            counts["drafted"] += 1
+            requests[
+                "pending_owner"
+                if status == RequestStatus.PENDING_OWNER
+                else "handed_over"
+            ] += 1
+        elif inference == InferenceStatus.GENERATED:
+            counts["no_content"] += 1
+        if row and inference == InferenceStatus.FAILED:
+            failed.append(
+                FailedEmployee(
+                    employee_id=employee.id,
+                    display_name=employee.display_name,
+                    error=row.inference_error,
+                )
+            )
+    # "generated" is the legacy successful worker state and includes empty runs.
+    counts["processed"] = counts["generated"] + counts["failed"]
     setting = read_setting(session, org_id)
     return DraftProgress(
         mode="model" if setting and setting.enabled else "none",
         paused_until=setting.paused_until if setting else None,
         pause_reason=setting.pause_reason if setting else None,
         counts=counts,
-        failed=[
-            FailedEmployee(
-                employee_id=r.employee_id,
-                display_name=employees[r.employee_id].display_name,
-                error=r.inference_error,
-            )
-            for r in rows
-            if r.inference_status == InferenceStatus.FAILED
-        ],
-        requests={"pending_owner": pending, "handed_over": len(requests) - pending},
+        failed=failed,
+        requests=requests,
     )

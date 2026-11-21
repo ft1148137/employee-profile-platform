@@ -61,8 +61,9 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
   const navigate = useNavigate()
   const client = useQueryClient()
   const { org, roles } = useOrg()
-  const [highlightedStatus, setHighlightedStatus] =
-    useState<ProgressReviewStatus | null>(null)
+  const [reviewStatus, setReviewStatus] = useState<ProgressReviewStatus | null>(
+    null,
+  )
   const [preview, setPreview] = useState<EmployeeAccount | null>(null)
   const [department, setDepartment] = useState("all")
   const [status, setStatus] = useState<AccountStatus | "all">("all")
@@ -99,6 +100,7 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
       status,
       employment,
       q,
+      reviewStatus,
       pagination,
     ],
     queryFn: async () =>
@@ -110,6 +112,7 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
             status: status === "all" ? undefined : status,
             employment_status: employment === "all" ? undefined : employment,
             q: q || undefined,
+            review_status: reviewStatus ?? undefined,
             skip: pagination.pageIndex * pagination.pageSize,
             limit: pagination.pageSize,
           },
@@ -187,9 +190,14 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
         onDepartmentChange={
           filter === "account-only" ? undefined : changeDepartment
         }
-        highlightedStatus={highlightedStatus}
+        reviewStatus={reviewStatus}
         onStatusChange={
-          filter === "account-only" ? undefined : setHighlightedStatus
+          filter === "account-only"
+            ? undefined
+            : (value) => {
+                setReviewStatus(value)
+                reset()
+              }
         }
       />
       <div className="flex flex-wrap items-center gap-2 [&>button]:h-8 [&>button]:text-xs">
@@ -316,7 +324,6 @@ function AccountsList({ orgId, filter }: { orgId: string; filter?: string }) {
                     ? employee.roles.length > 0
                     : true,
               )}
-              highlightedStatus={highlightedStatus}
               onPreview={setPreview}
               onResetPassword={setPasswordTarget}
               count={accounts.data.count}

@@ -222,6 +222,8 @@ def get_review(
         id=request.id,
         revision=request.revision,
         items=result,
+        submitted_via=request.submitted_via,
+        client_name=request.client_name,
         owner_reviewed=request.submitted_via != SubmissionVia.ADMIN_HANDOVER,
         acting_for_name=(manager.full_name or manager.username) if manager else None,
         assignment_reason=(

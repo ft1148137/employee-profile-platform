@@ -274,6 +274,51 @@ def test_coverage_scope_and_statuses(client: TestClient, coverage_data: tuple) -
     }
 
 
+@pytest.mark.parametrize(
+    ("role", "endpoint"), [("manager", "employees"), ("admin", "accounts")]
+)
+def test_coverage_filters_people_before_pagination(
+    client: TestClient, coverage_data: tuple, role: str, endpoint: str
+) -> None:
+    org, people, headers, *_ = coverage_data
+    url = f"/api/v1/orgs/{org.id}/{endpoint}"
+    summary = read(client, coverage_data, role)
+    for metric in summary["statuses"]:
+        status = metric["status"]
+        expected = {status}
+        if role == "admin":
+            expected |= {"sibling"} if status == "pending_manager" else set()
+            expected |= {"unassigned"} if status == "none" else set()
+        response = client.get(
+            url, headers=headers[role], params={"review_status": status}
+        )
+        assert response.status_code == 200
+        page = response.json()
+        assert {row["id"] for row in page["data"]} == {
+            str(people[key].id) for key in expected
+        }
+        assert page["count"] == metric["count"]
+
+    params = {
+        "review_status": "pending_manager",
+        "department_id": str(people["pending_manager"].department_id),
+        "q": "pending",
+        "limit": 1,
+    }
+    page = client.get(url, headers=headers[role], params=params).json()
+    assert page["count"] == 1
+    assert [row["id"] for row in page["data"]] == [str(people["pending_manager"].id)]
+    assert client.get(
+        url, headers=headers[role], params={**params, "skip": 1}
+    ).json() == {"count": 1, "data": []}
+    assert client.get(url, headers=headers["foreign"], params=params).status_code == 404
+    if endpoint == "accounts":
+        assert (
+            client.get(url, headers=headers["manager"], params=params).status_code
+            == 403
+        )
+
+
 def test_coverage_denies_other_roles_and_tenants(
     client: TestClient, coverage_data: tuple
 ) -> None:

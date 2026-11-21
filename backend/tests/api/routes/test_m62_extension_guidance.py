@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.authz.deps import get_org_principal
 from app.core.security import create_access_token
@@ -23,7 +23,7 @@ from app.domains.capacity.models import (
     CapacityWeek,
     CapacityWorkloadRequest,
 )
-from app.domains.inbox.models import InboxItem
+from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.org.models import (
     Department,
     Employee,
@@ -237,7 +237,7 @@ def test_blocked_guidance_and_delegating_to_commitment_confirmer(
 def test_reviewer_names_match_notified_users_and_delegated_cards(
     case: tuple, db: Session
 ) -> None:
-    api, create, _, people, users, org = case
+    api, create, demand, people, users, org = case
     row = create()
     db.add(
         ReviewDelegation(
@@ -254,14 +254,22 @@ def test_reviewer_names_match_notified_users_and_delegated_cards(
     assert set(api(role="w")["data"][0]["reviewer_names"]) == names
     pending = request(api, row, "2027-01-05")
     assert set(pending["reviewer_names"]) == names
-    recipients = set(
-        db.exec(
-            select(InboxItem.recipient_user_id).where(
-                InboxItem.org_id == org.id, InboxItem.message == "有延期申请等你审批"
-            )
-        ).all()
-    )
-    assert recipients == {users["cm"].id, users["w2"].id}
+    notices = db.exec(
+        select(InboxItem).where(
+            InboxItem.org_id == org.id,
+            InboxItem.kind == InboxKind.CAPACITY,
+            col(InboxItem.recipient_user_id).is_not(None),
+        )
+    ).all()
+    assert len(notices) == 2
+    assert {notice.recipient_user_id for notice in notices} == {
+        users["cm"].id,
+        users["w2"].id,
+    }
+    assert {notice.message for notice in notices} == {
+        f"有延期申请等你审批（{demand.capability_name}，申请延至 2027-01-05）。"
+        "请前往「待审批 → 负荷与延期」处理。"
+    }
     card = api("/extension-requests", "w2")["data"][0]
     assert card["on_behalf_of_name"] == people["cm"].display_name
     assert card["commitment_confirmer_names"] == [people["bm"].display_name]

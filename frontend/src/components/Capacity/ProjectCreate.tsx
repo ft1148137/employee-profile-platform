@@ -146,6 +146,10 @@ export function ProjectCreate({
               />
             </label>
           </div>
+          <p className="text-sm text-muted-foreground">
+            在后续角色中勾选前置角色来划分阶段。未选择前置角色的角色会排在第 1
+            阶段。
+          </p>
           {roles.map((role, index) => (
             <RoleFields
               key={role.id}

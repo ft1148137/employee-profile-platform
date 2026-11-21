@@ -301,6 +301,39 @@ def test_flow_privacy_snapshot_notifications_and_profile_invariance(
     ]
 
 
+def test_requester_reply_notification_contains_only_demand_context(
+    case: tuple, demo: tuple, client: TestClient
+) -> None:
+    api, employees, _, body = case
+    sender = employees["E04"]
+    created = api(body=body)
+    private_reply = "合成受限答复说明"
+    api(f"/{created['id']}/reply", "b", {**REPLY, "text": private_reply})
+    url, _, auth = demo
+    response = client.get(f"{url}/me/inbox", headers=auth["employee"])
+    assert response.status_code == 200
+    [message] = [
+        item["message"]
+        for item in response.json()["data"]
+        if item["kind"] == "capacity"
+    ]
+    assert message == (
+        f"协作需求已收到答复（{created['capability_name']}，"
+        f"{body['window_start']} 至 {body['window_end']}）。"
+        "请前往「已发出的需求」查看答复并决定下一步。"
+    )
+    assert all(
+        value not in message
+        for value in (
+            sender.display_name,
+            sender.employee_code,
+            str(sender.id),
+            private_reply,
+            "%",
+        )
+    )
+
+
 def test_authorization_validation_and_terminal_states(case: tuple, db: Session) -> None:
     api, employees, members, body = case
     row = api(body=body)
@@ -340,16 +373,23 @@ def test_authorization_validation_and_terminal_states(case: tuple, db: Session) 
         )
     api(path + "/respond", body={"action": "follow_up", "revision": 1}, status=422)
     api(path + "/respond", body={"action": "accept", "revision": 1}, status=409)
-    api(
-        path + "/reply",
-        "b",
-        {
-            "outcome": "not_now",
-            "reason_code": "capacity",
-            "text": "暂时不能承接",
-            "revision": 1,
-        },
-    )
+    rejection = {
+        "outcome": "not_now",
+        "reason_code": "capacity",
+        "text": "暂时不能承接",
+        "revision": 1,
+        "start_date": None,
+        "end_date": None,
+    }
+    invalid = api(path + "/reply", "b", {**rejection, "start_date": "2026-12-01"}, 422)
+    assert "请同时填写开始和结束日期" in invalid["detail"][0]["msg"]
+    assert api(path, "b")["status"] == "submitted"
+
+    rejected = api(path + "/reply", "b", rejection)
+    assert rejected["status"] == "replied"
+    assert rejected["events"][-1]["start_date"] is None
+    assert rejected["events"][-1]["end_date"] is None
+    assert api(path, "b")["status"] == "replied"
     api(path + "/respond", body={"action": "accept", "revision": 2}, status=409)
     api(path + "/respond", body={"action": "withdraw", "revision": 1}, status=409)
     withdrawn = api(path + "/respond", body={"action": "withdraw", "revision": 2})

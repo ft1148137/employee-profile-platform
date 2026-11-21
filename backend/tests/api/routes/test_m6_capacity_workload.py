@@ -25,7 +25,6 @@ from app.domains.capacity.models import (
 from app.domains.capacity.tools import CAPACITY_TOOLS
 from app.domains.capacity.workload import WORKLOAD_REVIEW_NOTICE
 from app.domains.im.models import ImBinding, ImNotification
-from app.domains.im.notifications import REMINDERS
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.org.models import Employee, ExternalIdentity, OrgMembership, RoleGrant
 from app.domains.review.models import ReviewDelegation
@@ -554,12 +553,17 @@ def test_requests_decisions_notifications_and_no_profile_change(
     employee_items = [
         i for i in items if i.recipient_employee_id == employees["E02"].id
     ]
-    assert len(reviewer_items) == 2 and all(
-        i.message == WORKLOAD_REVIEW_NOTICE for i in reviewer_items
-    )
-    assert len(employee_items) == 2 and all(
-        i.message == REMINDERS[InboxKind.CAPACITY] for i in employee_items
-    )
+    week = week_body(employees["E02"].id, 0)["start_week"]
+    assert [i.message for i in reviewer_items] == [
+        f"{WORKLOAD_REVIEW_NOTICE}（周次 {week} 至 {week}）。"
+        "请前往「待审批 → 负荷与延期」处理。"
+    ] * 2
+    assert {i.message for i in employee_items} == {
+        f"负荷调整申请{result}（周次 {week} 至 {week}）。"
+        "请前往「我的负荷」查看处理结果。"
+        for result in ("已同意", "已退回")
+    }
+    assert len(employee_items) == 2
     assert (
         len(
             db.exec(select(ImNotification).where(ImNotification.org_id == org_id)).all()
@@ -726,9 +730,10 @@ def test_direct_adjustment_notifies_employee(
             InboxItem.org_id == subject.org_id, InboxItem.kind == InboxKind.CAPACITY
         )
     ).one()
-    assert (
-        item.recipient_employee_id == subject.id
-        and item.message == REMINDERS[InboxKind.CAPACITY]
+    week = week_body(subject.id, 20)["start_week"]
+    assert item.recipient_employee_id == subject.id
+    assert item.message == (
+        f"团队负荷已更新（周次 {week} 至 {week}）。请前往「我的负荷」核对。"
     )
     assert db.exec(
         select(ImNotification).where(

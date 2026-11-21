@@ -95,7 +95,7 @@ function Workspace() {
       >
         <header
           className={cn(
-            "sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b px-3 md:px-4",
+            "sticky top-0 z-10 flex h-12 shrink-0 items-center gap-1.5 border-b px-2 sm:gap-2 sm:px-3 md:px-4",
             isAssistant ? "bg-background" : "border-surface-border bg-surface",
           )}
         >
@@ -145,7 +145,7 @@ function Workspace() {
             <>
               <nav
                 aria-label="面包屑"
-                className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[13px]"
+                className="flex min-w-0 items-center gap-1 whitespace-nowrap text-[13px] sm:gap-1.5"
               >
                 <span className="truncate text-muted-foreground">
                   {spaceTitles[space]}
@@ -167,7 +167,7 @@ function Workspace() {
               </nav>
               <div
                 id={TOPBAR_ACTIONS_ID}
-                className="ml-auto flex min-w-0 shrink-0 items-center gap-1 empty:hidden md:max-w-[75%] md:shrink md:gap-2"
+                className="ml-auto flex min-w-0 shrink-0 items-center gap-1 empty:hidden max-sm:[&>button:has(>svg+span.sr-only)]:px-2 md:max-w-[75%] md:shrink md:gap-2"
               />
             </>
           )}

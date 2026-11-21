@@ -15,6 +15,7 @@ from app.authz.principal import Principal
 from app.domains.base import utc_now
 from app.domains.capacity import calendar
 from app.domains.capacity.demand import (
+    demand_notice_context,
     demand_row,
     department,
     get_demand,
@@ -487,7 +488,10 @@ def create(
                     org_id=principal.org_id,
                     recipient_user_id=user_id,
                     kind=InboxKind.CAPACITY,
-                    message="借调请求",
+                    message=(
+                        f"借调请求{demand_notice_context(demand)}。"
+                        "请前往「待审批 → 借调确认」选择借出人员。"
+                    ),
                 ),
             )
     return row
@@ -797,10 +801,11 @@ def public(
 def notify_parties(
     principal: Principal, session: Session, demand: CapacityDemand, message: str
 ) -> None:
-    recipients = (
-        {demand.requester_user_id}
-        | responder_user_ids(session, principal.org_id, demand.requesting_department_id)
-        | responder_user_ids(session, principal.org_id, demand.target_department_id)
+    requesters = {demand.requester_user_id} | responder_user_ids(
+        session, principal.org_id, demand.requesting_department_id
+    )
+    recipients = requesters | responder_user_ids(
+        session, principal.org_id, demand.target_department_id
     )
     for user_id in sorted(recipients):
         add_item(
@@ -809,7 +814,15 @@ def notify_parties(
                 org_id=principal.org_id,
                 recipient_user_id=user_id,
                 kind=InboxKind.CAPACITY,
-                message=message,
+                message=(
+                    f"{message}{demand_notice_context(demand)}。"
+                    + (
+                        "请前往「已发出的需求」查看方案状态。"
+                        if user_id in requesters
+                        else "请打开方案页查看需求状态。"
+                        f"\n/capacity?tab=incoming&demand={demand.id}&plans=1"
+                    )
+                ),
             ),
         )
 
@@ -823,6 +836,7 @@ def fail(
     message: str,
     *,
     via: Via = "web",
+    event_detail: str | None = None,
 ) -> None:
     if reason == "borrow_declined":
         principal = Principal.system_worker(row.org_id)
@@ -841,7 +855,7 @@ def fail(
                 demand_id=demand.id,
                 kind=DemandEventKind.PROPOSAL_FAILED,
                 actor_user_id=principal.user_id or row.proposed_by_user_id,
-                text=message,
+                text=f"{message}：{event_detail}" if event_detail else message,
                 via=via,
             ),
         ]
@@ -1242,7 +1256,13 @@ def accept(
             )
         )
     for employee_id in sorted(changed_people):
-        notify_employee(principal, session, employee_id)
+        notify_employee(
+            principal,
+            session,
+            employee_id,
+            f"协作分配{'已更新' if change else '已生效'}{demand_notice_context(demand)}。"
+            "请前往「我的负荷」核对安排。",
+        )
     notify_parties(
         principal,
         session,
@@ -1483,7 +1503,11 @@ def decide_borrow(
                 org_id=row.org_id,
                 recipient_employee_id=line.employee_id,
                 kind=InboxKind.CAPACITY,
-                message="借调请求待你确认",
+                message=(
+                    f"借调请求待你确认（{demand.capability_name}，"
+                    f"{line.start_date} 至 {line.end_date}）。"
+                    "请前往「待审批 → 借调确认」处理。"
+                ),
             ),
         )
     if body.action == "reject" and body.reason is None:
@@ -1580,10 +1604,9 @@ def respond(
             demand,
             row,
             "rejected",
-            "安排变更被拒绝"
-            if row.kind == "change"
-            else f"方案被拒，需要重新规划：{text}",
+            "安排变更被拒绝" if row.kind == "change" else "方案被拒，需要重新规划",
             via=via,
+            event_detail=text if row.kind != "change" else None,
         )
     else:
         withdraw_locked(principal, session, demand, row, withdraw_demand=True, via=via)
@@ -1632,7 +1655,12 @@ def withdraw_locked(
         None,
         {"proposal_id": str(row.id), "withdraw_demand": withdraw_demand},
     )
-    notify_parties(principal, session, demand, "方案已撤回，需要重新规划")
+    notify_parties(
+        principal,
+        session,
+        demand,
+        "协作需求已撤回" if withdraw_demand else "方案已撤回，需要重新规划",
+    )
     session.flush()
 
 
