@@ -59,7 +59,7 @@ from app.domains.capacity.settings import (
     read_settings,
     require_enabled,
 )
-from app.domains.capacity.workload import NOTICE, employee, views
+from app.domains.capacity.workload import employee, views
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.inbox.service import add_item
 from app.domains.org.models import (
@@ -704,6 +704,10 @@ def require_requesting_department(
     return principal.user_id
 
 
+def demand_notice_context(demand: CapacityDemand) -> str:
+    return f"（{demand.capability_name}，{demand.window_start} 至 {demand.window_end}）"
+
+
 def create_demand(
     principal: Principal,
     session: Session,
@@ -760,7 +764,10 @@ def create_demand(
                 org_id=principal.org_id,
                 recipient_user_id=user_id,
                 kind=InboxKind.CAPACITY,
-                message=NOTICE,
+                message=(
+                    f"收到新的协作需求{demand_notice_context(row)}。"
+                    "请前往「待审批 → 协作需求」答复。"
+                ),
             ),
         )
     audit(
@@ -979,7 +986,10 @@ def reply_demand(
             org_id=principal.org_id,
             recipient_user_id=row.requester_user_id,
             kind=InboxKind.CAPACITY,
-            message=NOTICE,
+            message=(
+                f"协作需求已收到答复{demand_notice_context(row)}。"
+                "请前往「已发出的需求」查看答复并决定下一步。"
+            ),
         ),
     )
     audit(
@@ -1091,6 +1101,11 @@ def respond_demand(
             via=via,
         )
     )
+    title, next_step = {
+        "accept": ("协作需求的答复已被接受", "查看已接受的需求"),
+        "follow_up": ("协作需求收到追问", "查看并重新答复"),
+        "withdraw": ("协作需求已撤回", "查看撤回状态"),
+    }[action]
     for user_id in sorted(
         responder_user_ids(session, principal.org_id, row.target_department_id)
         - {principal.user_id}
@@ -1101,7 +1116,15 @@ def respond_demand(
                 org_id=principal.org_id,
                 recipient_user_id=user_id,
                 kind=InboxKind.CAPACITY,
-                message=NOTICE,
+                message=(
+                    f"{title}{demand_notice_context(row)}。"
+                    + (
+                        f"请前往「待审批 → 协作需求」{next_step}。"
+                        if action == "follow_up"
+                        else f"请打开需求的方案页{next_step}。"
+                        f"\n/capacity?tab=incoming&demand={row.id}&plans=1"
+                    )
+                ),
             ),
         )
     audit(

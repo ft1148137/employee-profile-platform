@@ -45,7 +45,7 @@ from app.domains.capacity.settings import (
     audit,
     require_enabled,
 )
-from app.domains.capacity.workload import NOTICE, employee, notify_employee
+from app.domains.capacity.workload import employee, notify_employee
 from app.domains.inbox.models import InboxItem, InboxKind
 from app.domains.inbox.service import add_item
 from app.domains.org.models import Department, Employee, EmploymentStatus
@@ -299,7 +299,11 @@ def change_due_date(
                     org_id=principal.org_id,
                     recipient_user_id=user_id,
                     kind=InboxKind.CAPACITY,
-                    message=NOTICE,
+                    message=(
+                        f"协作需求的承诺完成日期已更新（{demand.capability_name}，"
+                        f"新日期 {new_committed_end_date}）。"
+                        "请前往「已发出的需求」核对交付安排。"
+                    ),
                 ),
             )
         audit(
@@ -427,7 +431,13 @@ def create_assignment(
         client_name,
         {"outside_basis": body.outside_basis},
     )
-    notify_employee(principal, session, row.employee_id)
+    notify_employee(
+        principal,
+        session,
+        row.employee_id,
+        f"你有新的协作分配（{demand.capability_name}，{body.start_date} 至 {body.due_date}）。"
+        "请前往「我的负荷」查看安排。",
+    )
     session.flush()
     return AssignmentPublic.model_validate(row)
 
@@ -498,7 +508,13 @@ def update_assignment(
             via,
             client_name,
         )
-        notify_employee(principal, session, row.employee_id)
+        notify_employee(
+            principal,
+            session,
+            row.employee_id,
+            f"协作分配的完成日期已更新（{demand.capability_name}，{row.due_date}）。"
+            "请前往「我的负荷」查看安排。",
+        )
     elif body.start_date is not None:
         check_dates(demand, body.start_date, row.due_date)
         check_capacity(
@@ -512,7 +528,13 @@ def update_assignment(
         )
         row.start_date = body.start_date
         session.add(row)
-        notify_employee(principal, session, row.employee_id)
+        notify_employee(
+            principal,
+            session,
+            row.employee_id,
+            f"协作分配的开始日期已更新（{demand.capability_name}，{body.start_date}）。"
+            "请前往「我的负荷」查看安排。",
+        )
     elif body.status is not None:
         row.status, row.closed_at = AssignmentStatus(body.status), utc_now()
         session.add(row)

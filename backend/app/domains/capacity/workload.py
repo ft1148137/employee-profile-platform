@@ -72,7 +72,6 @@ from app.domains.work.models import Task
 from app.models import User
 
 AVAILABLE_BELOW = 80
-NOTICE = "你有新的协作或负荷事项待处理"
 WORKLOAD_REVIEW_NOTICE = "有负荷调整申请等你审批"
 EXTENSION_REVIEW_NOTICE = "有延期申请等你审批"
 
@@ -526,14 +525,16 @@ def list_workloads(
     return WorkloadList(data=data, count=len(data))
 
 
-def notify_employee(principal: Principal, session: Session, employee_id: UUID) -> None:
+def notify_employee(
+    principal: Principal, session: Session, employee_id: UUID, message: str
+) -> None:
     add_item(
         session,
         InboxItem(
             org_id=principal.org_id,
             recipient_employee_id=employee_id,
             kind=InboxKind.CAPACITY,
-            message=NOTICE,
+            message=message,
         ),
     )
 
@@ -650,7 +651,13 @@ def set_weeks(
                     ).isoformat(),
                 },
             )
-        notify_employee(principal, session, item.employee_id)
+        notify_employee(
+            principal,
+            session,
+            item.employee_id,
+            f"团队负荷已更新（周次 {body.start_week} 至 {body.end_week}）。"
+            "请前往「我的负荷」核对。",
+        )
     data = views(principal, session, subjects)
     return WorkloadList(data=data, count=len(data))
 
@@ -696,7 +703,10 @@ def request_workload_change(
                 org_id=principal.org_id,
                 recipient_user_id=user.id,
                 kind=InboxKind.CAPACITY,
-                message=WORKLOAD_REVIEW_NOTICE,
+                message=(
+                    f"{WORKLOAD_REVIEW_NOTICE}（周次 {body.start_week} 至 {body.end_week}）。"
+                    "请前往「待审批 → 负荷与延期」处理。"
+                ),
             ),
         )
     base = session.exec(
@@ -815,17 +825,16 @@ def decide_workload_request(
     ).one()
     if row.status != CapacityRequestStatus.PENDING:
         raise CapacityConflict()
+    start = row.start_week or calendar.this_week(session, principal.org_id)
+    end = row.end_week or start
     before = session.exec(
         select(CapacityWeek.other_percent).where(
             CapacityWeek.org_id == principal.org_id,
             CapacityWeek.employee_id == row.employee_id,
-            CapacityWeek.week_start
-            == (row.start_week or calendar.this_week(session, principal.org_id)),
+            CapacityWeek.week_start == start,
         )
     ).one_or_none()
     if body.approve:
-        start = row.start_week or calendar.this_week(session, principal.org_id)
-        end = row.end_week or start
         for offset in range((end - start).days // 7 + 1):
             set_week(
                 principal,
@@ -860,7 +869,14 @@ def decide_workload_request(
             "after_percent": row.requested_percent if body.approve else before,
         },
     )
-    notify_employee(principal, session, row.employee_id)
+    result = "已同意" if body.approve else "已退回"
+    weeks = f"（周次 {start} 至 {end}）" if row.start_week or body.approve else ""
+    notify_employee(
+        principal,
+        session,
+        row.employee_id,
+        f"负荷调整申请{result}{weeks}。请前往「我的负荷」查看处理结果。",
+    )
     return WorkloadRequestPublic.model_validate(row)
 
 
@@ -957,7 +973,13 @@ def register_unavailability(
         body.model_dump(mode="json"),
     )
     if subject.id != principal.employee_id:
-        notify_employee(principal, session, subject.id)
+        notify_employee(
+            principal,
+            session,
+            subject.id,
+            f"你的不可用时段已登记（{row.start_date} 至 {row.end_date}）。"
+            "请前往「我的负荷」核对。",
+        )
     notify_unavailability(session, row)
     return unavailability_public(principal, session, row, subject)
 
@@ -1003,5 +1025,11 @@ def delete_unavailability(
         },
     )
     if subject.id != principal.employee_id:
-        notify_employee(principal, session, subject.id)
+        notify_employee(
+            principal,
+            session,
+            subject.id,
+            f"你的不可用时段已撤销（{row.start_date} 至 {row.end_date}）。"
+            "请前往「我的负荷」核对。",
+        )
     return unavailability_public(principal, session, row, subject)

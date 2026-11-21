@@ -86,11 +86,17 @@ def test_reviewer_without_name_uses_existing_account_label(
     delegation = setup_delegation(db, demo)
     delegate = db.get(User, delegation.delegate_user_id)
     assert delegate is not None
-    delegate.full_name = None
-    db.commit()
-    _, request = pending(db, demo)
-    assert request.reviewers[-1].role == "代理审批"
-    assert request.reviewers[-1].name == delegate.username
+    original_name = delegate.full_name
+    try:
+        delegate.full_name = None
+        db.commit()
+        _, request = pending(db, demo)
+        assert request.reviewers[-1].role == "代理审批"
+        assert request.reviewers[-1].name == delegate.username
+    finally:
+        db.rollback()
+        delegate.full_name = original_name
+        db.commit()
 
 
 def test_preview_carries_reviewers_and_other_employee_cannot_read(
