@@ -677,6 +677,7 @@ export type {
   DemandBasisPerson,
   DemandEventKind,
   DemandEventPublic,
+  DemandExtraCapability,
   DemandHistory,
   DemandHistoryEvent,
   DemandInput,

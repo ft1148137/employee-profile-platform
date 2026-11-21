@@ -280,10 +280,13 @@ def borrow(data: dict[str, Any], departments: list[dict[str, Any]]) -> dict[str,
         "summary": {
             "finish_date": None,
             "covered_headcount": 0,
-            "gap_person_weeks": len(_weeks(start, end, week_start(start)))
-            * demand["headcount"]
-            * demand["allocation_percent"]
-            / 100,
+            "gap_person_weeks": round(
+                len(_weeks(start, end, week_start(start)))
+                * demand["headcount"]
+                * demand["allocation_percent"]
+                / 100,
+                2,
+            ),
             "conditions": [condition],
             "newcomer_count": 0,
             "affected_assignment_ids": [],

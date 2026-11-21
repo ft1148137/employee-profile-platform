@@ -5,10 +5,12 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import HTTPException
+from pydantic import JsonValue
 from sqlmodel import Session, col, func, or_, select
 
 from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
+from app.domains.capability.models import CapabilityDefinition
 from app.domains.capability.search import (
     PeopleSearchInput,
     PeopleSearchRow,
@@ -22,6 +24,7 @@ from app.domains.capacity.demand_schemas import (
     DemandBasis,
     DemandBasisPerson,
     DemandEventPublic,
+    DemandExtraCapability,
     DemandHistory,
     DemandHistoryEvent,
     DemandInput,
@@ -322,6 +325,35 @@ def responders_by_department(
     }
 
 
+def _public_extra_capability(
+    item: dict[str, JsonValue], definitions: dict[str, CapabilityDefinition]
+) -> DemandExtraCapability:
+    key = str(item["key"])
+    minimum = item.get("minimum_level")
+    definition = definitions.get(key)
+    rubric = (definition.level_rubric or {}) if definition else {}
+    levels = rubric.get("levels", [])
+    label = None
+    if minimum is not None and isinstance(levels, list):
+        label = next(
+            (
+                level_label
+                for level in levels
+                if isinstance(level, dict)
+                and level.get("key") == minimum
+                and isinstance(level_label := level.get("label"), str)
+            ),
+            None,
+        )
+    return DemandExtraCapability.model_validate(
+        {
+            **item,
+            "capability_name": definition.name if definition else key,
+            "minimum_level_label": label,
+        }
+    )
+
+
 def demand_public(
     principal: Principal, session: Session, row: CapacityDemand
 ) -> DemandPublic:
@@ -381,12 +413,30 @@ def demands_public(
         if project_ids and not requester_view
         else {}
     )
+    definitions = (
+        {
+            definition.key: definition
+            for definition in list_capabilities(
+                session, principal.org_id, get_schema(session, principal.org_id).id
+            )
+        }
+        if any(row.extra_capabilities for row in rows)
+        else {}
+    )
     grouped: dict[UUID, list[CapacityDemandEvent]] = defaultdict(list)
     for event in events:
         grouped[event.demand_id].append(event)
     results = []
     for row in rows:
-        result = DemandPublic.model_validate(row)
+        result = DemandPublic.model_validate(
+            row.model_dump(include=set(DemandPublic.model_fields))
+            | {
+                "extra_capabilities": [
+                    _public_extra_capability(item, definitions)
+                    for item in row.extra_capabilities
+                ]
+            }
+        )
         if (
             row.project_id is not None
             and row.project_id in projects

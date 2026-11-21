@@ -38,6 +38,15 @@ function number(value: unknown): string {
   return typeof value === "number" ? String(value) : "未定"
 }
 
+const personWeekFormat = new Intl.NumberFormat("zh-CN", {
+  maximumFractionDigits: 2,
+  useGrouping: false,
+})
+
+function personWeeks(value: unknown): string {
+  return typeof value === "number" ? personWeekFormat.format(value) : "未定"
+}
+
 function errorText(error: Error): string {
   if (isCapacityAccessDenied(error)) return "你现在没有权限查看这部分"
   if (error instanceof AxiosError) {
@@ -571,8 +580,8 @@ function OptionCard({
                 → {number(records([diff.covered_headcount])[0]?.after)}
               </p>
               <p>
-                缺口：{number(records([diff.gap_person_weeks])[0]?.before)} →{" "}
-                {number(records([diff.gap_person_weeks])[0]?.after)} 人周
+                缺口：{personWeeks(records([diff.gap_person_weeks])[0]?.before)}{" "}
+                → {personWeeks(records([diff.gap_person_weeks])[0]?.after)} 人周
               </p>
               <p>
                 新增风险：
@@ -593,7 +602,7 @@ function OptionCard({
       <p>
         交付日期：{label(option.summary.finish_date)} · 覆盖{" "}
         {number(option.summary.covered_headcount)} 人 · 还差{" "}
-        {number(option.summary.gap_person_weeks)} 人周
+        {personWeeks(option.summary.gap_person_weeks)} 人周
       </p>
       {onReply && ["feasible", "conditional"].includes(option.verdict) && (
         <div className="space-y-3">
@@ -964,7 +973,7 @@ export function Plans({
                     </td>
                     <td className="px-3">
                       {number(option.summary.covered_headcount)} 人 /{" "}
-                      {number(option.summary.gap_person_weeks)} 人周
+                      {personWeeks(option.summary.gap_person_weeks)} 人周
                     </td>
                     <td className="px-3">
                       <Button

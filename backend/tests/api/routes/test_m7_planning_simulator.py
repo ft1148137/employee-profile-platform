@@ -192,9 +192,17 @@ def test_reduction_reaches_ten_percent_and_ties_are_stable() -> None:
     )
 
 
-def test_borrow_hides_small_counts_and_people() -> None:
+@pytest.mark.parametrize(
+    ("headcount", "weeks", "allocation", "gap"),
+    [(2, 2, 50, 2.0), (1, 3, 60, 1.8)],
+)
+def test_borrow_hides_small_counts_and_people(
+    headcount: int, weeks: int, allocation: int, gap: float
+) -> None:
+    snapshot = data(headcount=headcount, weeks=weeks)
+    snapshot["demand"]["allocation_percent"] = allocation
     borrowed = simulator.borrow(
-        data(headcount=2),
+        snapshot,
         [
             {"department_id": "outside-1", "department_name": "一部", "count": 2},
             {"department_id": "outside-2", "department_name": "二部", "count": 4},
@@ -210,7 +218,7 @@ def test_borrow_hides_small_counts_and_people() -> None:
         {"department_id": "outside-2", "department_name": "二部", "count": 4},
     ]
     assert borrowed["verdict"] == "conditional"
-    assert borrowed["summary"]["gap_person_weeks"] == 2.0
+    assert borrowed["summary"]["gap_person_weeks"] == gap
     assert "employee_id" not in str(borrowed)
 
 

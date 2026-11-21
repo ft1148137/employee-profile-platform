@@ -315,6 +315,33 @@ def test_project_views_keep_department_boundaries(
         assert str(responder.employee_id) not in side.text
         assert not any(str(user_id) in side.text for user_id in actors)
 
+    extra_key = body["roles"][0]["extra_capabilities"][0]["key"]
+    capability = next(
+        item
+        for item in client.get(
+            f"{base.removesuffix('/capacity')}/capabilities", headers=auth["manager"]
+        ).json()["data"]
+        if item["key"] == extra_key
+    )
+    expected_extras = [
+        {
+            "key": extra_key,
+            "capability_name": capability["name"],
+            "minimum_level": None,
+            "minimum_level_label": None,
+            "required": False,
+        }
+    ]
+    assert a.json()["roles"][0]["demand"]["extra_capabilities"] == expected_extras
+    for viewer in ("manager", "b0"):
+        response = client.get(f"{base}/demands/{first['id']}", headers=auth[viewer])
+        assert response.status_code == 200, response.text
+        assert response.json()["extra_capabilities"] == expected_extras
+    assert (
+        client.get(f"{base}/demands/{first['id']}", headers=auth["foreign"]).status_code
+        == 404
+    )
+
     for role in ("manager", "b1"):
         detail = client.get(f"{base}/demands/{second['id']}", headers=auth[role])
         assert detail.status_code == 200, detail.text

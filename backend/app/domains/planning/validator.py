@@ -341,7 +341,7 @@ def validate(
         summary={
             "finish_date": finish.isoformat() if finish else None,
             "covered_headcount": covered_headcount,
-            "gap_person_weeks": gap_person_weeks,
+            "gap_person_weeks": round(gap_person_weeks, 2),
             "conditions": conditions,
             "newcomer_count": len(newcomer_ids),
             "affected_assignment_ids": affected,
