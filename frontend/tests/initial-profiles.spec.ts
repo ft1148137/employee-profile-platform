@@ -615,14 +615,21 @@ test("progress shows pause, exclusions and failures; retries and confirmation us
   for (const [label, count] of [
     ["已处理", "50"],
     ["已生成初稿", "3"],
-    ["暂无内容（无足够外部记录）", "47"],
+    ["暂无内容", "47"],
   ]) {
-    const term = progress.getByRole("term").filter({ hasText: label })
+    const term = progress
+      .getByRole("term")
+      .and(progress.getByText(label, { exact: true }))
     await expect(term.locator("..").getByRole("definition")).toHaveText(count)
   }
   await expect(progress.getByRole("status")).toHaveText(
     "已处理 50 人，已生成初稿 3 人，暂无内容 47 人。",
   )
+  await expect(
+    progress.getByText(
+      "暂无内容包括没有可用的外部工作记录，以及已有记录但未形成可用判断。",
+    ),
+  ).toBeVisible()
 })
 
 for (const username of [
