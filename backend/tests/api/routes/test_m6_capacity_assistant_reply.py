@@ -126,6 +126,44 @@ def model_call(name: str, args: dict) -> dict:
 
 
 @pytest.mark.parametrize(
+    "plan_fields",
+    [
+        {"outside_basis": True},
+        {"option_id": str(uuid4())},
+        {"lender_department_id": str(uuid4())},
+        {"borrow_headcount": 1},
+    ],
+)
+def test_ordinary_reply_tool_rejects_plan_fields(
+    case: tuple, db: Session, plan_fields: dict
+) -> None:
+    requester, manager, args = case
+    session = store.create_session(db, manager)
+    cards: list[s.Message] = []
+    result = tools.call(
+        db,
+        manager,
+        session,
+        cards,
+        "prepare_demand_reply",
+        {
+            **args,
+            "outcome": "not_now",
+            "reason_code": "other",
+            "text": "必需能力仍待核实",
+            **plan_fields,
+        },
+    )
+    assert isinstance(result, dict)
+    assert next(iter(plan_fields)) in result.get("error", "")
+    assert "prepare_plan_proposal" in result["error"]
+    assert not cards
+    detail = demand.get_demand(requester, db, UUID(args["demand_id"]))
+    assert detail.status == "submitted"
+    assert all(event.kind != "replied" for event in detail.events)
+
+
+@pytest.mark.parametrize(
     "text",
     [
         "暂时无法确认承接，必需能力尚未确认，需要进一步核实",
@@ -502,11 +540,13 @@ def test_employee_prepare_attacks(
     assert "error" in result and not cards
 
 
-@pytest.mark.parametrize("change", ["cancel", "disabled", "scope", "private"])
+@pytest.mark.parametrize(
+    "change", ["cancel", "disabled", "scope", "private", "revision"]
+)
 def test_reply_confirm_rechecks(
     case: tuple, demo: tuple, db: Session, change: str
 ) -> None:
-    _, b, args = case
+    a, b, args = case
     session = store.create_session(db, b)
     card = prepare(db, b, session, "prepare_demand_reply", args)
     if change == "disabled":
@@ -522,11 +562,142 @@ def test_reply_confirm_rechecks(
         demo[1]["E05"].display_name = "可以承接"
         db.add(demo[1]["E05"])
         db.commit()
+    elif change == "revision":
+        row = demand.demand_row(a, db, UUID(args["demand_id"]))
+        row.revision += 1
+        db.add(row)
+        db.commit()
     action = card.actions[1] if change == "cancel" else card.actions[0]
     result = core.act(db, b, session.id, action).messages[0]
     assert result.status == ("cancelled" if change == "cancel" else "failed")
+    assert not db.exec(
+        select(CapacityDemandEvent.id).where(
+            CapacityDemandEvent.org_id == b.org_id,
+            CapacityDemandEvent.demand_id == UUID(args["demand_id"]),
+            CapacityDemandEvent.kind == "replied",
+        )
+    ).all()
     with pytest.raises(demand.CapacityConflict):
         core.act(db, b, session.id, card.actions[0])
+
+
+def test_web_other_reply_and_legacy_card(
+    case: tuple,
+    demo: tuple,
+    db: Session,
+    client: TestClient,
+    pi_service: PiHarness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requester, manager, args = case
+    enable(db, manager.org_id)
+    monkeypatch.setattr(core, "model_config", lambda _: pi_service.config)
+    headers = {
+        "Authorization": f"Bearer {create_access_token(manager.user_id, expires_delta=timedelta(minutes=5))}"
+    }
+    reply = {
+        "revision": args["revision"],
+        "outcome": "not_now",
+        "reason_code": "other",
+        "text": "必需能力仍待核实，暂时不能承接",
+    }
+    demand_id = UUID(args["demand_id"])
+    session = store.create_session(db, manager)
+    db.commit()
+    base = f"/api/v1/bot/sessions/{session.id}"
+    query = {"org_id": str(manager.org_id)}
+
+    def post(path: str, body: dict) -> Response:
+        return client.post(f"{base}/{path}", params=query, headers=headers, json=body)
+
+    legacy = prepare(
+        db,
+        manager,
+        session,
+        "prepare_demand_reply",
+        {"demand_id": str(demand_id), **reply, "outside_basis": False},
+    )
+    legacy.arguments["outside_basis"] = True
+    store.append_message(
+        db,
+        session,
+        "assistant",
+        s.TurnResponse(messages=[legacy]).model_dump(mode="json"),
+    )
+    db.commit()
+
+    failed = post("actions", legacy.actions[0].model_dump(mode="json"))
+    assert failed.status_code == 200
+    result = failed.json()["messages"][0]
+    assert result["status"] == "failed"
+    assert "重新生成确认卡" in result["result"]
+    detail = demand.get_demand(requester, db, demand_id)
+    assert detail.status == "submitted"
+    assert all(event.kind != "replied" for event in detail.events)
+
+    pi_service.replies = [
+        model_call("prepare_demand_reply", {"demand_id": str(demand_id), **reply}),
+        "请核对答复",
+    ]
+    preview = final_response(post("turns", {"text": reply["text"]}))
+    (card,) = [m for m in preview["messages"] if m["type"] == "capacity_card"]
+    assert "暂时不能" in card["content"] and "原因：其他" in card["content"]
+    confirmed = post("actions", card["actions"][0])
+    assert confirmed.status_code == 200
+    assert confirmed.json()["messages"][0]["status"] == "confirmed"
+    assert post("actions", card["actions"][0]).status_code == 409
+
+    visible = demand.get_demand(requester, db, demand_id)
+    assert visible.status == "replied" and visible.revision == 2
+    (event,) = [event for event in visible.events if event.kind == "replied"]
+    assert event.outcome == "not_now"
+    assert event.text == reply["text"] and event.via == "bot"
+    raw = visible.model_dump_json()
+    assert all(
+        private not in raw
+        for private in (demo[1]["E05"].display_name, str(manager.employee_id))
+    )
+    saved = db.exec(
+        select(CapacityDemandEvent).where(
+            CapacityDemandEvent.org_id == manager.org_id,
+            CapacityDemandEvent.demand_id == demand_id,
+            CapacityDemandEvent.kind == "replied",
+        )
+    ).one()
+    assert saved.reason_code == "other"
+    audit = db.exec(
+        select(AuditEvent).where(
+            AuditEvent.org_id == manager.org_id,
+            AuditEvent.target_id == str(demand_id),
+            AuditEvent.action == "capacity.demand_replied",
+        )
+    ).one()
+    assert audit.details["via"] == "bot"
+
+    equivalent = demand.submit_demand(
+        requester,
+        db,
+        visible.target_department_id,
+        visible.capability_key,
+        visible.requesting_department_id,
+        visible.headcount,
+        visible.allocation_percent,
+        visible.window_start,
+        visible.window_end,
+        visible.description,
+    )
+    db.commit()
+    manual = client.post(
+        f"{demo[0]}/capacity/demands/{equivalent.id}/reply", headers=headers, json=reply
+    )
+    assert manual.status_code == 200, manual.text
+    visible_manual = demand.get_demand(requester, db, equivalent.id)
+    assert visible_manual.status == visible.status
+    assert visible_manual.revision == visible.revision
+    (manual_event,) = [e for e in visible_manual.events if e.kind == "replied"]
+    assert manual_event.model_dump(exclude={"via", "created_at"}) == event.model_dump(
+        exclude={"via", "created_at"}
+    )
 
 
 def test_web_reply_revision_and_workload(
