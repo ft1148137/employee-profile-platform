@@ -207,5 +207,7 @@ test("M3: setup, mandatory model, mobile form and bot", async ({
     .click()
   await expect(bot.getByText("已提交审批，经理审批前可撤回。")).toBeVisible()
   await bot.getByRole("button", { name: "撤回", exact: true }).click()
-  await expect(bot.getByRole("heading", { name: "已撤回" })).toBeVisible()
+  await expect(
+    bot.getByRole("heading", { name: "已撤回", exact: true }),
+  ).toBeVisible()
 })
