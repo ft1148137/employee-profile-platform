@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CapacityService, type DemandInput } from "@/client"
 import { ProfileError, ProfileLoading } from "@/components/Profile/QueryState"
-import { SetupError } from "@/components/Setup/SetupError"
 import { Button } from "@/components/ui/button"
+import { CapacityError } from "./AssignmentFields"
 import {
   capabilityLevels,
   DemandWorkFields,
@@ -26,6 +26,11 @@ export function DemandsCreate({
   const [capability, setCapability] = useState("")
   const [minimum, setMinimum] = useState("")
   const [preview, setPreview] = useState<DemandInput | null>(null)
+  const previewHeading = useRef<HTMLHeadingElement>(null)
+  const [needsDescription, setNeedsDescription] = useState(false)
+  useEffect(() => {
+    if (preview) previewHeading.current?.focus()
+  }, [preview])
   const options = useDemandOptions(orgId)
   const reference = useQuery({
     queryKey: ["capacity", orgId, "reference", target, capability, minimum],
@@ -46,8 +51,11 @@ export function DemandsCreate({
     mutationKey: ["capacity", orgId, "create", "outgoing"],
     mutationFn: (body: DemandInput) =>
       CapacityService.submitDemand({ path: { org_id: orgId }, body }),
-    onSuccess: ({ data }) => {
-      cache.invalidateQueries({ queryKey: ["capacity", orgId] })
+    onSuccess: async ({ data }) => {
+      await Promise.all([
+        cache.invalidateQueries({ queryKey: ["capacity", orgId] }),
+        cache.invalidateQueries({ queryKey: ["inbox", orgId] }),
+      ])
       created(data.id)
     },
   })
@@ -57,21 +65,28 @@ export function DemandsCreate({
   const selectedCapability = capabilities.find((c) => c.key === capability)
   const levels = capabilityLevels(selectedCapability?.level_rubric)
   return (
-    <div className="space-y-4">
-      <form
-        className="space-y-4"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const data = new FormData(event.currentTarget)
-          setPreview({
-            requesting_department_id: String(data.get("requesting")),
-            target_department_id: target,
-            capability_key: capability,
-            minimum_level: minimum || null,
-            ...demandWork(data),
-          })
-        }}
-      >
+    <form
+      className="space-y-4"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (preview) {
+          if (!submit.isPending) submit.mutate(preview)
+          return
+        }
+        const data = new FormData(event.currentTarget)
+        const work = demandWork(data)
+        setNeedsDescription(!work.description)
+        if (!work.description) return
+        setPreview({
+          requesting_department_id: String(data.get("requesting")),
+          target_department_id: target,
+          capability_key: capability,
+          minimum_level: minimum || null,
+          ...work,
+        })
+      }}
+    >
+      <div hidden={!!preview} className="space-y-4">
         <fieldset disabled={!!preview} className="grid gap-4 sm:grid-cols-2">
           {[
             {
@@ -131,6 +146,11 @@ export function DemandsCreate({
             </div>
           ))}
           <DemandWorkFields />
+          {needsDescription && (
+            <p role="alert" className="text-sm text-destructive sm:col-span-2">
+              请填写需求说明。
+            </p>
+          )}
           <Button
             type="submit"
             disabled={!requesting.length || !target || !capability}
@@ -146,8 +166,8 @@ export function DemandsCreate({
         >
           取消
         </Button>
-      </form>
-      {target && capability && (
+      </div>
+      {!preview && target && capability && (
         <section
           aria-label="即时参考"
           className="space-y-3 rounded-xl border bg-muted/30 p-5"
@@ -171,7 +191,9 @@ export function DemandsCreate({
           aria-label="需求预览"
           className="space-y-3 rounded-xl border p-5"
         >
-          <h3 className="font-semibold">需求预览</h3>
+          <h3 ref={previewHeading} tabIndex={-1} className="font-semibold">
+            需求预览
+          </h3>
           <p>
             {
               departments.find((d) => d.id === preview.requesting_department_id)
@@ -197,13 +219,11 @@ export function DemandsCreate({
             {preview.description}
           </p>
           <div className="flex gap-3">
-            <Button
-              disabled={submit.isPending || !preview.description}
-              onClick={() => submit.mutate(preview)}
-            >
+            <Button type="submit" disabled={submit.isPending}>
               {submit.isPending ? "正在提交…" : "确认提交需求"}
             </Button>
             <Button
+              type="button"
               variant="outline"
               disabled={submit.isPending}
               onClick={() => {
@@ -214,9 +234,9 @@ export function DemandsCreate({
               返回修改
             </Button>
           </div>
-          <SetupError error={submit.error} />
+          <CapacityError error={submit.error} />
         </section>
       )}
-    </div>
+    </form>
   )
 }

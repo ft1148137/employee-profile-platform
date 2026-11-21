@@ -312,9 +312,14 @@ def test_pending_demand_filter_and_reply_permissions(
 def test_invalid_input(
     demand: tuple, route: str, change: dict, api: Callable[..., Response]
 ) -> None:
-    url, _, auth, body, _ = demand
+    _, _, _, body, _ = demand
     if route == "demands":
         response = api("demands", json={**body, **change}, method="POST", code=422)
+        for role, side in (("employee", "outgoing"), ("b", "incoming")):
+            assert api("demands", role=role, params={"side": side}).json() == {
+                "data": [],
+                "count": 0,
+            }
     else:
         params = {k: body[k] for k in ("target_department_id", "capability_key")}
         response = api("reference", params={**params, **change}, code=422)

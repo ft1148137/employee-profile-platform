@@ -340,16 +340,23 @@ def test_authorization_validation_and_terminal_states(case: tuple, db: Session) 
         )
     api(path + "/respond", body={"action": "follow_up", "revision": 1}, status=422)
     api(path + "/respond", body={"action": "accept", "revision": 1}, status=409)
-    api(
-        path + "/reply",
-        "b",
-        {
-            "outcome": "not_now",
-            "reason_code": "capacity",
-            "text": "暂时不能承接",
-            "revision": 1,
-        },
-    )
+    rejection = {
+        "outcome": "not_now",
+        "reason_code": "capacity",
+        "text": "暂时不能承接",
+        "revision": 1,
+        "start_date": None,
+        "end_date": None,
+    }
+    invalid = api(path + "/reply", "b", {**rejection, "start_date": "2026-12-01"}, 422)
+    assert "请同时填写开始和结束日期" in invalid["detail"][0]["msg"]
+    assert api(path, "b")["status"] == "submitted"
+
+    rejected = api(path + "/reply", "b", rejection)
+    assert rejected["status"] == "replied"
+    assert rejected["events"][-1]["start_date"] is None
+    assert rejected["events"][-1]["end_date"] is None
+    assert api(path, "b")["status"] == "replied"
     api(path + "/respond", body={"action": "accept", "revision": 2}, status=409)
     api(path + "/respond", body={"action": "withdraw", "revision": 1}, status=409)
     withdrawn = api(path + "/respond", body={"action": "withdraw", "revision": 2})

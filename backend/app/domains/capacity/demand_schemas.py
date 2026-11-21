@@ -416,6 +416,11 @@ class DemandProject(BaseModel):
     prerequisites: list[ProjectRoleSummary] = Field(default_factory=list)
 
 
+class DemandExtraCapability(ExtraCapability):
+    capability_name: str
+    minimum_level_label: str | None
+
+
 class DemandPublic(DemandInput):
     id: UUID
     capability_name: str
@@ -423,6 +428,7 @@ class DemandPublic(DemandInput):
     can_reply: bool = False
     revision: int
     created_at: datetime
+    extra_capabilities: list[DemandExtraCapability] = Field(default_factory=list)
     events: list[DemandEventPublic] = Field(default_factory=list)
     committed_start_date: date | None = None
     committed_end_date: date | None = None

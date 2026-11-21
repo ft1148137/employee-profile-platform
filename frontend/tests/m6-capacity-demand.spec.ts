@@ -7,7 +7,7 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
   page,
   request,
 }) => {
-  test.setTimeout(120000)
+  test.setTimeout(180_000)
   page.setDefaultTimeout(10000)
   const password = "synthetic-demand-password-2026"
   const post = async (url: string, data: object, token?: string) => {
@@ -215,6 +215,7 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
   await expect(
     page.getByRole("link", { name: "协作需求", exact: true }),
   ).toHaveCount(0)
+  await page.setViewportSize({ width: 390, height: 700 })
   await page.getByRole("button", { name: "新建需求" }).click()
   await page
     .getByLabel("需求方部门", { exact: true })
@@ -248,10 +249,34 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
   await privatePage()
   await page.getByRole("button", { name: "返回修改" }).click()
   await expect(demandPreview).toHaveCount(0)
+  const drawer = page.getByRole("dialog", { name: "新建协作需求" })
+  const confirm = demandPreview.getByRole("button", { name: "确认提交需求" })
+  await page.getByLabel("结束日期").fill("2026-11-30")
   await page.getByRole("button", { name: "预览需求" }).click()
-  await page.getByRole("button", { name: "确认提交需求" }).click()
+  await expect.soft(confirm).toBeInViewport()
+  await confirm.click()
+  await expect(drawer.getByRole("alert")).toContainText(
+    "结束日期不能早于开始日期",
+  )
+  await page.getByRole("button", { name: "返回修改" }).click()
+  await page.getByLabel("结束日期").fill("2026-12-31")
+  await page.getByRole("button", { name: "预览需求" }).click()
+  await page.route(
+    `**${base}/capacity/demands`,
+    async (route) => {
+      await route.fulfill({ status: 500 })
+    },
+    { times: 1 },
+  )
+  await confirm.click()
+  await expect(drawer.getByRole("alert")).toContainText("服务暂时异常")
+  await expect(drawer).toBeVisible()
+  await confirm.click()
+  await expect(drawer).toHaveCount(0)
+  await page.setViewportSize({ width: 1280, height: 720 })
   const detail = page.getByRole("region", { name: "需求详情", exact: true })
-  await expect(detail).toContainText("待答复")
+  const currentStatus = detail.locator("dt:has-text('当前状态') + dd")
+  await expect(currentStatus).toHaveText("待答复")
   await expect(page.getByRole("button", { name: "接受答复" })).toHaveCount(0)
   await privatePage()
   const demandId = new URL(page.url()).searchParams.get("demand")
@@ -317,7 +342,7 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
       .getByLabel("答复说明")
       .fill(index ? "可以分阶段承接" : "当前容量不足")
     await page.getByRole("button", { name: "确认发送答复" }).click()
-    await expect(detail).toContainText("已答复")
+    await expect(currentStatus).toHaveText("已答复")
     await open(tokens.get("A")!, `outgoing&demand=${demandId}`)
     await expect(detail).toContainText("合成需求：接口联调")
     await privatePage()
@@ -339,10 +364,10 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
       ).toBeDisabled()
       await page.getByLabel("追问内容").fill("能否分阶段承接？")
       await page.getByRole("button", { name: "发送追问" }).click()
-      await expect(detail).toContainText("待答复")
+      await expect(currentStatus).toHaveText("待答复")
     } else {
       await page.getByRole("button", { name: "接受答复" }).click()
-      await expect(detail).toContainText("已接受")
+      await expect(currentStatus).toHaveText("已接受")
     }
   }
   await page.setViewportSize({ width: 390, height: 844 })
@@ -372,7 +397,7 @@ test("无模型时需求表单完成跨部门承诺且 A 方只见汇总", async
   await open(tokens.get("A")!, `outgoing&demand=${withdrawable.id}`)
   await expect(detail).toContainText("合成待撤回需求")
   await page.getByRole("button", { name: "撤回需求" }).click()
-  await expect(detail).toContainText("已撤回")
+  await expect(currentStatus).toHaveText("已撤回")
   await expect(page.getByRole("button", { name: "撤回需求" })).toHaveCount(0)
   await privatePage()
   await settings("managers")

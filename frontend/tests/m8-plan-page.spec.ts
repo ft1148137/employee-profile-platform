@@ -8,9 +8,22 @@ test("B 方经理无需模型查看方案，A 方经理看不到入口", async (
   page,
   request,
 }) => {
-  test.setTimeout(120000)
+  test.setTimeout(180_000)
   const { api, base, person, a, m, start, later, demand, open } =
     await setupPlans(page, request)
+  await page.route(
+    `**/planning/demands/${demand.id}/cases`,
+    async (route) => {
+      const response = await route.fetch()
+      const saved = await response.json()
+      const optimized = saved.options.find(
+        (option: { kind: string }) => option.kind === "optimized",
+      )
+      optimized.summary.gap_person_weeks = 1.7999999999999998
+      await route.fulfill({ response, json: saved })
+    },
+    { times: 1 },
+  )
   const createdResponse = page.waitForResponse(
     (response) =>
       response.url().includes(`/planning/demands/${demand.id}/cases`) &&
@@ -21,9 +34,9 @@ test("B 方经理无需模型查看方案，A 方经理看不到入口", async (
   const created = await (await createdResponse).json()
   const card = page.getByRole("article", { name: "直接安排方案" })
   await expect(card).toBeVisible()
-  await expect(
-    page.getByRole("article", { name: "优化方案", exact: true }),
-  ).toBeVisible()
+  const optimized = page.getByRole("article", { name: "优化方案", exact: true })
+  await expect(optimized).toBeVisible()
+  await expect(optimized).toContainText("还差 1.8 人周")
   const current = await api(
     `${base}/planning/cases/${created.id}`,
     undefined,
@@ -54,6 +67,10 @@ test("B 方经理无需模型查看方案，A 方经理看不到入口", async (
   await expect(card).toContainText("本部门经理确认答复")
   await expect(page.getByRole("table", { name: "方案对比" })).toContainText(
     direct.verdict_label,
+  )
+  const caseUrl = `**/planning/cases/${created.id}`
+  await expect(page.getByRole("table", { name: "方案对比" })).toContainText(
+    "1.8 人周",
   )
   await page.setViewportSize({ width: 390, height: 844 })
   await expect(
@@ -94,12 +111,14 @@ test("B 方经理无需模型查看方案，A 方经理看不到入口", async (
     m,
     "PUT",
   )
+  const stale = await api(`${base}/planning/cases/${created.id}`, undefined, m)
+  expect(stale.stale).toBe(true)
   await page.getByRole("button", { name: "关闭方案" }).click()
+  await expect(page.getByRole("region", { name: "协调方案" })).toHaveCount(0)
   await page.getByRole("button", { name: "生成方案 / 查看方案" }).click()
   await expect(page.getByText("数据已变化，请重新模拟")).toBeVisible()
   await page.getByRole("button", { name: "重新模拟" }).click()
   await expect(page.getByText("数据已变化，请重新模拟")).toHaveCount(0)
-  const caseUrl = `**/planning/cases/${created.id}`
   const conflict = "部分候选人已不在当前管辖范围内，请重新模拟"
   await page.route(caseUrl, async (route) => {
     await route.fulfill({
