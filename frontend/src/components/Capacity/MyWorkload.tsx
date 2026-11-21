@@ -74,6 +74,9 @@ export function MyWorkload({
   const submittedNames = submit.data?.data.reviewer_names?.join("、")
   return (
     <div className="space-y-3">
+      <p aria-hidden="true" className="text-lg font-semibold sm:hidden">
+        我的负荷
+      </p>
       <TopbarActions>
         {actions}
         <WorkloadHelp />
@@ -275,10 +278,16 @@ function WorkloadOverview({ workload }: { workload: MyWorkloadData }) {
           ))}
         </ul>
       </div>
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        平台外工作占比由部门经理确认。「未确认」表示部门经理尚未确认该周负荷基线。
+        每个可用工作日计 20%
+        容量，登记的不可用工作日会扣除。余量为可用容量扣除平台外工作、平台内已分配任务及方案暂留后的结果。
+      </p>
       <div className="grid grid-cols-2 gap-2 min-[540px]:grid-cols-4 xl:grid-cols-8">
         {workload.weeks.map((week, index) => {
           const band = weekBand(week)
           const total = occupiedPercent(week)
+          const held = week.hold_percent ?? 0
           const remaining = week.capacity_percent - total
           const unavailable =
             week.capacity_percent < 100 ||
@@ -329,22 +338,38 @@ function WorkloadOverview({ workload }: { workload: MyWorkloadData }) {
                   style={{ left: `calc(${week.capacity_percent}% - 1px)` }}
                 />
               </div>
-              {band !== "unconfirmed" && (
-                <p
-                  className={
-                    remaining < 0
-                      ? "font-semibold text-red-700 dark:text-red-300"
-                      : "text-muted-foreground"
-                  }
-                >
-                  {remaining < 0
-                    ? `超载 +${-remaining}%`
-                    : `余量 ${remaining}%`}
-                </p>
-              )}
-              {unavailable && (
-                <p>有不可用日期 · 可用 {week.capacity_percent}%</p>
-              )}
+              <dl className="grid grid-cols-[1fr_auto] gap-x-1 gap-y-0.5 tabular-nums">
+                <dt>平台外工作</dt>
+                <dd>
+                  {week.other_percent === null ? "—" : `${week.other_percent}%`}
+                </dd>
+                <dt>平台内分配</dt>
+                <dd>{week.platform_percent - held}%</dd>
+                {held > 0 && (
+                  <>
+                    <dt>方案暂留</dt>
+                    <dd>{held}%</dd>
+                  </>
+                )}
+                <dt>可用容量</dt>
+                <dd>{week.capacity_percent}%</dd>
+                {band !== "unconfirmed" && (
+                  <>
+                    <dt className="font-medium">
+                      {remaining < 0 ? "超载" : "余量"}
+                    </dt>
+                    <dd
+                      className={cn(
+                        "font-medium",
+                        remaining < 0 && "text-red-700 dark:text-red-300",
+                      )}
+                    >
+                      {remaining < 0 ? `+${-remaining}` : remaining}%
+                    </dd>
+                  </>
+                )}
+              </dl>
+              {unavailable && <p>有不可用日期</p>}
               {workload.correction_pending[week.week_start] && (
                 <p>调整审批中</p>
               )}

@@ -336,7 +336,10 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     page.getByText("暂无待审批的负荷调整", { exact: true }),
   ).toBeVisible()
   await open(e, "/capacity?tab=mine")
-  await expect(page.getByText("90%", { exact: true })).toBeVisible()
+  const overview = page.getByRole("region", { name: "每周投入" })
+  await expect(
+    overview.getByTitle("基本满", { exact: true }).filter({ hasText: /^90%$/ }),
+  ).toBeVisible()
   await page.goto("/capacity?tab=assignments")
   await expect(
     page.getByRole("region", { name: "延期申请记录" }),
@@ -367,7 +370,9 @@ test("普通代理、兜底管理员和经理都能从待我审批处理申请",
     page.getByText("暂无待审批的负荷调整", { exact: true }),
   ).toBeVisible()
   await open(tokens.get("F")!, "/capacity?tab=mine")
-  await expect(page.getByText("40%", { exact: true })).toBeVisible()
+  await expect(
+    overview.getByTitle("有余量", { exact: true }).filter({ hasText: /^40%$/ }),
+  ).toBeVisible()
   await workloadRequest(e, 50)
   await open(m)
   await page.getByText(/· 申请 \d+%/).click()
