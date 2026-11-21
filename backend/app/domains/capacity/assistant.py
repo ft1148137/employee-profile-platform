@@ -78,6 +78,10 @@ DEMAND_REPLY_REASON_GUIDANCE = (
     "符合必需能力等级的人数不足的情况；服务端会核对当前已确认画像。"
     "仅凭需求依据中没有匹配结果，不能选择 skill。"
 )
+DEMAND_REPLY_PLAN_GUIDANCE = (
+    "普通答复请省略 option_id、outside_basis、lender_department_id 和 borrow_headcount；"
+    "仅提交实际方案时使用 prepare_plan_proposal 生成确认卡"
+)
 SKILL_REPLY_TEXT = "根据已确认的画像等级核对，达到必需能力等级要求的人数不足。"
 SKILL_REPLY_UNVERIFIED = "当前依据无法核实能力不匹配，请选择「其他」并说明待核实的能力"
 
@@ -134,7 +138,7 @@ def definitions(db: Session, p: Principal) -> list[ToolDefinition]:
             description=TITLES[name]
             + ("；只出预览卡，用户点击确认才写入" if name in PREPARES else "")
             + (
-                "。" + DEMAND_REPLY_REASON_GUIDANCE
+                f"。{DEMAND_REPLY_REASON_GUIDANCE}{DEMAND_REPLY_PLAN_GUIDANCE}。"
                 if name == "prepare_demand_reply"
                 else ""
             ),
@@ -303,6 +307,15 @@ def _is_skill_rejection(body: ReplyInput) -> bool:
     return body.outcome == DemandOutcome.NOT_NOW and body.reason_code == "skill"
 
 
+def _has_proposal_arguments(arguments: dict[str, JsonValue]) -> bool:
+    return (
+        arguments.get("option_id") is not None
+        or arguments.get("outside_basis") is True
+        or "lender_department_id" in arguments
+        or "borrow_headcount" in arguments
+    )
+
+
 def check_demand_reply(
     db: Session, p: Principal, value: BaseModel, *, lock: bool = False
 ) -> str:
@@ -413,8 +426,8 @@ def call(
 ) -> JsonValue:
     try:
         require_enabled(p, db)
-        if name == "prepare_demand_reply" and arguments.get("option_id") is not None:
-            return {"error": "带方案的答复请使用 prepare_plan_proposal 生成确认卡"}
+        if name == "prepare_demand_reply" and _has_proposal_arguments(arguments):
+            return {"error": DEMAND_REPLY_PLAN_GUIDANCE}
         if name in READS:
             tool = READS[name]
             body = tool.input_model.model_validate(arguments)
@@ -510,8 +523,17 @@ def act(
     try:
         require_enabled(p, db)
         name = next(write for kind, write, _ in PREPARES.values() if kind == card.kind)
+        plan_reply = card.kind == "demand_reply" and bool(
+            card.arguments.get("option_id")
+        )
+        if (
+            card.kind == "demand_reply"
+            and not plan_reply
+            and _has_proposal_arguments(card.arguments)
+        ):
+            card.status, card.result = "failed", "答复包含方案参数，请重新生成确认卡"
+            return card
         try:
-            plan_reply = card.kind == "demand_reply" and card.arguments.get("option_id")
             input_model = (
                 PlanReplyDemandInput if plan_reply else WRITES[name].input_model
             )
@@ -532,7 +554,7 @@ def act(
                         raise demand.RejectionReasonInvalid("能力核实说明已更新")
             try:
                 result: BaseModel
-                if card.kind == "demand_reply" and card.arguments.get("option_id"):
+                if plan_reply:
                     # Planning/Capacity composition belongs to the Agent entrypoint.
                     from app.domains.bot.tools import confirm_plan_reply
 

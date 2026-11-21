@@ -882,7 +882,7 @@ def verified_skill_shortage(
         possible.difference_update(
             person.employee_id
             for person in _search_people(principal, session, search)
-            if person.status == "confirmed" and person.level in below
+            if person.status.value == "confirmed" and person.level in below
         )
         if len(possible) < row.headcount:
             return True
