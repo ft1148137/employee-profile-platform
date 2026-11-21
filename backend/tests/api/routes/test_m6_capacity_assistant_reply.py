@@ -14,11 +14,12 @@ from app.authz.principal import Principal
 from app.core.db import engine
 from app.core.security import create_access_token
 from app.domains.audit.models import AuditEvent
-from app.domains.bot import core, store, tools
+from app.domains.bot import core, prompts, store, tools
 from app.domains.bot import schemas as s
 from app.domains.bot.models import BotSession
 from app.domains.capacity import assistant, demand
 from app.domains.capacity.calendar import this_week
+from app.domains.capacity.demand_schemas import PlanReplyDemandInput
 from app.domains.capacity.models import (
     CapacityAssignment,
     CapacityDemand,
@@ -119,6 +120,51 @@ def prepare(
 
 def model_call(name: str, args: dict) -> dict:
     return {"calls": [{"name": name, "arguments": args}]}
+
+
+def test_reply_with_unverified_required_capability(case: tuple, db: Session) -> None:
+    _, manager, args = case
+    arguments = {
+        **args,
+        "outcome": "not_now",
+        "start_date": None,
+        "end_date": None,
+        "text": "暂时无法确认承接，必需能力尚未确认，需要进一步核实",
+        "reason_code": "skill",
+    }
+    with pytest.raises(demand.RejectionReasonInvalid, match="其他"):
+        assistant.check_demand_reply(
+            db, manager, PlanReplyDemandInput.model_validate(arguments)
+        )
+    cards: list[s.Message] = []
+    rejected = assistant.call(db, manager, cards, "prepare_demand_reply", arguments)
+    assert "待核实的能力" in rejected["error"]
+    assert not cards
+    confirmed_mismatch = PlanReplyDemandInput.model_validate(
+        {**arguments, "text": "已核实，必需能力等级低于要求"}
+    )
+    assert "暂不能承接的原因：能力不匹配" in assistant.check_demand_reply(
+        db, manager, confirmed_mismatch
+    )
+    result = assistant.call(
+        db,
+        manager,
+        cards,
+        "prepare_demand_reply",
+        {**arguments, "reason_code": "other"},
+    )
+    assert "暂不能承接的原因：其他" in result["preview"]
+    assert arguments["text"] in result["preview"]
+    tool = next(
+        tool
+        for tool in assistant.definitions(db, manager)
+        if tool.name == "prepare_demand_reply"
+    )
+    assert all(word in tool.description for word in ("未确认", "skill", "other"))
+    system_prompt = prompts.system_prompt(db, manager, "web")
+    assert "未知不等于不会" in system_prompt
+    assert "reason_code=other（其他）" in system_prompt
+    assert "reason_code=skill（能力不匹配）只用于已核实" in system_prompt
 
 
 def test_replaced_reply_card_is_rejected(case: tuple, db: Session) -> None:

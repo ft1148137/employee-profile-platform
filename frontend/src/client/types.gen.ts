@@ -8801,6 +8801,7 @@ export type app__domains__bot__schemas__ChangeItem = {
    * Objection
    */
   objection: string | null
+  decision?: ItemDecision | null
 }
 
 /**

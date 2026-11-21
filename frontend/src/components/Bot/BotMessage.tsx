@@ -18,6 +18,7 @@ import { StatusBadge } from "@/components/Profile/StatusBadge"
 import { Button } from "@/components/ui/button"
 import { safeNext } from "@/utils"
 import { ProjectDraftMessage } from "./ProjectDraftMessage"
+import { previewHistoryLabel, type RequestCard } from "./requestCards"
 
 export type BotAction =
   | RequestAction
@@ -77,11 +78,13 @@ function assistantText(text: string) {
 export function BotMessage({
   message,
   dictionary,
+  laterRequest,
   disabled,
   onAction,
 }: {
   message: TurnResponse["messages"][number]
   dictionary?: CapabilitiesPublic
+  laterRequest?: RequestCard
   disabled: boolean
   onAction: (action: BotAction) => void
 }) {
@@ -322,6 +325,21 @@ export function BotMessage({
         </div>
       </section>
     )
+  const previewLabel =
+    message.type === "preview_card"
+      ? previewHistoryLabel(message, laterRequest)
+      : undefined
+  const currentStatus =
+    laterRequest?.type === "status_card"
+      ? laterRequest.status
+      : message.type === "status_card"
+        ? message.status
+        : undefined
+  const mixed =
+    message.type === "status_card" &&
+    (currentStatus === "pending_review" || currentStatus === "withdrawn") &&
+    message.items.some((item) => item.decision === "approved") &&
+    message.items.some((item) => item.decision === null)
   return (
     <section
       className="space-y-4 rounded-xl border bg-background p-4"
@@ -374,16 +392,22 @@ export function BotMessage({
         <>
           <h3 className="font-semibold">
             {message.type === "preview_card"
-              ? "变更预览"
-              : (statuses[message.status] ?? "请求状态已更新")}
+              ? `变更预览${previewLabel ? ` · ${previewLabel}` : ""}`
+              : laterRequest
+                ? "历史请求 · 已过期"
+                : (statuses[message.status] ?? "请求状态已更新")}
           </h3>
           {message.type === "preview_card" ? (
-            <RequestReviewers
-              reviewers={message.reviewers}
-              requiresManager={message.requires_manager}
-              partialAutoPublish={message.partial_auto_publish}
-              preview
-            />
+            !previewLabel && (
+              <RequestReviewers
+                reviewers={message.reviewers}
+                requiresManager={message.requires_manager}
+                partialAutoPublish={message.partial_auto_publish}
+                preview
+              />
+            )
+          ) : laterRequest && currentStatus ? (
+            <p>当前状态：{statuses[currentStatus] ?? "请求状态已更新"}</p>
           ) : message.status === "pending_review" ? (
             <RequestReviewers reviewers={message.reviewers} />
           ) : null}
@@ -404,31 +428,52 @@ export function BotMessage({
             ))
           ) : (
             <>
-              {message.status === "pending_review" && (
-                <p>已提交审批，经理审批前可撤回。</p>
+              {!laterRequest && message.status === "pending_review" && (
+                <p>
+                  {mixed
+                    ? "部分能力已发布（暂定），其余待经理审批。"
+                    : message.actions.length
+                      ? "已提交审批，经理审批前可撤回。"
+                      : "已提交审批。"}
+                </p>
+              )}
+              {mixed && !laterRequest && message.actions.length > 0 && (
+                <p>撤回仅取消待经理审批项，已发布项不受影响。</p>
               )}
               {message.items.map((item, index) => (
                 <p key={index}>
                   {item.capability.name}：{item.after?.statement ?? "移除此项"}{" "}
                   · 等级：
                   {displayLevel(item.after, item.capability.key)}
+                  {mixed &&
+                    (item.decision === "approved" ||
+                      item.decision === null) && (
+                      <span className="ml-2 font-medium">
+                        {item.decision === "approved"
+                          ? "已发布（暂定）"
+                          : currentStatus === "withdrawn"
+                            ? "已撤回"
+                            : "待经理审批"}
+                      </span>
+                    )}
                 </p>
               ))}
             </>
           )}
           <div className="flex flex-wrap gap-2">
-            {message.actions.map((action) => (
-              <Button
-                key={action.action}
-                variant={
-                  action.action === "confirm_submit" ? "default" : "outline"
-                }
-                disabled={disabled}
-                onClick={() => onAction(action)}
-              >
-                {actionLabels[action.action]}
-              </Button>
-            ))}
+            {!laterRequest &&
+              message.actions.map((action) => (
+                <Button
+                  key={action.action}
+                  variant={
+                    action.action === "confirm_submit" ? "default" : "outline"
+                  }
+                  disabled={disabled}
+                  onClick={() => onAction(action)}
+                >
+                  {actionLabels[action.action]}
+                </Button>
+              ))}
           </div>
         </>
       )}

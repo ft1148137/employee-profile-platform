@@ -10,9 +10,11 @@ import { SetupError } from "./SetupError"
 export function SetupCard({
   orgId,
   step,
+  showCompanyEditor,
 }: {
   orgId: string
   step?: "org_profile" | "model"
+  showCompanyEditor?: boolean
 }) {
   const setup = useSetup()
   const client = useQueryClient()
@@ -140,6 +142,10 @@ export function SetupCard({
           ))}
         </ol>
       )}
+      {showCompanyEditor &&
+        setup.data.steps.some(
+          (item) => item.key === "org_profile" && item.status === "completed",
+        ) && <SetupCard orgId={orgId} step="org_profile" />}
       <SetupError error={update.error} />
     </div>
   )

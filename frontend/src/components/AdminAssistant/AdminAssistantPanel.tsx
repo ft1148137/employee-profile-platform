@@ -596,6 +596,15 @@ export function AdminAssistantPanel({
                       <SetupCard
                         key={i}
                         orgId={orgId}
+                        showCompanyEditor={
+                          message.type === "setup_checklist" &&
+                          "messages" in entry.payload &&
+                          !entry.payload.messages.some(
+                            (card) =>
+                              card.type === "setup_form" &&
+                              card.step === "org_profile",
+                          )
+                        }
                         step={
                           message.type === "setup_form"
                             ? message.step

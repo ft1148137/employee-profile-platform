@@ -27,7 +27,13 @@ from app.domains.bot.models import (
     ConversationMessage,
 )
 from app.domains.bot.settings import read_settings
+from app.domains.capability.models import CapabilityDefinition
 from app.domains.capacity.settings import read_settings as read_capacity_settings
+from app.domains.change_request.models import (
+    ChangeItem,
+    ProfileChangeRequest,
+    RequestStatus,
+)
 from app.domains.model.service import read_setting
 from app.domains.org.models import Employee, Organization
 from app.domains.org.service import visible_employee
@@ -314,7 +320,85 @@ def list_messages(
             message.payload = {"messages": [{"type": "text", "text": HIDDEN_REPLY}]}
         else:
             message.payload.pop("scope", None)
+    _refresh_request_cards(db, principal, messages)
     return messages
+
+
+def _refresh_request_cards(
+    db: Session, principal: Principal, messages: list[MessagePublic]
+) -> None:
+    cards: list[tuple[UUID, dict[str, JsonValue]]] = []
+    for message in messages:
+        if message.role != "assistant" or not isinstance(message.payload, dict):
+            continue
+        contents = message.payload.get("messages")
+        if not isinstance(contents, list):
+            continue
+        for card in contents:
+            if not isinstance(card, dict):
+                continue
+            match card.get("type"):
+                case "preview_card":
+                    id_value = card.get("request_id")
+                case "status_card":
+                    id_value = card.get("id")
+                case _:
+                    continue
+            if isinstance(id_value, str):
+                cards.append((UUID(id_value), card))
+    if not cards:
+        return
+    request = ProfileChangeRequest
+    current: dict[UUID, tuple[RequestStatus, int]] = {}
+    decisions: dict[tuple[UUID, str], str | None] = {}
+    for row, key, decision in db.exec(
+        select(
+            request,
+            CapabilityDefinition.key,
+            ChangeItem.decision,
+        )
+        .outerjoin(
+            ChangeItem,
+            (col(ChangeItem.org_id) == request.org_id)
+            & (col(ChangeItem.request_id) == request.id),
+        )
+        .outerjoin(
+            CapabilityDefinition,
+            (col(CapabilityDefinition.org_id) == ChangeItem.org_id)
+            & (col(CapabilityDefinition.id) == ChangeItem.capability_definition_id),
+        )
+        .where(
+            request.org_id == principal.org_id,
+            request.subject_employee_id == principal.employee_id,
+            col(request.id).in_({id_ for id_, _ in cards}),
+        )
+    ).all():
+        current[row.id] = (row.status, row.revision)
+        if key is not None:
+            decisions[row.id, key] = str(decision) if decision is not None else None
+    seen_status: set[UUID] = set()
+    for id_, card in reversed(cards):
+        status, revision = current.get(id_, (None, None))
+        if card["type"] == "preview_card":
+            active = status in (RequestStatus.DRAFT, RequestStatus.PENDING_OWNER)
+        else:
+            active = status == RequestStatus.PENDING_REVIEW and id_ not in seen_status
+            seen_status.add(id_)
+            if status is not None:
+                card["status"] = status.value
+            items = card.get("items")
+            if isinstance(items, list):
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    capability = item.get("capability")
+                    item_key = (
+                        capability.get("key") if isinstance(capability, dict) else None
+                    )
+                    if isinstance(item_key, str) and (id_, item_key) in decisions:
+                        item["decision"] = decisions[id_, item_key]
+        if not active or card.get("revision") != revision:
+            card["actions"] = []
 
 
 def session_scope(db: Session, principal: Principal) -> dict[str, JsonValue]:

@@ -1,3 +1,4 @@
+import re
 from collections.abc import Callable
 from typing import Literal
 from zoneinfo import ZoneInfo
@@ -18,6 +19,7 @@ from app.domains.capacity.demand_schemas import (
     DemandInput,
     LimitedCapacityReference,
     PlanReplyDemandInput,
+    ReplyInput,
     RespondDemandInput,
 )
 from app.domains.capacity.extension_schemas import RequestExtensionInput
@@ -71,6 +73,15 @@ TITLES = {name: t.description for name, t in READS.items()} | {
     name: title for name, (_, _, title) in PREPARES.items()
 }
 RESPONSES = {"accept": "接受", "follow_up": "追问", "withdraw": "撤回"}
+DEMAND_REPLY_REASON_GUIDANCE = (
+    "必需能力未知或未确认时，未知不等于不会。暂时不能承接时须用 reason_code=other（其他）"
+    "并说明待核实的能力。reason_code=skill（能力不匹配）只用于已核实不符合能力要求的情况。"
+)
+UNVERIFIED_CAPABILITY = re.compile(
+    r"(?:能力|技能|等级)[^，。；、\n]{0,16}"
+    r"(?:未知|待确认|待核实|未确认|未核实|未验证|证据不足)"
+    r"|(?:尚未|还未|无法|待)(?:确认|核实|验证)[^，。；、\n]{0,16}(?:能力|技能|等级)"
+)
 
 DemandField = Literal[
     "requesting_department_id",
@@ -123,7 +134,12 @@ def definitions(db: Session, p: Principal) -> list[ToolDefinition]:
         ToolDefinition(
             name=name,
             description=TITLES[name]
-            + ("；只出预览卡，用户点击确认才写入" if name in PREPARES else ""),
+            + ("；只出预览卡，用户点击确认才写入" if name in PREPARES else "")
+            + (
+                "。" + DEMAND_REPLY_REASON_GUIDANCE
+                if name == "prepare_demand_reply"
+                else ""
+            ),
             parameters=(
                 PrepareDemandInput
                 if name == "prepare_demand"
@@ -285,6 +301,15 @@ def check_demand_response(
     return content, detail_link
 
 
+def _validate_demand_reply_reason(body: ReplyInput) -> None:
+    if body.outcome == DemandOutcome.NOT_NOW:
+        demand.require_rejection_reason(body.reason_code, body.text)
+        if body.reason_code == "skill" and UNVERIFIED_CAPABILITY.search(body.text):
+            raise demand.RejectionReasonInvalid(
+                "必需能力尚未确认，请选择「其他」并说明待核实的能力"
+            )
+
+
 def check_demand_reply(db: Session, p: Principal, value: BaseModel) -> str:
     body = PlanReplyDemandInput.model_validate(value)
     row = demand.demand_row(p, db, body.demand_id)
@@ -300,11 +325,10 @@ def check_demand_reply(db: Session, p: Principal, value: BaseModel) -> str:
         raise ChangeOnWeb()
     if row.revision != body.revision or row.status != DemandStatus.SUBMITTED:
         raise CapacityConflict()
+    _validate_demand_reply_reason(body)
     reason = ""
-    if body.outcome == DemandOutcome.NOT_NOW:
-        demand.require_rejection_reason(body.reason_code, body.text)
-        if body.reason_code is not None:
-            reason = f"暂不能承接的原因：{REASON_LABELS[body.reason_code]}\n"
+    if body.outcome == DemandOutcome.NOT_NOW and body.reason_code is not None:
+        reason = f"暂不能承接的原因：{REASON_LABELS[body.reason_code]}\n"
     description, _, conditions = body.text.partition("\n条件：")
     content = (
         f"需求：{row.capability_name}\n结论："
@@ -491,6 +515,8 @@ def act(
         except ValidationError:
             card.status, card.result = "failed", "申请内容已变化，请重新生成确认卡"
             return card
+        if card.kind == "demand_reply" and isinstance(body, ReplyInput):
+            _validate_demand_reply_reason(body)
         with db.begin_nested():
             try:
                 result: BaseModel
@@ -527,8 +553,8 @@ def act(
         card.result = (
             f"{RESULTS[card.kind]}，编号：{result.model_dump(mode='json')['id']}"
         )
-    except demand.RejectionReasonInvalid:
-        card.status, card.result = "failed", "缺少有效的拒绝原因，请重新出卡"
+    except demand.RejectionReasonInvalid as exc:
+        card.status, card.result = "failed", f"{exc.detail}，请重新出卡"
     except HTTPException as exc:
         card.status, card.result = (
             "failed",

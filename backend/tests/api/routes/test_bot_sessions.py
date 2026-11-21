@@ -9,14 +9,125 @@ from app.authz.deps import get_org_principal
 from app.domains.admin_assistant import store as admin_store
 from app.domains.admin_assistant.models import AdminAssistantMessage
 from app.domains.base import utc_now
-from app.domains.bot import store
+from app.domains.bot import schemas as s
+from app.domains.bot import store, tools
 from app.domains.bot.models import BotMessage, BotSetting
+from app.domains.change_request import employee
+from app.domains.change_request.models import ProfileChangeRequest, RequestStatus
+from app.domains.change_request.schemas import ItemInput
 from app.domains.org.models import OrgMembership, Role, RoleGrant
+from app.domains.review.models import ApprovalPolicy
 from app.domains.setup.models import SetupStatus
 from app.domains.setup.wizard import update_step
 from app.models import User
-from tests.api.routes.test_employee_requests import principal_for
+from tests.api.routes.test_employee_requests import payload, principal_for
 from tests.domains.test_admin_assistant import admin
+
+
+@pytest.mark.parametrize(
+    "final_status", ["withdrawn", "approved", "changes_requested", "rejected"]
+)
+def test_request_cards_follow_current_state(
+    demo: tuple, db: Session, client: TestClient, final_status: str
+) -> None:
+    _, people, auth = demo
+    principal = principal_for(db, people["E02"].org_id)
+    db.add(
+        ApprovalPolicy(
+            org_id=principal.org_id,
+            version=1,
+            created_by_user_id=principal.user_id,
+            category_overrides={"AI 与数据": False},
+        )
+    )
+    draft = employee.save_draft(principal, db, None, [ItemInput(**payload())], "bot")
+    session = store.create_session(db, principal)
+    url = f"/api/v1/bot/sessions/{session.id}"
+    options = {"params": {"org_id": str(principal.org_id)}, "headers": auth["employee"]}
+
+    def save(card: s.PreviewCard | s.StatusCard) -> None:
+        recorded = s.TurnResponse(messages=[card]).model_dump(mode="json")
+        if isinstance(card, s.StatusCard):
+            for item in recorded["messages"][0]["items"]:
+                item.pop("decision", None)
+        store.append_message(db, session, "assistant", recorded)
+        db.commit()
+
+    def history() -> list[dict]:
+        response = client.get(url + "/messages", **options)
+        assert response.status_code == 200, response.text
+        return [message["payload"]["messages"][0] for message in response.json()]
+
+    preview = tools.preview_card(db, principal, draft.id)
+    save(preview)
+    assert len(history()[0]["actions"]) == 2
+    draft = employee.save_draft(
+        principal,
+        db,
+        draft.id,
+        [
+            ItemInput(**payload(statement="合成更新")),
+            ItemInput(**payload("model_training", statement="合成免审判断")),
+        ],
+        "bot",
+    )
+    updated = tools.preview_card(db, principal, draft.id)
+    save(updated)
+    assert [len(card["actions"]) for card in history()] == [0, 2]
+    response = client.post(
+        url + "/actions", json=updated.actions[0].model_dump(mode="json"), **options
+    )
+    assert response.status_code == 200, response.text
+    status = s.StatusCard.model_validate(response.json()["messages"][0])
+    assert status.status == "pending_review"
+    assert [item.decision for item in status.items] == [None, "approved"]
+    save(status)
+    cards = history()
+    assert [len(card["actions"]) for card in cards] == [0, 0, 0, 1]
+    assert [item["decision"] for item in cards[-1]["items"]] == [None, "approved"]
+    response = client.post(
+        url + "/actions", json=updated.actions[1].model_dump(mode="json"), **options
+    )
+    assert response.status_code == 409
+    if final_status == "withdrawn":
+        response = client.post(
+            url + "/actions", json=status.actions[0].model_dump(mode="json"), **options
+        )
+        assert response.status_code == 200, response.text
+        profile = {
+            item.capability.key: item.claim
+            for item in employee.my_profile(principal, db).items
+        }
+        assert profile["model_training"].statement == "合成免审判断"
+        assert profile["model_training"].assessment_status == "tentative"
+    else:
+        row = db.get(ProfileChangeRequest, draft.id)
+        assert row is not None
+        db.refresh(row)
+        row.status = RequestStatus(final_status)
+        row.revision += 1
+        db.commit()
+    cards = history()
+    assert all(card["actions"] == [] for card in cards)
+    assert all(
+        card["status"] == final_status
+        for card in cards
+        if card["type"] == "status_card"
+    )
+    response = client.post(
+        url + "/actions", json=status.actions[0].model_dump(mode="json"), **options
+    )
+    assert response.status_code == 409
+    saved = store.messages_for(db, session)
+    assert saved[0].payload["messages"][0]["actions"]
+    assert saved[2].payload["messages"][0]["status"] == "pending_review"
+    for headers in (auth["manager"], auth["foreign"]):
+        assert (
+            client.get(
+                url + "/messages", params=options["params"], headers=headers
+            ).status_code
+            == 404
+        )
 
 
 @pytest.mark.parametrize("administrator", [False, True])
