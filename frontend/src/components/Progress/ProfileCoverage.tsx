@@ -30,13 +30,13 @@ export function ProfileCoverage({
   orgId,
   department,
   onDepartmentChange,
-  highlightedStatus,
+  reviewStatus,
   onStatusChange,
 }: {
   orgId: string
   department: string
   onDepartmentChange?: (id: string) => void
-  highlightedStatus: ProgressReviewStatus | null
+  reviewStatus: ProgressReviewStatus | null
   onStatusChange?: (status: ProgressReviewStatus | null) => void
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -56,7 +56,7 @@ export function ProfileCoverage({
           </h2>
           <HelpTip
             label="画像覆盖率说明"
-            content="未评估不代表不具备该能力。点击状态可高亮当前页中符合该状态的在职员工。"
+            content="未评估不代表不具备该能力。点击状态可筛选对应的在职员工，再次点击可取消筛选。"
           />
         </div>
         {coverage.isPending ? (
@@ -87,15 +87,13 @@ export function ProfileCoverage({
               {metrics.map(({ status, title, color, value }) => (
                 <Button
                   key={status}
-                  variant={highlightedStatus === status ? "secondary" : "ghost"}
+                  variant={reviewStatus === status ? "secondary" : "ghost"}
                   size="sm"
                   className="h-7 px-1.5 text-xs tabular-nums"
                   disabled={!onStatusChange}
-                  aria-pressed={highlightedStatus === status}
+                  aria-pressed={reviewStatus === status}
                   onClick={() =>
-                    onStatusChange?.(
-                      highlightedStatus === status ? null : status,
-                    )
+                    onStatusChange?.(reviewStatus === status ? null : status)
                   }
                 >
                   <span className={`size-1.5 shrink-0 rounded-full ${color}`} />

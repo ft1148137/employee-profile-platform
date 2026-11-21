@@ -162,13 +162,13 @@ export function EmployeeDetailTabs({
       </header>
       {summary.employment_status === "active" &&
         !summary.manager &&
-        previousManager.data && (
+        previousManager.data?.id && (
           <section
             aria-label="重新设置直属上级"
             className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm"
           >
             <p>直属上级未设置</p>
-            {!previousManager.data.is_active ? (
+            {previousManager.data.is_active === false ? (
               <p>
                 原直属上级 {previousManager.data.display_name}{" "}
                 已离职，请重新指定。

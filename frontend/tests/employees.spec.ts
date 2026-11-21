@@ -229,7 +229,7 @@ for (const [email, cardsLabel] of [
   test(`mobile employee cards fit the viewport for ${email}`, async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 375, height: 812 })
+    await page.setViewportSize({ width: 390, height: 844 })
     await logInUser(page, email, password)
     await page.goto("/employees")
     const cards = page.getByRole("region", { name: cardsLabel })
@@ -237,7 +237,16 @@ for (const [email, cardsLabel] of [
     await expect(link).toBeVisible()
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
-    ).toBe(375)
+    ).toBe(390)
+    const card = cards.getByRole("article").filter({
+      has: page.getByRole("link", { name: "林澈", exact: true }),
+    })
+    await card.getByRole("button", { name: "快速查看", exact: true }).click()
+    const preview = page.getByRole("dialog", { name: "员工快速预览" })
+    await expect(preview).toContainText("林澈")
+    await preview.getByRole("button", { name: "关闭", exact: true }).click()
+    await expect(preview).toBeHidden()
+    await expect(page).toHaveURL(/\/employees$/)
     await link.click()
     await expect(page).toHaveURL(/\/employees\/[^/]+$/)
   })

@@ -52,9 +52,7 @@ export const Route = createFileRoute("/_layout/employees/")({
   head: () => ({ meta: [{ title: "员工 - 员工画像平台" }] }),
 })
 
-function columns(
-  highlightedStatus: ProgressReviewStatus | null,
-): ColumnDef<DataTableFeatures, EmployeeSummary>[] {
+function columns(): ColumnDef<DataTableFeatures, EmployeeSummary>[] {
   return [
     {
       accessorKey: "display_name",
@@ -92,17 +90,7 @@ function columns(
           kind === "inference_status" ? (
             initialStatusLabel(row.original.progress?.initial_profile_status)
           ) : (
-            <span
-              data-coverage-match={
-                kind === "review_status" &&
-                row.original.employment_status === "active" &&
-                row.original.progress?.review_status === highlightedStatus
-                  ? ""
-                  : undefined
-              }
-            >
-              <StatusBadge kind={kind} value={row.original.progress?.[kind]} />
-            </span>
+            <StatusBadge kind={kind} value={row.original.progress?.[kind]} />
           ),
       }),
     ),
@@ -133,8 +121,9 @@ function EmployeesPage() {
 
 function EmployeesList({ orgId }: { orgId: string }) {
   const { org, roles, managedDepartmentIds } = useOrg()
-  const [highlightedStatus, setHighlightedStatus] =
-    useState<ProgressReviewStatus | null>(null)
+  const [reviewStatus, setReviewStatus] = useState<ProgressReviewStatus | null>(
+    null,
+  )
   const [preview, setPreview] = useState<EmployeeSummary | null>(null)
   const [department, setDepartment] = useState("all")
   const [search, setSearch] = useState("")
@@ -153,7 +142,7 @@ function EmployeesList({ orgId }: { orgId: string }) {
       (await OrgsService.readDepartments({ path: { org_id: orgId } })).data,
   })
   const employees = useQuery({
-    queryKey: ["employees", orgId, department, q, pagination],
+    queryKey: ["employees", orgId, department, q, reviewStatus, pagination],
     queryFn: async () =>
       (
         await EmployeesService.readEmployees({
@@ -161,6 +150,7 @@ function EmployeesList({ orgId }: { orgId: string }) {
           query: {
             department_id: department === "all" ? undefined : department,
             q: q || undefined,
+            review_status: reviewStatus ?? undefined,
             skip: pagination.pageIndex * pagination.pageSize,
             limit: pagination.pageSize,
           },
@@ -184,8 +174,11 @@ function EmployeesList({ orgId }: { orgId: string }) {
         orgId={orgId}
         department={department}
         onDepartmentChange={changeDepartment}
-        highlightedStatus={highlightedStatus}
-        onStatusChange={setHighlightedStatus}
+        reviewStatus={reviewStatus}
+        onStatusChange={(status) => {
+          setReviewStatus(status)
+          setPagination((old) => ({ ...old, pageIndex: 0 }))
+        }}
       />
       <div className="space-y-0">
         <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-t-lg border border-surface-border bg-surface px-3 py-1.5">
@@ -247,13 +240,7 @@ function EmployeesList({ orgId }: { orgId: string }) {
                 <article
                   key={employee.id}
                   aria-label={employee.display_name}
-                  data-coverage-match={
-                    employee.employment_status === "active" &&
-                    employee.progress?.review_status === highlightedStatus
-                      ? ""
-                      : undefined
-                  }
-                  className="space-y-2 rounded-lg border border-surface-border bg-surface p-3 wrap-anywhere data-coverage-match:bg-primary/5"
+                  className="space-y-2 rounded-lg border border-surface-border bg-surface p-3 wrap-anywhere"
                 >
                   <Link
                     className="font-semibold text-primary hover:underline"
@@ -281,6 +268,14 @@ function EmployeesList({ orgId }: { orgId: string }) {
                       />
                     </dd>
                   </dl>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="min-h-9"
+                    onClick={() => setPreview(employee)}
+                  >
+                    快速查看
+                  </Button>
                 </article>
               ))}
               {employees.data.count > pagination.pageSize && (
@@ -320,11 +315,11 @@ function EmployeesList({ orgId }: { orgId: string }) {
             </section>
             <div
               onKeyDownCapture={preventRowEnterDefault}
-              className="hidden min-w-0 sm:block [&>div]:rounded-t-none [&>div]:border-t-0 [&_th]:h-11 [&_tr:has([data-coverage-match])]:bg-primary/5"
+              className="hidden min-w-0 sm:block [&>div]:rounded-t-none [&>div]:border-t-0 [&_th]:h-11"
             >
               <DataTable
                 columns={[
-                  ...columns(highlightedStatus),
+                  ...columns(),
                   ...(org?.employee_fields ?? []).map((field) => ({
                     id: field,
                     header:

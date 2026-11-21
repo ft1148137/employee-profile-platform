@@ -8,6 +8,7 @@ from sqlalchemy import String, case, cast, func, or_
 from sqlalchemy.sql.elements import Case
 from sqlmodel import Session, col, select
 
+from app.authz.policies import employee_scope_clause
 from app.authz.principal import Principal
 from app.core.config import settings
 from app.core.security import get_password_hash
@@ -27,6 +28,7 @@ from app.domains.account.schemas import (
 from app.domains.audit.models import AuditEvent
 from app.domains.audit.service import record_audit
 from app.domains.base import utc_now
+from app.domains.change_request.service import coverage_status_clause
 from app.domains.org.models import (
     Department,
     Employee,
@@ -38,6 +40,7 @@ from app.domains.org.models import (
 )
 from app.domains.org.paths import department_paths
 from app.domains.org.schemas import DepartmentSummary
+from app.domains.profile.models import ProgressReviewStatus
 from app.models import User, uses_email_login
 
 
@@ -525,6 +528,7 @@ def list_accounts(
     limit: int,
     employment_status: EmploymentStatus | None = None,
     employee_id: UUID | None = None,
+    review_status: ProgressReviewStatus | None = None,
 ) -> AccountsPublic:
     require_admin(p)
     account_status = account_status_expression()
@@ -544,8 +548,10 @@ def list_accounts(
             (col(Department.org_id) == Employee.org_id)
             & (col(Department.id) == Employee.department_id),
         )
-        .where(Employee.org_id == p.org_id)
+        .where(employee_scope_clause(p))
     )
+    if review_status is not None:
+        query = query.where(coverage_status_clause(p.org_id, review_status))
     if employment_status:
         query = query.where(Employee.employment_status == employment_status)
     if employee_id is not None:

@@ -182,11 +182,64 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
         },
       })
     ).json()
-    const submitted = await request.post(
-      `${base}/me/requests/${draft.id}/submit`,
-      { headers: ownerHeaders, data: { revision: draft.revision } },
-    )
-    expect(submitted.ok()).toBeTruthy()
+    const source =
+      reviewer === "manager" ? "外部助手（MCP） · 合成客户端" : "网页"
+    if (reviewer === "manager") {
+      const setting = await request.put(`${base}/mcp-setting`, {
+        headers,
+        data: { enabled: true },
+      })
+      expect(setting.ok()).toBeTruthy()
+      const pat = await request.post(`${base}/me/access-tokens`, {
+        headers: ownerHeaders,
+        data: { name: "合成令牌" },
+      })
+      expect(pat.ok()).toBeTruthy()
+      const mcpHeaders = {
+        Authorization: `Bearer ${(await pat.json()).token}`,
+        Accept: "application/json, text/event-stream",
+      }
+      const init = await request.post("/mcp", {
+        headers: mcpHeaders,
+        data: {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-11-25",
+            capabilities: {},
+            clientInfo: { name: "合成客户端", version: "1" },
+          },
+        },
+      })
+      expect(init.ok()).toBeTruthy()
+      const submitted = await request.post("/mcp", {
+        headers: {
+          ...mcpHeaders,
+          "Mcp-Session-Id": init.headers()["mcp-session-id"],
+          "MCP-Protocol-Version": "2025-11-25",
+        },
+        data: {
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: {
+            name: "submit_request",
+            arguments: { request_id: draft.id, revision: draft.revision },
+          },
+        },
+      })
+      expect(submitted.ok()).toBeTruthy()
+      expect((await submitted.json()).result.structuredContent.status).toBe(
+        "pending_review",
+      )
+    } else {
+      const submitted = await request.post(
+        `${base}/me/requests/${draft.id}/submit`,
+        { headers: ownerHeaders, data: { revision: draft.revision } },
+      )
+      expect(submitted.ok()).toBeTruthy()
+    }
     await enter(ownerToken, `/employees/${subject.id}`)
     await page.locator("summary", { hasText: /^其他待处理请求/ }).click()
     const pendingCard = page.locator(`[id="request-${draft.id}"]`)
@@ -195,6 +248,7 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
         ? "待经理审批：合成管理员（企业管理员）"
         : "待经理审批：合成经理（直属上级）",
     )
+    await expect(pendingCard.getByText(source, { exact: true })).toBeVisible()
     await expect(pendingCard).toContainText("合成陈述1")
     await expect(pendingCard).toContainText("独立完成")
     await pendingCard.getByRole("button", { name: "展开全文" }).first().click()
@@ -266,9 +320,19 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       page
         .getByRole("listitem")
         .filter({ has: page.locator(`a[href="/reviews/${draft.id}"]`) }),
-    ).toContainText(/3 项改动.*网页提交/)
+    ).toContainText(
+      reviewer === "manager"
+        ? /3 项改动.*外部 AI（MCP） · 合成客户端/
+        : /3 项改动.*网页提交/,
+    )
     await page.locator(`a[href="/reviews/${draft.id}"]`).click()
     await page.setViewportSize({ width: 390, height: 844 })
+    const changes = page.getByRole("region", { name: "待审批变更项" })
+    const promotionHint = "批准后将由「暂定」发布为「已确认」"
+    await expect(changes.getByText(source, { exact: true })).toBeVisible()
+    await expect(changes.getByText(promotionHint, { exact: true })).toHaveCount(
+      3,
+    )
     const decision = (number: number, name: string) =>
       page
         .getByRole("group", { name: `合成能力${number}的审批意见` })
@@ -307,7 +371,7 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
         page.getByText("不能批准：目标判断已被其他请求取代"),
       ).toBeVisible()
       await expect(page.getByText("暂无说明")).toHaveCount(0)
-      await expectChineseCopy(page)
+      await expectChineseCopy(page, [], [source])
       await page.unroute(pattern)
       await page.reload()
     }
@@ -349,6 +413,9 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
       await choose()
     }
     await page.getByRole("button", { name: "提交审批" }).click()
+    await expect(
+      page.getByRole("dialog").getByText(promotionHint, { exact: true }),
+    ).toHaveCount(1)
     await expect(page.getByRole("dialog")).toContainText("合成能力2：退回")
     await expect(page.getByRole("dialog")).toContainText("请补充独立完成的依据")
     let releaseList = () => {}
@@ -457,7 +524,7 @@ for (const reviewer of ["manager", "admin", "delegate"]) {
         expect.objectContaining({ action: "returned" }),
       ]),
     )
-    await expectChineseCopy(page)
+    await expectChineseCopy(page, [], [source])
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,

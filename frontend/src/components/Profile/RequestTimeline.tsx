@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
-import { ChangeRequestsService } from "@/client"
+import { ChangeRequestsService, type SubmissionVia } from "@/client"
+import { Badge } from "@/components/ui/badge"
 import { ProfileError, ProfileLoading } from "./QueryState"
 
 export const viaLabels: Record<string, string> = {
@@ -17,6 +18,27 @@ export function requestClientName(name: string, via?: string | null) {
   return via === "bot" || via === "im"
     ? name.replace(/^内置机器人(?=（|$)/, "内置助手")
     : name
+}
+
+export function RequestSourceBadge({
+  via,
+  clientName,
+}: {
+  via?: SubmissionVia | null
+  clientName?: string | null
+}) {
+  if (!via) return null
+  return (
+    <div>
+      <Badge
+        variant="outline"
+        className="max-w-full wrap-anywhere whitespace-normal"
+      >
+        {via === "mcp" ? "外部助手（MCP）" : viaLabels[via]}
+        {clientName && ` · ${requestClientName(clientName, via)}`}
+      </Badge>
+    </div>
+  )
 }
 
 export const decisionLabels = {

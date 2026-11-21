@@ -42,6 +42,8 @@ class ReviewDetail(SQLModel):
     acting_for_name: str | None = None
     assignment_reason: str | None = None
     owner_reviewed: bool = True
+    submitted_via: SubmissionVia | None = None
+    client_name: str | None = None
     id: UUID
     revision: int
     items: list[ReviewItem]

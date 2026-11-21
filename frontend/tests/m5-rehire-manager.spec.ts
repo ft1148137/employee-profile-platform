@@ -75,8 +75,22 @@ test("restore a previous manager through the existing transfer preview", async (
   ).toBeTruthy()
   await importRoster("")
   await logInUser(page, email, password)
-  await page.goto(`/employees/${employee.id}`)
+  const noPreviousManager = page.waitForResponse(
+    (response) =>
+      response
+        .url()
+        .endsWith(`/roster/employees/${manager.id}/previous-manager`) &&
+      response.ok(),
+  )
+  await page.goto(`/employees/${manager.id}`)
+  expect(await (await noPreviousManager).json()).toBeNull()
+  await expect(
+    page.getByText("直属上级：暂无上级", { exact: true }),
+  ).toBeVisible()
   const reminder = page.getByRole("region", { name: "重新设置直属上级" })
+  await expect(reminder).toBeHidden()
+
+  await page.goto(`/employees/${employee.id}`)
   await expect(reminder).toContainText("直属上级未设置")
   await reminder.getByRole("button", { name: "恢复原上级：合成原上级" }).click()
   const dialog = page.getByRole("dialog")
@@ -91,4 +105,23 @@ test("restore a previous manager through the existing transfer preview", async (
     page.getByText("直属上级：合成原上级", { exact: true }),
   ).toBeVisible()
   await expect(reminder).toHaveCount(0)
+
+  const managerOffboard = await request.post(`${base}/roster/single-change`, {
+    headers,
+    data: { kind: "offboard", employee_ids: [manager.id] },
+  })
+  expect(managerOffboard.ok()).toBeTruthy()
+  const managerPreview = await managerOffboard.json()
+  expect(
+    (
+      await request.post(`${base}/roster/imports/${managerPreview.id}/apply`, {
+        headers,
+        data: { base_revision: managerPreview.base_revision },
+      })
+    ).ok(),
+  ).toBeTruthy()
+  await page.reload()
+  await expect(reminder).toContainText(
+    "原直属上级 合成原上级 已离职，请重新指定。",
+  )
 })

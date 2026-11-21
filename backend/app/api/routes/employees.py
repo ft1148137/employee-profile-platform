@@ -9,6 +9,7 @@ from app.authz.policies import employee_scope_clause
 from app.domains.org.models import Employee, EmploymentStatus
 from app.domains.org.schemas import EmployeesPublic, EmployeeSummary
 from app.domains.org.service import employee_summary, list_employees
+from app.domains.profile.models import ProgressReviewStatus
 
 router = APIRouter(prefix="/orgs/{org_id}/employees", tags=["employees"])
 
@@ -19,6 +20,7 @@ def read_employees(
     principal: OrgPrincipalDep,
     department_id: UUID | None = None,
     employment_status: EmploymentStatus | None = None,
+    review_status: ProgressReviewStatus | None = None,
     q: str | None = None,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=100),
@@ -31,6 +33,7 @@ def read_employees(
         q=q,
         skip=skip,
         limit=limit,
+        review_status=review_status,
     )
 
 

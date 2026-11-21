@@ -11,7 +11,6 @@ import {
   AccountsService,
   type EmployeeAccount,
   EmployeesService,
-  type ProgressReviewStatus,
 } from "@/client"
 import {
   DataTable,
@@ -82,7 +81,6 @@ export function AccountTable({
   onPaginationChange,
   onResetPassword,
   onPreview,
-  highlightedStatus,
 }: {
   selected: string[]
   onSelect: (id: string, checked: boolean) => void
@@ -93,7 +91,6 @@ export function AccountTable({
   onPaginationChange: OnChangeFn<PaginationState>
   onResetPassword: (employee: EmployeeAccount) => void
   onPreview: (employee: EmployeeAccount) => void
-  highlightedStatus: ProgressReviewStatus | null
 }) {
   const { org } = useOrg()
   const actions = useCallback(
@@ -202,11 +199,6 @@ export function AccountTable({
             orgId={org.id}
             employeeId={row.original.id}
             kind={kind}
-            highlightedStatus={
-              row.original.employment_status === "active"
-                ? highlightedStatus
-                : null
-            }
           />
         ) : (
           "—"
@@ -230,7 +222,7 @@ export function AccountTable({
         {data.map((employee) => (
           <article
             key={employee.id}
-            className="space-y-2 rounded-lg border border-surface-border bg-surface p-3 wrap-anywhere has-[[data-coverage-match]]:bg-primary/5"
+            className="space-y-2 rounded-lg border border-surface-border bg-surface p-3 wrap-anywhere"
           >
             <div className="flex items-start gap-2">
               <div className="flex size-8 shrink-0 items-center justify-center">
@@ -263,20 +255,23 @@ export function AccountTable({
                   orgId={org.id}
                   employeeId={employee.id}
                   kind="review_status"
-                  highlightedStatus={
-                    employee.employment_status === "active"
-                      ? highlightedStatus
-                      : null
-                  }
                 />
               )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="ml-auto min-h-9"
+                onClick={() => onPreview(employee)}
+              >
+                快速查看
+              </Button>
             </div>
           </article>
         ))}
       </section>
       <div
         onKeyDownCapture={preventRowEnterDefault}
-        className="[&>div]:rounded-t-none [&>div]:border-t-0 [&_th]:h-11 [&_tr:has([data-coverage-match])]:bg-primary/5 max-sm:[&_[data-slot=table-container]]:hidden"
+        className="[&>div]:rounded-t-none [&>div]:border-t-0 [&_th]:h-11 max-sm:[&_[data-slot=table-container]]:hidden"
       >
         <DataTable
           columns={columns}
@@ -337,11 +332,9 @@ function EmployeeProgress({
   orgId,
   employeeId,
   kind,
-  highlightedStatus,
 }: {
   orgId: string
   employeeId: string
-  highlightedStatus: ProgressReviewStatus | null
   kind: "fill_status" | "inference_status" | "review_status" | "published"
 }) {
   const summary = useQuery({
@@ -365,16 +358,7 @@ function EmployeeProgress({
   ) : kind === "inference_status" ? (
     initialStatusLabel(summary.data.progress?.initial_profile_status)
   ) : (
-    <span
-      data-coverage-match={
-        kind === "review_status" &&
-        summary.data.progress?.review_status === highlightedStatus
-          ? ""
-          : undefined
-      }
-    >
-      <StatusBadge kind={kind} value={summary.data.progress?.[kind]} />
-    </span>
+    <StatusBadge kind={kind} value={summary.data.progress?.[kind]} />
   )
 }
 
